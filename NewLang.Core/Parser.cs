@@ -3,14 +3,14 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace NewLang.Core;
 
-public struct Token
+public readonly struct Token
 {
-    public required TokenType Type;
+    public TokenType Type { get; init; }
     
     // todo: can we 'overlap' these fields like an rust enum would?
 
-    public string? StringValue;
-    public int? IntValue;
+    public string? StringValue { get; init; }
+    public int? IntValue { get; init; }
     
     // todo: should probably keep index positions
 
@@ -41,6 +41,9 @@ public struct Token
     public static Token Error() => new() { Type = TokenType.Error };
     public static Token QuestionMark() => new() { Type = TokenType.QuestionMark };
     public static Token Return() => new() { Type = TokenType.Return };
+    public static Token True() => new() { Type = TokenType.True };
+    public static Token False() => new() { Type = TokenType.False };
+    public static Token Bool() => new() { Type = TokenType.Bool };
 }
 
 public class Parser
@@ -158,6 +161,9 @@ public class Parser
             TokenType.Error when source is "error" => Token.Error(),
             TokenType.QuestionMark when source is "?" => Token.QuestionMark(),
             TokenType.Return when source is "return" => Token.Return(),
+            TokenType.True when source is "true" => Token.True(),
+            TokenType.False when source is "false" => Token.False(),
+            TokenType.Bool when source is "bool" => Token.Bool(),
             _ => null
         };
 
@@ -169,80 +175,59 @@ public class Parser
 
     private static bool IsPotentiallyValid(TokenType type, ReadOnlySpan<char> source)
     {
-        switch (type)
+        return type switch
         {
-            case TokenType.Identifier:
-                return !source.ContainsAnyExcept(AlphaNumeric);
-            case TokenType.If:
-                return "if".AsSpan().StartsWith(source) && source.Length <= "if".Length;
-            case TokenType.LeftParenthesis:
-                return source is "(";
-            case TokenType.RightParenthesis:
-                return source is ")";
-            case TokenType.Semicolon:
-                return source is ";";
-            case TokenType.LeftBrace:
-                return source is "{";
-            case TokenType.RightBrace:
-                return source is "}";
-            case TokenType.Pub:
-                return "pub".AsSpan().StartsWith(source) && source.Length <= "pub".Length;
-            case TokenType.Fn:
-                return "fn".AsSpan().StartsWith(source) && source.Length <= "fn".Length;
-            case TokenType.IntKeyword:
-                return "int".AsSpan().StartsWith(source) && source.Length <= "int".Length;
-            case TokenType.Colon:
-                return source is ":";
-            case TokenType.LeftAngleBracket:
-                return source is "<";
-            case TokenType.RightAngleBracket:
-                return source is ">";
-            case TokenType.Var:
-                return "var".AsSpan().StartsWith(source) && source.Length <= "var".Length;
-            case TokenType.Equals:
-                return source is "=";
-            case TokenType.Comma:
-                return source is ",";
-            case TokenType.DoubleEquals:
-                return "==".AsSpan().StartsWith(source) && source.Length <= "==".Length;
-            case TokenType.Else:
-                return "else".AsSpan().StartsWith(source) && source.Length <= "else".Length;
-            case TokenType.IntLiteral:
-                return !source.ContainsAnyExcept(Digits);
-            case TokenType.StringLiteral:
+            TokenType.Identifier => !source.ContainsAnyExcept(AlphaNumeric),
+            TokenType.If => "if".AsSpan().StartsWith(source) && source.Length <= "if".Length,
+            TokenType.LeftParenthesis => source is "(",
+            TokenType.RightParenthesis => source is ")",
+            TokenType.Semicolon => source is ";",
+            TokenType.LeftBrace => source is "{",
+            TokenType.RightBrace => source is "}",
+            TokenType.Pub => "pub".AsSpan().StartsWith(source) && source.Length <= "pub".Length,
+            TokenType.Fn => "fn".AsSpan().StartsWith(source) && source.Length <= "fn".Length,
+            TokenType.IntKeyword => "int".AsSpan().StartsWith(source) && source.Length <= "int".Length,
+            TokenType.Colon => source is ":",
+            TokenType.LeftAngleBracket => source is "<",
+            TokenType.RightAngleBracket => source is ">",
+            TokenType.Var => "var".AsSpan().StartsWith(source) && source.Length <= "var".Length,
+            TokenType.Equals => source is "=",
+            TokenType.Comma => source is ",",
+            TokenType.DoubleEquals => "==".AsSpan().StartsWith(source) && source.Length <= "==".Length,
+            TokenType.Else => "else".AsSpan().StartsWith(source) && source.Length <= "else".Length,
+            TokenType.IntLiteral => !source.ContainsAnyExcept(Digits),
+            TokenType.StringLiteral => MatchesStringLiteral(source),
+            TokenType.StringKeyword => "string".AsSpan().StartsWith(source) && source.Length <= "string".Length,
+            TokenType.Result => "result".AsSpan().StartsWith(source) && source.Length <= "result".Length,
+            TokenType.Ok => "ok".AsSpan().StartsWith(source) && source.Length <= "ok".Length,
+            TokenType.Error => "error".AsSpan().StartsWith(source) && source.Length <= "error".Length,
+            TokenType.QuestionMark => source is "?",
+            TokenType.Return => "return".AsSpan().StartsWith(source) && source.Length <= "return".Length,
+            TokenType.True => "true".AsSpan().StartsWith(source) && source.Length <= "true".Length,
+            TokenType.False => "false".AsSpan().StartsWith(source) && source.Length <= "false".Length,
+            TokenType.Bool => "bool".AsSpan().StartsWith(source) && source.Length <= "bool".Length,
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+        };
+
+        bool MatchesStringLiteral(ReadOnlySpan<char> stringSource)
+        {
+            if (stringSource[0] != '"')
             {
-                if (source[0] != '"')
-                {
-                    return false;
-                }
-
-                // single quote mark will be the beginning of a string literal
-                if (source.Length == 1)
-                {
-                    return true;
-                }
-
-                var rest = source[1..];
-
-                var nextQuoteIndex = rest.IndexOf('"');
-                
-                // the next quote either doesn't exist, or is at the end of the source
-                return nextQuoteIndex < 0 || nextQuoteIndex == rest.Length - 1;
+                return false;
             }
-            case TokenType.StringKeyword:
-                return "string".AsSpan().StartsWith(source) && source.Length <= "string".Length;
-            case TokenType.Result:
-                return "result".AsSpan().StartsWith(source) && source.Length <= "result".Length;
-            case TokenType.Ok:
-                return "ok".AsSpan().StartsWith(source) && source.Length <= "ok".Length;
-            case TokenType.Error:
-                return "error".AsSpan().StartsWith(source) && source.Length <= "error".Length;
-            case TokenType.QuestionMark:
-                return source is "?";
-            case TokenType.Return:
-                return "return".AsSpan().StartsWith(source) && source.Length <= "return".Length;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(type), type, null);
+
+            // single quote mark will be the beginning of a string literal
+            if (stringSource.Length == 1)
+            {
+                return true;
+            }
+
+            var rest = stringSource[1..];
+
+            var nextQuoteIndex = rest.IndexOf('"');
+            
+            // the next quote either doesn't exist, or is at the end of the source
+            return nextQuoteIndex < 0 || nextQuoteIndex == rest.Length - 1;
         }
     }
 }

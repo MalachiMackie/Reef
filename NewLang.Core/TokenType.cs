@@ -28,4 +28,7 @@ public enum TokenType
     Error,
     QuestionMark,
     Return,
+    True,
+    False,
+    Bool
 }

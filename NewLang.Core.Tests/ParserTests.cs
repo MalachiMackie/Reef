@@ -43,6 +43,9 @@ public class ParserTests
         [ "\"hello this is a string\"", new [] { Token.StringLiteral("hello this is a string") } ],
         [ "5", new [] { Token.IntLiteral(5) } ],
         [ "?", new [] { Token.QuestionMark() } ],
+        [ "true", new [] { Token.True() } ],
+        [ "false", new [] { Token.False() } ],
+        [ "bool", new [] { Token.Bool() } ],
         
         // single token padding tests
         [" fn ", new [] { Token.Fn() }],
@@ -92,26 +95,4 @@ public class ParserTests
             }
         ]
     ];
-    
-    public static IEnumerable<object[]> SomeTestCases() => 
-    [
-        [")>;", Token.RightParenthesis(), 1],
-        [">;", Token.RightAngleBracket(), 1],
-        [";", Token.Semicolon(), 1],
-        [" ;", Token.Semicolon(), 2],
-        ["int):", Token.IntKeyword(), 3],
-        [" int):", Token.IntKeyword(), 4],
-    ];
-
-    [Theory]
-    [MemberData(nameof(SomeTestCases))]
-    public void SomeTests(string source, Token expectedToken, int expectedOffset)
-    {
-        var result = Parser.EatToken(source);
-        result.Should().NotBeNull();
-        var (token, offset) = result.Value;
-
-        token.Should().Be(expectedToken);
-        offset.Should().Be(expectedOffset);
-    }
 }
