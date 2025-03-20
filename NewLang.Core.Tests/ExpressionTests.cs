@@ -1,4 +1,5 @@
-﻿using FluentAssertions;
+﻿using System.Runtime.CompilerServices;
+using FluentAssertions;
 
 namespace NewLang.Core.Tests;
 
@@ -10,7 +11,14 @@ public class ExpressionTests
     [MemberData(nameof(TestCases))]
     public void Tests(IEnumerable<Token> tokens, IEnumerable<Expression> expectedExpression)
     {
-        var expression = _expressionBuilder.GetExpressions(tokens);
+        var expression = _expressionBuilder.GetExpressions(tokens)
+            // clear out the source spans, we don't actually care about them
+            .Select(x => x with
+            {
+                ValueAccessor = x.ValueAccessor is null
+                    ? null
+                    : x.ValueAccessor.Value with { Token = x.ValueAccessor.Value.Token with { SourceSpan = default} }
+            });
 
         expression.Should().BeEquivalentTo(expectedExpression);
     }
@@ -19,7 +27,55 @@ public class ExpressionTests
     {
         return new (string Source, IEnumerable<Expression> ExpectedExpression)[]
         {
-            ("a", [Expression.VariableAccess([Token.Identifier("a", new SourceSpan(new SourcePosition(0, 0, 0), 1))])])
+            // unary expressions
+            ("a", [new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", default)))]),
+            ("1", [new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))]),
+            ("\"my string\"", [new Expression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("my string", default)))]),
+            ("true", [new Expression(new ValueAccessor(ValueAccessType.Literal, Token.True(default)))]),
+            ("false", [new Expression(new ValueAccessor(ValueAccessType.Literal, Token.False(default)))]),
+            // ("a < 5", [Expression.BinaryOperator(
+            //     operatorType: BinaryOperatorType.LessThan,
+            //     left: Expression.VariableAccess([Token.Identifier("a", default)]),
+            //     right: Expression.Literal([Token.IntLiteral(5, default)]))]),
         }.Select(x => new object[] { new Parser().Parse(x.Source), x.ExpectedExpression });
+    }
+    
+    private static Expression RemoveSourceSpan(Expression expression)
+    {
+        return expression with
+        {
+            ValueAccessor = RemoveSourceSpan(expression.ValueAccessor),
+            UnaryOperator = RemoveSourceSpan(expression.UnaryOperator),
+            BinaryOperator = RemoveSourceSpan(expression.BinaryOperator),
+        };
+    }
+
+    private static StrongBox<BinaryOperator>? RemoveSourceSpan(StrongBox<BinaryOperator>? binaryOperator)
+    {
+        return binaryOperator is not null
+            ? new StrongBox<BinaryOperator>(binaryOperator.Value with
+            {
+                Left = RemoveSourceSpan(binaryOperator.Value.Left),
+                Right = RemoveSourceSpan(binaryOperator.Value.Right)
+            })
+            : null;
+    }
+
+    private static StrongBox<UnaryOperator>? RemoveSourceSpan(StrongBox<UnaryOperator>? unaryOperator)
+    {
+        // todo
+        return unaryOperator;
+    }
+
+    private static ValueAccessor? RemoveSourceSpan(ValueAccessor? valueAccessor)
+    {
+        return valueAccessor is not null
+            ? valueAccessor.Value with { Token = RemoveSourceSpan(valueAccessor.Value.Token) }
+            : null;
+    }
+
+    private static Token RemoveSourceSpan(Token token)
+    {
+        return token with { SourceSpan = default };
     }
 }

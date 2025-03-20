@@ -1,16 +1,58 @@
-﻿namespace NewLang.Core;
+﻿using System.Runtime.CompilerServices;
 
-public record struct Expression(ExpressionType Type, IEnumerable<Token> Tokens)
+namespace NewLang.Core;
+
+public record struct Expression(
+    ExpressionType Type,
+    ValueAccessor? ValueAccessor,
+    StrongBox<UnaryOperator>? UnaryOperator,
+    StrongBox<BinaryOperator>? BinaryOperator)
 {
-    public static Expression VariableAccess(IEnumerable<Token> tokens)
+    public Expression(ValueAccessor valueAccessor)
+        : this(ExpressionType.ValueAccess, valueAccessor, null, null)
     {
-        return new Expression(ExpressionType.VariableAccess, tokens);
+        
     }
+    
+    public Expression(UnaryOperator unaryOperator)
+        : this(ExpressionType.UnaryOperator, null, new StrongBox<UnaryOperator>(unaryOperator), null)
+    {
+    }
+
+    public Expression(BinaryOperator binaryOperator)
+        : this(ExpressionType.BinaryOperator, null, null, new StrongBox<BinaryOperator>(binaryOperator))
+    {
+    }
+}
+
+public record struct ValueAccessor(ValueAccessType AccessType, Token Token);
+
+public record struct UnaryOperator()
+{
+}
+
+public record struct BinaryOperator(BinaryOperatorType Type, Expression Left, Expression Right);
+
+public enum BinaryOperatorType
+{
+}
+
+public enum ValueAccessType
+{
+    Variable,
+    Literal
+}
+
+public enum UnaryOperatorType
+{
+    //Not
 }
 
 public enum ExpressionType
 {
-    VariableAccess
+    ValueAccess,
+    UnaryOperator,
+    BinaryOperator
 }
 
 public class ExpressionBuilder
@@ -33,8 +75,14 @@ public class ExpressionBuilder
             var token = tokens.Current;
             switch (token.Type)
             {
+                // value accessors
                 case TokenType.Identifier:
-                    return Expression.VariableAccess([token]);
+                    return new Expression(new ValueAccessor(ValueAccessType.Variable, token));
+                case TokenType.StringLiteral:
+                case TokenType.IntLiteral:
+                case TokenType.True:
+                case TokenType.False:
+                    return new Expression(new ValueAccessor(ValueAccessType.Literal, token));
                 default:
                     throw new NotImplementedException();
             }
