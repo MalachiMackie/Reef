@@ -3,7 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace NewLang.Core;
 
-
 public class Parser
 {
     private static readonly SearchValues<char> Digits = SearchValues.Create("0123456789");
@@ -14,7 +13,7 @@ public class Parser
         {
             yield break;
         }
-        
+
         var position = new SourcePosition { Start = 0, LineNumber = 0, LinePosition = 0 };
         var endIndex = sourceStr.Length - 1;
         var nextToken = EatToken(sourceStr.AsSpan()[(int)position.Start..(endIndex + 1)], position);
@@ -23,7 +22,7 @@ public class Parser
             var (token, nextPosition) = nextToken.Value;
             position = nextPosition;
             yield return token;
-            
+
             nextToken = EatToken(sourceStr.AsSpan()[(int)position.Start..(endIndex + 1)], position);
         }
     }
@@ -49,7 +48,7 @@ public class Parser
 
             var trimmed = part.TrimStart();
             var trimmedCharacters = part[..^trimmed.Length];
-            
+
             var position = GetNextPosition(startPosition, trimmedCharacters);
 
             var nextPotentialTokens = new List<TokenType>();
@@ -67,13 +66,13 @@ public class Parser
                 // this will happen in the case of `int)`
                 var tokenSource = trimmed[..^1];
                 var token = ResolveToken(tokenSource, potentialTokens, position);
-                
+
                 // this assumes that a token can't cross the new line boundary
                 var nextPosition = position with
-                    {
-                        Start = position.Start + (uint)tokenSource.Length,
-                        LinePosition = position.LinePosition + (uint)tokenSource.Length
-                    };
+                {
+                    Start = position.Start + (uint)tokenSource.Length,
+                    LinePosition = position.LinePosition + (uint)tokenSource.Length
+                };
                 return (token, nextPosition);
             }
 
@@ -90,7 +89,7 @@ public class Parser
 
         var trimmedPosition = GetNextPosition(startPosition, outerTrimmedChars);
 
-        return (ResolveToken(outerTrimmed, potentialTokens, trimmedPosition), 
+        return (ResolveToken(outerTrimmed, potentialTokens, trimmedPosition),
             startPosition with { Start = startPosition.Start + (uint)source.Length });
     }
 
@@ -117,11 +116,11 @@ public class Parser
             // didn't pass over a new line, so just increment the line position by the number of whitespace chars we trimmed
             outerLinePosition += (uint)trimmedCharacters.Length;
         }
-        
+
         return new SourcePosition(
-            Start: start.Start + (uint)trimmedCharacters.Length,
-            LineNumber: start.LineNumber + (uint)outerNewLines,
-            LinePosition: outerLinePosition);
+            start.Start + (uint)trimmedCharacters.Length,
+            start.LineNumber + (uint)outerNewLines,
+            outerLinePosition);
     }
 
     private static Token ResolveToken(
@@ -144,7 +143,7 @@ public class Parser
 
         return Token.Identifier(source.ToString(), new SourceSpan(position, (uint)source.Length));
     }
-    
+
     private static bool TryResolveToken(
         ReadOnlySpan<char> source,
         TokenType type,
@@ -155,31 +154,41 @@ public class Parser
         {
             TokenType.Identifier => Token.Identifier(source.ToString(), new SourceSpan(position, (uint)source.Length)),
             TokenType.If when source is "if" => Token.If(new SourceSpan(position, (uint)source.Length)),
-            TokenType.LeftParenthesis when source is "(" => Token.LeftParenthesis(new SourceSpan(position, (uint)source.Length)),
-            TokenType.RightParenthesis when source is ")" => Token.RightParenthesis(new SourceSpan(position, (uint)source.Length)),
+            TokenType.LeftParenthesis when source is "(" => Token.LeftParenthesis(new SourceSpan(position,
+                (uint)source.Length)),
+            TokenType.RightParenthesis when source is ")" => Token.RightParenthesis(new SourceSpan(position,
+                (uint)source.Length)),
             TokenType.Semicolon when source is ";" => Token.Semicolon(new SourceSpan(position, (uint)source.Length)),
             TokenType.LeftBrace when source is "{" => Token.LeftBrace(new SourceSpan(position, (uint)source.Length)),
             TokenType.RightBrace when source is "}" => Token.RightBrace(new SourceSpan(position, (uint)source.Length)),
             TokenType.Pub when source is "pub" => Token.Pub(new SourceSpan(position, (uint)source.Length)),
             TokenType.Fn when source is "fn" => Token.Fn(new SourceSpan(position, (uint)source.Length)),
-            TokenType.IntKeyword when source is "int" => Token.IntKeyword(new SourceSpan(position, (uint)source.Length)),
+            TokenType.IntKeyword when source is "int" =>
+                Token.IntKeyword(new SourceSpan(position, (uint)source.Length)),
             TokenType.Colon when source is ":" => Token.Colon(new SourceSpan(position, (uint)source.Length)),
-            TokenType.LeftAngleBracket when source is "<" => Token.LeftAngleBracket(new SourceSpan(position, (uint)source.Length)),
-            TokenType.RightAngleBracket when source is ">" => Token.RightAngleBracket(new SourceSpan(position, (uint)source.Length)),
+            TokenType.LeftAngleBracket when source is "<" => Token.LeftAngleBracket(new SourceSpan(position,
+                (uint)source.Length)),
+            TokenType.RightAngleBracket when source is ">" => Token.RightAngleBracket(new SourceSpan(position,
+                (uint)source.Length)),
             TokenType.Var when source is "var" => Token.Var(new SourceSpan(position, (uint)source.Length)),
             TokenType.Equals when source is "=" => Token.Equals(new SourceSpan(position, (uint)source.Length)),
             TokenType.Comma when source is "," => Token.Comma(new SourceSpan(position, (uint)source.Length)),
-            TokenType.DoubleEquals when source is "==" => Token.DoubleEquals(new SourceSpan(position, (uint)source.Length)),
+            TokenType.DoubleEquals when source is "==" => Token.DoubleEquals(new SourceSpan(position,
+                (uint)source.Length)),
             TokenType.Else when source is "else" => Token.Else(new SourceSpan(position, (uint)source.Length)),
-            TokenType.IntLiteral when int.TryParse(source, out var intValue) => Token.IntLiteral(intValue, new SourceSpan(position, (uint)source.Length)),
+            TokenType.IntLiteral when int.TryParse(source, out var intValue) => Token.IntLiteral(intValue,
+                new SourceSpan(position, (uint)source.Length)),
             TokenType.StringLiteral when source[0] == '"'
                                          && source[^1] == '"'
-                                         && source[1..].IndexOf('"') == source.Length - 2 => Token.StringLiteral(source[1..^1].ToString(), new SourceSpan(position, (uint)source.Length)),
-            TokenType.StringKeyword when source is "string" => Token.StringKeyword(new SourceSpan(position, (uint)source.Length)),
+                                         && source[1..].IndexOf('"') == source.Length - 2 => Token.StringLiteral(
+                source[1..^1].ToString(), new SourceSpan(position, (uint)source.Length)),
+            TokenType.StringKeyword when source is "string" => Token.StringKeyword(new SourceSpan(position,
+                (uint)source.Length)),
             TokenType.Result when source is "result" => Token.Result(new SourceSpan(position, (uint)source.Length)),
             TokenType.Ok when source is "ok" => Token.Ok(new SourceSpan(position, (uint)source.Length)),
             TokenType.Error when source is "error" => Token.Error(new SourceSpan(position, (uint)source.Length)),
-            TokenType.QuestionMark when source is "?" => Token.QuestionMark(new SourceSpan(position, (uint)source.Length)),
+            TokenType.QuestionMark when source is "?" => Token.QuestionMark(new SourceSpan(position,
+                (uint)source.Length)),
             TokenType.Return when source is "return" => Token.Return(new SourceSpan(position, (uint)source.Length)),
             TokenType.True when source is "true" => Token.True(new SourceSpan(position, (uint)source.Length)),
             TokenType.False when source is "false" => Token.False(new SourceSpan(position, (uint)source.Length)),
@@ -245,7 +254,7 @@ public class Parser
             var rest = stringSource[1..];
 
             var nextQuoteIndex = rest.IndexOf('"');
-            
+
             // the next quote either doesn't exist, or is at the end of the source
             return nextQuoteIndex < 0 || nextQuoteIndex == rest.Length - 1;
         }
