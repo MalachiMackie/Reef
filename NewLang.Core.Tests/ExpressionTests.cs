@@ -13,12 +13,7 @@ public class ExpressionTests
     {
         var expression = _expressionBuilder.GetExpressions(tokens)
             // clear out the source spans, we don't actually care about them
-            .Select(x => x with
-            {
-                ValueAccessor = x.ValueAccessor is null
-                    ? null
-                    : x.ValueAccessor.Value with { Token = x.ValueAccessor.Value.Token with { SourceSpan = default} }
-            });
+            .Select(RemoveSourceSpan);
 
         expression.Should().BeEquivalentTo(expectedExpression);
     }
@@ -27,16 +22,23 @@ public class ExpressionTests
     {
         return new (string Source, IEnumerable<Expression> ExpectedExpression)[]
         {
-            // unary expressions
+            // value access expressions
             ("a", [new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", default)))]),
             ("1", [new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))]),
             ("\"my string\"", [new Expression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("my string", default)))]),
             ("true", [new Expression(new ValueAccessor(ValueAccessType.Literal, Token.True(default)))]),
             ("false", [new Expression(new ValueAccessor(ValueAccessType.Literal, Token.False(default)))]),
-            // ("a < 5", [Expression.BinaryOperator(
-            //     operatorType: BinaryOperatorType.LessThan,
-            //     left: Expression.VariableAccess([Token.Identifier("a", default)]),
-            //     right: Expression.Literal([Token.IntLiteral(5, default)]))]),
+            // binary operator expressions
+            ("a < 5", [new Expression(new BinaryOperator(
+                BinaryOperatorType.LessThan,
+                new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", default))),
+                new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(5, default))),
+                Token.LeftAngleBracket(default)))]),
+            ("\"thing\" > true", [new Expression(new BinaryOperator(
+                BinaryOperatorType.GreaterThan,
+                new Expression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("thing", default))),
+                new Expression(new ValueAccessor(ValueAccessType.Literal, Token.True(default))),
+                Token.RightAngleBracket(default)))]),
         }.Select(x => new object[] { new Parser().Parse(x.Source), x.ExpectedExpression });
     }
     
@@ -56,7 +58,8 @@ public class ExpressionTests
             ? new StrongBox<BinaryOperator>(binaryOperator.Value with
             {
                 Left = RemoveSourceSpan(binaryOperator.Value.Left),
-                Right = RemoveSourceSpan(binaryOperator.Value.Right)
+                Right = RemoveSourceSpan(binaryOperator.Value.Right),
+                OperatorToken = RemoveSourceSpan(binaryOperator.Value.OperatorToken)
             })
             : null;
     }
