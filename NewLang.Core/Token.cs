@@ -1,4 +1,6 @@
-﻿namespace NewLang.Core;
+﻿using System.Diagnostics;
+
+namespace NewLang.Core;
 
 public readonly struct Token
 {
@@ -10,6 +12,47 @@ public readonly struct Token
     public int? IntValue { get; init; }
 
     public required SourceSpan SourceSpan { get; init; }
+
+    public override string ToString()
+    {
+        return Type switch
+        {
+            TokenType.Identifier => StringValue!,
+            TokenType.If => "if",
+            TokenType.LeftParenthesis => "(",
+            TokenType.RightParenthesis => ")",
+            TokenType.Semicolon => ";",
+            TokenType.LeftBrace => "{",
+            TokenType.RightBrace => "}",
+            TokenType.Pub => "pub",
+            TokenType.Fn => "fn",
+            TokenType.IntKeyword => "int",
+            TokenType.Colon => ":",
+            TokenType.LeftAngleBracket => "<",
+            TokenType.RightAngleBracket => ">",
+            TokenType.Var => "var",
+            TokenType.Equals => "=",
+            TokenType.Comma => ",",
+            TokenType.DoubleEquals => "==",
+            TokenType.Else => "else",
+            TokenType.IntLiteral => IntValue!.Value.ToString(),
+            TokenType.StringLiteral => $"\"{StringValue}\"",
+            TokenType.StringKeyword => "string",
+            TokenType.Result => "result",
+            TokenType.Ok => "ok",
+            TokenType.Error => "error",
+            TokenType.QuestionMark => "?",
+            TokenType.Return => "return",
+            TokenType.True => "true",
+            TokenType.False => "false",
+            TokenType.Bool => "bool",
+            TokenType.Plus => "+",
+            TokenType.Dash => "-",
+            TokenType.Star => "*",
+            TokenType.ForwardSlash => "/",
+            _ => throw new UnreachableException()
+        };
+    }
 
     // todo: should probably keep index positions
 
@@ -156,5 +199,25 @@ public readonly struct Token
     public static Token Bool(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.Bool, SourceSpan = sourceSpan };
+    }
+
+    public static Token Dash(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.Dash, SourceSpan = sourceSpan };
+    }
+
+    public static Token Star(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.Star, SourceSpan = sourceSpan };
+    }
+
+    public static Token ForwardSlash(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.ForwardSlash, SourceSpan = sourceSpan };
+    }
+
+    public static Token Plus(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.Plus, SourceSpan = sourceSpan };
     }
 }

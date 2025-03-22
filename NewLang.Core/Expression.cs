@@ -1,8 +1,9 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace NewLang.Core;
 
-public record struct Expression(
+public readonly record struct Expression(
     ExpressionType Type,
     ValueAccessor? ValueAccessor,
     StrongBox<UnaryOperator>? UnaryOperator,
@@ -23,20 +24,52 @@ public record struct Expression(
         : this(ExpressionType.BinaryOperator, null, null, new StrongBox<BinaryOperator>(binaryOperator))
     {
     }
+
+    public override string ToString()
+    {
+        return Type switch
+        {
+            ExpressionType.ValueAccess => ValueAccessor!.Value.ToString(),
+            ExpressionType.UnaryOperator => UnaryOperator!.Value.ToString(),
+            ExpressionType.BinaryOperator => BinaryOperator!.Value.ToString(),
+            _ => throw new UnreachableException()
+        };
+    }
 }
 
-public record struct ValueAccessor(ValueAccessType AccessType, Token Token);
-
-public record struct UnaryOperator()
+public readonly record struct ValueAccessor(ValueAccessType AccessType, Token Token)
 {
+    public override string ToString()
+    {
+        return Token.ToString();
+    }
 }
 
-public record struct BinaryOperator(BinaryOperatorType Type, Expression Left, Expression Right, Token OperatorToken);
+public readonly record struct UnaryOperator(UnaryOperatorType Type, Expression Operand, Token OperatorToken)
+{
+    public override string ToString()
+    {
+        // todo: prefix and postfix
+        return $"|{Operand}{OperatorToken}|";
+    }
+}
+
+public readonly record struct BinaryOperator(BinaryOperatorType Type, Expression Left, Expression Right, Token OperatorToken)
+{
+    public override string ToString()
+    {
+        return $"|{Left} {OperatorToken} {Right}|";
+    }
+}
 
 public enum BinaryOperatorType
 {
     LessThan,
-    GreaterThan
+    GreaterThan,
+    Plus,
+    Minus,
+    Multiply,
+    Divide
 }
 
 public enum ValueAccessType
@@ -47,7 +80,8 @@ public enum ValueAccessType
 
 public enum UnaryOperatorType
 {
-    //Not
+    // ?
+    FallOut
 }
 
 public enum ExpressionType
@@ -55,67 +89,4 @@ public enum ExpressionType
     ValueAccess,
     UnaryOperator,
     BinaryOperator
-}
-
-public class ExpressionBuilder
-{
-    public IEnumerable<Expression> GetExpressions(IEnumerable<Token> tokens)
-    {
-        var expressionStack = new Stack<Expression>();
-        
-        using var tokensEnumerator = tokens.GetEnumerator();
-        var expression = PopExpression(tokensEnumerator, expressionStack);
-        while (expression.HasValue)
-        {
-            expressionStack.Push(expression.Value);
-
-            expression = PopExpression(tokensEnumerator, expressionStack);
-        }
-
-        return expressionStack;
-    }
-
-    private static Expression? PopExpression(IEnumerator<Token> tokens, Stack<Expression> expressionStack)
-    {
-        while (tokens.MoveNext())
-        {
-            var token = tokens.Current;
-            switch (token.Type)
-            {
-                // value accessors
-                case TokenType.Identifier:
-                    return new Expression(new ValueAccessor(ValueAccessType.Variable, token));
-                case TokenType.StringLiteral:
-                case TokenType.IntLiteral:
-                case TokenType.True:
-                case TokenType.False:
-                    return new Expression(new ValueAccessor(ValueAccessType.Literal, token));
-                // binary operator tokens
-                case TokenType.LeftAngleBracket:
-                    return GetBinaryOperatorExpression(tokens, expressionStack, token, BinaryOperatorType.LessThan);
-                case TokenType.RightAngleBracket:
-                    return GetBinaryOperatorExpression(tokens, expressionStack, token, BinaryOperatorType.GreaterThan);
-                default:
-                    throw new NotImplementedException();
-            }
-        }
-
-        return null;
-    }
-
-    private static Expression GetBinaryOperatorExpression(
-        IEnumerator<Token> tokens,
-        Stack<Expression> expressionStack,
-        Token operatorToken,
-        BinaryOperatorType operatorType)
-    {
-        var left = expressionStack.Pop();
-        var right = PopExpression(tokens, expressionStack);
-        if (right is null)
-        {
-            throw new Exception("Expected expression but got null");
-        }
-
-        return new Expression(new BinaryOperator(operatorType, left, right.Value, operatorToken));
-    }
 }

@@ -4,13 +4,11 @@ namespace NewLang.Core.Tests;
 
 public class ParserTests
 {
-    private readonly Parser _parser = new();
-
     [Theory]
     [MemberData(nameof(TestCases))]
     public void Tests(string source, IEnumerable<Token> expectedTokens)
     {
-        var result = _parser.Parse(source);
+        var result = Parser.Parse(source);
 
         result.Should().BeEquivalentTo(expectedTokens);
     }
@@ -29,6 +27,13 @@ public class ParserTests
             ["pub", new[] { Token.Pub(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             ["fn", new[] { Token.Fn(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["int", new[] { Token.IntKeyword(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
+            ["if", new[] { Token.If(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
+            ["else", new[] { Token.Else(new SourceSpan(new SourcePosition(0, 0, 0), 4)) }],
+            ["var", new[] { Token.Var(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
+            ["=", new[] { Token.Equals(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
+            ["==", new[] { Token.DoubleEquals(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
+            ["string", new[] { Token.StringKeyword(new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],
+            ["return", new[] { Token.Return(new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],
             ["(", new[] { Token.LeftParenthesis(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             [")", new[] { Token.RightParenthesis(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["{", new[] { Token.LeftBrace(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
@@ -42,6 +47,10 @@ public class ParserTests
             ["result", new[] { Token.Result(new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],
             ["ok", new[] { Token.Ok(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["error", new[] { Token.Error(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
+            ["*", new[] { Token.Star(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
+            ["-", new[] { Token.Dash(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
+            ["/", new[] { Token.ForwardSlash(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
+            ["+", new[] { Token.Plus(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             [
                 "\"hello this is a string\"",
                 new[] { Token.StringLiteral("hello this is a string", new SourceSpan(new SourcePosition(0, 0, 0), 24)) }

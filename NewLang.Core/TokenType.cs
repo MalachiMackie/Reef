@@ -30,5 +30,9 @@ public enum TokenType
     Return,
     True,
     False,
-    Bool
+    Bool,
+    Plus,
+    Dash,
+    Star,
+    ForwardSlash
 }

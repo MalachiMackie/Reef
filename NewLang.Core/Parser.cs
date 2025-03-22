@@ -3,11 +3,11 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace NewLang.Core;
 
-public class Parser
+public static class Parser
 {
     private static readonly SearchValues<char> Digits = SearchValues.Create("0123456789");
 
-    public IEnumerable<Token> Parse(string sourceStr)
+    public static IEnumerable<Token> Parse(string sourceStr)
     {
         if (sourceStr.Length == 0)
         {
@@ -193,6 +193,10 @@ public class Parser
             TokenType.True when source is "true" => Token.True(new SourceSpan(position, (uint)source.Length)),
             TokenType.False when source is "false" => Token.False(new SourceSpan(position, (uint)source.Length)),
             TokenType.Bool when source is "bool" => Token.Bool(new SourceSpan(position, (uint)source.Length)),
+            TokenType.ForwardSlash when source is "/" => Token.ForwardSlash(new SourceSpan(position, (uint)source.Length)),
+            TokenType.Star when source is "*" => Token.Star(new SourceSpan(position, (uint)source.Length)),
+            TokenType.Plus when source is "+" => Token.Plus(new SourceSpan(position, (uint)source.Length)),
+            TokenType.Dash when source is "-" => Token.Dash(new SourceSpan(position, (uint)source.Length)),
             _ => null
         };
 
@@ -235,6 +239,10 @@ public class Parser
             TokenType.True => "true".AsSpan().StartsWith(source) && source.Length <= "true".Length,
             TokenType.False => "false".AsSpan().StartsWith(source) && source.Length <= "false".Length,
             TokenType.Bool => "bool".AsSpan().StartsWith(source) && source.Length <= "bool".Length,
+            TokenType.Star => source is "*",
+            TokenType.ForwardSlash => source is "/",
+            TokenType.Plus => source is "+",
+            TokenType.Dash => source is "-",
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
 
