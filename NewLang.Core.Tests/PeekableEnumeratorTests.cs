@@ -3,12 +3,12 @@ using FluentAssertions;
 
 namespace NewLang.Core.Tests;
 
-public class PeakableEnumeratorTests
+public class PeekableEnumeratorTests
 {
-    private readonly PeakableEnumerator<int> _sut = new(((IEnumerable<int>) [1, 2, 3, 4, 5]).GetEnumerator());
+    private readonly PeekableEnumerator<int> _sut = new(((IEnumerable<int>) [1, 2, 3, 4, 5]).GetEnumerator());
 
     [Fact]
-    public void Should_EnumerateCorrectly_When_NotPeaked()
+    public void Should_EnumerateCorrectly_When_NotPeeked()
     {
         _sut.MoveNext().Should().BeTrue();
         _sut.Current.Should().Be(1);
@@ -24,37 +24,37 @@ public class PeakableEnumeratorTests
     }
 
     [Fact]
-    public void Should_PeakFirstValueCorrectly()
+    public void Should_PeekFirstValueCorrectly()
     {
-        _sut.TryPeak(out var peaked).Should().BeTrue();
-        peaked.Should().Be(1);
+        _sut.TryPeek(out var peeked).Should().BeTrue();
+        peeked.Should().Be(1);
     }
 
     [Fact]
-    public void Should_PeakLastValueCorrectly()
-    {
-        _sut.MoveNext();
-        _sut.MoveNext();
-        _sut.MoveNext();
-        _sut.MoveNext();
-        _sut.TryPeak(out var peaked).Should().BeTrue();
-        peaked.Should().Be(5);
-    }
-
-    [Fact]
-    public void Should_ReturnFalse_When_NoValueToPeak()
+    public void Should_PeekLastValueCorrectly()
     {
         _sut.MoveNext();
         _sut.MoveNext();
         _sut.MoveNext();
         _sut.MoveNext();
-        _sut.MoveNext();
-        _sut.TryPeak(out var peaked).Should().BeFalse();
-        peaked.Should().Be(0);
+        _sut.TryPeek(out var peeked).Should().BeTrue();
+        peeked.Should().Be(5);
     }
 
     [Fact]
-    public void Should_ContinueEnumeratingCorrectly_When_Peaked()
+    public void Should_ReturnFalse_When_NoValueToPeek()
+    {
+        _sut.MoveNext();
+        _sut.MoveNext();
+        _sut.MoveNext();
+        _sut.MoveNext();
+        _sut.MoveNext();
+        _sut.TryPeek(out var peeked).Should().BeFalse();
+        peeked.Should().Be(0);
+    }
+
+    [Fact]
+    public void Should_ContinueEnumeratingCorrectly_When_Peeked()
     {
         _sut.MoveNext().Should().BeTrue();
         _sut.Current.Should().Be(1);
@@ -63,8 +63,8 @@ public class PeakableEnumeratorTests
         _sut.MoveNext().Should().BeTrue();
         _sut.Current.Should().Be(3);
 
-        _sut.TryPeak(out var peaked).Should().BeTrue();
-        peaked.Should().Be(4);
+        _sut.TryPeek(out var peeked).Should().BeTrue();
+        peeked.Should().Be(4);
 
         _sut.MoveNext().Should().BeTrue();
         _sut.Current.Should().Be(4);
@@ -74,14 +74,14 @@ public class PeakableEnumeratorTests
     }
 
     [Fact]
-    public void Should_PeakTwiceCorrectly()
+    public void Should_PeekTwiceCorrectly()
     {
         _sut.MoveNext().Should().BeTrue();
         _sut.Current.Should().Be(1);
-        _sut.TryPeak(out var peaked1).Should().BeTrue();
-        peaked1.Should().Be(2);
-        _sut.TryPeak(out var peaked2).Should().BeTrue();
-        peaked2.Should().Be(2);
+        _sut.TryPeek(out var peeked1).Should().BeTrue();
+        peeked1.Should().Be(2);
+        _sut.TryPeek(out var peeked2).Should().BeTrue();
+        peeked2.Should().Be(2);
         _sut.MoveNext().Should().BeTrue();
         _sut.Current.Should().Be(2);
         _sut.MoveNext().Should().BeTrue();
@@ -94,8 +94,8 @@ public class PeakableEnumeratorTests
         var outer = new DisposeTestEnumerator();
         outer.Disposed.Should().BeFalse();
         
-        var peakable = new PeakableEnumerator<int>(outer);
-        peakable.Dispose();
+        var peekable = new PeekableEnumerator<int>(outer);
+        peekable.Dispose();
 
         outer.Disposed.Should().BeTrue();
     }
