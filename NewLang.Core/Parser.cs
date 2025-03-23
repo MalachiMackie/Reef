@@ -3,11 +3,11 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace NewLang.Core;
 
-public static class Parser
+public class Parser
 {
     private static readonly SearchValues<char> Digits = SearchValues.Create("0123456789");
 
-    public static IEnumerable<Token> Parse(string sourceStr)
+    public IEnumerable<Token> Parse(string sourceStr)
     {
         if (sourceStr.Length == 0)
         {
@@ -33,50 +33,57 @@ public static class Parser
         }
     }
 
-    private static (Token Token, SourcePosition NextPosition)? EatToken(
+    private readonly List<TokenType> _potentialTokens = [];
+    private readonly List<int> _notTokens = [];
+    
+    private (Token Token, SourcePosition NextPosition)? EatToken(
         ReadOnlySpan<char> source,
-        SourcePosition startPosition)
+        in SourcePosition startPosition)
     {
-        if (source.IsWhiteSpace())
+        var sourceTrimmed = source.TrimStart();
+        if (sourceTrimmed.Length == 0)
         {
             return null;
         }
 
-        var potentialTokens = GetPotentiallyValidTokenTypes(source.Trim()[0]);
+        _potentialTokens.Clear();
+        GetPotentiallyValidTokenTypes(sourceTrimmed[0], _potentialTokens);
 
-        if (potentialTokens.Count == 0)
+        if (_potentialTokens.Count == 0)
         {
             return null;
         }
 
-        for (uint i = 0; i < source.Length; i++)
+        for (uint i = 1; i < source.Length; i++)
         {
             var part = source[..((int)i + 1)];
-            if (part.IsWhiteSpace())
+            var trimmed = part.TrimStart();
+            // 1 because first char is checked above
+            if (trimmed.Length <= 1)
             {
                 continue;
             }
-
-            var trimmed = part.TrimStart();
+            
             var trimmedCharacters = part[..^trimmed.Length];
 
             var position = GetNextPosition(startPosition, trimmedCharacters);
-
-            var nextPotentialTokens = new List<TokenType>(potentialTokens.Count);
-            foreach (var type in potentialTokens)
+            
+            _notTokens.Clear();
+            for (var j = 0; j < _potentialTokens.Count; j++)
             {
-                if (IsPotentiallyValid(type, trimmed))
+                var type = _potentialTokens[j];
+                if (!IsPotentiallyValid(type, trimmed))
                 {
-                    nextPotentialTokens.Add(type);
+                    _notTokens.Add(j);
                 }
             }
 
-            if (nextPotentialTokens.Count == 0)
+            if (_notTokens.Count == _potentialTokens.Count)
             {
                 // previously we had multiple potential tokens, now we have none. need to resolve to one.
                 // this will happen in the case of `int)`
                 var tokenSource = trimmed[..^1];
-                var token = ResolveToken(tokenSource, potentialTokens, position);
+                var token = ResolveToken(tokenSource, _potentialTokens, position);
 
                 // this assumes that a token can't cross the new line boundary
                 var nextPosition = position with
@@ -87,30 +94,40 @@ public static class Parser
                 return (token, nextPosition);
             }
 
-            potentialTokens = nextPotentialTokens;
+            foreach (var index in _notTokens)
+            {
+                _potentialTokens.RemoveAt(index);
+            }
         }
 
-        if (potentialTokens.Count == 0)
+        if (_potentialTokens.Count == 0)
         {
             return null;
         }
 
-        var outerTrimmed = source.TrimStart();
-        var outerTrimmedChars = source[..^outerTrimmed.Length];
+        var outerTrimmedChars = source[..^sourceTrimmed.Length];
 
         var trimmedPosition = GetNextPosition(startPosition, outerTrimmedChars);
 
-        return (ResolveToken(outerTrimmed, potentialTokens, trimmedPosition),
+        return (ResolveToken(sourceTrimmed, _potentialTokens, trimmedPosition),
             startPosition with { Start = startPosition.Start + (uint)source.Length });
     }
 
-    private static SourcePosition GetNextPosition(SourcePosition start, ReadOnlySpan<char> trimmedCharacters)
+    private static SourcePosition GetNextPosition(in SourcePosition start, in ReadOnlySpan<char> trimmedCharacters)
     {
         var outerLinePosition = start.LinePosition;
-        var outerNewLines = trimmedCharacters.Count('\n');
+        var outerNewLines = 0;
+        var lastNewLineIndex = -1;
+        for (var i = 0; i < trimmedCharacters.Length; i++)
+        {
+            if (trimmedCharacters[i] == '\n')
+            {
+                outerNewLines++;
+                lastNewLineIndex = i;
+            }
+        }
         if (outerNewLines > 0)
         {
-            var lastNewLineIndex = trimmedCharacters.LastIndexOf('\n');
             if (lastNewLineIndex == trimmedCharacters.Length - 1)
             {
                 // the last trimmed character was a new line, so the start of `part` is the beginning of the line
@@ -217,72 +234,97 @@ public static class Parser
     private static readonly SearchValues<char> AlphaNumeric =
         SearchValues.Create("abcdefghijklmnopqrstuvwxyzABCDEFHIJKLMNOPQRSTUVWXYZ0123456789");
 
-    private static List<TokenType> GetPotentiallyValidTokenTypes(char firstChar)
+    private static void GetPotentiallyValidTokenTypes(char firstChar, List<TokenType> tokens)
     {
         switch (firstChar)
         {
             case 'i':
-                return [TokenType.IntKeyword, TokenType.If, TokenType.Identifier];
+                tokens.AddRange(TokenType.IntKeyword, TokenType.If, TokenType.Identifier);
+                break;
             case '(':
-                return [TokenType.LeftParenthesis];
+                tokens.AddRange(TokenType.LeftParenthesis);
+                break;
             case ')':
-                return [TokenType.RightParenthesis];
+                tokens.AddRange(TokenType.RightParenthesis);
+                break;
             case ';':
-                return [TokenType.Semicolon];
+                tokens.AddRange(TokenType.Semicolon);
+                break;
             case '{':
-                return [TokenType.LeftBrace];
+                tokens.AddRange(TokenType.LeftBrace);
+                break;
             case '}':
-                return [TokenType.RightBrace];
+                tokens.AddRange(TokenType.RightBrace);
+                break;
             case 'p':
-                return [TokenType.Pub, TokenType.Identifier];
+                tokens.AddRange(TokenType.Pub, TokenType.Identifier);
+                break;
             case 'f':
-                return [TokenType.False, TokenType.Fn];
+                tokens.AddRange(TokenType.False, TokenType.Fn);
+                break;
             case ':':
-                return [TokenType.Colon];
+                tokens.AddRange(TokenType.Colon);
+                break;
             case '<':
-                return [TokenType.LeftAngleBracket];
+                tokens.AddRange(TokenType.LeftAngleBracket);
+                break;
             case '>':
-                return [TokenType.RightAngleBracket];
+                tokens.AddRange(TokenType.RightAngleBracket);
+                break;
             case 'v':
-                return [TokenType.Var, TokenType.Identifier];
+                tokens.AddRange(TokenType.Var, TokenType.Identifier);
+                break;
             case '=':
-                return [TokenType.Equals, TokenType.DoubleEquals];
+                tokens.AddRange(TokenType.Equals, TokenType.DoubleEquals);
+                break;
             case ',':
-                return [TokenType.Comma];
+                tokens.AddRange(TokenType.Comma);
+                break;
             case 'e':
-                return [TokenType.Else, TokenType.Error];
+                tokens.AddRange(TokenType.Else, TokenType.Error);
+                break;
             case 's':
-                return [TokenType.StringKeyword];
+                tokens.AddRange(TokenType.StringKeyword);
+                break;
             case 'r':
-                return [TokenType.Return, TokenType.Result];
+                tokens.AddRange(TokenType.Return, TokenType.Result);
+                break;
             case 'b':
-                return [TokenType.Bool];
+                tokens.AddRange(TokenType.Bool);
+                break;
             case 'o':
-                return [TokenType.Ok];
+                tokens.AddRange(TokenType.Ok);
+                break;
             case '?':
-                return [TokenType.QuestionMark];
+                tokens.AddRange(TokenType.QuestionMark);
+                break;
             case 't':
-                return [TokenType.True];
+                tokens.AddRange(TokenType.True);
+                break;
             case '*':
-                return [TokenType.Star];
+                tokens.AddRange(TokenType.Star);
+                break;
             case '/':
-                return [TokenType.ForwardSlash];
+                tokens.AddRange(TokenType.ForwardSlash);
+                break;
             case '+':
-                return [TokenType.Plus];
+                tokens.AddRange(TokenType.Plus);
+                break;
             case '-':
-                return [TokenType.Dash];
+                tokens.AddRange(TokenType.Dash);
+                break;
             case '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9':
-                return [TokenType.IntLiteral];
+                tokens.AddRange(TokenType.IntLiteral);
+                break;
             case '"':
-                return [TokenType.StringLiteral];
+                tokens.AddRange(TokenType.StringLiteral);
+                break;
         }
 
         if (AlphaNumeric.Contains(firstChar))
         {
-            return [TokenType.Identifier];
+            tokens.Add(TokenType.Identifier);
         }
-
-        return [];
     }
     
     private static bool IsPotentiallyValid(TokenType type, ReadOnlySpan<char> source)

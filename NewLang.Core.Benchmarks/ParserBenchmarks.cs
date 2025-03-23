@@ -10,11 +10,12 @@ public class ParserBenchmarks
     public string Source;
 
     private readonly Consumer _consumer = new();
+    private readonly Parser _parser = new();
 
     [Benchmark]
     public void BenchmarkParser()
     {
-        Parser.Parse(Source).Consume(_consumer);
+        _parser.Parse(Source).Consume(_consumer);
     }
     
 

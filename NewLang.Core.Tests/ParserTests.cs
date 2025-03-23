@@ -4,13 +4,21 @@ namespace NewLang.Core.Tests;
 
 public class ParserTests
 {
+    private readonly Parser _parser = new();
+    
     [Theory]
     [MemberData(nameof(TestCases))]
     public void Tests(string source, IEnumerable<Token> expectedTokens)
     {
-        var result = Parser.Parse(source);
+        var result = _parser.Parse(source);
 
         result.Should().BeEquivalentTo(expectedTokens);
+    }
+
+    [Fact]
+    public void Perf()
+    {
+        _parser.Parse(LargeSource).Count().Should().BeGreaterThan(0);
     }
 
     public static IEnumerable<object[]> TestCases()
@@ -242,4 +250,87 @@ public class ParserTests
             ]
         ];
     }
+    
+    
+    private const string SmallSource = "var a = 2;";
+    
+        private const string MediumSource = """
+                                            pub fn DoSomething(a: int): result<int, string> {
+                                                var b = 2;
+                                                
+                                                if (a > b) {
+                                                    return ok(a);
+                                                }
+                                                else if (a == b) {
+                                                    return ok(b);
+                                                }
+                                                
+                                                return error("something wrong");
+                                            }
+    
+                                            pub fn SomethingElse(a: int): result<int, string> {
+                                                b = DoSomething(a)?;
+                                                
+                                                return b;
+                                            }
+    
+                                            Println(DoSomething(5));
+                                            Println(DoSomething(1));
+                                            Println(SomethingElse(1));
+    
+                                            """;
+    
+        private const string LargeSource = $"""
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           {MediumSource}
+                                           """;
 }

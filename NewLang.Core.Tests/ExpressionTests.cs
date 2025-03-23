@@ -763,7 +763,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                         Token.ForwardSlash(default)))
                 ]
             ),
-        }.Select(x => new object[] { x.Source, Parser.Parse(x.Source), x.ExpectedExpression });
+        }.Select(x => new object[] { x.Source, new Parser().Parse(x.Source), x.ExpectedExpression });
     }
     
     private static Expression VariableAccessor(string name) =>
