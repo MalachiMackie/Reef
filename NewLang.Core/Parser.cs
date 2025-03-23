@@ -1,4 +1,5 @@
 ﻿using System.Buffers;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace NewLang.Core;
@@ -33,7 +34,6 @@ public class Parser
         }
     }
 
-    private readonly List<TokenType> _potentialTokens = [];
     private readonly List<int> _notTokens = [];
     
     private (Token Token, SourcePosition NextPosition)? EatToken(
@@ -46,14 +46,14 @@ public class Parser
             return null;
         }
 
-        _potentialTokens.Clear();
-        GetPotentiallyValidTokenTypes(sourceTrimmed[0], _potentialTokens);
-
-        if (_potentialTokens.Count == 0)
+        Span<TokenType?> potentialTokens = stackalloc TokenType?[MaxPotentialTokenTypes];
+        potentialTokens.Fill(null);
+        var potentialTokensCount = GetPotentiallyValidTokenTypes(sourceTrimmed[0], ref potentialTokens);
+        if (potentialTokensCount == 0)
         {
             return null;
         }
-
+        
         for (uint i = 1; i < source.Length; i++)
         {
             var part = source[..((int)i + 1)];
@@ -69,21 +69,21 @@ public class Parser
             var position = GetNextPosition(startPosition, trimmedCharacters);
             
             _notTokens.Clear();
-            for (var j = 0; j < _potentialTokens.Count; j++)
+            for (var j = 0; j < potentialTokens.Length; j++)
             {
-                var type = _potentialTokens[j];
-                if (!IsPotentiallyValid(type, trimmed))
+                var type = potentialTokens[j];
+                if (type.HasValue && !IsPotentiallyValid(type.Value, trimmed))
                 {
                     _notTokens.Add(j);
                 }
             }
-
-            if (_notTokens.Count == _potentialTokens.Count)
+            
+            if (_notTokens.Count == potentialTokensCount)
             {
                 // previously we had multiple potential tokens, now we have none. need to resolve to one.
                 // this will happen in the case of `int)`
                 var tokenSource = trimmed[..^1];
-                var token = ResolveToken(tokenSource, _potentialTokens, position);
+                var token = ResolveToken(tokenSource, potentialTokens, position);
 
                 // this assumes that a token can't cross the new line boundary
                 var nextPosition = position with
@@ -96,11 +96,21 @@ public class Parser
 
             foreach (var index in _notTokens)
             {
-                _potentialTokens.RemoveAt(index);
+                potentialTokensCount--;
+                potentialTokens[index] = null;
             }
         }
 
-        if (_potentialTokens.Count == 0)
+        var allNull = true;
+        foreach (var token in potentialTokens)
+        {
+            if (token.HasValue)
+            {
+                allNull = false;
+                break;
+            }
+        }
+        if (allNull)
         {
             return null;
         }
@@ -109,7 +119,7 @@ public class Parser
 
         var trimmedPosition = GetNextPosition(startPosition, outerTrimmedChars);
 
-        return (ResolveToken(sourceTrimmed, _potentialTokens, trimmedPosition),
+        return (ResolveToken(sourceTrimmed, potentialTokens, trimmedPosition),
             startPosition with { Start = startPosition.Start + (uint)source.Length });
     }
 
@@ -153,20 +163,34 @@ public class Parser
 
     private static Token ResolveToken(
         ReadOnlySpan<char> source,
-        IEnumerable<TokenType> tokenTypes,
+        Span<TokenType?> tokenTypes,
         SourcePosition position)
     {
+        var allNull = true;
         foreach (var tokenType in tokenTypes)
         {
+            if (tokenType.HasValue)
+            {
+                allNull = false;
+            }
+            else
+            {
+                continue;
+            }
             if (tokenType == TokenType.Identifier)
             {
                 continue;
             }
 
-            if (TryResolveToken(source, tokenType, position, out var token))
+            if (TryResolveToken(source, tokenType.Value, position, out var token))
             {
                 return token.Value;
             }
+        }
+
+        if (allNull)
+        {
+            throw new UnreachableException();
         }
 
         return Token.Identifier(source.ToString(), new SourceSpan(position, (uint)source.Length));
@@ -234,96 +258,111 @@ public class Parser
     private static readonly SearchValues<char> AlphaNumeric =
         SearchValues.Create("abcdefghijklmnopqrstuvwxyzABCDEFHIJKLMNOPQRSTUVWXYZ0123456789");
 
-    private static void GetPotentiallyValidTokenTypes(char firstChar, List<TokenType> tokens)
+    // maximum potential token types at the same time
+    private const int MaxPotentialTokenTypes = 3;
+    private static int GetPotentiallyValidTokenTypes(char firstChar, ref Span<TokenType?> tokens)
     {
         switch (firstChar)
         {
             case 'i':
-                tokens.AddRange(TokenType.IntKeyword, TokenType.If, TokenType.Identifier);
-                break;
+                tokens[0] = TokenType.IntKeyword;
+                tokens[1] = TokenType.If;
+                tokens[2] = TokenType.Identifier;
+                return 3;
             case '(':
-                tokens.AddRange(TokenType.LeftParenthesis);
-                break;
+                tokens[0] = TokenType.LeftParenthesis;
+                return 1;
             case ')':
-                tokens.AddRange(TokenType.RightParenthesis);
-                break;
+                tokens[0] = TokenType.RightParenthesis;
+                return 1;
             case ';':
-                tokens.AddRange(TokenType.Semicolon);
-                break;
+                tokens[0] = TokenType.Semicolon;
+                return 1;
             case '{':
-                tokens.AddRange(TokenType.LeftBrace);
-                break;
+                tokens[0] = TokenType.LeftBrace;
+                return 1;
             case '}':
-                tokens.AddRange(TokenType.RightBrace);
-                break;
+                tokens[0] = TokenType.RightBrace;
+                return 1;
             case 'p':
-                tokens.AddRange(TokenType.Pub, TokenType.Identifier);
-                break;
+                tokens[0] = TokenType.Pub;
+                tokens[1] = TokenType.Identifier;
+                return 2;
             case 'f':
-                tokens.AddRange(TokenType.False, TokenType.Fn);
-                break;
+                tokens[0] = TokenType.False;
+                tokens[1] = TokenType.Fn;
+                return 2;
             case ':':
-                tokens.AddRange(TokenType.Colon);
-                break;
+                tokens[0] = TokenType.Colon;
+                return 1;
             case '<':
-                tokens.AddRange(TokenType.LeftAngleBracket);
-                break;
+                tokens[0] = TokenType.LeftAngleBracket;
+                return 1;
             case '>':
-                tokens.AddRange(TokenType.RightAngleBracket);
-                break;
+                tokens[0] = TokenType.RightAngleBracket;
+                return 1;
             case 'v':
-                tokens.AddRange(TokenType.Var, TokenType.Identifier);
-                break;
+                tokens[0] = TokenType.Var;
+                tokens[1] = TokenType.Identifier;
+                return 2;
             case '=':
-                tokens.AddRange(TokenType.Equals, TokenType.DoubleEquals);
-                break;
+                tokens[0] = TokenType.Equals;
+                tokens[1] = TokenType.DoubleEquals;
+                return 2;
             case ',':
-                tokens.AddRange(TokenType.Comma);
-                break;
+                tokens[0] = TokenType.Comma;
+                return 1;
             case 'e':
-                tokens.AddRange(TokenType.Else, TokenType.Error);
-                break;
+                tokens[0] = TokenType.Else;
+                tokens[1] = TokenType.Error;
+                return 2;
             case 's':
-                tokens.AddRange(TokenType.StringKeyword);
-                break;
+                tokens[0] = TokenType.StringKeyword;
+                return 1;
             case 'r':
-                tokens.AddRange(TokenType.Return, TokenType.Result);
-                break;
+                tokens[0] = TokenType.Return;
+                tokens[1] = TokenType.Result;
+                return 2;
             case 'b':
-                tokens.AddRange(TokenType.Bool);
-                break;
+                tokens[0] = TokenType.Bool;
+                return 1;
             case 'o':
-                tokens.AddRange(TokenType.Ok);
-                break;
+                tokens[0] = TokenType.Ok;
+                return 1;
             case '?':
-                tokens.AddRange(TokenType.QuestionMark);
-                break;
+                tokens[0] = TokenType.QuestionMark;
+                return 1;
             case 't':
-                tokens.AddRange(TokenType.True);
-                break;
+                tokens[0] = TokenType.True;
+                return 1;
             case '*':
-                tokens.AddRange(TokenType.Star);
-                break;
+                tokens[0] = TokenType.Star;
+                return 1;
             case '/':
-                tokens.AddRange(TokenType.ForwardSlash);
-                break;
+                tokens[0] = TokenType.ForwardSlash;
+                return 1;
             case '+':
-                tokens.AddRange(TokenType.Plus);
-                break;
+                tokens[0] = TokenType.Plus;
+                return 1;
             case '-':
-                tokens.AddRange(TokenType.Dash);
-                break;
+                tokens[0] = TokenType.Dash;
+                return 1;
             case '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9':
-                tokens.AddRange(TokenType.IntLiteral);
-                break;
+                tokens[0] = TokenType.IntLiteral;
+                return 1;
             case '"':
-                tokens.AddRange(TokenType.StringLiteral);
-                break;
-        }
+                tokens[0] = TokenType.StringLiteral;
+                return 1;
+            default:
+            {
+                if (AlphaNumeric.Contains(firstChar))
+                {
+                    tokens[0] = TokenType.Identifier;
+                    return 1;
+                }
 
-        if (AlphaNumeric.Contains(firstChar))
-        {
-            tokens.Add(TokenType.Identifier);
+                return 0;
+            }
         }
     }
     
