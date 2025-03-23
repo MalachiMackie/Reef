@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NewLang.Console", "NewLang.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NewLang.Core.Tests", "NewLang.Core.Tests\NewLang.Core.Tests.csproj", "{F84A216A-EB96-4E88-AC20-C91B6B548A52}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NewLang.Core.Benchmarks", "NewLang.Core.Benchmarks\NewLang.Core.Benchmarks.csproj", "{1821A122-DF8A-4390-8574-B70EE62CBC0B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{F84A216A-EB96-4E88-AC20-C91B6B548A52}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F84A216A-EB96-4E88-AC20-C91B6B548A52}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F84A216A-EB96-4E88-AC20-C91B6B548A52}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1821A122-DF8A-4390-8574-B70EE62CBC0B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1821A122-DF8A-4390-8574-B70EE62CBC0B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1821A122-DF8A-4390-8574-B70EE62CBC0B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1821A122-DF8A-4390-8574-B70EE62CBC0B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -22,7 +22,7 @@ public class ParserTests
             [" ", Array.Empty<Token>()],
             ["  ", Array.Empty<Token>()],
             ["\t\t", Array.Empty<Token>()],
-
+            
             // single tokens
             ["pub", new[] { Token.Pub(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             ["fn", new[] { Token.Fn(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
@@ -65,7 +65,7 @@ public class ParserTests
             ["\r\n\r\nbool", new[] { Token.Bool(new SourceSpan(new SourcePosition(4, 2, 0), 4)) }],
             ["\r\n\r\n  bool", new[] { Token.Bool(new SourceSpan(new SourcePosition(6, 2, 2), 4)) }],
             ["\r\n  \r\n  bool", new[] { Token.Bool(new SourceSpan(new SourcePosition(8, 2, 2), 4)) }],
-
+            
             // single token padding tests
             [" fn ", new[] { Token.Fn(new SourceSpan(new SourcePosition(1, 0, 1), 2)) }],
             ["fn ", new[] { Token.Fn(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
@@ -105,7 +105,7 @@ public class ParserTests
                     Token.Pub(new SourceSpan(new SourcePosition(9, 0, 9), 3))
                 }
             ],
-
+            
             // multiple tokens without separation
             [
                 "int)",
@@ -140,7 +140,7 @@ public class ParserTests
                     Token.Semicolon(new SourceSpan(new SourcePosition(3, 0, 3), 1))
                 }
             ],
-
+            
             // two tokens padding tests
             [
                 " pub fn ",
@@ -182,7 +182,7 @@ public class ParserTests
                     Token.Fn(new SourceSpan(new SourcePosition(5, 0, 5), 2))
                 }
             ],
-
+            
             // full source
             [
                 """

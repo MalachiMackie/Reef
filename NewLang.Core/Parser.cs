@@ -23,7 +23,13 @@ public static class Parser
             position = nextPosition;
             yield return token;
 
-            nextToken = EatToken(sourceStr.AsSpan()[(int)position.Start..(endIndex + 1)], position);
+            var nextSource = sourceStr.AsSpan()[(int)position.Start..(endIndex + 1)];
+            if (nextSource.IsEmpty)
+            {
+                break;
+            }
+            
+            nextToken = EatToken(nextSource, position);
         }
     }
 
@@ -36,7 +42,12 @@ public static class Parser
             return null;
         }
 
-        var potentialTokens = Enum.GetValues<TokenType>().ToList();
+        var potentialTokens = GetPotentiallyValidTokenTypes(source.Trim()[0]);
+
+        if (potentialTokens.Count == 0)
+        {
+            return null;
+        }
 
         for (uint i = 0; i < source.Length; i++)
         {
@@ -51,7 +62,7 @@ public static class Parser
 
             var position = GetNextPosition(startPosition, trimmedCharacters);
 
-            var nextPotentialTokens = new List<TokenType>();
+            var nextPotentialTokens = new List<TokenType>(potentialTokens.Count);
             foreach (var type in potentialTokens)
             {
                 if (IsPotentiallyValid(type, trimmed))
@@ -206,6 +217,74 @@ public static class Parser
     private static readonly SearchValues<char> AlphaNumeric =
         SearchValues.Create("abcdefghijklmnopqrstuvwxyzABCDEFHIJKLMNOPQRSTUVWXYZ0123456789");
 
+    private static List<TokenType> GetPotentiallyValidTokenTypes(char firstChar)
+    {
+        switch (firstChar)
+        {
+            case 'i':
+                return [TokenType.IntKeyword, TokenType.If, TokenType.Identifier];
+            case '(':
+                return [TokenType.LeftParenthesis];
+            case ')':
+                return [TokenType.RightParenthesis];
+            case ';':
+                return [TokenType.Semicolon];
+            case '{':
+                return [TokenType.LeftBrace];
+            case '}':
+                return [TokenType.RightBrace];
+            case 'p':
+                return [TokenType.Pub, TokenType.Identifier];
+            case 'f':
+                return [TokenType.False, TokenType.Fn];
+            case ':':
+                return [TokenType.Colon];
+            case '<':
+                return [TokenType.LeftAngleBracket];
+            case '>':
+                return [TokenType.RightAngleBracket];
+            case 'v':
+                return [TokenType.Var, TokenType.Identifier];
+            case '=':
+                return [TokenType.Equals, TokenType.DoubleEquals];
+            case ',':
+                return [TokenType.Comma];
+            case 'e':
+                return [TokenType.Else, TokenType.Error];
+            case 's':
+                return [TokenType.StringKeyword];
+            case 'r':
+                return [TokenType.Return, TokenType.Result];
+            case 'b':
+                return [TokenType.Bool];
+            case 'o':
+                return [TokenType.Ok];
+            case '?':
+                return [TokenType.QuestionMark];
+            case 't':
+                return [TokenType.True];
+            case '*':
+                return [TokenType.Star];
+            case '/':
+                return [TokenType.ForwardSlash];
+            case '+':
+                return [TokenType.Plus];
+            case '-':
+                return [TokenType.Dash];
+            case '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9':
+                return [TokenType.IntLiteral];
+            case '"':
+                return [TokenType.StringLiteral];
+        }
+
+        if (AlphaNumeric.Contains(firstChar))
+        {
+            return [TokenType.Identifier];
+        }
+
+        return [];
+    }
+    
     private static bool IsPotentiallyValid(TokenType type, ReadOnlySpan<char> source)
     {
         return type switch
