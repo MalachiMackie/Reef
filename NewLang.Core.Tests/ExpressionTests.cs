@@ -88,6 +88,16 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 VariableAccessor("a"),
                 VariableAccessor("b"),
                 Token.ForwardSlash(default)))]),
+            ("var a = b", [new Expression(new VariableDeclaration(Token.Identifier("a", default), VariableAccessor("b")))]),
+            ("var a = 1", [new Expression(new VariableDeclaration(
+                Token.Identifier("a", default),
+                new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))]),
+            ("var a = true", [new Expression(new VariableDeclaration(
+                Token.Identifier("a", default),
+                new Expression(new ValueAccessor(ValueAccessType.Literal, Token.True(default)))))]),
+            ("var a = \"thing\"", [new Expression(new VariableDeclaration(
+                Token.Identifier("a", default),
+                new Expression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("thing", default)))))]),
             // ____binding strength tests
             // __greater than
             ( // greater than
@@ -776,7 +786,17 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             ValueAccessor = RemoveSourceSpan(expression.ValueAccessor),
             UnaryOperator = RemoveSourceSpan(expression.UnaryOperator),
             BinaryOperator = RemoveSourceSpan(expression.BinaryOperator),
+            VariableDeclaration = RemoveSourceSpan(expression.VariableDeclaration)
         };
+    }
+
+    private static StrongBox<VariableDeclaration>? RemoveSourceSpan(StrongBox<VariableDeclaration>? variableDeclaration)
+    {
+        return variableDeclaration is null ? null
+            : new StrongBox<VariableDeclaration>(
+                new VariableDeclaration(
+                    VariableNameToken: RemoveSourceSpan(variableDeclaration.Value.VariableNameToken),
+                    Value: RemoveSourceSpan(variableDeclaration.Value.Value)));
     }
 
     private static StrongBox<BinaryOperator>? RemoveSourceSpan(StrongBox<BinaryOperator>? binaryOperator)

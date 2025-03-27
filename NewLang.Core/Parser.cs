@@ -47,7 +47,6 @@ public class Parser
         }
 
         Span<TokenType?> potentialTokens = stackalloc TokenType?[MaxPotentialTokenTypes];
-        potentialTokens.Fill(null);
         var potentialTokensCount = GetPotentiallyValidTokenTypes(sourceTrimmed[0], ref potentialTokens);
         if (potentialTokensCount == 0)
         {

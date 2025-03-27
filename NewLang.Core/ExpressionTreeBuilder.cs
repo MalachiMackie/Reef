@@ -48,8 +48,41 @@ public static class ExpressionTreeBuilder
             TokenType.Star => GetBinaryOperatorExpression(tokens, expressionStack, token, BinaryOperatorType.Multiply),
             TokenType.ForwardSlash => GetBinaryOperatorExpression(tokens, expressionStack, token,
                 BinaryOperatorType.Divide),
+            TokenType.Var => GetVariableDeclaration(tokens, expressionStack),
             _ => throw new InvalidOperationException($"Token type {token.Type} not supported")
         };
+    }
+
+    private static Expression GetVariableDeclaration(PeekableEnumerator<Token> tokens, Stack<Expression> expressionStack)
+    {
+        if (!tokens.MoveNext())
+        {
+            throw new InvalidOperationException("Expected variable identifier, got nothing");
+        }
+
+        var identifier = tokens.Current;
+        if (identifier.Type != TokenType.Identifier)
+        {
+            throw new InvalidOperationException($"Expected variable identifier, got {identifier}");
+        }
+
+        if (!tokens.MoveNext())
+        {
+            throw new InvalidOperationException("Expected equals tokens, got nothing");
+        }
+
+        if (tokens.Current.Type != TokenType.Equals)
+        {
+            throw new InvalidOperationException($"Expected equals token, got {tokens.Current}");
+        }
+
+        var valueExpression = PopExpression(tokens, expressionStack);
+        if (valueExpression is null)
+        {
+            throw new InvalidOperationException("Expected value expression, got nothing");
+        }
+
+        return new Expression(new VariableDeclaration(identifier, valueExpression.Value));
     }
     
     private static Expression GetUnaryOperatorExpression(
