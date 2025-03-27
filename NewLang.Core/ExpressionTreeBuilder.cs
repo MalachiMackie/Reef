@@ -13,6 +13,7 @@ public static class ExpressionTreeBuilder
         using var tokensEnumerator = new PeekableEnumerator<Token>(tokens.GetEnumerator());
         while (tokensEnumerator.TryPeek(out _))
         {
+            // todo: figure out semicolons
             var expression = PopExpression(tokensEnumerator, expressionStack);
             if (expression.HasValue)
             {
