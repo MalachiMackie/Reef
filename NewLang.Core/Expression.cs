@@ -8,26 +8,37 @@ public readonly record struct Expression(
     ValueAccessor? ValueAccessor,
     StrongBox<UnaryOperator>? UnaryOperator,
     StrongBox<BinaryOperator>? BinaryOperator,
-    StrongBox<VariableDeclaration>? VariableDeclaration)
+    StrongBox<VariableDeclaration>? VariableDeclaration,
+    StrongBox<IfExpression>? IfExpression,
+    Block? Block)
 {
     public Expression(ValueAccessor valueAccessor)
-        : this(ExpressionType.ValueAccess, valueAccessor, null, null, null)
+        : this(ExpressionType.ValueAccess, valueAccessor, null, null, null, null, null)
     {
         
     }
     
     public Expression(UnaryOperator unaryOperator)
-        : this(ExpressionType.UnaryOperator, null, new StrongBox<UnaryOperator>(unaryOperator), null, null)
+        : this(ExpressionType.UnaryOperator, null, new StrongBox<UnaryOperator>(unaryOperator), null, null, null, null)
     {
     }
 
     public Expression(BinaryOperator binaryOperator)
-        : this(ExpressionType.BinaryOperator, null, null, new StrongBox<BinaryOperator>(binaryOperator), null)
+        : this(ExpressionType.BinaryOperator, null, null, new StrongBox<BinaryOperator>(binaryOperator), null, null, null)
     {
     }
     
     public Expression(VariableDeclaration variableDeclaration)
-        : this(ExpressionType.VariableDeclaration, null, null, null, new StrongBox<VariableDeclaration>(variableDeclaration))
+        : this(ExpressionType.VariableDeclaration, null, null, null, new StrongBox<VariableDeclaration>(variableDeclaration), null, null)
+    {}
+    
+    public Expression(IfExpression ifExpression)
+        : this(ExpressionType.IfExpression, null, null, null, null, new StrongBox<IfExpression>(ifExpression), null)
+    {
+    }
+    
+    public Expression(Block block)
+        : this(ExpressionType.Block, null, null, null, null, null, block)
     {}
 
     public override string ToString()
@@ -38,6 +49,8 @@ public readonly record struct Expression(
             ExpressionType.UnaryOperator => UnaryOperator!.Value.ToString(),
             ExpressionType.BinaryOperator => BinaryOperator!.Value.ToString(),
             ExpressionType.VariableDeclaration => VariableDeclaration!.Value.ToString(),
+            ExpressionType.IfExpression => IfExpression!.Value.ToString(),
+            ExpressionType.Block => Block!.Value.ToString(),
             _ => throw new UnreachableException()
         };
     }
@@ -48,6 +61,26 @@ public readonly record struct VariableDeclaration(Token VariableNameToken, Expre
     public override string ToString()
     {
         return $"var {VariableNameToken} = {Value}";
+    }
+}
+
+public readonly record struct IfExpression(Expression CheckExpression, Expression Body)
+{
+    public override string ToString()
+    {
+        return $"if({CheckExpression}) {Body}";
+    }
+}
+
+public readonly record struct Block(IEnumerable<Expression> Expressions)
+{
+    public override string ToString()
+    {
+        return $$"""
+               {
+                   {{string.Join("\n", Expressions)}}
+               }
+               """;
     }
 }
 
@@ -104,5 +137,7 @@ public enum ExpressionType
     ValueAccess,
     UnaryOperator,
     BinaryOperator,
-    VariableDeclaration
+    VariableDeclaration,
+    IfExpression,
+    Block
 }

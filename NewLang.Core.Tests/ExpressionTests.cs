@@ -98,6 +98,29 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             ("var a = \"thing\"", [new Expression(new VariableDeclaration(
                 Token.Identifier("a", default),
                 new Expression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("thing", default)))))]),
+            ("var a = 1;var b = 2;", [
+                new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
+                new Expression(new VariableDeclaration(Token.Identifier("b", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
+                ]),
+            ("{}", [new Expression(new Block([]))]),
+            ("{var a = 1;}", [new Expression(new Block([
+                new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
+                ]))]),
+            ("{var a = 1; var b = 2;}", [new Expression(new Block([
+                new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
+                new Expression(new VariableDeclaration(Token.Identifier("b", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
+                ]))]),
+            ("if (a > b) {var c = \"value\"}", [new Expression(new IfExpression(
+                new Expression(new BinaryOperator(
+                    BinaryOperatorType.GreaterThan,
+                    VariableAccessor("a"),
+                    VariableAccessor("b"),
+                    Token.RightAngleBracket(default))),
+                new Expression(new Block([
+                    new Expression(new VariableDeclaration(
+                        Token.Identifier("c", default),
+                        new Expression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("value", default)))))
+                ]))))]),
             // ____binding strength tests
             // __greater than
             ( // greater than
@@ -786,10 +809,24 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             ValueAccessor = RemoveSourceSpan(expression.ValueAccessor),
             UnaryOperator = RemoveSourceSpan(expression.UnaryOperator),
             BinaryOperator = RemoveSourceSpan(expression.BinaryOperator),
-            VariableDeclaration = RemoveSourceSpan(expression.VariableDeclaration)
+            VariableDeclaration = RemoveSourceSpan(expression.VariableDeclaration),
+            Block = RemoveSourceSpan(expression.Block),
+            IfExpression = RemoveSourceSpan(expression.IfExpression)
         };
     }
 
+    private static Block? RemoveSourceSpan(Block? block)
+    {
+        return block is null ? null : new Block(block.Value.Expressions.Select(RemoveSourceSpan));
+    }
+
+    private static StrongBox<IfExpression>? RemoveSourceSpan(StrongBox<IfExpression>? ifExpression)
+    {
+        return ifExpression is null ? null : new StrongBox<IfExpression>(new IfExpression(
+            CheckExpression: RemoveSourceSpan(ifExpression.Value.CheckExpression),
+            Body: RemoveSourceSpan(ifExpression.Value.Body)));
+    }
+    
     private static StrongBox<VariableDeclaration>? RemoveSourceSpan(StrongBox<VariableDeclaration>? variableDeclaration)
     {
         return variableDeclaration is null ? null

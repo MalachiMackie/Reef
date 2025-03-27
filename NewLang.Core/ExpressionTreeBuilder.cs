@@ -1,4 +1,5 @@
 ﻿using System.Collections.Frozen;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace NewLang.Core;
@@ -10,18 +11,19 @@ public static class ExpressionTreeBuilder
         var expressionStack = new Stack<Expression>();
         
         using var tokensEnumerator = new PeekableEnumerator<Token>(tokens.GetEnumerator());
-        var expression = PopExpression(tokensEnumerator, expressionStack);
-        while (expression.HasValue)
+        while (tokensEnumerator.TryPeek(out _))
         {
-            expressionStack.Push(expression.Value);
-
-            expression = PopExpression(tokensEnumerator, expressionStack);
+            var expression = PopExpression(tokensEnumerator, expressionStack);
+            if (expression.HasValue)
+            {
+                expressionStack.Push(expression.Value);
+            }
         }
 
         return expressionStack;
     }
 
-    private static Expression? PopExpression(PeekableEnumerator<Token> tokens, Stack<Expression> expressionStack)
+    private static Expression? PopExpression(PeekableEnumerator<Token> tokens, Stack<Expression> expressionStack, uint? currentBindingStrength = null)
     {
         if (!tokens.MoveNext())
         {
@@ -29,14 +31,14 @@ public static class ExpressionTreeBuilder
         }
 
         var token = tokens.Current;
-        return token.Type switch
+        Expression? expression = token.Type switch
         {
             // value accessors
             TokenType.Identifier => new Expression(new ValueAccessor(ValueAccessType.Variable, token)),
             TokenType.StringLiteral or TokenType.IntLiteral or TokenType.True or TokenType.False => new Expression(
                 new ValueAccessor(ValueAccessType.Literal, token)),
             // unary operators
-            TokenType.QuestionMark => GetUnaryOperatorExpression(tokens, expressionStack, token,
+            TokenType.QuestionMark => GetUnaryOperatorExpression(expressionStack, token,
                 UnaryOperatorType.FallOut),
             // binary operator tokens
             TokenType.LeftAngleBracket => GetBinaryOperatorExpression(tokens, expressionStack, token,
@@ -49,8 +51,97 @@ public static class ExpressionTreeBuilder
             TokenType.ForwardSlash => GetBinaryOperatorExpression(tokens, expressionStack, token,
                 BinaryOperatorType.Divide),
             TokenType.Var => GetVariableDeclaration(tokens, expressionStack),
+            TokenType.Semicolon => null,
+            TokenType.LeftBrace => GetBlockExpression(tokens),
+            TokenType.If => GetIfExpression(tokens),
             _ => throw new InvalidOperationException($"Token type {token.Type} not supported")
         };
+
+        if (expression is null)
+        {
+            return null;
+        }
+
+        if (tokens.TryPeek(out var peeked) && TryGetBindingStrength(peeked, out var bindingStrength))
+        {
+            if (currentBindingStrength.HasValue)
+            {
+                if (bindingStrength > currentBindingStrength.Value)
+                {
+                    // next token's binding strength is greater, so bind to the next expression
+                    expressionStack.Push(expression.Value);
+                    return PopExpression(tokens, expressionStack);
+                }
+            }
+            else
+            {
+                // previous expression cannot bind tighter to this expression, so bind to the next expression instead
+                expressionStack.Push(expression.Value);
+                return PopExpression(tokens, expressionStack);
+            }
+        }
+
+        return expression;
+    }
+
+    private static Expression GetIfExpression(PeekableEnumerator<Token> tokens)
+    {
+        if (!tokens.MoveNext())
+        {
+            throw new InvalidOperationException("Expected left parenthesis, found nothing");
+        }
+
+        if (tokens.Current.Type != TokenType.LeftParenthesis)
+        {
+            throw new InvalidOperationException($"Expected left parenthesis, found {tokens.Current.Type}");
+        }
+
+        var checkExpression = PopExpression(tokens, []);
+        if (checkExpression is null)
+        {
+            throw new InvalidOperationException("Expected check expression, found no expression");
+        }
+
+        if (!tokens.MoveNext())
+        {
+            throw new InvalidOperationException("Expected right parenthesis, found nothing");
+        }
+
+        if (tokens.Current.Type != TokenType.RightParenthesis)
+        {
+            throw new InvalidOperationException($"Expected right parenthesis, found {tokens.Current.Type}");
+        }
+
+        var body = PopExpression(tokens, []);
+        if (body is null)
+        {
+            throw new InvalidCastException("Expected if body, found nothing");
+        }
+
+        return new Expression(new IfExpression(checkExpression.Value, body.Value));
+    }
+
+    private static Expression GetBlockExpression(PeekableEnumerator<Token> tokens)
+    {
+        var blockStack = new Stack<Expression>();
+        
+        while (tokens.TryPeek(out var peeked))
+        {
+            if (peeked.Type == TokenType.RightBrace)
+            {
+                // pop the peeked right brace off
+                tokens.MoveNext();
+                return new Expression(new Block(blockStack));
+            }
+
+            var expression = PopExpression(tokens, blockStack);
+            if (expression.HasValue)
+            {
+                blockStack.Push(expression.Value);
+            }
+        }
+
+        throw new InvalidOperationException("Expected Right brace, got nothing");
     }
 
     private static Expression GetVariableDeclaration(PeekableEnumerator<Token> tokens, Stack<Expression> expressionStack)
@@ -86,29 +177,12 @@ public static class ExpressionTreeBuilder
     }
     
     private static Expression GetUnaryOperatorExpression(
-        PeekableEnumerator<Token> tokens,
         Stack<Expression> expressionStack,
         Token operatorToken,
         UnaryOperatorType operatorType)
     {
         var expression = expressionStack.Pop();
         
-        if (tokens.TryPeek(out var nextToken)
-            && TryGetBindingStrength(nextToken, out var nextBindingStrength)
-            && nextBindingStrength > UnaryOperatorBindingStrengths[operatorType])
-        {
-            // the next token has a higher binding strength than the operator we're trying to build,
-            // so push our expression back onto the stack so that the next expression can use it
-            expressionStack.Push(expression);
-            var nextExpression = PopExpression(tokens, expressionStack);
-            if (nextExpression is null)
-            {
-                throw new Exception("Expected expression but got null");
-            }
-
-            expression = nextExpression.Value;
-        }
-
         return new Expression(new UnaryOperator(operatorType, expression, operatorToken));
     }
     
@@ -118,25 +192,15 @@ public static class ExpressionTreeBuilder
         Token operatorToken,
         BinaryOperatorType operatorType)
     {
+        if (!TryGetBindingStrength(operatorToken, out var bindingStrength))
+        {
+            throw new UnreachableException("All operators have a binding strength");
+        }
         var left = expressionStack.Pop();
-        var right = PopExpression(tokens, expressionStack);
+        var right = PopExpression(tokens, expressionStack, bindingStrength.Value);
         if (right is null)
         {
             throw new Exception("Expected expression but got null");
-        }
-
-        if (tokens.TryPeek(out var nextToken)
-            && TryGetBindingStrength(nextToken, out var nextBindingStrength)
-            && nextBindingStrength > BinaryOperatorBindingStrengths[operatorType])
-        {
-            // the next token has a higher binding strength than the operator we're trying to build,
-            // so push our right expression back onto the stack so that the next expression can use it
-            expressionStack.Push(right.Value);
-            right = PopExpression(tokens, expressionStack);
-            if (right is null)
-            {
-                throw new Exception("Expected expression but got null");
-            }
         }
 
         return new Expression(new BinaryOperator(operatorType, left, right.Value, operatorToken));
