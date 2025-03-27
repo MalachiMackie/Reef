@@ -60,21 +60,21 @@ public static class ExpressionTreeBuilder
                 return null;
             }
 
-            var token = tokens.Current;
-            var expression = MatchTokenToExpression(token, expressionStack, tokens);
-
+            var expression = MatchTokenToExpression(tokens.Current, expressionStack, tokens);
             if (expression is null)
             {
                 return null;
             }
 
+            // if we cannot bind to the next expression, return our current expression
             if (!tokens.TryPeek(out var peeked)
                 || !TryGetBindingStrength(peeked, out var bindingStrength)
                 || bindingStrength <= currentBindingStrength)
             {
                 return expression;
             }
-
+            
+            // bind to the next expression
             expressionStack.Push(expression.Value);
             currentBindingStrength = null;
         }
