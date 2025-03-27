@@ -23,23 +23,16 @@ public static class ExpressionTreeBuilder
         return expressionStack;
     }
 
-    private static Expression? PopExpression(PeekableEnumerator<Token> tokens, Stack<Expression> expressionStack, uint? currentBindingStrength = null)
+    private static Expression? MatchTokenToExpression(Token token, Stack<Expression> expressionStack, PeekableEnumerator<Token> tokens)
     {
-        if (!tokens.MoveNext())
-        {
-            return null;
-        }
-
-        var token = tokens.Current;
-        Expression? expression = token.Type switch
+        return token.Type switch
         {
             // value accessors
             TokenType.Identifier => new Expression(new ValueAccessor(ValueAccessType.Variable, token)),
             TokenType.StringLiteral or TokenType.IntLiteral or TokenType.True or TokenType.False => new Expression(
                 new ValueAccessor(ValueAccessType.Literal, token)),
             // unary operators
-            TokenType.QuestionMark => GetUnaryOperatorExpression(expressionStack, token,
-                UnaryOperatorType.FallOut),
+            TokenType.QuestionMark => GetUnaryOperatorExpression(expressionStack, token, UnaryOperatorType.FallOut),
             // binary operator tokens
             TokenType.LeftAngleBracket => GetBinaryOperatorExpression(tokens, expressionStack, token,
                 BinaryOperatorType.LessThan),
@@ -56,32 +49,35 @@ public static class ExpressionTreeBuilder
             TokenType.If => GetIfExpression(tokens),
             _ => throw new InvalidOperationException($"Token type {token.Type} not supported")
         };
+    }
 
-        if (expression is null)
+    private static Expression? PopExpression(PeekableEnumerator<Token> tokens, Stack<Expression> expressionStack, uint? currentBindingStrength = null)
+    {
+        while (true)
         {
-            return null;
-        }
-
-        if (tokens.TryPeek(out var peeked) && TryGetBindingStrength(peeked, out var bindingStrength))
-        {
-            if (currentBindingStrength.HasValue)
+            if (!tokens.MoveNext())
             {
-                if (bindingStrength > currentBindingStrength.Value)
-                {
-                    // next token's binding strength is greater, so bind to the next expression
-                    expressionStack.Push(expression.Value);
-                    return PopExpression(tokens, expressionStack);
-                }
+                return null;
             }
-            else
-            {
-                // previous expression cannot bind tighter to this expression, so bind to the next expression instead
-                expressionStack.Push(expression.Value);
-                return PopExpression(tokens, expressionStack);
-            }
-        }
 
-        return expression;
+            var token = tokens.Current;
+            var expression = MatchTokenToExpression(token, expressionStack, tokens);
+
+            if (expression is null)
+            {
+                return null;
+            }
+
+            if (!tokens.TryPeek(out var peeked)
+                || !TryGetBindingStrength(peeked, out var bindingStrength)
+                || bindingStrength <= currentBindingStrength)
+            {
+                return expression;
+            }
+
+            expressionStack.Push(expression.Value);
+            currentBindingStrength = null;
+        }
     }
 
     private static Expression GetIfExpression(PeekableEnumerator<Token> tokens)
