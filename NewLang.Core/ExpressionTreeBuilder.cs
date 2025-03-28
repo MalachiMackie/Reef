@@ -111,7 +111,7 @@ public static class ExpressionTreeBuilder
         var body = PopExpression(tokens);
         if (body is null)
         {
-            throw new InvalidCastException("Expected if body, found nothing");
+            throw new InvalidOperationException("Expected if body, found nothing");
         }
 
         return new Expression(new IfExpression(checkExpression.Value.Expression, body.Value.Expression));

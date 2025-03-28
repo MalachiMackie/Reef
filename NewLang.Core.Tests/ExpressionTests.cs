@@ -10,6 +10,15 @@ namespace NewLang.Core.Tests;
 public class ExpressionTests(ITestOutputHelper testOutputHelper)
 {
     [Theory]
+    [MemberData(nameof(FailTestCases))]
+    public void FailTests(string source, IEnumerable<Token> tokens)
+    {
+        var act = () => ExpressionTreeBuilder.Build(tokens).Count();
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+    
+    [Theory]
     [MemberData(nameof(TestCases))]
     public void Tests(
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
@@ -64,6 +73,38 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 new Expression(new VariableDeclaration(Token.Identifier("b", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
                 ]),
         }.Select(x => new object[] { x.Source, new Parser().Parse(x.Source), x.ExpectedExpression });
+    }
+    
+    public static IEnumerable<object[]> FailTestCases()
+    {
+        return new[]
+        {
+            // missing variable declaration value 
+            "var a = ",
+            // missing variable declaration equals
+            "var a ",
+            // missing variable declaration name
+            "var",
+            // missing if pieces
+            "if {}",
+            "if () {}",
+            "if (a {}",
+            "if (a)",
+            "if",
+            // missing semicolon,
+            "{var a = 1 var b = 2;}",
+            "{",
+            "}",
+            "var a = 2",
+            "var a = 2; var b = 2",
+            "?",
+            "+",
+            ">",
+            "<",
+            "*",
+            "/",
+            "-"
+        }.Select(x => new object[] { x, new Parser().Parse(x) });
     }
 
     public static IEnumerable<object[]> TestCases()
@@ -148,6 +189,11 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 new Expression(new VariableDeclaration(Token.Identifier("b", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
                 ],
                 null))),
+            ("if (a) var c = 2", new Expression(new IfExpression(
+                VariableAccessor("a"),
+                new Expression(new VariableDeclaration(
+                    Token.Identifier("c", default),
+                    new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))))),
             ("if (a > b) {var c = \"value\";}", new Expression(new IfExpression(
                 new Expression(new BinaryOperator(
                     BinaryOperatorType.GreaterThan,
