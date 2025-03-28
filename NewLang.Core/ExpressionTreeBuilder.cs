@@ -11,15 +11,22 @@ public static class ExpressionTreeBuilder
         using var tokensEnumerator = new PeekableEnumerator<Token>(tokens.GetEnumerator());
         while (tokensEnumerator.TryPeek(out _))
         {
-            var expression = PopExpression(tokensEnumerator);
-            if (expression.HasValue)
+            var result = PopExpression(tokensEnumerator);
+            if (result.HasValue)
             {
-                yield return expression.Value;
+                var (expression, isTailExpression) = result.Value;
+
+                if (isTailExpression && expression.ExpressionType is not (ExpressionType.Block or ExpressionType.IfExpression))
+                {
+                    throw new InvalidOperationException("Top level statements cannot have tail expressions");
+                }
+                
+                yield return expression;
             }
         }
     }
 
-    private static Expression? MatchTokenToExpression(Token token, Expression? previousExpression, PeekableEnumerator<Token> tokens)
+    private static Expression MatchTokenToExpression(Token token, Expression? previousExpression, PeekableEnumerator<Token> tokens)
     {
         return token.Type switch
         {
@@ -40,41 +47,37 @@ public static class ExpressionTreeBuilder
             TokenType.ForwardSlash => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {token}"), token,
                 BinaryOperatorType.Divide),
             TokenType.Var => GetVariableDeclaration(tokens),
-            TokenType.Semicolon => null,
             TokenType.LeftBrace => GetBlockExpression(tokens),
             TokenType.If => GetIfExpression(tokens),
+            TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
             _ => throw new InvalidOperationException($"Token type {token.Type} not supported")
         };
     }
 
-    private static Expression? PopExpression(PeekableEnumerator<Token> tokens, uint? currentBindingStrength = null)
+    public static Expression? PopExpression(IEnumerable<Token> tokens)
+    {
+        using var enumerator = new PeekableEnumerator<Token>(tokens.GetEnumerator());
+
+        return PopExpression(enumerator)?.Expression;
+    }
+
+    private static (Expression Expression, bool IsTailExpression)? PopExpression(PeekableEnumerator<Token> tokens, uint? currentBindingStrength = null)
     {
         Expression? previousExpression = null;
-        while (true)
+        while (tokens.MoveNext() && tokens.Current.Type != TokenType.Semicolon)
         {
-            if (!tokens.MoveNext())
-            {
-                return null;
-            }
-
-            var expression = MatchTokenToExpression(tokens.Current, previousExpression, tokens);
-            if (expression is null)
-            {
-                return null;
-            }
+            previousExpression = MatchTokenToExpression(tokens.Current, previousExpression, tokens);
 
             // if we cannot bind to the next expression, return our current expression
             if (!tokens.TryPeek(out var peeked)
                 || !TryGetBindingStrength(peeked, out var bindingStrength)
                 || bindingStrength <= currentBindingStrength)
             {
-                return expression;
+                return (previousExpression.Value, peeked.Type != TokenType.Semicolon);
             }
-            
-            // bind to the next expression
-            previousExpression = expression.Value;
-            currentBindingStrength = null;
         }
+
+        return null;
     }
 
     private static Expression GetIfExpression(PeekableEnumerator<Token> tokens)
@@ -111,12 +114,14 @@ public static class ExpressionTreeBuilder
             throw new InvalidCastException("Expected if body, found nothing");
         }
 
-        return new Expression(new IfExpression(checkExpression.Value, body.Value));
+        return new Expression(new IfExpression(checkExpression.Value.Expression, body.Value.Expression));
     }
 
     private static Expression GetBlockExpression(PeekableEnumerator<Token> tokens)
     {
         var blockExpressions = new List<Expression>();
+
+        Expression? tailExpression = null;
         
         while (tokens.TryPeek(out var peeked))
         {
@@ -124,13 +129,25 @@ public static class ExpressionTreeBuilder
             {
                 // pop the peeked right brace off
                 tokens.MoveNext();
-                return new Expression(new Block(blockExpressions));
+                return new Expression(new Block(blockExpressions, tailExpression));
             }
 
             var expression = PopExpression(tokens);
             if (expression.HasValue)
             {
-                blockExpressions.Add(expression.Value);
+                if (tailExpression.HasValue)
+                {
+                    throw new InvalidOperationException("Tail expression must be at the end of a block");
+                }
+
+                if (expression.Value.IsTailExpression)
+                {
+                    tailExpression = expression.Value.Expression;
+                }
+                else
+                {
+                    blockExpressions.Add(expression.Value.Expression);
+                }
             }
         }
 
@@ -166,7 +183,7 @@ public static class ExpressionTreeBuilder
             throw new InvalidOperationException("Expected value expression, got nothing");
         }
 
-        return new Expression(new VariableDeclaration(identifier, valueExpression.Value));
+        return new Expression(new VariableDeclaration(identifier, valueExpression.Value.Expression));
     }
     
     private static Expression GetUnaryOperatorExpression(
@@ -193,7 +210,7 @@ public static class ExpressionTreeBuilder
             throw new Exception("Expected expression but got null");
         }
 
-        return new Expression(new BinaryOperator(operatorType, leftOperand, right.Value, operatorToken));
+        return new Expression(new BinaryOperator(operatorType, leftOperand, right.Value.Expression, operatorToken));
     }
 
     private static bool TryGetBindingStrength(Token token, [NotNullWhen(true)] out uint? bindingStrength)

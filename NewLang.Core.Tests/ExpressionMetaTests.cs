@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using FluentAssertions;
+﻿using FluentAssertions;
 
 namespace NewLang.Core.Tests;
 
@@ -16,10 +15,9 @@ public class ExpressionMetaTests
         ValueAccessType? valueAccessType, UnaryOperatorType? unaryOperatorType, BinaryOperatorType? binaryOperatorType)
     {
         var testCases = ExpressionTests.TestCases()
-            .Select(x => (x[^1] as IEnumerable<Expression> ?? throw new UnreachableException()).ToArray())
+            .Select(x => x[^1])
+            .Cast<Expression>()
             // only check test cases that check for a single expression
-            .Where(x => x.Length == 1)
-            .Select(x => x[0])
             .ToArray();
 
         var checkedAccessTypes = testCases.Where(x => x.ExpressionType == ExpressionType.ValueAccess)
@@ -52,11 +50,9 @@ public class ExpressionMetaTests
     [MemberData(nameof(OperatorCombinationMetaTestCases))]
     public void Meta_Should_TestAllOperatorCombinations(BinaryOperatorType? binaryA, BinaryOperatorType? binaryB, UnaryOperatorType? unaryA, UnaryOperatorType? unaryB)
     {
-        
         var testCases = ExpressionTests.TestCases()
-            .Select(x => (x[^1] as IEnumerable<Expression> ?? throw new UnreachableException()).ToArray())
-            .Where(x => x.Length == 1)
-            .Select(x => x[0])
+            .Select(x => x[^1])
+            .Cast<Expression>()
             .ToArray();
 
         if (binaryA.HasValue && binaryB.HasValue)

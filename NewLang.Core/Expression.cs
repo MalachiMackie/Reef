@@ -10,7 +10,7 @@ public readonly record struct Expression(
     StrongBox<BinaryOperator>? BinaryOperator,
     StrongBox<VariableDeclaration>? VariableDeclaration,
     StrongBox<IfExpression>? IfExpression,
-    Block? Block)
+    StrongBox<Block>? Block)
 {
     public Expression(ValueAccessor valueAccessor)
         : this(ExpressionType.ValueAccess, valueAccessor, null, null, null, null, null)
@@ -38,7 +38,7 @@ public readonly record struct Expression(
     }
     
     public Expression(Block block)
-        : this(ExpressionType.Block, null, null, null, null, null, block)
+        : this(ExpressionType.Block, null, null, null, null, null, new StrongBox<Block>(block))
     {}
 
     public override string ToString()
@@ -72,7 +72,7 @@ public readonly record struct IfExpression(Expression CheckExpression, Expressio
     }
 }
 
-public readonly record struct Block(IEnumerable<Expression> Expressions)
+public readonly record struct Block(IEnumerable<Expression> Expressions, Expression? TailExpression)
 {
     public override string ToString()
     {
