@@ -65,7 +65,12 @@ public readonly record struct VariableDeclaration(Token VariableNameToken, Expre
     }
 }
 
-public readonly record struct IfExpression(Expression CheckExpression, Expression Body, IReadOnlyCollection<ElseIf> ElseIfs, Expression? ElseBody)
+public readonly record struct IfExpression(
+    Expression CheckExpression,
+    Expression Body,
+    IReadOnlyCollection<ElseIf> ElseIfs,
+    Expression? ElseBody,
+    bool HasTailExpressions)
 {
     public override string ToString()
     {
@@ -87,11 +92,20 @@ public readonly record struct Block(IEnumerable<Expression> Expressions, Express
 {
     public override string ToString()
     {
-        return $$"""
-               {
-                   {{string.Join("\n", Expressions)}}
-               }
-               """;
+        var sb = new StringBuilder("{");
+        foreach (var expression in Expressions)
+        {
+            sb.AppendLine(expression.ToString());
+        }
+
+        if (TailExpression.HasValue)
+        {
+            sb.AppendLine(TailExpression.Value.ToString());
+        }
+
+        sb.AppendLine("}");
+
+        return sb.ToString();
     }
 }
 

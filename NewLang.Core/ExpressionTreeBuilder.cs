@@ -16,9 +16,14 @@ public static class ExpressionTreeBuilder
             {
                 var (expression, isTailExpression) = result.Value;
 
-                if (isTailExpression && expression.ExpressionType is not (ExpressionType.Block or ExpressionType.IfExpression))
+                if (isTailExpression)
                 {
                     throw new InvalidOperationException("Top level statements cannot have tail expressions");
+                }
+
+                if (!IsValidStatement(expression))
+                {
+                    throw new InvalidOperationException($"{expression.ExpressionType} is not a valid statement");
                 }
                 
                 yield return expression;
@@ -26,6 +31,14 @@ public static class ExpressionTreeBuilder
         }
     }
 
+    private static bool IsValidStatement(Expression expression)
+    {
+        return expression.ExpressionType is 
+            ExpressionType.Block 
+            or ExpressionType.IfExpression
+            or ExpressionType.VariableDeclaration;
+    }
+    
     private static Expression MatchTokenToExpression(Token token, Expression? previousExpression, PeekableEnumerator<Token> tokens)
     {
         return token.Type switch
@@ -73,7 +86,21 @@ public static class ExpressionTreeBuilder
                 || !TryGetBindingStrength(peeked, out var bindingStrength)
                 || bindingStrength <= currentBindingStrength)
             {
-                return (previousExpression.Value, peeked.Type != TokenType.Semicolon);
+                var isTailExpression = peeked.Type != TokenType.Semicolon
+                                       && previousExpression.Value switch
+                                       {
+                                           {
+                                               ExpressionType: ExpressionType.Block,
+                                           } => previousExpression.Value.Block!.Value.TailExpression is not null,
+                                           {
+                                               ExpressionType: ExpressionType.IfExpression,
+                                           } => previousExpression.Value.IfExpression!.Value.HasTailExpressions,
+                                           _ => true
+                                       };
+                
+                return (
+                    previousExpression.Value,
+                    isTailExpression);
             }
         }
 
@@ -108,14 +135,12 @@ public static class ExpressionTreeBuilder
             throw new InvalidOperationException($"Expected right parenthesis, found {tokens.Current.Type}");
         }
 
-        var body = PopExpression(tokens);
-        if (body is null)
-        {
+        var body = PopExpression(tokens) ??
             throw new InvalidOperationException("Expected if body, found nothing");
-        }
 
         var elseIfs = new List<ElseIf>();
         Expression? elseBody = null;
+        var hasTailExpression = body.IsTailExpression;
 
         while (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.Else)
         {
@@ -141,7 +166,12 @@ public static class ExpressionTreeBuilder
 
                 var elseIfBody = PopExpression(tokens)
                     ?? throw new InvalidOperationException("Expected else if body");
-                
+
+                if (hasTailExpression != elseIfBody.IsTailExpression)
+                {
+                    throw new InvalidOperationException("Either all branches or no branch can have tail expressions");
+                }
+
                 elseIfs.Add(new ElseIf(elseIfCheckExpression.Expression, elseIfBody.Expression));
             }
             else
@@ -149,11 +179,25 @@ public static class ExpressionTreeBuilder
                 var elseResult = PopExpression(tokens)
                                  ?? throw new InvalidOperationException("Expected else body, got nothing");
                 elseBody = elseResult.Expression;
+                if (hasTailExpression != elseResult.IsTailExpression)
+                {
+                    throw new InvalidOperationException("Either all branch or no branches can have tail expressions");
+                }
                 break;
             }
         }
+
+        if (hasTailExpression && elseBody is null)
+        {
+            throw new InvalidOperationException("Must have an else body for tail expressions");
+        }
         
-        return new Expression(new IfExpression(checkExpression.Value.Expression, body.Value.Expression, elseIfs, elseBody));
+        return new Expression(new IfExpression(
+            checkExpression.Value.Expression,
+            body.Expression,
+            elseIfs,
+            elseBody,
+            hasTailExpression));
     }
 
     private static Expression GetBlockExpression(PeekableEnumerator<Token> tokens)
@@ -185,6 +229,10 @@ public static class ExpressionTreeBuilder
                 }
                 else
                 {
+                    if (!IsValidStatement(expression.Value.Expression))
+                    {
+                        throw new InvalidOperationException($"{expression.Value.Expression.ExpressionType} is not a valid statement");
+                    }
                     blockExpressions.Add(expression.Value.Expression);
                 }
             }

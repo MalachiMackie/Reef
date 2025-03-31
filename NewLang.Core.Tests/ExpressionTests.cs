@@ -110,6 +110,12 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             "if (a) {} else {} var a = 1",
             "{} var a = 1",
             "if (a;) {}",
+            // body has tail expression, but else doesn't
+            "if (a) {a} else {}",
+            "if (a) {} else {a}",
+            "if (a) {var b = 1;} else {a}",
+            "if (a) {if (b) {var c = 1;}} else {1}",
+            "if (a) {if (b) {1} else {2}} else {}",
             // missing semicolon,
             "{var a = 1 var b = 2;}",
             "{",
@@ -122,7 +128,10 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             "<",
             "*",
             "/",
-            "-"
+            "-",
+            // invalid statement
+            "a;",
+            "{a;}"
         }.Select(x => new object[] { x, new Parser().Parse(x) });
     }
 
@@ -208,11 +217,11 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 new Expression(new VariableDeclaration(Token.Identifier("b", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
                 ],
                 null))),
-            ("if (a) var c = 2", new Expression(new IfExpression(
+            ("if (a) var c = 2;", new Expression(new IfExpression(
                 VariableAccessor("a"),
                 new Expression(new VariableDeclaration(
                     Token.Identifier("c", default),
-                    new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))), [], null))),
+                    new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))), [], null, false))),
             ("if (a > b) {var c = \"value\";}", new Expression(new IfExpression(
                 new Expression(new BinaryOperator(
                     BinaryOperatorType.GreaterThan,
@@ -223,7 +232,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                     new Expression(new VariableDeclaration(
                         Token.Identifier("c", default),
                         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("value", default)))))
-                ], null)), [], null))),
+                ], null)), [], null, false))),
             ("if (a) {} else {var b = 2;}", new Expression(new IfExpression(
                 VariableAccessor("a"),
                 new Expression(new Block([], null)),
@@ -232,19 +241,22 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                     new Expression(new VariableDeclaration(
                         Token.Identifier("b", default),
                         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))
-                ], null))))),
+                ], null)),
+                false))),
             ("if (a) {} else if (b) {}", new Expression(new IfExpression(
                 VariableAccessor("a"),
                 new Expression(new Block([], null)),
                 [new ElseIf(VariableAccessor("b"), new Expression(new Block([], null)))],
-                null))),
+                null,
+                false))),
             ("if (a) {} else if (b) {} else {}", new Expression(new IfExpression(
                 VariableAccessor("a"),
                 new Expression(new Block([], null)),
                 [
                     new ElseIf(VariableAccessor("b"), new Expression(new Block([], null))),
                 ],
-                new Expression(new Block([], null))))),
+                new Expression(new Block([], null)),
+                false))),
             ("if (a) {} else if (b) {} else if (c) {} else {}", new Expression(new IfExpression(
                 VariableAccessor("a"),
                 new Expression(new Block([], null)),
@@ -252,7 +264,42 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                     new ElseIf(VariableAccessor("b"), new Expression(new Block([], null))),
                     new ElseIf(VariableAccessor("c"), new Expression(new Block([], null))),
                 ],
-                new Expression(new Block([], null))))),
+                new Expression(new Block([], null)),
+                false))),
+            ("if (a) {b} else {c}", new Expression(new IfExpression(
+                VariableAccessor("a"),
+                new Expression(new Block([], VariableAccessor("b"))),
+                [],
+                new Expression(new Block([], VariableAccessor("c"))),
+                true))),
+            ("if (a) b else c", new Expression(new IfExpression(
+                VariableAccessor("a"),
+                VariableAccessor("b"),
+                [],
+                VariableAccessor("c"),
+                true))),
+            ("if (a) {if (b) {1} else {2}} else {3}", new Expression(new IfExpression(
+                VariableAccessor("a"),
+                new Expression(new Block([], new Expression(new IfExpression(
+                    VariableAccessor("b"),
+                    new Expression(new Block([], new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
+                    [],
+                    new Expression(new Block([], new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
+                    true)))),
+                [],
+                new Expression(new Block([], new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, default))))),
+                true))),
+            ("if (a) if (b) 1 else 2 else 3", new Expression(new IfExpression(
+                VariableAccessor("a"),
+                new Expression(new IfExpression(
+                    VariableAccessor("b"),
+                    new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))),
+                    [],
+                    new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))),
+                    true)),
+                [],
+                new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, default))),
+                true))),
             // ____binding strength tests
             // __greater than
             ( // greater than
@@ -883,7 +930,8 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             CheckExpression: RemoveSourceSpan(ifExpression.Value.CheckExpression),
             Body: RemoveSourceSpan(ifExpression.Value.Body),
             ElseIfs: ifExpression.Value.ElseIfs.Select(RemoveSourceSpan).ToArray(),
-            ElseBody: RemoveSourceSpan(ifExpression.Value.ElseBody)));
+            ElseBody: RemoveSourceSpan(ifExpression.Value.ElseBody),
+            ifExpression.Value.HasTailExpressions));
     }
 
     private static ElseIf RemoveSourceSpan(ElseIf elseIf)
