@@ -65,11 +65,15 @@ public readonly record struct VariableDeclaration(Token VariableNameToken, Expre
     }
 }
 
-public readonly record struct IfExpression(Expression CheckExpression, Expression Body, Expression? ElseBody)
+public readonly record struct IfExpression(Expression CheckExpression, Expression Body, IReadOnlyCollection<ElseIf> ElseIfs, Expression? ElseBody)
 {
     public override string ToString()
     {
         var sb = new StringBuilder($"if({CheckExpression}) {Body}");
+        foreach (var elseIf in ElseIfs)
+        {
+            sb.Append($" {elseIf}");
+        }
         if (ElseBody.HasValue)
         {
             sb.Append($" else {ElseBody.Value}");
@@ -114,6 +118,14 @@ public readonly record struct BinaryOperator(BinaryOperatorType OperatorType, Ex
     public override string ToString()
     {
         return $"|{Left} {OperatorToken} {Right}|";
+    }
+}
+
+public readonly record struct ElseIf(Expression CheckExpression, Expression Body)
+{
+    public override string ToString()
+    {
+        return $"else if ({CheckExpression}) {Body}";
     }
 }
 

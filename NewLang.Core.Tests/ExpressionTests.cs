@@ -11,7 +11,10 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
 {
     [Theory]
     [MemberData(nameof(FailTestCases))]
-    public void FailTests(string source, IEnumerable<Token> tokens)
+    public void FailTests(
+        [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
+        string source,
+        IEnumerable<Token> tokens)
     {
         var act = () => ExpressionTreeBuilder.Build(tokens).Count();
 
@@ -91,7 +94,22 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             "if (a {}",
             "if (a)",
             "if",
+            // else without else body
             "if (a) {} else",
+            // else if without check expression
+            "if (a) {} else if",
+            "if (a) {} else if (",
+            "if (a) {} else if ()",
+            // else if without body
+            "if (a) {} else if (a)",
+            // else without body
+            "if (a) {} else if (a) {} else",
+            // else before else if
+            "if (a) {} else {} else if (a) {}",
+            // expression after if else expression
+            "if (a) {} else {} var a = 1",
+            "{} var a = 1",
+            "if (a;) {}",
             // missing semicolon,
             "{var a = 1 var b = 2;}",
             "{",
@@ -194,7 +212,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 VariableAccessor("a"),
                 new Expression(new VariableDeclaration(
                     Token.Identifier("c", default),
-                    new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))), null))),
+                    new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))), [], null))),
             ("if (a > b) {var c = \"value\";}", new Expression(new IfExpression(
                 new Expression(new BinaryOperator(
                     BinaryOperatorType.GreaterThan,
@@ -205,15 +223,36 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                     new Expression(new VariableDeclaration(
                         Token.Identifier("c", default),
                         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("value", default)))))
-                ], null)), null))),
+                ], null)), [], null))),
             ("if (a) {} else {var b = 2;}", new Expression(new IfExpression(
                 VariableAccessor("a"),
                 new Expression(new Block([], null)),
+                [],
                 new Expression(new Block([
                     new Expression(new VariableDeclaration(
                         Token.Identifier("b", default),
                         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))
                 ], null))))),
+            ("if (a) {} else if (b) {}", new Expression(new IfExpression(
+                VariableAccessor("a"),
+                new Expression(new Block([], null)),
+                [new ElseIf(VariableAccessor("b"), new Expression(new Block([], null)))],
+                null))),
+            ("if (a) {} else if (b) {} else {}", new Expression(new IfExpression(
+                VariableAccessor("a"),
+                new Expression(new Block([], null)),
+                [
+                    new ElseIf(VariableAccessor("b"), new Expression(new Block([], null))),
+                ],
+                new Expression(new Block([], null))))),
+            ("if (a) {} else if (b) {} else if (c) {} else {}", new Expression(new IfExpression(
+                VariableAccessor("a"),
+                new Expression(new Block([], null)),
+                [
+                    new ElseIf(VariableAccessor("b"), new Expression(new Block([], null))),
+                    new ElseIf(VariableAccessor("c"), new Expression(new Block([], null))),
+                ],
+                new Expression(new Block([], null))))),
             // ____binding strength tests
             // __greater than
             ( // greater than
@@ -843,7 +882,13 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
         return ifExpression is null ? null : new StrongBox<IfExpression>(new IfExpression(
             CheckExpression: RemoveSourceSpan(ifExpression.Value.CheckExpression),
             Body: RemoveSourceSpan(ifExpression.Value.Body),
+            ElseIfs: ifExpression.Value.ElseIfs.Select(RemoveSourceSpan).ToArray(),
             ElseBody: RemoveSourceSpan(ifExpression.Value.ElseBody)));
+    }
+
+    private static ElseIf RemoveSourceSpan(ElseIf elseIf)
+    {
+        return new ElseIf(RemoveSourceSpan(elseIf.CheckExpression), RemoveSourceSpan(elseIf.Body));
     }
     
     private static StrongBox<VariableDeclaration>? RemoveSourceSpan(StrongBox<VariableDeclaration>? variableDeclaration)

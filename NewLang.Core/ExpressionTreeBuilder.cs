@@ -114,20 +114,46 @@ public static class ExpressionTreeBuilder
             throw new InvalidOperationException("Expected if body, found nothing");
         }
 
+        var elseIfs = new List<ElseIf>();
         Expression? elseBody = null;
-        if (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.Else)
+
+        while (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.Else)
         {
             // pop the else token off
             tokens.MoveNext();
-            var elseResult = PopExpression(tokens);
-            if (elseResult is null)
+
+            if (tokens.TryPeek(out var nextPeeked) && nextPeeked.Type == TokenType.If)
             {
-                throw new InvalidOperationException("Expected Else body");
+                // pop the if token off
+                tokens.MoveNext();
+                if (!tokens.MoveNext() || tokens.Current.Type != TokenType.LeftParenthesis)
+                {
+                    throw new InvalidOperationException("Expected left Parenthesis");
+                }
+
+                var elseIfCheckExpression = PopExpression(tokens)
+                                            ?? throw new InvalidOperationException("Expected check expression");
+
+                if (!tokens.MoveNext() || tokens.Current.Type != TokenType.RightParenthesis)
+                {
+                    throw new InvalidOperationException("Expected right Parenthesis");
+                }
+
+                var elseIfBody = PopExpression(tokens)
+                    ?? throw new InvalidOperationException("Expected else if body");
+                
+                elseIfs.Add(new ElseIf(elseIfCheckExpression.Expression, elseIfBody.Expression));
             }
-            elseBody = elseResult.Value.Expression;
+            else
+            {
+                var elseResult = PopExpression(tokens)
+                                 ?? throw new InvalidOperationException("Expected else body, got nothing");
+                elseBody = elseResult.Expression;
+                break;
+            }
         }
         
-        return new Expression(new IfExpression(checkExpression.Value.Expression, body.Value.Expression, elseBody));
+        return new Expression(new IfExpression(checkExpression.Value.Expression, body.Value.Expression, elseIfs, elseBody));
     }
 
     private static Expression GetBlockExpression(PeekableEnumerator<Token> tokens)
