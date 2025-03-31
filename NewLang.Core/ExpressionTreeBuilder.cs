@@ -114,7 +114,20 @@ public static class ExpressionTreeBuilder
             throw new InvalidOperationException("Expected if body, found nothing");
         }
 
-        return new Expression(new IfExpression(checkExpression.Value.Expression, body.Value.Expression));
+        Expression? elseBody = null;
+        if (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.Else)
+        {
+            // pop the else token off
+            tokens.MoveNext();
+            var elseResult = PopExpression(tokens);
+            if (elseResult is null)
+            {
+                throw new InvalidOperationException("Expected Else body");
+            }
+            elseBody = elseResult.Value.Expression;
+        }
+        
+        return new Expression(new IfExpression(checkExpression.Value.Expression, body.Value.Expression, elseBody));
     }
 
     private static Expression GetBlockExpression(PeekableEnumerator<Token> tokens)

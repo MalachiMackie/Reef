@@ -91,6 +91,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             "if (a {}",
             "if (a)",
             "if",
+            "if (a) {} else",
             // missing semicolon,
             "{var a = 1 var b = 2;}",
             "{",
@@ -193,7 +194,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 VariableAccessor("a"),
                 new Expression(new VariableDeclaration(
                     Token.Identifier("c", default),
-                    new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))))),
+                    new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))), null))),
             ("if (a > b) {var c = \"value\";}", new Expression(new IfExpression(
                 new Expression(new BinaryOperator(
                     BinaryOperatorType.GreaterThan,
@@ -204,6 +205,14 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                     new Expression(new VariableDeclaration(
                         Token.Identifier("c", default),
                         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("value", default)))))
+                ], null)), null))),
+            ("if (a) {} else {var b = 2;}", new Expression(new IfExpression(
+                VariableAccessor("a"),
+                new Expression(new Block([], null)),
+                new Expression(new Block([
+                    new Expression(new VariableDeclaration(
+                        Token.Identifier("b", default),
+                        new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))
                 ], null))))),
             // ____binding strength tests
             // __greater than
@@ -833,7 +842,8 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
     {
         return ifExpression is null ? null : new StrongBox<IfExpression>(new IfExpression(
             CheckExpression: RemoveSourceSpan(ifExpression.Value.CheckExpression),
-            Body: RemoveSourceSpan(ifExpression.Value.Body)));
+            Body: RemoveSourceSpan(ifExpression.Value.Body),
+            ElseBody: RemoveSourceSpan(ifExpression.Value.ElseBody)));
     }
     
     private static StrongBox<VariableDeclaration>? RemoveSourceSpan(StrongBox<VariableDeclaration>? variableDeclaration)

@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace NewLang.Core;
 
@@ -64,11 +65,17 @@ public readonly record struct VariableDeclaration(Token VariableNameToken, Expre
     }
 }
 
-public readonly record struct IfExpression(Expression CheckExpression, Expression Body)
+public readonly record struct IfExpression(Expression CheckExpression, Expression Body, Expression? ElseBody)
 {
     public override string ToString()
     {
-        return $"if({CheckExpression}) {Body}";
+        var sb = new StringBuilder($"if({CheckExpression}) {Body}");
+        if (ElseBody.HasValue)
+        {
+            sb.Append($" else {ElseBody.Value}");
+        }
+
+        return sb.ToString();
     }
 }
 
