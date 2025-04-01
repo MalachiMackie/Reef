@@ -86,8 +86,7 @@ public static class ExpressionTreeBuilder
                 || !TryGetBindingStrength(peeked, out var bindingStrength)
                 || bindingStrength <= currentBindingStrength)
             {
-                var isTailExpression = peeked.Type != TokenType.Semicolon
-                                       && previousExpression.Value switch
+                var isTailExpression = previousExpression.Value switch
                                        {
                                            {
                                                ExpressionType: ExpressionType.Block,
@@ -95,7 +94,7 @@ public static class ExpressionTreeBuilder
                                            {
                                                ExpressionType: ExpressionType.IfExpression,
                                            } => previousExpression.Value.IfExpression!.Value.HasTailExpressions,
-                                           _ => true
+                                           _ => peeked.Type != TokenType.Semicolon
                                        };
                 
                 return (

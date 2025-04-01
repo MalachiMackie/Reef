@@ -300,6 +300,23 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 [],
                 new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, default))),
                 true))),
+            // todo: how to deal with 2 having a semicolon. the semicolon is actually for the whole statement
+            // ("var a = if (b) 1 else 2;", new Expression(new VariableDeclaration(
+            //     Token.Identifier("a", default),
+            //     new Expression(new IfExpression(
+            //         VariableAccessor("b"),
+            //         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))),
+            //         [],
+            //         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))),
+            //         true))))),
+            ("var a = if (b) {1} else {2};", new Expression(new VariableDeclaration(
+                Token.Identifier("a", default),
+                new Expression(new IfExpression(
+                    VariableAccessor("b"),
+                    new Expression(new Block([], new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
+                    [],
+                    new Expression(new Block([], new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
+                    true))))),
             // ____binding strength tests
             // __greater than
             ( // greater than
