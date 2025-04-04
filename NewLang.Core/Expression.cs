@@ -69,8 +69,7 @@ public readonly record struct IfExpression(
     Expression CheckExpression,
     Expression Body,
     IReadOnlyCollection<ElseIf> ElseIfs,
-    Expression? ElseBody,
-    bool HasTailExpressions)
+    Expression? ElseBody)
 {
     public override string ToString()
     {
@@ -88,22 +87,19 @@ public readonly record struct IfExpression(
     }
 }
 
-public readonly record struct Block(IEnumerable<Expression> Expressions, Expression? TailExpression)
+public readonly record struct Block(IReadOnlyCollection<Expression> Expressions)
 {
     public override string ToString()
     {
         var sb = new StringBuilder("{");
         foreach (var expression in Expressions)
         {
-            sb.AppendLine(expression.ToString());
+            sb.Append('\n');
+            sb.Append(expression.ToString());
+            sb.Append(';');
         }
 
-        if (TailExpression.HasValue)
-        {
-            sb.AppendLine(TailExpression.Value.ToString());
-        }
-
-        sb.AppendLine("}");
+        sb.Append('}');
 
         return sb.ToString();
     }
