@@ -45,6 +45,31 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             throw;
         }
     }
+    
+    [Theory]
+    [MemberData(nameof(SingleTestCase))]
+    public void SingleTest(
+        [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
+        string source,
+        IEnumerable<Token> tokens,
+        Expression expectedExpression)
+    {
+        var result = ExpressionTreeBuilder.PopExpression(tokens);
+        result.Should().NotBeNull();
+        
+        // clear out the source spans, we don't actually care about them
+        var expression = RemoveSourceSpan(result.Value);
+
+        try
+        {
+            expression.Should().BeEquivalentTo(expectedExpression, opts => opts.AllowingInfiniteRecursion());
+        }
+        catch
+        {
+            testOutputHelper.WriteLine("Expected {0}, found {1}", expectedExpression, expression);
+            throw;
+        }
+    }
 
     [Theory]
     [MemberData(nameof(MultiStatementTestCases))]
@@ -137,6 +162,18 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             "a;",
             "{a;}"
         }.Select(x => new object[] { x, new Parser().Parse(x) });
+    }
+
+    public static IEnumerable<object[]> SingleTestCase()
+    {
+        return new (string Source, Expression ExpectedExpression)[]
+        {
+            ("if (a) {b} else {c}", new Expression(new IfExpression(
+                VariableAccessor("a"),
+                new Expression(new Block([VariableAccessor("b")])),
+                [],
+                new Expression(new Block([VariableAccessor("c")]))))),
+        }.Select(x => new object[] { x.Source, new Parser().Parse(x.Source), x.ExpectedExpression });
     }
 
     public static IEnumerable<object[]> TestCases()
