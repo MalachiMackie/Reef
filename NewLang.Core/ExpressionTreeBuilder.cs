@@ -6,19 +6,24 @@ namespace NewLang.Core;
 
 public static class ExpressionTreeBuilder
 {
-    public static IEnumerable<Expression> Build(IEnumerable<Token> tokens)
+    public static LangProgram Build(IEnumerable<Token> tokens)
     {
         using var tokensEnumerator = new PeekableEnumerator<Token>(tokens.GetEnumerator());
 
-        return GetExpressionList(tokensEnumerator, closingToken: null, allowTailExpression: false);
+        var scope = GetScope(tokensEnumerator, closingToken: null, allowTailExpression: false);
+
+        return new LangProgram(scope);
     }
 
-    private static IEnumerable<Expression> GetExpressionList(
+    private static ProgramScope GetScope(
         PeekableEnumerator<Token> tokens,
         TokenType? closingToken,
         bool allowTailExpression)
     {
         var hasTailExpression = false;
+        var foundClosingToken = false;
+
+        var expressions = new List<Expression>();
                 
         while (tokens.TryPeek(out var peeked))
         {
@@ -26,7 +31,8 @@ public static class ExpressionTreeBuilder
             {
                 // pop the peeked closing token off
                 tokens.MoveNext();
-                yield break;
+                foundClosingToken = true;
+                break;
             }
 
             var expression = PopExpression(tokens);
@@ -59,13 +65,15 @@ public static class ExpressionTreeBuilder
                 }
             } 
             
-            yield return expression.Value;
+            expressions.Add(expression.Value);
         }
 
-        if (closingToken.HasValue)
+        if (!foundClosingToken && closingToken.HasValue)
         {
             throw new InvalidOperationException($"Expected {closingToken.Value}, got nothing");
         }
+
+        return new ProgramScope(expressions, []);
     }
 
     private static bool IsValidStatement(Expression expression)
@@ -252,9 +260,9 @@ public static class ExpressionTreeBuilder
 
     private static Expression GetBlockExpression(PeekableEnumerator<Token> tokens)
     {
-        var expressions = GetExpressionList(tokens, TokenType.RightBrace, true);
+        var scope = GetScope(tokens, TokenType.RightBrace, true);
         
-        return new Expression(new Block(expressions.ToArray()));
+        return new Expression(new Block(scope));
     }
 
     private static Expression GetVariableDeclaration(PeekableEnumerator<Token> tokens)

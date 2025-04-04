@@ -14,8 +14,6 @@ public class ExpressionTreeBenchmarks
 
     private IReadOnlyCollection<Token> _tokens = [];
 
-    private readonly Consumer _consumer = new();
-
     [GlobalSetup]
     public void Setup()
     {
@@ -25,7 +23,7 @@ public class ExpressionTreeBenchmarks
     [Benchmark]
     public void BenchmarkExpressionTree()
     {
-        ExpressionTreeBuilder.Build(_tokens).Consume(_consumer);
+        ExpressionTreeBuilder.Build(_tokens);
     }
     
 

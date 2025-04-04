@@ -16,7 +16,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
         string source,
         IEnumerable<Token> tokens)
     {
-        var act = () => ExpressionTreeBuilder.Build(tokens).Count();
+        var act = () => ExpressionTreeBuilder.Build(tokens);
 
         act.Should().Throw<InvalidOperationException>();
     }
@@ -76,31 +76,30 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
     public void MultiStatementTests([SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
         string source,
         IEnumerable<Token> tokens,
-        IEnumerable<Expression> expectedExpressions)
+        LangProgram expectedProgram)
     {
-         var expressions = ExpressionTreeBuilder.Build(tokens)
-             .Select(RemoveSourceSpan);
+        var program = RemoveSourceSpan(ExpressionTreeBuilder.Build(tokens));
  
          try
          {
-             expressions.Should().BeEquivalentTo(expectedExpressions, opts => opts.AllowingInfiniteRecursion());
+             program.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion());
          }
          catch
          {
-             testOutputHelper.WriteLine("Expected [{0}], found [{1}]", string.Join(",", expectedExpressions), string.Join(",", expressions));
+             testOutputHelper.WriteLine("Expected [{0}], found [{1}]", expectedProgram, program);
              throw;
          }       
     }
 
     public static IEnumerable<object[]> MultiStatementTestCases()
     {
-        return new (string Source, IEnumerable<Expression> ExpectedExpression)[]
+        return new (string Source, LangProgram ExpectedProgram)[]
         {
-            ("var a = 1;var b = 2;", [
+            ("var a = 1;var b = 2;", new LangProgram(new ProgramScope([
                 new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
                 new Expression(new VariableDeclaration(Token.Identifier("b", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
-                ]),
-        }.Select(x => new object[] { x.Source, new Parser().Parse(x.Source), x.ExpectedExpression });
+                ], []))),
+        }.Select(x => new object[] { x.Source, new Parser().Parse(x.Source), x.ExpectedProgram });
     }
     
     public static IEnumerable<object[]> FailTestCases()
@@ -175,9 +174,9 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
         {
             ("if (a) {b} else {c}", new Expression(new IfExpression(
                 VariableAccessor("a"),
-                new Expression(new Block([VariableAccessor("b")])),
+                new Expression(new Block(new ProgramScope([VariableAccessor("b")], []))),
                 [],
-                new Expression(new Block([VariableAccessor("c")]))))),
+                new Expression(new Block(new ProgramScope([VariableAccessor("c")], [])))))),
         }.Select(x => new object[] { x.Source, new Parser().Parse(x.Source), x.ExpectedExpression });
     }
 
@@ -246,22 +245,22 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             ("var a = \"thing\"", new Expression(new VariableDeclaration(
                 Token.Identifier("a", default),
                 new Expression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("thing", default)))))),
-            ("{}", new Expression(new Block([]))),
-            ("{var a = 1;}", new Expression(new Block([
+            ("{}", new Expression(Block.Empty)),
+            ("{var a = 1;}", new Expression(new Block(new ProgramScope([
                 new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
-                ]))),
+                ], [])))),
             // tail expression
             ("{var a = 1}", new Expression(new Block(
-                [
-                new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))]))),
+                new ProgramScope([
+                new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))], [])))),
             // tail expression
             ("{var a = 1;var b = 2}", new Expression(new Block(
-                [new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
-                new Expression(new VariableDeclaration(Token.Identifier("b", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))]))),
-            ("{var a = 1; var b = 2;}", new Expression(new Block([
+                new ProgramScope([new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
+                new Expression(new VariableDeclaration(Token.Identifier("b", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))], [])))),
+            ("{var a = 1; var b = 2;}", new Expression(new Block(new ProgramScope([
                 new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
                 new Expression(new VariableDeclaration(Token.Identifier("b", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
-                ]))),
+                ], [])))),
             ("if (a) var c = 2;", new Expression(new IfExpression(
                 VariableAccessor("a"),
                 new Expression(new VariableDeclaration(
@@ -273,45 +272,45 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                     VariableAccessor("a"),
                     VariableAccessor("b"),
                     Token.RightAngleBracket(default))),
-                new Expression(new Block([
+                new Expression(new Block(new ProgramScope([
                     new Expression(new VariableDeclaration(
                         Token.Identifier("c", default),
                         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("value", default)))))
-                ])), [], null))),
+                ], []))), [], null))),
             ("if (a) {} else {var b = 2;}", new Expression(new IfExpression(
                 VariableAccessor("a"),
-                new Expression(new Block([])),
+                new Expression(Block.Empty),
                 [],
-                new Expression(new Block([
+                new Expression(new Block(new ProgramScope([
                     new Expression(new VariableDeclaration(
                         Token.Identifier("b", default),
                         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))
-                ]))))),
+                ], [])))))),
             ("if (a) {} else if (b) {}", new Expression(new IfExpression(
                 VariableAccessor("a"),
-                new Expression(new Block([])),
-                [new ElseIf(VariableAccessor("b"), new Expression(new Block([])))],
+                new Expression(Block.Empty),
+                [new ElseIf(VariableAccessor("b"), new Expression(Block.Empty))],
                 null))),
             ("if (a) {} else if (b) {} else {}", new Expression(new IfExpression(
                 VariableAccessor("a"),
-                new Expression(new Block([])),
+                new Expression(Block.Empty),
                 [
-                    new ElseIf(VariableAccessor("b"), new Expression(new Block([]))),
+                    new ElseIf(VariableAccessor("b"), new Expression(Block.Empty)),
                 ],
-                new Expression(new Block([]))))),
+                new Expression(Block.Empty)))),
             ("if (a) {} else if (b) {} else if (c) {} else {}", new Expression(new IfExpression(
                 VariableAccessor("a"),
-                new Expression(new Block([])),
+                new Expression(Block.Empty),
                 [
-                    new ElseIf(VariableAccessor("b"), new Expression(new Block([]))),
-                    new ElseIf(VariableAccessor("c"), new Expression(new Block([]))),
+                    new ElseIf(VariableAccessor("b"), new Expression(Block.Empty)),
+                    new ElseIf(VariableAccessor("c"), new Expression(Block.Empty)),
                 ],
-                new Expression(new Block([]))))),
+                new Expression(Block.Empty)))),
             ("if (a) {b} else {c}", new Expression(new IfExpression(
                 VariableAccessor("a"),
-                new Expression(new Block([VariableAccessor("b")])),
+                new Expression(new Block(new ProgramScope([VariableAccessor("b")], []))),
                 [],
-                new Expression(new Block([VariableAccessor("c")]))))),
+                new Expression(new Block(new ProgramScope([VariableAccessor("c")], [])))))),
             ("if (a) b else c", new Expression(new IfExpression(
                 VariableAccessor("a"),
                 VariableAccessor("b"),
@@ -319,13 +318,13 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 VariableAccessor("c")))),
             ("if (a) {if (b) {1} else {2}} else {3}", new Expression(new IfExpression(
                 VariableAccessor("a"),
-                new Expression(new Block([new Expression(new IfExpression(
+                new Expression(new Block(new ProgramScope([new Expression(new IfExpression(
                     VariableAccessor("b"),
-                    new Expression(new Block([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))])),
+                    new Expression(new Block(new ProgramScope([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))], []))),
                     [],
-                    new Expression(new Block([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))]))))])),
+                    new Expression(new Block(new ProgramScope([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))], [])))))], []))),
                 [],
-                new Expression(new Block([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, default)))]))))),
+                new Expression(new Block(new ProgramScope([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, default)))], [])))))),
             ("if (a) if (b) 1 else 2 else 3", new Expression(new IfExpression(
                 VariableAccessor("a"),
                 new Expression(new IfExpression(
@@ -346,9 +345,9 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 Token.Identifier("a", default),
                 new Expression(new IfExpression(
                     VariableAccessor("b"),
-                    new Expression(new Block([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))])),
+                    new Expression(new Block(new ProgramScope([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))], []))),
                     [],
-                    new Expression(new Block([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))]))))))),
+                    new Expression(new Block(new ProgramScope([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))], [])))))))),
             ("a()", new Expression(new MethodCall(VariableAccessor("a"), []))),
             ("a(b)", new Expression(new MethodCall(VariableAccessor("a"), [
             VariableAccessor("b")]))),
@@ -1008,7 +1007,12 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
 
     private static StrongBox<Block>? RemoveSourceSpan(StrongBox<Block>? block)
     {
-        return block is null ? null : new StrongBox<Block>(new Block(block.Value.Expressions.Select(RemoveSourceSpan).ToArray()));
+        return block is null ? null : new StrongBox<Block>(new Block(RemoveSourceSpan(block.Value.Scope)));
+    }
+
+    private static ProgramScope RemoveSourceSpan(ProgramScope scope)
+    {
+        return new ProgramScope(scope.Expressions.Select(RemoveSourceSpan).ToArray(), []);
     }
 
     private static StrongBox<MethodCall>? RemoveSourceSpan(StrongBox<MethodCall>? methodCall)
@@ -1076,5 +1080,10 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
     private static Token RemoveSourceSpan(Token token)
     {
         return token with { SourceSpan = default };
+    }
+
+    private static LangProgram RemoveSourceSpan(LangProgram program)
+    {
+        return new LangProgram(RemoveSourceSpan(program.Scope));
     }
 }

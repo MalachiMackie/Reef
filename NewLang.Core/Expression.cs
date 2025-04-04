@@ -107,12 +107,14 @@ public readonly record struct IfExpression(
     }
 }
 
-public readonly record struct Block(IReadOnlyCollection<Expression> Expressions)
+public readonly record struct Block(ProgramScope Scope)
 {
+    public static readonly Block Empty = new (new ProgramScope([], []));
+    
     public override string ToString()
     {
         var sb = new StringBuilder("{");
-        foreach (var expression in Expressions)
+        foreach (var expression in Scope.Expressions)
         {
             sb.Append('\n');
             sb.Append(expression.ToString());
