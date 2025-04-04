@@ -59,6 +59,7 @@ public class ParserTests
             ["-", new[] { Token.Dash(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["/", new[] { Token.ForwardSlash(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["+", new[] { Token.Plus(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
+            [".", new[] { Token.Dot(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             [
                 "\"hello this is a string\"",
                 new[] { Token.StringLiteral("hello this is a string", new SourceSpan(new SourcePosition(0, 0, 0), 24)) }

@@ -360,6 +360,25 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 new Expression(new BinaryOperator(BinaryOperatorType.GreaterThan, VariableAccessor("c"), VariableAccessor("d"), Token.RightAngleBracket(default))),
                 VariableAccessor("e")
             ]))),
+            ("a.b", new Expression(new MemberAccess(VariableAccessor("a"), Token.Identifier("b", default)))),
+            ("a.b()", new Expression(new MethodCall(new Expression(new MemberAccess(VariableAccessor("a"), Token.Identifier("b", default))), []))),
+            ("a?.b", new Expression(new MemberAccess(
+                new Expression(new UnaryOperator(UnaryOperatorType.FallOut, VariableAccessor("a"), Token.QuestionMark(default))),
+                Token.Identifier("b", default)))),
+            ("a.b?", new Expression(new UnaryOperator(
+                UnaryOperatorType.FallOut,
+                new Expression(new MemberAccess(VariableAccessor("a"), Token.Identifier("b", default))),
+                Token.QuestionMark(default)))),
+            ("a * b.c", new Expression(new BinaryOperator(
+                BinaryOperatorType.Multiply,
+                VariableAccessor("a"),
+                new Expression(new MemberAccess(VariableAccessor("b"), Token.Identifier("c", default))),
+                Token.Star(default)))),
+            ("b.c * a", new Expression(new BinaryOperator(
+                BinaryOperatorType.Multiply,
+                new Expression(new MemberAccess(VariableAccessor("b"), Token.Identifier("c", default))),
+                VariableAccessor("a"),
+                Token.Star(default)))),
             // ____binding strength tests
             // __greater than
             ( // greater than
@@ -976,7 +995,15 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             RemoveSourceSpan(expression.VariableDeclaration),
             RemoveSourceSpan(expression.IfExpression),
             RemoveSourceSpan(expression.Block),
-            RemoveSourceSpan(expression.MethodCall));
+            RemoveSourceSpan(expression.MethodCall),
+            RemoveSourceSpan(expression.MemberAccess));
+    }
+
+    private static StrongBox<MemberAccess>? RemoveSourceSpan(StrongBox<MemberAccess>? memberAccess)
+    {
+        return memberAccess is null
+            ? null
+            : new StrongBox<MemberAccess>(new MemberAccess(RemoveSourceSpan(memberAccess.Value.MemberOwner), RemoveSourceSpan(memberAccess.Value.Identifier)));
     }
 
     private static StrongBox<Block>? RemoveSourceSpan(StrongBox<Block>? block)

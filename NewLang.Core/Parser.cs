@@ -248,6 +248,7 @@ public class Parser
             TokenType.Star when source is "*" => Token.Star(new SourceSpan(position, (uint)source.Length)),
             TokenType.Plus when source is "+" => Token.Plus(new SourceSpan(position, (uint)source.Length)),
             TokenType.Dash when source is "-" => Token.Dash(new SourceSpan(position, (uint)source.Length)),
+            TokenType.Dot when source is "." => Token.Dot(new SourceSpan(position, (uint)source.Length)),
             _ => null
         };
 
@@ -352,6 +353,9 @@ public class Parser
             case '"':
                 tokens[0] = TokenType.StringLiteral;
                 return 1;
+            case '.':
+                tokens[0] = TokenType.Dot;
+                return 1;
             default:
             {
                 if (AlphaNumeric.Contains(firstChar))
@@ -402,6 +406,7 @@ public class Parser
             TokenType.ForwardSlash => source is "/",
             TokenType.Plus => source is "+",
             TokenType.Dash => source is "-",
+            TokenType.Dot => source is ".",
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
 

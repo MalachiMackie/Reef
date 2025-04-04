@@ -4,7 +4,7 @@ namespace NewLang.Core;
 
 public readonly struct Token
 {
-    public TokenType Type { get; init; }
+    public TokenType Type { get; private init; }
 
     // todo: can we 'overlap' these fields like an rust enum would?
 
@@ -219,5 +219,10 @@ public readonly struct Token
     public static Token Plus(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.Plus, SourceSpan = sourceSpan };
+    }
+
+    public static Token Dot(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.Dot, SourceSpan = sourceSpan };
     }
 }

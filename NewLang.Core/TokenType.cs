@@ -34,5 +34,6 @@ public enum TokenType
     Plus,
     Dash,
     Star,
-    ForwardSlash
+    ForwardSlash,
+    Dot
 }

@@ -101,6 +101,7 @@ public static class ExpressionTreeBuilder
             TokenType.If => GetIfExpression(tokens),
             TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
             TokenType.LeftParenthesis => GetMethodCall(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {token}")),
+            TokenType.Dot => GetMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {token}")),
             _ => throw new InvalidOperationException($"Token type {token.Type} not supported")
         };
     }
@@ -130,6 +131,16 @@ public static class ExpressionTreeBuilder
         }
 
         return previousExpression;
+    }
+
+    private static Expression GetMemberAccess(PeekableEnumerator<Token> tokens, Expression memberOwner)
+    {
+        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
+        {
+            throw new InvalidOperationException("Expected member identifier");
+        }
+
+        return new Expression(new MemberAccess(memberOwner, tokens.Current));
     }
 
     private static Expression GetMethodCall(PeekableEnumerator<Token> tokens, Expression method)
@@ -319,6 +330,7 @@ public static class ExpressionTreeBuilder
             TokenType.Plus => BinaryOperatorBindingStrengths[BinaryOperatorType.Plus],
             TokenType.Dash => BinaryOperatorBindingStrengths[BinaryOperatorType.Minus],
             TokenType.LeftParenthesis => 4,
+            TokenType.Dot => 5,
             _ => null
         };
 
@@ -339,6 +351,6 @@ public static class ExpressionTreeBuilder
     private static readonly FrozenDictionary<UnaryOperatorType, uint> UnaryOperatorBindingStrengths =
         new Dictionary<UnaryOperatorType, uint>
         {
-            { UnaryOperatorType.FallOut, 5 },
+            { UnaryOperatorType.FallOut, 6 },
         }.ToFrozenDictionary();
 }
