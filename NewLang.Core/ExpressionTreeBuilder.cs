@@ -230,51 +230,6 @@ public static class ExpressionTreeBuilder
         return new Expression(new Block(expressions.ToArray()));
     }
 
-    private static Expression GetBlockExpression2(PeekableEnumerator<Token> tokens)
-    {
-        var blockExpressions = new List<Expression>();
-
-        var hasTailExpression = false;
-        
-        while (tokens.TryPeek(out var peeked))
-        {
-            if (peeked.Type == TokenType.RightBrace)
-            {
-                // pop the peeked right brace off
-                tokens.MoveNext();
-                return new Expression(new Block(blockExpressions));
-            }
-
-            var expression = PopExpression(tokens);
-            if (expression.HasValue)
-            {
-                if (hasTailExpression)
-                {
-                    throw new InvalidOperationException("Tail expression must be at the end of a block");
-                }
-
-                blockExpressions.Add(expression.Value);
-
-                if (!tokens.TryPeek(out peeked) || peeked.Type == TokenType.Semicolon)
-                {
-                    // drop semicolon
-                    tokens.MoveNext();
-                    if (!IsValidStatement(expression.Value))
-                    {
-                        throw new InvalidOperationException($"{expression.Value.ExpressionType} is not a valid statement");
-                    }
-                } 
-                else 
-                {
-                    hasTailExpression = true;
-                }
-                
-            }
-        }
-
-        throw new InvalidOperationException("Expected Right brace, got nothing");
-    }
-
     private static Expression GetVariableDeclaration(PeekableEnumerator<Token> tokens)
     {
         if (!tokens.MoveNext())

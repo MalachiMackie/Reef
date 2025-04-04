@@ -7,7 +7,10 @@ namespace NewLang.Core.Benchmarks;
 public class ParserBenchmarks
 {
     [Params(SmallSource, MediumSource, LargeSource)]
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+    // ReSharper disable once UnassignedField.Global
     public string Source;
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
     private readonly Consumer _consumer = new();
     private readonly Parser _parser = new();

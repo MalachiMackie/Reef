@@ -5,7 +5,7 @@ using JetBrains.Annotations;
 namespace NewLang.Core;
 
 [MustDisposeResource]
-public class PeekableEnumerator<T>(IEnumerator<T> inner) : IEnumerator<T>
+public sealed class PeekableEnumerator<T>(IEnumerator<T> inner) : IEnumerator<T>
 {
     private T? _peeked;
     // cant rely on _peeked being not null, because T maybe nullable, and null may be a valid value
