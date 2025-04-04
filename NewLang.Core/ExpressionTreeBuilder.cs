@@ -11,22 +11,6 @@ public static class ExpressionTreeBuilder
         using var tokensEnumerator = new PeekableEnumerator<Token>(tokens.GetEnumerator());
 
         return GetExpressionList(tokensEnumerator, closingToken: null, allowTailExpression: false);
-
-        // while (tokensEnumerator.TryPeek(out _))
-        // {
-        //     var result = PopExpression(tokensEnumerator);
-        //     if (result.HasValue)
-        //     {
-        //         var expression = result.Value;
-        //
-        //         if (!IsValidStatement(expression))
-        //         {
-        //             throw new InvalidOperationException($"{expression.ExpressionType} is not a valid statement");
-        //         }
-        //         
-        //         yield return expression;
-        //     }
-        // }
     }
 
     private static IEnumerable<Expression> GetExpressionList(
