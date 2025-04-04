@@ -100,6 +100,7 @@ public static class ExpressionTreeBuilder
             TokenType.LeftBrace => GetBlockExpression(tokens),
             TokenType.If => GetIfExpression(tokens),
             TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
+            TokenType.LeftParenthesis => GetMethodCall(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {token}")),
             _ => throw new InvalidOperationException($"Token type {token.Type} not supported")
         };
     }
@@ -129,6 +130,37 @@ public static class ExpressionTreeBuilder
         }
 
         return previousExpression;
+    }
+
+    private static Expression GetMethodCall(PeekableEnumerator<Token> tokens, Expression method)
+    {
+        var parameterList = new List<Expression>();
+        while (tokens.TryPeek(out var peeked))
+        {
+            if (peeked.Type == TokenType.RightParenthesis)
+            {
+                return new Expression(new MethodCall(method, parameterList));
+            }
+
+            if (parameterList.Count > 0)
+            {
+                if (peeked.Type != TokenType.Comma)
+                {
+                    throw new InvalidOperationException("Expected comma");
+                }
+
+                // pop comma off
+                tokens.MoveNext();
+            }
+
+            var nextExpression = PopExpression(tokens);
+            if (nextExpression.HasValue)
+            {
+                parameterList.Add(nextExpression.Value);
+            }
+        }
+
+        throw new InvalidOperationException("Expected ), found nothing");
     }
 
     private static Expression GetIfExpression(PeekableEnumerator<Token> tokens)
@@ -275,34 +307,22 @@ public static class ExpressionTreeBuilder
 
     private static bool TryGetBindingStrength(Token token, [NotNullWhen(true)] out uint? bindingStrength)
     {
-        (UnaryOperatorType? unaryOperatorType, BinaryOperatorType? binaryOperatorType) operators = token.Type switch
+        bindingStrength = token.Type switch
         {
             // unary operators
-            TokenType.QuestionMark => (UnaryOperatorType.FallOut, null),
+            TokenType.QuestionMark => UnaryOperatorBindingStrengths[UnaryOperatorType.FallOut],
             // binary operators
-            TokenType.RightAngleBracket => (null, BinaryOperatorType.GreaterThan),
-            TokenType.LeftAngleBracket => (null, BinaryOperatorType.LessThan),
-            TokenType.Star => (null, BinaryOperatorType.Multiply),
-            TokenType.ForwardSlash => (null, BinaryOperatorType.Divide),
-            TokenType.Plus => (null, BinaryOperatorType.Plus),
-            TokenType.Dash => (null, BinaryOperatorType.Minus),
-            _ => (null, null)
+            TokenType.RightAngleBracket => BinaryOperatorBindingStrengths[BinaryOperatorType.GreaterThan],
+            TokenType.LeftAngleBracket => BinaryOperatorBindingStrengths[BinaryOperatorType.LessThan],
+            TokenType.Star => BinaryOperatorBindingStrengths[BinaryOperatorType.Multiply],
+            TokenType.ForwardSlash => BinaryOperatorBindingStrengths[BinaryOperatorType.Divide],
+            TokenType.Plus => BinaryOperatorBindingStrengths[BinaryOperatorType.Plus],
+            TokenType.Dash => BinaryOperatorBindingStrengths[BinaryOperatorType.Minus],
+            TokenType.LeftParenthesis => 4,
+            _ => null
         };
 
-        if (operators.unaryOperatorType.HasValue)
-        {
-            bindingStrength = UnaryOperatorBindingStrengths[operators.unaryOperatorType.Value];
-            return true;
-        }
-
-        if (operators.binaryOperatorType.HasValue)
-        {
-            bindingStrength = BinaryOperatorBindingStrengths[operators.binaryOperatorType.Value];
-            return true;
-        }
-        
-        bindingStrength = null;
-        return false;
+        return bindingStrength.HasValue;
     }
     
     private static readonly FrozenDictionary<BinaryOperatorType, uint> BinaryOperatorBindingStrengths =
@@ -319,6 +339,6 @@ public static class ExpressionTreeBuilder
     private static readonly FrozenDictionary<UnaryOperatorType, uint> UnaryOperatorBindingStrengths =
         new Dictionary<UnaryOperatorType, uint>
         {
-            { UnaryOperatorType.FallOut, 4 },
+            { UnaryOperatorType.FallOut, 5 },
         }.ToFrozenDictionary();
 }

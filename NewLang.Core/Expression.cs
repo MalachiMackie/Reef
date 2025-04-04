@@ -11,35 +11,40 @@ public readonly record struct Expression(
     StrongBox<BinaryOperator>? BinaryOperator,
     StrongBox<VariableDeclaration>? VariableDeclaration,
     StrongBox<IfExpression>? IfExpression,
-    StrongBox<Block>? Block)
+    StrongBox<Block>? Block,
+    StrongBox<MethodCall>? MethodCall)
 {
     public Expression(ValueAccessor valueAccessor)
-        : this(ExpressionType.ValueAccess, valueAccessor, null, null, null, null, null)
+        : this(ExpressionType.ValueAccess, valueAccessor, null, null, null, null, null, null)
     {
         
     }
     
     public Expression(UnaryOperator unaryOperator)
-        : this(ExpressionType.UnaryOperator, null, new StrongBox<UnaryOperator>(unaryOperator), null, null, null, null)
+        : this(ExpressionType.UnaryOperator, null, new StrongBox<UnaryOperator>(unaryOperator), null, null, null, null, null)
     {
     }
 
     public Expression(BinaryOperator binaryOperator)
-        : this(ExpressionType.BinaryOperator, null, null, new StrongBox<BinaryOperator>(binaryOperator), null, null, null)
+        : this(ExpressionType.BinaryOperator, null, null, new StrongBox<BinaryOperator>(binaryOperator), null, null, null, null)
     {
     }
     
     public Expression(VariableDeclaration variableDeclaration)
-        : this(ExpressionType.VariableDeclaration, null, null, null, new StrongBox<VariableDeclaration>(variableDeclaration), null, null)
+        : this(ExpressionType.VariableDeclaration, null, null, null, new StrongBox<VariableDeclaration>(variableDeclaration), null, null, null)
     {}
     
     public Expression(IfExpression ifExpression)
-        : this(ExpressionType.IfExpression, null, null, null, null, new StrongBox<IfExpression>(ifExpression), null)
+        : this(ExpressionType.IfExpression, null, null, null, null, new StrongBox<IfExpression>(ifExpression), null, null)
     {
     }
     
     public Expression(Block block)
-        : this(ExpressionType.Block, null, null, null, null, null, new StrongBox<Block>(block))
+        : this(ExpressionType.Block, null, null, null, null, null, new StrongBox<Block>(block), null)
+    {}
+    
+    public Expression(MethodCall methodCall)
+        : this(ExpressionType.MethodCall, null, null, null, null, null, null, new StrongBox<MethodCall>(methodCall))
     {}
 
     public override string ToString()
@@ -52,6 +57,7 @@ public readonly record struct Expression(
             ExpressionType.VariableDeclaration => VariableDeclaration!.Value.ToString(),
             ExpressionType.IfExpression => IfExpression!.Value.ToString(),
             ExpressionType.Block => Block!.Value.ToString(),
+            ExpressionType.MethodCall => MethodCall!.Value.ToString(),
             _ => throw new UnreachableException()
         };
     }
@@ -139,6 +145,14 @@ public readonly record struct ElseIf(Expression CheckExpression, Expression Body
     }
 }
 
+public readonly record struct MethodCall(Expression Method, IReadOnlyCollection<Expression> ParameterList)
+{
+    public override string ToString()
+    {
+        return $"{Method}({string.Join(',', ParameterList)})";
+    }
+}
+
 public enum BinaryOperatorType
 {
     LessThan,
@@ -168,5 +182,6 @@ public enum ExpressionType
     BinaryOperator,
     VariableDeclaration,
     IfExpression,
-    Block
+    Block,
+    MethodCall
 }

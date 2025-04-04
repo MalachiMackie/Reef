@@ -145,6 +145,11 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             "if (a) {if (b) {var c = 1;}} else {1}",
             "if (a) {if (b) {1} else {2}} else {}",
             */
+            "a(",
+            "a(a, )",
+            "a(,)",
+            "a(a b)",
+            "a(a; b)",
             // missing semicolon,
             "{var a = 1 var b = 2;}",
             "{",
@@ -330,7 +335,6 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                     new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
                 [],
                 new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, default)))))),
-            // todo: how to deal with 2 having a semicolon. the semicolon is actually for the whole statement
             ("var a = if (b) 1 else 2;", new Expression(new VariableDeclaration(
                 Token.Identifier("a", default),
                 new Expression(new IfExpression(
@@ -345,6 +349,17 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                     new Expression(new Block([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))])),
                     [],
                     new Expression(new Block([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))]))))))),
+            ("a()", new Expression(new MethodCall(VariableAccessor("a"), []))),
+            ("a(b)", new Expression(new MethodCall(VariableAccessor("a"), [
+            VariableAccessor("b")]))),
+            ("a(b, c)", new Expression(new MethodCall(VariableAccessor("a"), [
+                VariableAccessor("b"), VariableAccessor("c")
+            ]))),
+            ("a(b, c > d, e)", new Expression(new MethodCall(VariableAccessor("a"), [
+                VariableAccessor("b"),
+                new Expression(new BinaryOperator(BinaryOperatorType.GreaterThan, VariableAccessor("c"), VariableAccessor("d"), Token.RightAngleBracket(default))),
+                VariableAccessor("e")
+            ]))),
             // ____binding strength tests
             // __greater than
             ( // greater than
@@ -953,20 +968,29 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
     
     private static Expression RemoveSourceSpan(Expression expression)
     {
-        return expression with
-        {
-            ValueAccessor = RemoveSourceSpan(expression.ValueAccessor),
-            UnaryOperator = RemoveSourceSpan(expression.UnaryOperator),
-            BinaryOperator = RemoveSourceSpan(expression.BinaryOperator),
-            VariableDeclaration = RemoveSourceSpan(expression.VariableDeclaration),
-            Block = RemoveSourceSpan(expression.Block),
-            IfExpression = RemoveSourceSpan(expression.IfExpression)
-        };
+        return new Expression(
+            expression.ExpressionType,
+            RemoveSourceSpan(expression.ValueAccessor),
+            RemoveSourceSpan(expression.UnaryOperator),
+            RemoveSourceSpan(expression.BinaryOperator),
+            RemoveSourceSpan(expression.VariableDeclaration),
+            RemoveSourceSpan(expression.IfExpression),
+            RemoveSourceSpan(expression.Block),
+            RemoveSourceSpan(expression.MethodCall));
     }
 
     private static StrongBox<Block>? RemoveSourceSpan(StrongBox<Block>? block)
     {
         return block is null ? null : new StrongBox<Block>(new Block(block.Value.Expressions.Select(RemoveSourceSpan).ToArray()));
+    }
+
+    private static StrongBox<MethodCall>? RemoveSourceSpan(StrongBox<MethodCall>? methodCall)
+    {
+        return methodCall is null
+            ? null
+            : new StrongBox<MethodCall>(new MethodCall(
+                RemoveSourceSpan(methodCall.Value.Method),
+                methodCall.Value.ParameterList.Select(RemoveSourceSpan).ToArray()));
     }
 
     private static StrongBox<IfExpression>? RemoveSourceSpan(StrongBox<IfExpression>? ifExpression)
