@@ -11,8 +11,13 @@
     return error("something wrong");
 }
 
+fn PrivateFn() {
+    Println("Message");
+}
+
 pub fn SomethingElse(a: int): result<int, string> {
-    b = DoSomething(a)?;
+    var b = DoSomething(a)?;
+    var mut c = 2;
     
     return b;
 }
@@ -20,3 +25,13 @@ pub fn SomethingElse(a: int): result<int, string> {
 Println(DoSomething(5));
 Println(DoSomething(1));
 Println(SomethingElse(1));
+
+pub class MyClass {
+    pub fn PublicMethod() {
+    }
+    
+    field FieldA: string;
+    mut field FieldB: string;
+    pub mut field FieldC: string;
+    pub field FieldD: string;
+}
