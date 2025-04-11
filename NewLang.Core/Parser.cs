@@ -4,6 +4,8 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace NewLang.Core;
 
+// todo: rename to Tokenizer
+// todo: try pool allocations 
 public class Parser
 {
     private static readonly SearchValues<char> Digits = SearchValues.Create("0123456789");
