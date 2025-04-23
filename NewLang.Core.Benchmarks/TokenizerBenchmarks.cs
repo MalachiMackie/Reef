@@ -4,7 +4,7 @@ using BenchmarkDotNet.Engines;
 namespace NewLang.Core.Benchmarks;
 
 [MemoryDiagnoser]
-public class ParserBenchmarks
+public class TokenizerBenchmarks
 {
     [Params(SmallSource, MediumSource, LargeSource)]
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
@@ -13,12 +13,12 @@ public class ParserBenchmarks
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
     private readonly Consumer _consumer = new();
-    private readonly Parser _parser = new();
+    private readonly Tokenizer _tokenizer = new();
 
     [Benchmark]
-    public void BenchmarkParser()
+    public void BenchmarkTokenize()
     {
-        _parser.Parse(Source).Consume(_consumer);
+        _tokenizer.Tokenize(Source).Consume(_consumer);
     }
     
 

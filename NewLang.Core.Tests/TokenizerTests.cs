@@ -2,15 +2,15 @@ using FluentAssertions;
 
 namespace NewLang.Core.Tests;
 
-public class ParserTests
+public class TokenizerTests
 {
-    private readonly Parser _parser = new();
+    private readonly Tokenizer _tokenizer = new();
     
     [Theory]
     [MemberData(nameof(TestCases))]
     public void Tests(string source, IEnumerable<Token> expectedTokens)
     {
-        var result = _parser.Parse(source);
+        var result = _tokenizer.Tokenize(source);
 
         result.Should().BeEquivalentTo(expectedTokens);
     }
@@ -18,7 +18,7 @@ public class ParserTests
     [Fact]
     public void Perf()
     {
-        _parser.Parse(LargeSource).Count().Should().BeGreaterThan(0);
+        _tokenizer.Tokenize(LargeSource).Count().Should().BeGreaterThan(0);
     }
 
     public static IEnumerable<object[]> TestCases()

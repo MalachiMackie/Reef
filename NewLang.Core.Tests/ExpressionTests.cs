@@ -16,7 +16,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
         string source,
         IEnumerable<Token> tokens)
     {
-        var act = () => ExpressionTreeBuilder.Build(tokens);
+        var act = () => Parser.Parse(tokens);
 
         act.Should().Throw<InvalidOperationException>();
     }
@@ -29,7 +29,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
         IEnumerable<Token> tokens,
         Expression expectedExpression)
     {
-        var result = ExpressionTreeBuilder.PopExpression(tokens);
+        var result = Parser.PopExpression(tokens);
         result.Should().NotBeNull();
         
         // clear out the source spans, we don't actually care about them
@@ -54,7 +54,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
         IEnumerable<Token> tokens,
         Expression expectedExpression)
     {
-        var result = ExpressionTreeBuilder.PopExpression(tokens);
+        var result = Parser.PopExpression(tokens);
         result.Should().NotBeNull();
         
         // clear out the source spans, we don't actually care about them
@@ -78,7 +78,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
         IEnumerable<Token> tokens,
         LangProgram expectedProgram)
     {
-        var program = RemoveSourceSpan(ExpressionTreeBuilder.Build(tokens));
+        var program = RemoveSourceSpan(Parser.Parse(tokens));
  
          try
          {
@@ -99,7 +99,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
                 new Expression(new VariableDeclaration(Token.Identifier("b", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
                 ], []))),
-        }.Select(x => new object[] { x.Source, new Parser().Parse(x.Source), x.ExpectedProgram });
+        }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedProgram });
     }
     
     public static IEnumerable<object[]> FailTestCases()
@@ -165,7 +165,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             // invalid statement
             "a;",
             "{a;}"
-        }.Select(x => new object[] { x, new Parser().Parse(x) });
+        }.Select(x => new object[] { x, new Tokenizer().Tokenize(x) });
     }
 
     public static IEnumerable<object[]> SingleTestCase()
@@ -177,7 +177,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 new Expression(new Block(new ProgramScope([VariableAccessor("b")], []))),
                 [],
                 new Expression(new Block(new ProgramScope([VariableAccessor("c")], [])))))),
-        }.Select(x => new object[] { x.Source, new Parser().Parse(x.Source), x.ExpectedExpression });
+        }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedExpression });
     }
 
     public static IEnumerable<object[]> TestCases()
@@ -960,7 +960,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                         VariableAccessor("b"),
                         Token.ForwardSlash(default)))
             ),
-        }.Select(x => new object[] { x.Source, new Parser().Parse(x.Source), x.ExpectedExpression });
+        }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedExpression });
     }
     
     private static Expression VariableAccessor(string name) =>

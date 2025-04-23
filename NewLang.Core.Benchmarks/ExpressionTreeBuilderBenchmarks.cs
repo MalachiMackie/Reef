@@ -1,10 +1,9 @@
 ﻿using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Engines;
 
 namespace NewLang.Core.Benchmarks;
 
 [MemoryDiagnoser]
-public class ExpressionTreeBenchmarks
+public class ParserBenchmarks
 {
     [Params(SmallSource, MediumSource, LargeSource)]
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
@@ -17,13 +16,13 @@ public class ExpressionTreeBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _tokens = new Parser().Parse(Source).ToArray();
+        _tokens = new Tokenizer().Tokenize(Source).ToArray();
     }
     
     [Benchmark]
-    public void BenchmarkExpressionTree()
+    public void BenchmarkParse()
     {
-        ExpressionTreeBuilder.Build(_tokens);
+        Parser.Parse(_tokens);
     }
     
 
