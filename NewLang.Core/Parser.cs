@@ -68,6 +68,11 @@ public static class Parser
                     throw new InvalidOperationException("Tail expression is not allowed");
                 }
 
+                if (expression.Value.ExpressionType == ExpressionType.MethodReturn)
+                {
+                    throw new InvalidOperationException("Return statement cannot be a tail expression");
+                }
+
                 hasTailExpression = true;
             }
             else
@@ -231,7 +236,8 @@ public static class Parser
         return expression.ExpressionType is 
             ExpressionType.Block 
             or ExpressionType.IfExpression
-            or ExpressionType.VariableDeclaration;
+            or ExpressionType.VariableDeclaration
+            or ExpressionType.MethodReturn;
     }
     
     private static Expression MatchTokenToExpression(Token token, Expression? previousExpression, PeekableEnumerator<Token> tokens)
@@ -260,8 +266,16 @@ public static class Parser
             TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
             TokenType.LeftParenthesis => GetMethodCall(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {token}")),
             TokenType.Dot => GetMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {token}")),
+            TokenType.Return => GetMethodReturn(tokens),
             _ => throw new InvalidOperationException($"Token type {token.Type} not supported")
         };
+    }
+
+    private static Expression GetMethodReturn(PeekableEnumerator<Token> tokens)
+    {
+        var expression = new MethodReturn(PopExpression(tokens) ?? throw new InvalidOperationException("Expected expression"));
+
+        return new Expression(expression);
     }
 
     public static Expression? PopExpression(IEnumerable<Token> tokens)

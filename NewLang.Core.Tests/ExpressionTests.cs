@@ -195,6 +195,14 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                     new ProgramScope([], [])
                 )
             ]))),
+            ("fn MyFn(): int {return 1;}", new LangProgram(new ProgramScope([], [
+                new LangFunction(
+                    Token.Identifier("MyFn", default),
+                    [],
+                    new TypeIdentifier(Token.IntKeyword(default), []),
+                    new ProgramScope([new Expression(new MethodReturn(new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))], [])
+                )
+            ])))
         }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedProgram });
     }
     
@@ -274,6 +282,8 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             "fn MyFunction(int a, ) {}",
             "fn MyFunction(,) {}",
             "fn MyFunction(int a int b) {}",
+            // no semicolon
+            "return 1"
         }.Select(x => new object[] { x, new Tokenizer().Tokenize(x) });
     }
 
@@ -281,13 +291,12 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
     {
         return new (string Source, LangProgram ExpectedProgram)[]
         {
-            ("fn MyFn(): string {}", new LangProgram(new ProgramScope([], [
+            ("fn MyFn(): int {return 1;}", new LangProgram(new ProgramScope([], [
                 new LangFunction(
                     Token.Identifier("MyFn", default),
-                    [
-                    ],
-                    new TypeIdentifier(Token.StringKeyword(default), []),
-                    new ProgramScope([], [])
+                    [],
+                    new TypeIdentifier(Token.IntKeyword(default), []),
+                    new ProgramScope([new Expression(new MethodReturn(new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))], [])
                 )
             ]))),
         }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedProgram });
@@ -317,6 +326,8 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                         Token.QuestionMark(default))),
                     Token.QuestionMark(default)))
             ),
+            ("return 1", new Expression(
+                new MethodReturn(new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))),
             // binary operator expressions
             ("a < 5", new Expression(new BinaryOperator(
                 BinaryOperatorType.LessThan,
@@ -1140,7 +1151,8 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             RemoveSourceSpan(expression.IfExpression),
             RemoveSourceSpan(expression.Block),
             RemoveSourceSpan(expression.MethodCall),
-            RemoveSourceSpan(expression.MemberAccess));
+            RemoveSourceSpan(expression.MemberAccess),
+            RemoveSourceSpan(expression.MethodReturn));
     }
 
     private static StrongBox<MemberAccess>? RemoveSourceSpan(StrongBox<MemberAccess>? memberAccess)
@@ -1230,5 +1242,12 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
     private static LangProgram RemoveSourceSpan(LangProgram program)
     {
         return new LangProgram(RemoveSourceSpan(program.Scope));
+    }
+
+    private static StrongBox<MethodReturn>? RemoveSourceSpan(StrongBox<MethodReturn>? methodReturn)
+    {
+        return methodReturn is null
+            ? null
+            : new StrongBox<MethodReturn>(new MethodReturn(RemoveSourceSpan(methodReturn.Value.Expression)));
     }
 }
