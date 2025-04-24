@@ -136,12 +136,7 @@ public static class Parser
                 }
             }
 
-            if (!IsTypeTokenType(tokens.Current.Type))
-            {
-                throw new InvalidOperationException("Expected parameter type");
-            }
-
-            var parameterType = tokens.Current;
+            var parameterType = GetTypeIdentifier(tokens.Current, tokens);
 
             if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
             {
@@ -151,20 +146,85 @@ public static class Parser
             parameterList.Add(new FunctionParameter(parameterType, tokens.Current));
         }
 
-        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.LeftBrace)
+        if (!tokens.MoveNext() )
+        {
+            throw new InvalidOperationException("Expected { or :");
+        }
+
+        TypeIdentifier? returnType = null;
+
+        if (tokens.Current.Type == TokenType.Colon)
+        {
+            if (!tokens.MoveNext())
+            {
+                throw new InvalidOperationException("Expected return type");
+            }
+
+            returnType = GetTypeIdentifier(tokens.Current, tokens);
+
+            if (!tokens.MoveNext())
+            {
+                throw new InvalidOperationException("Expected {");
+            }
+        }
+
+        if (tokens.Current.Type != TokenType.LeftBrace)
         {
             throw new InvalidOperationException("Expected {");
         }
 
         var functionScope = GetScope(tokens, closingToken: TokenType.RightBrace, allowTailExpression: true);
 
-        return new LangFunction(nameToken, parameterList, functionScope);
+        return new LangFunction(nameToken, parameterList, returnType, functionScope);
     }
 
     private static bool IsTypeTokenType(in TokenType tokenType)
     {
         return tokenType is TokenType.IntKeyword or TokenType.StringKeyword or TokenType.Result or TokenType.Identifier;
     } 
+
+    private static TypeIdentifier GetTypeIdentifier(Token firstToken, PeekableEnumerator<Token> tokens)
+    {
+        if (!IsTypeTokenType(firstToken.Type))
+        {
+            throw new InvalidOperationException("Expected type");
+        }
+
+        var typeArguments = new List<TypeIdentifier>();
+        if (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.LeftAngleBracket)
+        {
+            tokens.MoveNext();
+
+            while (true)
+            {
+                if (!tokens.MoveNext())
+                {
+                    throw new InvalidOperationException("Expected type argument");
+                }
+
+                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                {
+                    break;
+                }
+
+                if (typeArguments.Count != 0)
+                {
+                    if (tokens.Current.Type != TokenType.Comma)
+                    {
+                        throw new InvalidOperationException("Expected ,");
+                    }
+                    if (!tokens.MoveNext())
+                    {
+                        throw new InvalidOperationException("Expected type argument");
+                    }
+                }
+
+                typeArguments.Add(GetTypeIdentifier(tokens.Current, tokens));
+            }
+        }
+
+        return new TypeIdentifier(firstToken, typeArguments);
+    }
 
     private static bool IsValidStatement(Expression expression)
     {

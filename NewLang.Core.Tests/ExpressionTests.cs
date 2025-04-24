@@ -100,12 +100,65 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 new Expression(new VariableDeclaration(Token.Identifier("b", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
                 ], []))),
             ("fn MyFn() {}", new LangProgram(new ProgramScope([], [
-                new LangFunction(Token.Identifier("MyFn", default), [], new ProgramScope([], []))
+                new LangFunction(Token.Identifier("MyFn", default), [], null, new ProgramScope([], []))
+            ]))),
+            ("fn MyFn(): string {}", new LangProgram(new ProgramScope([], [
+                new LangFunction(Token.Identifier("MyFn", default), [], new TypeIdentifier(Token.StringKeyword(default), []), new ProgramScope([], []))
+            ]))),
+            ("fn MyFn(): result<int, MyErrorType> {}", new LangProgram(new ProgramScope([], [
+                new LangFunction(
+                    Token.Identifier("MyFn", default),
+                    [],
+                    new TypeIdentifier(
+                        Token.Result(default),
+                        [
+                            new TypeIdentifier(Token.IntKeyword(default), []),
+                            new TypeIdentifier(Token.Identifier("MyErrorType", default), []),
+                        ]),
+                    new ProgramScope([], []))
+            ]))),
+            ("fn MyFn(): Outer<Inner<int>> {}", new LangProgram(new ProgramScope([], [
+                new LangFunction(
+                    Token.Identifier("MyFn", default),
+                    [],
+                    new TypeIdentifier(
+                        Token.Identifier("Outer", default),
+                        [
+                            new TypeIdentifier(Token.Identifier("Inner", default), [
+                                new TypeIdentifier(Token.IntKeyword(default), [])]),
+                        ]),
+                    new ProgramScope([], []))
+            ]))),
+            ("fn MyFn(): Outer<Inner<int>, Inner<int>> {}", new LangProgram(new ProgramScope([], [
+                new LangFunction(
+                    Token.Identifier("MyFn", default),
+                    [],
+                    new TypeIdentifier(
+                        Token.Identifier("Outer", default),
+                        [
+                            new TypeIdentifier(Token.Identifier("Inner", default), [new TypeIdentifier(Token.IntKeyword(default), [])]),
+                            new TypeIdentifier(Token.Identifier("Inner", default), [new TypeIdentifier(Token.IntKeyword(default), [])]),
+                        ]),
+                    new ProgramScope([], []))
+            ]))),
+            ("fn MyFn(): result<int, MyErrorType, ThirdTypeArgument> {}", new LangProgram(new ProgramScope([], [
+                new LangFunction(
+                    Token.Identifier("MyFn", default),
+                    [],
+                    new TypeIdentifier(
+                        Token.Result(default),
+                        [
+                            new TypeIdentifier(Token.IntKeyword(default), []),
+                            new TypeIdentifier(Token.Identifier("MyErrorType", default), []),
+                            new TypeIdentifier(Token.Identifier("ThirdTypeArgument", default), []),
+                        ]),
+                    new ProgramScope([], []))
             ]))),
             ("fn MyFn() { var a = 2; }", new LangProgram(new ProgramScope([], [
                 new LangFunction(
                     Token.Identifier("MyFn", default),
                     [],
+                    null,
                     new ProgramScope([new Expression(new VariableDeclaration(
                         Token.Identifier("a", default),
                         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))], [])
@@ -114,7 +167,20 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             ("fn MyFn(int a) {}", new LangProgram(new ProgramScope([], [
                 new LangFunction(
                     Token.Identifier("MyFn", default),
-                    [new FunctionParameter(Token.IntKeyword(default), Token.Identifier("a", default))],
+                    [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(default), []), Token.Identifier("a", default))],
+                    null,
+                    new ProgramScope([], [])
+                )
+            ]))),
+            ("fn MyFn(result<int, MyType> a) {}", new LangProgram(new ProgramScope([], [
+                new LangFunction(
+                    Token.Identifier("MyFn", default),
+                    [new FunctionParameter(new TypeIdentifier(
+                        Token.Result(default), [
+                            new TypeIdentifier(Token.IntKeyword(default), []),
+                            new TypeIdentifier(Token.Identifier("MyType", default), []),
+                        ]), Token.Identifier("a", default))],
+                    null,
                     new ProgramScope([], [])
                 )
             ]))),
@@ -122,9 +188,10 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 new LangFunction(
                     Token.Identifier("MyFn", default),
                     [
-                        new FunctionParameter(Token.IntKeyword(default), Token.Identifier("a", default)),
-                        new FunctionParameter(Token.Identifier("MyType", default), Token.Identifier("b", default)),
+                        new FunctionParameter(new TypeIdentifier(Token.IntKeyword(default), []), Token.Identifier("a", default)),
+                        new FunctionParameter(new TypeIdentifier(Token.Identifier("MyType", default), []), Token.Identifier("b", default)),
                     ],
+                    null,
                     new ProgramScope([], [])
                 )
             ]))),
@@ -200,6 +267,10 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             "fn MyFunction",
             "fn MyFunction(",
             "fn MyFunction(int) {}",
+            "fn MyFunction(result<,>) {}",
+            "fn MyFunction(result<int,>) {}",
+            "fn MyFunction(result<>) {}",
+            "fn MyFunction(result<int int>) {}",
             "fn MyFunction(int a, ) {}",
             "fn MyFunction(,) {}",
             "fn MyFunction(int a int b) {}",
@@ -210,13 +281,12 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
     {
         return new (string Source, LangProgram ExpectedProgram)[]
         {
-            ("fn MyFn(int a, MyType b) {}", new LangProgram(new ProgramScope([], [
+            ("fn MyFn(): string {}", new LangProgram(new ProgramScope([], [
                 new LangFunction(
                     Token.Identifier("MyFn", default),
                     [
-                        new FunctionParameter(Token.IntKeyword(default), Token.Identifier("a", default)),
-                        new FunctionParameter(Token.Identifier("MyType", default), Token.Identifier("b", default)),
                     ],
+                    new TypeIdentifier(Token.StringKeyword(default), []),
                     new ProgramScope([], [])
                 )
             ]))),
@@ -1014,15 +1084,33 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
         return new LangFunction(
             RemoveSourceSpan(function.Name),
             function.Parameters.Select(RemoveSourceSpan).ToArray(),
+            RemoveSourceSpan(function.TypeIdentifier),
             RemoveSourceSpan(function.FunctionScope)
         );
     }
 
+    private static TypeIdentifier? RemoveSourceSpan(TypeIdentifier? typeIdentifier)
+    {
+        if (typeIdentifier is null)
+        {
+            return null;
+        }
+
+        return RemoveSourceSpan(typeIdentifier.Value);
+    }
+
+    private static TypeIdentifier RemoveSourceSpan(TypeIdentifier typeIdentifier)
+    {
+        return new TypeIdentifier(RemoveSourceSpan(typeIdentifier.Identifier), [..typeIdentifier.TypeArguments.Select(RemoveSourceSpan)]);
+    }
+
     private static FunctionParameter RemoveSourceSpan(FunctionParameter parameter)
     {
-        return new FunctionParameter(RemoveSourceSpan(parameter.Type), RemoveSourceSpan(parameter.Identifier));
+        return new FunctionParameter(
+            RemoveSourceSpan(parameter.Type),
+            RemoveSourceSpan(parameter.Identifier));
     }
-    
+
     private static Expression? RemoveSourceSpan(Expression? expression)
     {
         if (expression is null)

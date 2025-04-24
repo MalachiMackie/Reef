@@ -8,6 +8,27 @@ public class PeekableEnumeratorTests
     private readonly PeekableEnumerator<int> _sut = new(((IEnumerable<int>) [1, 2, 3, 4, 5]).GetEnumerator());
 
     [Fact]
+    public void GetCurrent_Should_Throw_When_MoveNextHasNotBeenCalled()
+    {
+        _sut.Invoking(x => x.Current).Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Should_NotChangeCurrent_When_Peeking()
+    {
+        _sut.MoveNext();
+        _sut.MoveNext();
+        _sut.Current.Should().Be(2);
+        _sut.TryPeek(out var peeked).Should().BeTrue();
+        _sut.Current.Should().Be(2);
+        peeked.Should().Be(3);
+        _sut.MoveNext().Should().BeTrue();
+        _sut.Current.Should().Be(3);
+        _sut.MoveNext().Should().BeTrue();
+        _sut.Current.Should().Be(4);
+    }
+
+    [Fact]
     public void Should_EnumerateCorrectly_When_NotPeeked()
     {
         _sut.MoveNext().Should().BeTrue();

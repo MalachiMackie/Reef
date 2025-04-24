@@ -11,6 +11,8 @@ public sealed class PeekableEnumerator<T>(IEnumerator<T> inner) : IEnumerator<T>
     // cant rely on _peeked being not null, because T maybe nullable, and null may be a valid value
     private bool _hasPeekedValue;
     private bool _hasPeeked;
+    private T? _old;
+    private bool _startedEnumeration;
 
     public bool TryPeek([MaybeNullWhen(false)]out T peeked)
     {
@@ -20,6 +22,10 @@ public sealed class PeekableEnumerator<T>(IEnumerator<T> inner) : IEnumerator<T>
             return _hasPeekedValue;
         }
 
+        if (_startedEnumeration)
+        {
+            _old = Current;
+        }
         _hasPeeked = true;
         _hasPeekedValue = inner.MoveNext();
         _peeked = _hasPeekedValue ? inner.Current : default;
@@ -30,9 +36,11 @@ public sealed class PeekableEnumerator<T>(IEnumerator<T> inner) : IEnumerator<T>
 
     public bool MoveNext()
     {
+        _startedEnumeration = true;
         if (_hasPeeked)
         {
             _hasPeeked = false;
+            _old = default;
             return _hasPeekedValue;
         }
 
@@ -46,7 +54,7 @@ public sealed class PeekableEnumerator<T>(IEnumerator<T> inner) : IEnumerator<T>
         inner.Reset();
     }
 
-    public T Current => _hasPeeked ? _peeked! : inner.Current;
+    public T Current => _hasPeeked ? _old! : inner.Current;
 
     T IEnumerator<T>.Current => Current;
 
