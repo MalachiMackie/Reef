@@ -117,8 +117,7 @@ public readonly record struct Block(ProgramScope Scope)
         foreach (var expression in Scope.Expressions)
         {
             sb.Append('\n');
-            sb.Append(expression.ToString());
-            sb.Append(';');
+            sb.Append($"{expression};");
         }
 
         sb.Append('}');

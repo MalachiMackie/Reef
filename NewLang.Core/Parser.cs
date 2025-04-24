@@ -15,6 +15,14 @@ public static class Parser
         return new LangProgram(scope);
     }
 
+    /// <summary>
+    /// Get a scope. Expects first token to be the first token within the scope (or the closing token)
+    /// </summary>
+    /// <param name="tokens"></param>
+    /// <param name="closingToken"></param>
+    /// <param name="allowTailExpression"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
     private static ProgramScope GetScope(
         PeekableEnumerator<Token> tokens,
         TokenType? closingToken,
@@ -24,6 +32,7 @@ public static class Parser
         var foundClosingToken = false;
 
         var expressions = new List<Expression>();
+        var functions = new List<LangFunction>();
                 
         while (tokens.TryPeek(out var peeked))
         {
@@ -33,6 +42,12 @@ public static class Parser
                 tokens.MoveNext();
                 foundClosingToken = true;
                 break;
+            }
+
+            if (peeked.Type == TokenType.Fn)
+            {
+                functions.Add(GetFunction(tokens));
+                continue;
             }
 
             var expression = PopExpression(tokens);
@@ -73,8 +88,83 @@ public static class Parser
             throw new InvalidOperationException($"Expected {closingToken.Value}, got nothing");
         }
 
-        return new ProgramScope(expressions, []);
+        return new ProgramScope(expressions, functions);
     }
+
+    private static LangFunction GetFunction(PeekableEnumerator<Token> tokens)
+    {
+        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Fn)
+        {
+            throw new InvalidOperationException($"expected fn");
+        }
+
+        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
+        {
+            throw new InvalidOperationException("Expected function name");
+        }
+
+        var nameToken = tokens.Current;
+
+        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.LeftParenthesis)
+        {
+            throw new InvalidOperationException("Expected (");
+        }
+
+        var parameterList = new List<FunctionParameter>();
+
+        while (true)
+        {
+            if (!tokens.MoveNext())
+            {
+                throw new InvalidOperationException("Expected ) or parameter type");
+            }
+
+            if (tokens.Current.Type == TokenType.RightParenthesis)
+            {
+                break;
+            }
+
+            if (parameterList.Count != 0)
+            {
+                if (tokens.Current.Type != TokenType.Comma)
+                {
+                    throw new InvalidOperationException("Expected ,");
+                }
+                if (!tokens.MoveNext())
+                {
+                    throw new InvalidOperationException("Expected parameter type");
+                }
+            }
+
+            if (!IsTypeTokenType(tokens.Current.Type))
+            {
+                throw new InvalidOperationException("Expected parameter type");
+            }
+
+            var parameterType = tokens.Current;
+
+            if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
+            {
+                throw new InvalidOperationException("Expected parameter name");
+            }
+
+            parameterList.Add(new FunctionParameter(parameterType, tokens.Current));
+        }
+
+        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.LeftBrace)
+        {
+            throw new InvalidOperationException("Expected {");
+        }
+
+        var functionScope = GetScope(tokens, closingToken: TokenType.RightBrace, allowTailExpression: true);
+
+        return new LangFunction(nameToken, parameterList, functionScope);
+    }
+
+    private static bool IsTypeTokenType(in TokenType tokenType)
+    {
+        return tokenType is TokenType.IntKeyword or TokenType.StringKeyword or TokenType.Result or TokenType.Identifier;
+    } 
 
     private static bool IsValidStatement(Expression expression)
     {

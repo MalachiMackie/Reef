@@ -22,8 +22,8 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
     }
     
     [Theory]
-    [MemberData(nameof(TestCases))]
-    public void Tests(
+    [MemberData(nameof(PopExpressionTestCases))]
+    public void PopExpressionTests(
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
         string source,
         IEnumerable<Token> tokens,
@@ -52,28 +52,28 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
         string source,
         IEnumerable<Token> tokens,
-        Expression expectedExpression)
+        LangProgram expectedProgram)
     {
-        var result = Parser.PopExpression(tokens);
+        var result = Parser.Parse(tokens);
         result.Should().NotBeNull();
         
         // clear out the source spans, we don't actually care about them
-        var expression = RemoveSourceSpan(result.Value);
+        var program = RemoveSourceSpan(result);
 
         try
         {
-            expression.Should().BeEquivalentTo(expectedExpression, opts => opts.AllowingInfiniteRecursion());
+            program.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion());
         }
         catch
         {
-            testOutputHelper.WriteLine("Expected {0}, found {1}", expectedExpression, expression);
+            testOutputHelper.WriteLine("Expected {0}, found {1}", expectedProgram, program);
             throw;
         }
     }
 
     [Theory]
-    [MemberData(nameof(MultiStatementTestCases))]
-    public void MultiStatementTests([SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
+    [MemberData(nameof(ParseTestCases))]
+    public void ParseTest([SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
         string source,
         IEnumerable<Token> tokens,
         LangProgram expectedProgram)
@@ -91,7 +91,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
          }       
     }
 
-    public static IEnumerable<object[]> MultiStatementTestCases()
+    public static IEnumerable<object[]> ParseTestCases()
     {
         return new (string Source, LangProgram ExpectedProgram)[]
         {
@@ -99,6 +99,35 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
                 new Expression(new VariableDeclaration(Token.Identifier("b", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
                 ], []))),
+            ("fn MyFn() {}", new LangProgram(new ProgramScope([], [
+                new LangFunction(Token.Identifier("MyFn", default), [], new ProgramScope([], []))
+            ]))),
+            ("fn MyFn() { var a = 2; }", new LangProgram(new ProgramScope([], [
+                new LangFunction(
+                    Token.Identifier("MyFn", default),
+                    [],
+                    new ProgramScope([new Expression(new VariableDeclaration(
+                        Token.Identifier("a", default),
+                        new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))], [])
+                )
+            ]))),
+            ("fn MyFn(int a) {}", new LangProgram(new ProgramScope([], [
+                new LangFunction(
+                    Token.Identifier("MyFn", default),
+                    [new FunctionParameter(Token.IntKeyword(default), Token.Identifier("a", default))],
+                    new ProgramScope([], [])
+                )
+            ]))),
+            ("fn MyFn(int a, MyType b) {}", new LangProgram(new ProgramScope([], [
+                new LangFunction(
+                    Token.Identifier("MyFn", default),
+                    [
+                        new FunctionParameter(Token.IntKeyword(default), Token.Identifier("a", default)),
+                        new FunctionParameter(Token.Identifier("MyType", default), Token.Identifier("b", default)),
+                    ],
+                    new ProgramScope([], [])
+                )
+            ]))),
         }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedProgram });
     }
     
@@ -164,23 +193,37 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             "-",
             // invalid statement
             "a;",
-            "{a;}"
+            "{a;}",
+            "fn MyFunction() {",
+            "fn MyFunction()",
+            "fn a MyFunction() {}",
+            "fn MyFunction",
+            "fn MyFunction(",
+            "fn MyFunction(int) {}",
+            "fn MyFunction(int a, ) {}",
+            "fn MyFunction(,) {}",
+            "fn MyFunction(int a int b) {}",
         }.Select(x => new object[] { x, new Tokenizer().Tokenize(x) });
     }
 
     public static IEnumerable<object[]> SingleTestCase()
     {
-        return new (string Source, Expression ExpectedExpression)[]
+        return new (string Source, LangProgram ExpectedProgram)[]
         {
-            ("if (a) {b} else {c}", new Expression(new IfExpression(
-                VariableAccessor("a"),
-                new Expression(new Block(new ProgramScope([VariableAccessor("b")], []))),
-                [],
-                new Expression(new Block(new ProgramScope([VariableAccessor("c")], [])))))),
-        }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedExpression });
+            ("fn MyFn(int a, MyType b) {}", new LangProgram(new ProgramScope([], [
+                new LangFunction(
+                    Token.Identifier("MyFn", default),
+                    [
+                        new FunctionParameter(Token.IntKeyword(default), Token.Identifier("a", default)),
+                        new FunctionParameter(Token.Identifier("MyType", default), Token.Identifier("b", default)),
+                    ],
+                    new ProgramScope([], [])
+                )
+            ]))),
+        }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedProgram });
     }
 
-    public static IEnumerable<object[]> TestCases()
+    public static IEnumerable<object[]> PopExpressionTestCases()
     {
         return new (string Source, Expression ExpectedExpression)[]
         {
@@ -965,6 +1008,20 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
     
     private static Expression VariableAccessor(string name) =>
         new (new ValueAccessor(ValueAccessType.Variable, Token.Identifier(name, default)));
+
+    private static LangFunction RemoveSourceSpan(LangFunction function)
+    {
+        return new LangFunction(
+            RemoveSourceSpan(function.Name),
+            function.Parameters.Select(RemoveSourceSpan).ToArray(),
+            RemoveSourceSpan(function.FunctionScope)
+        );
+    }
+
+    private static FunctionParameter RemoveSourceSpan(FunctionParameter parameter)
+    {
+        return new FunctionParameter(RemoveSourceSpan(parameter.Type), RemoveSourceSpan(parameter.Identifier));
+    }
     
     private static Expression? RemoveSourceSpan(Expression? expression)
     {
@@ -1012,7 +1069,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
 
     private static ProgramScope RemoveSourceSpan(ProgramScope scope)
     {
-        return new ProgramScope(scope.Expressions.Select(RemoveSourceSpan).ToArray(), []);
+        return new ProgramScope(scope.Expressions.Select(RemoveSourceSpan).ToArray(), scope.Functions.Select(RemoveSourceSpan).ToArray());
     }
 
     private static StrongBox<MethodCall>? RemoveSourceSpan(StrongBox<MethodCall>? methodCall)
