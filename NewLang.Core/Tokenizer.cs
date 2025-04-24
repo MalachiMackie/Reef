@@ -207,6 +207,7 @@ public class Tokenizer
         {
             TokenType.Identifier => Token.Identifier(source.ToString(), new SourceSpan(position, (uint)source.Length)),
             TokenType.If when source is "if" => Token.If(new SourceSpan(position, (uint)source.Length)),
+            TokenType.Mut when source is "mut" => Token.Mut(new SourceSpan(position, (uint)source.Length)),
             TokenType.LeftParenthesis when source is "(" => Token.LeftParenthesis(new SourceSpan(position,
                 (uint)source.Length)),
             TokenType.RightParenthesis when source is ")" => Token.RightParenthesis(new SourceSpan(position,
@@ -271,6 +272,9 @@ public class Tokenizer
                 tokens[1] = TokenType.If;
                 tokens[2] = TokenType.Identifier;
                 return 3;
+            case 'm':
+                tokens[0] = TokenType.Mut;
+                return 1;
             case '(':
                 tokens[0] = TokenType.LeftParenthesis;
                 return 1;
@@ -381,6 +385,7 @@ public class Tokenizer
             TokenType.RightParenthesis => source is ")",
             TokenType.Semicolon => source is ";",
             TokenType.LeftBrace => source is "{",
+            TokenType.Mut => "mut".AsSpan().StartsWith(source) && source.Length <= "mut".Length,
             TokenType.RightBrace => source is "}",
             TokenType.Pub => "pub".AsSpan().StartsWith(source) && source.Length <= "pub".Length,
             TokenType.Fn => "fn".AsSpan().StartsWith(source) && source.Length <= "fn".Length,

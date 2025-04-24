@@ -452,6 +452,18 @@ public static class Parser
             throw new InvalidOperationException("Expected variable identifier, got nothing");
         }
 
+        MutabilityModifier? mutabilityModifier = null;
+
+        if (tokens.Current.Type == TokenType.Mut)
+        {
+            mutabilityModifier = new MutabilityModifier(tokens.Current);
+
+            if (!tokens.MoveNext())
+            {
+                throw new InvalidOperationException("Expected variable identifier");
+            }
+        }
+
         var identifier = tokens.Current;
         if (identifier.Type != TokenType.Identifier)
         {
@@ -488,7 +500,7 @@ public static class Parser
                         ?? throw new InvalidOperationException("Expected value expression, got nothing");
         }
 
-        return new Expression(new VariableDeclaration(identifier, type, valueExpression));
+        return new Expression(new VariableDeclaration(identifier, mutabilityModifier, type, valueExpression));
     }
     
     private static Expression GetUnaryOperatorExpression(

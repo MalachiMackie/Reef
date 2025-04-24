@@ -83,11 +83,35 @@ public readonly record struct MemberAccess(Expression MemberOwner, Token Identif
     }
 }
 
-public readonly record struct VariableDeclaration(Token VariableNameToken, TypeIdentifier? Type, Expression? Value)
+public readonly record struct VariableDeclaration(
+    Token VariableNameToken, MutabilityModifier? MutabilityModifier, TypeIdentifier? Type, Expression? Value)
 {
     public override string ToString()
     {
-        return $"var {VariableNameToken} = {Value}";
+        var sb = new StringBuilder("var ");
+        if (MutabilityModifier.HasValue)
+        {
+            sb.Append($"{MutabilityModifier.Value} ");
+        }
+        if (Type.HasValue)
+        {
+            sb.Append($": {Type.Value} ");
+        }
+        sb.Append($"{VariableNameToken}");
+        if (Value.HasValue)
+        {
+            sb.Append($" = {Value.Value}");
+        }
+
+        return sb.ToString();
+    }
+}
+
+public readonly record struct MutabilityModifier(Token Modifier)
+{
+    public override string ToString()
+    {
+        return Modifier.ToString();
     }
 }
 

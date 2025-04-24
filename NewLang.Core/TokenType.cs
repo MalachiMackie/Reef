@@ -35,5 +35,6 @@ public enum TokenType
     Dash,
     Star,
     ForwardSlash,
-    Dot
+    Dot,
+    Mut
 }

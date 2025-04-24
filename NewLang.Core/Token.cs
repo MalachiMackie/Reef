@@ -50,6 +50,7 @@ public readonly struct Token
             TokenType.Dash => "-",
             TokenType.Star => "*",
             TokenType.ForwardSlash => "/",
+            TokenType.Mut => "mut",
             _ => throw new UnreachableException()
         };
     }
@@ -79,6 +80,11 @@ public readonly struct Token
     public static Token RightParenthesis(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.RightParenthesis, SourceSpan = sourceSpan };
+    }
+
+    public static Token Mut(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.Mut, SourceSpan = sourceSpan };
     }
 
     public static Token LeftBrace(SourceSpan sourceSpan)

@@ -42,6 +42,7 @@ public class TokenizerTests
             ["==", new[] { Token.DoubleEquals(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["string", new[] { Token.StringKeyword(new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],
             ["return", new[] { Token.Return(new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],
+            ["mut", new[] { Token.Mut(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             ["(", new[] { Token.LeftParenthesis(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             [")", new[] { Token.RightParenthesis(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["{", new[] { Token.LeftBrace(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],

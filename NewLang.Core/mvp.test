@@ -35,3 +35,8 @@ pub class MyClass {
     pub mut field FieldC: string;
     pub field FieldD: string;
 }
+
+pub class GenericClass<T> {
+    pub fn PublicMethod<T1>() {
+    }
+}
