@@ -27,6 +27,7 @@ public readonly record struct TypeIdentifier(Token Identifier, IReadOnlyList<Typ
 }
 
 public readonly record struct LangFunction(
+    AccessModifier? AccessModifier,
     Token Name,
     IReadOnlyList<FunctionParameter> Parameters,
     TypeIdentifier? TypeIdentifier,
@@ -35,6 +36,10 @@ public readonly record struct LangFunction(
     public override string ToString()
     {
         var sb = new StringBuilder();
+        if (AccessModifier.HasValue)
+        {
+            sb.Append($"{AccessModifier} ");
+        }
         sb.Append($"fn {Name}(");
         sb.AppendJoin(", ", Parameters);
         sb.Append(')');
@@ -47,6 +52,14 @@ public readonly record struct LangFunction(
         sb.Append('}');
 
         return sb.ToString();
+    }
+}
+
+public readonly record struct AccessModifier(Token Token)
+{
+    public override string ToString()
+    {
+        return $"{Token}";
     }
 }
 

@@ -44,7 +44,7 @@ public static class Parser
                 break;
             }
 
-            if (peeked.Type == TokenType.Fn)
+            if (peeked.Type is TokenType.Fn or TokenType.Pub)
             {
                 functions.Add(GetFunction(tokens));
                 continue;
@@ -98,9 +98,25 @@ public static class Parser
 
     private static LangFunction GetFunction(PeekableEnumerator<Token> tokens)
     {
-        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Fn)
+        if (!tokens.MoveNext())
         {
-            throw new InvalidOperationException($"expected fn");
+            throw new InvalidOperationException($"expected pub or fn");
+        }
+
+        AccessModifier? accessModifier = null;
+
+        if (tokens.Current.Type == TokenType.Pub)
+        {
+            accessModifier = new AccessModifier(tokens.Current);
+            if (!tokens.MoveNext())
+            {
+                throw new InvalidOperationException("Expected fn");
+            }
+        }
+
+        if (tokens.Current.Type != TokenType.Fn)
+        {
+            throw new InvalidOperationException("Expected fn");
         }
 
         if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
@@ -180,7 +196,7 @@ public static class Parser
 
         var functionScope = GetScope(tokens, closingToken: TokenType.RightBrace, allowTailExpression: true);
 
-        return new LangFunction(nameToken, parameterList, returnType, functionScope);
+        return new LangFunction(accessModifier, nameToken, parameterList, returnType, functionScope);
     }
 
     private static bool IsTypeTokenType(in TokenType tokenType)

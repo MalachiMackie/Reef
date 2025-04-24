@@ -100,13 +100,14 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 new Expression(new VariableDeclaration(Token.Identifier("b", default), null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
                 ], []))),
             ("fn MyFn() {}", new LangProgram(new ProgramScope([], [
-                new LangFunction(Token.Identifier("MyFn", default), [], null, new ProgramScope([], []))
+                new LangFunction(null, Token.Identifier("MyFn", default), [], null, new ProgramScope([], []))
             ]))),
             ("fn MyFn(): string {}", new LangProgram(new ProgramScope([], [
-                new LangFunction(Token.Identifier("MyFn", default), [], new TypeIdentifier(Token.StringKeyword(default), []), new ProgramScope([], []))
+                new LangFunction(null, Token.Identifier("MyFn", default), [], new TypeIdentifier(Token.StringKeyword(default), []), new ProgramScope([], []))
             ]))),
             ("fn MyFn(): result<int, MyErrorType> {}", new LangProgram(new ProgramScope([], [
                 new LangFunction(
+                    null,
                     Token.Identifier("MyFn", default),
                     [],
                     new TypeIdentifier(
@@ -119,6 +120,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             ]))),
             ("fn MyFn(): Outer<Inner<int>> {}", new LangProgram(new ProgramScope([], [
                 new LangFunction(
+                    null,
                     Token.Identifier("MyFn", default),
                     [],
                     new TypeIdentifier(
@@ -131,6 +133,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             ]))),
             ("fn MyFn(): Outer<Inner<int>, Inner<int>> {}", new LangProgram(new ProgramScope([], [
                 new LangFunction(
+                    null,
                     Token.Identifier("MyFn", default),
                     [],
                     new TypeIdentifier(
@@ -143,6 +146,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             ]))),
             ("fn MyFn(): result<int, MyErrorType, ThirdTypeArgument> {}", new LangProgram(new ProgramScope([], [
                 new LangFunction(
+                    null,
                     Token.Identifier("MyFn", default),
                     [],
                     new TypeIdentifier(
@@ -156,6 +160,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             ]))),
             ("fn MyFn() { var a = 2; }", new LangProgram(new ProgramScope([], [
                 new LangFunction(
+                    null,
                     Token.Identifier("MyFn", default),
                     [],
                     null,
@@ -167,6 +172,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             ]))),
             ("fn MyFn(int a) {}", new LangProgram(new ProgramScope([], [
                 new LangFunction(
+                    null,
                     Token.Identifier("MyFn", default),
                     [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(default), []), Token.Identifier("a", default))],
                     null,
@@ -175,6 +181,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             ]))),
             ("fn MyFn(result<int, MyType> a) {}", new LangProgram(new ProgramScope([], [
                 new LangFunction(
+                    null,
                     Token.Identifier("MyFn", default),
                     [new FunctionParameter(new TypeIdentifier(
                         Token.Result(default), [
@@ -187,6 +194,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             ]))),
             ("fn MyFn(int a, MyType b) {}", new LangProgram(new ProgramScope([], [
                 new LangFunction(
+                    null,
                     Token.Identifier("MyFn", default),
                     [
                         new FunctionParameter(new TypeIdentifier(Token.IntKeyword(default), []), Token.Identifier("a", default)),
@@ -198,6 +206,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             ]))),
             ("fn MyFn(): int {return 1;}", new LangProgram(new ProgramScope([], [
                 new LangFunction(
+                    null,
                     Token.Identifier("MyFn", default),
                     [],
                     new TypeIdentifier(Token.IntKeyword(default), []),
@@ -1109,11 +1118,19 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
     private static LangFunction RemoveSourceSpan(LangFunction function)
     {
         return new LangFunction(
+            RemoveSourceSpan(function.AccessModifier),
             RemoveSourceSpan(function.Name),
-            function.Parameters.Select(RemoveSourceSpan).ToArray(),
+            [..function.Parameters.Select(RemoveSourceSpan)],
             RemoveSourceSpan(function.TypeIdentifier),
             RemoveSourceSpan(function.FunctionScope)
         );
+    }
+
+    private static AccessModifier? RemoveSourceSpan(AccessModifier? accessModifier)
+    {
+        return accessModifier is null
+            ? null
+            : new AccessModifier(RemoveSourceSpan(accessModifier.Value.Token));
     }
 
     private static TypeIdentifier? RemoveSourceSpan(TypeIdentifier? typeIdentifier)
