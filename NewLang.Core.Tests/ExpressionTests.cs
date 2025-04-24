@@ -52,9 +52,9 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
         string source,
         IEnumerable<Token> tokens,
-        LangProgram expectedProgram)
+        Expression expectedProgram)
     {
-        var result = Parser.Parse(tokens);
+        var result = Parser.PopExpression(tokens);
         result.Should().NotBeNull();
         
         // clear out the source spans, we don't actually care about them
@@ -96,8 +96,8 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
         return new (string Source, LangProgram ExpectedProgram)[]
         {
             ("var a = 1;var b = 2;", new LangProgram(new ProgramScope([
-                new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
-                new Expression(new VariableDeclaration(Token.Identifier("b", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
+                new Expression(new VariableDeclaration(Token.Identifier("a", default), null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
+                new Expression(new VariableDeclaration(Token.Identifier("b", default), null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
                 ], []))),
             ("fn MyFn() {}", new LangProgram(new ProgramScope([], [
                 new LangFunction(Token.Identifier("MyFn", default), [], null, new ProgramScope([], []))
@@ -161,6 +161,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                     null,
                     new ProgramScope([new Expression(new VariableDeclaration(
                         Token.Identifier("a", default),
+                        null,
                         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))], [])
                 )
             ]))),
@@ -283,22 +284,19 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             "fn MyFunction(,) {}",
             "fn MyFunction(int a int b) {}",
             // no semicolon
-            "return 1"
+            "return 1",
         }.Select(x => new object[] { x, new Tokenizer().Tokenize(x) });
     }
 
     public static IEnumerable<object[]> SingleTestCase()
     {
-        return new (string Source, LangProgram ExpectedProgram)[]
+        return new (string Source, Expression ExpectedProgram)[]
         {
-            ("fn MyFn(): int {return 1;}", new LangProgram(new ProgramScope([], [
-                new LangFunction(
-                    Token.Identifier("MyFn", default),
-                    [],
-                    new TypeIdentifier(Token.IntKeyword(default), []),
-                    new ProgramScope([new Expression(new MethodReturn(new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))], [])
-                )
-            ]))),
+            ("var a = 1", new Expression(
+                new VariableDeclaration(
+                    Token.Identifier("a", default),
+                    null,
+                    new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))),
         }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedProgram });
     }
 
@@ -359,36 +357,50 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 VariableAccessor("a"),
                 VariableAccessor("b"),
                 Token.ForwardSlash(default)))),
-            ("var a = b", new Expression(new VariableDeclaration(Token.Identifier("a", default), VariableAccessor("b")))),
+            ("var a: int = b", new Expression(
+                new VariableDeclaration(
+                    Token.Identifier("a", default),
+                    new TypeIdentifier(Token.IntKeyword(default), []),
+                    VariableAccessor("b")))),
+            ("var a: int", new Expression(
+                new VariableDeclaration(
+                    Token.Identifier("a", default),
+                    new TypeIdentifier(Token.IntKeyword(default), []),
+                    null))),
+            ("var a = b", new Expression(new VariableDeclaration(Token.Identifier("a", default), null, VariableAccessor("b")))),
             ("var a = 1", new Expression(new VariableDeclaration(
                 Token.Identifier("a", default),
+                null,
                 new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))),
             ("var a = true", new Expression(new VariableDeclaration(
                 Token.Identifier("a", default),
+                null,
                 new Expression(new ValueAccessor(ValueAccessType.Literal, Token.True(default)))))),
             ("var a = \"thing\"", new Expression(new VariableDeclaration(
                 Token.Identifier("a", default),
+                null,
                 new Expression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("thing", default)))))),
             ("{}", new Expression(Block.Empty)),
             ("{var a = 1;}", new Expression(new Block(new ProgramScope([
-                new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
+                new Expression(new VariableDeclaration(Token.Identifier("a", default), null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
                 ], [])))),
             // tail expression
             ("{var a = 1}", new Expression(new Block(
                 new ProgramScope([
-                new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))], [])))),
+                new Expression(new VariableDeclaration(Token.Identifier("a", default), null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))], [])))),
             // tail expression
             ("{var a = 1;var b = 2}", new Expression(new Block(
-                new ProgramScope([new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
-                new Expression(new VariableDeclaration(Token.Identifier("b", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))], [])))),
+                new ProgramScope([new Expression(new VariableDeclaration(Token.Identifier("a", default), null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
+                new Expression(new VariableDeclaration(Token.Identifier("b", default), null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))], [])))),
             ("{var a = 1; var b = 2;}", new Expression(new Block(new ProgramScope([
-                new Expression(new VariableDeclaration(Token.Identifier("a", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
-                new Expression(new VariableDeclaration(Token.Identifier("b", default), new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
+                new Expression(new VariableDeclaration(Token.Identifier("a", default), null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
+                new Expression(new VariableDeclaration(Token.Identifier("b", default), null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
                 ], [])))),
             ("if (a) var c = 2;", new Expression(new IfExpression(
                 VariableAccessor("a"),
                 new Expression(new VariableDeclaration(
                     Token.Identifier("c", default),
+                    null,
                     new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))), [], null))),
             ("if (a > b) {var c = \"value\";}", new Expression(new IfExpression(
                 new Expression(new BinaryOperator(
@@ -399,6 +411,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 new Expression(new Block(new ProgramScope([
                     new Expression(new VariableDeclaration(
                         Token.Identifier("c", default),
+                        null,
                         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("value", default)))))
                 ], []))), [], null))),
             ("if (a) {} else {var b = 2;}", new Expression(new IfExpression(
@@ -408,6 +421,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 new Expression(new Block(new ProgramScope([
                     new Expression(new VariableDeclaration(
                         Token.Identifier("b", default),
+                        null,
                         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))
                 ], [])))))),
             ("if (a) {} else if (b) {}", new Expression(new IfExpression(
@@ -460,6 +474,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, default)))))),
             ("var a = if (b) 1 else 2;", new Expression(new VariableDeclaration(
                 Token.Identifier("a", default),
+                null,
                 new Expression(new IfExpression(
                     VariableAccessor("b"),
                     new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))),
@@ -467,6 +482,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                     new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))))),
             ("var a = if (b) {1} else {2};", new Expression(new VariableDeclaration(
                 Token.Identifier("a", default),
+                null,
                 new Expression(new IfExpression(
                     VariableAccessor("b"),
                     new Expression(new Block(new ProgramScope([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))], []))),
@@ -1201,6 +1217,7 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             : new StrongBox<VariableDeclaration>(
                 new VariableDeclaration(
                     VariableNameToken: RemoveSourceSpan(variableDeclaration.Value.VariableNameToken),
+                    Type: RemoveSourceSpan(variableDeclaration.Value.Type),
                     Value: RemoveSourceSpan(variableDeclaration.Value.Value)));
     }
 

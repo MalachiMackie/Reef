@@ -444,21 +444,35 @@ public static class Parser
 
         if (!tokens.MoveNext())
         {
-            throw new InvalidOperationException("Expected equals tokens, got nothing");
+            throw new InvalidOperationException("Expected = or ; token, got nothing");
         }
 
-        if (tokens.Current.Type != TokenType.Equals)
+        TypeIdentifier? type = null;
+        Expression? valueExpression = null;
+
+        if (tokens.Current.Type == TokenType.Colon)
         {
-            throw new InvalidOperationException($"Expected equals token, got {tokens.Current}");
-        }
+            if (!tokens.MoveNext())
+            {
+                throw new InvalidOperationException("Expected type");
+            }
 
-        var valueExpression = PopExpression(tokens);
-        if (valueExpression is null)
+            type = GetTypeIdentifier(tokens.Current, tokens);
+
+            if (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.Equals)
+            {
+                tokens.MoveNext();
+                valueExpression = PopExpression(tokens)
+                            ?? throw new InvalidOperationException("Expected value expression, got nothing");
+            }
+        }
+        else if (tokens.Current.Type == TokenType.Equals)
         {
-            throw new InvalidOperationException("Expected value expression, got nothing");
+            valueExpression = PopExpression(tokens)
+                        ?? throw new InvalidOperationException("Expected value expression, got nothing");
         }
 
-        return new Expression(new VariableDeclaration(identifier, valueExpression.Value));
+        return new Expression(new VariableDeclaration(identifier, type, valueExpression));
     }
     
     private static Expression GetUnaryOperatorExpression(

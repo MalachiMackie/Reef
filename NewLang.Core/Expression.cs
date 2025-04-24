@@ -83,7 +83,7 @@ public readonly record struct MemberAccess(Expression MemberOwner, Token Identif
     }
 }
 
-public readonly record struct VariableDeclaration(Token VariableNameToken, Expression Value)
+public readonly record struct VariableDeclaration(Token VariableNameToken, TypeIdentifier? Type, Expression? Value)
 {
     public override string ToString()
     {
