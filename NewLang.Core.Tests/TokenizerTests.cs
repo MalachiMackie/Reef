@@ -37,6 +37,7 @@ public class TokenizerTests
             ["field", new[] { Token.Field(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["fn", new[] { Token.Fn(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["int", new[] { Token.IntKeyword(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
+            ["new", new[] { Token.New(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             ["if", new[] { Token.If(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["else", new[] { Token.Else(new SourceSpan(new SourcePosition(0, 0, 0), 4)) }],
             ["var", new[] { Token.Var(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],

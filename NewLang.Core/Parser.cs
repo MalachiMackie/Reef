@@ -206,7 +206,7 @@ public static class Parser
             throw new InvalidOperationException("Expected field type");
         }
 
-        var type = GetTypeIdentifier(tokens.Current, tokens);
+        var type = GetTypeIdentifier(tokens);
 
         return new ClassField(accessModifier, mutabilityModifier, name, type);
     }
@@ -382,7 +382,7 @@ public static class Parser
                 }
             }
 
-            var parameterType = GetTypeIdentifier(tokens.Current, tokens);
+            var parameterType = GetTypeIdentifier(tokens);
 
             if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
             {
@@ -406,7 +406,7 @@ public static class Parser
                 throw new InvalidOperationException("Expected return type");
             }
 
-            returnType = GetTypeIdentifier(tokens.Current, tokens);
+            returnType = GetTypeIdentifier(tokens);
 
             if (!tokens.MoveNext())
             {
@@ -434,12 +434,14 @@ public static class Parser
         return tokenType is TokenType.IntKeyword or TokenType.StringKeyword or TokenType.Result or TokenType.Identifier;
     } 
 
-    private static TypeIdentifier GetTypeIdentifier(Token firstToken, PeekableEnumerator<Token> tokens)
+    private static TypeIdentifier GetTypeIdentifier(PeekableEnumerator<Token> tokens)
     {
-        if (!IsTypeTokenType(firstToken.Type))
+        if (!IsTypeTokenType(tokens.Current.Type))
         {
             throw new InvalidOperationException("Expected type");
         }
+
+        var typeIdentifier = tokens.Current;
 
         var typeArguments = new List<TypeIdentifier>();
         if (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.Turbofish)
@@ -478,11 +480,11 @@ public static class Parser
                     }
                 }
 
-                typeArguments.Add(GetTypeIdentifier(tokens.Current, tokens));
+                typeArguments.Add(GetTypeIdentifier(tokens));
             }
         }
 
-        return new TypeIdentifier(firstToken, typeArguments);
+        return new TypeIdentifier(typeIdentifier, typeArguments);
     }
 
     private static bool IsValidStatement(Expression expression)
@@ -521,8 +523,72 @@ public static class Parser
             TokenType.LeftParenthesis or TokenType.Turbofish => GetMethodCall(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             TokenType.Dot => GetMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             TokenType.Return => GetMethodReturn(tokens),
+            TokenType.New => GetObjectInitializer(tokens),
             _ => throw new InvalidOperationException($"Token type {tokens.Current.Type} not supported")
         };
+    }
+
+    private static Expression GetObjectInitializer(PeekableEnumerator<Token> tokens)
+    {
+        if (!tokens.MoveNext())
+        {
+            throw new InvalidOperationException("Expected type");
+        }
+
+        var type = GetTypeIdentifier(tokens);
+
+        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.LeftBrace)
+        {
+            throw new InvalidOperationException("Expected {");
+        }
+
+        var fieldInitializers = new List<FieldInitializer>();
+
+        while (true)
+        {
+            if (!tokens.MoveNext())
+            {
+                throw new InvalidOperationException("Expected field name");
+            }
+
+            if (tokens.Current.Type == TokenType.RightBrace)
+            {
+                // allow 0 field initailizers
+                break;
+            }
+
+            if (fieldInitializers.Count > 0)
+            {
+                if (tokens.Current.Type != TokenType.Comma)
+                {
+                    throw new InvalidOperationException("Expected ,");
+                }
+
+                if (!tokens.MoveNext())
+                {
+                    throw new InvalidOperationException("Expected field name");
+                }
+            }
+
+            if (tokens.Current.Type != TokenType.Identifier)
+            {
+                throw new InvalidOperationException("Expected field name");
+            }
+
+            var fieldName = tokens.Current;
+
+            if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Equals)
+            {
+                throw new InvalidOperationException("Expected =");
+            }
+
+            var fieldValue = PopExpression(tokens)
+                ?? throw new InvalidOperationException("Expected field initializer value expression");
+
+            fieldInitializers.Add(new FieldInitializer(fieldName, fieldValue));
+        }
+
+        return new Expression(new ObjectInitializer(type, fieldInitializers));
     }
 
     private static Expression GetMethodReturn(PeekableEnumerator<Token> tokens)
@@ -614,7 +680,7 @@ public static class Parser
                     }
                 }
 
-                typeArguments.Add(GetTypeIdentifier(tokens.Current, tokens));
+                typeArguments.Add(GetTypeIdentifier(tokens));
             }
         }
 
@@ -776,7 +842,7 @@ public static class Parser
                 throw new InvalidOperationException("Expected type");
             }
 
-            type = GetTypeIdentifier(tokens.Current, tokens);
+            type = GetTypeIdentifier(tokens);
 
             if (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.Equals)
             {

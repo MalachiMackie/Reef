@@ -438,7 +438,15 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             "class MyClass {fn MyFnWithSemicolon{};}",
             "class MyClass {fn FnWithoutBody}",
             "class MyClass { class InnerClassAreNotAllowed {} }",
-            "fn SomeFn() { class NoClassesInFunctions {}}"
+            "fn SomeFn() { class NoClassesInFunctions {}}",
+            "new",
+            "new Thing",
+            "new Thing {",
+            "new Thing{ a }",
+            "new Thing{ a = }",
+            "new Thing{ a = 1 b = 2 }",
+            "new Thing { , }",
+            "new Thing { , a = 1 }"
         ];
         return strings.Select(x => new object[] { x, new Tokenizer().Tokenize(x) });
     }
@@ -702,6 +710,22 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new Expression(new MemberAccess(VariableAccessor("b"), Token.Identifier("c", default))),
                 VariableAccessor("a"),
                 Token.Star(default)))),
+            ("new Thing {}", new Expression(new ObjectInitializer(
+                new TypeIdentifier(Token.Identifier("Thing", default), []),
+                []))),
+            ("new Thing {A = a}", new Expression(new ObjectInitializer(
+                new TypeIdentifier(Token.Identifier("Thing", default), []),
+                [new FieldInitializer(Token.Identifier("A", default), VariableAccessor("a"))]))),
+            // todo: trailing commas everwhere
+            //("new Thing {A = a,}", new Expression(new ObjectInitializer(
+            //    new TypeIdentifier(Token.Identifier("Thing", default), []),
+            //    [new FieldInitializer(Token.Identifier("A", default), VariableAccessor("a"))]))),
+            ("new Thing {A = a, B = b}", new Expression(new ObjectInitializer(
+                new TypeIdentifier(Token.Identifier("Thing", default), []),
+                [
+                    new FieldInitializer(Token.Identifier("A", default), VariableAccessor("a")),
+                    new FieldInitializer(Token.Identifier("B", default), VariableAccessor("b")),
+                ]))),
             // ____binding strength tests
             // __greater than
             ( // greater than
@@ -1360,7 +1384,24 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             RemoveSourceSpan(expression.Block),
             RemoveSourceSpan(expression.MethodCall),
             RemoveSourceSpan(expression.MemberAccess),
-            RemoveSourceSpan(expression.MethodReturn));
+            RemoveSourceSpan(expression.MethodReturn),
+            RemoveSourceSpan(expression.ObjectInitializer));
+    }
+
+    private static StrongBox<ObjectInitializer>? RemoveSourceSpan(StrongBox<ObjectInitializer>? objectInitializer)
+    {
+        return objectInitializer is null
+            ? null
+            : new StrongBox<ObjectInitializer>(new ObjectInitializer(
+                RemoveSourceSpan(objectInitializer.Value.Type),
+                [..objectInitializer.Value.FieldInitializers.Select(RemoveSourceSpan)]));
+    }
+
+    private static FieldInitializer RemoveSourceSpan(FieldInitializer fieldInitializer)
+    {
+        return new FieldInitializer(
+            RemoveSourceSpan(fieldInitializer.FieldName),
+            RemoveSourceSpan(fieldInitializer.Value));
     }
 
     private static StrongBox<MemberAccess>? RemoveSourceSpan(StrongBox<MemberAccess>? memberAccess)

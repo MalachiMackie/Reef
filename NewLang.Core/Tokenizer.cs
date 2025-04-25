@@ -218,6 +218,7 @@ public class Tokenizer
             TokenType.LeftBrace when source is "{" => Token.LeftBrace(new SourceSpan(position, (uint)source.Length)),
             TokenType.RightBrace when source is "}" => Token.RightBrace(new SourceSpan(position, (uint)source.Length)),
             TokenType.Pub when source is "pub" => Token.Pub(new SourceSpan(position, (uint)source.Length)),
+            TokenType.New when source is "new" => Token.New(new SourceSpan(position, (uint)source.Length)),
             TokenType.Fn when source is "fn" => Token.Fn(new SourceSpan(position, (uint)source.Length)),
             TokenType.IntKeyword when source is "int" =>
                 Token.IntKeyword(new SourceSpan(position, (uint)source.Length)),
@@ -313,6 +314,9 @@ public class Tokenizer
             case '>':
                 tokens[0] = TokenType.RightAngleBracket;
                 return 1;
+            case 'n':
+                tokens[0] = TokenType.New;
+                return 1;
             case 'v':
                 tokens[0] = TokenType.Var;
                 tokens[1] = TokenType.Identifier;
@@ -395,6 +399,7 @@ public class Tokenizer
             TokenType.Semicolon => source is ";",
             TokenType.LeftBrace => source is "{",
             TokenType.Mut => "mut".AsSpan().StartsWith(source) && source.Length <= "mut".Length,
+            TokenType.New => "new".AsSpan().StartsWith(source) && source.Length <= "new".Length,
             TokenType.Class => "class".AsSpan().StartsWith(source) && source.Length <= "class".Length,
             TokenType.RightBrace => source is "}",
             TokenType.Pub => "pub".AsSpan().StartsWith(source) && source.Length <= "pub".Length,

@@ -8,6 +8,14 @@
         return ok(b);
     }
 
+    b = 3;
+
+    var thing = new Class2 {
+        A = 3
+    };
+
+    MyClass::StaticMethod();
+
     PrivateFn::<string>();
 
     return error("something wrong");
@@ -31,6 +39,10 @@ Println(SomethingElse(1));
 pub class MyClass {
     pub fn PublicMethod() {
     }
+
+    pub static fn StaticMethod() {
+
+    }
     
     field FieldA: string;
     mut field FieldB: string;
@@ -41,4 +53,8 @@ pub class MyClass {
 pub class GenericClass<T> {
     pub fn PublicMethod<T1>() {
     }
+}
+
+pub class Class2 {
+    pub field A: string;
 }

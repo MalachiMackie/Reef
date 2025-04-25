@@ -40,5 +40,6 @@ public enum TokenType
     ForwardSlash,
     Dot,
     Mut,
-    Turbofish
+    Turbofish,
+    New
 }

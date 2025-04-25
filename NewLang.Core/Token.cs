@@ -249,4 +249,9 @@ public readonly struct Token
     {
         return new Token { Type = TokenType.Dot, SourceSpan = sourceSpan };
     }
+
+    public static Token New(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.New, SourceSpan = sourceSpan };
+    }
 }
