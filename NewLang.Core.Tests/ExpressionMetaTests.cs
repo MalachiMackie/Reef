@@ -14,7 +14,7 @@ public class ExpressionMetaTests
     public void Meta_Should_TestAllExpressionTypes(
         ValueAccessType? valueAccessType, UnaryOperatorType? unaryOperatorType, BinaryOperatorType? binaryOperatorType)
     {
-        var testCases = ExpressionTests.PopExpressionTestCases()
+        var testCases = ParserTests.PopExpressionTestCases()
             .Select(x => x[^1])
             .Cast<Expression>()
             // only check test cases that check for a single expression
@@ -50,7 +50,7 @@ public class ExpressionMetaTests
     [MemberData(nameof(OperatorCombinationMetaTestCases))]
     public void Meta_Should_TestAllOperatorCombinations(BinaryOperatorType? binaryA, BinaryOperatorType? binaryB, UnaryOperatorType? unaryA, UnaryOperatorType? unaryB)
     {
-        var testCases = ExpressionTests.PopExpressionTestCases()
+        var testCases = ParserTests.PopExpressionTestCases()
             .Select(x => x[^1])
             .Cast<Expression>()
             .ToArray();

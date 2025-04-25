@@ -7,7 +7,7 @@ using Xunit.Abstractions;
 
 namespace NewLang.Core.Tests;
 
-public class ExpressionTests(ITestOutputHelper testOutputHelper)
+public class ParserTests(ITestOutputHelper testOutputHelper)
 {
     [Theory]
     [MemberData(nameof(FailTestCases))]
