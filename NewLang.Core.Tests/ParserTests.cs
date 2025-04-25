@@ -53,9 +53,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
         string source,
         IEnumerable<Token> tokens,
-        LangProgram expectedProgram)
+        Expression expectedProgram)
     {
-        var result = Parser.Parse(tokens);
+        var result = Parser.PopExpression(tokens);
         result.Should().NotBeNull();
         
         // clear out the source spans, we don't actually care about them
@@ -106,7 +106,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ("fn MyFn(): string {}", new LangProgram([], [
                 new LangFunction(null, Token.Identifier("MyFn", default), [], [], new TypeIdentifier(Token.StringKeyword(default), []), new Block([], []))
             ], [])),
-            ("fn MyFn(): result<int, MyErrorType> {}", new LangProgram([], [
+            ("fn MyFn(): result::<int, MyErrorType> {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
@@ -120,7 +120,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         ]),
                     new Block([], []))
             ], [])),
-            ("fn MyFn(): Outer<Inner<int>> {}", new LangProgram([], [
+            ("fn MyFn(): Outer::<Inner::<int>> {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
@@ -134,7 +134,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         ]),
                     new Block([], []))
             ], [])),
-            ("fn MyFn(): Outer<Inner<int>, Inner<int>> {}", new LangProgram([], [
+            ("fn MyFn(): Outer::<Inner::<int>, Inner::<int>> {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
@@ -148,7 +148,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         ]),
                     new Block([], []))
             ], [])),
-            ("fn MyFn(): result<int, MyErrorType, ThirdTypeArgument> {}", new LangProgram([], [
+            ("fn MyFn(): result::<int, MyErrorType, ThirdTypeArgument> {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
@@ -211,7 +211,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     null,
                     new Block([], [])
                 )], [])),
-            ("fn MyFn(result<int, MyType> a) {}", new LangProgram([], [
+            ("fn MyFn(result::<int, MyType> a) {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
@@ -357,6 +357,12 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             "if (a) {if (b) {1} else {2}} else {}",
             */
             "a(",
+            "a<string>()",
+            "a::<>()",
+            "a::<string,>()",
+            "a::<,>()",
+            "a::<string string>()",
+            "a::<string()",
             "a(a, )",
             "a(,)",
             "a(a b)",
@@ -377,6 +383,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             // invalid statement
             "a;",
             "{a;}",
+            "fn MyFn::<string>(){}",
             "fn MyFn<>(){}",
             "fn MyFn<,>(){}",
             "fn MyFn<A,>(){}",
@@ -387,10 +394,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             "fn MyFunction",
             "fn MyFunction(",
             "fn MyFunction(int) {}",
-            "fn MyFunction(result<,> a) {}",
-            "fn MyFunction(result<int,> a) {}",
-            "fn MyFunction(result<> a) {}",
-            "fn MyFunction(result<int int> a) {}",
+            "fn MyFunction(result<int> a) {}",
+            "fn MyFunction(result::<,> a) {}",
+            "fn MyFunction(result::<int,> a) {}",
+            "fn MyFunction(result::<> a) {}",
+            "fn MyFunction(result::<int int> a) {}",
             "fn MyFunction(int a, ) {}",
             "fn MyFunction(,) {}",
             "fn MyFunction(int a int b) {}",
@@ -413,16 +421,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
 
     public static IEnumerable<object[]> SingleTestCase()
     {
-        return new (string Source, LangProgram ExpectedProgram)[]
+        return new (string Source, Expression ExpectedProgram)[]
         {
-            ("fn MyFn<T1>() {}", new LangProgram([], [new LangFunction(
-                    null,
-                    Token.Identifier("MyFn", default),
-                    [Token.Identifier("T1", default)],
-                    [],
-                    null,
-                    new Block([], [])
-                )], [])),
+            ("a::<string>()", new Expression(new MethodCall(VariableAccessor("a"), [new TypeIdentifier(Token.StringKeyword(default), [])], []))),
         }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedProgram });
     }
 
@@ -634,19 +635,32 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     new Expression(new Block([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))], [])),
                     [],
                     new Expression(new Block([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))], []))))))),
-            ("a()", new Expression(new MethodCall(VariableAccessor("a"), []))),
-            ("a(b)", new Expression(new MethodCall(VariableAccessor("a"), [
+            ("a()", new Expression(new MethodCall(VariableAccessor("a"), [], []))),
+            ("a::<string>()", new Expression(new MethodCall(VariableAccessor("a"), [new TypeIdentifier(Token.StringKeyword(default), [])], []))),
+            ("a::<string, int>()", new Expression(new MethodCall(
+                VariableAccessor("a"),
+                [new TypeIdentifier(Token.StringKeyword(default), []), new TypeIdentifier(Token.IntKeyword(default), [])],
+                []))),
+            ("a::<string, int, result::<int>>()", new Expression(new MethodCall(
+                VariableAccessor("a"),
+                [
+                    new TypeIdentifier(Token.StringKeyword(default), []),
+                    new TypeIdentifier(Token.IntKeyword(default), []),
+                    new TypeIdentifier(Token.Result(default), [new TypeIdentifier(Token.IntKeyword(default), [])]),
+                ],
+                []))),
+            ("a(b)", new Expression(new MethodCall(VariableAccessor("a"), [], [
             VariableAccessor("b")]))),
-            ("a(b, c)", new Expression(new MethodCall(VariableAccessor("a"), [
+            ("a(b, c)", new Expression(new MethodCall(VariableAccessor("a"), [], [
                 VariableAccessor("b"), VariableAccessor("c")
             ]))),
-            ("a(b, c > d, e)", new Expression(new MethodCall(VariableAccessor("a"), [
+            ("a(b, c > d, e)", new Expression(new MethodCall(VariableAccessor("a"), [], [
                 VariableAccessor("b"),
                 new Expression(new BinaryOperator(BinaryOperatorType.GreaterThan, VariableAccessor("c"), VariableAccessor("d"), Token.RightAngleBracket(default))),
                 VariableAccessor("e")
             ]))),
             ("a.b", new Expression(new MemberAccess(VariableAccessor("a"), Token.Identifier("b", default)))),
-            ("a.b()", new Expression(new MethodCall(new Expression(new MemberAccess(VariableAccessor("a"), Token.Identifier("b", default))), []))),
+            ("a.b()", new Expression(new MethodCall(new Expression(new MemberAccess(VariableAccessor("a"), Token.Identifier("b", default))), [], []))),
             ("a?.b", new Expression(new MemberAccess(
                 new Expression(new UnaryOperator(UnaryOperatorType.FallOut, VariableAccessor("a"), Token.QuestionMark(default))),
                 Token.Identifier("b", default)))),
@@ -1306,16 +1320,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         {
             return null;
         }
-        
-        return expression.Value with
-        {
-            ValueAccessor = RemoveSourceSpan(expression.Value.ValueAccessor),
-            UnaryOperator = RemoveSourceSpan(expression.Value.UnaryOperator),
-            BinaryOperator = RemoveSourceSpan(expression.Value.BinaryOperator),
-            VariableDeclaration = RemoveSourceSpan(expression.Value.VariableDeclaration),
-            Block = RemoveSourceSpan(expression.Value.Block),
-            IfExpression = RemoveSourceSpan(expression.Value.IfExpression)
-        };
+
+        return RemoveSourceSpan(expression.Value);
     }
     
     private static Expression RemoveSourceSpan(Expression expression)
@@ -1353,6 +1359,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ? null
             : new StrongBox<MethodCall>(new MethodCall(
                 RemoveSourceSpan(methodCall.Value.Method),
+                [..methodCall.Value.TypeArguments.Select(RemoveSourceSpan)],
                 [..methodCall.Value.ParameterList.Select(RemoveSourceSpan)]));
     }
 

@@ -38,7 +38,7 @@ public readonly record struct TypeIdentifier(Token Identifier, IReadOnlyList<Typ
         var sb = new StringBuilder($"{Identifier}");
         if (TypeArguments.Count > 0)
         {
-            sb.Append('<');
+            sb.Append("::<");
             sb.AppendJoin(", ", TypeArguments);
             sb.Append('>');
         }

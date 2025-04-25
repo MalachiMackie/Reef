@@ -231,6 +231,8 @@ public class Tokenizer
             TokenType.Comma when source is "," => Token.Comma(new SourceSpan(position, (uint)source.Length)),
             TokenType.DoubleEquals when source is "==" => Token.DoubleEquals(new SourceSpan(position,
                 (uint)source.Length)),
+            TokenType.Turbofish when source is "::" => Token.Turbofish(new SourceSpan(position,
+                (uint)source.Length)),
             TokenType.Else when source is "else" => Token.Else(new SourceSpan(position, (uint)source.Length)),
             TokenType.IntLiteral when int.TryParse(source, out var intValue) => Token.IntLiteral(intValue,
                 new SourceSpan(position, (uint)source.Length)),
@@ -303,7 +305,8 @@ public class Tokenizer
                 return 3;
             case ':':
                 tokens[0] = TokenType.Colon;
-                return 1;
+                tokens[1] = TokenType.Turbofish;
+                return 2;
             case '<':
                 tokens[0] = TokenType.LeftAngleBracket;
                 return 1;
@@ -398,6 +401,7 @@ public class Tokenizer
             TokenType.Fn => "fn".AsSpan().StartsWith(source) && source.Length <= "fn".Length,
             TokenType.Field => "field".AsSpan().StartsWith(source) && source.Length <= "field".Length,
             TokenType.IntKeyword => "int".AsSpan().StartsWith(source) && source.Length <= "int".Length,
+            TokenType.Turbofish => "::".AsSpan().StartsWith(source) && source.Length <= "::".Length,
             TokenType.Colon => source is ":",
             TokenType.LeftAngleBracket => source is "<",
             TokenType.RightAngleBracket => source is ">",

@@ -53,6 +53,7 @@ public readonly struct Token
             TokenType.Mut => "mut",
             TokenType.Class => "class",
             TokenType.Dot => ".",
+            TokenType.Turbofish => "::",
             _ => throw new UnreachableException()
         };
     }
@@ -112,6 +113,11 @@ public readonly struct Token
     public static Token Colon(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.Colon, SourceSpan = sourceSpan };
+    }
+
+    public static Token Turbofish(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.Turbofish, SourceSpan = sourceSpan };
     }
 
     public static Token Semicolon(SourceSpan sourceSpan)

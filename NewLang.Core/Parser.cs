@@ -390,9 +390,13 @@ public static class Parser
         }
 
         var typeArguments = new List<TypeIdentifier>();
-        if (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.LeftAngleBracket)
+        if (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.Turbofish)
         {
             tokens.MoveNext();
+            if (!tokens.MoveNext() && tokens.Current.Type != TokenType.LeftAngleBracket)
+            {
+                throw new InvalidOperationException("Expected <");
+            }
 
             while (true)
             {
@@ -438,34 +442,34 @@ public static class Parser
             or ExpressionType.MethodReturn;
     }
     
-    private static Expression MatchTokenToExpression(Token token, Expression? previousExpression, PeekableEnumerator<Token> tokens)
+    private static Expression MatchTokenToExpression(Expression? previousExpression, PeekableEnumerator<Token> tokens)
     {
-        return token.Type switch
+        return tokens.Current.Type switch
         {
             // value accessors
-            TokenType.Identifier => new Expression(new ValueAccessor(ValueAccessType.Variable, token)),
+            TokenType.Identifier => new Expression(new ValueAccessor(ValueAccessType.Variable, tokens.Current)),
             TokenType.StringLiteral or TokenType.IntLiteral or TokenType.True or TokenType.False => new Expression(
-                new ValueAccessor(ValueAccessType.Literal, token)),
+                new ValueAccessor(ValueAccessType.Literal, tokens.Current)),
             // unary operators
-            TokenType.QuestionMark => GetUnaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {token}"), token, UnaryOperatorType.FallOut),
+            TokenType.QuestionMark => GetUnaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current, UnaryOperatorType.FallOut),
             // binary operator tokens
-            TokenType.LeftAngleBracket => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {token}"), token,
+            TokenType.LeftAngleBracket => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current,
                 BinaryOperatorType.LessThan),
-            TokenType.RightAngleBracket => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {token}"), token,
+            TokenType.RightAngleBracket => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current,
                 BinaryOperatorType.GreaterThan),
-            TokenType.Plus => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {token}"), token, BinaryOperatorType.Plus),
-            TokenType.Dash => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {token}"), token, BinaryOperatorType.Minus),
-            TokenType.Star => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {token}"), token, BinaryOperatorType.Multiply),
-            TokenType.ForwardSlash => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {token}"), token,
+            TokenType.Plus => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current, BinaryOperatorType.Plus),
+            TokenType.Dash => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current, BinaryOperatorType.Minus),
+            TokenType.Star => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current, BinaryOperatorType.Multiply),
+            TokenType.ForwardSlash => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current,
                 BinaryOperatorType.Divide),
             TokenType.Var => GetVariableDeclaration(tokens),
             TokenType.LeftBrace => GetBlockExpression(tokens),
             TokenType.If => GetIfExpression(tokens),
             TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
-            TokenType.LeftParenthesis => GetMethodCall(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {token}")),
-            TokenType.Dot => GetMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {token}")),
+            TokenType.LeftParenthesis or TokenType.Turbofish => GetMethodCall(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
+            TokenType.Dot => GetMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             TokenType.Return => GetMethodReturn(tokens),
-            _ => throw new InvalidOperationException($"Token type {token.Type} not supported")
+            _ => throw new InvalidOperationException($"Token type {tokens.Current.Type} not supported")
         };
     }
 
@@ -490,7 +494,7 @@ public static class Parser
                && peeked.Type != TokenType.Semicolon)
         {
             tokens.MoveNext();
-            previousExpression = MatchTokenToExpression(tokens.Current, previousExpression, tokens);
+            previousExpression = MatchTokenToExpression(previousExpression, tokens);
             
             if (!tokens.TryPeek(out peeked) 
                 || !TryGetBindingStrength(peeked, out var bindingStrength)
@@ -515,12 +519,59 @@ public static class Parser
 
     private static Expression GetMethodCall(PeekableEnumerator<Token> tokens, Expression method)
     {
+        var typeArguments = new List<TypeIdentifier>();
+        if (tokens.Current.Type == TokenType.Turbofish)
+        {
+            if (!tokens.MoveNext() || tokens.Current.Type != TokenType.LeftAngleBracket)
+            {
+                throw new InvalidOperationException("Expected <");
+            }
+
+            while (true)
+            {
+                if (!tokens.MoveNext())
+                {
+                    throw new InvalidOperationException("Expected type argument");
+                }
+
+                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                {
+                    if (typeArguments.Count == 0)
+                    {
+                        throw new InvalidOperationException("Expected type argument");
+                    }
+
+                    if (!tokens.MoveNext())
+                    {
+                        throw new InvalidOperationException("Expected type argument");
+                    }
+
+                    break;
+                }
+
+                if (typeArguments.Count > 0)
+                {
+                    if (tokens.Current.Type != TokenType.Comma)
+                    {
+                        throw new InvalidOperationException("Expected ,");
+                    }
+
+                    if (!tokens.MoveNext())
+                    {
+                        throw new InvalidOperationException("Expected type argument");
+                    }
+                }
+
+                typeArguments.Add(GetTypeIdentifier(tokens.Current, tokens));
+            }
+        }
+
         var parameterList = new List<Expression>();
         while (tokens.TryPeek(out var peeked))
         {
             if (peeked.Type == TokenType.RightParenthesis)
             {
-                return new Expression(new MethodCall(method, parameterList));
+                return new Expression(new MethodCall(method, typeArguments, parameterList));
             }
 
             if (parameterList.Count > 0)
@@ -729,7 +780,7 @@ public static class Parser
             TokenType.ForwardSlash => BinaryOperatorBindingStrengths[BinaryOperatorType.Divide],
             TokenType.Plus => BinaryOperatorBindingStrengths[BinaryOperatorType.Plus],
             TokenType.Dash => BinaryOperatorBindingStrengths[BinaryOperatorType.Minus],
-            TokenType.LeftParenthesis => 4,
+            TokenType.LeftParenthesis or TokenType.Turbofish => 4,
             TokenType.Dot => 5,
             _ => null
         };

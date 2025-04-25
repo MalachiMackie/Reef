@@ -1,4 +1,4 @@
-﻿pub fn DoSomething(a: int): result<int, string> {
+﻿pub fn DoSomething(a: int): result::<int, string> {
     var b: int = 2;
     
     if (a > b) {
@@ -7,15 +7,17 @@
     else if (a == b) {
         return ok(b);
     }
-    
+
+    PrivateFn::<string>();
+
     return error("something wrong");
 }
 
-fn PrivateFn() {
+fn PrivateFn<T>() {
     Println("Message");
 }
 
-pub fn SomethingElse(a: int): result<int, string> {
+pub fn SomethingElse(a: int): result::<int, string> {
     var b = DoSomething(a)?;
     var mut c = 2;
     

@@ -196,11 +196,21 @@ public readonly record struct ElseIf(Expression CheckExpression, Expression Body
     }
 }
 
-public readonly record struct MethodCall(Expression Method, IReadOnlyCollection<Expression> ParameterList)
+public readonly record struct MethodCall(Expression Method, IReadOnlyList<TypeIdentifier> TypeArguments, IReadOnlyCollection<Expression> ParameterList)
 {
     public override string ToString()
     {
-        return $"{Method}({string.Join(',', ParameterList)})";
+        var sb = new StringBuilder($"{Method}");
+        if (TypeArguments.Count > 0)
+        {
+            sb.Append("::<");
+            sb.AppendJoin(", ", TypeArguments);
+            sb.Append(">(");
+        }
+        sb.AppendJoin(", ", ParameterList);
+        sb.Append(')');
+
+        return sb.ToString();
     }
 }
 

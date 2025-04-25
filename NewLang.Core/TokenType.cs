@@ -2,6 +2,7 @@
 
 public enum TokenType
 {
+    None,
     Identifier,
     If,
     LeftParenthesis,
@@ -38,5 +39,6 @@ public enum TokenType
     Star,
     ForwardSlash,
     Dot,
-    Mut
+    Mut,
+    Turbofish
 }
