@@ -16,7 +16,7 @@ public class ParserBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _tokens = new Tokenizer().Tokenize(Source).ToArray();
+        _tokens = [..new Tokenizer().Tokenize(Source)];
     }
     
     [Benchmark]

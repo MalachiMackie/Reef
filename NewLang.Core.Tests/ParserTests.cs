@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using FluentAssertions;
 using Xunit.Abstractions;
 
+#pragma warning disable IDE0060 // Remove unused parameter
 // ReSharper disable PossibleMultipleEnumeration
 
 namespace NewLang.Core.Tests;
@@ -283,8 +284,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
 
     public static IEnumerable<object[]> FailTestCases()
     {
-        return new[]
-        {
+        IEnumerable<string> strings = [
             // missing variable declaration value 
             "var a = ",
             // missing variable declaration equals
@@ -370,7 +370,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             "class MyClass {fn FnWithoutBody}",
             "class MyClass { class InnerClassAreNotAllowed {} }",
             "fn SomeFn() { class NoClassesInFunctions {}}"
-        }.Select(x => new object[] { x, new Tokenizer().Tokenize(x) });
+        ];
+        return strings.Select(x => new object[] { x, new Tokenizer().Tokenize(x) });
     }
 
     public static IEnumerable<object[]> SingleTestCase()
@@ -1315,7 +1316,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ? null
             : new StrongBox<MethodCall>(new MethodCall(
                 RemoveSourceSpan(methodCall.Value.Method),
-                methodCall.Value.ParameterList.Select(RemoveSourceSpan).ToArray()));
+                [..methodCall.Value.ParameterList.Select(RemoveSourceSpan)]));
     }
 
     private static StrongBox<IfExpression>? RemoveSourceSpan(StrongBox<IfExpression>? ifExpression)
@@ -1323,7 +1324,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         return ifExpression is null ? null : new StrongBox<IfExpression>(new IfExpression(
             CheckExpression: RemoveSourceSpan(ifExpression.Value.CheckExpression),
             Body: RemoveSourceSpan(ifExpression.Value.Body),
-            ElseIfs: ifExpression.Value.ElseIfs.Select(RemoveSourceSpan).ToArray(),
+            ElseIfs: [..ifExpression.Value.ElseIfs.Select(RemoveSourceSpan)],
             ElseBody: RemoveSourceSpan(ifExpression.Value.ElseBody)));
     }
 

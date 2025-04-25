@@ -500,11 +500,8 @@ public static class Parser
             throw new InvalidOperationException($"Expected left parenthesis, found {tokens.Current.Type}");
         }
 
-        var checkExpression = PopExpression(tokens);
-        if (checkExpression is null)
-        {
-            throw new InvalidOperationException("Expected check expression, found no expression");
-        }
+        var checkExpression = PopExpression(tokens)
+            ?? throw new InvalidOperationException("Expected check expression, found no expression");
 
         if (!tokens.MoveNext())
         {
@@ -558,7 +555,7 @@ public static class Parser
         }
 
         return new Expression(new IfExpression(
-            checkExpression.Value,
+            checkExpression,
             body,
             elseIfs,
             elseBody));
@@ -566,14 +563,18 @@ public static class Parser
 
     private static Expression GetBlockExpression(PeekableEnumerator<Token> tokens)
     {
-        var scope = GetScope(tokens, TokenType.RightBrace, true);
+        var (expressions, functions, classes, fields) = GetScope(tokens, TokenType.RightBrace, true);
 
-        if (scope.Classes.Count > 0)
+        if (classes.Count > 0)
         {
             throw new InvalidOperationException("Block expressions cannot contain classes");
         }
+        if (fields.Count > 0)
+        {
+            throw new InvalidOperationException("Block expressions cannot contain fields");
+        }
         
-        return new Expression(new Block(scope.Expressions, scope.Functions));
+        return new Expression(new Block(expressions, functions));
     }
 
     private static Expression GetVariableDeclaration(PeekableEnumerator<Token> tokens)
@@ -653,12 +654,10 @@ public static class Parser
             throw new UnreachableException("All operators have a binding strength");
         }
         var right = PopExpression(tokens, bindingStrength.Value);
-        if (right is null)
-        {
-            throw new Exception("Expected expression but got null");
-        }
 
-        return new Expression(new BinaryOperator(operatorType, leftOperand, right.Value, operatorToken));
+        return right is null
+            ? throw new Exception("Expected expression but got null")
+            : new Expression(new BinaryOperator(operatorType, leftOperand, right.Value, operatorToken));
     }
 
     private static bool TryGetBindingStrength(Token token, [NotNullWhen(true)] out uint? bindingStrength)
