@@ -533,6 +533,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new MutabilityModifier(Token.Mut(default)),
                 null,
                 new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))),
+            ("a = b", new Expression(new ValueAssignment(VariableAccessor("a"), VariableAccessor("b")))),
             ("var mut a: int = 2", new Expression(new VariableDeclaration(
                 Token.Identifier("a", default),
                 new MutabilityModifier(Token.Mut(default)),
@@ -895,6 +896,15 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             Token.QuestionMark(default))),
                         Token.LeftAngleBracket(default)))
             ),
+            ("a < b = c",
+                new Expression(new ValueAssignment(
+                    new Expression(
+                        new BinaryOperator(
+                            BinaryOperatorType.LessThan,
+                            VariableAccessor("a"),
+                            VariableAccessor("b"),
+                            Token.LeftAngleBracket(default))),
+                        VariableAccessor("c")))),
             // __multiply
             ( // greater than
                 "a * b > c",
@@ -979,6 +989,15 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             Token.QuestionMark(default))),
                         Token.Star(default)))
             ),
+            ("a * b = c",
+                new Expression(new ValueAssignment(
+                    new Expression(
+                        new BinaryOperator(
+                            BinaryOperatorType.Multiply,
+                            VariableAccessor("a"),
+                            VariableAccessor("b"),
+                            Token.Star(default))),
+                        VariableAccessor("c")))),
             // __divide
             ( // greater than
                 "a / b > c",
@@ -1063,6 +1082,15 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             Token.QuestionMark(default))),
                         Token.ForwardSlash(default)))
             ),
+            ("a / b = c",
+                new Expression(new ValueAssignment(
+                    new Expression(
+                        new BinaryOperator(
+                            BinaryOperatorType.Divide,
+                            VariableAccessor("a"),
+                            VariableAccessor("b"),
+                            Token.ForwardSlash(default))),
+                        VariableAccessor("c")))),
             // __plus
             ( // greater than
                 "a + b > c",
@@ -1147,6 +1175,15 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             Token.QuestionMark(default))),
                         Token.Plus(default)))
             ),
+            ("a + b = c",
+                new Expression(new ValueAssignment(
+                    new Expression(
+                        new BinaryOperator(
+                            BinaryOperatorType.Plus,
+                            VariableAccessor("a"),
+                            VariableAccessor("b"),
+                            Token.Plus(default))),
+                        VariableAccessor("c")))),
             // __minus
             ( // greater than
                 "a - b > c",
@@ -1231,6 +1268,15 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             Token.QuestionMark(default))),
                         Token.Dash(default)))
             ),
+            ("a - b = c",
+                new Expression(new ValueAssignment(
+                    new Expression(
+                        new BinaryOperator(
+                            BinaryOperatorType.Minus,
+                            VariableAccessor("a"),
+                            VariableAccessor("b"),
+                            Token.Dash(default))),
+                        VariableAccessor("c")))),
             // __FallOut
             ( // fallout
                 "a??",
@@ -1308,6 +1354,92 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         VariableAccessor("b"),
                         Token.ForwardSlash(default)))
             ),
+            ( // assignment
+                "a? = c",
+                new Expression(new ValueAssignment(
+                        new Expression(new UnaryOperator(
+                            UnaryOperatorType.FallOut,
+                            VariableAccessor("a"),
+                            Token.QuestionMark(default))),
+                        VariableAccessor("c")))),
+            // __ value assignment
+            ( // greater than
+                "a = b > c",
+                    new Expression(new ValueAssignment(
+                        new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", default))),
+                        new Expression(new BinaryOperator(
+                            BinaryOperatorType.GreaterThan,
+                            new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", default))),
+                            new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", default))),
+                            Token.RightAngleBracket(default)))))
+            ),
+            ( // less than
+                "a = b < c",
+                    new Expression(new ValueAssignment(
+                        new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", default))),
+                        new Expression(new BinaryOperator(
+                            BinaryOperatorType.LessThan,
+                            new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", default))),
+                            new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", default))),
+                            Token.LeftAngleBracket(default)))
+                        ))
+            ),
+            ( // multiply
+                "a = b * c",
+                    new Expression(new ValueAssignment(
+                        new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", default))),
+                        new Expression(new BinaryOperator(
+                            BinaryOperatorType.Multiply,
+                            new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", default))),
+                            new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", default))),
+                            Token.Star(default)))))
+            ),
+            ( // divide
+                "a = b / c",
+                    new Expression(new ValueAssignment(
+                        new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", default))),
+                        new Expression(new BinaryOperator(
+                            BinaryOperatorType.Divide,
+                            new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", default))),
+                            new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", default))),
+                            Token.ForwardSlash(default)))))
+            ),
+            ( // plus
+                "a = b + c",
+                    new Expression(new ValueAssignment(
+                        new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", default))),
+                        new Expression(new BinaryOperator(
+                            BinaryOperatorType.Plus,
+                            new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", default))),
+                            new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", default))),
+                            Token.Plus(default)))))
+            ),
+            ( // minus
+                "a = b - c",
+                    new Expression(new ValueAssignment(
+                        new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", default))),
+                        new Expression(new BinaryOperator(
+                            BinaryOperatorType.Minus,
+                            new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", default))),
+                            new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", default))),
+                            Token.Dash(default)))))
+            ),
+            ( // fallOut
+                "a = b?",
+                    new Expression(new ValueAssignment(
+                        new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", default))),
+                        new Expression(new UnaryOperator(
+                            UnaryOperatorType.FallOut,
+                            new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", default))),
+                            Token.QuestionMark(default)))))
+            ),
+            ("a = b = c",
+                new Expression(new ValueAssignment(
+                    new Expression(
+                        new ValueAssignment(
+                            VariableAccessor("a"),
+                            VariableAccessor("b"))),
+                        VariableAccessor("c")))),
         }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedExpression });
     }
     
@@ -1385,7 +1517,16 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             RemoveSourceSpan(expression.MethodCall),
             RemoveSourceSpan(expression.MemberAccess),
             RemoveSourceSpan(expression.MethodReturn),
-            RemoveSourceSpan(expression.ObjectInitializer));
+            RemoveSourceSpan(expression.ObjectInitializer),
+            RemoveSourceSpan(expression.ValueAssignment));
+    }
+
+    private static StrongBox<ValueAssignment>? RemoveSourceSpan(StrongBox<ValueAssignment>? valueAssignment)
+    {
+        return valueAssignment is null
+            ? null
+            : new StrongBox<ValueAssignment>(new ValueAssignment(
+                RemoveSourceSpan(valueAssignment.Value.Left), RemoveSourceSpan(valueAssignment.Value.Right)));
     }
 
     private static StrongBox<ObjectInitializer>? RemoveSourceSpan(StrongBox<ObjectInitializer>? objectInitializer)

@@ -15,51 +15,56 @@ public readonly record struct Expression(
     StrongBox<MethodCall>? MethodCall,
     StrongBox<MemberAccess>? MemberAccess,
     StrongBox<MethodReturn>? MethodReturn,
-    StrongBox<ObjectInitializer>? ObjectInitializer)
+    StrongBox<ObjectInitializer>? ObjectInitializer,
+    StrongBox<ValueAssignment>? ValueAssignment)
 {
     public Expression(ValueAccessor valueAccessor)
-        : this(ExpressionType.ValueAccess, valueAccessor, null, null, null, null, null, null, null, null, null)
+        : this(ExpressionType.ValueAccess, valueAccessor, null, null, null, null, null, null, null, null, null, null)
     {
         
     }
     
     public Expression(UnaryOperator unaryOperator)
-        : this(ExpressionType.UnaryOperator, null, new StrongBox<UnaryOperator>(unaryOperator), null, null, null, null, null, null, null, null)
+        : this(ExpressionType.UnaryOperator, null, new StrongBox<UnaryOperator>(unaryOperator), null, null, null, null, null, null, null, null, null)
     {
     }
 
     public Expression(BinaryOperator binaryOperator)
-        : this(ExpressionType.BinaryOperator, null, null, new StrongBox<BinaryOperator>(binaryOperator), null, null, null, null, null, null, null)
+        : this(ExpressionType.BinaryOperator, null, null, new StrongBox<BinaryOperator>(binaryOperator), null, null, null, null, null, null, null, null)
     {
     }
     
     public Expression(VariableDeclaration variableDeclaration)
-        : this(ExpressionType.VariableDeclaration, null, null, null, new StrongBox<VariableDeclaration>(variableDeclaration), null, null, null, null, null, null)
+        : this(ExpressionType.VariableDeclaration, null, null, null, new StrongBox<VariableDeclaration>(variableDeclaration), null, null, null, null, null, null, null)
     {}
     
     public Expression(IfExpression ifExpression)
-        : this(ExpressionType.IfExpression, null, null, null, null, new StrongBox<IfExpression>(ifExpression), null, null, null, null, null)
+        : this(ExpressionType.IfExpression, null, null, null, null, new StrongBox<IfExpression>(ifExpression), null, null, null, null, null, null)
     {
     }
     
     public Expression(Block block)
-        : this(ExpressionType.Block, null, null, null, null, null, new StrongBox<Block>(block), null, null, null, null)
+        : this(ExpressionType.Block, null, null, null, null, null, new StrongBox<Block>(block), null, null, null, null, null)
     {}
     
     public Expression(MethodCall methodCall)
-        : this(ExpressionType.MethodCall, null, null, null, null, null, null, new StrongBox<MethodCall>(methodCall), null, null, null)
+        : this(ExpressionType.MethodCall, null, null, null, null, null, null, new StrongBox<MethodCall>(methodCall), null, null, null, null)
     {}
 
     public Expression(MemberAccess memberAccess)
-        : this(ExpressionType.MemberAccess, null, null, null, null, null, null, null, new StrongBox<MemberAccess>(memberAccess), null, null)
+        : this(ExpressionType.MemberAccess, null, null, null, null, null, null, null, new StrongBox<MemberAccess>(memberAccess), null, null, null)
     { }
 
     public Expression(MethodReturn methodReturn)
-        : this(ExpressionType.MethodReturn, null, null, null, null, null, null, null, null, new StrongBox<MethodReturn>(methodReturn), null)
+        : this(ExpressionType.MethodReturn, null, null, null, null, null, null, null, null, new StrongBox<MethodReturn>(methodReturn), null, null)
     { }
 
     public Expression(ObjectInitializer objectInitializer)
-        : this(ExpressionType.ObjectInitializer, null, null, null, null, null, null, null, null, null, new StrongBox<ObjectInitializer>(objectInitializer))
+        : this(ExpressionType.ObjectInitializer, null, null, null, null, null, null, null, null, null, new StrongBox<ObjectInitializer>(objectInitializer), null)
+    { }
+
+    public Expression(ValueAssignment valueAssignment)
+        : this(ExpressionType.ValueAssignment, null, null, null, null, null, null, null, null, null, null, new StrongBox<ValueAssignment>(valueAssignment))
     { }
 
     public override string ToString()
@@ -77,6 +82,7 @@ public readonly record struct Expression(
             ExpressionType.MemberAccess => MemberAccess!.Value.ToString(),
             ExpressionType.MethodReturn => MethodReturn!.Value.ToString(),
             ExpressionType.ObjectInitializer => ObjectInitializer!.Value.ToString(),
+            ExpressionType.ValueAssignment => ValueAssignment!.Value.ToString(),
             _ => throw new UnreachableException()
         };
     }
@@ -247,6 +253,14 @@ public readonly record struct ObjectInitializer(TypeIdentifier Type, IReadOnlyLi
 
 public readonly record struct FieldInitializer(Token FieldName, Expression Value);
 
+public readonly record struct ValueAssignment(Expression Left, Expression Right)
+{
+    public override string ToString()
+    {
+        return $"{Left} = {Right}";
+    }
+}
+
 public enum BinaryOperatorType
 {
     LessThan,
@@ -281,5 +295,6 @@ public enum ExpressionType
     MethodCall,
     MemberAccess,
     MethodReturn,
-    ObjectInitializer
+    ObjectInitializer,
+    ValueAssignment
 }

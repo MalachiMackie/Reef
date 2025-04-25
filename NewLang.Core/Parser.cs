@@ -524,8 +524,22 @@ public static class Parser
             TokenType.Dot => GetMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             TokenType.Return => GetMethodReturn(tokens),
             TokenType.New => GetObjectInitializer(tokens),
+            TokenType.Equals => GetValueAssignment(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             _ => throw new InvalidOperationException($"Token type {tokens.Current.Type} not supported")
         };
+    }
+
+    private static Expression GetValueAssignment(PeekableEnumerator<Token> tokens, Expression previousExpression)
+    {
+        if (!TryGetBindingStrength(tokens.Current, out var bindingStrength))
+        {
+            throw new UnreachableException("Assignment operator must have a binding strength");
+        }
+
+        var right = PopExpression(tokens, bindingStrength)
+            ?? throw new InvalidOperationException("Expected value expression");
+
+        return new Expression(new ValueAssignment(previousExpression, right));
     }
 
     private static Expression GetObjectInitializer(PeekableEnumerator<Token> tokens)
@@ -898,8 +912,9 @@ public static class Parser
             TokenType.ForwardSlash => BinaryOperatorBindingStrengths[BinaryOperatorType.Divide],
             TokenType.Plus => BinaryOperatorBindingStrengths[BinaryOperatorType.Plus],
             TokenType.Dash => BinaryOperatorBindingStrengths[BinaryOperatorType.Minus],
-            TokenType.LeftParenthesis or TokenType.Turbofish => 4,
-            TokenType.Dot => 5,
+            TokenType.LeftParenthesis or TokenType.Turbofish => 5,
+            TokenType.Dot => 6,
+            TokenType.Equals => 1,
             _ => null
         };
 
@@ -909,17 +924,17 @@ public static class Parser
     private static readonly FrozenDictionary<BinaryOperatorType, uint> BinaryOperatorBindingStrengths =
         new Dictionary<BinaryOperatorType, uint>
         {
-            { BinaryOperatorType.Multiply, 3 },
-            { BinaryOperatorType.Divide, 3 },
-            { BinaryOperatorType.Plus, 2 },
-            { BinaryOperatorType.Minus, 2 },
-            { BinaryOperatorType.GreaterThan, 1 },
-            { BinaryOperatorType.LessThan, 1 },
+            { BinaryOperatorType.Multiply, 4 },
+            { BinaryOperatorType.Divide, 4 },
+            { BinaryOperatorType.Plus, 3 },
+            { BinaryOperatorType.Minus, 3 },
+            { BinaryOperatorType.GreaterThan, 2 },
+            { BinaryOperatorType.LessThan, 2 },
         }.ToFrozenDictionary();
     
     private static readonly FrozenDictionary<UnaryOperatorType, uint> UnaryOperatorBindingStrengths =
         new Dictionary<UnaryOperatorType, uint>
         {
-            { UnaryOperatorType.FallOut, 6 },
+            { UnaryOperatorType.FallOut, 7 },
         }.ToFrozenDictionary();
 }
