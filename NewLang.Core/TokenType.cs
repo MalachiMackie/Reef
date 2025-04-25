@@ -11,6 +11,8 @@ public enum TokenType
     RightBrace,
     Pub,
     Fn,
+    Class,
+    Field,
     IntKeyword,
     Colon,
     LeftAngleBracket,

@@ -208,6 +208,8 @@ public class Tokenizer
             TokenType.Identifier => Token.Identifier(source.ToString(), new SourceSpan(position, (uint)source.Length)),
             TokenType.If when source is "if" => Token.If(new SourceSpan(position, (uint)source.Length)),
             TokenType.Mut when source is "mut" => Token.Mut(new SourceSpan(position, (uint)source.Length)),
+            TokenType.Class when source is "class" => Token.Class(new SourceSpan(position, (uint)source.Length)),
+            TokenType.Field when source is "field" => Token.Field(new SourceSpan(position, (uint)source.Length)),
             TokenType.LeftParenthesis when source is "(" => Token.LeftParenthesis(new SourceSpan(position,
                 (uint)source.Length)),
             TokenType.RightParenthesis when source is ")" => Token.RightParenthesis(new SourceSpan(position,
@@ -297,7 +299,8 @@ public class Tokenizer
             case 'f':
                 tokens[0] = TokenType.False;
                 tokens[1] = TokenType.Fn;
-                return 2;
+                tokens[2] = TokenType.Field;
+                return 3;
             case ':':
                 tokens[0] = TokenType.Colon;
                 return 1;
@@ -353,6 +356,9 @@ public class Tokenizer
             case '-':
                 tokens[0] = TokenType.Dash;
                 return 1;
+            case 'c':
+                tokens[0] = TokenType.Class;
+                return 1;
             case '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9':
                 tokens[0] = TokenType.IntLiteral;
                 return 1;
@@ -386,9 +392,11 @@ public class Tokenizer
             TokenType.Semicolon => source is ";",
             TokenType.LeftBrace => source is "{",
             TokenType.Mut => "mut".AsSpan().StartsWith(source) && source.Length <= "mut".Length,
+            TokenType.Class => "class".AsSpan().StartsWith(source) && source.Length <= "class".Length,
             TokenType.RightBrace => source is "}",
             TokenType.Pub => "pub".AsSpan().StartsWith(source) && source.Length <= "pub".Length,
             TokenType.Fn => "fn".AsSpan().StartsWith(source) && source.Length <= "fn".Length,
+            TokenType.Field => "field".AsSpan().StartsWith(source) && source.Length <= "field".Length,
             TokenType.IntKeyword => "int".AsSpan().StartsWith(source) && source.Length <= "int".Length,
             TokenType.Colon => source is ":",
             TokenType.LeftAngleBracket => source is "<",
@@ -417,7 +425,7 @@ public class Tokenizer
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
 
-        bool MatchesStringLiteral(ReadOnlySpan<char> stringSource)
+        static bool MatchesStringLiteral(ReadOnlySpan<char> stringSource)
         {
             if (stringSource[0] != '"')
             {

@@ -33,6 +33,8 @@ public class TokenizerTests
             
             // single tokens
             ["pub", new[] { Token.Pub(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
+            ["class", new[] { Token.Class(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
+            ["field", new[] { Token.Field(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["fn", new[] { Token.Fn(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["int", new[] { Token.IntKeyword(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             ["if", new[] { Token.If(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],

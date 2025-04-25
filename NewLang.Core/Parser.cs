@@ -10,9 +10,14 @@ public static class Parser
     {
         using var tokensEnumerator = new PeekableEnumerator<Token>(tokens.GetEnumerator());
 
-        var scope = GetScope(tokensEnumerator, closingToken: null, allowTailExpression: false);
+        var (Expressions, Functions, Classes, Fields) = GetScope(tokensEnumerator, closingToken: null, allowTailExpression: false);
 
-        return new LangProgram(scope);
+        if (Fields.Count > 0)
+        {
+            throw new InvalidOperationException("A field is not a valid statement");
+        }
+
+        return new LangProgram(Expressions, Functions, Classes);
     }
 
     /// <summary>
@@ -23,7 +28,11 @@ public static class Parser
     /// <param name="allowTailExpression"></param>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    private static ProgramScope GetScope(
+    private static (
+        IReadOnlyList<Expression> Expressions,
+        IReadOnlyList<LangFunction> Functions,
+        IReadOnlyList<ProgramClass> Classes,
+        IReadOnlyList<ClassField> Fields) GetScope(
         PeekableEnumerator<Token> tokens,
         TokenType? closingToken,
         bool allowTailExpression)
@@ -33,6 +42,8 @@ public static class Parser
 
         var expressions = new List<Expression>();
         var functions = new List<LangFunction>();
+        var fields = new List<ClassField>();
+        var classes = new List<ProgramClass>();
                 
         while (tokens.TryPeek(out var peeked))
         {
@@ -44,9 +55,28 @@ public static class Parser
                 break;
             }
 
-            if (peeked.Type is TokenType.Fn or TokenType.Pub)
+            if (IsMember(peeked.Type))
             {
-                functions.Add(GetFunction(tokens));
+                tokens.MoveNext();
+                var (function, @class, field) = GetMember(tokens);
+                if (function.HasValue)
+                {
+                    functions.Add(function.Value);
+                }
+                else if (@class.HasValue)
+                {
+                    classes.Add(@class.Value);
+                }
+                else if (field.HasValue)
+                {
+                    fields.Add(field.Value);
+
+                    if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Semicolon)
+                    {
+                        throw new InvalidOperationException("Expected ;");
+                    }
+                }
+
                 continue;
             }
 
@@ -93,32 +123,123 @@ public static class Parser
             throw new InvalidOperationException($"Expected {closingToken.Value}, got nothing");
         }
 
-        return new ProgramScope(expressions, functions);
+        return (expressions, functions, classes, fields);
     }
 
-    private static LangFunction GetFunction(PeekableEnumerator<Token> tokens)
+    private static bool IsMember(TokenType tokenType)
     {
-        if (!tokens.MoveNext())
-        {
-            throw new InvalidOperationException($"expected pub or fn");
-        }
+        return tokenType is TokenType.Pub or TokenType.Mut or TokenType.Fn or TokenType.Class or TokenType.Field;
+    }
 
+    private static (LangFunction? Function, ProgramClass? Class, ClassField? Field) GetMember(PeekableEnumerator<Token> tokens)
+    {
         AccessModifier? accessModifier = null;
+        MutabilityModifier? mutabilityModifier = null;
 
         if (tokens.Current.Type == TokenType.Pub)
         {
             accessModifier = new AccessModifier(tokens.Current);
             if (!tokens.MoveNext())
             {
-                throw new InvalidOperationException("Expected fn");
+                throw new InvalidOperationException("Expected field, mut, fn or class");
+            }
+        }
+        if (tokens.Current.Type == TokenType.Mut)
+        {
+            mutabilityModifier = new MutabilityModifier(tokens.Current);
+            if (!tokens.MoveNext())
+            {
+                throw new InvalidOperationException("Expected field, fn or class");
             }
         }
 
-        if (tokens.Current.Type != TokenType.Fn)
+        if (tokens.Current.Type == TokenType.Fn)
         {
-            throw new InvalidOperationException("Expected fn");
+            if (mutabilityModifier.HasValue)
+            {
+                throw new InvalidOperationException("Function cannot have mutability modifier");
+            }
+
+            var function = GetFunction(accessModifier, tokens);
+            return (function, null, null);
         }
 
+        if (tokens.Current.Type == TokenType.Class)
+        {
+            if (mutabilityModifier.HasValue)
+            {
+                throw new InvalidOperationException("Class cannot have a mutability modifier");
+            }
+
+            var @class = GetClass(accessModifier, tokens);
+
+            return (null, @class, null);
+        }
+
+        if (tokens.Current.Type == TokenType.Field)
+        {
+            var field = GetField(accessModifier, mutabilityModifier, tokens);
+
+            return (null, null, field);
+        }
+
+        throw new InvalidOperationException("Expected class, fn or field");
+    }
+
+    private static ClassField GetField(AccessModifier? accessModifier, MutabilityModifier? mutabilityModifier, PeekableEnumerator<Token> tokens)
+    {
+        // pub mut field MyField: string;
+        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
+        {
+            throw new InvalidOperationException("Expected field name");
+        }
+
+        var name = tokens.Current;
+
+        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Colon)
+        {
+            throw new InvalidOperationException("Expected :");
+        }
+
+        if (!tokens.MoveNext())
+        {
+            throw new InvalidOperationException("Expected field type");
+        }
+
+        var type = GetTypeIdentifier(tokens.Current, tokens);
+
+        return new ClassField(accessModifier, mutabilityModifier, name, type);
+    }
+
+    private static ProgramClass GetClass(AccessModifier? accessModifier, PeekableEnumerator<Token> tokens)
+    {
+        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
+        {
+            throw new InvalidOperationException("Expected class name");
+        }
+
+        var name = tokens.Current;
+
+        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.LeftBrace)
+        {
+            throw new InvalidOperationException("Expected {");
+        }
+
+        var (expressions, functions, classes, fields) = GetScope(tokens, closingToken: TokenType.RightBrace, allowTailExpression: false);
+        if (expressions.Count > 0)
+        {
+            throw new InvalidOperationException("Class cannot contain expressions");
+        }
+        if (classes.Count > 0)
+        {
+            throw new InvalidOperationException("Classes connot contain classes");
+        }
+
+        return new ProgramClass(accessModifier, name, functions, fields);
+    }
+
+    private static LangFunction GetFunction(AccessModifier? accessModifier, PeekableEnumerator<Token> tokens)
+    {
         if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
         {
             throw new InvalidOperationException("Expected function name");
@@ -189,14 +310,19 @@ public static class Parser
             }
         }
 
-        if (tokens.Current.Type != TokenType.LeftBrace)
+        var (Expressions, Functions, Classes, Fields) = GetScope(tokens, closingToken: TokenType.RightBrace, allowTailExpression: true);
+
+        if (Classes.Count > 0)
         {
-            throw new InvalidOperationException("Expected {");
+            throw new InvalidOperationException("Functions cannot contain classes");
         }
 
-        var functionScope = GetScope(tokens, closingToken: TokenType.RightBrace, allowTailExpression: true);
+        if (Fields.Count > 0)
+        {
+            throw new InvalidOperationException("Functions cannot contain fields");
+        }
 
-        return new LangFunction(accessModifier, nameToken, parameterList, returnType, functionScope);
+        return new LangFunction(accessModifier, nameToken, parameterList, returnType, new Block(Expressions, Functions));
     }
 
     private static bool IsTypeTokenType(in TokenType tokenType)
@@ -441,8 +567,13 @@ public static class Parser
     private static Expression GetBlockExpression(PeekableEnumerator<Token> tokens)
     {
         var scope = GetScope(tokens, TokenType.RightBrace, true);
+
+        if (scope.Classes.Count > 0)
+        {
+            throw new InvalidOperationException("Block expressions cannot contain classes");
+        }
         
-        return new Expression(new Block(scope));
+        return new Expression(new Block(scope.Expressions, scope.Functions));
     }
 
     private static Expression GetVariableDeclaration(PeekableEnumerator<Token> tokens)

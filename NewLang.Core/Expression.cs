@@ -137,17 +137,23 @@ public readonly record struct IfExpression(
     }
 }
 
-public readonly record struct Block(ProgramScope Scope)
+public readonly record struct Block(IReadOnlyList<Expression> Expressions, IReadOnlyList<LangFunction> Functions)
 {
-    public static readonly Block Empty = new (new ProgramScope([], []));
+    public static readonly Block Empty = new ([], []);
     
     public override string ToString()
     {
         var sb = new StringBuilder("{");
-        foreach (var expression in Scope.Expressions)
+        foreach (var expression in Expressions)
         {
             sb.Append('\n');
             sb.Append($"{expression};");
+        }
+
+        foreach (var function in Functions)
+        {
+            sb.Append('\n');
+            sb.Append($"{function}");
         }
 
         sb.Append('}');

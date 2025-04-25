@@ -51,6 +51,8 @@ public readonly struct Token
             TokenType.Star => "*",
             TokenType.ForwardSlash => "/",
             TokenType.Mut => "mut",
+            TokenType.Class => "class",
+            TokenType.Dot => ".",
             _ => throw new UnreachableException()
         };
     }
@@ -80,6 +82,16 @@ public readonly struct Token
     public static Token RightParenthesis(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.RightParenthesis, SourceSpan = sourceSpan };
+    }
+
+    public static Token Class(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.Class, SourceSpan = sourceSpan };
+    }
+
+    public static Token Field(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.Field, SourceSpan = sourceSpan };
     }
 
     public static Token Mut(SourceSpan sourceSpan)

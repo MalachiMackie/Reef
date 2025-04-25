@@ -52,9 +52,9 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
         string source,
         IEnumerable<Token> tokens,
-        Expression expectedProgram)
+        LangProgram expectedProgram)
     {
-        var result = Parser.PopExpression(tokens);
+        var result = Parser.Parse(tokens);
         result.Should().NotBeNull();
         
         // clear out the source spans, we don't actually care about them
@@ -95,17 +95,17 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
     {
         return new (string Source, LangProgram ExpectedProgram)[]
         {
-            ("var a = 1;var b = 2;", new LangProgram(new ProgramScope([
+            ("var a = 1;var b = 2;", new LangProgram([
                 new Expression(new VariableDeclaration(Token.Identifier("a", default), null, null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
                 new Expression(new VariableDeclaration(Token.Identifier("b", default), null, null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
-                ], []))),
-            ("fn MyFn() {}", new LangProgram(new ProgramScope([], [
-                new LangFunction(null, Token.Identifier("MyFn", default), [], null, new ProgramScope([], []))
-            ]))),
-            ("fn MyFn(): string {}", new LangProgram(new ProgramScope([], [
-                new LangFunction(null, Token.Identifier("MyFn", default), [], new TypeIdentifier(Token.StringKeyword(default), []), new ProgramScope([], []))
-            ]))),
-            ("fn MyFn(): result<int, MyErrorType> {}", new LangProgram(new ProgramScope([], [
+                ], [], [])),
+            ("fn MyFn() {}", new LangProgram([], [
+                new LangFunction(null, Token.Identifier("MyFn", default), [], null, new Block([], []))
+            ], [])),
+            ("fn MyFn(): string {}", new LangProgram([], [
+                new LangFunction(null, Token.Identifier("MyFn", default), [], new TypeIdentifier(Token.StringKeyword(default), []), new Block([], []))
+            ], [])),
+            ("fn MyFn(): result<int, MyErrorType> {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
@@ -116,9 +116,9 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                             new TypeIdentifier(Token.IntKeyword(default), []),
                             new TypeIdentifier(Token.Identifier("MyErrorType", default), []),
                         ]),
-                    new ProgramScope([], []))
-            ]))),
-            ("fn MyFn(): Outer<Inner<int>> {}", new LangProgram(new ProgramScope([], [
+                    new Block([], []))
+            ], [])),
+            ("fn MyFn(): Outer<Inner<int>> {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
@@ -129,9 +129,9 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                             new TypeIdentifier(Token.Identifier("Inner", default), [
                                 new TypeIdentifier(Token.IntKeyword(default), [])]),
                         ]),
-                    new ProgramScope([], []))
-            ]))),
-            ("fn MyFn(): Outer<Inner<int>, Inner<int>> {}", new LangProgram(new ProgramScope([], [
+                    new Block([], []))
+            ], [])),
+            ("fn MyFn(): Outer<Inner<int>, Inner<int>> {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
@@ -142,9 +142,9 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                             new TypeIdentifier(Token.Identifier("Inner", default), [new TypeIdentifier(Token.IntKeyword(default), [])]),
                             new TypeIdentifier(Token.Identifier("Inner", default), [new TypeIdentifier(Token.IntKeyword(default), [])]),
                         ]),
-                    new ProgramScope([], []))
-            ]))),
-            ("fn MyFn(): result<int, MyErrorType, ThirdTypeArgument> {}", new LangProgram(new ProgramScope([], [
+                    new Block([], []))
+            ], [])),
+            ("fn MyFn(): result<int, MyErrorType, ThirdTypeArgument> {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
@@ -156,31 +156,31 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                             new TypeIdentifier(Token.Identifier("MyErrorType", default), []),
                             new TypeIdentifier(Token.Identifier("ThirdTypeArgument", default), []),
                         ]),
-                    new ProgramScope([], []))
-            ]))),
-            ("fn MyFn() { var a = 2; }", new LangProgram(new ProgramScope([], [
+                    new Block([], []))
+            ], [])),
+            ("fn MyFn() { var a = 2; }", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
                     [],
                     null,
-                    new ProgramScope([new Expression(new VariableDeclaration(
+                    new Block([new Expression(new VariableDeclaration(
                         Token.Identifier("a", default),
                         null,
                         null,
                         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))], [])
                 )
-            ]))),
-            ("fn MyFn(int a) {}", new LangProgram(new ProgramScope([], [
+            ], [])),
+            ("fn MyFn(int a) {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
                     [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(default), []), Token.Identifier("a", default))],
                     null,
-                    new ProgramScope([], [])
+                    new Block([], [])
                 )
-            ]))),
-            ("fn MyFn(result<int, MyType> a) {}", new LangProgram(new ProgramScope([], [
+            ], [])),
+            ("fn MyFn(result<int, MyType> a) {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
@@ -190,10 +190,10 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                             new TypeIdentifier(Token.Identifier("MyType", default), []),
                         ]), Token.Identifier("a", default))],
                     null,
-                    new ProgramScope([], [])
+                    new Block([], [])
                 )
-            ]))),
-            ("fn MyFn(int a, MyType b) {}", new LangProgram(new ProgramScope([], [
+            ], [])),
+            ("fn MyFn(int a, MyType b) {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
@@ -202,21 +202,85 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                         new FunctionParameter(new TypeIdentifier(Token.Identifier("MyType", default), []), Token.Identifier("b", default)),
                     ],
                     null,
-                    new ProgramScope([], [])
+                    new Block([], [])
                 )
-            ]))),
-            ("fn MyFn(): int {return 1;}", new LangProgram(new ProgramScope([], [
+            ], [])),
+            ("fn MyFn(): int {return 1;}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
                     [],
                     new TypeIdentifier(Token.IntKeyword(default), []),
-                    new ProgramScope([new Expression(new MethodReturn(new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))], [])
+                    new Block([new Expression(new MethodReturn(new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))], [])
                 )
-            ])))
+            ], [])),
+            ("class MyClass {}", new LangProgram([], [], [new ProgramClass(
+                null,
+                Token.Identifier("MyClass", default),
+                [],
+                [])])),
+            ("pub class MyClass {}", new LangProgram([], [], [new ProgramClass(
+                new AccessModifier(Token.Pub(default)),
+                Token.Identifier("MyClass", default),
+                [],
+                [])])),
+            ("class MyClass {pub mut field MyField: string;}", new LangProgram([], [], [new ProgramClass(
+                null,
+                Token.Identifier("MyClass", default),
+                [],
+                [new ClassField(
+                    new AccessModifier(Token.Pub(default)),
+                    new MutabilityModifier(Token.Mut(default)),
+                    Token.Identifier("MyField", default),
+                    new TypeIdentifier(Token.StringKeyword(default), []))])])),
+            ("class MyClass {mut field MyField: string;}", new LangProgram([], [], [new ProgramClass(
+                null,
+                Token.Identifier("MyClass", default),
+                [],
+                [new ClassField(
+                    null,
+                    new MutabilityModifier(Token.Mut(default)),
+                    Token.Identifier("MyField", default),
+                    new TypeIdentifier(Token.StringKeyword(default), []))])])),
+            ("class MyClass {field MyField: string;}", new LangProgram([], [], [new ProgramClass(
+                null,
+                Token.Identifier("MyClass", default),
+                [],
+                [new ClassField(
+                    null,
+                    null,
+                    Token.Identifier("MyField", default),
+                    new TypeIdentifier(Token.StringKeyword(default), []))])])),
+            ("class MyClass {pub field MyField: string;}", new LangProgram([], [], [new ProgramClass(
+                null,
+                Token.Identifier("MyClass", default),
+                [],
+                [new ClassField(
+                    new AccessModifier(Token.Pub(default)),
+                    null,
+                    Token.Identifier("MyField", default),
+                    new TypeIdentifier(Token.StringKeyword(default), []))])])),
+            ("class MyClass {pub mut field MyField: string; pub fn MyFn() {}}", new LangProgram([], [], [new ProgramClass(
+                null,
+                Token.Identifier("MyClass", default),
+                [new LangFunction(new AccessModifier(Token.Pub(default)), Token.Identifier("MyFn", default), [], null, new Block([], []))],
+                [new ClassField(
+                    new AccessModifier(Token.Pub(default)),
+                    new MutabilityModifier(Token.Mut(default)),
+                    Token.Identifier("MyField", default),
+                    new TypeIdentifier(Token.StringKeyword(default), []))])])),
+            ("class MyClass {field MyField: string; fn MyFn() {}}", new LangProgram([], [], [new ProgramClass(
+                null,
+                Token.Identifier("MyClass", default),
+                [new LangFunction(null, Token.Identifier("MyFn", default), [], null, new Block([], []))],
+                [new ClassField(
+                    null,
+                    null,
+                    Token.Identifier("MyField", default),
+                    new TypeIdentifier(Token.StringKeyword(default), []))])])),
         }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedProgram });
     }
-    
+
     public static IEnumerable<object[]> FailTestCases()
     {
         return new[]
@@ -295,19 +359,33 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             "fn MyFunction(int a int b) {}",
             // no semicolon
             "return 1",
+            "pub MyClass {}",
+            "pub mut class MyClass {}",
+            "class pub MyClass {}",
+            "class MyClass {field myFieldWithoutSemicolon}",
+            "class MyClass {field mut myField;}",
+            "class MyClass {fieldName}",
+            "class MyClass {field pub myField;}",
+            "class MyClass {fn MyFnWithSemicolon{};}",
+            "class MyClass {fn FnWithoutBody}",
+            "class MyClass { class InnerClassAreNotAllowed {} }",
+            "fn SomeFn() { class NoClassesInFunctions {}}"
         }.Select(x => new object[] { x, new Tokenizer().Tokenize(x) });
     }
 
     public static IEnumerable<object[]> SingleTestCase()
     {
-        return new (string Source, Expression ExpectedProgram)[]
+        return new (string Source, LangProgram ExpectedProgram)[]
         {
-            ("var a = 1", new Expression(
-                new VariableDeclaration(
-                    Token.Identifier("a", default),
+            ("class MyClass {field MyField: string;}", new LangProgram([], [], [new ProgramClass(
+                null,
+                Token.Identifier("MyClass", default),
+                [],
+                [new ClassField(
                     null,
                     null,
-                    new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))),
+                    Token.Identifier("MyField", default),
+                    new TypeIdentifier(Token.StringKeyword(default), []))])])),
         }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedProgram });
     }
 
@@ -407,21 +485,21 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 null,
                 new Expression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("thing", default)))))),
             ("{}", new Expression(Block.Empty)),
-            ("{var a = 1;}", new Expression(new Block(new ProgramScope([
+            ("{var a = 1;}", new Expression(new Block([
                 new Expression(new VariableDeclaration(Token.Identifier("a", default), null, null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
-                ], [])))),
+                ], []))),
             // tail expression
             ("{var a = 1}", new Expression(new Block(
-                new ProgramScope([
-                new Expression(new VariableDeclaration(Token.Identifier("a", default), null, null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))], [])))),
+                [
+                new Expression(new VariableDeclaration(Token.Identifier("a", default), null, null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))], []))),
             // tail expression
             ("{var a = 1;var b = 2}", new Expression(new Block(
-                new ProgramScope([new Expression(new VariableDeclaration(Token.Identifier("a", default), null, null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
-                new Expression(new VariableDeclaration(Token.Identifier("b", default), null, null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))], [])))),
-            ("{var a = 1; var b = 2;}", new Expression(new Block(new ProgramScope([
+                [new Expression(new VariableDeclaration(Token.Identifier("a", default), null, null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
+                new Expression(new VariableDeclaration(Token.Identifier("b", default), null, null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))], []))),
+            ("{var a = 1; var b = 2;}", new Expression(new Block([
                 new Expression(new VariableDeclaration(Token.Identifier("a", default), null, null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
                 new Expression(new VariableDeclaration(Token.Identifier("b", default), null, null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
-                ], [])))),
+                ], []))),
             ("if (a) var c = 2;", new Expression(new IfExpression(
                 VariableAccessor("a"),
                 new Expression(new VariableDeclaration(
@@ -435,24 +513,24 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                     VariableAccessor("a"),
                     VariableAccessor("b"),
                     Token.RightAngleBracket(default))),
-                new Expression(new Block(new ProgramScope([
+                new Expression(new Block([
                     new Expression(new VariableDeclaration(
                         Token.Identifier("c", default),
                         null,
                         null,
                         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("value", default)))))
-                ], []))), [], null))),
+                ], [])), [], null))),
             ("if (a) {} else {var b = 2;}", new Expression(new IfExpression(
                 VariableAccessor("a"),
                 new Expression(Block.Empty),
                 [],
-                new Expression(new Block(new ProgramScope([
+                new Expression(new Block([
                     new Expression(new VariableDeclaration(
                         Token.Identifier("b", default),
                         null,
                         null,
                         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))
-                ], [])))))),
+                ], []))))),
             ("if (a) {} else if (b) {}", new Expression(new IfExpression(
                 VariableAccessor("a"),
                 new Expression(Block.Empty),
@@ -475,9 +553,9 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 new Expression(Block.Empty)))),
             ("if (a) {b} else {c}", new Expression(new IfExpression(
                 VariableAccessor("a"),
-                new Expression(new Block(new ProgramScope([VariableAccessor("b")], []))),
+                new Expression(new Block([VariableAccessor("b")], [])),
                 [],
-                new Expression(new Block(new ProgramScope([VariableAccessor("c")], [])))))),
+                new Expression(new Block([VariableAccessor("c")], []))))),
             ("if (a) b else c", new Expression(new IfExpression(
                 VariableAccessor("a"),
                 VariableAccessor("b"),
@@ -485,13 +563,13 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 VariableAccessor("c")))),
             ("if (a) {if (b) {1} else {2}} else {3}", new Expression(new IfExpression(
                 VariableAccessor("a"),
-                new Expression(new Block(new ProgramScope([new Expression(new IfExpression(
+                new Expression(new Block([new Expression(new IfExpression(
                     VariableAccessor("b"),
-                    new Expression(new Block(new ProgramScope([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))], []))),
+                    new Expression(new Block([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))], [])),
                     [],
-                    new Expression(new Block(new ProgramScope([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))], [])))))], []))),
+                    new Expression(new Block([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))], []))))], [])),
                 [],
-                new Expression(new Block(new ProgramScope([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, default)))], [])))))),
+                new Expression(new Block([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, default)))], []))))),
             ("if (a) if (b) 1 else 2 else 3", new Expression(new IfExpression(
                 VariableAccessor("a"),
                 new Expression(new IfExpression(
@@ -516,9 +594,9 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
                 null,
                 new Expression(new IfExpression(
                     VariableAccessor("b"),
-                    new Expression(new Block(new ProgramScope([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))], []))),
+                    new Expression(new Block([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))], [])),
                     [],
-                    new Expression(new Block(new ProgramScope([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))], [])))))))),
+                    new Expression(new Block([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))], []))))))),
             ("a()", new Expression(new MethodCall(VariableAccessor("a"), []))),
             ("a(b)", new Expression(new MethodCall(VariableAccessor("a"), [
             VariableAccessor("b")]))),
@@ -1143,9 +1221,16 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
             RemoveSourceSpan(function.AccessModifier),
             RemoveSourceSpan(function.Name),
             [..function.Parameters.Select(RemoveSourceSpan)],
-            RemoveSourceSpan(function.TypeIdentifier),
-            RemoveSourceSpan(function.FunctionScope)
+            RemoveSourceSpan(function.ReturnType),
+            RemoveSourceSpan(function.Block)
         );
+    }
+
+    private static Block RemoveSourceSpan(Block block)
+    {
+        return new Block(
+            [..block.Expressions.Select(RemoveSourceSpan)],
+            [..block.Functions.Select(RemoveSourceSpan)]);
     }
 
     private static AccessModifier? RemoveSourceSpan(AccessModifier? accessModifier)
@@ -1219,12 +1304,9 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
 
     private static StrongBox<Block>? RemoveSourceSpan(StrongBox<Block>? block)
     {
-        return block is null ? null : new StrongBox<Block>(new Block(RemoveSourceSpan(block.Value.Scope)));
-    }
-
-    private static ProgramScope RemoveSourceSpan(ProgramScope scope)
-    {
-        return new ProgramScope(scope.Expressions.Select(RemoveSourceSpan).ToArray(), scope.Functions.Select(RemoveSourceSpan).ToArray());
+        return block is null ? null : new StrongBox<Block>(new Block(
+            [..block.Value.Expressions.Select(RemoveSourceSpan)],
+            [..block.Value.Functions.Select(RemoveSourceSpan)]));
     }
 
     private static StrongBox<MethodCall>? RemoveSourceSpan(StrongBox<MethodCall>? methodCall)
@@ -1305,7 +1387,28 @@ public class ExpressionTests(ITestOutputHelper testOutputHelper)
 
     private static LangProgram RemoveSourceSpan(LangProgram program)
     {
-        return new LangProgram(RemoveSourceSpan(program.Scope));
+        return new LangProgram(
+            [..program.Expressions.Select(RemoveSourceSpan)],
+            [..program.Functions.Select(RemoveSourceSpan)],
+            [..program.Classes.Select(RemoveSourceSpan)]);
+    }
+
+    private static ProgramClass RemoveSourceSpan(ProgramClass @class)
+    {
+        return new ProgramClass(
+            RemoveSourceSpan(@class.AccessModifier),
+            RemoveSourceSpan(@class.Name),
+            [..@class.Functions.Select(RemoveSourceSpan)],
+            [..@class.Fields.Select(RemoveSourceSpan)]);
+    }
+
+    private static ClassField RemoveSourceSpan(ClassField field)
+    {
+        return new ClassField(
+            RemoveSourceSpan(field.AccessModifier),
+            RemoveSourceSpan(field.MutabilityModifier),
+            RemoveSourceSpan(field.Name),
+            RemoveSourceSpan(field.Type));
     }
 
     private static StrongBox<MethodReturn>? RemoveSourceSpan(StrongBox<MethodReturn>? methodReturn)

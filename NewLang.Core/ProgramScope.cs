@@ -2,20 +2,51 @@
 
 namespace NewLang.Core;
 
-public readonly record struct ProgramScope(IReadOnlyCollection<Expression> Expressions, IReadOnlyCollection<LangFunction> Functions)
+public readonly record struct ProgramClass(
+    AccessModifier? AccessModifier, Token Name, IReadOnlyCollection<LangFunction> Functions, IReadOnlyCollection<ClassField> Fields)
 {
     public override string ToString()
     {
         var sb = new StringBuilder();
+        if (AccessModifier.HasValue)
+        {
+            sb.Append($"{AccessModifier.Value} ");
+        }
+
+        sb.AppendLine($"class {Name} {{");
+
         foreach (var function in Functions)
         {
             sb.AppendLine($"{function}");
         }
-        sb.AppendLine();
-        foreach (var expression in Expressions)
+
+        foreach (var field in Fields)
         {
-            sb.AppendLine($"{expression};");
+            sb.AppendLine($"{field};");
         }
+
+        sb.Append('}');
+
+        return sb.ToString();
+    }
+}
+
+public readonly record struct ClassField(
+    AccessModifier? AccessModifier, MutabilityModifier? MutabilityModifier, Token Name, TypeIdentifier Type)
+{
+    public override string ToString()
+    {
+        var sb = new StringBuilder();
+
+        if (AccessModifier.HasValue)
+        {
+            sb.Append($"{AccessModifier.Value} ");
+        }
+        if (MutabilityModifier.HasValue)
+        {
+            sb.Append($"{MutabilityModifier.Value} ");
+        }
+        sb.Append($"field {Name}: {Type}");
 
         return sb.ToString();
     }

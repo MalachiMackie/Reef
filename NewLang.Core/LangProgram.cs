@@ -2,11 +2,31 @@
 
 namespace NewLang.Core;
 
-public readonly record struct LangProgram(ProgramScope Scope)
+public readonly record struct LangProgram(
+    IReadOnlyList<Expression> Expressions,
+    IReadOnlyList<LangFunction> Functions,
+    IReadOnlyCollection<ProgramClass> Classes)
 {
     public override string ToString()
     {
-        return Scope.ToString();
+        var sb = new StringBuilder();
+
+        foreach (var expression in Expressions)
+        {
+            sb.AppendLine($"{expression};");
+        }
+
+        foreach (var function in Functions)
+        {
+            sb.AppendLine($"{function}");
+        }
+
+        foreach (var langClass in Classes)
+        {
+            sb.AppendLine($"{langClass}");
+        }
+
+        return sb.ToString();
     }
 }
 
@@ -30,8 +50,8 @@ public readonly record struct LangFunction(
     AccessModifier? AccessModifier,
     Token Name,
     IReadOnlyList<FunctionParameter> Parameters,
-    TypeIdentifier? TypeIdentifier,
-    ProgramScope FunctionScope)
+    TypeIdentifier? ReturnType,
+    Block Block)
 {
     public override string ToString()
     {
@@ -43,13 +63,11 @@ public readonly record struct LangFunction(
         sb.Append($"fn {Name}(");
         sb.AppendJoin(", ", Parameters);
         sb.Append(')');
-        if (TypeIdentifier.HasValue)
+        if (ReturnType.HasValue)
         {
-            sb.Append($": {TypeIdentifier}");
+            sb.Append($": {ReturnType}");
         }
-        sb.AppendLine(" {");
-        sb.Append($"{FunctionScope}");
-        sb.Append('}');
+        sb.Append($"{Block}");
 
         return sb.ToString();
     }
