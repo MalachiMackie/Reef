@@ -727,6 +727,14 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     new FieldInitializer(Token.Identifier("A", default), VariableAccessor("a")),
                     new FieldInitializer(Token.Identifier("B", default), VariableAccessor("b")),
                 ]))),
+            ("MyType::CallMethod", new Expression(new StaticMemberAccess(new TypeIdentifier(Token.Identifier("MyType", default), []), Token.Identifier("CallMethod", default)))),
+            ("MyType::StaticField.InstanceField", new Expression(
+                new MemberAccess(
+                    new Expression(new StaticMemberAccess(new TypeIdentifier(Token.Identifier("MyType", default), []), Token.Identifier("CallMethod", default))),
+                    Token.Identifier("InstanceField", default)))),
+            ("string::CallMethod", new Expression(new StaticMemberAccess(new TypeIdentifier(Token.StringKeyword(default), []), Token.Identifier("CallMethod", default)))),
+            ("result<string>::CallMethod", new Expression(new StaticMemberAccess(
+                new TypeIdentifier(Token.Result(default), [new TypeIdentifier(Token.StringKeyword(default), [])]), Token.Identifier("CallMethod", default)))),
             // ____binding strength tests
             // __greater than
             ( // greater than
@@ -1518,7 +1526,16 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             RemoveSourceSpan(expression.MemberAccess),
             RemoveSourceSpan(expression.MethodReturn),
             RemoveSourceSpan(expression.ObjectInitializer),
-            RemoveSourceSpan(expression.ValueAssignment));
+            RemoveSourceSpan(expression.ValueAssignment),
+            RemoveSourceSpan(expression.StaticMemberAccess));
+    }
+
+    private static StrongBox<StaticMemberAccess>? RemoveSourceSpan(StrongBox<StaticMemberAccess>? staticMemberAccess)
+    {
+        return staticMemberAccess is null
+            ? null
+            : new StrongBox<StaticMemberAccess>(new StaticMemberAccess(
+                RemoveSourceSpan(staticMemberAccess.Value.Type), RemoveSourceSpan(staticMemberAccess.Value.Identifier)));
     }
 
     private static StrongBox<ValueAssignment>? RemoveSourceSpan(StrongBox<ValueAssignment>? valueAssignment)
