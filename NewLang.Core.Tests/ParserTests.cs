@@ -101,15 +101,16 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new Expression(new VariableDeclaration(Token.Identifier("b", default), null, null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
                 ], [], [])),
             ("fn MyFn() {}", new LangProgram([], [
-                new LangFunction(null, Token.Identifier("MyFn", default), [], null, new Block([], []))
+                new LangFunction(null, Token.Identifier("MyFn", default), [], [], null, new Block([], []))
             ], [])),
             ("fn MyFn(): string {}", new LangProgram([], [
-                new LangFunction(null, Token.Identifier("MyFn", default), [], new TypeIdentifier(Token.StringKeyword(default), []), new Block([], []))
+                new LangFunction(null, Token.Identifier("MyFn", default), [], [], new TypeIdentifier(Token.StringKeyword(default), []), new Block([], []))
             ], [])),
             ("fn MyFn(): result<int, MyErrorType> {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
+                    [],
                     [],
                     new TypeIdentifier(
                         Token.Result(default),
@@ -124,6 +125,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     null,
                     Token.Identifier("MyFn", default),
                     [],
+                    [],
                     new TypeIdentifier(
                         Token.Identifier("Outer", default),
                         [
@@ -137,6 +139,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     null,
                     Token.Identifier("MyFn", default),
                     [],
+                    [],
                     new TypeIdentifier(
                         Token.Identifier("Outer", default),
                         [
@@ -149,6 +152,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
+                    [],
                     [],
                     new TypeIdentifier(
                         Token.Result(default),
@@ -164,6 +168,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     null,
                     Token.Identifier("MyFn", default),
                     [],
+                    [],
                     null,
                     new Block([new Expression(new VariableDeclaration(
                         Token.Identifier("a", default),
@@ -176,15 +181,41 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
+                    [],
                     [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(default), []), Token.Identifier("a", default))],
                     null,
                     new Block([], [])
                 )
             ], [])),
+            ("fn MyFn<T1>() {}", new LangProgram([], [new LangFunction(
+                    null,
+                    Token.Identifier("MyFn", default),
+                    [Token.Identifier("T1", default)],
+                    [],
+                    null,
+                    new Block([], [])
+                )], [])),
+            ("fn MyFn<T1, T2>() {}", new LangProgram([], [new LangFunction(
+                    null,
+                    Token.Identifier("MyFn", default),
+                    [Token.Identifier("T1", default), Token.Identifier("T2", default)],
+                    [],
+                    null,
+                    new Block([], [])
+                )], [])),
+            ("fn MyFn<T1, T2, T3>() {}", new LangProgram([], [new LangFunction(
+                    null,
+                    Token.Identifier("MyFn", default),
+                    [Token.Identifier("T1", default), Token.Identifier("T2", default), Token.Identifier("T3", default)],
+                    [],
+                    null,
+                    new Block([], [])
+                )], [])),
             ("fn MyFn(result<int, MyType> a) {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
+                    [],
                     [new FunctionParameter(new TypeIdentifier(
                         Token.Result(default), [
                             new TypeIdentifier(Token.IntKeyword(default), []),
@@ -198,6 +229,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
+                    [],
                     [
                         new FunctionParameter(new TypeIdentifier(Token.IntKeyword(default), []), Token.Identifier("a", default)),
                         new FunctionParameter(new TypeIdentifier(Token.Identifier("MyType", default), []), Token.Identifier("b", default)),
@@ -210,6 +242,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
+                    [],
                     [],
                     new TypeIdentifier(Token.IntKeyword(default), []),
                     new Block([new Expression(new MethodReturn(new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))))], [])
@@ -264,7 +297,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ("class MyClass {pub mut field MyField: string; pub fn MyFn() {}}", new LangProgram([], [], [new ProgramClass(
                 null,
                 Token.Identifier("MyClass", default),
-                [new LangFunction(new AccessModifier(Token.Pub(default)), Token.Identifier("MyFn", default), [], null, new Block([], []))],
+                [new LangFunction(new AccessModifier(Token.Pub(default)), Token.Identifier("MyFn", default), [], [], null, new Block([], []))],
                 [new ClassField(
                     new AccessModifier(Token.Pub(default)),
                     new MutabilityModifier(Token.Mut(default)),
@@ -273,7 +306,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ("class MyClass {field MyField: string; fn MyFn() {}}", new LangProgram([], [], [new ProgramClass(
                 null,
                 Token.Identifier("MyClass", default),
-                [new LangFunction(null, Token.Identifier("MyFn", default), [], null, new Block([], []))],
+                [new LangFunction(null, Token.Identifier("MyFn", default), [], [], null, new Block([], []))],
                 [new ClassField(
                     null,
                     null,
@@ -344,16 +377,20 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             // invalid statement
             "a;",
             "{a;}",
+            "fn MyFn<>(){}",
+            "fn MyFn<,>(){}",
+            "fn MyFn<A,>(){}",
+            "fn MyFn<A B>(){}",
             "fn MyFunction() {",
             "fn MyFunction()",
             "fn a MyFunction() {}",
             "fn MyFunction",
             "fn MyFunction(",
             "fn MyFunction(int) {}",
-            "fn MyFunction(result<,>) {}",
-            "fn MyFunction(result<int,>) {}",
-            "fn MyFunction(result<>) {}",
-            "fn MyFunction(result<int int>) {}",
+            "fn MyFunction(result<,> a) {}",
+            "fn MyFunction(result<int,> a) {}",
+            "fn MyFunction(result<> a) {}",
+            "fn MyFunction(result<int int> a) {}",
             "fn MyFunction(int a, ) {}",
             "fn MyFunction(,) {}",
             "fn MyFunction(int a int b) {}",
@@ -378,15 +415,14 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
         return new (string Source, LangProgram ExpectedProgram)[]
         {
-            ("class MyClass {field MyField: string;}", new LangProgram([], [], [new ProgramClass(
-                null,
-                Token.Identifier("MyClass", default),
-                [],
-                [new ClassField(
+            ("fn MyFn<T1>() {}", new LangProgram([], [new LangFunction(
                     null,
+                    Token.Identifier("MyFn", default),
+                    [Token.Identifier("T1", default)],
+                    [],
                     null,
-                    Token.Identifier("MyField", default),
-                    new TypeIdentifier(Token.StringKeyword(default), []))])])),
+                    new Block([], [])
+                )], [])),
         }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedProgram });
     }
 
@@ -1221,6 +1257,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         return new LangFunction(
             RemoveSourceSpan(function.AccessModifier),
             RemoveSourceSpan(function.Name),
+            [..function.TypeArguments.Select(RemoveSourceSpan)],
             [..function.Parameters.Select(RemoveSourceSpan)],
             RemoveSourceSpan(function.ReturnType),
             RemoveSourceSpan(function.Block)

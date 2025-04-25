@@ -247,7 +247,59 @@ public static class Parser
 
         var nameToken = tokens.Current;
 
-        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.LeftParenthesis)
+        if (!tokens.MoveNext())
+        {
+            throw new InvalidOperationException("Expected ( or <");
+        }
+
+        var typeArguments = new List<Token>();
+
+        if (tokens.Current.Type == TokenType.LeftAngleBracket)
+        {
+            while (true)
+            {
+                if (!tokens.MoveNext())
+                {
+                    throw new InvalidOperationException("Expected Type Argument");
+                }
+
+                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                {
+                    if (typeArguments.Count == 0)
+                    {
+                        throw new InvalidOperationException("Expected type argument");
+                    }
+
+                    if (!tokens.MoveNext())
+                    {
+                        throw new InvalidOperationException("Expected (");
+                    }
+                    break;
+                }
+
+                if (typeArguments.Count > 0)
+                {
+                    if (tokens.Current.Type != TokenType.Comma)
+                    {
+                        throw new InvalidOperationException("Expected ,");
+                    }
+
+                    if (!tokens.MoveNext())
+                    {
+                        throw new InvalidOperationException("Expected type argument");
+                    }
+                }
+
+                if (tokens.Current.Type != TokenType.Identifier)
+                {
+                    throw new InvalidOperationException("Expected type argument");
+                }
+
+                typeArguments.Add(tokens.Current);
+            }
+        }
+
+        if (tokens.Current.Type != TokenType.LeftParenthesis)
         {
             throw new InvalidOperationException("Expected (");
         }
@@ -322,7 +374,7 @@ public static class Parser
             throw new InvalidOperationException("Functions cannot contain fields");
         }
 
-        return new LangFunction(accessModifier, nameToken, parameterList, returnType, new Block(Expressions, Functions));
+        return new LangFunction(accessModifier, nameToken, typeArguments, parameterList, returnType, new Block(Expressions, Functions));
     }
 
     private static bool IsTypeTokenType(in TokenType tokenType)
@@ -351,6 +403,10 @@ public static class Parser
 
                 if (tokens.Current.Type == TokenType.RightAngleBracket)
                 {
+                    if (typeArguments.Count == 0)
+                    {
+                        throw new InvalidOperationException("Expected type argument");
+                    }
                     break;
                 }
 

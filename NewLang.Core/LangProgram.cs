@@ -49,6 +49,7 @@ public readonly record struct TypeIdentifier(Token Identifier, IReadOnlyList<Typ
 public readonly record struct LangFunction(
     AccessModifier? AccessModifier,
     Token Name,
+    IReadOnlyList<Token> TypeArguments,
     IReadOnlyList<FunctionParameter> Parameters,
     TypeIdentifier? ReturnType,
     Block Block)
@@ -60,7 +61,13 @@ public readonly record struct LangFunction(
         {
             sb.Append($"{AccessModifier} ");
         }
-        sb.Append($"fn {Name}(");
+        sb.Append($"fn {Name}");
+        if (TypeArguments.Count > 0)
+        {
+            sb.Append('<');
+            sb.AppendJoin(", ", TypeArguments);
+            sb.Append(">(");
+        }
         sb.AppendJoin(", ", Parameters);
         sb.Append(')');
         if (ReturnType.HasValue)
