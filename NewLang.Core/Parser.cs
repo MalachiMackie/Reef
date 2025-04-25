@@ -220,7 +220,59 @@ public static class Parser
 
         var name = tokens.Current;
 
-        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.LeftBrace)
+        if (!tokens.MoveNext())
+        {
+            throw new InvalidOperationException("Expected or <");
+        }
+
+        var typeArguments = new List<Token>();
+
+        if (tokens.Current.Type == TokenType.LeftAngleBracket)
+        {
+            while (true)
+            {
+                if (!tokens.MoveNext())
+                {
+                    throw new InvalidOperationException("Expected Type Argument");
+                }
+
+                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                {
+                    if (typeArguments.Count == 0)
+                    {
+                        throw new InvalidOperationException("Expected type argument");
+                    }
+
+                    if (!tokens.MoveNext())
+                    {
+                        throw new InvalidOperationException("Expected {");
+                    }
+                    break;
+                }
+
+                if (typeArguments.Count > 0)
+                {
+                    if (tokens.Current.Type != TokenType.Comma)
+                    {
+                        throw new InvalidOperationException("Expected ,");
+                    }
+
+                    if (!tokens.MoveNext())
+                    {
+                        throw new InvalidOperationException("Expected type argument");
+                    }
+                }
+
+                if (tokens.Current.Type != TokenType.Identifier)
+                {
+                    throw new InvalidOperationException("Expected type argument");
+                }
+
+                typeArguments.Add(tokens.Current);
+            }
+        }
+
+        if (tokens.Current.Type != TokenType.LeftBrace)
         {
             throw new InvalidOperationException("Expected {");
         }
@@ -235,7 +287,7 @@ public static class Parser
             throw new InvalidOperationException("Classes connot contain classes");
         }
 
-        return new ProgramClass(accessModifier, name, functions, fields);
+        return new ProgramClass(accessModifier, name, typeArguments, functions, fields);
     }
 
     private static LangFunction GetFunction(AccessModifier? accessModifier, PeekableEnumerator<Token> tokens)

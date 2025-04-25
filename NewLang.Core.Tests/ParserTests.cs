@@ -252,15 +252,30 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 null,
                 Token.Identifier("MyClass", default),
                 [],
+                [],
+                [])])),
+            ("class MyClass<T> {}", new LangProgram([], [], [new ProgramClass(
+                null,
+                Token.Identifier("MyClass", default),
+                [Token.Identifier("T", default)],
+                [],
+                [])])),
+            ("class MyClass<T, T2, T3> {}", new LangProgram([], [], [new ProgramClass(
+                null,
+                Token.Identifier("MyClass", default),
+                [Token.Identifier("T", default), Token.Identifier("T2", default), Token.Identifier("T3", default)],
+                [],
                 [])])),
             ("pub class MyClass {}", new LangProgram([], [], [new ProgramClass(
                 new AccessModifier(Token.Pub(default)),
                 Token.Identifier("MyClass", default),
                 [],
+                [],
                 [])])),
             ("class MyClass {pub mut field MyField: string;}", new LangProgram([], [], [new ProgramClass(
                 null,
                 Token.Identifier("MyClass", default),
+                [],
                 [],
                 [new ClassField(
                     new AccessModifier(Token.Pub(default)),
@@ -271,6 +286,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 null,
                 Token.Identifier("MyClass", default),
                 [],
+                [],
                 [new ClassField(
                     null,
                     new MutabilityModifier(Token.Mut(default)),
@@ -279,6 +295,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ("class MyClass {field MyField: string;}", new LangProgram([], [], [new ProgramClass(
                 null,
                 Token.Identifier("MyClass", default),
+                [],
                 [],
                 [new ClassField(
                     null,
@@ -289,6 +306,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 null,
                 Token.Identifier("MyClass", default),
                 [],
+                [],
                 [new ClassField(
                     new AccessModifier(Token.Pub(default)),
                     null,
@@ -297,6 +315,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ("class MyClass {pub mut field MyField: string; pub fn MyFn() {}}", new LangProgram([], [], [new ProgramClass(
                 null,
                 Token.Identifier("MyClass", default),
+                [],
                 [new LangFunction(new AccessModifier(Token.Pub(default)), Token.Identifier("MyFn", default), [], [], null, new Block([], []))],
                 [new ClassField(
                     new AccessModifier(Token.Pub(default)),
@@ -306,6 +325,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ("class MyClass {field MyField: string; fn MyFn() {}}", new LangProgram([], [], [new ProgramClass(
                 null,
                 Token.Identifier("MyClass", default),
+                [],
                 [new LangFunction(null, Token.Identifier("MyFn", default), [], [], null, new Block([], []))],
                 [new ClassField(
                     null,
@@ -405,6 +425,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             // no semicolon
             "return 1",
             "pub MyClass {}",
+            "class MyClass<> {}",
+            "class MyClass<,> {}",
+            "class MyClass<T1,> {}",
+            "class MyClass<T1 T2> {}",
             "pub mut class MyClass {}",
             "class pub MyClass {}",
             "class MyClass {field myFieldWithoutSemicolon}",
@@ -1443,6 +1467,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         return new ProgramClass(
             RemoveSourceSpan(@class.AccessModifier),
             RemoveSourceSpan(@class.Name),
+            [..@class.TypeArguments.Select(RemoveSourceSpan)],
             [..@class.Functions.Select(RemoveSourceSpan)],
             [..@class.Fields.Select(RemoveSourceSpan)]);
     }

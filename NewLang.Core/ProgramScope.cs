@@ -3,7 +3,7 @@
 namespace NewLang.Core;
 
 public readonly record struct ProgramClass(
-    AccessModifier? AccessModifier, Token Name, IReadOnlyCollection<LangFunction> Functions, IReadOnlyCollection<ClassField> Fields)
+    AccessModifier? AccessModifier, Token Name, IReadOnlyList<Token> TypeArguments, IReadOnlyCollection<LangFunction> Functions, IReadOnlyCollection<ClassField> Fields)
 {
     public override string ToString()
     {
@@ -13,7 +13,14 @@ public readonly record struct ProgramClass(
             sb.Append($"{AccessModifier.Value} ");
         }
 
-        sb.AppendLine($"class {Name} {{");
+        sb.Append($"class {Name}");
+        if (TypeArguments.Count > 0)
+        {
+            sb.Append('<');
+            sb.AppendJoin(", ", TypeArguments);
+            sb.Append('>');
+        }
+        sb.AppendLine(" {");
 
         foreach (var function in Functions)
         {
