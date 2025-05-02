@@ -217,6 +217,7 @@ public class Tokenizer
             TokenType.DoubleColon when source is "::" => Token.DoubleColon(new SourceSpan(position, (uint)source.Length)),
             TokenType.Class when source is "class" => Token.Class(new SourceSpan(position, (uint)source.Length)),
             TokenType.Field when source is "field" => Token.Field(new SourceSpan(position, (uint)source.Length)),
+            TokenType.Static when source is "static" => Token.Static(new SourceSpan(position, (uint)source.Length)),
             TokenType.LeftParenthesis when source is "(" => Token.LeftParenthesis(new SourceSpan(position,
                 (uint)source.Length)),
             TokenType.RightParenthesis when source is ")" => Token.RightParenthesis(new SourceSpan(position,
@@ -348,6 +349,7 @@ public class Tokenizer
             case 's':
                 tokens[i++] = TokenType.StringKeyword;
                 tokens[i++] = TokenType.Identifier;
+                tokens[i++] = TokenType.Static;
                 break;
             case 'r':
                 tokens[i++] = TokenType.Return;
@@ -420,6 +422,7 @@ public class Tokenizer
             TokenType.LeftBrace => source is "{",
             TokenType.Mut => "mut".AsSpan().StartsWith(source) && source.Length <= "mut".Length,
             TokenType.New => "new".AsSpan().StartsWith(source) && source.Length <= "new".Length,
+            TokenType.Static => "static".AsSpan().StartsWith(source) && source.Length <= "static".Length,
             TokenType.Class => "class".AsSpan().StartsWith(source) && source.Length <= "class".Length,
             TokenType.RightBrace => source is "}",
             TokenType.Pub => "pub".AsSpan().StartsWith(source) && source.Length <= "pub".Length,

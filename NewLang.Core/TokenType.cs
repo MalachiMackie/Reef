@@ -42,5 +42,6 @@ public enum TokenType
     Mut,
     Turbofish,
     DoubleColon,
-    New
+    New,
+    Static
 }

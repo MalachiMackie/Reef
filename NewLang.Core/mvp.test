@@ -48,6 +48,7 @@ pub class MyClass {
     mut field FieldB: string;
     pub mut field FieldC: string;
     pub field FieldD: string;
+    pub static field FieldE: string;
 }
 
 pub class GenericClass<T> {

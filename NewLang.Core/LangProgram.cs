@@ -48,6 +48,7 @@ public readonly record struct TypeIdentifier(Token Identifier, IReadOnlyList<Typ
 
 public readonly record struct LangFunction(
     AccessModifier? AccessModifier,
+    StaticModifier? StaticModifier,
     Token Name,
     IReadOnlyList<Token> TypeArguments,
     IReadOnlyList<FunctionParameter> Parameters,
@@ -78,6 +79,14 @@ public readonly record struct LangFunction(
         sb.Append($"{Block}");
 
         return sb.ToString();
+    }
+}
+
+public readonly record struct StaticModifier(Token Token)
+{
+    public override string ToString()
+    {
+        return $"{Token}";
     }
 }
 

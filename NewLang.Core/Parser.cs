@@ -121,28 +121,39 @@ public static class Parser
 
     private static bool IsMember(TokenType tokenType)
     {
-        return tokenType is TokenType.Pub or TokenType.Mut or TokenType.Fn or TokenType.Class or TokenType.Field;
+        return tokenType is TokenType.Pub or TokenType.Mut or TokenType.Static or TokenType.Fn or TokenType.Class or TokenType.Field;
     }
 
     private static (LangFunction? Function, ProgramClass? Class, ClassField? Field) GetMember(PeekableEnumerator<Token> tokens)
     {
         AccessModifier? accessModifier = null;
         MutabilityModifier? mutabilityModifier = null;
+        StaticModifier? staticModifier = null;
 
         if (tokens.Current.Type == TokenType.Pub)
         {
             accessModifier = new AccessModifier(tokens.Current);
             if (!tokens.MoveNext())
             {
-                throw new InvalidOperationException("Expected field, mut, fn or class");
+                throw new InvalidOperationException("Expected field, mut, static, fn or class");
             }
         }
+        
+        if (tokens.Current.Type == TokenType.Static)
+        {
+            staticModifier = new StaticModifier(tokens.Current);
+            if (!tokens.MoveNext())
+            {
+                throw new InvalidOperationException("Expected field, fn or class");
+            }
+        }
+        
         if (tokens.Current.Type == TokenType.Mut)
         {
             mutabilityModifier = new MutabilityModifier(tokens.Current);
             if (!tokens.MoveNext())
             {
-                throw new InvalidOperationException("Expected field, fn or class");
+                throw new InvalidOperationException("Expected field, fn, static or class");
             }
         }
 
@@ -153,7 +164,7 @@ public static class Parser
                 throw new InvalidOperationException("Function cannot have mutability modifier");
             }
 
-            var function = GetFunctionDeclaration(accessModifier, tokens);
+            var function = GetFunctionDeclaration(accessModifier, staticModifier, tokens);
             return (function, null, null);
         }
 
@@ -164,6 +175,11 @@ public static class Parser
                 throw new InvalidOperationException("Class cannot have a mutability modifier");
             }
 
+            if (staticModifier.HasValue)
+            {
+                throw new InvalidOperationException("Class cannot be static");
+            }
+
             var @class = GetClass(accessModifier, tokens);
 
             return (null, @class, null);
@@ -171,7 +187,7 @@ public static class Parser
 
         if (tokens.Current.Type == TokenType.Field)
         {
-            var field = GetField(accessModifier, mutabilityModifier, tokens);
+            var field = GetField(accessModifier, staticModifier, mutabilityModifier, tokens);
 
             return (null, null, field);
         }
@@ -179,7 +195,7 @@ public static class Parser
         throw new InvalidOperationException("Expected class, fn or field");
     }
 
-    private static ClassField GetField(AccessModifier? accessModifier, MutabilityModifier? mutabilityModifier, PeekableEnumerator<Token> tokens)
+    private static ClassField GetField(AccessModifier? accessModifier, StaticModifier? staticModifier, MutabilityModifier? mutabilityModifier, PeekableEnumerator<Token> tokens)
     {
         // pub mut field MyField: string;
         if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
@@ -201,7 +217,7 @@ public static class Parser
 
         var type = GetTypeIdentifier(tokens);
 
-        return new ClassField(accessModifier, mutabilityModifier, name, type);
+        return new ClassField(accessModifier, staticModifier, mutabilityModifier, name, type);
     }
 
     private static ProgramClass GetClass(AccessModifier? accessModifier, PeekableEnumerator<Token> tokens)
@@ -283,7 +299,7 @@ public static class Parser
         return new ProgramClass(accessModifier, name, typeArguments, functions, fields);
     }
 
-    private static LangFunction GetFunctionDeclaration(AccessModifier? accessModifier, PeekableEnumerator<Token> tokens)
+    private static LangFunction GetFunctionDeclaration(AccessModifier? accessModifier, StaticModifier? staticModifier, PeekableEnumerator<Token> tokens)
     {
         if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
         {
@@ -431,7 +447,7 @@ public static class Parser
             throw new InvalidOperationException("Functions cannot contain fields");
         }
 
-        return new LangFunction(accessModifier, nameToken, typeArguments, parameterList, returnType, new Block(expressions, functions));
+        return new LangFunction(accessModifier, staticModifier, nameToken, typeArguments, parameterList, returnType, new Block(expressions, functions));
     }
 
     private static bool IsTypeTokenType(in TokenType tokenType)

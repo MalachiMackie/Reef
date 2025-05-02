@@ -132,11 +132,11 @@ public readonly record struct VariableDeclaration(
         {
             sb.Append($"{MutabilityModifier.Value} ");
         }
+        sb.Append($"{VariableNameToken}");
         if (Type.HasValue)
         {
             sb.Append($": {Type.Value} ");
         }
-        sb.Append($"{VariableNameToken}");
         if (Value.HasValue)
         {
             sb.Append($" = {Value.Value}");
@@ -182,17 +182,15 @@ public readonly record struct Block(IReadOnlyList<Expression> Expressions, IRead
     
     public override string ToString()
     {
-        var sb = new StringBuilder("{");
+        var sb = new StringBuilder("{\n");
         foreach (var expression in Expressions)
         {
-            sb.Append('\n');
-            sb.Append($"{expression};");
+            sb.Append($"{expression};\n");
         }
 
         foreach (var function in Functions)
         {
-            sb.Append('\n');
-            sb.Append($"{function}");
+            sb.Append($"{function}\n");
         }
 
         sb.Append('}');

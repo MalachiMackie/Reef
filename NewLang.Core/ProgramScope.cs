@@ -39,7 +39,7 @@ public readonly record struct ProgramClass(
 }
 
 public readonly record struct ClassField(
-    AccessModifier? AccessModifier, MutabilityModifier? MutabilityModifier, Token Name, TypeIdentifier Type)
+    AccessModifier? AccessModifier, StaticModifier? StaticModifier, MutabilityModifier? MutabilityModifier, Token Name, TypeIdentifier Type)
 {
     public override string ToString()
     {
@@ -48,6 +48,10 @@ public readonly record struct ClassField(
         if (AccessModifier.HasValue)
         {
             sb.Append($"{AccessModifier.Value} ");
+        }
+        if (StaticModifier.HasValue)
+        {
+            sb.Append($"{StaticModifier.Value} ");
         }
         if (MutabilityModifier.HasValue)
         {

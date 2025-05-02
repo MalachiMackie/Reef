@@ -68,6 +68,11 @@ public readonly struct Token
     {
         return new Token { Type = TokenType.Pub, SourceSpan = sourceSpan };
     }
+    
+    public static Token Static(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.Static, SourceSpan = sourceSpan };
+    }
 
     public static Token DoubleColon(SourceSpan sourceSpan)
     {
