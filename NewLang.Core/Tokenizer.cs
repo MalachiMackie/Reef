@@ -4,7 +4,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace NewLang.Core;
 
-// todo: rename to Tokenizer
 // todo: try pool allocations 
 public class Tokenizer
 {
