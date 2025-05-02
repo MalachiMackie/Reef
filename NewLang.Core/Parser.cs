@@ -528,14 +528,14 @@ public static class Parser
             // unary operators
             TokenType.QuestionMark => GetUnaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current, UnaryOperatorType.FallOut),
             // binary operator tokens
-            TokenType.LeftAngleBracket => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current,
+            TokenType.LeftAngleBracket => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"),
                 BinaryOperatorType.LessThan),
-            TokenType.RightAngleBracket => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current,
+            TokenType.RightAngleBracket => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"),
                 BinaryOperatorType.GreaterThan),
-            TokenType.Plus => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current, BinaryOperatorType.Plus),
-            TokenType.Dash => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current, BinaryOperatorType.Minus),
-            TokenType.Star => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current, BinaryOperatorType.Multiply),
-            TokenType.ForwardSlash => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current,
+            TokenType.Plus => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.Plus),
+            TokenType.Dash => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.Minus),
+            TokenType.Star => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.Multiply),
+            TokenType.ForwardSlash => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"),
                 BinaryOperatorType.Divide),
             TokenType.Var => GetVariableDeclaration(tokens),
             TokenType.LeftBrace => GetBlockExpression(tokens),
@@ -548,7 +548,7 @@ public static class Parser
             TokenType.Return => GetMethodReturn(tokens),
             TokenType.New => GetObjectInitializer(tokens),
             TokenType.Equals => GetValueAssignment(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
-            TokenType.DoubleEquals => GetEqualityCheck(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
+            TokenType.DoubleEquals => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.EqualityCheck),
             TokenType.Ok or TokenType.Error => new Expression(new ValueAccessor(ValueAccessType.Variable, tokens.Current)),
             _ when IsTypeTokenType(tokens.Current.Type) => new Expression(new ValueAccessor(ValueAccessType.Variable, tokens.Current)),
             _ => throw new InvalidOperationException($"Token type {tokens.Current.Type} not supported")
@@ -618,19 +618,6 @@ public static class Parser
         return new Expression(new ValueAssignment(previousExpression, right));
     }
     
-    private static Expression GetEqualityCheck(PeekableEnumerator<Token> tokens, Expression previousExpression)
-    {
-        if (!TryGetBindingStrength(tokens.Current, out var bindingStrength))
-        {
-            throw new UnreachableException("Equality check operator must have a binding strength");
-        }
-
-        var right = PopExpression(tokens, bindingStrength)
-            ?? throw new InvalidOperationException("Expected value expression");
-
-        return new Expression(new EqualityCheck(previousExpression, right));
-    }
-
     private static Expression GetObjectInitializer(PeekableEnumerator<Token> tokens)
     {
         if (!tokens.MoveNext())
@@ -928,9 +915,9 @@ public static class Parser
     private static Expression GetBinaryOperatorExpression(
         PeekableEnumerator<Token> tokens,
         Expression leftOperand,
-        Token operatorToken,
         BinaryOperatorType operatorType)
     {
+        var operatorToken = tokens.Current;
         if (!TryGetBindingStrength(operatorToken, out var bindingStrength))
         {
             throw new UnreachableException("All operators have a binding strength");
@@ -955,7 +942,7 @@ public static class Parser
             TokenType.ForwardSlash => BinaryOperatorBindingStrengths[BinaryOperatorType.Divide],
             TokenType.Plus => BinaryOperatorBindingStrengths[BinaryOperatorType.Plus],
             TokenType.Dash => BinaryOperatorBindingStrengths[BinaryOperatorType.Minus],
-            TokenType.DoubleEquals => 2,
+            TokenType.DoubleEquals => BinaryOperatorBindingStrengths[BinaryOperatorType.EqualityCheck],
             TokenType.LeftParenthesis => 7,
             TokenType.Turbofish => 6,
             TokenType.DoubleColon => 6,
@@ -976,6 +963,7 @@ public static class Parser
             { BinaryOperatorType.Minus, 4 },
             { BinaryOperatorType.GreaterThan, 3 },
             { BinaryOperatorType.LessThan, 3 },
+            { BinaryOperatorType.EqualityCheck, 2 }
         }.ToFrozenDictionary();
     
     private static readonly FrozenDictionary<UnaryOperatorType, uint> UnaryOperatorBindingStrengths =
