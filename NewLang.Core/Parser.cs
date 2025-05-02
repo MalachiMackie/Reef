@@ -1,4 +1,4 @@
-﻿using System.Collections.Frozen;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -934,15 +934,15 @@ public static class Parser
         bindingStrength = token.Type switch
         {
             // unary operators
-            TokenType.QuestionMark => UnaryOperatorBindingStrengths[UnaryOperatorType.FallOut],
+            TokenType.QuestionMark => GetUnaryOperatorBindingStrength(UnaryOperatorType.FallOut),
             // binary operators
-            TokenType.RightAngleBracket => BinaryOperatorBindingStrengths[BinaryOperatorType.GreaterThan],
-            TokenType.LeftAngleBracket => BinaryOperatorBindingStrengths[BinaryOperatorType.LessThan],
-            TokenType.Star => BinaryOperatorBindingStrengths[BinaryOperatorType.Multiply],
-            TokenType.ForwardSlash => BinaryOperatorBindingStrengths[BinaryOperatorType.Divide],
-            TokenType.Plus => BinaryOperatorBindingStrengths[BinaryOperatorType.Plus],
-            TokenType.Dash => BinaryOperatorBindingStrengths[BinaryOperatorType.Minus],
-            TokenType.DoubleEquals => BinaryOperatorBindingStrengths[BinaryOperatorType.EqualityCheck],
+            TokenType.RightAngleBracket => GetBinaryOperatorBindingStrength(BinaryOperatorType.GreaterThan),
+            TokenType.LeftAngleBracket => GetBinaryOperatorBindingStrength(BinaryOperatorType.LessThan),
+            TokenType.Star => GetBinaryOperatorBindingStrength(BinaryOperatorType.Multiply),
+            TokenType.ForwardSlash => GetBinaryOperatorBindingStrength(BinaryOperatorType.Divide),
+            TokenType.Plus => GetBinaryOperatorBindingStrength(BinaryOperatorType.Plus),
+            TokenType.Dash => GetBinaryOperatorBindingStrength(BinaryOperatorType.Minus),
+            TokenType.DoubleEquals => GetBinaryOperatorBindingStrength(BinaryOperatorType.EqualityCheck),
             TokenType.LeftParenthesis => 7,
             TokenType.Turbofish => 6,
             TokenType.DoubleColon => 6,
@@ -953,22 +953,28 @@ public static class Parser
 
         return bindingStrength.HasValue;
     }
-    
-    private static readonly FrozenDictionary<BinaryOperatorType, uint> BinaryOperatorBindingStrengths =
-        new Dictionary<BinaryOperatorType, uint>
+
+    private static uint GetBinaryOperatorBindingStrength(BinaryOperatorType operatorType)
+    {
+        return operatorType switch
         {
-            { BinaryOperatorType.Multiply, 5 },
-            { BinaryOperatorType.Divide, 5 },
-            { BinaryOperatorType.Plus, 4 },
-            { BinaryOperatorType.Minus, 4 },
-            { BinaryOperatorType.GreaterThan, 3 },
-            { BinaryOperatorType.LessThan, 3 },
-            { BinaryOperatorType.EqualityCheck, 2 }
-        }.ToFrozenDictionary();
+            BinaryOperatorType.Multiply => 5,
+            BinaryOperatorType.Divide => 5,
+            BinaryOperatorType.Plus => 4,
+            BinaryOperatorType.Minus => 4,
+            BinaryOperatorType.GreaterThan => 3,
+            BinaryOperatorType.LessThan => 3,
+            BinaryOperatorType.EqualityCheck => 2,
+            _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType, typeof(BinaryOperatorType))
+        };
+    }
     
-    private static readonly FrozenDictionary<UnaryOperatorType, uint> UnaryOperatorBindingStrengths =
-        new Dictionary<UnaryOperatorType, uint>
+    private static uint GetUnaryOperatorBindingStrength(UnaryOperatorType operatorType)
+    {
+        return operatorType switch
         {
-            { UnaryOperatorType.FallOut, 9 },
-        }.ToFrozenDictionary();
+            UnaryOperatorType.FallOut => 9,
+            _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType, typeof(UnaryOperatorType))
+        };
+    }
 }
