@@ -208,6 +208,7 @@ public class Tokenizer
             TokenType.Identifier => Token.Identifier(source.ToString(), new SourceSpan(position, (uint)source.Length)),
             TokenType.If when source is "if" => Token.If(new SourceSpan(position, (uint)source.Length)),
             TokenType.Mut when source is "mut" => Token.Mut(new SourceSpan(position, (uint)source.Length)),
+            TokenType.DoubleColon when source is "::" => Token.DoubleColon(new SourceSpan(position, (uint)source.Length)),
             TokenType.Class when source is "class" => Token.Class(new SourceSpan(position, (uint)source.Length)),
             TokenType.Field when source is "field" => Token.Field(new SourceSpan(position, (uint)source.Length)),
             TokenType.LeftParenthesis when source is "(" => Token.LeftParenthesis(new SourceSpan(position,
@@ -232,7 +233,7 @@ public class Tokenizer
             TokenType.Comma when source is "," => Token.Comma(new SourceSpan(position, (uint)source.Length)),
             TokenType.DoubleEquals when source is "==" => Token.DoubleEquals(new SourceSpan(position,
                 (uint)source.Length)),
-            TokenType.Turbofish when source is "::" => Token.Turbofish(new SourceSpan(position,
+            TokenType.Turbofish when source is "::<" => Token.Turbofish(new SourceSpan(position,
                 (uint)source.Length)),
             TokenType.Else when source is "else" => Token.Else(new SourceSpan(position, (uint)source.Length)),
             TokenType.IntLiteral when int.TryParse(source, out var intValue) => Token.IntLiteral(intValue,
@@ -263,136 +264,149 @@ public class Tokenizer
         return token.HasValue;
     }
 
-    private static readonly SearchValues<char> AlphaNumeric =
-        SearchValues.Create("abcdefghijklmnopqrstuvwxyzABCDEFHIJKLMNOPQRSTUVWXYZ0123456789");
+    private static readonly SearchValues<char> ValidIdentifierTokens =
+        SearchValues.Create("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_");
 
     // maximum potential token types at the same time
-    private const int MaxPotentialTokenTypes = 3;
+    private const int MaxPotentialTokenTypes = 4;
     private static int GetPotentiallyValidTokenTypes(char firstChar, ref Span<TokenType?> tokens)
     {
+        var i = 0;
         switch (firstChar)
         {
             case 'i':
-                tokens[0] = TokenType.IntKeyword;
-                tokens[1] = TokenType.If;
-                tokens[2] = TokenType.Identifier;
-                return 3;
+                tokens[i++] = TokenType.IntKeyword;
+                tokens[i++] = TokenType.If;
+                tokens[i++] = TokenType.Identifier;
+                break;
             case 'm':
-                tokens[0] = TokenType.Mut;
-                return 1;
+                tokens[i++] = TokenType.Mut;
+                tokens[i++] = TokenType.Identifier;
+                break;
             case '(':
-                tokens[0] = TokenType.LeftParenthesis;
-                return 1;
+                tokens[i++] = TokenType.LeftParenthesis;
+                break;
             case ')':
-                tokens[0] = TokenType.RightParenthesis;
-                return 1;
+                tokens[i++] = TokenType.RightParenthesis;
+                break;
             case ';':
-                tokens[0] = TokenType.Semicolon;
-                return 1;
+                tokens[i++] = TokenType.Semicolon;
+                break;
             case '{':
-                tokens[0] = TokenType.LeftBrace;
-                return 1;
+                tokens[i++] = TokenType.LeftBrace;
+                break;
             case '}':
-                tokens[0] = TokenType.RightBrace;
-                return 1;
+                tokens[i++] = TokenType.RightBrace;
+                break;
             case 'p':
-                tokens[0] = TokenType.Pub;
-                tokens[1] = TokenType.Identifier;
-                return 2;
+                tokens[i++] = TokenType.Pub;
+                tokens[i++] = TokenType.Identifier;
+                break;
             case 'f':
-                tokens[0] = TokenType.False;
-                tokens[1] = TokenType.Fn;
-                tokens[2] = TokenType.Field;
-                return 3;
+                tokens[i++] = TokenType.False;
+                tokens[i++] = TokenType.Fn;
+                tokens[i++] = TokenType.Field;
+                tokens[i++] = TokenType.Identifier;
+                break;
             case ':':
-                tokens[0] = TokenType.Colon;
-                tokens[1] = TokenType.Turbofish;
-                return 2;
+                tokens[i++] = TokenType.Colon;
+                tokens[i++] = TokenType.Turbofish;
+                tokens[i++] = TokenType.DoubleColon;
+                break;
             case '<':
-                tokens[0] = TokenType.LeftAngleBracket;
-                return 1;
+                tokens[i++] = TokenType.LeftAngleBracket;
+                break;
             case '>':
-                tokens[0] = TokenType.RightAngleBracket;
-                return 1;
+                tokens[i++] = TokenType.RightAngleBracket;
+                break;
             case 'n':
-                tokens[0] = TokenType.New;
-                return 1;
+                tokens[i++] = TokenType.New;
+                tokens[i++] = TokenType.Identifier;
+                break;
             case 'v':
-                tokens[0] = TokenType.Var;
-                tokens[1] = TokenType.Identifier;
-                return 2;
+                tokens[i++] = TokenType.Var;
+                tokens[i++] = TokenType.Identifier;
+                break;
             case '=':
-                tokens[0] = TokenType.Equals;
-                tokens[1] = TokenType.DoubleEquals;
-                return 2;
+                tokens[i++] = TokenType.Equals;
+                tokens[i++] = TokenType.DoubleEquals;
+                break;
             case ',':
-                tokens[0] = TokenType.Comma;
-                return 1;
+                tokens[i++] = TokenType.Comma;
+                break;
             case 'e':
-                tokens[0] = TokenType.Else;
-                tokens[1] = TokenType.Error;
-                return 2;
+                tokens[i++] = TokenType.Else;
+                tokens[i++] = TokenType.Error;
+                tokens[i++] = TokenType.Identifier;
+                break;
             case 's':
-                tokens[0] = TokenType.StringKeyword;
-                return 1;
+                tokens[i++] = TokenType.StringKeyword;
+                tokens[i++] = TokenType.Identifier;
+                break;
             case 'r':
-                tokens[0] = TokenType.Return;
-                tokens[1] = TokenType.Result;
-                return 2;
+                tokens[i++] = TokenType.Return;
+                tokens[i++] = TokenType.Result;
+                tokens[i++] = TokenType.Identifier;
+                break;
             case 'b':
-                tokens[0] = TokenType.Bool;
-                return 1;
+                tokens[i++] = TokenType.Bool;
+                tokens[i++] = TokenType.Identifier;
+                break;
             case 'o':
-                tokens[0] = TokenType.Ok;
-                return 1;
+                tokens[i++] = TokenType.Ok;
+                tokens[i++] = TokenType.Identifier;
+                break;
             case '?':
-                tokens[0] = TokenType.QuestionMark;
-                return 1;
+                tokens[i++] = TokenType.QuestionMark;
+                break;
             case 't':
-                tokens[0] = TokenType.True;
-                return 1;
+                tokens[i++] = TokenType.True;
+                tokens[i++] = TokenType.Identifier;
+                break;
             case '*':
-                tokens[0] = TokenType.Star;
-                return 1;
+                tokens[i++] = TokenType.Star;
+                break;
             case '/':
-                tokens[0] = TokenType.ForwardSlash;
-                return 1;
+                tokens[i++] = TokenType.ForwardSlash;
+                break;
             case '+':
-                tokens[0] = TokenType.Plus;
-                return 1;
+                tokens[i++] = TokenType.Plus;
+                break;
             case '-':
-                tokens[0] = TokenType.Dash;
-                return 1;
+                tokens[i++] = TokenType.Dash;
+                break;
             case 'c':
-                tokens[0] = TokenType.Class;
-                return 1;
+                tokens[i++] = TokenType.Class;
+                tokens[i++] = TokenType.Identifier;
+                break;
             case '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9':
-                tokens[0] = TokenType.IntLiteral;
-                return 1;
+                tokens[i++] = TokenType.IntLiteral;
+                break;
             case '"':
-                tokens[0] = TokenType.StringLiteral;
-                return 1;
+                tokens[i++] = TokenType.StringLiteral;
+                break;
             case '.':
-                tokens[0] = TokenType.Dot;
-                return 1;
+                tokens[i++] = TokenType.Dot;
+                break;
             default:
             {
-                if (AlphaNumeric.Contains(firstChar))
+                if (ValidIdentifierTokens.Contains(firstChar))
                 {
-                    tokens[0] = TokenType.Identifier;
-                    return 1;
+                    tokens[i++] = TokenType.Identifier;
                 }
 
-                return 0;
+                break;
             }
         }
+        
+        return i;
     }
     
     private static bool IsPotentiallyValid(TokenType type, ReadOnlySpan<char> source)
     {
         return type switch
         {
-            TokenType.Identifier => !source.ContainsAnyExcept(AlphaNumeric),
+            TokenType.Identifier => !source.ContainsAnyExcept(ValidIdentifierTokens),
             TokenType.If => "if".AsSpan().StartsWith(source) && source.Length <= "if".Length,
             TokenType.LeftParenthesis => source is "(",
             TokenType.RightParenthesis => source is ")",
@@ -406,7 +420,7 @@ public class Tokenizer
             TokenType.Fn => "fn".AsSpan().StartsWith(source) && source.Length <= "fn".Length,
             TokenType.Field => "field".AsSpan().StartsWith(source) && source.Length <= "field".Length,
             TokenType.IntKeyword => "int".AsSpan().StartsWith(source) && source.Length <= "int".Length,
-            TokenType.Turbofish => "::".AsSpan().StartsWith(source) && source.Length <= "::".Length,
+            TokenType.Turbofish => "::<".AsSpan().StartsWith(source) && source.Length <= "::<".Length,
             TokenType.Colon => source is ":",
             TokenType.LeftAngleBracket => source is "<",
             TokenType.RightAngleBracket => source is ">",
@@ -426,6 +440,7 @@ public class Tokenizer
             TokenType.True => "true".AsSpan().StartsWith(source) && source.Length <= "true".Length,
             TokenType.False => "false".AsSpan().StartsWith(source) && source.Length <= "false".Length,
             TokenType.Bool => "bool".AsSpan().StartsWith(source) && source.Length <= "bool".Length,
+            TokenType.DoubleColon => "::".AsSpan().StartsWith(source) && source.Length <= "::".Length,
             TokenType.Star => source is "*",
             TokenType.ForwardSlash => source is "/",
             TokenType.Plus => source is "+",

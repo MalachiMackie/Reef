@@ -41,5 +41,6 @@ public enum TokenType
     Dot,
     Mut,
     Turbofish,
+    DoubleColon,
     New
 }

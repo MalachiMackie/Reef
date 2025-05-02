@@ -455,7 +455,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
         return new (string Source, Expression ExpectedProgram)[]
         {
-            ("a::<string>()", new Expression(new MethodCall(VariableAccessor("a"), [new TypeIdentifier(Token.StringKeyword(default), [])], []))),
+            ("MyType::StaticField.InstanceField", new Expression(
+                new MemberAccess(
+                    new Expression(new StaticMemberAccess(VariableAccessor("MyType"), Token.Identifier("StaticField", default))),
+                    Token.Identifier("InstanceField", default))))
         }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedProgram });
     }
 
@@ -668,32 +671,37 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     new Expression(new Block([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default)))], [])),
                     [],
                     new Expression(new Block([new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))], []))))))),
-            ("a()", new Expression(new MethodCall(VariableAccessor("a"), [], []))),
-            ("a::<string>()", new Expression(new MethodCall(VariableAccessor("a"), [new TypeIdentifier(Token.StringKeyword(default), [])], []))),
+            ("a()", new Expression(new MethodCall(VariableAccessor("a"), []))),
+            ("a::<string>()", new Expression(new MethodCall(new Expression(new GenericInstantiation(VariableAccessor("a"), [new TypeIdentifier(Token.StringKeyword(default), [])])), []))),
             ("a::<string, int>()", new Expression(new MethodCall(
-                VariableAccessor("a"),
-                [new TypeIdentifier(Token.StringKeyword(default), []), new TypeIdentifier(Token.IntKeyword(default), [])],
-                []))),
+                new Expression(new GenericInstantiation(
+                    VariableAccessor("a"),
+                    [
+                        new TypeIdentifier(Token.StringKeyword(default), []),
+                        new TypeIdentifier(Token.IntKeyword(default), []),
+                    ])), []))),
             ("a::<string, int, result::<int>>()", new Expression(new MethodCall(
+                new Expression(
+                    new GenericInstantiation(
                 VariableAccessor("a"),
                 [
                     new TypeIdentifier(Token.StringKeyword(default), []),
                     new TypeIdentifier(Token.IntKeyword(default), []),
                     new TypeIdentifier(Token.Result(default), [new TypeIdentifier(Token.IntKeyword(default), [])]),
-                ],
+                ])),
                 []))),
-            ("a(b)", new Expression(new MethodCall(VariableAccessor("a"), [], [
+            ("a(b)", new Expression(new MethodCall(VariableAccessor("a"), [
             VariableAccessor("b")]))),
-            ("a(b, c)", new Expression(new MethodCall(VariableAccessor("a"), [], [
+            ("a(b, c)", new Expression(new MethodCall(VariableAccessor("a"), [
                 VariableAccessor("b"), VariableAccessor("c")
             ]))),
-            ("a(b, c > d, e)", new Expression(new MethodCall(VariableAccessor("a"), [], [
+            ("a(b, c > d, e)", new Expression(new MethodCall(VariableAccessor("a"), [
                 VariableAccessor("b"),
                 new Expression(new BinaryOperator(BinaryOperatorType.GreaterThan, VariableAccessor("c"), VariableAccessor("d"), Token.RightAngleBracket(default))),
                 VariableAccessor("e")
             ]))),
             ("a.b", new Expression(new MemberAccess(VariableAccessor("a"), Token.Identifier("b", default)))),
-            ("a.b()", new Expression(new MethodCall(new Expression(new MemberAccess(VariableAccessor("a"), Token.Identifier("b", default))), [], []))),
+            ("a.b()", new Expression(new MethodCall(new Expression(new MemberAccess(VariableAccessor("a"), Token.Identifier("b", default))), []))),
             ("a?.b", new Expression(new MemberAccess(
                 new Expression(new UnaryOperator(UnaryOperatorType.FallOut, VariableAccessor("a"), Token.QuestionMark(default))),
                 Token.Identifier("b", default)))),
@@ -727,14 +735,17 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     new FieldInitializer(Token.Identifier("A", default), VariableAccessor("a")),
                     new FieldInitializer(Token.Identifier("B", default), VariableAccessor("b")),
                 ]))),
-            ("MyType::CallMethod", new Expression(new StaticMemberAccess(new TypeIdentifier(Token.Identifier("MyType", default), []), Token.Identifier("CallMethod", default)))),
+            ("MyType::CallMethod", new Expression(new StaticMemberAccess(VariableAccessor("MyType"), Token.Identifier("CallMethod", default)))),
             ("MyType::StaticField.InstanceField", new Expression(
                 new MemberAccess(
-                    new Expression(new StaticMemberAccess(new TypeIdentifier(Token.Identifier("MyType", default), []), Token.Identifier("CallMethod", default))),
+                    new Expression(new StaticMemberAccess(VariableAccessor("MyType"), Token.Identifier("StaticField", default))),
                     Token.Identifier("InstanceField", default)))),
-            ("string::CallMethod", new Expression(new StaticMemberAccess(new TypeIdentifier(Token.StringKeyword(default), []), Token.Identifier("CallMethod", default)))),
-            ("result<string>::CallMethod", new Expression(new StaticMemberAccess(
-                new TypeIdentifier(Token.Result(default), [new TypeIdentifier(Token.StringKeyword(default), [])]), Token.Identifier("CallMethod", default)))),
+            ("string::CallMethod", new Expression(new StaticMemberAccess(new Expression(new ValueAccessor(ValueAccessType.Variable, Token.StringKeyword(default))), Token.Identifier("CallMethod", default)))),
+            ("result::<string>::CallMethod", new Expression(new StaticMemberAccess(
+                new Expression(new GenericInstantiation(
+                    new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Result(default))),
+                    [new TypeIdentifier(Token.StringKeyword(default), [])])),
+                Token.Identifier("CallMethod", default)))),
             // ____binding strength tests
             // __greater than
             ( // greater than
@@ -1527,7 +1538,18 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             RemoveSourceSpan(expression.MethodReturn),
             RemoveSourceSpan(expression.ObjectInitializer),
             RemoveSourceSpan(expression.ValueAssignment),
-            RemoveSourceSpan(expression.StaticMemberAccess));
+            RemoveSourceSpan(expression.StaticMemberAccess),
+            RemoveSourceSpan(expression.GenericInstantiation));
+    }
+
+    private static StrongBox<GenericInstantiation>? RemoveSourceSpan(
+        StrongBox<GenericInstantiation>? genericInstantiation)
+    {
+        return genericInstantiation is null
+            ? null
+            : new StrongBox<GenericInstantiation>(new GenericInstantiation(
+                RemoveSourceSpan(genericInstantiation.Value.GenericInstance),
+                [..genericInstantiation.Value.TypeArguments.Select(RemoveSourceSpan)]));
     }
 
     private static StrongBox<StaticMemberAccess>? RemoveSourceSpan(StrongBox<StaticMemberAccess>? staticMemberAccess)
@@ -1535,7 +1557,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         return staticMemberAccess is null
             ? null
             : new StrongBox<StaticMemberAccess>(new StaticMemberAccess(
-                RemoveSourceSpan(staticMemberAccess.Value.Type), RemoveSourceSpan(staticMemberAccess.Value.Identifier)));
+                RemoveSourceSpan(staticMemberAccess.Value.Owner), RemoveSourceSpan(staticMemberAccess.Value.Identifier)));
     }
 
     private static StrongBox<ValueAssignment>? RemoveSourceSpan(StrongBox<ValueAssignment>? valueAssignment)
@@ -1582,7 +1604,6 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ? null
             : new StrongBox<MethodCall>(new MethodCall(
                 RemoveSourceSpan(methodCall.Value.Method),
-                [..methodCall.Value.TypeArguments.Select(RemoveSourceSpan)],
                 [..methodCall.Value.ParameterList.Select(RemoveSourceSpan)]));
     }
 
@@ -1611,11 +1632,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     Value: RemoveSourceSpan(variableDeclaration.Value.Value)));
     }
 
-    private static MutabilityModifier? RemoveSourceSpan(MutabilityModifier? MutabilityModifier)
+    private static MutabilityModifier? RemoveSourceSpan(MutabilityModifier? mutabilityModifier)
     {
-        return MutabilityModifier is null
+        return mutabilityModifier is null
             ? null
-            : new MutabilityModifier(RemoveSourceSpan(MutabilityModifier.Value.Modifier));
+            : new MutabilityModifier(RemoveSourceSpan(mutabilityModifier.Value.Modifier));
     }
 
     private static StrongBox<BinaryOperator>? RemoveSourceSpan(StrongBox<BinaryOperator>? binaryOperator)

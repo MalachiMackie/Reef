@@ -54,6 +54,10 @@ public readonly struct Token
             TokenType.Class => "class",
             TokenType.Dot => ".",
             TokenType.Turbofish => "::",
+            TokenType.None => "none",
+            TokenType.Field => "field",
+            TokenType.New => "new",
+            TokenType.DoubleColon => "::",
             _ => throw new UnreachableException()
         };
     }
@@ -63,6 +67,11 @@ public readonly struct Token
     public static Token Pub(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.Pub, SourceSpan = sourceSpan };
+    }
+
+    public static Token DoubleColon(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.DoubleColon, SourceSpan = sourceSpan };
     }
 
     public static Token Fn(SourceSpan sourceSpan)

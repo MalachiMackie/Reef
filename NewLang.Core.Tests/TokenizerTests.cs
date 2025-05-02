@@ -14,12 +14,98 @@ public class TokenizerTests
 
         result.Should().BeEquivalentTo(expectedTokens);
     }
+    
+    [Theory]
+    [MemberData(nameof(SingleTestCases))]
+    public void SingleTests(string source, IEnumerable<Token> expectedTokens)
+    {
+        var result = _tokenizer.Tokenize(source);
+
+        result.Should().BeEquivalentTo(expectedTokens);
+    }
+    
+    [Theory]
+    [MemberData(nameof(FailTestCases))]
+    public void InvalidTokenTests(string source)
+    {
+        _tokenizer.Enumerating(x => x.Tokenize(source))
+            .Should().Throw<InvalidOperationException>();
+    }
+
+    public static IEnumerable<object[]> FailTestCases { get; } =
+    [
+        ["a:"],
+        ["1abc"],
+    ];
 
     [Fact]
     public void Perf()
     {
         _tokenizer.Tokenize(LargeSource).Count().Should().BeGreaterThan(0);
     }
+
+    public static IEnumerable<object[]> SingleTestCases()
+    {
+        return [
+            [
+                """
+                pub fn DoSomething(a: int): result<int, string> {
+                    var b = 2;
+                
+                    if (a == b) {
+                        return ok(a);
+                    }
+                }
+                """,
+                new[]
+                {
+                    // line 0
+                    Token.Pub(new SourceSpan(new SourcePosition(0, 0, 0), 3)),
+                    Token.Fn(new SourceSpan(new SourcePosition(4, 0, 4), 2)),
+                    Token.Identifier("DoSomething", new SourceSpan(new SourcePosition(7, 0, 7), 11)),
+                    Token.LeftParenthesis(new SourceSpan(new SourcePosition(18, 0, 18), 1)),
+                    Token.Identifier("a", new SourceSpan(new SourcePosition(19, 0, 19), 1)),
+                    Token.Colon(new SourceSpan(new SourcePosition(20, 0, 20), 1)),
+                    Token.IntKeyword(new SourceSpan(new SourcePosition(22, 0, 22), 3)),
+                    Token.RightParenthesis(new SourceSpan(new SourcePosition(25, 0, 25), 1)),
+                    Token.Colon(new SourceSpan(new SourcePosition(26, 0, 26), 1)),
+                    Token.Result(new SourceSpan(new SourcePosition(28, 0, 28), 6)),
+                    Token.LeftAngleBracket(new SourceSpan(new SourcePosition(34, 0, 34), 1)),
+                    Token.IntKeyword(new SourceSpan(new SourcePosition(35, 0, 35), 3)),
+                    Token.Comma(new SourceSpan(new SourcePosition(38, 0, 38), 1)),
+                    Token.StringKeyword(new SourceSpan(new SourcePosition(40, 0, 40), 6)),
+                    Token.RightAngleBracket(new SourceSpan(new SourcePosition(46, 0, 46), 1)),
+                    Token.LeftBrace(new SourceSpan(new SourcePosition(48, 0, 48), 1)),
+                    // line 1
+                    Token.Var(new SourceSpan(new SourcePosition(55, 1, 4), 3)),
+                    Token.Identifier("b", new SourceSpan(new SourcePosition(59, 1, 8), 1)),
+                    Token.Equals(new SourceSpan(new SourcePosition(61, 1, 10), 1)),
+                    Token.IntLiteral(2, new SourceSpan(new SourcePosition(63, 1, 12), 1)),
+                    Token.Semicolon(new SourceSpan(new SourcePosition(64, 1, 13), 1)),
+                    // line 2
+                    Token.If(new SourceSpan(new SourcePosition(73, 3, 4), 2)),
+                    Token.LeftParenthesis(new SourceSpan(new SourcePosition(76, 3, 7), 1)),
+                    Token.Identifier("a", new SourceSpan(new SourcePosition(77, 3, 8), 1)),
+                    Token.DoubleEquals(new SourceSpan(new SourcePosition(79, 3, 10), 2)),
+                    Token.Identifier("b", new SourceSpan(new SourcePosition(82, 3, 13), 1)),
+                    Token.RightParenthesis(new SourceSpan(new SourcePosition(83, 3, 14), 1)),
+                    Token.LeftBrace(new SourceSpan(new SourcePosition(85, 3, 16), 1)),
+                    // line 4
+                    Token.Return(new SourceSpan(new SourcePosition(96, 4, 8), 6)),
+                    Token.Ok(new SourceSpan(new SourcePosition(103, 4, 15), 2)),
+                    Token.LeftParenthesis(new SourceSpan(new SourcePosition(105, 4, 17), 1)),
+                    Token.Identifier("a", new SourceSpan(new SourcePosition(106, 4, 18), 1)),
+                    Token.RightParenthesis(new SourceSpan(new SourcePosition(107, 4, 19), 1)),
+                    Token.Semicolon(new SourceSpan(new SourcePosition(108, 4, 20), 1)),
+                    // line 5
+                    Token.RightBrace(new SourceSpan(new SourcePosition(115, 5, 4), 1)),
+                    // line 6
+                    Token.RightBrace(new SourceSpan(new SourcePosition(118, 6, 0), 1))
+                }
+            ]
+        ];
+    }
+    
 
     public static IEnumerable<object[]> TestCases()
     {
@@ -32,6 +118,7 @@ public class TokenizerTests
             ["\t\t", Array.Empty<Token>()],
             
             // single tokens
+            ["::", new[] { Token.DoubleColon(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["pub", new[] { Token.Pub(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             ["class", new[] { Token.Class(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["field", new[] { Token.Field(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
@@ -55,7 +142,7 @@ public class TokenizerTests
             [",", new[] { Token.Comma(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["hello", new[] { Token.Identifier("hello", new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             [":", new[] { Token.Colon(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
-            ["::", new[] { Token.Turbofish(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
+            ["::<", new[] { Token.Turbofish(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             [";", new[] { Token.Semicolon(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["result", new[] { Token.Result(new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],
             ["ok", new[] { Token.Ok(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
@@ -65,6 +152,10 @@ public class TokenizerTests
             ["/", new[] { Token.ForwardSlash(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["+", new[] { Token.Plus(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             [".", new[] { Token.Dot(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
+            // all single char identifiers
+            .."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+                .Select(ch => ch.ToString())
+                .Select(ch => new object[] {ch, new [] {Token.Identifier(ch, new SourceSpan(new SourcePosition(0, 0, 0), 1))}}),
             [
                 "\"hello this is a string\"",
                 new[] { Token.StringLiteral("hello this is a string", new SourceSpan(new SourcePosition(0, 0, 0), 24)) }
@@ -257,86 +348,83 @@ public class TokenizerTests
         ];
     }
     
-    
-    private const string SmallSource = "var a = 2;";
-    
-        private const string MediumSource = """
-                                            pub fn DoSomething(a: int): result<int, string> {
-                                                var b = 2;
-                                                
-                                                if (a > b) {
-                                                    return ok(a);
-                                                }
-                                                else if (a == b) {
-                                                    return ok(b);
-                                                }
-                                                
-                                                return error("something wrong");
+    private const string MediumSource = """
+                                        pub fn DoSomething(a: int): result<int, string> {
+                                            var b = 2;
+                                            
+                                            if (a > b) {
+                                                return ok(a);
                                             }
-    
-                                            pub fn SomethingElse(a: int): result<int, string> {
-                                                b = DoSomething(a)?;
-                                                
-                                                return b;
+                                            else if (a == b) {
+                                                return ok(b);
                                             }
-    
-                                            Println(DoSomething(5));
-                                            Println(DoSomething(1));
-                                            Println(SomethingElse(1));
-    
-                                            """;
-    
-        private const string LargeSource = $"""
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           {MediumSource}
-                                           """;
+                                            
+                                            return error("something wrong");
+                                        }
+
+                                        pub fn SomethingElse(a: int): result<int, string> {
+                                            b = DoSomething(a)?;
+                                            
+                                            return b;
+                                        }
+
+                                        Println(DoSomething(5));
+                                        Println(DoSomething(1));
+                                        Println(SomethingElse(1));
+
+                                        """;
+
+    private const string LargeSource = $"""
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       {MediumSource}
+                                       """;
 }
