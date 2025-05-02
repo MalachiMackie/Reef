@@ -81,11 +81,11 @@ public class Tokenizer
             
             if (_notTokens.Count == potentialTokensCount)
             {
-                // previously we had multiple potential tokens, now we have none. need to resolve to one.
+                // previously we had at least one potential token, now we have none. need to resolve to one.
                 // this will happen in the case of `int)`
                 var tokenSource = trimmed[..^1];
                 var token = ResolveToken(tokenSource, potentialTokens, position);
-
+                
                 // this assumes that a token can't cross the new line boundary
                 var nextPosition = position with
                 {
@@ -178,6 +178,8 @@ public class Tokenizer
             {
                 continue;
             }
+            
+            // skip identifier so that keywords take precedent
             if (tokenType == TokenType.Identifier)
             {
                 continue;
@@ -194,7 +196,12 @@ public class Tokenizer
             throw new UnreachableException();
         }
 
-        return Token.Identifier(source.ToString(), new SourceSpan(position, (uint)source.Length));
+        if (!TryResolveToken(source, TokenType.Identifier, position, out var identifierToken))
+        {
+            throw new InvalidOperationException($"invalid token \"{source}\"");
+        }
+
+        return identifierToken.Value;
     }
 
     private static bool TryResolveToken(
@@ -205,7 +212,7 @@ public class Tokenizer
     {
         token = type switch
         {
-            TokenType.Identifier => Token.Identifier(source.ToString(), new SourceSpan(position, (uint)source.Length)),
+            TokenType.Identifier when source.Length > 0 && !source.ContainsAnyExcept(ValidIdentifierTokens) && !char.IsDigit(source[0]) => Token.Identifier(source.ToString(), new SourceSpan(position, (uint)source.Length)),
             TokenType.If when source is "if" => Token.If(new SourceSpan(position, (uint)source.Length)),
             TokenType.Mut when source is "mut" => Token.Mut(new SourceSpan(position, (uint)source.Length)),
             TokenType.DoubleColon when source is "::" => Token.DoubleColon(new SourceSpan(position, (uint)source.Length)),
@@ -406,7 +413,7 @@ public class Tokenizer
     {
         return type switch
         {
-            TokenType.Identifier => !source.ContainsAnyExcept(ValidIdentifierTokens),
+            TokenType.Identifier => !source.ContainsAnyExcept(ValidIdentifierTokens) && !char.IsDigit(source[0]),
             TokenType.If => "if".AsSpan().StartsWith(source) && source.Length <= "if".Length,
             TokenType.LeftParenthesis => source is "(",
             TokenType.RightParenthesis => source is ")",

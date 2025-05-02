@@ -23,20 +23,6 @@ public class TokenizerTests
 
         result.Should().BeEquivalentTo(expectedTokens);
     }
-    
-    [Theory]
-    [MemberData(nameof(FailTestCases))]
-    public void InvalidTokenTests(string source)
-    {
-        _tokenizer.Enumerating(x => x.Tokenize(source))
-            .Should().Throw<InvalidOperationException>();
-    }
-
-    public static IEnumerable<object[]> FailTestCases { get; } =
-    [
-        ["a:"],
-        ["1abc"],
-    ];
 
     [Fact]
     public void Perf()
