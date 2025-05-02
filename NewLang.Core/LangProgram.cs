@@ -66,8 +66,9 @@ public readonly record struct LangFunction(
         {
             sb.Append('<');
             sb.AppendJoin(", ", TypeArguments);
-            sb.Append(">(");
+            sb.Append('>');
         }
+        sb.Append('(');
         sb.AppendJoin(", ", Parameters);
         sb.Append(')');
         if (ReturnType.HasValue)

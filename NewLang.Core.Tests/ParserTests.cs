@@ -53,9 +53,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
         string source,
         IEnumerable<Token> tokens,
-        Expression expectedProgram)
+        LangProgram expectedProgram)
     {
-        var result = Parser.PopExpression(tokens);
+        var result = Parser.Parse(tokens);
         result.Should().NotBeNull();
         
         // clear out the source spans, we don't actually care about them
@@ -100,9 +100,69 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new Expression(new VariableDeclaration(Token.Identifier("a", default), null, null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, default))))),
                 new Expression(new VariableDeclaration(Token.Identifier("b", default), null, null, new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default))))),
                 ], [], [])),
+            ("a = b;", new LangProgram([
+                new Expression(new ValueAssignment(VariableAccessor("a"), VariableAccessor("b"))),
+                ], [], [])),
+            ("error();", new LangProgram([
+                new Expression(new MethodCall(new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Error(default))), [])),
+                ], [], [])),
+            ("ok();", new LangProgram([
+                new Expression(new MethodCall(new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(default))), [])),
+                ], [], [])),
+            ("ok().b()", new LangProgram([
+                new Expression(new MethodCall(
+                    new Expression(new MemberAccess(
+                        new Expression(new MethodCall(
+                            new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(default))), [])),
+                        Token.Identifier("b", default))), [])),
+                ], [], [])),
+            ("if (a) {} b = c;", new LangProgram(
+                [
+                    new Expression(new IfExpression(VariableAccessor("a"), new Expression(Block.Empty), [], null)),
+                    new Expression(new ValueAssignment(VariableAccessor("b"), VariableAccessor("c")))
+                ],
+                [],
+                [])),
+            ("{} b = c;", new LangProgram(
+                [
+                    new Expression(Block.Empty),
+                    new Expression(new ValueAssignment(VariableAccessor("b"), VariableAccessor("c")))
+                ],
+                [],
+                [])),
             ("fn MyFn() {}", new LangProgram([], [
                 new LangFunction(null, Token.Identifier("MyFn", default), [], [], null, new Block([], []))
             ], [])),
+            ("if (a) {return b;}", new LangProgram([
+                new Expression(new IfExpression(
+                    VariableAccessor("a"),
+                    new Expression(new Block([new Expression(new MethodReturn(VariableAccessor("b")))], [])), 
+                    [],
+                    null))], [], [])),
+            ("fn MyFn() {if (a) {return b;}}", new LangProgram([], [new LangFunction(
+                null,
+                Token.Identifier("MyFn", default),
+                [],
+                [],
+                null,
+                new Block([
+                new Expression(new IfExpression(
+                    VariableAccessor("a"),
+                    new Expression(new Block([new Expression(new MethodReturn(VariableAccessor("b")))], [])), 
+                    [],
+                    null))], []))], [])),
+            ("fn MyFn() {if (a) {return b();}}", new LangProgram([], [new LangFunction(
+                            null,
+                            Token.Identifier("MyFn", default),
+                            [],
+                            [],
+                            null,
+                            new Block([
+                            new Expression(new IfExpression(
+                                VariableAccessor("a"),
+                                new Expression(new Block([new Expression(new MethodReturn(new Expression(new MethodCall(VariableAccessor("b"), []))))], [])), 
+                                [],
+                                null))], []))], [])),
             ("fn MyFn(): string {}", new LangProgram([], [
                 new LangFunction(null, Token.Identifier("MyFn", default), [], [], new TypeIdentifier(Token.StringKeyword(default), []), new Block([], []))
             ], [])),
@@ -177,7 +237,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         new Expression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, default)))))], [])
                 )
             ], [])),
-            ("fn MyFn(int a) {}", new LangProgram([], [
+            ("fn MyFn(a: int) {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
@@ -211,7 +271,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     null,
                     new Block([], [])
                 )], [])),
-            ("fn MyFn(result::<int, MyType> a) {}", new LangProgram([], [
+            ("fn MyFn(a: result::<int, MyType>) {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
@@ -225,7 +285,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     new Block([], [])
                 )
             ], [])),
-            ("fn MyFn(int a, MyType b) {}", new LangProgram([], [
+            ("fn MyFn(a: int, b: MyType) {}", new LangProgram([], [
                 new LangFunction(
                     null,
                     Token.Identifier("MyFn", default),
@@ -332,6 +392,80 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     null,
                     Token.Identifier("MyField", default),
                     new TypeIdentifier(Token.StringKeyword(default), []))])])),
+            ("pub fn DoSomething(a: int): result::<int, string> {}", new LangProgram(
+                [],
+                [
+                    new LangFunction(
+                        new AccessModifier(Token.Pub(default)),
+                        Token.Identifier("DoSomething", default),
+                        [],
+                        [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(default), []), Token.Identifier("a", default))],
+                        new TypeIdentifier(Token.Result(default), [new TypeIdentifier(Token.IntKeyword(default), []), new TypeIdentifier(Token.StringKeyword(default), [])]),
+                        Block.Empty)
+                ],
+                [])),
+            ("""
+             pub fn DoSomething(a: int): result::<int, string> {
+                 var b: int = 2;
+                 
+                 if (a > b) {
+                     return ok(a);
+                 }
+                 else if (a == b) {
+                     return ok(b);
+                 }
+             
+                 b = 3;
+             
+                 var thing = new Class2 {
+                     A = 3
+                 };
+             
+                 MyClass::StaticMethod();
+             
+                 PrivateFn::<string>();
+             
+                 return error("something wrong");
+             }
+             
+             fn PrivateFn<T>() {
+                 Println("Message");
+             }
+             
+             pub fn SomethingElse(a: int): result::<int, string> {
+                 var b = DoSomething(a)?;
+                 var mut c = 2;
+                 
+                 return b;
+             }
+             
+             Println(DoSomething(5));
+             Println(DoSomething(1));
+             Println(SomethingElse(1));
+             
+             pub class MyClass {
+                 pub fn PublicMethod() {
+                 }
+             
+                 pub static fn StaticMethod() {
+             
+                 }
+                 
+                 field FieldA: string;
+                 mut field FieldB: string;
+                 pub mut field FieldC: string;
+                 pub field FieldD: string;
+             }
+             
+             pub class GenericClass<T> {
+                 pub fn PublicMethod<T1>() {
+                 }
+             }
+             
+             pub class Class2 {
+                 pub field A: string;
+             }
+             """, new LangProgram([], [], []))
         }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedProgram });
     }
 
@@ -362,9 +496,6 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             "if (a) {} else if (a) {} else",
             // else before else if
             "if (a) {} else {} else if (a) {}",
-            // expression after if else expression
-            "if (a) {} else {} var a = 1",
-            "{} var a = 1",
             "if (a;) {}",
             // body has tail expression, but else doesn't
             
@@ -391,8 +522,6 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             "{var a = 1 var b = 2;}",
             "{",
             "}",
-            "var a = 2",
-            "var a = 2; var b = 2",
             "?",
             "+",
             ">",
@@ -414,14 +543,16 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             "fn MyFunction",
             "fn MyFunction(",
             "fn MyFunction(int) {}",
-            "fn MyFunction(result<int> a) {}",
-            "fn MyFunction(result::<,> a) {}",
-            "fn MyFunction(result::<int,> a) {}",
-            "fn MyFunction(result::<> a) {}",
-            "fn MyFunction(result::<int int> a) {}",
-            "fn MyFunction(int a, ) {}",
+            "fn MyFunction(a:) {}",
+            "fn MyFunction(a) {}",
+            "fn MyFunction(a: result<int>) {}",
+            "fn MyFunction(a: result::<,>) {}",
+            "fn MyFunction(a: result::<int,>) {}",
+            "fn MyFunction(a: result::<>) {}",
+            "fn MyFunction(a: result::<int int>) {}",
+            "fn MyFunction(a: int, ) {}",
             "fn MyFunction(,) {}",
-            "fn MyFunction(int a int b) {}",
+            "fn MyFunction(a: int b: int) {}",
             // no semicolon
             "return 1",
             "pub MyClass {}",
@@ -453,12 +584,70 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
 
     public static IEnumerable<object[]> SingleTestCase()
     {
-        return new (string Source, Expression ExpectedProgram)[]
+        return new (string Source, LangProgram ExpectedProgram)[]
         {
-            ("MyType::StaticField.InstanceField", new Expression(
-                new MemberAccess(
-                    new Expression(new StaticMemberAccess(VariableAccessor("MyType"), Token.Identifier("StaticField", default))),
-                    Token.Identifier("InstanceField", default))))
+            ("""
+             pub fn DoSomething(a: int): result::<int, string> {
+                 var b: int = 2;
+                 
+                 if (a > b) {
+                     return ok(a);
+                 }
+                 else if (a == b) {
+                     return ok(b);
+                 }
+             
+                 b = 3;
+             
+                 var thing = new Class2 {
+                     A = 3
+                 };
+             
+                 MyClass::StaticMethod();
+             
+                 PrivateFn::<string>();
+             
+                 return error("something wrong");
+             }
+             
+             fn PrivateFn<T>() {
+                 Println("Message");
+             }
+             
+             pub fn SomethingElse(a: int): result::<int, string> {
+                 var b = DoSomething(a)?;
+                 var mut c = 2;
+                 
+                 return b;
+             }
+             
+             Println(DoSomething(5));
+             Println(DoSomething(1));
+             Println(SomethingElse(1));
+             
+             pub class MyClass {
+                 pub fn PublicMethod() {
+                 }
+             
+                 pub static fn StaticMethod() {
+             
+                 }
+                 
+                 field FieldA: string;
+                 mut field FieldB: string;
+                 pub mut field FieldC: string;
+                 pub field FieldD: string;
+             }
+             
+             pub class GenericClass<T> {
+                 pub fn PublicMethod<T1>() {
+                 }
+             }
+             
+             pub class Class2 {
+                 pub field A: string;
+             }
+             """, new LangProgram([], [], []))
         }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedProgram });
     }
 
@@ -472,6 +661,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ("\"my string\"", new Expression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("my string", default)))),
             ("true", new Expression(new ValueAccessor(ValueAccessType.Literal, Token.True(default)))),
             ("false", new Expression(new ValueAccessor(ValueAccessType.Literal, Token.False(default)))),
+            ("ok", new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(default)))),
+            ("a == b", new Expression(new EqualityCheck(VariableAccessor("a"), VariableAccessor("b")))),
+            ("ok()", new Expression(new MethodCall(new Expression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(default))), []))),
             // postfix unary operator
             ("a?", new Expression(new UnaryOperator(
                 UnaryOperatorType.FallOut,
@@ -1539,9 +1731,20 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             RemoveSourceSpan(expression.ObjectInitializer),
             RemoveSourceSpan(expression.ValueAssignment),
             RemoveSourceSpan(expression.StaticMemberAccess),
-            RemoveSourceSpan(expression.GenericInstantiation));
+            RemoveSourceSpan(expression.GenericInstantiation),
+            RemoveSourceSpan(expression.EqualityCheck));
     }
-
+    
+    private static StrongBox<EqualityCheck>? RemoveSourceSpan(
+        StrongBox<EqualityCheck>? equalityCheck)
+    {
+        return equalityCheck is null
+            ? null
+            : new StrongBox<EqualityCheck>(new EqualityCheck(
+                RemoveSourceSpan(equalityCheck.Value.Left),
+                RemoveSourceSpan(equalityCheck.Value.Right)));
+    }
+    
     private static StrongBox<GenericInstantiation>? RemoveSourceSpan(
         StrongBox<GenericInstantiation>? genericInstantiation)
     {
