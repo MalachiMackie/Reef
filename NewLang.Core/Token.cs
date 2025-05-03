@@ -58,6 +58,7 @@ public readonly struct Token
             TokenType.Field => "field",
             TokenType.New => "new",
             TokenType.DoubleColon => "::",
+            TokenType.Static => "static",
             _ => throw new UnreachableException()
         };
     }

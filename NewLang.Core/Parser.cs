@@ -28,7 +28,7 @@ public static class Parser
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
     private static (
-        IReadOnlyList<Expression> Expressions,
+        IReadOnlyList<IExpression> Expressions,
         IReadOnlyList<LangFunction> Functions,
         IReadOnlyList<ProgramClass> Classes,
         IReadOnlyList<ClassField> Fields) GetScope(
@@ -38,7 +38,7 @@ public static class Parser
         var hasTailExpression = false;
         var foundClosingToken = false;
 
-        var expressions = new List<Expression>();
+        var expressions = new List<IExpression>();
         var functions = new List<LangFunction>();
         var fields = new List<ClassField>();
         var classes = new List<ProgramClass>();
@@ -79,7 +79,7 @@ public static class Parser
             }
 
             var expression = PopExpression(tokens);
-            if (!expression.HasValue)
+            if (expression is null)
             {
                 continue;
             }
@@ -91,24 +91,24 @@ public static class Parser
 
             if (!tokens.TryPeek(out peeked) || peeked.Type != TokenType.Semicolon)
             {
-                if (expression.Value.ExpressionType == ExpressionType.MethodReturn)
+                if (expression.ExpressionType == ExpressionType.MethodReturn)
                 {
                     throw new InvalidOperationException("Return statement cannot be a tail expression");
                 }
 
-                hasTailExpression = expression.Value.ExpressionType is not (ExpressionType.IfExpression or ExpressionType.Block);
+                hasTailExpression = expression.ExpressionType is not (ExpressionType.IfExpression or ExpressionType.Block);
             }
             else
             {
                 // drop semicolon
                 tokens.MoveNext();
-                if (!IsValidStatement(expression.Value))
+                if (!IsValidStatement(expression))
                 {
-                    throw new InvalidOperationException($"{expression.Value.ExpressionType} is not a valid statement");
+                    throw new InvalidOperationException($"{expression.ExpressionType} is not a valid statement");
                 }
             } 
             
-            expressions.Add(expression.Value);
+            expressions.Add(expression);
         }
 
         if (!foundClosingToken && closingToken.HasValue)
@@ -507,7 +507,7 @@ public static class Parser
         return new TypeIdentifier(typeIdentifier, typeArguments);
     }
 
-    private static bool IsValidStatement(Expression expression)
+    private static bool IsValidStatement(IExpression expression)
     {
         return expression is
             {
@@ -517,18 +517,17 @@ public static class Parser
                 or ExpressionType.MethodCall
                 or ExpressionType.MethodReturn
             } or
-            {
-                ExpressionType: ExpressionType.BinaryOperator,
-                BinaryOperator.Value.OperatorType: BinaryOperatorType.ValueAssignment
+            BinaryOperatorExpression {
+                BinaryOperator.OperatorType: BinaryOperatorType.ValueAssignment
             };
     }
     
-    private static Expression MatchTokenToExpression(Expression? previousExpression, PeekableEnumerator<Token> tokens)
+    private static IExpression MatchTokenToExpression(IExpression? previousExpression, PeekableEnumerator<Token> tokens)
     {
         return tokens.Current.Type switch
         {
             // value accessors
-            TokenType.StringLiteral or TokenType.IntLiteral or TokenType.True or TokenType.False => new Expression(
+            TokenType.StringLiteral or TokenType.IntLiteral or TokenType.True or TokenType.False => new ValueAccessorExpression(
                 new ValueAccessor(ValueAccessType.Literal, tokens.Current)),
             TokenType.Var => GetVariableDeclaration(tokens),
             TokenType.LeftBrace => GetBlockExpression(tokens),
@@ -537,16 +536,16 @@ public static class Parser
             TokenType.Turbofish => GetGenericInstantiation(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             TokenType.Return => GetMethodReturn(tokens),
             TokenType.New => GetObjectInitializer(tokens),
-            TokenType.Ok or TokenType.Error => new Expression(new ValueAccessor(ValueAccessType.Variable, tokens.Current)),
+            TokenType.Ok or TokenType.Error => new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, tokens.Current)),
             TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
             _ when TryGetUnaryOperatorType(tokens.Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current, unaryOperatorType.Value),
             _ when TryGetBinaryOperatorType(tokens.Current.Type, out var binaryOperatorType) => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), binaryOperatorType.Value),
-            _ when IsTypeTokenType(tokens.Current.Type) => new Expression(new ValueAccessor(ValueAccessType.Variable, tokens.Current)),
+            _ when IsTypeTokenType(tokens.Current.Type) => new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, tokens.Current)),
             _ => throw new InvalidOperationException($"Token type {tokens.Current.Type} not supported")
         };
     }
 
-    private static Expression GetGenericInstantiation(PeekableEnumerator<Token> tokens, Expression previousExpression)
+    private static IExpression GetGenericInstantiation(PeekableEnumerator<Token> tokens, IExpression previousExpression)
     {
         var typeArguments = new List<TypeIdentifier>();
         
@@ -583,10 +582,10 @@ public static class Parser
             typeArguments.Add(GetTypeIdentifier(tokens));
         }
 
-        return new Expression(new GenericInstantiation(previousExpression, typeArguments));
+        return new GenericInstantiationExpression(new GenericInstantiation(previousExpression, typeArguments));
     }
 
-    private static Expression GetObjectInitializer(PeekableEnumerator<Token> tokens)
+    private static IExpression GetObjectInitializer(PeekableEnumerator<Token> tokens)
     {
         if (!tokens.MoveNext())
         {
@@ -646,26 +645,26 @@ public static class Parser
             fieldInitializers.Add(new FieldInitializer(fieldName, fieldValue));
         }
 
-        return new Expression(new ObjectInitializer(type, fieldInitializers));
+        return new ObjectInitializerExpression(new ObjectInitializer(type, fieldInitializers));
     }
 
-    private static Expression GetMethodReturn(PeekableEnumerator<Token> tokens)
+    private static IExpression GetMethodReturn(PeekableEnumerator<Token> tokens)
     {
         var expression = new MethodReturn(PopExpression(tokens) ?? throw new InvalidOperationException("Expected expression"));
 
-        return new Expression(expression);
+        return new MethodReturnExpression(expression);
     }
 
-    public static Expression? PopExpression(IEnumerable<Token> tokens)
+    public static IExpression? PopExpression(IEnumerable<Token> tokens)
     {
         using var enumerator = new PeekableEnumerator<Token>(tokens.GetEnumerator());
 
         return PopExpression(enumerator);
     }
 
-    private static Expression? PopExpression(PeekableEnumerator<Token> tokens, uint? currentBindingStrength = null)
+    private static IExpression? PopExpression(PeekableEnumerator<Token> tokens, uint? currentBindingStrength = null)
     {
-        Expression? previousExpression = null;
+        IExpression? previousExpression = null;
         while (tokens.TryPeek(out var peeked) 
                && peeked.Type != TokenType.Semicolon)
         {
@@ -683,15 +682,15 @@ public static class Parser
         return previousExpression;
     }
 
-    private static Expression GetMethodCall(PeekableEnumerator<Token> tokens, Expression method)
+    private static IExpression GetMethodCall(PeekableEnumerator<Token> tokens, IExpression method)
     {
-        var parameterList = new List<Expression>();
+        var parameterList = new List<IExpression>();
         while (tokens.TryPeek(out var peeked))
         {
             if (peeked.Type == TokenType.RightParenthesis)
             {
                 tokens.MoveNext();
-                return new Expression(new MethodCall(method, parameterList));
+                return new MethodCallExpression(new MethodCall(method, parameterList));
             }
 
             if (parameterList.Count > 0)
@@ -706,16 +705,16 @@ public static class Parser
             }
 
             var nextExpression = PopExpression(tokens);
-            if (nextExpression.HasValue)
+            if (nextExpression is not null)
             {
-                parameterList.Add(nextExpression.Value);
+                parameterList.Add(nextExpression);
             }
         }
 
         throw new InvalidOperationException("Expected ), found nothing");
     }
 
-    private static Expression GetIfExpression(PeekableEnumerator<Token> tokens)
+    private static IExpression GetIfExpression(PeekableEnumerator<Token> tokens)
     {
         if (!tokens.MoveNext())
         {
@@ -744,7 +743,7 @@ public static class Parser
             throw new InvalidOperationException("Expected if body, found nothing");
 
         var elseIfs = new List<ElseIf>();
-        Expression? elseBody = null;
+        IExpression? elseBody = null;
 
         while (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.Else)
         {
@@ -781,14 +780,14 @@ public static class Parser
             }
         }
 
-        return new Expression(new IfExpression(
+        return new IfExpressionExpression(new IfExpression(
             checkExpression,
             body,
             elseIfs,
             elseBody));
     }
 
-    private static Expression GetBlockExpression(PeekableEnumerator<Token> tokens)
+    private static IExpression GetBlockExpression(PeekableEnumerator<Token> tokens)
     {
         var (expressions, functions, classes, fields) = GetScope(tokens, TokenType.RightBrace);
 
@@ -801,10 +800,10 @@ public static class Parser
             throw new InvalidOperationException("Block expressions cannot contain fields");
         }
         
-        return new Expression(new Block(expressions, functions));
+        return new BlockExpression(new Block(expressions, functions));
     }
 
-    private static Expression GetVariableDeclaration(PeekableEnumerator<Token> tokens)
+    private static IExpression GetVariableDeclaration(PeekableEnumerator<Token> tokens)
     {
         if (!tokens.MoveNext())
         {
@@ -835,7 +834,7 @@ public static class Parser
         }
 
         TypeIdentifier? type = null;
-        Expression? valueExpression = null;
+        IExpression? valueExpression = null;
 
         if (tokens.Current.Type == TokenType.Colon)
         {
@@ -859,20 +858,20 @@ public static class Parser
                         ?? throw new InvalidOperationException("Expected value expression, got nothing");
         }
 
-        return new Expression(new VariableDeclaration(identifier, mutabilityModifier, type, valueExpression));
+        return new VariableDeclarationExpression(new VariableDeclaration(identifier, mutabilityModifier, type, valueExpression));
     }
     
-    private static Expression GetUnaryOperatorExpression(
-        Expression operand,
+    private static IExpression GetUnaryOperatorExpression(
+        IExpression operand,
         Token operatorToken,
         UnaryOperatorType operatorType)
     {
-        return new Expression(new UnaryOperator(operatorType, operand, operatorToken));
+        return new UnaryOperatorExpression(new UnaryOperator(operatorType, operand, operatorToken));
     }
     
-    private static Expression GetBinaryOperatorExpression(
+    private static IExpression GetBinaryOperatorExpression(
         PeekableEnumerator<Token> tokens,
-        Expression leftOperand,
+        IExpression leftOperand,
         BinaryOperatorType operatorType)
     {
         var operatorToken = tokens.Current;
@@ -884,7 +883,7 @@ public static class Parser
 
         return right is null
             ? throw new Exception("Expected expression but got null")
-            : new Expression(new BinaryOperator(operatorType, leftOperand, right.Value, operatorToken));
+            : new BinaryOperatorExpression(new BinaryOperator(operatorType, leftOperand, right, operatorToken));
     }
 
     private static bool TryGetBindingStrength(Token token, [NotNullWhen(true)] out uint? bindingStrength)

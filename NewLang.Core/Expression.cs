@@ -1,89 +1,115 @@
-﻿using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using System.Text;
+﻿using System.Text;
 
 namespace NewLang.Core;
 
-public readonly record struct Expression(
-    ExpressionType ExpressionType,
-    ValueAccessor? ValueAccessor,
-    StrongBox<UnaryOperator>? UnaryOperator,
-    StrongBox<BinaryOperator>? BinaryOperator,
-    StrongBox<VariableDeclaration>? VariableDeclaration,
-    StrongBox<IfExpression>? IfExpression,
-    StrongBox<Block>? Block,
-    StrongBox<MethodCall>? MethodCall,
-    StrongBox<MethodReturn>? MethodReturn,
-    StrongBox<ObjectInitializer>? ObjectInitializer,
-    StrongBox<GenericInstantiation>? GenericInstantiation)
+public interface IExpression
 {
-    public Expression(ValueAccessor valueAccessor)
-        : this(ExpressionType.ValueAccess, valueAccessor, null, null, null, null, null, null, null, null, null)
-    {
-        
-    }
-    
-    public Expression(UnaryOperator unaryOperator)
-        : this(ExpressionType.UnaryOperator, null, new StrongBox<UnaryOperator>(unaryOperator), null, null, null, null, null, null, null, null)
-    {
-    }
+    ExpressionType ExpressionType { get; }
+}
 
-    public Expression(BinaryOperator binaryOperator)
-        : this(ExpressionType.BinaryOperator, null, null, new StrongBox<BinaryOperator>(binaryOperator), null, null, null, null, null, null, null)
+public readonly record struct ValueAccessorExpression(ValueAccessor ValueAccessor) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.ValueAccess;
+
+    public override string ToString()
     {
+        return ValueAccessor.ToString();
     }
-    
-    public Expression(VariableDeclaration variableDeclaration)
-        : this(ExpressionType.VariableDeclaration, null, null, null, new StrongBox<VariableDeclaration>(variableDeclaration), null, null, null, null, null, null)
-    {}
-    
-    public Expression(IfExpression ifExpression)
-        : this(ExpressionType.IfExpression, null, null, null, null, new StrongBox<IfExpression>(ifExpression), null, null, null, null, null)
+}
+
+public readonly record struct UnaryOperatorExpression(UnaryOperator UnaryOperator) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.UnaryOperator;
+
+    public override string ToString()
     {
+        return UnaryOperator.ToString();
     }
-    
-    public Expression(Block block)
-        : this(ExpressionType.Block, null, null, null, null, null, new StrongBox<Block>(block), null, null, null, null)
-    {}
-    
-    public Expression(MethodCall methodCall)
-        : this(ExpressionType.MethodCall, null, null, null, null, null, null, new StrongBox<MethodCall>(methodCall), null, null, null)
-    {}
+}
 
-    public Expression(MethodReturn methodReturn)
-        : this(ExpressionType.MethodReturn, null, null, null, null, null, null, null, new StrongBox<MethodReturn>(methodReturn), null, null)
-    { }
+public readonly record struct BinaryOperatorExpression(BinaryOperator BinaryOperator) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.BinaryOperator;
 
-    public Expression(ObjectInitializer objectInitializer)
-        : this(ExpressionType.ObjectInitializer, null, null, null, null, null, null, null, null, new StrongBox<ObjectInitializer>(objectInitializer), null)
-    { }
+    public override string ToString()
+    {
+        return BinaryOperator.ToString();
+    }
+}
 
-    public Expression(GenericInstantiation genericInstantiation)
-        : this(ExpressionType.GenericInstantiation, null, null, null, null, null, null, null, null, null, new StrongBox<GenericInstantiation>(genericInstantiation))
-    { }
+public readonly record struct VariableDeclarationExpression(VariableDeclaration VariableDeclaration) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.VariableDeclaration;
+
+    public override string ToString()
+    {
+        return VariableDeclaration.ToString();
+    }
+}
+
+// todo: better name
+public readonly record struct IfExpressionExpression(IfExpression IfExpression) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.IfExpression;
     
     public override string ToString()
     {
-        return ExpressionType switch
-        {
-            ExpressionType.None => throw new InvalidOperationException("Expression has no expression type"),
-            ExpressionType.ValueAccess => ValueAccessor!.Value.ToString(),
-            ExpressionType.UnaryOperator => UnaryOperator!.Value.ToString(),
-            ExpressionType.BinaryOperator => BinaryOperator!.Value.ToString(),
-            ExpressionType.VariableDeclaration => VariableDeclaration!.Value.ToString(),
-            ExpressionType.IfExpression => IfExpression!.Value.ToString(),
-            ExpressionType.Block => Block!.Value.ToString(),
-            ExpressionType.MethodCall => MethodCall!.Value.ToString(),
-            ExpressionType.MethodReturn => MethodReturn!.Value.ToString(),
-            ExpressionType.ObjectInitializer => ObjectInitializer!.Value.ToString(),
-            ExpressionType.GenericInstantiation => GenericInstantiation!.Value.ToString(),
-            _ => throw new UnreachableException()
-        };
+        return IfExpression.ToString();
+    }
+}
+
+public readonly record struct BlockExpression(Block Block) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.Block;
+
+    public override string ToString()
+    {
+        return Block.ToString();
+    }
+}
+
+public readonly record struct MethodCallExpression(MethodCall MethodCall) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.MethodCall;
+
+    public override string ToString()
+    {
+        return MethodCall.ToString();
+    }
+}
+
+public readonly record struct MethodReturnExpression(MethodReturn MethodReturn) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.MethodReturn;
+
+    public override string ToString()
+    {
+        return MethodReturn.ToString();
+    }
+}
+
+public readonly record struct ObjectInitializerExpression(ObjectInitializer ObjectInitializer) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.ObjectInitializer;
+
+    public override string ToString()
+    {
+        return ObjectInitializer.ToString();
+    }
+}
+
+public readonly record struct GenericInstantiationExpression(GenericInstantiation GenericInstantiation) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.GenericInstantiation;
+
+    public override string ToString()
+    {
+        return GenericInstantiation.ToString();
     }
 }
 
 public readonly record struct VariableDeclaration(
-    Token VariableNameToken, MutabilityModifier? MutabilityModifier, TypeIdentifier? Type, Expression? Value)
+    Token VariableNameToken, MutabilityModifier? MutabilityModifier, TypeIdentifier? Type, IExpression? Value)
 {
     public override string ToString()
     {
@@ -97,9 +123,9 @@ public readonly record struct VariableDeclaration(
         {
             sb.Append($": {Type.Value} ");
         }
-        if (Value.HasValue)
+        if (Value is not null)
         {
-            sb.Append($" = {Value.Value}");
+            sb.Append($" = {Value}");
         }
 
         return sb.ToString();
@@ -115,10 +141,10 @@ public readonly record struct MutabilityModifier(Token Modifier)
 }
 
 public readonly record struct IfExpression(
-    Expression CheckExpression,
-    Expression Body,
+    IExpression CheckExpression,
+    IExpression Body,
     IReadOnlyCollection<ElseIf> ElseIfs,
-    Expression? ElseBody)
+    IExpression? ElseBody)
 {
     public override string ToString()
     {
@@ -127,19 +153,17 @@ public readonly record struct IfExpression(
         {
             sb.Append($" {elseIf}");
         }
-        if (ElseBody.HasValue)
+        if (ElseBody is not null)
         {
-            sb.Append($" else {ElseBody.Value}");
+            sb.Append($" else {ElseBody}");
         }
 
         return sb.ToString();
     }
 }
 
-public readonly record struct Block(IReadOnlyList<Expression> Expressions, IReadOnlyList<LangFunction> Functions)
+public readonly record struct Block(IReadOnlyList<IExpression> Expressions, IReadOnlyList<LangFunction> Functions)
 {
-    public static readonly Block Empty = new ([], []);
-    
     public override string ToString()
     {
         var sb = new StringBuilder("{\n");
@@ -168,7 +192,7 @@ public readonly record struct ValueAccessor(ValueAccessType AccessType, Token To
     }
 }
 
-public readonly record struct UnaryOperator(UnaryOperatorType OperatorType, Expression Operand, Token OperatorToken)
+public readonly record struct UnaryOperator(UnaryOperatorType OperatorType, IExpression Operand, Token OperatorToken)
 {
     public override string ToString()
     {
@@ -177,7 +201,7 @@ public readonly record struct UnaryOperator(UnaryOperatorType OperatorType, Expr
     }
 }
 
-public readonly record struct BinaryOperator(BinaryOperatorType OperatorType, Expression Left, Expression Right, Token OperatorToken)
+public readonly record struct BinaryOperator(BinaryOperatorType OperatorType, IExpression Left, IExpression Right, Token OperatorToken)
 {
     public override string ToString()
     {
@@ -185,7 +209,7 @@ public readonly record struct BinaryOperator(BinaryOperatorType OperatorType, Ex
     }
 }
 
-public readonly record struct ElseIf(Expression CheckExpression, Expression Body)
+public readonly record struct ElseIf(IExpression CheckExpression, IExpression Body)
 {
     public override string ToString()
     {
@@ -193,7 +217,7 @@ public readonly record struct ElseIf(Expression CheckExpression, Expression Body
     }
 }
 
-public readonly record struct MethodCall(Expression Method, IReadOnlyCollection<Expression> ParameterList)
+public readonly record struct MethodCall(IExpression Method, IReadOnlyCollection<IExpression> ParameterList)
 {
     public override string ToString()
     {
@@ -202,7 +226,7 @@ public readonly record struct MethodCall(Expression Method, IReadOnlyCollection<
 }
 
 public readonly record struct GenericInstantiation(
-    Expression GenericInstance,
+    IExpression GenericInstance,
     IReadOnlyList<TypeIdentifier> TypeArguments)
 {
     public override string ToString()
@@ -211,7 +235,7 @@ public readonly record struct GenericInstantiation(
     }
 }
 
-public readonly record struct MethodReturn(Expression Expression)
+public readonly record struct MethodReturn(IExpression Expression)
 {
     public override string ToString()
     {
@@ -235,7 +259,7 @@ public readonly record struct ObjectInitializer(TypeIdentifier Type, IReadOnlyLi
     }
 }
 
-public readonly record struct FieldInitializer(Token FieldName, Expression Value);
+public readonly record struct FieldInitializer(Token FieldName, IExpression Value);
 
 public enum BinaryOperatorType
 {

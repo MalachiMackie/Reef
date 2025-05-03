@@ -3,7 +3,7 @@
 namespace NewLang.Core;
 
 public readonly record struct LangProgram(
-    IReadOnlyList<Expression> Expressions,
+    IReadOnlyList<IExpression> Expressions,
     IReadOnlyList<LangFunction> Functions,
     IReadOnlyCollection<ProgramClass> Classes)
 {
