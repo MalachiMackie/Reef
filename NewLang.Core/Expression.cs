@@ -15,56 +15,51 @@ public readonly record struct Expression(
     StrongBox<MethodCall>? MethodCall,
     StrongBox<MethodReturn>? MethodReturn,
     StrongBox<ObjectInitializer>? ObjectInitializer,
-    StrongBox<StaticMemberAccess>? StaticMemberAccess,
     StrongBox<GenericInstantiation>? GenericInstantiation)
 {
     public Expression(ValueAccessor valueAccessor)
-        : this(ExpressionType.ValueAccess, valueAccessor, null, null, null, null, null, null, null, null, null, null)
+        : this(ExpressionType.ValueAccess, valueAccessor, null, null, null, null, null, null, null, null, null)
     {
         
     }
     
     public Expression(UnaryOperator unaryOperator)
-        : this(ExpressionType.UnaryOperator, null, new StrongBox<UnaryOperator>(unaryOperator), null, null, null, null, null, null, null, null, null)
+        : this(ExpressionType.UnaryOperator, null, new StrongBox<UnaryOperator>(unaryOperator), null, null, null, null, null, null, null, null)
     {
     }
 
     public Expression(BinaryOperator binaryOperator)
-        : this(ExpressionType.BinaryOperator, null, null, new StrongBox<BinaryOperator>(binaryOperator), null, null, null, null, null, null, null, null)
+        : this(ExpressionType.BinaryOperator, null, null, new StrongBox<BinaryOperator>(binaryOperator), null, null, null, null, null, null, null)
     {
     }
     
     public Expression(VariableDeclaration variableDeclaration)
-        : this(ExpressionType.VariableDeclaration, null, null, null, new StrongBox<VariableDeclaration>(variableDeclaration), null, null, null, null, null, null, null)
+        : this(ExpressionType.VariableDeclaration, null, null, null, new StrongBox<VariableDeclaration>(variableDeclaration), null, null, null, null, null, null)
     {}
     
     public Expression(IfExpression ifExpression)
-        : this(ExpressionType.IfExpression, null, null, null, null, new StrongBox<IfExpression>(ifExpression), null, null, null, null, null, null)
+        : this(ExpressionType.IfExpression, null, null, null, null, new StrongBox<IfExpression>(ifExpression), null, null, null, null, null)
     {
     }
     
     public Expression(Block block)
-        : this(ExpressionType.Block, null, null, null, null, null, new StrongBox<Block>(block), null, null, null, null, null)
+        : this(ExpressionType.Block, null, null, null, null, null, new StrongBox<Block>(block), null, null, null, null)
     {}
     
     public Expression(MethodCall methodCall)
-        : this(ExpressionType.MethodCall, null, null, null, null, null, null, new StrongBox<MethodCall>(methodCall), null, null, null, null)
+        : this(ExpressionType.MethodCall, null, null, null, null, null, null, new StrongBox<MethodCall>(methodCall), null, null, null)
     {}
 
     public Expression(MethodReturn methodReturn)
-        : this(ExpressionType.MethodReturn, null, null, null, null, null, null, null, new StrongBox<MethodReturn>(methodReturn), null, null, null)
+        : this(ExpressionType.MethodReturn, null, null, null, null, null, null, null, new StrongBox<MethodReturn>(methodReturn), null, null)
     { }
 
     public Expression(ObjectInitializer objectInitializer)
-        : this(ExpressionType.ObjectInitializer, null, null, null, null, null, null, null, null, new StrongBox<ObjectInitializer>(objectInitializer), null, null)
-    { }
-
-    public Expression(StaticMemberAccess staticMemberAccess)
-        : this(ExpressionType.StaticMemberAccess, null, null, null, null, null, null, null, null, null, new StrongBox<StaticMemberAccess>(staticMemberAccess), null)
+        : this(ExpressionType.ObjectInitializer, null, null, null, null, null, null, null, null, new StrongBox<ObjectInitializer>(objectInitializer), null)
     { }
 
     public Expression(GenericInstantiation genericInstantiation)
-        : this(ExpressionType.GenericInstantiation, null, null, null, null, null, null, null, null, null, null, new StrongBox<GenericInstantiation>(genericInstantiation))
+        : this(ExpressionType.GenericInstantiation, null, null, null, null, null, null, null, null, null, new StrongBox<GenericInstantiation>(genericInstantiation))
     { }
     
     public override string ToString()
@@ -81,18 +76,9 @@ public readonly record struct Expression(
             ExpressionType.MethodCall => MethodCall!.Value.ToString(),
             ExpressionType.MethodReturn => MethodReturn!.Value.ToString(),
             ExpressionType.ObjectInitializer => ObjectInitializer!.Value.ToString(),
-            ExpressionType.StaticMemberAccess => StaticMemberAccess!.Value.ToString(),
             ExpressionType.GenericInstantiation => GenericInstantiation!.Value.ToString(),
             _ => throw new UnreachableException()
         };
-    }
-}
-
-public readonly record struct StaticMemberAccess(Expression Owner, Token Identifier)
-{
-    public override string ToString()
-    {
-        return $"{Owner}::{Identifier}";
     }
 }
 
@@ -261,7 +247,8 @@ public enum BinaryOperatorType
     Divide,
     EqualityCheck,
     ValueAssignment,
-    MemberAccess
+    MemberAccess,
+    StaticMemberAccess
 }
 
 public enum ValueAccessType
@@ -286,7 +273,6 @@ public enum ExpressionType
     IfExpression,
     Block,
     MethodCall,
-    StaticMemberAccess,
     MethodReturn,
     ObjectInitializer,
     GenericInstantiation,

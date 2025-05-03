@@ -546,7 +546,7 @@ public static class Parser
             TokenType.LeftBrace => GetBlockExpression(tokens),
             TokenType.If => GetIfExpression(tokens),
             TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
-            TokenType.DoubleColon => GetStaticMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
+            TokenType.DoubleColon => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.StaticMemberAccess),
             TokenType.LeftParenthesis => GetMethodCall(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             TokenType.Turbofish => GetGenericInstantiation(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             TokenType.Dot => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.MemberAccess),
@@ -558,16 +558,6 @@ public static class Parser
             _ when IsTypeTokenType(tokens.Current.Type) => new Expression(new ValueAccessor(ValueAccessType.Variable, tokens.Current)),
             _ => throw new InvalidOperationException($"Token type {tokens.Current.Type} not supported")
         };
-    }
-
-    private static Expression GetStaticMemberAccess(PeekableEnumerator<Token> tokens, Expression previousExpression)
-    {
-        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
-        {
-            throw new InvalidOperationException("Expected static member identifier");
-        }
-
-        return new Expression(new StaticMemberAccess(previousExpression, tokens.Current));
     }
 
     private static Expression GetGenericInstantiation(PeekableEnumerator<Token> tokens, Expression previousExpression)
@@ -927,10 +917,10 @@ public static class Parser
             TokenType.DoubleEquals => GetBinaryOperatorBindingStrength(BinaryOperatorType.EqualityCheck),
             TokenType.Equals => GetBinaryOperatorBindingStrength(BinaryOperatorType.ValueAssignment),
             TokenType.Dot => GetBinaryOperatorBindingStrength(BinaryOperatorType.MemberAccess),
+            TokenType.DoubleColon => GetBinaryOperatorBindingStrength(BinaryOperatorType.StaticMemberAccess),
             // todo: could some of these be converted to real operators?
             TokenType.LeftParenthesis => 7,
             TokenType.Turbofish => 6,
-            TokenType.DoubleColon => 6,
             _ => null
         };
 
@@ -950,6 +940,7 @@ public static class Parser
             BinaryOperatorType.EqualityCheck => 2,
             BinaryOperatorType.ValueAssignment => 1,
             BinaryOperatorType.MemberAccess => 9,
+            BinaryOperatorType.StaticMemberAccess => 10,
             _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType, typeof(BinaryOperatorType))
         };
     }
