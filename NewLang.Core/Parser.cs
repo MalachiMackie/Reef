@@ -545,7 +545,7 @@ public static class Parser
         };
     }
 
-    private static IExpression GetGenericInstantiation(PeekableEnumerator<Token> tokens, IExpression previousExpression)
+    private static GenericInstantiationExpression GetGenericInstantiation(PeekableEnumerator<Token> tokens, IExpression previousExpression)
     {
         var typeArguments = new List<TypeIdentifier>();
         
@@ -585,7 +585,7 @@ public static class Parser
         return new GenericInstantiationExpression(new GenericInstantiation(previousExpression, typeArguments));
     }
 
-    private static IExpression GetObjectInitializer(PeekableEnumerator<Token> tokens)
+    private static ObjectInitializerExpression GetObjectInitializer(PeekableEnumerator<Token> tokens)
     {
         if (!tokens.MoveNext())
         {
@@ -648,7 +648,7 @@ public static class Parser
         return new ObjectInitializerExpression(new ObjectInitializer(type, fieldInitializers));
     }
 
-    private static IExpression GetMethodReturn(PeekableEnumerator<Token> tokens)
+    private static MethodReturnExpression GetMethodReturn(PeekableEnumerator<Token> tokens)
     {
         var expression = new MethodReturn(PopExpression(tokens) ?? throw new InvalidOperationException("Expected expression"));
 
@@ -682,7 +682,7 @@ public static class Parser
         return previousExpression;
     }
 
-    private static IExpression GetMethodCall(PeekableEnumerator<Token> tokens, IExpression method)
+    private static MethodCallExpression GetMethodCall(PeekableEnumerator<Token> tokens, IExpression method)
     {
         var parameterList = new List<IExpression>();
         while (tokens.TryPeek(out var peeked))
@@ -714,7 +714,7 @@ public static class Parser
         throw new InvalidOperationException("Expected ), found nothing");
     }
 
-    private static IExpression GetIfExpression(PeekableEnumerator<Token> tokens)
+    private static IfExpressionExpression GetIfExpression(PeekableEnumerator<Token> tokens)
     {
         if (!tokens.MoveNext())
         {
@@ -787,7 +787,7 @@ public static class Parser
             elseBody));
     }
 
-    private static IExpression GetBlockExpression(PeekableEnumerator<Token> tokens)
+    private static BlockExpression GetBlockExpression(PeekableEnumerator<Token> tokens)
     {
         var (expressions, functions, classes, fields) = GetScope(tokens, TokenType.RightBrace);
 
@@ -803,7 +803,7 @@ public static class Parser
         return new BlockExpression(new Block(expressions, functions));
     }
 
-    private static IExpression GetVariableDeclaration(PeekableEnumerator<Token> tokens)
+    private static VariableDeclarationExpression GetVariableDeclaration(PeekableEnumerator<Token> tokens)
     {
         if (!tokens.MoveNext())
         {
@@ -861,7 +861,7 @@ public static class Parser
         return new VariableDeclarationExpression(new VariableDeclaration(identifier, mutabilityModifier, type, valueExpression));
     }
     
-    private static IExpression GetUnaryOperatorExpression(
+    private static UnaryOperatorExpression GetUnaryOperatorExpression(
         IExpression operand,
         Token operatorToken,
         UnaryOperatorType operatorType)
@@ -869,7 +869,7 @@ public static class Parser
         return new UnaryOperatorExpression(new UnaryOperator(operatorType, operand, operatorToken));
     }
     
-    private static IExpression GetBinaryOperatorExpression(
+    private static BinaryOperatorExpression GetBinaryOperatorExpression(
         PeekableEnumerator<Token> tokens,
         IExpression leftOperand,
         BinaryOperatorType operatorType)
