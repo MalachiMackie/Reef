@@ -2,15 +2,15 @@
 
 namespace NewLang.Core;
 
-public readonly record struct ProgramClass(
+public record ProgramClass(
     AccessModifier? AccessModifier, Token Name, IReadOnlyList<Token> TypeArguments, IReadOnlyCollection<LangFunction> Functions, IReadOnlyCollection<ClassField> Fields)
 {
     public override string ToString()
     {
         var sb = new StringBuilder();
-        if (AccessModifier.HasValue)
+        if (AccessModifier is not null)
         {
-            sb.Append($"{AccessModifier.Value} ");
+            sb.Append($"{AccessModifier} ");
         }
 
         sb.Append($"class {Name}");
@@ -38,24 +38,24 @@ public readonly record struct ProgramClass(
     }
 }
 
-public readonly record struct ClassField(
+public record ClassField(
     AccessModifier? AccessModifier, StaticModifier? StaticModifier, MutabilityModifier? MutabilityModifier, Token Name, TypeIdentifier Type)
 {
     public override string ToString()
     {
         var sb = new StringBuilder();
 
-        if (AccessModifier.HasValue)
+        if (AccessModifier is not null)
         {
-            sb.Append($"{AccessModifier.Value} ");
+            sb.Append($"{AccessModifier} ");
         }
-        if (StaticModifier.HasValue)
+        if (StaticModifier is not null)
         {
-            sb.Append($"{StaticModifier.Value} ");
+            sb.Append($"{StaticModifier} ");
         }
-        if (MutabilityModifier.HasValue)
+        if (MutabilityModifier is not null)
         {
-            sb.Append($"{MutabilityModifier.Value} ");
+            sb.Append($"{MutabilityModifier} ");
         }
         sb.Append($"field {Name}: {Type}");
 

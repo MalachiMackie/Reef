@@ -2559,7 +2559,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     private static Block RemoveSourceSpan(Block block)
     {
         return new Block(
-            [..block.Expressions.Select(RemoveSourceSpan)],
+            [..block.Expressions.Select(RemoveSourceSpan)!],
             [..block.Functions.Select(RemoveSourceSpan)]);
     }
 
@@ -2567,9 +2567,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
         return accessModifier is null
             ? null
-            : new AccessModifier(RemoveSourceSpan(accessModifier.Value.Token));
+            : new AccessModifier(RemoveSourceSpan(accessModifier.Token));
     }
 
+    [return: NotNullIfNotNull(nameof(typeIdentifier))]
     private static TypeIdentifier? RemoveSourceSpan(TypeIdentifier? typeIdentifier)
     {
         if (typeIdentifier is null)
@@ -2577,12 +2578,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             return null;
         }
 
-        return RemoveSourceSpan(typeIdentifier.Value);
-    }
-
-    private static TypeIdentifier RemoveSourceSpan(TypeIdentifier typeIdentifier)
-    {
-        return new TypeIdentifier(RemoveSourceSpan(typeIdentifier.Identifier), [..typeIdentifier.TypeArguments.Select(RemoveSourceSpan)]);
+        return new TypeIdentifier(RemoveSourceSpan(typeIdentifier.Identifier), [..typeIdentifier.TypeArguments.Select(RemoveSourceSpan)!]);
     }
 
     private static FunctionParameter RemoveSourceSpan(FunctionParameter parameter)
@@ -2592,11 +2588,12 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             RemoveSourceSpan(parameter.Identifier));
     }
 
-    private static IExpression RemoveSourceSpan(IExpression? expression)
+    [return: NotNullIfNotNull(nameof(expression))]
+    private static IExpression? RemoveSourceSpan(IExpression? expression)
     {
         return expression switch
         {
-            null => null!,
+            null => null,
             ValueAccessorExpression valueAccessorExpression => new ValueAccessorExpression(RemoveSourceSpan(valueAccessorExpression.ValueAccessor)),
             UnaryOperatorExpression unaryOperatorExpression => new UnaryOperatorExpression(RemoveSourceSpan(unaryOperatorExpression.UnaryOperator)),
             BinaryOperatorExpression binaryOperatorExpression => new BinaryOperatorExpression(RemoveSourceSpan(binaryOperatorExpression.BinaryOperator)),
@@ -2609,18 +2606,6 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             GenericInstantiationExpression genericInstantiationExpression => new GenericInstantiationExpression(RemoveSourceSpan(genericInstantiationExpression.GenericInstantiation)),
             _ => throw new NotImplementedException()
         };
-        // return Expression(
-        //     expression.ExpressionType,
-        //     RemoveSourceSpan(expression.ValueAccessor),
-        //     RemoveSourceSpan(expression.UnaryOperator),
-        //     RemoveSourceSpan(expression.BinaryOperator),
-        //     RemoveSourceSpan(expression.VariableDeclaration),
-        //     RemoveSourceSpan(expression.IfExpression),
-        //     RemoveSourceSpan(expression.Block),
-        //     RemoveSourceSpan(expression.MethodCall),
-        //     RemoveSourceSpan(expression.MethodReturn),
-        //     RemoveSourceSpan(expression.ObjectInitializer),
-        //     RemoveSourceSpan(expression.GenericInstantiation));
     }
     
     private static GenericInstantiation RemoveSourceSpan(
@@ -2628,7 +2613,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
             return new GenericInstantiation(
                 RemoveSourceSpan(genericInstantiation.GenericInstance),
-                [..genericInstantiation.TypeArguments.Select(RemoveSourceSpan)]);
+                [..genericInstantiation.TypeArguments.Select(RemoveSourceSpan)!]);
     }
 
     private static ObjectInitializer RemoveSourceSpan(ObjectInitializer objectInitializer)
@@ -2649,7 +2634,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
         return new MethodCall(
             RemoveSourceSpan(methodCall.Method),
-            [..methodCall.ParameterList.Select(RemoveSourceSpan)]);
+            [..methodCall.ParameterList.Select(RemoveSourceSpan)!]);
     }
 
     private static IfExpression RemoveSourceSpan(IfExpression ifExpression)
@@ -2679,7 +2664,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
         return mutabilityModifier is null
             ? null
-            : new MutabilityModifier(RemoveSourceSpan(mutabilityModifier.Value.Modifier));
+            : new MutabilityModifier(RemoveSourceSpan(mutabilityModifier.Modifier));
     }
 
     private static BinaryOperator RemoveSourceSpan(BinaryOperator binaryOperator)
@@ -2714,7 +2699,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     private static LangProgram RemoveSourceSpan(LangProgram program)
     {
         return new LangProgram(
-            [..program.Expressions.Select(RemoveSourceSpan)],
+            [..program.Expressions.Select(RemoveSourceSpan)!],
             [..program.Functions.Select(RemoveSourceSpan)],
             [..program.Classes.Select(RemoveSourceSpan)]);
     }
@@ -2743,7 +2728,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
         return staticModifier is null
             ? null
-            : new StaticModifier(RemoveSourceSpan(staticModifier.Value.Token));
+            : new StaticModifier(RemoveSourceSpan(staticModifier.Token));
     }
 
     private static MethodReturn RemoveSourceSpan(MethodReturn methodReturn)

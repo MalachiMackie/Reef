@@ -7,7 +7,7 @@ public interface IExpression
     ExpressionType ExpressionType { get; }
 }
 
-public readonly record struct ValueAccessorExpression(ValueAccessor ValueAccessor) : IExpression
+public record ValueAccessorExpression(ValueAccessor ValueAccessor) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.ValueAccess;
 
@@ -17,7 +17,7 @@ public readonly record struct ValueAccessorExpression(ValueAccessor ValueAccesso
     }
 }
 
-public readonly record struct UnaryOperatorExpression(UnaryOperator UnaryOperator) : IExpression
+public record UnaryOperatorExpression(UnaryOperator UnaryOperator) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.UnaryOperator;
 
@@ -27,7 +27,7 @@ public readonly record struct UnaryOperatorExpression(UnaryOperator UnaryOperato
     }
 }
 
-public readonly record struct BinaryOperatorExpression(BinaryOperator BinaryOperator) : IExpression
+public record BinaryOperatorExpression(BinaryOperator BinaryOperator) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.BinaryOperator;
 
@@ -37,7 +37,7 @@ public readonly record struct BinaryOperatorExpression(BinaryOperator BinaryOper
     }
 }
 
-public readonly record struct VariableDeclarationExpression(VariableDeclaration VariableDeclaration) : IExpression
+public record VariableDeclarationExpression(VariableDeclaration VariableDeclaration) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.VariableDeclaration;
 
@@ -48,7 +48,7 @@ public readonly record struct VariableDeclarationExpression(VariableDeclaration 
 }
 
 // todo: better name
-public readonly record struct IfExpressionExpression(IfExpression IfExpression) : IExpression
+public record IfExpressionExpression(IfExpression IfExpression) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.IfExpression;
     
@@ -58,7 +58,7 @@ public readonly record struct IfExpressionExpression(IfExpression IfExpression) 
     }
 }
 
-public readonly record struct BlockExpression(Block Block) : IExpression
+public record BlockExpression(Block Block) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.Block;
 
@@ -68,7 +68,7 @@ public readonly record struct BlockExpression(Block Block) : IExpression
     }
 }
 
-public readonly record struct MethodCallExpression(MethodCall MethodCall) : IExpression
+public record MethodCallExpression(MethodCall MethodCall) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.MethodCall;
 
@@ -78,7 +78,7 @@ public readonly record struct MethodCallExpression(MethodCall MethodCall) : IExp
     }
 }
 
-public readonly record struct MethodReturnExpression(MethodReturn MethodReturn) : IExpression
+public record MethodReturnExpression(MethodReturn MethodReturn) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.MethodReturn;
 
@@ -88,7 +88,7 @@ public readonly record struct MethodReturnExpression(MethodReturn MethodReturn) 
     }
 }
 
-public readonly record struct ObjectInitializerExpression(ObjectInitializer ObjectInitializer) : IExpression
+public record ObjectInitializerExpression(ObjectInitializer ObjectInitializer) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.ObjectInitializer;
 
@@ -98,7 +98,7 @@ public readonly record struct ObjectInitializerExpression(ObjectInitializer Obje
     }
 }
 
-public readonly record struct GenericInstantiationExpression(GenericInstantiation GenericInstantiation) : IExpression
+public record GenericInstantiationExpression(GenericInstantiation GenericInstantiation) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.GenericInstantiation;
 
@@ -108,20 +108,20 @@ public readonly record struct GenericInstantiationExpression(GenericInstantiatio
     }
 }
 
-public readonly record struct VariableDeclaration(
+public record VariableDeclaration(
     Token VariableNameToken, MutabilityModifier? MutabilityModifier, TypeIdentifier? Type, IExpression? Value)
 {
     public override string ToString()
     {
         var sb = new StringBuilder("var ");
-        if (MutabilityModifier.HasValue)
+        if (MutabilityModifier is not null)
         {
-            sb.Append($"{MutabilityModifier.Value} ");
+            sb.Append($"{MutabilityModifier} ");
         }
         sb.Append($"{VariableNameToken}");
-        if (Type.HasValue)
+        if (Type is not null)
         {
-            sb.Append($": {Type.Value} ");
+            sb.Append($": {Type} ");
         }
         if (Value is not null)
         {
@@ -132,7 +132,7 @@ public readonly record struct VariableDeclaration(
     }
 }
 
-public readonly record struct MutabilityModifier(Token Modifier)
+public record MutabilityModifier(Token Modifier)
 {
     public override string ToString()
     {
@@ -140,7 +140,7 @@ public readonly record struct MutabilityModifier(Token Modifier)
     }
 }
 
-public readonly record struct IfExpression(
+public record IfExpression(
     IExpression CheckExpression,
     IExpression Body,
     IReadOnlyCollection<ElseIf> ElseIfs,
@@ -162,7 +162,7 @@ public readonly record struct IfExpression(
     }
 }
 
-public readonly record struct Block(IReadOnlyList<IExpression> Expressions, IReadOnlyList<LangFunction> Functions)
+public record Block(IReadOnlyList<IExpression> Expressions, IReadOnlyList<LangFunction> Functions)
 {
     public override string ToString()
     {
@@ -184,7 +184,7 @@ public readonly record struct Block(IReadOnlyList<IExpression> Expressions, IRea
 }
 
 
-public readonly record struct ValueAccessor(ValueAccessType AccessType, Token Token)
+public record ValueAccessor(ValueAccessType AccessType, Token Token)
 {
     public override string ToString()
     {
@@ -192,7 +192,7 @@ public readonly record struct ValueAccessor(ValueAccessType AccessType, Token To
     }
 }
 
-public readonly record struct UnaryOperator(UnaryOperatorType OperatorType, IExpression Operand, Token OperatorToken)
+public record UnaryOperator(UnaryOperatorType OperatorType, IExpression Operand, Token OperatorToken)
 {
     public override string ToString()
     {
@@ -201,7 +201,7 @@ public readonly record struct UnaryOperator(UnaryOperatorType OperatorType, IExp
     }
 }
 
-public readonly record struct BinaryOperator(BinaryOperatorType OperatorType, IExpression Left, IExpression Right, Token OperatorToken)
+public record BinaryOperator(BinaryOperatorType OperatorType, IExpression Left, IExpression Right, Token OperatorToken)
 {
     public override string ToString()
     {
@@ -209,7 +209,7 @@ public readonly record struct BinaryOperator(BinaryOperatorType OperatorType, IE
     }
 }
 
-public readonly record struct ElseIf(IExpression CheckExpression, IExpression Body)
+public record ElseIf(IExpression CheckExpression, IExpression Body)
 {
     public override string ToString()
     {
@@ -217,7 +217,7 @@ public readonly record struct ElseIf(IExpression CheckExpression, IExpression Bo
     }
 }
 
-public readonly record struct MethodCall(IExpression Method, IReadOnlyCollection<IExpression> ParameterList)
+public record MethodCall(IExpression Method, IReadOnlyCollection<IExpression> ParameterList)
 {
     public override string ToString()
     {
@@ -225,7 +225,7 @@ public readonly record struct MethodCall(IExpression Method, IReadOnlyCollection
     }
 }
 
-public readonly record struct GenericInstantiation(
+public record GenericInstantiation(
     IExpression GenericInstance,
     IReadOnlyList<TypeIdentifier> TypeArguments)
 {
@@ -235,7 +235,7 @@ public readonly record struct GenericInstantiation(
     }
 }
 
-public readonly record struct MethodReturn(IExpression Expression)
+public record MethodReturn(IExpression Expression)
 {
     public override string ToString()
     {
@@ -243,7 +243,7 @@ public readonly record struct MethodReturn(IExpression Expression)
     }
 }
 
-public readonly record struct ObjectInitializer(TypeIdentifier Type, IReadOnlyList<FieldInitializer> FieldInitializers)
+public record ObjectInitializer(TypeIdentifier Type, IReadOnlyList<FieldInitializer> FieldInitializers)
 {
     public override string ToString()
     {
@@ -259,7 +259,7 @@ public readonly record struct ObjectInitializer(TypeIdentifier Type, IReadOnlyLi
     }
 }
 
-public readonly record struct FieldInitializer(Token FieldName, IExpression Value);
+public record FieldInitializer(Token FieldName, IExpression Value);
 
 public enum BinaryOperatorType
 {

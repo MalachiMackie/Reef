@@ -2,7 +2,7 @@
 
 namespace NewLang.Core;
 
-public readonly record struct LangProgram(
+public record LangProgram(
     IReadOnlyList<IExpression> Expressions,
     IReadOnlyList<LangFunction> Functions,
     IReadOnlyCollection<ProgramClass> Classes)
@@ -31,7 +31,7 @@ public readonly record struct LangProgram(
 }
 
 // todo: is this an ok name?
-public readonly record struct TypeIdentifier(Token Identifier, IReadOnlyList<TypeIdentifier> TypeArguments)
+public record TypeIdentifier(Token Identifier, IReadOnlyList<TypeIdentifier> TypeArguments)
 {
     public override string ToString()
     {
@@ -46,7 +46,7 @@ public readonly record struct TypeIdentifier(Token Identifier, IReadOnlyList<Typ
     }
 }
 
-public readonly record struct LangFunction(
+public record LangFunction(
     AccessModifier? AccessModifier,
     StaticModifier? StaticModifier,
     Token Name,
@@ -58,7 +58,7 @@ public readonly record struct LangFunction(
     public override string ToString()
     {
         var sb = new StringBuilder();
-        if (AccessModifier.HasValue)
+        if (AccessModifier is not null)
         {
             sb.Append($"{AccessModifier} ");
         }
@@ -72,7 +72,7 @@ public readonly record struct LangFunction(
         sb.Append('(');
         sb.AppendJoin(", ", Parameters);
         sb.Append(')');
-        if (ReturnType.HasValue)
+        if (ReturnType is not null)
         {
             sb.Append($": {ReturnType}");
         }
@@ -82,7 +82,7 @@ public readonly record struct LangFunction(
     }
 }
 
-public readonly record struct StaticModifier(Token Token)
+public record StaticModifier(Token Token)
 {
     public override string ToString()
     {
@@ -90,7 +90,7 @@ public readonly record struct StaticModifier(Token Token)
     }
 }
 
-public readonly record struct AccessModifier(Token Token)
+public record AccessModifier(Token Token)
 {
     public override string ToString()
     {
@@ -98,7 +98,7 @@ public readonly record struct AccessModifier(Token Token)
     }
 }
 
-public readonly record struct FunctionParameter(TypeIdentifier Type, Token Identifier)
+public record FunctionParameter(TypeIdentifier Type, Token Identifier)
 {
     public override string ToString()
     {

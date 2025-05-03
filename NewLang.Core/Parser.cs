@@ -57,17 +57,17 @@ public static class Parser
             {
                 tokens.MoveNext();
                 var (function, @class, field) = GetMember(tokens);
-                if (function.HasValue)
+                if (function is not null)
                 {
-                    functions.Add(function.Value);
+                    functions.Add(function);
                 }
-                else if (@class.HasValue)
+                else if (@class is not null)
                 {
-                    classes.Add(@class.Value);
+                    classes.Add(@class);
                 }
-                else if (field.HasValue)
+                else if (field is not null)
                 {
-                    fields.Add(field.Value);
+                    fields.Add(field);
 
                     if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Semicolon)
                     {
@@ -159,7 +159,7 @@ public static class Parser
 
         if (tokens.Current.Type == TokenType.Fn)
         {
-            if (mutabilityModifier.HasValue)
+            if (mutabilityModifier is not null)
             {
                 throw new InvalidOperationException("Function cannot have mutability modifier");
             }
@@ -170,12 +170,12 @@ public static class Parser
 
         if (tokens.Current.Type == TokenType.Class)
         {
-            if (mutabilityModifier.HasValue)
+            if (mutabilityModifier is not null)
             {
                 throw new InvalidOperationException("Class cannot have a mutability modifier");
             }
 
-            if (staticModifier.HasValue)
+            if (staticModifier is not null)
             {
                 throw new InvalidOperationException("Class cannot be static");
             }
