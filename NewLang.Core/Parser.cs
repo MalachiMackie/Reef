@@ -549,7 +549,7 @@ public static class Parser
             TokenType.DoubleColon => GetStaticMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             TokenType.LeftParenthesis => GetMethodCall(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             TokenType.Turbofish => GetGenericInstantiation(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
-            TokenType.Dot => GetMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
+            TokenType.Dot => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.MemberAccess),
             TokenType.Return => GetMethodReturn(tokens),
             TokenType.New => GetObjectInitializer(tokens),
             TokenType.Equals => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.ValueAssignment),
@@ -705,16 +705,6 @@ public static class Parser
         }
 
         return previousExpression;
-    }
-
-    private static Expression GetMemberAccess(PeekableEnumerator<Token> tokens, Expression memberOwner)
-    {
-        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
-        {
-            throw new InvalidOperationException("Expected member identifier");
-        }
-
-        return new Expression(new MemberAccess(memberOwner, tokens.Current));
     }
 
     private static Expression GetMethodCall(PeekableEnumerator<Token> tokens, Expression method)
@@ -936,11 +926,11 @@ public static class Parser
             TokenType.Dash => GetBinaryOperatorBindingStrength(BinaryOperatorType.Minus),
             TokenType.DoubleEquals => GetBinaryOperatorBindingStrength(BinaryOperatorType.EqualityCheck),
             TokenType.Equals => GetBinaryOperatorBindingStrength(BinaryOperatorType.ValueAssignment),
+            TokenType.Dot => GetBinaryOperatorBindingStrength(BinaryOperatorType.MemberAccess),
             // todo: could some of these be converted to real operators?
             TokenType.LeftParenthesis => 7,
             TokenType.Turbofish => 6,
             TokenType.DoubleColon => 6,
-            TokenType.Dot => 8,
             _ => null
         };
 
@@ -959,6 +949,7 @@ public static class Parser
             BinaryOperatorType.LessThan => 3,
             BinaryOperatorType.EqualityCheck => 2,
             BinaryOperatorType.ValueAssignment => 1,
+            BinaryOperatorType.MemberAccess => 9,
             _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType, typeof(BinaryOperatorType))
         };
     }
@@ -967,7 +958,7 @@ public static class Parser
     {
         return operatorType switch
         {
-            UnaryOperatorType.FallOut => 9,
+            UnaryOperatorType.FallOut => 8,
             _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType, typeof(UnaryOperatorType))
         };
     }
