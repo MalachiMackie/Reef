@@ -530,31 +530,17 @@ public static class Parser
             // value accessors
             TokenType.StringLiteral or TokenType.IntLiteral or TokenType.True or TokenType.False => new Expression(
                 new ValueAccessor(ValueAccessType.Literal, tokens.Current)),
-            // unary operators
-            TokenType.QuestionMark => GetUnaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current, UnaryOperatorType.FallOut),
-            // binary operator tokens
-            TokenType.LeftAngleBracket => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"),
-                BinaryOperatorType.LessThan),
-            TokenType.RightAngleBracket => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"),
-                BinaryOperatorType.GreaterThan),
-            TokenType.Plus => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.Plus),
-            TokenType.Dash => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.Minus),
-            TokenType.Star => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.Multiply),
-            TokenType.ForwardSlash => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"),
-                BinaryOperatorType.Divide),
             TokenType.Var => GetVariableDeclaration(tokens),
             TokenType.LeftBrace => GetBlockExpression(tokens),
             TokenType.If => GetIfExpression(tokens),
-            TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
-            TokenType.DoubleColon => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.StaticMemberAccess),
             TokenType.LeftParenthesis => GetMethodCall(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             TokenType.Turbofish => GetGenericInstantiation(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
-            TokenType.Dot => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.MemberAccess),
             TokenType.Return => GetMethodReturn(tokens),
             TokenType.New => GetObjectInitializer(tokens),
-            TokenType.Equals => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.ValueAssignment),
-            TokenType.DoubleEquals => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.EqualityCheck),
             TokenType.Ok or TokenType.Error => new Expression(new ValueAccessor(ValueAccessType.Variable, tokens.Current)),
+            TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
+            _ when TryGetUnaryOperatorType(tokens.Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current, unaryOperatorType.Value),
+            _ when TryGetBinaryOperatorType(tokens.Current.Type, out var binaryOperatorType) => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), binaryOperatorType.Value),
             _ when IsTypeTokenType(tokens.Current.Type) => new Expression(new ValueAccessor(ValueAccessType.Variable, tokens.Current)),
             _ => throw new InvalidOperationException($"Token type {tokens.Current.Type} not supported")
         };
@@ -905,26 +891,45 @@ public static class Parser
     {
         bindingStrength = token.Type switch
         {
-            // unary operators
-            TokenType.QuestionMark => GetUnaryOperatorBindingStrength(UnaryOperatorType.FallOut),
-            // binary operators
-            TokenType.RightAngleBracket => GetBinaryOperatorBindingStrength(BinaryOperatorType.GreaterThan),
-            TokenType.LeftAngleBracket => GetBinaryOperatorBindingStrength(BinaryOperatorType.LessThan),
-            TokenType.Star => GetBinaryOperatorBindingStrength(BinaryOperatorType.Multiply),
-            TokenType.ForwardSlash => GetBinaryOperatorBindingStrength(BinaryOperatorType.Divide),
-            TokenType.Plus => GetBinaryOperatorBindingStrength(BinaryOperatorType.Plus),
-            TokenType.Dash => GetBinaryOperatorBindingStrength(BinaryOperatorType.Minus),
-            TokenType.DoubleEquals => GetBinaryOperatorBindingStrength(BinaryOperatorType.EqualityCheck),
-            TokenType.Equals => GetBinaryOperatorBindingStrength(BinaryOperatorType.ValueAssignment),
-            TokenType.Dot => GetBinaryOperatorBindingStrength(BinaryOperatorType.MemberAccess),
-            TokenType.DoubleColon => GetBinaryOperatorBindingStrength(BinaryOperatorType.StaticMemberAccess),
-            // todo: could some of these be converted to real operators?
+            _ when TryGetUnaryOperatorType(token.Type, out var unaryOperatorType) => GetUnaryOperatorBindingStrength(unaryOperatorType.Value),
+            _ when TryGetBinaryOperatorType(token.Type, out var binaryOperatorType) => GetBinaryOperatorBindingStrength(binaryOperatorType.Value),
             TokenType.LeftParenthesis => 7,
             TokenType.Turbofish => 6,
             _ => null
         };
 
         return bindingStrength.HasValue;
+    }
+
+    private static bool TryGetUnaryOperatorType(TokenType type, [NotNullWhen(true)] out UnaryOperatorType? operatorType)
+    {
+        operatorType = type switch
+        {
+            TokenType.QuestionMark => UnaryOperatorType.FallOut,
+            _ => null
+        };
+
+        return operatorType.HasValue;
+    }
+
+    private static bool TryGetBinaryOperatorType(TokenType type, [NotNullWhen(true)] out BinaryOperatorType? operatorType)
+    {
+        operatorType = type switch
+        {
+            TokenType.RightAngleBracket => BinaryOperatorType.GreaterThan,
+            TokenType.LeftAngleBracket => BinaryOperatorType.LessThan,
+            TokenType.Star => BinaryOperatorType.Multiply,
+            TokenType.ForwardSlash => BinaryOperatorType.Divide,
+            TokenType.Plus => BinaryOperatorType.Plus,
+            TokenType.Dash => BinaryOperatorType.Minus,
+            TokenType.DoubleEquals => BinaryOperatorType.EqualityCheck,
+            TokenType.Equals => BinaryOperatorType.ValueAssignment,
+            TokenType.Dot => BinaryOperatorType.MemberAccess,
+            TokenType.DoubleColon => BinaryOperatorType.StaticMemberAccess,
+            _ => null
+        };
+
+        return operatorType.HasValue;
     }
 
     private static uint GetBinaryOperatorBindingStrength(BinaryOperatorType operatorType)
