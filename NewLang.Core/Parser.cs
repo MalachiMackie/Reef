@@ -509,13 +509,18 @@ public static class Parser
 
     private static bool IsValidStatement(Expression expression)
     {
-        return expression.ExpressionType is 
-            ExpressionType.Block 
-            or ExpressionType.IfExpression
-            or ExpressionType.VariableDeclaration
-            or ExpressionType.ValueAssignment
-            or ExpressionType.MethodCall
-            or ExpressionType.MethodReturn;
+        return expression is
+            {
+                ExpressionType: ExpressionType.Block
+                or ExpressionType.IfExpression
+                or ExpressionType.VariableDeclaration
+                or ExpressionType.MethodCall
+                or ExpressionType.MethodReturn
+            } or
+            {
+                ExpressionType: ExpressionType.BinaryOperator,
+                BinaryOperator.Value.OperatorType: BinaryOperatorType.ValueAssignment
+            };
     }
     
     private static Expression MatchTokenToExpression(Expression? previousExpression, PeekableEnumerator<Token> tokens)
@@ -547,7 +552,7 @@ public static class Parser
             TokenType.Dot => GetMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             TokenType.Return => GetMethodReturn(tokens),
             TokenType.New => GetObjectInitializer(tokens),
-            TokenType.Equals => GetValueAssignment(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
+            TokenType.Equals => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.ValueAssignment),
             TokenType.DoubleEquals => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), BinaryOperatorType.EqualityCheck),
             TokenType.Ok or TokenType.Error => new Expression(new ValueAccessor(ValueAccessType.Variable, tokens.Current)),
             _ when IsTypeTokenType(tokens.Current.Type) => new Expression(new ValueAccessor(ValueAccessType.Variable, tokens.Current)),
@@ -605,19 +610,6 @@ public static class Parser
         return new Expression(new GenericInstantiation(previousExpression, typeArguments));
     }
 
-    private static Expression GetValueAssignment(PeekableEnumerator<Token> tokens, Expression previousExpression)
-    {
-        if (!TryGetBindingStrength(tokens.Current, out var bindingStrength))
-        {
-            throw new UnreachableException("Assignment operator must have a binding strength");
-        }
-
-        var right = PopExpression(tokens, bindingStrength)
-            ?? throw new InvalidOperationException("Expected value expression");
-
-        return new Expression(new ValueAssignment(previousExpression, right));
-    }
-    
     private static Expression GetObjectInitializer(PeekableEnumerator<Token> tokens)
     {
         if (!tokens.MoveNext())
@@ -943,11 +935,12 @@ public static class Parser
             TokenType.Plus => GetBinaryOperatorBindingStrength(BinaryOperatorType.Plus),
             TokenType.Dash => GetBinaryOperatorBindingStrength(BinaryOperatorType.Minus),
             TokenType.DoubleEquals => GetBinaryOperatorBindingStrength(BinaryOperatorType.EqualityCheck),
+            TokenType.Equals => GetBinaryOperatorBindingStrength(BinaryOperatorType.ValueAssignment),
+            // todo: could some of these be converted to real operators?
             TokenType.LeftParenthesis => 7,
             TokenType.Turbofish => 6,
             TokenType.DoubleColon => 6,
             TokenType.Dot => 8,
-            TokenType.Equals => 1,
             _ => null
         };
 
@@ -965,6 +958,7 @@ public static class Parser
             BinaryOperatorType.GreaterThan => 3,
             BinaryOperatorType.LessThan => 3,
             BinaryOperatorType.EqualityCheck => 2,
+            BinaryOperatorType.ValueAssignment => 1,
             _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType, typeof(BinaryOperatorType))
         };
     }
