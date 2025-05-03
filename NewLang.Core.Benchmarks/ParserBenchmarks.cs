@@ -29,19 +29,66 @@ public class ParserBenchmarks
     private const string SmallSource = "var a = 2;";
 
     private const string MediumSource = """
-                                        if (a) {
-                                            if (b > 2 < 4) {
-                                                var c = a + b * d / 2;
-                                            } else {
-                                                var d = "hi";
+                                        pub fn DoSomething(a: int): result::<int, string> {
+                                            var b: int = 2;
+                                            
+                                            if (a > b) {
+                                                return ok(a);
+                                            }
+                                            else if (a == b) {
+                                                return ok(b);
+                                            }
+
+                                            b = 3;
+
+                                            var thing = new Class2 {
+                                                A = 3
+                                            };
+
+                                            MyClass::StaticMethod();
+
+                                            PrivateFn::<string>();
+
+                                            return error("something wrong");
+                                        }
+
+                                        fn PrivateFn<T>() {
+                                            Println("Message");
+                                        }
+
+                                        pub fn SomethingElse(a: int): result::<int, string> {
+                                            var b = DoSomething(a)?;
+                                            var mut c = 2;
+                                            
+                                            return b;
+                                        }
+
+                                        Println(DoSomething(5));
+                                        Println(DoSomething(1));
+                                        Println(SomethingElse(1));
+
+                                        pub class MyClass {
+                                            pub fn PublicMethod() {
+                                            }
+
+                                            pub static fn StaticMethod() {
+
+                                            }
+                                            
+                                            field FieldA: string;
+                                            mut field FieldB: string;
+                                            pub mut field FieldC: string;
+                                            pub field FieldD: string;
+                                            pub static field FieldE: string;
+                                        }
+
+                                        pub class GenericClass<T> {
+                                            pub fn PublicMethod<T1>() {
                                             }
                                         }
-                                        if (a) {
-                                            if (b > 2) {
-                                                var c = a + b;
-                                            } else {
-                                                var d = "hi";
-                                            }
+
+                                        pub class Class2 {
+                                            pub field A: string;
                                         }
                                         """;
 
