@@ -2,14 +2,38 @@
 
 namespace NewLang.Core;
 
-public readonly struct Token
+public record StringToken : Token
+{
+    public required string StringValue { get; init; }
+
+    public override string ToString()
+    {
+        return Type switch
+        {
+            TokenType.Identifier => StringValue,
+            TokenType.StringLiteral => $"\"{StringValue}\"",
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+}
+
+public record IntToken : Token
+{
+    public required int IntValue { get; init; }
+
+    public override string ToString()
+    {
+        return Type switch
+        {
+            TokenType.IntLiteral => $"{IntValue}",
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+}
+
+public record Token
 {
     public TokenType Type { get; private init; }
-
-    // todo: can we 'overlap' these fields like an rust enum would?
-
-    public string? StringValue { get; init; }
-    public int? IntValue { get; init; }
 
     public required SourceSpan SourceSpan { get; init; }
 
@@ -17,7 +41,6 @@ public readonly struct Token
     {
         return Type switch
         {
-            TokenType.Identifier => StringValue!,
             TokenType.If => "if",
             TokenType.LeftParenthesis => "(",
             TokenType.RightParenthesis => ")",
@@ -35,8 +58,6 @@ public readonly struct Token
             TokenType.Comma => ",",
             TokenType.DoubleEquals => "==",
             TokenType.Else => "else",
-            TokenType.IntLiteral => IntValue!.Value.ToString(),
-            TokenType.StringLiteral => $"\"{StringValue}\"",
             TokenType.StringKeyword => "string",
             TokenType.Result => "result",
             TokenType.Ok => "ok",
@@ -167,7 +188,7 @@ public readonly struct Token
 
     public static Token Identifier(string value, SourceSpan sourceSpan)
     {
-        return new Token { StringValue = value, Type = TokenType.Identifier, SourceSpan = sourceSpan };
+        return new StringToken { StringValue = value, Type = TokenType.Identifier, SourceSpan = sourceSpan };
     }
 
     public static Token DoubleEquals(SourceSpan sourceSpan)
@@ -192,12 +213,12 @@ public readonly struct Token
 
     public static Token StringLiteral(string value, SourceSpan sourceSpan)
     {
-        return new Token { StringValue = value, Type = TokenType.StringLiteral, SourceSpan = sourceSpan };
+        return new StringToken { StringValue = value, Type = TokenType.StringLiteral, SourceSpan = sourceSpan };
     }
 
     public static Token IntLiteral(int value, SourceSpan sourceSpan)
     {
-        return new Token { IntValue = value, Type = TokenType.IntLiteral, SourceSpan = sourceSpan };
+        return new IntToken { IntValue = value, Type = TokenType.IntLiteral, SourceSpan = sourceSpan };
     }
 
     public static Token Result(SourceSpan sourceSpan)

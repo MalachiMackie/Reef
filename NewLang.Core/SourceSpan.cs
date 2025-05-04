@@ -1,5 +1,16 @@
 ﻿namespace NewLang.Core;
 
-public readonly record struct SourceSpan(SourcePosition Position, uint Length);
+public class SourceSpan(SourcePosition position, ushort length)
+{
+    public static SourceSpan Default() => new (new SourcePosition(0, 0, 0), 0);
 
-public readonly record struct SourcePosition(uint Start, uint LineNumber, uint LinePosition);
+    public SourcePosition Position = position;
+    public ushort Length = length;
+}
+
+public class SourcePosition(uint start, ushort lineNumber, ushort linePosition)
+{
+    public uint Start = start;
+    public ushort LineNumber = lineNumber;
+    public ushort LinePosition = linePosition;
+}
