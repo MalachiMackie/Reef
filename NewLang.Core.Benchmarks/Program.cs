@@ -1,8 +1,8 @@
 ﻿using BenchmarkDotNet.Running;
 using NewLang.Core.Benchmarks;
 
-// BenchmarkRunner.Run<ParserBenchmarks>();
-BenchmarkRunner.Run<TokenizerBenchmarks>();
+BenchmarkRunner.Run<ParserBenchmarks>();
+// BenchmarkRunner.Run<TokenizerBenchmarks>();
 
 /*
  * | Method         | Source                 | Mean         | Error       | StdDev      | Gen0    | Gen1   | Allocated |

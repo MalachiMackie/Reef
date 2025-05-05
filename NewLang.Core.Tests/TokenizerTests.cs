@@ -4,13 +4,11 @@ namespace NewLang.Core.Tests;
 
 public class TokenizerTests
 {
-    private readonly Tokenizer _tokenizer = new();
-    
     [Theory]
     [MemberData(nameof(TestCases))]
     public void Tests(string source, IEnumerable<Token> expectedTokens)
     {
-        var result = _tokenizer.Tokenize(source);
+        var result = Tokenizer.Tokenize(source);
 
         result.Should().BeEquivalentTo(expectedTokens);
     }
@@ -19,7 +17,7 @@ public class TokenizerTests
     [MemberData(nameof(SingleTestCases))]
     public void SingleTests(string source, IEnumerable<Token> expectedTokens)
     {
-        var result = _tokenizer.Tokenize(source);
+        var result = Tokenizer.Tokenize(source);
 
         result.Should().BeEquivalentTo(expectedTokens);
     }
@@ -27,7 +25,7 @@ public class TokenizerTests
     [Fact]
     public void Perf()
     {
-        _tokenizer.Tokenize(LargeSource).Count().Should().BeGreaterThan(0);
+        Tokenizer.Tokenize(LargeSource).Count().Should().BeGreaterThan(0);
     }
 
     public static IEnumerable<object[]> SingleTestCases()

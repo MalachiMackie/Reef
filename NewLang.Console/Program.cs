@@ -2,7 +2,7 @@
 
 using NewLang.Core;
 
-const string MediumSource = """
+const string mediumSource = """
                                         pub fn DoSomething(a: int): result<int, string> {
                                             var b = 2;
                                             
@@ -28,61 +28,61 @@ const string MediumSource = """
 
                                         """;
 
-const string LargeSource = $"""
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
+const string largeSource = $"""
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
+                                       {mediumSource}
                                        """;
 
-var tokenizer = new Tokenizer().Tokenize(LargeSource);
+var tokenizer = Tokenizer.Tokenize(largeSource);
 
 var a = tokenizer.ToArray();
 

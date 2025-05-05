@@ -722,7 +722,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     ]
                     ),
             ]))
-        }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedProgram });
+        }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedProgram });
     }
 
     public static IEnumerable<object[]> FailTestCases()
@@ -836,7 +836,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             "new Thing { , }",
             "new Thing { , a = 1 }"
         ];
-        return strings.Select(x => new object[] { x, new Tokenizer().Tokenize(x) });
+        return strings.Select(x => new object[] { x, Tokenizer.Tokenize(x) });
     }
 
     public static IEnumerable<object[]> SingleTestCase()
@@ -844,7 +844,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         return new (string Source, IExpression ExpectedProgram)[]
         {
             ("a == b", new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.EqualityCheck, VariableAccessor("a"), VariableAccessor("b"), Token.DoubleEquals(SourceSpan.Default()))))
-        }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedProgram });
+        }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedProgram });
     }
 
     public static IEnumerable<object[]> PopExpressionTestCases()
@@ -2537,7 +2537,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                          VariableAccessor("c"),
                          Token.DoubleColon(SourceSpan.Default())))
              ),           
-        }.Select(x => new object[] { x.Source, new Tokenizer().Tokenize(x.Source), x.ExpectedExpression });
+        }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedExpression });
     }
     
     private static IExpression VariableAccessor(string name) =>

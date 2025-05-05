@@ -13,12 +13,11 @@ public class TokenizerBenchmarks
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
     private readonly Consumer _consumer = new();
-    private readonly Tokenizer _tokenizer = new();
 
     [Benchmark]
     public void BenchmarkTokenize()
     {
-        _tokenizer.Tokenize(Source).Consume(_consumer);
+        Tokenizer.Tokenize(Source).Consume(_consumer);
     }
     
 

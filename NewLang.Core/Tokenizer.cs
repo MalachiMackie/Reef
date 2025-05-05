@@ -10,7 +10,13 @@ public class Tokenizer
     private static readonly SearchValues<char> Digits = SearchValues.Create("0123456789");
     private readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> _stringsAlternateLookup = new HashSet<string>().GetAlternateLookup<ReadOnlySpan<char>>();
 
-    public IEnumerable<Token> Tokenize(string sourceStr)
+    public static IEnumerable<Token> Tokenize(string sourceStr)
+    {
+        var tokenizer = new Tokenizer();
+        return tokenizer.TokenizeInner(sourceStr);
+    }
+    
+    private IEnumerable<Token> TokenizeInner(string sourceStr)
     {
         if (sourceStr.Length == 0)
         {
