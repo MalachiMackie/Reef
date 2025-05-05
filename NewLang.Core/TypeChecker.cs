@@ -4,33 +4,42 @@ public class TypeChecker
 {
     public static void TypeCheck(LangProgram program)
     {
-        var types = new List<LangType>
-        {
-            LangType.Unit
-        };
+        var types = new[] { LangType.Unit, LangType.Int, LangType.String }.ToDictionary(x => x.Name);
 
         foreach (var @class in program.Classes)
         {
-            types.Add(new LangType
+            var name = GetIdentifierName(@class.Name);
+            types.Add(name, new LangType
             {
-                Name = GetIdentifierName(@class.Name),
+                Name = name,
                 GenericParameters = @class.TypeArguments.Select(GetIdentifierName).ToArray()
             });
         }
         
         foreach (var expression in program.Expressions)
         {
-            TypeCheckExpression(expression);
+            TypeCheckExpression(expression, types);
         }
     }
 
-    private static LangType TypeCheckExpression(IExpression expression)
+    private static LangType TypeCheckExpression(IExpression expression, Dictionary<string, LangType> resolvedTypes)
     {
         return expression switch
         {
             VariableDeclarationExpression variableDeclarationExpression => TypeCheckVariableDeclaration(
-                variableDeclarationExpression),
-            _ => throw new NotImplementedException()
+                variableDeclarationExpression, resolvedTypes),
+            ValueAccessorExpression valueAccessorExpression => TypeCheckValueAccessor(valueAccessorExpression),
+            _ => throw new NotImplementedException($"{expression.ExpressionType}")
+        };
+    }
+
+    private static LangType TypeCheckValueAccessor(ValueAccessorExpression valueAccessorExpression)
+    {
+        return valueAccessorExpression.ValueAccessor switch
+        {
+            {AccessType: ValueAccessType.Literal, Token: IntToken {Type: TokenType.IntLiteral}} => LangType.Int,
+            {AccessType: ValueAccessType.Literal, Token: StringToken {Type: TokenType.StringLiteral}} => LangType.String,
+            _ => throw new NotImplementedException($"{valueAccessorExpression}")
         };
     }
 
@@ -41,9 +50,49 @@ public class TypeChecker
             : throw new InvalidOperationException("Expected token name");
     }
 
-    private static LangType TypeCheckVariableDeclaration(VariableDeclarationExpression expression)
+    private static LangType TypeCheckVariableDeclaration(VariableDeclarationExpression expression, Dictionary<string, LangType> resolvedTypes)
     {
+        switch (expression.VariableDeclaration)
+        {
+            case {Value: null, Type: null}:
+                throw new InvalidOperationException("Variable declaration must have a type specifier or a value");
+            case { Value: { } value, Type: { } type } :
+            {
+                var expectedType = GetType(type, resolvedTypes);
+                var valueType = TypeCheckExpression(value, resolvedTypes);
+                if (expectedType != valueType)
+                {
+                    throw new InvalidOperationException($"Expected type {expectedType}, but found {valueType}");
+                }
+
+                break;
+            }
+        }
         return LangType.Unit;
+    }
+
+    private static LangType GetType(TypeIdentifier typeIdentifier, Dictionary<string, LangType> resolvedTypes)
+    {
+        if (typeIdentifier.Identifier.Type == TokenType.StringKeyword)
+        {
+            return LangType.String;
+        }
+
+        if (typeIdentifier.Identifier.Type == TokenType.IntKeyword)
+        {
+            return LangType.Int;
+        }
+
+        if (typeIdentifier.Identifier is StringToken { Type: TokenType.Identifier } stringToken
+            && resolvedTypes.TryGetValue(stringToken.StringValue, out var nameMatchingType))
+        {
+            if (!nameMatchingType.IsGeneric && typeIdentifier.TypeArguments.Count == 0)
+            {
+                return nameMatchingType;
+            }
+        }
+
+        throw new InvalidOperationException($"No type found {typeIdentifier}");
     }
     
     public class LangType
@@ -53,5 +102,7 @@ public class TypeChecker
         public required string Name { get; init; }
 
         public static LangType Unit { get; } = new() { GenericParameters = [], Name = "Unit" };
+        public static LangType String { get; } = new() { GenericParameters = [], Name = "String" };
+        public static LangType Int { get; } = new() { GenericParameters = [], Name = "Int" };
     }
 }
