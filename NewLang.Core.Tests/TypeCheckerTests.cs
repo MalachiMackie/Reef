@@ -27,6 +27,7 @@ public class TypeCheckerTests
             "var a = 2",
             "var a: int = 2",
             "var b: string = \"somestring\"",
+            "fn MyFn(): int { return 1; }",
             mvp
         ]);
 
@@ -34,7 +35,10 @@ public class TypeCheckerTests
         ConvertToPrograms([
             "var a: string = 2",
             "var a: int = \"somestring\"",
-            "var b;"
+            "var b;",
+            "fn MyFn(): int { return \"something\"; }",
+            "fn MyFn() { return 1; }",
+            "fn MyFn(): string { return; }"
         ]);
 
     private static TheoryData<LangProgram> ConvertToPrograms(IEnumerable<string> input)

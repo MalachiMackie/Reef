@@ -235,11 +235,13 @@ public record GenericInstantiation(
     }
 }
 
-public record MethodReturn(IExpression Expression)
+public record MethodReturn(IExpression? Expression)
 {
     public override string ToString()
     {
-        return $"return {Expression};";
+        return Expression is null
+            ? "return"
+            : $"return {Expression}";
     }
 }
 

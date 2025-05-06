@@ -650,7 +650,7 @@ public static class Parser
 
     private static MethodReturnExpression GetMethodReturn(PeekableEnumerator<Token> tokens)
     {
-        var expression = new MethodReturn(PopExpression(tokens) ?? throw new InvalidOperationException("Expected expression"));
+        var expression = new MethodReturn(PopExpression(tokens));
 
         return new MethodReturnExpression(expression);
     }

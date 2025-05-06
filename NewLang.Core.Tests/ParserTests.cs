@@ -876,6 +876,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ),
             ("return 1", new MethodReturnExpression(
                 new MethodReturn(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default())))))),
+            ("return", new MethodReturnExpression(new MethodReturn(null))),
             // binary operator expressions
             ("a < 5", new BinaryOperatorExpression(new BinaryOperator(
                 BinaryOperatorType.LessThan,
