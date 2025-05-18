@@ -38,6 +38,7 @@ public class TypeCheckerTests
             "fn MyFn() {fn InnerFn() {OuterFn();}} fn OuterFn() {}",
             "fn MyFn() {fn InnerFn() {} InnerFn();}",
             "fn MyFn(param: int) {var a: int = param;}",
+            "fn MyFn(param1: string, param2: int) {} MyFn(\"value\", 3);",
             Mvp
         ]);
 
@@ -53,7 +54,10 @@ public class TypeCheckerTests
             "var a = 2; var b: string = a",
             "var a: int; var b = a",
             "fn MyFn(){fn InnerFn() {}} InnerFn();",
-            "CallMissingMethod();"
+            "CallMissingMethod();",
+            "fn MyFn(param1: string, param2: int) {} MyFn(3, \"value\");",
+            "fn MyFn(param1: string, param2: int) {} MyFn();",
+            "fn MyFn(param1: string, param2: int) {} MyFn(\"value\", 3, 2);",
         ]);
 
     private static TheoryData<LangProgram> ConvertToPrograms(IEnumerable<string> input)
