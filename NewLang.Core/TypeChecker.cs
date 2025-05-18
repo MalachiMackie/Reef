@@ -66,18 +66,18 @@ public class TypeChecker
         return new FunctionType
         {
             Name = function.Name.StringValue,
-            ReturnType = function.ReturnType is null ? LangType.Unit : GetType(function.ReturnType, types),
+            ReturnType = function.ReturnType is null ? InstantiatedType.Unit : GetType(function.ReturnType, types),
             GenericParameters = function.TypeArguments.Select(x => x.StringValue).ToArray(),
             Parameters = function.Parameters.Select(x => new FunctionType.Parameter(x.Identifier.StringValue, GetType(x.Type, types))).ToArray()
         };
     }
 
-    private static LangType TypeCheckBlock(
+    private static InstantiatedType TypeCheckBlock(
         Block block,
         Dictionary<string, Variable> variables,
         Dictionary<string, LangType> types,
         Dictionary<string, FunctionType> functions,
-        LangType? expectedReturnType)
+        InstantiatedType? expectedReturnType)
     {
         var innerVariables = new Dictionary<string, Variable>(variables);
         var innerFunctions = new Dictionary<string, FunctionType>(functions);
@@ -98,15 +98,15 @@ public class TypeChecker
         }
 
         // todo: tail expressions
-        return LangType.Unit;
+        return InstantiatedType.Unit;
     }
 
-    private static LangType TypeCheckExpression(
+    private static InstantiatedType TypeCheckExpression(
         IExpression expression,
         Dictionary<string, LangType> types,
         Dictionary<string, Variable> variables,
         Dictionary<string, FunctionType> functions,
-        LangType? expectedReturnType)
+        InstantiatedType? expectedReturnType)
     {
         return expression switch
         {
@@ -120,16 +120,16 @@ public class TypeChecker
         };
     }
 
-    private static LangType TypeCheckMethodCall(
+    private static InstantiatedType TypeCheckMethodCall(
         MethodCall methodCall,
         Dictionary<string, LangType> types,
         Dictionary<string, Variable> variables,
         Dictionary<string, FunctionType> functions,
-        LangType? expectedReturnType)
+        InstantiatedType? expectedReturnType)
     {
         var methodType = TypeCheckExpression(methodCall.Method, types, variables, functions, expectedReturnType);
 
-        if (methodType is not FunctionType functionType)
+        if (methodType.Type is not FunctionType functionType)
         {
             throw new InvalidOperationException($"{methodType} is not callable");
         }
@@ -154,12 +154,12 @@ public class TypeChecker
         return functionType.ReturnType;
     }
 
-    private static LangType TypeCheckMethodReturn(
+    private static InstantiatedType TypeCheckMethodReturn(
         MethodReturnExpression methodReturnExpression,
         Dictionary<string, LangType> types,
         Dictionary<string, Variable> variables,
         Dictionary<string, FunctionType> functions,
-        LangType? expectedReturnType)
+        InstantiatedType? expectedReturnType)
     {
         var returnExpressionType = methodReturnExpression.MethodReturn.Expression is null
             ? null
@@ -180,15 +180,15 @@ public class TypeChecker
             throw new InvalidOperationException($"Expected {returnExpressionType}, got {expectedReturnType}");
         }
         
-        return LangType.Never;
+        return InstantiatedType.Never;
     }
 
-    private static LangType TypeCheckValueAccessor(ValueAccessorExpression valueAccessorExpression, Dictionary<string, Variable> variables, Dictionary<string, FunctionType> functions)
+    private static InstantiatedType TypeCheckValueAccessor(ValueAccessorExpression valueAccessorExpression, Dictionary<string, Variable> variables, Dictionary<string, FunctionType> functions)
     {
         return valueAccessorExpression.ValueAccessor switch
         {
-            {AccessType: ValueAccessType.Literal, Token: IntToken {Type: TokenType.IntLiteral}} => LangType.Int,
-            {AccessType: ValueAccessType.Literal, Token: StringToken {Type: TokenType.StringLiteral}} => LangType.String,
+            {AccessType: ValueAccessType.Literal, Token: IntToken {Type: TokenType.IntLiteral}} => InstantiatedType.Int,
+            {AccessType: ValueAccessType.Literal, Token: StringToken {Type: TokenType.StringLiteral}} => InstantiatedType.String,
             {AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: var variableName}} =>
                 TypeCheckVariableAccess(variableName, variables, functions),
             _ => throw new NotImplementedException($"{valueAccessorExpression}")
@@ -196,11 +196,11 @@ public class TypeChecker
         
     }
 
-    private static LangType TypeCheckVariableAccess(string variableName, Dictionary<string, Variable> variables, Dictionary<string, FunctionType> functions)
+    private static InstantiatedType TypeCheckVariableAccess(string variableName, Dictionary<string, Variable> variables, Dictionary<string, FunctionType> functions)
     {
         if (functions.TryGetValue(variableName, out var function))
         {
-            return function;
+            return new InstantiatedType { Type = function, TypeArguments = [] };
         }
         
         if (!variables.TryGetValue(variableName, out var value))
@@ -216,7 +216,7 @@ public class TypeChecker
         return value.Type;
     }
 
-    private record Variable(string Name, LangType Type, bool Instantiated);
+    private record Variable(string Name, InstantiatedType Type, bool Instantiated);
 
     private static string GetIdentifierName(Token token)
     {
@@ -225,12 +225,12 @@ public class TypeChecker
             : throw new InvalidOperationException("Expected token name");
     }
 
-    private static LangType TypeCheckVariableDeclaration(
+    private static InstantiatedType TypeCheckVariableDeclaration(
         VariableDeclarationExpression expression,
         Dictionary<string, LangType> resolvedTypes,
         Dictionary<string, Variable> variables,
         Dictionary<string, FunctionType> functions,
-        LangType? expectedReturnType)
+        InstantiatedType? expectedReturnType)
     {
         var varName = expression.VariableDeclaration.VariableNameToken.StringValue;
         if (variables.ContainsKey(varName))
@@ -269,19 +269,31 @@ public class TypeChecker
         }
         
         // variable declaration return type is always unit, regardless of the variable type
-        return LangType.Unit;
+        return InstantiatedType.Unit;
     }
 
-    private static LangType GetType(TypeIdentifier typeIdentifier, Dictionary<string, LangType> resolvedTypes)
+    private static InstantiatedType GetType(TypeIdentifier typeIdentifier, Dictionary<string, LangType> resolvedTypes)
     {
         if (typeIdentifier.Identifier.Type == TokenType.StringKeyword)
         {
-            return LangType.String;
+            return InstantiatedType.String;
         }
 
         if (typeIdentifier.Identifier.Type == TokenType.IntKeyword)
         {
-            return LangType.Int;
+            return InstantiatedType.Int;
+        }
+
+        if (typeIdentifier.Identifier.Type == TokenType.Result)
+        {
+            if (typeIdentifier.TypeArguments.Count != 2)
+            {
+                throw new InvalidOperationException("Result expects 2 arguments");
+            }
+            
+            return InstantiatedType.Result(
+                GetType(typeIdentifier.TypeArguments[0], resolvedTypes),
+                GetType(typeIdentifier.TypeArguments[1], resolvedTypes));
         }
 
         if (typeIdentifier.Identifier is StringToken { Type: TokenType.Identifier } stringToken
@@ -289,11 +301,37 @@ public class TypeChecker
         {
             if (!nameMatchingType.IsGeneric && typeIdentifier.TypeArguments.Count == 0)
             {
-                return nameMatchingType;
+                return new InstantiatedType{Type = nameMatchingType, TypeArguments = []};
             }
         }
 
         throw new InvalidOperationException($"No type found {typeIdentifier}");
+    }
+
+    public class InstantiatedType
+    {
+        public required LangType Type { get; init; }
+        
+        // todo: be consistent with argument/parameter
+        public required Dictionary<string, InstantiatedType> TypeArguments { get; init; }
+
+        public static InstantiatedType String { get; } = new() { Type = LangType.String, TypeArguments = [] };
+        
+        public static InstantiatedType Int { get; } = new() { Type = LangType.Int, TypeArguments = [] };
+
+        public static InstantiatedType Unit { get; } = new() { Type = LangType.Unit, TypeArguments = [] };
+        
+        public static InstantiatedType Never { get; } = new() {Type = LangType.Never, TypeArguments = [] };
+
+        public static InstantiatedType Result(InstantiatedType value, InstantiatedType error) =>
+            new()
+            {
+                Type = LangType.Result, TypeArguments = new Dictionary<string, InstantiatedType>
+                {
+                    {"TValue", value},
+                    {"TError", error}
+                }
+            };
     }
     
     public class LangType
@@ -306,15 +344,17 @@ public class TypeChecker
         public static LangType String { get; } = new() { GenericParameters = [], Name = "String" };
         public static LangType Int { get; } = new() { GenericParameters = [], Name = "Int" };
         public static LangType Never { get; } = new() { GenericParameters = [], Name = "!" };
-        public static IEnumerable<LangType> BuiltInTypes { get; } = [Unit, String, Int, Never];
+        public static LangType Result { get; } = new() { GenericParameters = ["TValue", "TError"], Name = "Result" };
+        public static IEnumerable<LangType> BuiltInTypes { get; } = [Unit, String, Int, Never, Result];
     }
 
     public class FunctionType : LangType
     {
         public required IReadOnlyList<Parameter> Parameters { get; init; }
         
-        public required LangType ReturnType { get; init; }
+        // todo: figure this out. This both the class the fn is in and the fn itself could be generic
+        public required InstantiatedType ReturnType { get; init; }
 
-        public record Parameter(string Name, LangType Type);
+        public record Parameter(string Name, InstantiatedType Type);
     }
 }

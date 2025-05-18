@@ -39,6 +39,7 @@ public class TypeCheckerTests
             "fn MyFn() {fn InnerFn() {} InnerFn();}",
             "fn MyFn(param: int) {var a: int = param;}",
             "fn MyFn(param1: string, param2: int) {} MyFn(\"value\", 3);",
+            "fn MyFn(param: result::<string, int>) {}",
             Mvp
         ]);
 
