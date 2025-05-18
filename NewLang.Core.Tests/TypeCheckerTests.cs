@@ -29,6 +29,13 @@ public class TypeCheckerTests
             "var b: string = \"somestring\"",
             "var a = 2; var b: int = a",
             "fn MyFn(): int { return 1; }",
+            """
+            fn MyFn(){}
+            MyFn();
+            """,
+            "fn Fn1(){Fn2();} fn Fn2(){}",
+            "fn MyFn() {fn InnerFn() {OuterFn();}} fn OuterFn() {}",
+            "fn MyFn() {fn InnerFn() {} InnerFn();}",
             Mvp
         ]);
 
@@ -39,9 +46,12 @@ public class TypeCheckerTests
             "var b;",
             "fn MyFn(): int { return \"something\"; }",
             "fn MyFn() { return 1; }",
+            "fn MyFn() {} fn MyFn() {}",
             "fn MyFn(): string { return; }",
             "var a = 2; var b: string = a",
             "var a: int; var b = a",
+            "fn MyFn(){fn InnerFn() {}} InnerFn();",
+            "CallMissingMethod();"
         ]);
 
     private static TheoryData<LangProgram> ConvertToPrograms(IEnumerable<string> input)

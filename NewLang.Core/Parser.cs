@@ -311,7 +311,7 @@ public static class Parser
             throw new InvalidOperationException("Expected ( or <");
         }
 
-        var typeArguments = new List<Token>();
+        var typeArguments = new List<StringToken>();
 
         if (tokens.Current.Type == TokenType.LeftAngleBracket)
         {
@@ -349,12 +349,12 @@ public static class Parser
                     }
                 }
 
-                if (tokens.Current.Type != TokenType.Identifier)
+                if (tokens.Current is not StringToken { Type: TokenType.Identifier } typeArgument)
                 {
                     throw new InvalidOperationException("Expected type argument");
                 }
 
-                typeArguments.Add(tokens.Current);
+                typeArguments.Add(typeArgument);
             }
         }
 

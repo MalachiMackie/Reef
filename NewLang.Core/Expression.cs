@@ -217,7 +217,7 @@ public record ElseIf(IExpression CheckExpression, IExpression Body)
     }
 }
 
-public record MethodCall(IExpression Method, IReadOnlyCollection<IExpression> ParameterList)
+public record MethodCall(IExpression Method, IReadOnlyList<IExpression> ParameterList)
 {
     public override string ToString()
     {

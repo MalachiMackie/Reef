@@ -50,7 +50,7 @@ public record LangFunction(
     AccessModifier? AccessModifier,
     StaticModifier? StaticModifier,
     StringToken Name,
-    IReadOnlyList<Token> TypeArguments,
+    IReadOnlyList<StringToken> TypeArguments,
     IReadOnlyList<FunctionParameter> Parameters,
     TypeIdentifier? ReturnType,
     Block Block)
