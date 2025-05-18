@@ -49,7 +49,7 @@ public record TypeIdentifier(Token Identifier, IReadOnlyList<TypeIdentifier> Typ
 public record LangFunction(
     AccessModifier? AccessModifier,
     StaticModifier? StaticModifier,
-    Token Name,
+    StringToken Name,
     IReadOnlyList<Token> TypeArguments,
     IReadOnlyList<FunctionParameter> Parameters,
     TypeIdentifier? ReturnType,

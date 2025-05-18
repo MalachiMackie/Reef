@@ -109,7 +109,7 @@ public record GenericInstantiationExpression(GenericInstantiation GenericInstant
 }
 
 public record VariableDeclaration(
-    Token VariableNameToken, MutabilityModifier? MutabilityModifier, TypeIdentifier? Type, IExpression? Value)
+    StringToken VariableNameToken, MutabilityModifier? MutabilityModifier, TypeIdentifier? Type, IExpression? Value)
 {
     public override string ToString()
     {

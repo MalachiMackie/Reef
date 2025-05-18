@@ -15,15 +15,17 @@ public class TypeChecker
                 GenericParameters = @class.TypeArguments.Select(GetIdentifierName).ToArray()
             });
         }
-
+        
         foreach (var fn in program.Functions)
         {
             TypeCheckFunctionDeclaration(fn, types);
         }
 
+        var variables = new Dictionary<string, Variable>();
+
         foreach (var expression in program.Expressions)
         {
-            TypeCheckExpression(expression, types, expectedReturnType: null);
+            TypeCheckExpression(expression, types, variables, expectedReturnType: null);
         }
     }
 
@@ -34,6 +36,8 @@ public class TypeChecker
 
     private static void TypeCheckBlock(Block block, Dictionary<string, LangType> types, LangType? expectedReturnType)
     {
+        var variables = new Dictionary<string, Variable>();
+        
         foreach (var fn in block.Functions)
         {
             TypeCheckFunctionDeclaration(fn, types);
@@ -41,27 +45,35 @@ public class TypeChecker
 
         foreach (var expression in block.Expressions)
         {
-            TypeCheckExpression(expression, types, expectedReturnType);
+            TypeCheckExpression(expression, types, variables, expectedReturnType);
         }
     }
 
-    private static LangType TypeCheckExpression(IExpression expression, Dictionary<string, LangType> types, LangType? expectedReturnType)
+    private static LangType TypeCheckExpression(
+        IExpression expression,
+        Dictionary<string, LangType> types,
+        Dictionary<string, Variable> variables,
+        LangType? expectedReturnType)
     {
         return expression switch
         {
             VariableDeclarationExpression variableDeclarationExpression => TypeCheckVariableDeclaration(
-                variableDeclarationExpression, types, expectedReturnType),
-            ValueAccessorExpression valueAccessorExpression => TypeCheckValueAccessor(valueAccessorExpression),
-            MethodReturnExpression methodReturnExpression => TypeCheckMethodReturn(methodReturnExpression, types, expectedReturnType),
+                variableDeclarationExpression, types, variables, expectedReturnType),
+            ValueAccessorExpression valueAccessorExpression => TypeCheckValueAccessor(valueAccessorExpression, variables),
+            MethodReturnExpression methodReturnExpression => TypeCheckMethodReturn(methodReturnExpression, types, variables, expectedReturnType),
             _ => throw new NotImplementedException($"{expression.ExpressionType}")
         };
     }
 
-    private static LangType TypeCheckMethodReturn(MethodReturnExpression methodReturnExpression, Dictionary<string, LangType> types, LangType? expectedReturnType)
+    private static LangType TypeCheckMethodReturn(
+        MethodReturnExpression methodReturnExpression,
+        Dictionary<string, LangType> types,
+        Dictionary<string, Variable> variables,
+        LangType? expectedReturnType)
     {
         var returnExpressionType = methodReturnExpression.MethodReturn.Expression is null
             ? null
-            : TypeCheckExpression(methodReturnExpression.MethodReturn.Expression, types, expectedReturnType);
+            : TypeCheckExpression(methodReturnExpression.MethodReturn.Expression, types, variables, expectedReturnType);
         
         if (expectedReturnType is null && returnExpressionType is not null)
         {
@@ -81,15 +93,35 @@ public class TypeChecker
         return LangType.Never;
     }
 
-    private static LangType TypeCheckValueAccessor(ValueAccessorExpression valueAccessorExpression)
+    private static LangType TypeCheckValueAccessor(ValueAccessorExpression valueAccessorExpression, Dictionary<string, Variable> variables)
     {
         return valueAccessorExpression.ValueAccessor switch
         {
             {AccessType: ValueAccessType.Literal, Token: IntToken {Type: TokenType.IntLiteral}} => LangType.Int,
             {AccessType: ValueAccessType.Literal, Token: StringToken {Type: TokenType.StringLiteral}} => LangType.String,
+            {AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: var variableName}} =>
+                TypeCheckVariableAccess(variableName, variables),
             _ => throw new NotImplementedException($"{valueAccessorExpression}")
         };
+        
     }
+
+    private static LangType TypeCheckVariableAccess(string variableName, Dictionary<string, Variable> variables)
+    {
+        if (!variables.TryGetValue(variableName, out var value))
+        {
+            throw new InvalidOperationException("No variable found");
+        }
+
+        if (!value.Instantiated)
+        {
+            throw new InvalidOperationException($"{value.Name} is not instantiated");
+        }
+
+        return value.Type;
+    }
+
+    private record Variable(string Name, LangType Type, bool Instantiated);
 
     private static string GetIdentifierName(Token token)
     {
@@ -98,24 +130,49 @@ public class TypeChecker
             : throw new InvalidOperationException("Expected token name");
     }
 
-    private static LangType TypeCheckVariableDeclaration(VariableDeclarationExpression expression, Dictionary<string, LangType> resolvedTypes, LangType? expectedReturnType)
+    private static LangType TypeCheckVariableDeclaration(
+        VariableDeclarationExpression expression,
+        Dictionary<string, LangType> resolvedTypes,
+        Dictionary<string, Variable> variables,
+        LangType? expectedReturnType)
     {
+        var varName = expression.VariableDeclaration.VariableNameToken.StringValue;
+        if (variables.ContainsKey(varName))
+        {
+            throw new InvalidOperationException(
+                $"Variable with name {varName} already exists");
+        }
+
         switch (expression.VariableDeclaration)
         {
             case {Value: null, Type: null}:
                 throw new InvalidOperationException("Variable declaration must have a type specifier or a value");
-            case { Value: { } value, Type: { } type } :
+            case { Value: { } value, Type: var type} :
             {
-                var expectedType = GetType(type, resolvedTypes);
-                var valueType = TypeCheckExpression(value, resolvedTypes, expectedReturnType);
-                if (expectedType != valueType)
+                var valueType = TypeCheckExpression(value, resolvedTypes, variables, expectedReturnType);
+                if (type is not null)
                 {
-                    throw new InvalidOperationException($"Expected type {expectedType}, but found {valueType}");
+                    var expectedType = GetType(type, resolvedTypes);
+                    if (expectedType != valueType)
+                    {
+                        throw new InvalidOperationException($"Expected type {expectedType}, but found {valueType}");
+                    }
                 }
+
+                variables[varName] = new Variable(varName, valueType, Instantiated: true);
+
+                break;
+            }
+            case { Value: null, Type: { } type }:
+            {
+                var langType = GetType(type, resolvedTypes);
+                variables[varName] = new Variable(varName, langType, Instantiated: false);
 
                 break;
             }
         }
+        
+        // variable declaration return type is always unit, regardless of the variable type
         return LangType.Unit;
     }
 

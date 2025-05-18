@@ -27,8 +27,9 @@ public class TypeCheckerTests
             "var a = 2",
             "var a: int = 2",
             "var b: string = \"somestring\"",
+            "var a = 2; var b: int = a",
             "fn MyFn(): int { return 1; }",
-            mvp
+            Mvp
         ]);
 
     public static TheoryData<LangProgram> FailedExpressionTestCases() =>
@@ -38,7 +39,9 @@ public class TypeCheckerTests
             "var b;",
             "fn MyFn(): int { return \"something\"; }",
             "fn MyFn() { return 1; }",
-            "fn MyFn(): string { return; }"
+            "fn MyFn(): string { return; }",
+            "var a = 2; var b: string = a",
+            "var a: int; var b = a",
         ]);
 
     private static TheoryData<LangProgram> ConvertToPrograms(IEnumerable<string> input)
@@ -52,7 +55,7 @@ public class TypeCheckerTests
         return theoryData;
     }
 
-    private const string mvp =
+    private const string Mvp =
         """
         pub fn DoSomething(a: int): result::<int, string> {
             var b: int = 2;

@@ -301,12 +301,10 @@ public static class Parser
 
     private static LangFunction GetFunctionDeclaration(AccessModifier? accessModifier, StaticModifier? staticModifier, PeekableEnumerator<Token> tokens)
     {
-        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
+        if (!tokens.MoveNext() || tokens.Current is not StringToken {Type: TokenType.Identifier} nameToken)
         {
             throw new InvalidOperationException("Expected function name");
         }
-
-        var nameToken = tokens.Current;
 
         if (!tokens.MoveNext())
         {
@@ -822,10 +820,9 @@ public static class Parser
             }
         }
 
-        var identifier = tokens.Current;
-        if (identifier.Type != TokenType.Identifier)
+        if (tokens.Current is not StringToken { Type: TokenType.Identifier } identifier)
         {
-            throw new InvalidOperationException($"Expected variable identifier, got {identifier}");
+            throw new InvalidOperationException($"Expected variable identifier, got {tokens.Current}");
         }
 
         if (!tokens.MoveNext())

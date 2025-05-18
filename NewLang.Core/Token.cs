@@ -186,7 +186,7 @@ public record Token
         return new Token { Type = TokenType.Var, SourceSpan = sourceSpan };
     }
 
-    public static Token Identifier(string value, SourceSpan sourceSpan)
+    public static StringToken Identifier(string value, SourceSpan sourceSpan)
     {
         return new StringToken { StringValue = value, Type = TokenType.Identifier, SourceSpan = sourceSpan };
     }

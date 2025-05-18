@@ -2541,8 +2541,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedExpression });
     }
     
-    private static IExpression VariableAccessor(string name) =>
-        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier(name, SourceSpan.Default())));
+    private static ValueAccessorExpression VariableAccessor(string name) =>
+        new (new ValueAccessor(ValueAccessType.Variable, Token.Identifier(name, SourceSpan.Default())));
 
     private static LangFunction RemoveSourceSpan(LangFunction function)
     {
@@ -2693,6 +2693,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     }
 
     private static Token RemoveSourceSpan(Token token)
+    {
+        return token with { SourceSpan = SourceSpan.Default() };
+    }
+
+    private static StringToken RemoveSourceSpan(StringToken token)
     {
         return token with { SourceSpan = SourceSpan.Default() };
     }
