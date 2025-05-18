@@ -25,7 +25,7 @@ public class TypeChecker
 
         foreach (var fn in program.Functions)
         {
-            TypeCheckFunctionBody(fn, functionTypes, types);
+            TypeCheckFunctionBody(fn, variables: [], functionTypes, types);
         }
 
         var variables = new Dictionary<string, Variable>();
@@ -37,10 +37,22 @@ public class TypeChecker
     }
 
     private static void TypeCheckFunctionBody(LangFunction function,
+        Dictionary<string, Variable> variables,
         Dictionary<string, FunctionType> functions,
         Dictionary<string, LangType> types)
     {
-        TypeCheckBlock(function.Block, types, functions, function.ReturnType is null ? null : GetType(function.ReturnType, types));
+        var functionType = functions[function.Name.StringValue];
+
+        var innerVariables = new Dictionary<string, Variable>(variables);
+        foreach (var parameter in functionType.Parameters)
+        {
+            innerVariables[parameter.Name] = new Variable(
+                parameter.Name,
+                parameter.Type,
+                Instantiated: true);
+        }
+        
+        TypeCheckBlock(function.Block, innerVariables, types, functions, function.ReturnType is null ? null : GetType(function.ReturnType, types));
     }
 
     // ReSharper disable once ParameterOnlyUsedForPreconditionCheck.Local
@@ -56,13 +68,18 @@ public class TypeChecker
             Name = function.Name.StringValue,
             ReturnType = function.ReturnType is null ? LangType.Unit : GetType(function.ReturnType, types),
             GenericParameters = function.TypeArguments.Select(x => x.StringValue).ToArray(),
-            Parameters = function.Parameters.Select(x => GetType(x.Type, types)).ToArray()
+            Parameters = function.Parameters.Select(x => new FunctionType.Parameter(x.Identifier.StringValue, GetType(x.Type, types))).ToArray()
         };
     }
 
-    private static void TypeCheckBlock(Block block, Dictionary<string, LangType> types, Dictionary<string, FunctionType> functions, LangType? expectedReturnType)
+    private static LangType TypeCheckBlock(
+        Block block,
+        Dictionary<string, Variable> variables,
+        Dictionary<string, LangType> types,
+        Dictionary<string, FunctionType> functions,
+        LangType? expectedReturnType)
     {
-        var variables = new Dictionary<string, Variable>();
+        var innerVariables = new Dictionary<string, Variable>(variables);
         var innerFunctions = new Dictionary<string, FunctionType>(functions);
         
         foreach (var fn in block.Functions)
@@ -72,13 +89,16 @@ public class TypeChecker
         
         foreach (var fn in block.Functions)
         {
-            TypeCheckFunctionBody(fn, innerFunctions, types);
+            TypeCheckFunctionBody(fn, innerVariables, innerFunctions, types);
         }
 
         foreach (var expression in block.Expressions)
         {
-            TypeCheckExpression(expression, types, variables, innerFunctions, expectedReturnType);
+            TypeCheckExpression(expression, types, innerVariables, innerFunctions, expectedReturnType);
         }
+
+        // todo: tail expressions
+        return LangType.Unit;
     }
 
     private static LangType TypeCheckExpression(
@@ -95,6 +115,7 @@ public class TypeChecker
             ValueAccessorExpression valueAccessorExpression => TypeCheckValueAccessor(valueAccessorExpression, variables, functions),
             MethodReturnExpression methodReturnExpression => TypeCheckMethodReturn(methodReturnExpression, types, variables, functions, expectedReturnType),
             MethodCallExpression methodCallExpression => TypeCheckMethodCall(methodCallExpression.MethodCall, types, variables, functions, expectedReturnType),
+            BlockExpression blockExpression => TypeCheckBlock(blockExpression.Block, variables, types, functions, expectedReturnType),
             _ => throw new NotImplementedException($"{expression.ExpressionType}")
         };
     }
@@ -120,7 +141,7 @@ public class TypeChecker
 
         for (var i = 0; i < functionType.Parameters.Count; i++)
         {
-            var expectedParameterType = functionType.Parameters[i];
+            var expectedParameterType = functionType.Parameters[i].Type;
             var givenParameterType = TypeCheckExpression(methodCall.ParameterList[i], types, variables, functions, expectedParameterType);
 
             if (expectedParameterType != givenParameterType)
@@ -290,8 +311,10 @@ public class TypeChecker
 
     public class FunctionType : LangType
     {
-        public required IReadOnlyList<LangType> Parameters { get; init; }
+        public required IReadOnlyList<Parameter> Parameters { get; init; }
         
         public required LangType ReturnType { get; init; }
+
+        public record Parameter(string Name, LangType Type);
     }
 }

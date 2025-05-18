@@ -98,7 +98,7 @@ public record AccessModifier(Token Token)
     }
 }
 
-public record FunctionParameter(TypeIdentifier Type, Token Identifier)
+public record FunctionParameter(TypeIdentifier Type, StringToken Identifier)
 {
     public override string ToString()
     {

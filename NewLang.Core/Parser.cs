@@ -389,12 +389,10 @@ public static class Parser
                 }
             }
 
-            if (tokens.Current.Type != TokenType.Identifier)
+            if (tokens.Current is not StringToken { Type: TokenType.Identifier } parameterName)
             {
                 throw new InvalidOperationException("Expected parameter name");
             }
-            
-            var parameterName = tokens.Current;
 
             if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Colon)
             {

@@ -33,9 +33,11 @@ public class TypeCheckerTests
             fn MyFn(){}
             MyFn();
             """,
+            "var a = 2;{var b = a;}",
             "fn Fn1(){Fn2();} fn Fn2(){}",
             "fn MyFn() {fn InnerFn() {OuterFn();}} fn OuterFn() {}",
             "fn MyFn() {fn InnerFn() {} InnerFn();}",
+            "fn MyFn(param: int) {var a: int = param;}",
             Mvp
         ]);
 
