@@ -40,6 +40,12 @@ public class TypeCheckerTests
             "fn MyFn(param: int) {var a: int = param;}",
             "fn MyFn(param1: string, param2: int) {} MyFn(\"value\", 3);",
             "fn MyFn(param: result::<string, int>) {}",
+            "if (true) {}",
+            "if (false) {}",
+            "var a = true; if (a) {}",
+            "if (true) {} else {}",
+            "if (true) {var a = 2} else if (true) {var a = 3} else if (true) {var a = 4} else {var a = 5}",
+            "if (true) var a = 2",
             Mvp
         ]);
 
@@ -59,6 +65,12 @@ public class TypeCheckerTests
             "fn MyFn(param1: string, param2: int) {} MyFn(3, \"value\");",
             "fn MyFn(param1: string, param2: int) {} MyFn();",
             "fn MyFn(param1: string, param2: int) {} MyFn(\"value\", 3, 2);",
+            "if (1) {}",
+            "if (true) {} else if (1) {}",
+            "if (true) {var a: string = 1}",
+            "if (true) {} else if (true) {var a: string = 1}",
+            "if (true) {} else if (true) {} else {var a: string = 1}",
+            "if (true) {} else if (true) {} else if (true) {var a: string = 1}"
         ]);
 
     private static TheoryData<LangProgram> ConvertToPrograms(IEnumerable<string> input)

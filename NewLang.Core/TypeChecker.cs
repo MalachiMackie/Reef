@@ -116,8 +116,45 @@ public class TypeChecker
             MethodReturnExpression methodReturnExpression => TypeCheckMethodReturn(methodReturnExpression, types, variables, functions, expectedReturnType),
             MethodCallExpression methodCallExpression => TypeCheckMethodCall(methodCallExpression.MethodCall, types, variables, functions, expectedReturnType),
             BlockExpression blockExpression => TypeCheckBlock(blockExpression.Block, variables, types, functions, expectedReturnType),
+            IfExpressionExpression ifExpressionExpression => TypeCheckIfExpression(ifExpressionExpression.IfExpression, types, variables, functions, expectedReturnType),
             _ => throw new NotImplementedException($"{expression.ExpressionType}")
         };
+    }
+
+    private static InstantiatedType TypeCheckIfExpression(IfExpression ifExpression,
+        Dictionary<string, LangType> types,
+        Dictionary<string, Variable> variables,
+        Dictionary<string, FunctionType> functions,
+        InstantiatedType? expectedReturnType)
+    {
+        var checkExpressionType =
+            TypeCheckExpression(ifExpression.CheckExpression, types, variables, functions, expectedReturnType);
+        if (checkExpressionType.Type != LangType.Boolean)
+        {
+            throw new InvalidOperationException("Expected bool");
+        }
+
+        TypeCheckExpression(ifExpression.Body, types, variables, functions, expectedReturnType);
+
+        foreach (var elseIf in ifExpression.ElseIfs)
+        {
+            var elseIfCheckExpressionType
+                = TypeCheckExpression(elseIf.CheckExpression, types, variables, functions, expectedReturnType);
+            if (elseIfCheckExpressionType.Type != LangType.Boolean)
+            {
+                throw new InvalidOperationException("Expected bool");
+            }
+
+            TypeCheckExpression(elseIf.Body, types, variables, functions, expectedReturnType);
+        }
+
+        if (ifExpression.ElseBody is not null)
+        {
+            TypeCheckExpression(ifExpression.ElseBody, types, variables, functions, expectedReturnType);
+        }
+        
+        // todo: tail expression
+        return InstantiatedType.Unit;
     }
 
     private static InstantiatedType TypeCheckMethodCall(
@@ -189,6 +226,7 @@ public class TypeChecker
         {
             {AccessType: ValueAccessType.Literal, Token: IntToken {Type: TokenType.IntLiteral}} => InstantiatedType.Int,
             {AccessType: ValueAccessType.Literal, Token: StringToken {Type: TokenType.StringLiteral}} => InstantiatedType.String,
+            {AccessType: ValueAccessType.Literal, Token.Type: TokenType.True or TokenType.False } => InstantiatedType.Boolean,
             {AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: var variableName}} =>
                 TypeCheckVariableAccess(variableName, variables, functions),
             _ => throw new NotImplementedException($"{valueAccessorExpression}")
@@ -316,6 +354,7 @@ public class TypeChecker
         public required Dictionary<string, InstantiatedType> TypeArguments { get; init; }
 
         public static InstantiatedType String { get; } = new() { Type = LangType.String, TypeArguments = [] };
+        public static InstantiatedType Boolean { get; } = new() { Type = LangType.Boolean, TypeArguments = [] };
         
         public static InstantiatedType Int { get; } = new() { Type = LangType.Int, TypeArguments = [] };
 
@@ -343,9 +382,10 @@ public class TypeChecker
         public static LangType Unit { get; } = new() { GenericParameters = [], Name = "Unit" };
         public static LangType String { get; } = new() { GenericParameters = [], Name = "String" };
         public static LangType Int { get; } = new() { GenericParameters = [], Name = "Int" };
+        public static LangType Boolean { get; } = new() { GenericParameters = [], Name = "Boolean" };
         public static LangType Never { get; } = new() { GenericParameters = [], Name = "!" };
         public static LangType Result { get; } = new() { GenericParameters = ["TValue", "TError"], Name = "Result" };
-        public static IEnumerable<LangType> BuiltInTypes { get; } = [Unit, String, Int, Never, Result];
+        public static IEnumerable<LangType> BuiltInTypes { get; } = [Unit, String, Int, Never, Result, Boolean];
     }
 
     public class FunctionType : LangType
