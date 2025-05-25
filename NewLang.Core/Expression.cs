@@ -134,16 +134,6 @@ public record ObjectInitializerExpression(ObjectInitializer ObjectInitializer) :
     }
 }
 
-public record GenericInstantiationExpression(GenericInstantiation GenericInstantiation) : IExpression
-{
-    public ExpressionType ExpressionType => ExpressionType.GenericInstantiation;
-
-    public override string ToString()
-    {
-        return GenericInstantiation.ToString();
-    }
-}
-
 public record VariableDeclaration(
     StringToken VariableNameToken, MutabilityModifier? MutabilityModifier, TypeIdentifier? Type, IExpression? Value)
 {
@@ -219,13 +209,14 @@ public record Block(IReadOnlyList<IExpression> Expressions, IReadOnlyList<LangFu
     }
 }
 
-
-public record ValueAccessor(ValueAccessType AccessType, Token Token)
+public record ValueAccessor(ValueAccessType AccessType, Token Token, IReadOnlyList<TypeIdentifier> TypeArguments)
 {
     public override string ToString()
     {
         return Token.ToString();
     }
+
+    public TypeIdentifier AsTypeIdentifier => new(Token, TypeArguments);
 }
 
 public record UnaryOperator(UnaryOperatorType OperatorType, IExpression Operand, Token OperatorToken)
@@ -258,16 +249,6 @@ public record MethodCall(IExpression Method, IReadOnlyList<IExpression> Paramete
     public override string ToString()
     {
         return $"{Method}({string.Join(", ", ParameterList)})";
-    }
-}
-
-public record GenericInstantiation(
-    IExpression GenericInstance,
-    IReadOnlyList<TypeIdentifier> TypeArguments)
-{
-    public override string ToString()
-    {
-        return $"{GenericInstance}::<{string.Join(", ", TypeArguments)}>";
     }
 }
 
