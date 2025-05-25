@@ -39,7 +39,7 @@ public record ProgramClass(
 }
 
 public record ClassField(
-    AccessModifier? AccessModifier, StaticModifier? StaticModifier, MutabilityModifier? MutabilityModifier, Token Name, TypeIdentifier Type)
+    AccessModifier? AccessModifier, StaticModifier? StaticModifier, MutabilityModifier? MutabilityModifier, StringToken Name, TypeIdentifier Type, IExpression? InitializerValue)
 {
     public override string ToString()
     {
@@ -58,6 +58,10 @@ public record ClassField(
             sb.Append($"{MutabilityModifier} ");
         }
         sb.Append($"field {Name}: {Type}");
+        if (InitializerValue is not null)
+        {
+            sb.Append($" = {InitializerValue}");
+        }
 
         return sb.ToString();
     }

@@ -1,11 +1,8 @@
 ﻿namespace NewLang.Core;
 
-public class SourceSpan(SourcePosition position, ushort length)
+public record SourceSpan(SourcePosition Position, ushort Length)
 {
-    public static SourceSpan Default() => new (new SourcePosition(0, 0, 0), 0);
-
-    public SourcePosition Position = position;
-    public ushort Length = length;
+    public static readonly SourceSpan Default = new (new SourcePosition(0, 0, 0), 0);
 }
 
 public class SourcePosition(uint start, ushort lineNumber, ushort linePosition)

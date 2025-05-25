@@ -48,7 +48,8 @@ pub class MyClass {
     mut field FieldB: string;
     pub mut field FieldC: string;
     pub field FieldD: string;
-    pub static field FieldE: string;
+    pub static field FieldE: string = "something";
+    pub static mut field FieldF: string = "something";
 }
 
 pub class GenericClass<T> {
@@ -59,3 +60,12 @@ pub class GenericClass<T> {
 pub class Class2 {
     pub field A: string;
 }
+
+pub union MyUnion {
+    A,
+    B { field MyField: string; }
+}
+
+var a = MyUnion::A;
+var a = MyUnion::A{};
+var a = MyUnion::B{ MyField = ""};

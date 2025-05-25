@@ -180,7 +180,7 @@ public static class Parser
                 throw new InvalidOperationException("Class cannot be static");
             }
 
-            var @class = GetClass(accessModifier, tokens);
+            var @class = GetClassDefinition(accessModifier, tokens);
 
             return (null, @class, null);
         }
@@ -198,12 +198,10 @@ public static class Parser
     private static ClassField GetField(AccessModifier? accessModifier, StaticModifier? staticModifier, MutabilityModifier? mutabilityModifier, PeekableEnumerator<Token> tokens)
     {
         // pub mut field MyField: string;
-        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
+        if (!tokens.MoveNext() || tokens.Current is not StringToken { Type: TokenType.Identifier } name)
         {
             throw new InvalidOperationException("Expected field name");
         }
-
-        var name = tokens.Current;
 
         if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Colon)
         {
@@ -217,10 +215,20 @@ public static class Parser
 
         var type = GetTypeIdentifier(tokens);
 
-        return new ClassField(accessModifier, staticModifier, mutabilityModifier, name, type);
+        IExpression? valueExpression = null;
+
+        if (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.Equals)
+        {
+            tokens.MoveNext();
+
+            valueExpression = PopExpression(tokens)
+                ?? throw new InvalidOperationException("Expected field initailizer expression");
+        }
+
+        return new ClassField(accessModifier, staticModifier, mutabilityModifier, name, type, valueExpression);
     }
 
-    private static ProgramClass GetClass(AccessModifier? accessModifier, PeekableEnumerator<Token> tokens)
+    private static ProgramClass GetClassDefinition(AccessModifier? accessModifier, PeekableEnumerator<Token> tokens)
     {
         if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
         {
@@ -448,7 +456,7 @@ public static class Parser
 
     private static bool IsTypeTokenType(in TokenType tokenType)
     {
-        return tokenType is TokenType.IntKeyword or TokenType.StringKeyword or TokenType.Result or TokenType.Identifier;
+        return tokenType is TokenType.IntKeyword or TokenType.StringKeyword or TokenType.Result or TokenType.Identifier or TokenType.Bool;
     } 
 
     private static TypeIdentifier GetTypeIdentifier(PeekableEnumerator<Token> tokens)
@@ -477,10 +485,7 @@ public static class Parser
 
                 if (tokens.Current.Type == TokenType.RightAngleBracket)
                 {
-                    if (typeArguments.Count == 0)
-                    {
-                        throw new InvalidOperationException("Expected type argument");
-                    }
+                    // allow empty type arguments, that's a type checking error
                     break;
                 }
 
@@ -534,11 +539,49 @@ public static class Parser
             TokenType.New => GetObjectInitializer(tokens),
             TokenType.Ok or TokenType.Error => new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, tokens.Current)),
             TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
+            TokenType.Dot => GetMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
+            TokenType.DoubleColon => GetStaticMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             _ when TryGetUnaryOperatorType(tokens.Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current, unaryOperatorType.Value),
             _ when TryGetBinaryOperatorType(tokens.Current.Type, out var binaryOperatorType) => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), binaryOperatorType.Value),
             _ when IsTypeTokenType(tokens.Current.Type) => new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, tokens.Current)),
             _ => throw new InvalidOperationException($"Token type {tokens.Current.Type} not supported")
         };
+    }
+
+    private static StaticMemberAccessExpression GetStaticMemberAccess(
+        PeekableEnumerator<Token> tokens,
+        IExpression previousExpression)
+    {
+        var type = previousExpression switch
+        {
+            ValueAccessorExpression
+            {
+                ValueAccessor: { AccessType: ValueAccessType.Variable, Token: var token }
+            } => new TypeIdentifier(token, []),
+            GenericInstantiationExpression {GenericInstantiation:
+            {
+                GenericInstance: ValueAccessorExpression {ValueAccessor: {AccessType: ValueAccessType.Variable, Token: var token}},
+                TypeArguments: var typeArguments
+            }} => new TypeIdentifier(token, typeArguments),
+            _ => throw new InvalidOperationException($"Cannot perform static member access on {previousExpression}")
+        };
+
+        if (!tokens.MoveNext() || tokens.Current is not StringToken { Type: TokenType.Identifier } memberName)
+        {
+            throw new InvalidOperationException($"Unexpected token {tokens.Current}");
+        }
+
+        return new StaticMemberAccessExpression(new StaticMemberAccess(type, memberName));
+    }
+
+    private static MemberAccessExpression GetMemberAccess(PeekableEnumerator<Token> tokens, IExpression previousExpression)
+    {
+        if (!tokens.MoveNext() || tokens.Current is not StringToken { Type: TokenType.Identifier } memberName)
+        {
+            throw new InvalidOperationException("Expected member name");
+        }
+
+        return new MemberAccessExpression(new MemberAccess(previousExpression, memberName));
     }
 
     private static GenericInstantiationExpression GetGenericInstantiation(PeekableEnumerator<Token> tokens, IExpression previousExpression)
@@ -554,11 +597,7 @@ public static class Parser
 
             if (tokens.Current.Type == TokenType.RightAngleBracket)
             {
-                if (typeArguments.Count == 0)
-                {
-                    throw new InvalidOperationException("Expected type argument");
-                }
-
+                // allow empty type arguments, that's a type checking error
                 break;
             }
 
@@ -623,12 +662,10 @@ public static class Parser
                 }
             }
 
-            if (tokens.Current.Type != TokenType.Identifier)
+            if (tokens.Current is not StringToken { Type: TokenType.Identifier } fieldName)
             {
                 throw new InvalidOperationException("Expected field name");
             }
-
-            var fieldName = tokens.Current;
 
             if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Equals)
             {
@@ -889,6 +926,8 @@ public static class Parser
             _ when TryGetBinaryOperatorType(token.Type, out var binaryOperatorType) => GetBinaryOperatorBindingStrength(binaryOperatorType.Value),
             TokenType.LeftParenthesis => 7,
             TokenType.Turbofish => 6,
+            TokenType.Dot => 9,
+            TokenType.DoubleColon => 10,
             _ => null
         };
 
@@ -918,8 +957,6 @@ public static class Parser
             TokenType.Dash => BinaryOperatorType.Minus,
             TokenType.DoubleEquals => BinaryOperatorType.EqualityCheck,
             TokenType.Equals => BinaryOperatorType.ValueAssignment,
-            TokenType.Dot => BinaryOperatorType.MemberAccess,
-            TokenType.DoubleColon => BinaryOperatorType.StaticMemberAccess,
             _ => null
         };
 
@@ -938,8 +975,6 @@ public static class Parser
             BinaryOperatorType.LessThan => 3,
             BinaryOperatorType.EqualityCheck => 2,
             BinaryOperatorType.ValueAssignment => 1,
-            BinaryOperatorType.MemberAccess => 9,
-            BinaryOperatorType.StaticMemberAccess => 10,
             _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType, typeof(BinaryOperatorType))
         };
     }

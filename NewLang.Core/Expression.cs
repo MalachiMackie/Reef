@@ -17,6 +17,42 @@ public record ValueAccessorExpression(ValueAccessor ValueAccessor) : IExpression
     }
 }
 
+public record MemberAccessExpression(MemberAccess MemberAccess) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.MemberAccess;
+
+    public override string ToString()
+    {
+        return MemberAccess.ToString();
+    }
+}
+
+public record StaticMemberAccessExpression(StaticMemberAccess StaticMemberAccess) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.StaticMemberAccess;
+
+    public override string ToString()
+    {
+        return StaticMemberAccess.ToString();
+    }
+}
+
+public record MemberAccess(IExpression Owner, StringToken MemberName)
+{
+    public override string ToString()
+    {
+        return $"{Owner}.{MemberName}";
+    }
+}
+
+public record StaticMemberAccess(TypeIdentifier Type, StringToken MemberName)
+{
+    public override string ToString()
+    {
+        return $"{Type}::{MemberName}";
+    }
+}
+
 public record UnaryOperatorExpression(UnaryOperator UnaryOperator) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.UnaryOperator;
@@ -261,7 +297,7 @@ public record ObjectInitializer(TypeIdentifier Type, IReadOnlyList<FieldInitiali
     }
 }
 
-public record FieldInitializer(Token FieldName, IExpression Value);
+public record FieldInitializer(StringToken FieldName, IExpression Value);
 
 public enum BinaryOperatorType
 {
@@ -273,8 +309,6 @@ public enum BinaryOperatorType
     Divide,
     EqualityCheck,
     ValueAssignment,
-    MemberAccess,
-    StaticMemberAccess
 }
 
 public enum ValueAccessType
@@ -302,4 +336,6 @@ public enum ExpressionType
     MethodReturn,
     ObjectInitializer,
     GenericInstantiation,
+    MemberAccess,
+    StaticMemberAccess
 }
