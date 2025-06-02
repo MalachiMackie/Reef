@@ -772,15 +772,6 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             "if (a) {} else {} else if (a) {}",
             "if (a;) {}",
             // body has tail expression, but else doesn't
-            
-            /*
-             todo: these are type checking errors, because {} is a valid expression that returns unit
-            "if (a) {a} else {}",
-            "if (a) {} else {a}",
-            "if (a) {var b = 1;} else {a}",
-            "if (a) {if (b) {var c = 1;}} else {1}",
-            "if (a) {if (b) {1} else {2}} else {}",
-            */
             "a(",
             "a<string>()",
             "a::<string,>()",
@@ -810,6 +801,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             "fn MyFn<,>(){}",
             "fn MyFn<A,>(){}",
             "fn MyFn<A B>(){}",
+            "fn MyFn<string>(){}",
             "fn MyFunction() {",
             "fn MyFunction()",
             "fn a MyFunction() {}",

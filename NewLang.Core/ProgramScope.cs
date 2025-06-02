@@ -3,7 +3,7 @@
 namespace NewLang.Core;
 
 public record ProgramClass(
-    AccessModifier? AccessModifier, Token Name, IReadOnlyList<Token> TypeArguments, IReadOnlyCollection<LangFunction> Functions, IReadOnlyCollection<ClassField> Fields)
+    AccessModifier? AccessModifier, StringToken Name, IReadOnlyList<StringToken> TypeArguments, IReadOnlyCollection<LangFunction> Functions, IReadOnlyCollection<ClassField> Fields)
 {
     public override string ToString()
     {

@@ -6,37 +6,104 @@ public class TypeChecker
 {
     public static void TypeCheck(LangProgram program)
     {
-        var types = TypeDefinition.BuiltInTypes.ToDictionary(x => x.Name);
+        new TypeChecker(program).TypeCheckInner();
+    }
+
+    private TypeChecker(LangProgram program)
+    {
+        _program = program;
+    }
+
+    private readonly LangProgram _program;
+    private readonly Dictionary<string, TypeDefinition> _types = TypeDefinition.BuiltInTypes.ToDictionary(x => x.Name);
+    
+    private readonly Stack<TypeCheckingScope> _typeCheckingScopes = new ();
+    private Dictionary<string, Variable> Variables => _typeCheckingScopes.Peek().Variables;
+    private Dictionary<string, FunctionTypeDefinition> Functions => _typeCheckingScopes.Peek().Functions;
+    private ITypeReference? ExpectedReturnType => _typeCheckingScopes.Peek().ExpectedReturnType;
+
+
+    private record TypeCheckingScope(
+        Dictionary<string, Variable> Variables,
+        Dictionary<string, FunctionTypeDefinition> Functions,
+        ITypeReference? ExpectedReturnType);
+
+    private IDisposable PushScope(ITypeReference? expectedReturnType = null)
+    {
+        var currentScope = _typeCheckingScopes.Peek();
+
+        if (currentScope.ExpectedReturnType is not null && expectedReturnType is not null)
+        {
+            throw new InvalidOperationException("Cannot set expected return type when one is already expected");
+        }
+        
+        _typeCheckingScopes.Push(new TypeCheckingScope(
+            new Dictionary<string, Variable>(currentScope.Variables),
+            new Dictionary<string, FunctionTypeDefinition>(currentScope.Functions),
+            currentScope.ExpectedReturnType ?? expectedReturnType));
+
+        return new ScopeDisposable(PopScope);
+    }
+
+    private void PopScope()
+    {
+        _typeCheckingScopes.Pop();
+    }
+
+    private class ScopeDisposable(Action onDispose) : IDisposable
+    {
+        private bool _disposed;
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                throw new InvalidOperationException("Scope already disposed");
+            }
+            _disposed = true;
+            onDispose();
+        }
+    }
+
+    private void TypeCheckInner()
+    {
+        // initial scope
+        _typeCheckingScopes.Push(new TypeCheckingScope(new (), new(), null));
         
         // store the fields separately from the classes, so that we can set up the classes before assigning their fields.
         // this means that by the time we get to setting up the fields, all the classes that can be referenced will
         // already be set up
-        var classFields = new Dictionary<ProgramClass, (List<TypeField> instanceFields, List<TypeField> staticFields)>();
+        var classMembers = new List<(ProgramClass, TypeDefinition type, List<TypeField> instanceFields, List<TypeField> staticFields, List<FunctionTypeDefinition> functions)>();
 
-        foreach (var @class in program.Classes)
+        foreach (var @class in _program.Classes)
         {
-            var name = GetIdentifierName(@class.Name);
+            var name = @class.Name.StringValue;
             var fields = new List<TypeField>();
             var staticFields = new List<TypeField>();
-            types.Add(name, new TypeDefinition
+            var functions = new List<FunctionTypeDefinition>();
+            var typeDefinition = new TypeDefinition
             {
                 Name = name,
-                GenericParameters = @class.TypeArguments.Select(GetIdentifierName).ToArray(),
+                GenericParameters = @class.TypeArguments.Select(x => x.StringValue).ToArray(),
                 Fields = fields,
-                StaticFields = staticFields
-            });
+                StaticFields = staticFields,
+                Functions = functions
+            };
+            _types.Add(name, typeDefinition);
 
-            classFields.Add(@class, (fields, staticFields));
+            classMembers.Add((@class, typeDefinition, fields, staticFields, functions));
         }
 
-        foreach (var (@class, (instanceFields, staticFields)) in classFields)
+        foreach (var (@class, typeDefinition, instanceFields, staticFields, functions) in classMembers)
         {
+            var genericPlaceholders = typeDefinition.GenericParameters.ToDictionary(x => x, x => typeDefinition);
+            
             foreach (var field in @class.Fields)
             {
                 var typeField = new TypeField
                 {
                     Name = field.Name.StringValue,
-                    Type = GetInstantiatedType(field.Type, types),
+                    Type = GetTypeReference(field.Type, genericPlaceholders),
                     IsMutable = field.MutabilityModifier is not null,
                     IsPublic = field.AccessModifier is {Token.Type: TokenType.Pub}
                 };
@@ -49,8 +116,8 @@ public class TypeChecker
                     }
 
                     // todo: should be able to call static functions here?
-                    var valueType = TypeCheckExpression(field.InitializerValue, types, [], [], null);
-                    if (valueType != typeField.Type)
+                    var valueType = TypeCheckExpression(field.InitializerValue, genericPlaceholders);
+                    if (!Equals(valueType, typeField.Type))
                     {
                         throw new InvalidOperationException($"Expected {typeField.Type} but found {valueType}");
                     }
@@ -67,155 +134,179 @@ public class TypeChecker
             }
         }
 
-        var functionTypes = new Dictionary<string, FunctionTypeDefinition>();
-        
-        foreach (var fn in program.Functions)
+        foreach (var fn in _program.Functions)
         {
-            functionTypes[fn.Name.StringValue] = TypeCheckFunctionSignature(fn, functionTypes, types);
+            Functions[fn.Name.StringValue] = TypeCheckFunctionSignature(fn, []);
         }
 
-        foreach (var fn in program.Functions)
+        foreach (var fn in _program.Functions)
         {
-            TypeCheckFunctionBody(fn, variables: [], functionTypes, types);
+            TypeCheckFunctionBody(fn, []);
         }
 
-        var variables = new Dictionary<string, Variable>();
 
-        foreach (var expression in program.Expressions)
+        foreach (var expression in _program.Expressions)
         {
-            TypeCheckExpression(expression, types, variables, functionTypes, expectedReturnType: null);
+            TypeCheckExpression(expression, []);
         }
     }
 
-    private static void TypeCheckFunctionBody(LangFunction function,
-        Dictionary<string, Variable> variables,
-        Dictionary<string, FunctionTypeDefinition> functions,
-        Dictionary<string, TypeDefinition> types)
-    {
-        var functionType = functions[function.Name.StringValue];
 
-        var innerVariables = new Dictionary<string, Variable>(variables);
+    private void TypeCheckFunctionBody(LangFunction function,
+        Dictionary<string, TypeDefinition> genericPlaceholders)
+    {
+        var functionType = Functions[function.Name.StringValue];
+        
+        var innerGenericPlaceholders = new Dictionary<string, TypeDefinition>(genericPlaceholders);
+        foreach (var genericParameter in functionType.GenericParameters)
+        {
+            innerGenericPlaceholders[genericParameter] = functionType;
+        }
+
+        var expectedReturnType = function.ReturnType is null
+            ? null
+            : GetTypeReference(function.ReturnType, innerGenericPlaceholders);
+        
+        using var _ = PushScope(expectedReturnType);
         foreach (var parameter in functionType.Parameters)
         {
-            innerVariables[parameter.Name] = new Variable(
+            Variables[parameter.Name] = new Variable(
                 parameter.Name,
                 parameter.Type,
                 Instantiated: true);
         }
+
         
-        TypeCheckBlock(function.Block, innerVariables, types, functions, function.ReturnType is null ? null : GetInstantiatedType(function.ReturnType, types));
+        TypeCheckBlock(function.Block,
+            innerGenericPlaceholders);
     }
 
     // ReSharper disable once ParameterOnlyUsedForPreconditionCheck.Local
-    private static FunctionTypeDefinition TypeCheckFunctionSignature(LangFunction function, Dictionary<string, FunctionTypeDefinition> functions, Dictionary<string, TypeDefinition> types)
+    private FunctionTypeDefinition TypeCheckFunctionSignature(
+        LangFunction function,
+        Dictionary<string, TypeDefinition> genericPlaceholders)
     {
-        if (functions.ContainsKey(function.Name.StringValue))
+        if (Functions.ContainsKey(function.Name.StringValue))
         {
             throw new InvalidOperationException($"Function with name {function.Name.StringValue} already defined");
         }
+
+        if (function.TypeArguments.Any(typeArgument => 
+                genericPlaceholders.ContainsKey(typeArgument.StringValue) || _types.ContainsKey(typeArgument.StringValue)))
+        {
+            throw new InvalidOperationException("Type argument name is conflicting");
+        }
+        
+        // todo: need to get a reference to FunctionTypeDefinition while creating the function type definition
+        var innerGenericPlaceholders = new Dictionary<string, TypeDefinition>(genericPlaceholders);
         
         return new FunctionTypeDefinition
         {
             Name = function.Name.StringValue,
-            ReturnType = function.ReturnType is null ? InstantiatedType.Unit : GetInstantiatedType(function.ReturnType, types),
+            ReturnType = function.ReturnType is null ? InstantiatedType.Unit : GetTypeReference(function.ReturnType, innerGenericPlaceholders),
             GenericParameters = function.TypeArguments.Select(x => x.StringValue).ToArray(),
-            Parameters = function.Parameters.Select(x => new FunctionTypeDefinition.Parameter(x.Identifier.StringValue, GetInstantiatedType(x.Type, types))).ToArray(),
+            Parameters = function.Parameters.Select(x => new FunctionTypeDefinition.Parameter(x.Identifier.StringValue, GetTypeReference(x.Type, innerGenericPlaceholders))).ToArray(),
             // todo: functions don't have fields
             Fields = [],
-            StaticFields = []
+            StaticFields = [],
+            Functions = []
         };
     }
 
-    private static InstantiatedType TypeCheckBlock(
+    private ITypeReference TypeCheckBlock(
         Block block,
-        Dictionary<string, Variable> variables,
-        Dictionary<string, TypeDefinition> types,
-        Dictionary<string, FunctionTypeDefinition> functions,
-        InstantiatedType? expectedReturnType)
+        Dictionary<string, TypeDefinition> genericPlaceholders)
     {
-        var innerVariables = new Dictionary<string, Variable>(variables);
-        var innerFunctions = new Dictionary<string, FunctionTypeDefinition>(functions);
+        using var _ = PushScope();
         
         foreach (var fn in block.Functions)
         {
-            innerFunctions[fn.Name.StringValue] = TypeCheckFunctionSignature(fn, innerFunctions, types);
+            Functions[fn.Name.StringValue] = TypeCheckFunctionSignature(fn, genericPlaceholders);
         }
         
         foreach (var fn in block.Functions)
         {
-            TypeCheckFunctionBody(fn, innerVariables, innerFunctions, types);
+            TypeCheckFunctionBody(fn, genericPlaceholders);
         }
 
         foreach (var expression in block.Expressions)
         {
-            TypeCheckExpression(expression, types, innerVariables, innerFunctions, expectedReturnType);
+            TypeCheckExpression(expression, genericPlaceholders);
         }
 
         // todo: tail expressions
         return InstantiatedType.Unit;
     }
 
-    private static InstantiatedType TypeCheckExpression(
+    private ITypeReference TypeCheckExpression(
         IExpression expression,
-        Dictionary<string, TypeDefinition> types,
-        Dictionary<string, Variable> variables,
-        Dictionary<string, FunctionTypeDefinition> functions,
-        InstantiatedType? expectedReturnType)
+        Dictionary<string, TypeDefinition> genericPlaceholders)
     {
         return expression switch
         {
             VariableDeclarationExpression variableDeclarationExpression => TypeCheckVariableDeclaration(
-                variableDeclarationExpression, types, variables, functions, expectedReturnType),
-            ValueAccessorExpression valueAccessorExpression => TypeCheckValueAccessor(valueAccessorExpression, variables, functions, types),
-            MethodReturnExpression methodReturnExpression => TypeCheckMethodReturn(methodReturnExpression, types, variables, functions, expectedReturnType),
-            MethodCallExpression methodCallExpression => TypeCheckMethodCall(methodCallExpression.MethodCall, types, variables, functions, expectedReturnType),
-            BlockExpression blockExpression => TypeCheckBlock(blockExpression.Block, variables, types, functions, expectedReturnType),
-            IfExpressionExpression ifExpressionExpression => TypeCheckIfExpression(ifExpressionExpression.IfExpression, types, variables, functions, expectedReturnType),
-            BinaryOperatorExpression binaryOperatorExpression => TypeCheckBinaryOperatorExpression(binaryOperatorExpression.BinaryOperator, types, variables, functions, expectedReturnType),
-            ObjectInitializerExpression objectInitializerExpression => TypeCheckObjectInitializer(objectInitializerExpression.ObjectInitializer, types, variables, functions, expectedReturnType),
-            MemberAccessExpression memberAccessExpression => TypeCheckMemberAccess(memberAccessExpression.MemberAccess, types, variables, functions, expectedReturnType),
-            StaticMemberAccessExpression staticMemberAccessExpression => TypeCheckStaticMemberAccess(staticMemberAccessExpression.StaticMemberAccess, types),
+                variableDeclarationExpression, genericPlaceholders),
+            ValueAccessorExpression valueAccessorExpression => TypeCheckValueAccessor(valueAccessorExpression, genericPlaceholders),
+            MethodReturnExpression methodReturnExpression => TypeCheckMethodReturn(methodReturnExpression, genericPlaceholders),
+            MethodCallExpression methodCallExpression => TypeCheckMethodCall(methodCallExpression.MethodCall, genericPlaceholders),
+            BlockExpression blockExpression => TypeCheckBlock(blockExpression.Block, genericPlaceholders),
+            IfExpressionExpression ifExpressionExpression => TypeCheckIfExpression(ifExpressionExpression.IfExpression, genericPlaceholders),
+            BinaryOperatorExpression binaryOperatorExpression => TypeCheckBinaryOperatorExpression(binaryOperatorExpression.BinaryOperator, genericPlaceholders),
+            ObjectInitializerExpression objectInitializerExpression => TypeCheckObjectInitializer(objectInitializerExpression.ObjectInitializer, genericPlaceholders),
+            MemberAccessExpression memberAccessExpression => TypeCheckMemberAccess(memberAccessExpression.MemberAccess, genericPlaceholders),
+            StaticMemberAccessExpression staticMemberAccessExpression => TypeCheckStaticMemberAccess(staticMemberAccessExpression.StaticMemberAccess, genericPlaceholders),
             _ => throw new NotImplementedException($"{expression.ExpressionType}")
         };
     }
 
-    private static InstantiatedType TypeCheckMemberAccess(
+    private ITypeReference TypeCheckMemberAccess(
         MemberAccess memberAccess,
-        Dictionary<string, TypeDefinition> types,
-        Dictionary<string, Variable> variables,
-        Dictionary<string, FunctionTypeDefinition> functions,
-        InstantiatedType? expectedReturnType)
+        Dictionary<string, TypeDefinition> genericPlaceholders)
     {
-        var ownerType = TypeCheckExpression(memberAccess.Owner, types, variables, functions, expectedReturnType);
+        var ownerType = TypeCheckExpression(memberAccess.Owner, genericPlaceholders);
 
-        var field = ownerType.Type.Fields.FirstOrDefault(x => x.Name == memberAccess.MemberName.StringValue)
-            ?? throw new InvalidOperationException($"No field named {memberAccess.MemberName.StringValue}");
+        if (ownerType is not InstantiatedType instantiatedType)
+        {
+            // todo: generic argument constraints with interfaces?
+            throw new InvalidOperationException("Can only access members on instantiated types");
+        }
 
-        return field.Type;
+        var memberType = instantiatedType.TypeDefinition.Fields.FirstOrDefault(x => x.Name == memberAccess.MemberName.StringValue)?.Type
+            ?? instantiatedType.TypeDefinition.Functions.FirstOrDefault(x => x.Name == memberAccess.MemberName.StringValue)?.ReturnType;
+
+        if (memberType is null)
+        {
+            throw new InvalidOperationException($"No member named {memberAccess.MemberName.StringValue}");
+        }
+
+        return memberType;
     }
 
-    private static InstantiatedType TypeCheckStaticMemberAccess(
+    private ITypeReference TypeCheckStaticMemberAccess(
         StaticMemberAccess staticMemberAccess,
-        Dictionary<string, TypeDefinition> types)
+        Dictionary<string, TypeDefinition> genericPlaceholders)
     {
-        var type = GetInstantiatedType(staticMemberAccess.Type, types);
+        var type = GetTypeReference(staticMemberAccess.Type, genericPlaceholders);
 
-        var field = type.Type.StaticFields.FirstOrDefault(x => x.Name == staticMemberAccess.MemberName.StringValue)
+        if (type is not InstantiatedType instantiatedType)
+        {
+            throw new InvalidOperationException("Can only access static members on instantiated types");
+        }
+        
+        var field = instantiatedType.TypeDefinition.StaticFields.FirstOrDefault(x => x.Name == staticMemberAccess.MemberName.StringValue)
             ?? throw new InvalidOperationException($"No member with name {staticMemberAccess.MemberName.StringValue}");
 
         return field.Type;
     }
 
-    private static InstantiatedType TypeCheckObjectInitializer(
+    private ITypeReference TypeCheckObjectInitializer(
         ObjectInitializer objectInitializer,
-        Dictionary<string, TypeDefinition> types,
-        Dictionary<string, Variable> variables,
-        Dictionary<string, FunctionTypeDefinition> functions,
-        InstantiatedType? expectedReturnType)
+        Dictionary<string, TypeDefinition> genericPlaceholders)
     {
-        var foundType = GetInstantiatedType(objectInitializer.Type, types);
-        if (!CanTypeBeInitialized(foundType))
+        var foundType = GetTypeReference(objectInitializer.Type, genericPlaceholders);
+        if (foundType is not InstantiatedType instantiatedType)
         {
+            // todo: more checks
             throw new InvalidOperationException($"Type {foundType} cannot be initialized");
         }
 
@@ -225,12 +316,12 @@ public class TypeChecker
             throw new InvalidOperationException("Field can only be initialized once");
         }
 
-        if (objectInitializer.FieldInitializers.Count != foundType.Type.Fields.Count)
+        if (objectInitializer.FieldInitializers.Count != instantiatedType.TypeDefinition.Fields.Count)
         {
             throw new InvalidOperationException("Not all fields were initialized");
         }
         
-        var fields = foundType.Type.Fields.ToDictionary(x => x.Name);
+        var fields = instantiatedType.TypeDefinition.Fields.ToDictionary(x => x.Name);
         
         foreach (var fieldInitializer in objectInitializer.FieldInitializers)
         {
@@ -239,9 +330,9 @@ public class TypeChecker
                 throw new InvalidOperationException($"No field named {fieldInitializer.FieldName.StringValue}");
             }
 
-            var valueType = TypeCheckExpression(fieldInitializer.Value, types, variables, functions, expectedReturnType);
+            var valueType = TypeCheckExpression(fieldInitializer.Value, genericPlaceholders);
 
-            if (field.Type != valueType)
+            if (!Equals(field.Type, valueType))
             {
                 throw new InvalidOperationException($"Expected {field.Type} but got {valueType}");
             }
@@ -250,29 +341,25 @@ public class TypeChecker
         return foundType;
     }
 
-    private static bool CanTypeBeInitialized(InstantiatedType type)
+    private static bool IsTypeDefinition(ITypeReference typeReference, TypeDefinition definition)
     {
-        // todo:
-        return true;
+        return typeReference is InstantiatedType { TypeDefinition: var typeDefinition } && typeDefinition == definition;
     }
 
-    private static InstantiatedType TypeCheckBinaryOperatorExpression(
+    private ITypeReference TypeCheckBinaryOperatorExpression(
         BinaryOperator @operator,
-        Dictionary<string, TypeDefinition> types,
-        Dictionary<string, Variable> variables,
-        Dictionary<string, FunctionTypeDefinition> functions,
-        InstantiatedType? expectedReturnType)
+        Dictionary<string, TypeDefinition> genericPlaceholders)
     {
-        var leftType = TypeCheckExpression(@operator.Left, types, variables, functions, expectedReturnType);
-        var rightType = TypeCheckExpression(@operator.Right, types, variables, functions, expectedReturnType);
+        var leftType = TypeCheckExpression(@operator.Left, genericPlaceholders);
+        var rightType = TypeCheckExpression(@operator.Right, genericPlaceholders);
         switch (@operator.OperatorType)
         {
             case BinaryOperatorType.LessThan:
             case BinaryOperatorType.GreaterThan:
             {
-                if (leftType.Type != TypeDefinition.Int)
+                if (!IsTypeDefinition(leftType, TypeDefinition.Int))
                     throw new InvalidOperationException("Expected int");
-                if (rightType.Type != TypeDefinition.Int)
+                if (!IsTypeDefinition(rightType, TypeDefinition.Int))
                     throw new InvalidOperationException("Expected int");
 
                 return InstantiatedType.Boolean;
@@ -282,16 +369,16 @@ public class TypeChecker
             case BinaryOperatorType.Multiply:
             case BinaryOperatorType.Divide:
             {
-                if (leftType.Type != TypeDefinition.Int)
+                if (!IsTypeDefinition(leftType, TypeDefinition.Int))
                     throw new InvalidOperationException("Expected int");
-                if (rightType.Type != TypeDefinition.Int)
+                if (!IsTypeDefinition(rightType, TypeDefinition.Int))
                     throw new InvalidOperationException("Expected int");
 
                 return InstantiatedType.Int;
             }
             case BinaryOperatorType.EqualityCheck:
             {
-                if (leftType != rightType)
+                if (!leftType.Equals(rightType))
                 {
                     throw new InvalidOperationException("Cannot compare values of different types");
                 }
@@ -305,7 +392,7 @@ public class TypeChecker
                     throw new InvalidOperationException($"{@operator.Left} is not assignable");
                 }
 
-                if (leftType != rightType)
+                if (!Equals(leftType, rightType))
                 {
                     throw new InvalidOperationException($"Expected {leftType} but found {rightType}");
                 }
@@ -329,52 +416,53 @@ public class TypeChecker
         };
     }
     
-    private static InstantiatedType TypeCheckIfExpression(IfExpression ifExpression,
-        Dictionary<string, TypeDefinition> types,
-        Dictionary<string, Variable> variables,
-        Dictionary<string, FunctionTypeDefinition> functions,
-        InstantiatedType? expectedReturnType)
+    private ITypeReference TypeCheckIfExpression(IfExpression ifExpression,
+        Dictionary<string, TypeDefinition> genericPlaceholders)
     {
         var checkExpressionType =
-            TypeCheckExpression(ifExpression.CheckExpression, types, variables, functions, expectedReturnType);
-        if (checkExpressionType.Type != TypeDefinition.Boolean)
+            TypeCheckExpression(ifExpression.CheckExpression, genericPlaceholders);
+        
+        if (!IsTypeDefinition(checkExpressionType, TypeDefinition.Boolean))
         {
             throw new InvalidOperationException("Expected bool");
         }
 
-        TypeCheckExpression(ifExpression.Body, types, variables, functions, expectedReturnType);
-
+        using (PushScope())
+        {
+            TypeCheckExpression(ifExpression.Body, genericPlaceholders);
+        }
+        
         foreach (var elseIf in ifExpression.ElseIfs)
         {
+            using var _ = PushScope();
             var elseIfCheckExpressionType
-                = TypeCheckExpression(elseIf.CheckExpression, types, variables, functions, expectedReturnType);
-            if (elseIfCheckExpressionType.Type != TypeDefinition.Boolean)
+                = TypeCheckExpression(elseIf.CheckExpression, genericPlaceholders);
+            if (!IsTypeDefinition(elseIfCheckExpressionType, TypeDefinition.Boolean))
             {
                 throw new InvalidOperationException("Expected bool");
             }
 
-            TypeCheckExpression(elseIf.Body, types, variables, functions, expectedReturnType);
+            TypeCheckExpression(elseIf.Body, genericPlaceholders);
         }
 
         if (ifExpression.ElseBody is not null)
         {
-            TypeCheckExpression(ifExpression.ElseBody, types, variables, functions, expectedReturnType);
+            using var _ = PushScope();
+            TypeCheckExpression(ifExpression.ElseBody, genericPlaceholders);
         }
         
         // todo: tail expression
         return InstantiatedType.Unit;
     }
 
-    private static InstantiatedType TypeCheckMethodCall(
+    private ITypeReference TypeCheckMethodCall(
         MethodCall methodCall,
-        Dictionary<string, TypeDefinition> types,
-        Dictionary<string, Variable> variables,
-        Dictionary<string, FunctionTypeDefinition> functions,
-        InstantiatedType? expectedReturnType)
+        Dictionary<string, TypeDefinition> genericPlaceholders)
     {
-        var methodType = TypeCheckExpression(methodCall.Method, types, variables, functions, expectedReturnType);
+        var methodType = TypeCheckExpression(methodCall.Method, genericPlaceholders);
 
-        if (methodType.Type is not FunctionTypeDefinition functionType)
+        if (methodType is not InstantiatedType {TypeDefinition: FunctionTypeDefinition functionType})
+        // if (methodType.Type is not FunctionTypeDefinition functionType)
         {
             throw new InvalidOperationException($"{methodType} is not callable");
         }
@@ -387,9 +475,9 @@ public class TypeChecker
         for (var i = 0; i < functionType.Parameters.Count; i++)
         {
             var expectedParameterType = functionType.Parameters[i].Type;
-            var givenParameterType = TypeCheckExpression(methodCall.ParameterList[i], types, variables, functions, expectedParameterType);
+            var givenParameterType = TypeCheckExpression(methodCall.ParameterList[i], genericPlaceholders);
 
-            if (expectedParameterType != givenParameterType)
+            if (!Equals(expectedParameterType, givenParameterType))
             {
                 throw new InvalidOperationException(
                     $"Expected parameter type {expectedParameterType}, got {givenParameterType}");
@@ -399,36 +487,34 @@ public class TypeChecker
         return functionType.ReturnType;
     }
 
-    private static InstantiatedType TypeCheckMethodReturn(
+    private ITypeReference TypeCheckMethodReturn(
         MethodReturnExpression methodReturnExpression,
-        Dictionary<string, TypeDefinition> types,
-        Dictionary<string, Variable> variables,
-        Dictionary<string, FunctionTypeDefinition> functions,
-        InstantiatedType? expectedReturnType)
+        Dictionary<string, TypeDefinition> genericPlaceholders)
     {
         var returnExpressionType = methodReturnExpression.MethodReturn.Expression is null
             ? null
-            : TypeCheckExpression(methodReturnExpression.MethodReturn.Expression, types, variables, functions, expectedReturnType);
+            : TypeCheckExpression(methodReturnExpression.MethodReturn.Expression, genericPlaceholders);
         
-        if (expectedReturnType is null && returnExpressionType is not null)
+        if (ExpectedReturnType is null && returnExpressionType is not null)
         {
             throw new InvalidOperationException($"Expected void, got {returnExpressionType}");
         }
 
-        if (expectedReturnType is not null && returnExpressionType is null)
+        if (ExpectedReturnType is not null && returnExpressionType is null)
         {
-            throw new InvalidOperationException($"Expected {expectedReturnType}, got void");
+            throw new InvalidOperationException($"Expected {ExpectedReturnType}, got void");
         }
 
-        if (expectedReturnType != returnExpressionType)
+        if (!Equals(ExpectedReturnType, returnExpressionType))
         {
-            throw new InvalidOperationException($"Expected {returnExpressionType}, got {expectedReturnType}");
+            throw new InvalidOperationException($"Expected {returnExpressionType}, got {ExpectedReturnType}");
         }
         
         return InstantiatedType.Never;
     }
 
-    private static InstantiatedType TypeCheckValueAccessor(ValueAccessorExpression valueAccessorExpression, Dictionary<string, Variable> variables, Dictionary<string, FunctionTypeDefinition> functions, Dictionary<string, TypeDefinition> types)
+    private ITypeReference TypeCheckValueAccessor(ValueAccessorExpression valueAccessorExpression,
+        Dictionary<string, TypeDefinition> genericPlaceholders)
     {
         return valueAccessorExpression.ValueAccessor switch
         {
@@ -436,20 +522,18 @@ public class TypeChecker
             {AccessType: ValueAccessType.Literal, Token: StringToken {Type: TokenType.StringLiteral}} => InstantiatedType.String,
             {AccessType: ValueAccessType.Literal, Token.Type: TokenType.True or TokenType.False } => InstantiatedType.Boolean,
             {AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: var variableName}, TypeArguments: var typeArguments} =>
-                TypeCheckVariableAccess(variableName, variables, functions, types, typeArguments),
+                TypeCheckVariableAccess(variableName, typeArguments, genericPlaceholders),
             _ => throw new NotImplementedException($"{valueAccessorExpression}")
         };
         
     }
 
-    private static InstantiatedType TypeCheckVariableAccess(
+    private ITypeReference TypeCheckVariableAccess(
         string variableName,
-        Dictionary<string, Variable> variables,
-        Dictionary<string, FunctionTypeDefinition> functions,
-        Dictionary<string, TypeDefinition> types,
-        IReadOnlyList<TypeIdentifier> typeArguments)
+        IReadOnlyList<TypeIdentifier> typeArguments,
+        Dictionary<string, TypeDefinition> genericPlaceholders)
     {
-        if (functions.TryGetValue(variableName, out var function))
+        if (Functions.TryGetValue(variableName, out var function))
         {
             if (function.GenericParameters.Count != typeArguments.Count)
             {
@@ -457,16 +541,16 @@ public class TypeChecker
             }
 
             var instantiatedTypeArguments = typeArguments.Zip(function.GenericParameters)
-                .ToDictionary(x => x.Second, x => GetInstantiatedType(x.First, types));
+                .ToDictionary(x => x.Second, x => GetTypeReference(x.First, genericPlaceholders));
             
             return new InstantiatedType
             {
-                Type = function,
+                TypeDefinition = function,
                 TypeArguments = instantiatedTypeArguments
             };
         }
         
-        if (!variables.TryGetValue(variableName, out var value))
+        if (!Variables.TryGetValue(variableName, out var value))
         {
             throw new InvalidOperationException($"No symbol found with name {variableName}");
         }
@@ -479,24 +563,14 @@ public class TypeChecker
         return value.Type;
     }
 
-    private record Variable(string Name, InstantiatedType Type, bool Instantiated);
+    private record Variable(string Name, ITypeReference Type, bool Instantiated);
 
-    private static string GetIdentifierName(Token token)
-    {
-        return token is StringToken { Type: TokenType.Identifier } stringToken
-            ? stringToken.StringValue
-            : throw new InvalidOperationException("Expected token name");
-    }
-
-    private static InstantiatedType TypeCheckVariableDeclaration(
+    private ITypeReference TypeCheckVariableDeclaration(
         VariableDeclarationExpression expression,
-        Dictionary<string, TypeDefinition> resolvedTypes,
-        Dictionary<string, Variable> variables,
-        Dictionary<string, FunctionTypeDefinition> functions,
-        InstantiatedType? expectedReturnType)
+        Dictionary<string, TypeDefinition> genericPlaceholders)
     {
         var varName = expression.VariableDeclaration.VariableNameToken.StringValue;
-        if (variables.ContainsKey(varName))
+        if (Variables.ContainsKey(varName))
         {
             throw new InvalidOperationException(
                 $"Variable with name {varName} already exists");
@@ -508,24 +582,24 @@ public class TypeChecker
                 throw new InvalidOperationException("Variable declaration must have a type specifier or a value");
             case { Value: { } value, Type: var type} :
             {
-                var valueType = TypeCheckExpression(value, resolvedTypes, variables, functions, expectedReturnType);
+                var valueType = TypeCheckExpression(value, genericPlaceholders);
                 if (type is not null)
                 {
-                    var expectedType = GetInstantiatedType(type, resolvedTypes);
-                    if (expectedType != valueType)
+                    var expectedType = GetTypeReference(type, genericPlaceholders);
+                    if (!Equals(expectedType, valueType))
                     {
                         throw new InvalidOperationException($"Expected type {expectedType}, but found {valueType}");
                     }
                 }
 
-                variables[varName] = new Variable(varName, valueType, Instantiated: true);
+                Variables[varName] = new Variable(varName, valueType, Instantiated: true);
 
                 break;
             }
             case { Value: null, Type: { } type }:
             {
-                var langType = GetInstantiatedType(type, resolvedTypes);
-                variables[varName] = new Variable(varName, langType, Instantiated: false);
+                var langType = GetTypeReference(type, genericPlaceholders);
+                Variables[varName] = new Variable(varName, langType, Instantiated: false);
 
                 break;
             }
@@ -535,7 +609,9 @@ public class TypeChecker
         return InstantiatedType.Unit;
     }
 
-    private static InstantiatedType GetInstantiatedType(TypeIdentifier typeIdentifier, Dictionary<string, TypeDefinition> resolvedTypes)
+    private ITypeReference GetTypeReference(
+        TypeIdentifier typeIdentifier,
+        Dictionary<string, TypeDefinition> genericPlaceholders)
     {
         if (typeIdentifier.Identifier.Type == TokenType.StringKeyword)
         {
@@ -560,52 +636,117 @@ public class TypeChecker
             }
             
             return InstantiatedType.Result(
-                GetInstantiatedType(typeIdentifier.TypeArguments[0], resolvedTypes),
-                GetInstantiatedType(typeIdentifier.TypeArguments[1], resolvedTypes));
+                GetTypeReference(typeIdentifier.TypeArguments[0], genericPlaceholders),
+                GetTypeReference(typeIdentifier.TypeArguments[1], genericPlaceholders));
         }
 
-        if (typeIdentifier.Identifier is StringToken { Type: TokenType.Identifier } stringToken
-            && resolvedTypes.TryGetValue(stringToken.StringValue, out var nameMatchingType))
+        if (typeIdentifier.Identifier is StringToken { Type: TokenType.Identifier } stringToken)
         {
-            if (!nameMatchingType.IsGeneric && typeIdentifier.TypeArguments.Count == 0)
+            if (_types.TryGetValue(stringToken.StringValue, out var nameMatchingType))
             {
+                if (!nameMatchingType.IsGeneric && typeIdentifier.TypeArguments.Count == 0)
+                {
+                    return new InstantiatedType
+                        { TypeDefinition = nameMatchingType, TypeArguments = new Dictionary<string, ITypeReference>() };
+                }
+
+                if (nameMatchingType.GenericParameters.Count != typeIdentifier.TypeArguments.Count)
+                {
+                    throw new InvalidOperationException($"Expected {nameMatchingType.GenericParameters.Count} type arguments, but found {typeIdentifier.TypeArguments.Count}");
+                }
+
                 return new InstantiatedType
-                    { Type = nameMatchingType, TypeArguments = new Dictionary<string, InstantiatedType>() };
+                {
+                    TypeDefinition = nameMatchingType,
+                    TypeArguments = typeIdentifier.TypeArguments
+                        .Zip(nameMatchingType.GenericParameters)
+                        .ToDictionary(x => x.Second, x => GetTypeReference(x.First, genericPlaceholders))
+                };
             }
 
-            if (nameMatchingType.GenericParameters.Count != typeIdentifier.TypeArguments.Count)
+            if (genericPlaceholders.TryGetValue(stringToken.StringValue, out var ownerType))
             {
-                throw new InvalidOperationException($"Expected {nameMatchingType.GenericParameters.Count} type arguments, but found {typeIdentifier.TypeArguments.Count}");
+                return new GenericTypeReference
+                {
+                    OwnerType = ownerType,
+                    GenericName = stringToken.StringValue
+                };
             }
-
-            return new InstantiatedType
-            {
-                Type = nameMatchingType,
-                TypeArguments = typeIdentifier.TypeArguments
-                    .Zip(nameMatchingType.GenericParameters)
-                    .ToDictionary(x => x.Second, x => GetInstantiatedType(x.First, resolvedTypes))
-            };
         }
-
+        
         throw new InvalidOperationException($"No type found {typeIdentifier}");
     }
 
-    public class InstantiatedType : IEquatable<InstantiatedType>
+    public interface ITypeReference;
+
+    public class GenericTypeReference : ITypeReference, IEquatable<GenericTypeReference>
     {
-        public static InstantiatedType String { get; } = new() { Type = TypeDefinition.String, TypeArguments = new Dictionary<string, InstantiatedType>()};
-        public static InstantiatedType Boolean { get; } = new() { Type = TypeDefinition.Boolean, TypeArguments = new Dictionary<string, InstantiatedType>()};
+        public required TypeDefinition OwnerType { get; init; } 
         
-        public static InstantiatedType Int { get; } = new() { Type = TypeDefinition.Int, TypeArguments = new Dictionary<string, InstantiatedType>()};
+        public required string GenericName { get; init; }
 
-        public static InstantiatedType Unit { get; } = new() { Type = TypeDefinition.Unit, TypeArguments = new Dictionary<string, InstantiatedType>()};
+        public bool Equals(GenericTypeReference? other)
+        {
+            if (other is null)
+            {
+                return false;
+            }
+
+            if (ReferenceEquals(this, other))
+            {
+                return true;
+            }
+
+            return OwnerType.Equals(other.OwnerType) && GenericName == other.GenericName;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is null)
+            {
+                return false;
+            }
+
+            if (ReferenceEquals(this, obj))
+            {
+                return true;
+            }
+
+            return obj.GetType() == GetType() && Equals((GenericTypeReference)obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(OwnerType, GenericName);
+        }
         
-        public static InstantiatedType Never { get; } = new() {Type = TypeDefinition.Never, TypeArguments = new Dictionary<string, InstantiatedType>() };
+        public static bool operator==(GenericTypeReference? left, GenericTypeReference? right)
+        {
+            return Equals(left, right);
+        }
 
-        public static InstantiatedType Result(InstantiatedType value, InstantiatedType error) =>
+        public static bool operator !=(GenericTypeReference? left, GenericTypeReference? right)
+        {
+            return !(left == right);
+        }
+    }
+    
+    public class InstantiatedType : IEquatable<InstantiatedType>, ITypeReference
+    {
+        public static InstantiatedType String { get; } = new() { TypeDefinition = TypeDefinition.String, TypeArguments = new Dictionary<string, ITypeReference>()};
+        public static InstantiatedType Boolean { get; } = new() { TypeDefinition = TypeDefinition.Boolean, TypeArguments = new Dictionary<string, ITypeReference>()};
+        
+        public static InstantiatedType Int { get; } = new() { TypeDefinition = TypeDefinition.Int, TypeArguments = new Dictionary<string, ITypeReference>()};
+
+        public static InstantiatedType Unit { get; } = new() { TypeDefinition = TypeDefinition.Unit, TypeArguments = new Dictionary<string, ITypeReference>()};
+        
+        public static InstantiatedType Never { get; } = new() {TypeDefinition = TypeDefinition.Never, TypeArguments = new Dictionary<string, ITypeReference>() };
+
+        public static InstantiatedType Result(ITypeReference value, ITypeReference error) =>
             new()
             {
-                Type = TypeDefinition.Result,
-                TypeArguments = new Dictionary<string, InstantiatedType>
+                TypeDefinition = TypeDefinition.Result,
+                TypeArguments = new Dictionary<string, ITypeReference>
                 {
                     {"TValue", value},
                     {"TError", error}
@@ -614,7 +755,7 @@ public class TypeChecker
 
         public static bool operator ==(InstantiatedType? left, InstantiatedType? right)
         {
-            return left?.Equals(right) ?? right is null;
+            return Equals(left, right);
         }
 
         public static bool operator !=(InstantiatedType? left, InstantiatedType? right)
@@ -622,10 +763,10 @@ public class TypeChecker
             return !(left == right);
         }
         
-        public required TypeDefinition Type { get; init; }
+        public required TypeDefinition TypeDefinition { get; init; }
         
         // todo: be consistent with argument/parameter
-        public required IReadOnlyDictionary<string, InstantiatedType> TypeArguments { get; init; }
+        public required IReadOnlyDictionary<string, ITypeReference> TypeArguments { get; init; }
         
         public bool Equals(InstantiatedType? other)
         {
@@ -639,7 +780,7 @@ public class TypeChecker
                 return true;
             }
 
-            return Type.Equals(other.Type)
+            return TypeDefinition.Equals(other.TypeDefinition)
                    && TypeArguments.Count == other.TypeArguments.Count
                    && TypeArguments.All(x =>
                        other.TypeArguments.TryGetValue(x.Key, out var otherValue) && x.Value.Equals(otherValue));
@@ -662,14 +803,14 @@ public class TypeChecker
 
         public override int GetHashCode()
         {
-            var hashCode = Type.GetHashCode();
+            var hashCode = TypeDefinition.GetHashCode();
 
             return TypeArguments.Aggregate(hashCode, (current, kvp) => HashCode.Combine(current, kvp.Key.GetHashCode(), kvp.Value.GetHashCode()));
         }
 
         public override string ToString()
         {
-            var sb = new StringBuilder($"{Type.Name}");
+            var sb = new StringBuilder($"{TypeDefinition.Name}");
             if (TypeArguments.Count > 0)
             {
                 sb.Append('<');
@@ -683,14 +824,14 @@ public class TypeChecker
     
     public class TypeDefinition
     {
-        public static TypeDefinition Unit { get; } = new() { GenericParameters = [], Name = "Unit", Fields = [], StaticFields = []};
-        public static TypeDefinition String { get; } = new() { GenericParameters = [], Name = "String", Fields = [], StaticFields = [] };
-        public static TypeDefinition Int { get; } = new() { GenericParameters = [], Name = "Int", Fields = [], StaticFields = []};
-        public static TypeDefinition Boolean { get; } = new() { GenericParameters = [], Name = "Boolean", Fields = [], StaticFields = []};
-        public static TypeDefinition Never { get; } = new() { GenericParameters = [], Name = "!", Fields = [], StaticFields = []};
+        public static TypeDefinition Unit { get; } = new() { GenericParameters = [], Name = "Unit", Fields = [], StaticFields = [], Functions = []};
+        public static TypeDefinition String { get; } = new() { GenericParameters = [], Name = "String", Fields = [], StaticFields = [], Functions = []};
+        public static TypeDefinition Int { get; } = new() { GenericParameters = [], Name = "Int", Fields = [], StaticFields = [], Functions = []};
+        public static TypeDefinition Boolean { get; } = new() { GenericParameters = [], Name = "Boolean", Fields = [], StaticFields = [], Functions = []};
+        public static TypeDefinition Never { get; } = new() { GenericParameters = [], Name = "!", Fields = [], StaticFields = [], Functions = []};
         
         // todo: unions
-        public static TypeDefinition Result { get; } = new() { GenericParameters = ["TValue", "TError"], Name = "Result", Fields = [], StaticFields = []};
+        public static TypeDefinition Result { get; } = new() { GenericParameters = ["TValue", "TError"], Name = "Result", Fields = [], StaticFields = [], Functions = []};
         public static IEnumerable<TypeDefinition> BuiltInTypes { get; } = [Unit, String, Int, Never, Result, Boolean];
         
         public required IReadOnlyList<string> GenericParameters { get; init; }
@@ -698,11 +839,14 @@ public class TypeChecker
         public required string Name { get; init; }
         public required IReadOnlyList<TypeField> Fields { get; init; }
         public required IReadOnlyList<TypeField> StaticFields { get; init; }
+        public required IReadOnlyList<FunctionTypeDefinition> Functions { get; init; }
+        
+        // todo: namespaces
     }
 
     public class TypeField
     {
-        public required InstantiatedType Type { get; init; }
+        public required ITypeReference Type { get; init; }
         public required string Name { get; init; }
         public required bool IsPublic { get; init; }
         public required bool IsMutable { get; init; }
@@ -712,9 +856,8 @@ public class TypeChecker
     {
         public required IReadOnlyList<Parameter> Parameters { get; init; }
         
-        // todo: figure this out. This both the class the fn is in and the fn itself could be generic
-        public required InstantiatedType ReturnType { get; init; }
+        public required ITypeReference ReturnType { get; init; }
 
-        public record Parameter(string Name, InstantiatedType Type);
+        public record Parameter(string Name, ITypeReference Type);
     }
 }

@@ -230,19 +230,17 @@ public static class Parser
 
     private static ProgramClass GetClassDefinition(AccessModifier? accessModifier, PeekableEnumerator<Token> tokens)
     {
-        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Identifier)
+        if (!tokens.MoveNext() || tokens.Current is not StringToken { Type: TokenType.Identifier } name)
         {
             throw new InvalidOperationException("Expected class name");
         }
-
-        var name = tokens.Current;
 
         if (!tokens.MoveNext())
         {
             throw new InvalidOperationException("Expected or <");
         }
 
-        var typeArguments = new List<Token>();
+        var typeArguments = new List<StringToken>();
 
         if (tokens.Current.Type == TokenType.LeftAngleBracket)
         {
@@ -280,12 +278,12 @@ public static class Parser
                     }
                 }
 
-                if (tokens.Current.Type != TokenType.Identifier)
+                if (tokens.Current is not StringToken { Type: TokenType.Identifier } typeArgument)
                 {
                     throw new InvalidOperationException("Expected type argument");
                 }
 
-                typeArguments.Add(tokens.Current);
+                typeArguments.Add(typeArgument);
             }
         }
 

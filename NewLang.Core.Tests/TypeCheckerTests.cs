@@ -26,11 +26,7 @@ public class TypeCheckerTests
     [Fact]
     public void Testing()
     {
-        const string str = """
-            class MyClass {field someField: int;}
-            var a = new MyClass { someField = 1 };
-            var b: int = a.someField;
-            """;
+        const string str = "if (true) {var a = 2} else if (true) {var a = 3} else if (true) {var a = 4} else {var a = 5}";
 
         var program = Parser.Parse(Tokenizer.Tokenize(str));
 
@@ -116,6 +112,34 @@ public class TypeCheckerTests
             var a = new MyClass::<string> {someField = ""};
             var b: string = a.someField;
             """,
+            """
+            class MyClass<T> {}
+            class OtherClass<T> {}
+            """,
+            """
+            fn OuterFn() {
+               var a = new MyClass{}; 
+               a.MyFn();
+            }
+            class MyClass {
+                fn MyFn() {
+                    OuterFn();
+                }
+            }
+            """,
+            """
+            class MyClass {
+                fn MyFn() {
+                    var a = new MyClass{};
+                }
+            }
+            """,
+            """
+            fn MyFn(): string {
+                fn InnerFn(): int { return 1; }
+                return "";
+            }
+            """,
             Mvp
         };
 
@@ -136,6 +160,12 @@ public class TypeCheckerTests
             "fn MyFn(param1: string, param2: int) {} MyFn(3, \"value\");",
             "fn MyFn(param1: string, param2: int) {} MyFn();",
             "fn MyFn(param1: string, param2: int) {} MyFn(\"value\", 3, 2);",
+            "fn MyFn<T1>() {var a = T1.something;}",
+            "fn MyFn<T1>() {var a = T1::something;}",
+            "fn MyFn<T1>(param: T1): int { return param; }",
+            "fn MyFn(){} fn MyFn(){}",
+            "fn MyFn<string>(){}",
+            "fn MyFn<T, T>() {}",
             "if (1) {}",
             "if (true) {} else if (1) {}",
             "if (true) {var a: string = 1;}",
@@ -172,6 +202,21 @@ public class TypeCheckerTests
             var a = new MyClass {};
             """,
             "class MyClass { static field someField: string = 1; }",
+            """
+            class MyClass<T> {
+                fn MyFn<T>(){}
+            }
+            """,
+            "class MyClass<T, T>{}",
+            """
+            class MyClass{}
+            class OtherClass<MyClass>{}
+            """,
+            """
+            class MyClass {
+                fn MyFn(): int { return ""; }
+            }
+            """,
             // binary operators
             // less than
             "var a = 1 < true;",
