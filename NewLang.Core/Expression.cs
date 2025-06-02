@@ -104,6 +104,23 @@ public record BlockExpression(Block Block) : IExpression
     }
 }
 
+public record GenericInstantiationExpression(GenericInstantiation GenericInstantiation) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.GenericInstantiation;
+}
+
+public record GenericInstantiation(IExpression Value, IReadOnlyList<TypeIdentifier> GenericArguments)
+{
+    public override string ToString()
+    {
+        var sb = new StringBuilder($"{Value}::<");
+        sb.AppendJoin(", ", GenericArguments);
+        sb.Append('>');
+        
+        return sb.ToString();
+    }
+}
+
 public record MethodCallExpression(MethodCall MethodCall) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.MethodCall;
@@ -209,14 +226,12 @@ public record Block(IReadOnlyList<IExpression> Expressions, IReadOnlyList<LangFu
     }
 }
 
-public record ValueAccessor(ValueAccessType AccessType, Token Token, IReadOnlyList<TypeIdentifier> TypeArguments)
+public record ValueAccessor(ValueAccessType AccessType, Token Token)
 {
     public override string ToString()
     {
         return Token.ToString();
     }
-
-    public TypeIdentifier AsTypeIdentifier => new(Token, TypeArguments);
 }
 
 public record UnaryOperator(UnaryOperatorType OperatorType, IExpression Operand, Token OperatorToken)

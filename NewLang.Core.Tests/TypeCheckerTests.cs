@@ -26,12 +26,26 @@ public class TypeCheckerTests
     [Fact]
     public void Testing()
     {
-        const string str = "if (true) {var a = 2} else if (true) {var a = 3} else if (true) {var a = 4} else {var a = 5}";
+        const string str =
+            """
+            class MyClass<T> {
+                fn MyFn(param: T): T {
+                    return param;
+                }
+            }
+            
+            var a = new MyClass::<string>{};
+            
+            var b = a.MyFn;
+            
+            var c = b("");
+            """;
+
 
         var program = Parser.Parse(Tokenizer.Tokenize(str));
 
         var act = () => TypeChecker.TypeCheck(program);
-        act.Should().NotThrow<InvalidOperationException>();
+        act.Should().NotThrow();
     }
 
     public static TheoryData<string> SuccessfulExpressionTestCases() =>
@@ -104,8 +118,25 @@ public class TypeCheckerTests
             var a: int = MyClass::someField;
             """,
             """
+            class MyClass<T> {
+                fn MyFn(param: T): T {
+                    return param;
+                }
+            }
+            
+            var a = new MyClass::<string>{};
+            
+            var b = a.MyFn;
+            
+            var c = b("");
+            """,
+            """
             class MyClass<T> { static field someField: int = 1; }
             var a = MyClass::<string>::someField;
+            """,
+            """
+            class MyClass<T> { field someField: T; }
+            var a = new MyClass::<int> {someField = 1};
             """,
             """
             class MyClass<T> { field someField: T; }
@@ -115,6 +146,15 @@ public class TypeCheckerTests
             """
             class MyClass<T> {}
             class OtherClass<T> {}
+            """,
+            """
+            class MyClass<T> {
+                 fn MyFn<T2>() {
+                 }
+            }
+            
+            var a = new MyClass::<string>{};
+            var b = a.MyFn::<int>();
             """,
             """
             fn OuterFn() {
@@ -157,6 +197,7 @@ public class TypeCheckerTests
             "var a: int; var b = a",
             "fn MyFn(){fn InnerFn() {}} InnerFn();",
             "CallMissingMethod();",
+            "var a = new MyClass::<int> {someField = true};",
             "fn MyFn(param1: string, param2: int) {} MyFn(3, \"value\");",
             "fn MyFn(param1: string, param2: int) {} MyFn();",
             "fn MyFn(param1: string, param2: int) {} MyFn(\"value\", 3, 2);",
@@ -164,7 +205,6 @@ public class TypeCheckerTests
             "fn MyFn<T1>() {var a = T1::something;}",
             "fn MyFn<T1>(param: T1): int { return param; }",
             "fn MyFn(){} fn MyFn(){}",
-            "fn MyFn<string>(){}",
             "fn MyFn<T, T>() {}",
             "if (1) {}",
             "if (true) {} else if (1) {}",

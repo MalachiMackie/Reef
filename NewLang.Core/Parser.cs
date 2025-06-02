@@ -527,7 +527,7 @@ public static class Parser
         {
             // value accessors
             TokenType.StringLiteral or TokenType.IntLiteral or TokenType.True or TokenType.False => new ValueAccessorExpression(
-                new ValueAccessor(ValueAccessType.Literal, tokens.Current, [])),
+                new ValueAccessor(ValueAccessType.Literal, tokens.Current)),
             TokenType.Var => GetVariableDeclaration(tokens),
             TokenType.LeftBrace => GetBlockExpression(tokens),
             TokenType.If => GetIfExpression(tokens),
@@ -538,6 +538,7 @@ public static class Parser
             TokenType.Dot => GetMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             TokenType.DoubleColon => GetStaticMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             TokenType.Ok or TokenType.Error => GetVariableAccess(tokens),
+            TokenType.Turbofish => GetGenericInstantiation(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             _ when IsTypeTokenType(tokens.Current.Type) => GetVariableAccess(tokens),
             _ when TryGetUnaryOperatorType(tokens.Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current, unaryOperatorType.Value),
             _ when TryGetBinaryOperatorType(tokens.Current.Type, out var binaryOperatorType) => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), binaryOperatorType.Value),
@@ -545,62 +546,71 @@ public static class Parser
         };
     }
 
-    private static ValueAccessorExpression GetVariableAccess(PeekableEnumerator<Token> tokens)
+    private static GenericInstantiationExpression GetGenericInstantiation(PeekableEnumerator<Token> tokens,
+        IExpression previousExpression)
     {
-        var variableToken = tokens.Current;
         var typeArguments = new List<TypeIdentifier>();
-        if (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.Turbofish)
+        while (true)
         {
-            tokens.MoveNext();
-            while (true)
+            if (!tokens.MoveNext())
             {
+                throw new InvalidOperationException("Expected type argument");
+            }
+    
+            if (tokens.Current.Type == TokenType.RightAngleBracket)
+            {
+                // allow empty type arguments, that's a type checking error
+                break;
+            }
+    
+            if (typeArguments.Count > 0)
+            {
+                if (tokens.Current.Type != TokenType.Comma)
+                {
+                    throw new InvalidOperationException("Expected ,");
+                }
+    
                 if (!tokens.MoveNext())
                 {
                     throw new InvalidOperationException("Expected type argument");
                 }
-
-                if (tokens.Current.Type == TokenType.RightAngleBracket)
-                {
-                    // allow empty type arguments, that's a type checking error
-                    break;
-                }
-
-                if (typeArguments.Count > 0)
-                {
-                    if (tokens.Current.Type != TokenType.Comma)
-                    {
-                        throw new InvalidOperationException("Expected ,");
-                    }
-
-                    if (!tokens.MoveNext())
-                    {
-                        throw new InvalidOperationException("Expected type argument");
-                    }
-                }
-
-                typeArguments.Add(GetTypeIdentifier(tokens));
-            }   
+            }
+    
+            typeArguments.Add(GetTypeIdentifier(tokens));
         }
 
-        return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, variableToken, typeArguments));
+        return new GenericInstantiationExpression(new GenericInstantiation(previousExpression, typeArguments));
+    }
+
+    private static ValueAccessorExpression GetVariableAccess(PeekableEnumerator<Token> tokens)
+    {
+        var variableToken = tokens.Current;
+        return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, variableToken));
     }
 
     private static StaticMemberAccessExpression GetStaticMemberAccess(
         PeekableEnumerator<Token> tokens,
         IExpression previousExpression)
     {
+        IReadOnlyList<TypeIdentifier>? typeArguments = null;
+        if (previousExpression is GenericInstantiationExpression genericInstantiationExpression)
+        {
+            typeArguments = genericInstantiationExpression.GenericInstantiation.GenericArguments;
+            previousExpression = genericInstantiationExpression.GenericInstantiation.Value;
+        }
+        
         if (previousExpression is not ValueAccessorExpression
             {
                 ValueAccessor:
                 {
-                    AccessType: ValueAccessType.Variable, Token: var token, TypeArguments: var typeArguments
+                    AccessType: ValueAccessType.Variable, Token: var token
                 }
             })
         {
             throw new InvalidOperationException($"Cannot perform static member access on {previousExpression}");
         }
 
-        var type = new TypeIdentifier(token, typeArguments);
+        var type = new TypeIdentifier(token, typeArguments ?? []);
 
         if (!tokens.MoveNext() || tokens.Current is not StringToken { Type: TokenType.Identifier } memberName)
         {

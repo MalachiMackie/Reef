@@ -96,23 +96,23 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         return new (string Source, LangProgram ExpectedProgram)[]
         {
             ("var a = 1;var b = 2;", new LangProgram([
-                new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), [])))),
-                new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("b", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default), [])))),
+                new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default))))),
+                new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("b", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default))))),
                 ], [], [])),
             ("a = b;", new LangProgram([
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment, VariableAccessor("a"), VariableAccessor("b"), Token.Equals(SourceSpan.Default))),
                 ], [], [])),
             ("error();", new LangProgram([
-                new MethodCallExpression(new MethodCall(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Error(SourceSpan.Default), [])), [])),
+                new MethodCallExpression(new MethodCall(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Error(SourceSpan.Default))), [])),
                 ], [], [])),
             ("ok();", new LangProgram([
-                new MethodCallExpression(new MethodCall(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(SourceSpan.Default), [])), [])),
+                new MethodCallExpression(new MethodCall(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(SourceSpan.Default))), [])),
                 ], [], [])),
             ("ok().b()", new LangProgram([
                 new MethodCallExpression(new MethodCall(
                     new MemberAccessExpression(new MemberAccess( 
                         new MethodCallExpression(new MethodCall(
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(SourceSpan.Default), [])), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(SourceSpan.Default))), [])),
                         Token.Identifier("b", SourceSpan.Default))), [])),
                 ], [], [])),
             ("if (a) {} b = c;", new LangProgram(
@@ -240,7 +240,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.Identifier("a", SourceSpan.Default),
                         null,
                         null,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default), []))))], [])
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default)))))], [])
                 )
             ], [])),
             ("fn MyFn(a: int) {}", new LangProgram([], [
@@ -329,7 +329,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     [],
                     [],
                     new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
-                    new Block([new MethodReturnExpression(new MethodReturn(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), []))))], [])
+                    new Block([new MethodReturnExpression(new MethodReturn(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default)))))], [])
                 )
             ], [])),
             ("class MyClass {}", new LangProgram([], [], [new ProgramClass(
@@ -462,7 +462,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             null,
                             Token.Identifier("someField", SourceSpan.Default),
                             new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, SourceSpan.Default), [])))]
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, SourceSpan.Default))))]
                         )])
             ),
             ("""
@@ -533,9 +533,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
              }
              """, new LangProgram(
             [
-                new MethodCallExpression(new MethodCall(VariableAccessor("Println"), [new MethodCallExpression(new MethodCall(VariableAccessor("DoSomething"), [new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(5, SourceSpan.Default), []))]))])),
-                new MethodCallExpression(new MethodCall(VariableAccessor("Println"), [new MethodCallExpression(new MethodCall(VariableAccessor("DoSomething"), [new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), []))]))])),
-                new MethodCallExpression(new MethodCall(VariableAccessor("Println"), [new MethodCallExpression(new MethodCall(VariableAccessor("SomethingElse"), [new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), []))]))])),
+                new MethodCallExpression(new MethodCall(VariableAccessor("Println"), [new MethodCallExpression(new MethodCall(VariableAccessor("DoSomething"), [new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(5, SourceSpan.Default)))]))])),
+                new MethodCallExpression(new MethodCall(VariableAccessor("Println"), [new MethodCallExpression(new MethodCall(VariableAccessor("DoSomething"), [new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default)))]))])),
+                new MethodCallExpression(new MethodCall(VariableAccessor("Println"), [new MethodCallExpression(new MethodCall(VariableAccessor("SomethingElse"), [new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default)))]))])),
             ], 
             [
                 new LangFunction(
@@ -551,7 +551,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                 Token.Identifier("b", SourceSpan.Default),
                                 null,
                                 new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
-                                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default), [])))),
+                                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default))))),
                             new IfExpressionExpression(new IfExpression(
                                 new BinaryOperatorExpression(new BinaryOperator(
                                     BinaryOperatorType.GreaterThan,
@@ -561,7 +561,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                 new BlockExpression(new Block(
                                     [new MethodReturnExpression(new MethodReturn(
                                             new MethodCallExpression(new MethodCall(
-                                                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(SourceSpan.Default), [])),
+                                                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(SourceSpan.Default))),
                                                 [VariableAccessor("a")]))
                                             )
                                         )],
@@ -570,7 +570,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                     new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.EqualityCheck, VariableAccessor("a"), VariableAccessor("b"), Token.DoubleEquals(SourceSpan.Default))),
                                     new BlockExpression(new Block([new MethodReturnExpression(new MethodReturn(
                                             new MethodCallExpression(new MethodCall(
-                                                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(SourceSpan.Default), [])),
+                                                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(SourceSpan.Default))),
                                                 [VariableAccessor("b")]))
                                             )
                                         )], []))
@@ -579,7 +579,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                 )),
                             new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment, 
                                 VariableAccessor("b"),
-                                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, SourceSpan.Default), [])), Token.Equals(SourceSpan.Default))),
+                                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, SourceSpan.Default))), Token.Equals(SourceSpan.Default))),
                             new VariableDeclarationExpression(new VariableDeclaration(
                                 Token.Identifier("thing", SourceSpan.Default),
                                 null,
@@ -587,7 +587,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                 new ObjectInitializerExpression(new ObjectInitializer(
                                     new TypeIdentifier(Token.Identifier("Class2", SourceSpan.Default), []),
                                     [
-                                        new FieldInitializer(Token.Identifier("A", SourceSpan.Default), new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, SourceSpan.Default), [])))
+                                        new FieldInitializer(Token.Identifier("A", SourceSpan.Default), new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, SourceSpan.Default))))
                                     ])))),
                             new MethodCallExpression(new MethodCall(
                                 new StaticMemberAccessExpression(new StaticMemberAccess(
@@ -596,15 +596,15 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                     )),
                                 [])),
                             new MethodCallExpression(new MethodCall(
-                                new ValueAccessorExpression(
-                                    new ValueAccessor(ValueAccessType.Variable, Token.Identifier("PrivateFn", SourceSpan.Default), 
+                                new GenericInstantiationExpression(new GenericInstantiation(new ValueAccessorExpression(
+                                    new ValueAccessor(ValueAccessType.Variable, Token.Identifier("PrivateFn", SourceSpan.Default))),
                                         [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])])),
                                 []
                                 )),
                             new MethodReturnExpression(new MethodReturn(
                                 new MethodCallExpression(new MethodCall(
-                                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Error(SourceSpan.Default), [])),
-                                    [new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("something wrong", SourceSpan.Default), []))]
+                                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Error(SourceSpan.Default))),
+                                    [new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("something wrong", SourceSpan.Default)))]
                                     ))))],
                         [])),
                 new LangFunction(
@@ -617,7 +617,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     new Block(
                         [new MethodCallExpression(
                             new MethodCall(VariableAccessor("Println"),
-                                [new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("Message", SourceSpan.Default), []))]))],
+                                [new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("Message", SourceSpan.Default)))]))],
                         [
                             new LangFunction(
                                 null,
@@ -629,7 +629,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                 new Block(
                                     [new MethodCallExpression(
                                         new MethodCall(VariableAccessor("Println"),
-                                            [new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("Something", SourceSpan.Default), []))]))],
+                                            [new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("Something", SourceSpan.Default)))]))],
                                     [
                                     ]))
                         ])),
@@ -658,7 +658,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                 Token.Identifier("c", SourceSpan.Default),
                                 new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                                 null,
-                                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default), [])))),
+                                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default))))),
                             new MethodReturnExpression(new MethodReturn(VariableAccessor("b")))
                         ],
                         [])
@@ -853,11 +853,12 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         return new (string Source, IExpression ExpectedProgram)[]
         {
             ("a::<string>()", new MethodCallExpression(new MethodCall(
-                new ValueAccessorExpression(new ValueAccessor(
-                    ValueAccessType.Variable,
-                    Token.Identifier("a", SourceSpan.Default),
-                    [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])])),
-                [])))
+                new GenericInstantiationExpression(new GenericInstantiation(
+                    new ValueAccessorExpression(new ValueAccessor(
+                                        ValueAccessType.Variable,
+                                        Token.Identifier("a", SourceSpan.Default))),
+                    [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])]
+                    )), [])))
         }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedProgram });
     }
 
@@ -866,41 +867,41 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         return new (string Source, IExpression ExpectedExpression)[]
         {
             // value access expressions
-            ("a", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), []))),
-            ("1", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), []))),
-            ("\"my string\"", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("my string", SourceSpan.Default), []))),
-            ("true", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default), []))),
-            ("false", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.False(SourceSpan.Default), []))),
-            ("ok", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(SourceSpan.Default), []))),
+            ("a", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default)))),
+            ("1", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default)))),
+            ("\"my string\"", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("my string", SourceSpan.Default)))),
+            ("true", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default)))),
+            ("false", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.False(SourceSpan.Default)))),
+            ("ok", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(SourceSpan.Default)))),
             ("a == b", new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.EqualityCheck, VariableAccessor("a"), VariableAccessor("b"), Token.DoubleEquals(SourceSpan.Default)))),
-            ("ok()", new MethodCallExpression(new MethodCall(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(SourceSpan.Default), [])), []))),
+            ("ok()", new MethodCallExpression(new MethodCall(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(SourceSpan.Default))), []))),
             // postfix unary operator
             ("a?", new UnaryOperatorExpression(new UnaryOperator(
                 UnaryOperatorType.FallOut,
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                 Token.QuestionMark(SourceSpan.Default)))),
             ("a??",
                 new UnaryOperatorExpression(new UnaryOperator(
                     UnaryOperatorType.FallOut,
                     new UnaryOperatorExpression(new UnaryOperator(
                         UnaryOperatorType.FallOut,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         Token.QuestionMark(SourceSpan.Default))),
                     Token.QuestionMark(SourceSpan.Default)))
             ),
             ("return 1", new MethodReturnExpression(
-                new MethodReturn(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), []))))),
+                new MethodReturn(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default)))))),
             ("return", new MethodReturnExpression(new MethodReturn(null))),
             // binary operator expressions
             ("a < 5", new BinaryOperatorExpression(new BinaryOperator(
                 BinaryOperatorType.LessThan,
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(5, SourceSpan.Default), [])),
+                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(5, SourceSpan.Default))),
                 Token.LeftAngleBracket(SourceSpan.Default)))),
             ("\"thing\" > true", new BinaryOperatorExpression(new BinaryOperator(
                 BinaryOperatorType.GreaterThan,
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("thing", SourceSpan.Default), [])),
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default), [])),
+                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("thing", SourceSpan.Default))),
+                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default))),
                 Token.RightAngleBracket(SourceSpan.Default)))),
             ("a + b", new BinaryOperatorExpression(new BinaryOperator(
                 BinaryOperatorType.Plus,
@@ -938,13 +939,13 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 Token.Identifier("a", SourceSpan.Default),
                 new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                 null,
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default), []))))),
+                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default)))))),
             ("a = b", new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment, VariableAccessor("a"), VariableAccessor("b"), Token.Equals(SourceSpan.Default)))),
             ("var mut a: int = 2", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                 new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default), []))))),
+                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default)))))),
             ("var a: bool = b", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 null,
@@ -974,32 +975,32 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 Token.Identifier("a", SourceSpan.Default),
                 null,
                 null,
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), []))))),
+                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default)))))),
             ("var a = true", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 null,
                 null,
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default), []))))),
+                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default)))))),
             ("var a = \"thing\"", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 null,
                 null,
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("thing", SourceSpan.Default), []))))),
+                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("thing", SourceSpan.Default)))))),
             ("{}", new BlockExpression(new Block([], []))),
             ("{var a = 1;}", new BlockExpression(new Block([
-                new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), [])))),
+                new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default))))),
                 ], []))),
             // tail expression
             ("{var a = 1}", new BlockExpression(new Block(
                 [
-                new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), []))))], []))),
+                new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default)))))], []))),
             // tail expression
             ("{var a = 1;var b = 2}", new BlockExpression(new Block(
-                [new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), [])))),
-                new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("b", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default), []))))], []))),
+                [new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default))))),
+                new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("b", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default)))))], []))),
             ("{var a = 1; var b = 2;}", new BlockExpression(new Block([
-                new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), [])))),
-                new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("b", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default), [])))),
+                new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default))))),
+                new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("b", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default))))),
                 ], []))),
             ("if (a) var c = 2;", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
@@ -1007,7 +1008,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     Token.Identifier("c", SourceSpan.Default),
                     null,
                     null,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default), [])))), [], null))),
+                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default))))), [], null))),
             ("if (a > b) {var c = \"value\";}", new IfExpressionExpression(new IfExpression(
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.GreaterThan,
@@ -1019,7 +1020,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.Identifier("c", SourceSpan.Default),
                         null,
                         null,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("value", SourceSpan.Default), []))))
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("value", SourceSpan.Default)))))
                 ], [])), [], null))),
             ("if (a) {} else {var b = 2;}", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
@@ -1030,7 +1031,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.Identifier("b", SourceSpan.Default),
                         null,
                         null,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default), []))))
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default)))))
                 ], []))))),
             ("if (a) {} else if (b) {}", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
@@ -1066,62 +1067,74 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 VariableAccessor("a"),
                 new BlockExpression(new Block([new IfExpressionExpression(new IfExpression(
                     VariableAccessor("b"),
-                    new BlockExpression(new Block([new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), []))], [])),
+                    new BlockExpression(new Block([new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default)))], [])),
                     [],
-                    new BlockExpression(new Block([new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default), []))], []))))], [])),
+                    new BlockExpression(new Block([new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default)))], []))))], [])),
                 [],
-                new BlockExpression(new Block([new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, SourceSpan.Default), []))], []))))),
+                new BlockExpression(new Block([new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, SourceSpan.Default)))], []))))),
             ("if (a) if (b) 1 else 2 else 3", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
                 new IfExpressionExpression(new IfExpression(
                     VariableAccessor("b"),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), [])),
+                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default))),
                     [],
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default), [])))),
+                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default))))),
                 [],
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, SourceSpan.Default), []))))),
+                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(3, SourceSpan.Default)))))),
             ("var a = if (b) 1 else 2;", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 null,
                 null,
                 new IfExpressionExpression(new IfExpression(
                     VariableAccessor("b"),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), [])),
+                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default))),
                     [],
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default), []))))))),
+                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default)))))))),
             ("var a = if (b) {1} else {2};", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 null,
                 null,
                 new IfExpressionExpression(new IfExpression(
                     VariableAccessor("b"),
-                    new BlockExpression(new Block([new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), []))], [])),
+                    new BlockExpression(new Block([new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default)))], [])),
                     [],
-                    new BlockExpression(new Block([new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default), []))], []))))))),
+                    new BlockExpression(new Block([new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default)))], []))))))),
             ("a()", new MethodCallExpression(new MethodCall(VariableAccessor("a"), []))),
+            ("a.b::<int>()", new MethodCallExpression(new MethodCall(
+                new GenericInstantiationExpression(new GenericInstantiation(
+                    new MemberAccessExpression(new MemberAccess(
+                        new ValueAccessorExpression(new ValueAccessor(
+                            ValueAccessType.Variable,
+                            Token.Identifier("a", SourceSpan.Default))),
+                        Token.Identifier("b", SourceSpan.Default)
+                        )),
+                    []
+                )),
+                []
+            ))),
             ("a::<string>()", new MethodCallExpression(new MethodCall(
-                new ValueAccessorExpression(new ValueAccessor(
-                    ValueAccessType.Variable,
-                    Token.Identifier("a", SourceSpan.Default),
-                    [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])])),
+                new GenericInstantiationExpression(new GenericInstantiation(
+                    new ValueAccessorExpression(new ValueAccessor(
+                        ValueAccessType.Variable,
+                        Token.Identifier("a", SourceSpan.Default))), [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])])),
                 []))),
             ("a::<string, int>()", new MethodCallExpression(new MethodCall(
-                new ValueAccessorExpression(new ValueAccessor(
+                new GenericInstantiationExpression(new GenericInstantiation(new ValueAccessorExpression(new ValueAccessor(
                     ValueAccessType.Variable,
-                    Token.Identifier("a", SourceSpan.Default),
-                    [
+                    Token.Identifier("a", SourceSpan.Default)
+                    )), [
                         new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
                         new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
                     ])), []))),
             ("a::<string, int, result::<int>>()", new MethodCallExpression(new MethodCall(
-                new ValueAccessorExpression(new ValueAccessor(
+                new GenericInstantiationExpression(new GenericInstantiation(new ValueAccessorExpression(new ValueAccessor(
                     ValueAccessType.Variable,
-                    Token.Identifier("a", SourceSpan.Default),
-                    [
-                        new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
-                        new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
-                        new TypeIdentifier(Token.Result(SourceSpan.Default), [new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [])]),
-                    ])),
+                    Token.Identifier("a", SourceSpan.Default)
+                    )), [
+                                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
+                                                new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
+                                                new TypeIdentifier(Token.Result(SourceSpan.Default), [new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [])]),
+                                            ])),
                 []))),
             ("a(b)", new MethodCallExpression(new MethodCall(VariableAccessor("a"), [
             VariableAccessor("b")]))),
@@ -1185,10 +1198,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.GreaterThan,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.GreaterThan,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.RightAngleBracket(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.RightAngleBracket(SourceSpan.Default)))
             ),
             ( // less than
@@ -1197,21 +1210,21 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.LessThan,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.GreaterThan,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.RightAngleBracket(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.LeftAngleBracket(SourceSpan.Default)))
             ),
             ( // multiply
                 "a > b * c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.GreaterThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Multiply,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.Star(SourceSpan.Default))),
                         Token.RightAngleBracket(SourceSpan.Default)))
             ),
@@ -1219,11 +1232,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a > b / c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.GreaterThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Divide,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.ForwardSlash(SourceSpan.Default))),
                         Token.RightAngleBracket(SourceSpan.Default)))
             ),
@@ -1231,11 +1244,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a > b + c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.GreaterThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Plus,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.Plus(SourceSpan.Default))),
                         Token.RightAngleBracket(SourceSpan.Default)))
             ),
@@ -1243,11 +1256,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a > b - c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.GreaterThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Minus,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.Dash(SourceSpan.Default))),
                         Token.RightAngleBracket(SourceSpan.Default)))
             ),
@@ -1255,10 +1268,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a > b?",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.GreaterThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new UnaryOperatorExpression(new UnaryOperator(
                             UnaryOperatorType.FallOut,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.QuestionMark(SourceSpan.Default))),
                         Token.RightAngleBracket(SourceSpan.Default)))
             ),
@@ -1314,10 +1327,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.GreaterThan,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.LessThan,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.LeftAngleBracket(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.RightAngleBracket(SourceSpan.Default)))
             ),
             ( // less than
@@ -1326,21 +1339,21 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.LessThan,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.LessThan,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.LeftAngleBracket(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.LeftAngleBracket(SourceSpan.Default)))
             ),
             ( // multiply
                 "a < b * c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.LessThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Multiply,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.Star(SourceSpan.Default))),
                         Token.LeftAngleBracket(SourceSpan.Default)))
             ),
@@ -1348,11 +1361,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a < b / c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.LessThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Divide,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.ForwardSlash(SourceSpan.Default))),
                         Token.LeftAngleBracket(SourceSpan.Default)))
             ),
@@ -1360,11 +1373,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a < b + c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.LessThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Plus,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.Plus(SourceSpan.Default))),
                         Token.LeftAngleBracket(SourceSpan.Default)))
             ),
@@ -1372,11 +1385,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a < b - c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.LessThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Minus,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.Dash(SourceSpan.Default))),
                         Token.LeftAngleBracket(SourceSpan.Default)))
             ),
@@ -1384,10 +1397,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a < b?",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.LessThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new UnaryOperatorExpression(new UnaryOperator(
                             UnaryOperatorType.FallOut,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.QuestionMark(SourceSpan.Default))),
                         Token.LeftAngleBracket(SourceSpan.Default)))
             ),
@@ -1464,10 +1477,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.Multiply,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Multiply,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.Star(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.Star(SourceSpan.Default)))
             ),
             ( // divide
@@ -1476,10 +1489,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.Divide,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Multiply,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.Star(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.ForwardSlash(SourceSpan.Default)))
             ),
             ( // plus
@@ -1488,10 +1501,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.Plus,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Multiply,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.Star(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.Plus(SourceSpan.Default)))
             ),
             ( // minus
@@ -1500,10 +1513,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.Minus,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Multiply,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.Star(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.Dash(SourceSpan.Default)))
             ),
             ( // fallOut
@@ -1566,10 +1579,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.GreaterThan,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Divide,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.ForwardSlash(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.RightAngleBracket(SourceSpan.Default)))
             ),
             ( // less than
@@ -1578,10 +1591,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.LessThan,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Divide,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.ForwardSlash(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.LeftAngleBracket(SourceSpan.Default)))
             ),
             ( // multiply
@@ -1590,10 +1603,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.Multiply,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Divide,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.ForwardSlash(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.Star(SourceSpan.Default)))
             ),
             ( // divide
@@ -1602,10 +1615,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.Divide,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Divide,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.ForwardSlash(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.ForwardSlash(SourceSpan.Default)))
             ),
             ( // plus
@@ -1614,10 +1627,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.Plus,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Divide,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.ForwardSlash(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.Plus(SourceSpan.Default)))
             ),
             ( // minus
@@ -1626,20 +1639,20 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.Minus,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Divide,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.ForwardSlash(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.Dash(SourceSpan.Default)))
             ),
             ( // fallOut
                 "a / b?",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Divide,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new UnaryOperatorExpression(new UnaryOperator(
                             UnaryOperatorType.FallOut,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.QuestionMark(SourceSpan.Default))),
                         Token.ForwardSlash(SourceSpan.Default)))
             ),
@@ -1692,10 +1705,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.GreaterThan,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Plus,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.Plus(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.RightAngleBracket(SourceSpan.Default)))
             ),
             ( // less than
@@ -1704,21 +1717,21 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.LessThan,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Plus,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.Plus(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.LeftAngleBracket(SourceSpan.Default)))
             ),
             ( // multiply
                 "a + b * c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Plus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Multiply,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.Star(SourceSpan.Default))),
                         Token.Plus(SourceSpan.Default)))
             ),
@@ -1726,11 +1739,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a + b / c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Plus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Divide,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.ForwardSlash(SourceSpan.Default))),
                         Token.Plus(SourceSpan.Default)))
             ),
@@ -1740,10 +1753,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.Plus,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Plus,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.Plus(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.Plus(SourceSpan.Default)))
             ),
             ( // minus
@@ -1752,20 +1765,20 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.Minus,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Plus,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.Plus(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.Dash(SourceSpan.Default)))
             ),
             ( // fallOut
                 "a + b?",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Plus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new UnaryOperatorExpression(new UnaryOperator(
                             UnaryOperatorType.FallOut,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.QuestionMark(SourceSpan.Default))),
                         Token.Plus(SourceSpan.Default)))
             ),
@@ -1818,10 +1831,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.GreaterThan,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Minus,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.Dash(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.RightAngleBracket(SourceSpan.Default)))
             ),
             ( // less than
@@ -1830,21 +1843,21 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.LessThan,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Minus,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.Dash(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.LeftAngleBracket(SourceSpan.Default)))
             ),
             ( // multiply
                 "a - b * c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Minus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Multiply,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.Star(SourceSpan.Default))),
                         Token.Dash(SourceSpan.Default)))
             ),
@@ -1852,11 +1865,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a - b / c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Minus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Divide,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.ForwardSlash(SourceSpan.Default))),
                         Token.Dash(SourceSpan.Default)))
             ),
@@ -1866,10 +1879,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.Plus,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Minus,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.Dash(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.Plus(SourceSpan.Default)))
             ),
             ( // minus
@@ -1878,20 +1891,20 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         BinaryOperatorType.Minus,
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Minus,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.Dash(SourceSpan.Default))),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                         Token.Dash(SourceSpan.Default)))
             ),
             ( // fallOut
                 "a - b?",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Minus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new UnaryOperatorExpression(new UnaryOperator(
                             UnaryOperatorType.FallOut,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.QuestionMark(SourceSpan.Default))),
                         Token.Dash(SourceSpan.Default)))
             ),
@@ -2048,71 +2061,71 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ( // greater than
                 "a = b > c",
                     new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment, 
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.GreaterThan,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.RightAngleBracket(SourceSpan.Default))), Token.Equals(SourceSpan.Default)))
             ),
             ( // less than
                 "a = b < c",
                     new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment, 
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.LessThan,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.LeftAngleBracket(SourceSpan.Default)))
                         , Token.Equals(SourceSpan.Default)))
             ),
             ( // multiply
                 "a = b * c",
                     new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment, 
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Multiply,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.Star(SourceSpan.Default))), Token.Equals(SourceSpan.Default)))
             ),
             ( // divide
                 "a = b / c",
                     new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment, 
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Divide,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.ForwardSlash(SourceSpan.Default))), Token.Equals(SourceSpan.Default)))
             ),
             ( // plus
                 "a = b + c",
                     new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment, 
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Plus,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.Plus(SourceSpan.Default))), Token.Equals(SourceSpan.Default)))
             ),
             ( // minus
                 "a = b - c",
                     new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment, 
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Minus,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.Dash(SourceSpan.Default))), Token.Equals(SourceSpan.Default)))
             ),
             ( // fallOut
                 "a = b?",
                     new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment, 
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new UnaryOperatorExpression(new UnaryOperator(
                             UnaryOperatorType.FallOut,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.QuestionMark(SourceSpan.Default))), Token.Equals(SourceSpan.Default)))
             ),
             ( // value assignment
@@ -2157,11 +2170,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a == b > c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.EqualityCheck,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.GreaterThan,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.RightAngleBracket(SourceSpan.Default))),
                         Token.DoubleEquals(SourceSpan.Default)))
             ),
@@ -2169,11 +2182,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a == b < c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.EqualityCheck,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.LessThan,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.LeftAngleBracket(SourceSpan.Default))),
                         Token.DoubleEquals(SourceSpan.Default)))
             ),
@@ -2181,11 +2194,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a == b * c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.EqualityCheck,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Multiply,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.Star(SourceSpan.Default))),
                         Token.DoubleEquals(SourceSpan.Default)))
             ),
@@ -2193,11 +2206,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a == b / c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.EqualityCheck,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Divide,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.ForwardSlash(SourceSpan.Default))),
                             Token.DoubleEquals(SourceSpan.Default)))
             ),
@@ -2205,11 +2218,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a == b + c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.EqualityCheck,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Plus,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.Plus(SourceSpan.Default))),
                         Token.DoubleEquals(SourceSpan.Default)))
             ),
@@ -2217,11 +2230,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a == b - c",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.EqualityCheck,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new BinaryOperatorExpression(new BinaryOperator(
                             BinaryOperatorType.Minus,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("c", SourceSpan.Default))),
                             Token.Dash(SourceSpan.Default))),
                         Token.DoubleEquals(SourceSpan.Default)))
             ),
@@ -2229,10 +2242,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a == b?",
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.EqualityCheck,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default), [])),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default))),
                         new UnaryOperatorExpression(new UnaryOperator(
                             UnaryOperatorType.FallOut,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default), [])),
+                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("b", SourceSpan.Default))),
                             Token.QuestionMark(SourceSpan.Default))),
                         Token.DoubleEquals(SourceSpan.Default)))
             ),
@@ -2488,7 +2501,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     }
     
     private static ValueAccessorExpression VariableAccessor(string name) =>
-        new (new ValueAccessor(ValueAccessType.Variable, Token.Identifier(name, SourceSpan.Default), []));
+        new (new ValueAccessor(ValueAccessType.Variable, Token.Identifier(name, SourceSpan.Default)));
 
     private static LangFunction RemoveSourceSpan(LangFunction function)
     {
@@ -2552,8 +2565,16 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ObjectInitializerExpression objectInitializerExpression => new ObjectInitializerExpression(RemoveSourceSpan(objectInitializerExpression.ObjectInitializer)),
             MemberAccessExpression memberAccessExpression => new MemberAccessExpression(RemoveSourceSpan(memberAccessExpression.MemberAccess)),
             StaticMemberAccessExpression staticMemberAccessExpression => new StaticMemberAccessExpression(RemoveSourceSpan(staticMemberAccessExpression.StaticMemberAccess)),
+            GenericInstantiationExpression genericInstantiationExpression => new GenericInstantiationExpression(RemoveSourceSpan(genericInstantiationExpression.GenericInstantiation)),
             _ => throw new NotImplementedException()
         };
+    }
+
+    private static GenericInstantiation RemoveSourceSpan(GenericInstantiation genericInstantiation)
+    {
+        return new GenericInstantiation(
+            RemoveSourceSpan(genericInstantiation.Value),
+            [..genericInstantiation.GenericArguments.Select(RemoveSourceSpan)!]);
     }
 
     private static MemberAccess RemoveSourceSpan(MemberAccess memberAccess)
@@ -2640,7 +2661,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
 
     private static ValueAccessor RemoveSourceSpan(ValueAccessor valueAccessor)
     {
-        return valueAccessor with { Token = RemoveSourceSpan(valueAccessor.Token), TypeArguments = [..valueAccessor.TypeArguments.Select(RemoveSourceSpan)!]};
+        return valueAccessor with { Token = RemoveSourceSpan(valueAccessor.Token)};
     }
 
     private static Token RemoveSourceSpan(Token token)
