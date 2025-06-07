@@ -43,19 +43,19 @@ public static class Parser
         var fields = new List<ClassField>();
         var classes = new List<ProgramClass>();
                 
-        while (tokens.TryPeek(out var peeked))
+        while (TryPeek(tokens, out var peeked))
         {
             if (peeked.Type == closingToken)
             {
                 // pop the peeked closing token off
-                tokens.MoveNext();
+                MoveNext(tokens);
                 foundClosingToken = true;
                 break;
             }
 
             if (IsMember(peeked.Type))
             {
-                tokens.MoveNext();
+                MoveNext(tokens);
                 var (function, @class, field) = GetMember(tokens);
                 if (function is not null)
                 {
@@ -69,7 +69,7 @@ public static class Parser
                 {
                     fields.Add(field);
 
-                    if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Semicolon)
+                    if (!MoveNext(tokens) || tokens.Current.Type != TokenType.Semicolon)
                     {
                         throw new InvalidOperationException("Expected ;");
                     }
@@ -89,7 +89,7 @@ public static class Parser
                 throw new InvalidOperationException("Tail expression must be at the end of a block");
             }
 
-            if (!tokens.TryPeek(out peeked) || peeked.Type != TokenType.Semicolon)
+            if (!TryPeek(tokens, out peeked) || peeked.Type != TokenType.Semicolon)
             {
                 if (expression.ExpressionType == ExpressionType.MethodReturn)
                 {
@@ -101,7 +101,7 @@ public static class Parser
             else
             {
                 // drop semicolon
-                tokens.MoveNext();
+                MoveNext(tokens);
                 if (!IsValidStatement(expression))
                 {
                     throw new InvalidOperationException($"{expression.ExpressionType} is not a valid statement");
@@ -133,7 +133,7 @@ public static class Parser
         if (tokens.Current.Type == TokenType.Pub)
         {
             accessModifier = new AccessModifier(tokens.Current);
-            if (!tokens.MoveNext())
+            if (!MoveNext(tokens))
             {
                 throw new InvalidOperationException("Expected field, mut, static, fn or class");
             }
@@ -142,7 +142,7 @@ public static class Parser
         if (tokens.Current.Type == TokenType.Static)
         {
             staticModifier = new StaticModifier(tokens.Current);
-            if (!tokens.MoveNext())
+            if (!MoveNext(tokens))
             {
                 throw new InvalidOperationException("Expected field, fn or class");
             }
@@ -151,7 +151,7 @@ public static class Parser
         if (tokens.Current.Type == TokenType.Mut)
         {
             mutabilityModifier = new MutabilityModifier(tokens.Current);
-            if (!tokens.MoveNext())
+            if (!MoveNext(tokens))
             {
                 throw new InvalidOperationException("Expected field, fn, static or class");
             }
@@ -198,17 +198,17 @@ public static class Parser
     private static ClassField GetField(AccessModifier? accessModifier, StaticModifier? staticModifier, MutabilityModifier? mutabilityModifier, PeekableEnumerator<Token> tokens)
     {
         // pub mut field MyField: string;
-        if (!tokens.MoveNext() || tokens.Current is not StringToken { Type: TokenType.Identifier } name)
+        if (!MoveNext(tokens) || tokens.Current is not StringToken { Type: TokenType.Identifier } name)
         {
             throw new InvalidOperationException("Expected field name");
         }
 
-        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Colon)
+        if (!MoveNext(tokens) || tokens.Current.Type != TokenType.Colon)
         {
             throw new InvalidOperationException("Expected :");
         }
 
-        if (!tokens.MoveNext())
+        if (!MoveNext(tokens))
         {
             throw new InvalidOperationException("Expected field type");
         }
@@ -217,9 +217,9 @@ public static class Parser
 
         IExpression? valueExpression = null;
 
-        if (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.Equals)
+        if (TryPeek(tokens, out var peeked) && peeked.Type == TokenType.Equals)
         {
-            tokens.MoveNext();
+            MoveNext(tokens);
 
             valueExpression = PopExpression(tokens)
                 ?? throw new InvalidOperationException("Expected field initailizer expression");
@@ -230,12 +230,12 @@ public static class Parser
 
     private static ProgramClass GetClassDefinition(AccessModifier? accessModifier, PeekableEnumerator<Token> tokens)
     {
-        if (!tokens.MoveNext() || tokens.Current is not StringToken { Type: TokenType.Identifier } name)
+        if (!MoveNext(tokens) || tokens.Current is not StringToken { Type: TokenType.Identifier } name)
         {
             throw new InvalidOperationException("Expected class name");
         }
 
-        if (!tokens.MoveNext())
+        if (!MoveNext(tokens))
         {
             throw new InvalidOperationException("Expected or <");
         }
@@ -246,7 +246,7 @@ public static class Parser
         {
             while (true)
             {
-                if (!tokens.MoveNext())
+                if (!MoveNext(tokens))
                 {
                     throw new InvalidOperationException("Expected Type Argument");
                 }
@@ -258,7 +258,7 @@ public static class Parser
                         throw new InvalidOperationException("Expected type argument");
                     }
 
-                    if (!tokens.MoveNext())
+                    if (!MoveNext(tokens))
                     {
                         throw new InvalidOperationException("Expected {");
                     }
@@ -272,7 +272,7 @@ public static class Parser
                         throw new InvalidOperationException("Expected ,");
                     }
 
-                    if (!tokens.MoveNext())
+                    if (!MoveNext(tokens))
                     {
                         throw new InvalidOperationException("Expected type argument");
                     }
@@ -285,7 +285,7 @@ public static class Parser
                         throw new InvalidOperationException("Expected type argument");
                     }
 
-                    if (!tokens.MoveNext())
+                    if (!MoveNext(tokens))
                     {
                         throw new InvalidOperationException("Expected {");
                     }
@@ -319,14 +319,51 @@ public static class Parser
         return new ProgramClass(accessModifier, name, typeArguments, functions, fields);
     }
 
+    private static bool TryPeek(PeekableEnumerator<Token> tokens, [NotNullWhen(true)] out Token? foundToken)
+    {
+        if (!tokens.TryPeek(out foundToken))
+        {
+            return false;
+        }
+
+        var couldPeek = true;
+        while (couldPeek && foundToken!.Type is TokenType.MultiLineComment or TokenType.SingleLineComment)
+        {
+            // drop the comment and try again
+            tokens.MoveNext();
+            
+            couldPeek = tokens.TryPeek(out foundToken);
+        }
+
+        return couldPeek;
+    }
+
+    private static bool MoveNext(PeekableEnumerator<Token> tokens)
+    {
+        if (!tokens.MoveNext())
+        {
+            return false;
+        }
+
+        var hasNext = true;
+        
+        while (hasNext && tokens.Current.Type is TokenType.MultiLineComment or TokenType.SingleLineComment)
+        {
+            // drop the comment and try again
+            hasNext = tokens.MoveNext();
+        }
+
+        return hasNext;
+    }
+    
     private static LangFunction GetFunctionDeclaration(AccessModifier? accessModifier, StaticModifier? staticModifier, PeekableEnumerator<Token> tokens)
     {
-        if (!tokens.MoveNext() || tokens.Current is not StringToken {Type: TokenType.Identifier} nameToken)
+        if (!MoveNext(tokens) || tokens.Current is not StringToken {Type: TokenType.Identifier} nameToken)
         {
             throw new InvalidOperationException("Expected function name");
         }
 
-        if (!tokens.MoveNext())
+        if (!MoveNext(tokens))
         {
             throw new InvalidOperationException("Expected ( or <");
         }
@@ -337,7 +374,7 @@ public static class Parser
         {
             while (true)
             {
-                if (!tokens.MoveNext())
+                if (!MoveNext(tokens))
                 {
                     throw new InvalidOperationException("Expected Type Argument");
                 }
@@ -349,7 +386,7 @@ public static class Parser
                         throw new InvalidOperationException("Expected type argument");
                     }
 
-                    if (!tokens.MoveNext())
+                    if (!MoveNext(tokens))
                     {
                         throw new InvalidOperationException("Expected (");
                     }
@@ -363,7 +400,7 @@ public static class Parser
                         throw new InvalidOperationException("Expected ,");
                     }
 
-                    if (!tokens.MoveNext())
+                    if (!MoveNext(tokens))
                     {
                         throw new InvalidOperationException("Expected type argument");
                     }
@@ -376,7 +413,7 @@ public static class Parser
                         throw new InvalidOperationException("Expected type argument");
                     }
 
-                    if (!tokens.MoveNext())
+                    if (!MoveNext(tokens))
                     {
                         throw new InvalidOperationException("Expected (");
                     }
@@ -401,7 +438,7 @@ public static class Parser
 
         while (true)
         {
-            if (!tokens.MoveNext())
+            if (!MoveNext(tokens))
             {
                 throw new InvalidOperationException("Expected ) or parameter type");
             }
@@ -417,7 +454,7 @@ public static class Parser
                 {
                     throw new InvalidOperationException("Expected ,");
                 }
-                if (!tokens.MoveNext())
+                if (!MoveNext(tokens))
                 {
                     throw new InvalidOperationException("Expected parameter type");
                 }
@@ -433,12 +470,12 @@ public static class Parser
                 throw new InvalidOperationException("Expected parameter name");
             }
 
-            if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Colon)
+            if (!MoveNext(tokens) || tokens.Current.Type != TokenType.Colon)
             {
                 throw new InvalidOperationException("Expected :");
             }
 
-            if (!tokens.MoveNext())
+            if (!MoveNext(tokens))
             {
                 throw new InvalidOperationException("Expected parameter type");
             }
@@ -448,7 +485,7 @@ public static class Parser
             parameterList.Add(new FunctionParameter(parameterType, parameterName));
         }
 
-        if (!tokens.MoveNext() )
+        if (!MoveNext(tokens) )
         {
             throw new InvalidOperationException("Expected { or :");
         }
@@ -457,14 +494,14 @@ public static class Parser
 
         if (tokens.Current.Type == TokenType.Colon)
         {
-            if (!tokens.MoveNext())
+            if (!MoveNext(tokens))
             {
                 throw new InvalidOperationException("Expected return type");
             }
 
             returnType = GetTypeIdentifier(tokens);
 
-            if (!tokens.MoveNext())
+            if (!MoveNext(tokens))
             {
                 throw new InvalidOperationException("Expected {");
             }
@@ -500,16 +537,16 @@ public static class Parser
         var typeIdentifier = tokens.Current;
 
         var typeArguments = new List<TypeIdentifier>();
-        if (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.Turbofish)
+        if (TryPeek(tokens, out var peeked) && peeked.Type == TokenType.Turbofish)
         {
-            if (!tokens.MoveNext() && tokens.Current.Type != TokenType.LeftAngleBracket)
+            if (!MoveNext(tokens) && tokens.Current.Type != TokenType.LeftAngleBracket)
             {
                 throw new InvalidOperationException("Expected <");
             }
 
             while (true)
             {
-                if (!tokens.MoveNext())
+                if (!MoveNext(tokens))
                 {
                     throw new InvalidOperationException("Expected type argument");
                 }
@@ -525,7 +562,7 @@ public static class Parser
                     {
                         throw new InvalidOperationException("Expected ,");
                     }
-                    if (!tokens.MoveNext())
+                    if (!MoveNext(tokens))
                     {
                         throw new InvalidOperationException("Expected type argument");
                     }
@@ -589,7 +626,7 @@ public static class Parser
         var typeArguments = new List<TypeIdentifier>();
         while (true)
         {
-            if (!tokens.MoveNext())
+            if (!MoveNext(tokens))
             {
                 throw new InvalidOperationException("Expected type argument");
             }
@@ -606,7 +643,7 @@ public static class Parser
                     throw new InvalidOperationException("Expected ,");
                 }
     
-                if (!tokens.MoveNext())
+                if (!MoveNext(tokens))
                 {
                     throw new InvalidOperationException("Expected type argument");
                 }
@@ -653,7 +690,7 @@ public static class Parser
 
         var type = new TypeIdentifier(token, typeArguments ?? []);
 
-        if (!tokens.MoveNext() || tokens.Current is not StringToken { Type: TokenType.Identifier } memberName)
+        if (!MoveNext(tokens) || tokens.Current is not StringToken { Type: TokenType.Identifier } memberName)
         {
             throw new InvalidOperationException($"Unexpected token {tokens.Current}");
         }
@@ -663,7 +700,7 @@ public static class Parser
 
     private static MemberAccessExpression GetMemberAccess(PeekableEnumerator<Token> tokens, IExpression previousExpression)
     {
-        if (!tokens.MoveNext() || tokens.Current is not StringToken { Type: TokenType.Identifier } memberName)
+        if (!MoveNext(tokens) || tokens.Current is not StringToken { Type: TokenType.Identifier } memberName)
         {
             throw new InvalidOperationException("Expected member name");
         }
@@ -673,14 +710,14 @@ public static class Parser
 
     private static ObjectInitializerExpression GetObjectInitializer(PeekableEnumerator<Token> tokens)
     {
-        if (!tokens.MoveNext())
+        if (!MoveNext(tokens))
         {
             throw new InvalidOperationException("Expected type");
         }
 
         var type = GetTypeIdentifier(tokens);
 
-        if (!tokens.MoveNext() || tokens.Current.Type != TokenType.LeftBrace)
+        if (!MoveNext(tokens) || tokens.Current.Type != TokenType.LeftBrace)
         {
             throw new InvalidOperationException("Expected {");
         }
@@ -689,7 +726,7 @@ public static class Parser
 
         while (true)
         {
-            if (!tokens.MoveNext())
+            if (!MoveNext(tokens))
             {
                 throw new InvalidOperationException("Expected field name");
             }
@@ -707,7 +744,7 @@ public static class Parser
                     throw new InvalidOperationException("Expected ,");
                 }
 
-                if (!tokens.MoveNext())
+                if (!MoveNext(tokens))
                 {
                     throw new InvalidOperationException("Expected field name");
                 }
@@ -723,7 +760,7 @@ public static class Parser
                 throw new InvalidOperationException("Expected field name");
             }
 
-            if (!tokens.MoveNext() || tokens.Current.Type != TokenType.Equals)
+            if (!MoveNext(tokens) || tokens.Current.Type != TokenType.Equals)
             {
                 throw new InvalidOperationException("Expected =");
             }
@@ -754,13 +791,13 @@ public static class Parser
     private static IExpression? PopExpression(PeekableEnumerator<Token> tokens, uint? currentBindingStrength = null)
     {
         IExpression? previousExpression = null;
-        while (tokens.TryPeek(out var peeked) 
+        while (TryPeek(tokens, out var peeked) 
                && peeked.Type != TokenType.Semicolon)
         {
-            tokens.MoveNext();
+            MoveNext(tokens);
             previousExpression = MatchTokenToExpression(previousExpression, tokens);
             
-            if (!tokens.TryPeek(out peeked) 
+            if (!TryPeek(tokens, out peeked) 
                 || !TryGetBindingStrength(peeked, out var bindingStrength)
                 || bindingStrength <= currentBindingStrength)
             {
@@ -774,11 +811,11 @@ public static class Parser
     private static MethodCallExpression GetMethodCall(PeekableEnumerator<Token> tokens, IExpression method)
     {
         var parameterList = new List<IExpression>();
-        while (tokens.TryPeek(out var peeked))
+        while (TryPeek(tokens, out var peeked))
         {
             if (peeked.Type == TokenType.RightParenthesis)
             {
-                tokens.MoveNext();
+                MoveNext(tokens);
                 return new MethodCallExpression(new MethodCall(method, parameterList));
             }
 
@@ -790,12 +827,12 @@ public static class Parser
                 }
 
                 // pop comma off
-                tokens.MoveNext();
+                MoveNext(tokens);
             }
 
-            if (tokens.TryPeek(out peeked) && peeked.Type == TokenType.RightParenthesis)
+            if (TryPeek(tokens, out peeked) && peeked.Type == TokenType.RightParenthesis)
             {
-                tokens.MoveNext();
+                MoveNext(tokens);
                 return new MethodCallExpression(new MethodCall(method, parameterList));
             }
 
@@ -811,7 +848,7 @@ public static class Parser
 
     private static IfExpressionExpression GetIfExpression(PeekableEnumerator<Token> tokens)
     {
-        if (!tokens.MoveNext())
+        if (!MoveNext(tokens))
         {
             throw new InvalidOperationException("Expected left parenthesis, found nothing");
         }
@@ -824,7 +861,7 @@ public static class Parser
         var checkExpression = PopExpression(tokens)
             ?? throw new InvalidOperationException("Expected check expression, found no expression");
 
-        if (!tokens.MoveNext())
+        if (!MoveNext(tokens))
         {
             throw new InvalidOperationException("Expected right parenthesis, found nothing");
         }
@@ -840,16 +877,16 @@ public static class Parser
         var elseIfs = new List<ElseIf>();
         IExpression? elseBody = null;
 
-        while (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.Else)
+        while (TryPeek(tokens, out var peeked) && peeked.Type == TokenType.Else)
         {
             // pop the "else" token off
-            tokens.MoveNext();
+            MoveNext(tokens);
 
-            if (tokens.TryPeek(out var nextPeeked) && nextPeeked.Type == TokenType.If)
+            if (TryPeek(tokens, out var nextPeeked) && nextPeeked.Type == TokenType.If)
             {
                 // pop the "if" token off
-                tokens.MoveNext();
-                if (!tokens.MoveNext() || tokens.Current.Type != TokenType.LeftParenthesis)
+                MoveNext(tokens);
+                if (!MoveNext(tokens) || tokens.Current.Type != TokenType.LeftParenthesis)
                 {
                     throw new InvalidOperationException("Expected left Parenthesis");
                 }
@@ -857,7 +894,7 @@ public static class Parser
                 var elseIfCheckExpression = PopExpression(tokens)
                                             ?? throw new InvalidOperationException("Expected check expression");
 
-                if (!tokens.MoveNext() || tokens.Current.Type != TokenType.RightParenthesis)
+                if (!MoveNext(tokens) || tokens.Current.Type != TokenType.RightParenthesis)
                 {
                     throw new InvalidOperationException("Expected right Parenthesis");
                 }
@@ -900,7 +937,7 @@ public static class Parser
 
     private static VariableDeclarationExpression GetVariableDeclaration(PeekableEnumerator<Token> tokens)
     {
-        if (!tokens.MoveNext())
+        if (!MoveNext(tokens))
         {
             throw new InvalidOperationException("Expected variable identifier, got nothing");
         }
@@ -911,7 +948,7 @@ public static class Parser
         {
             mutabilityModifier = new MutabilityModifier(tokens.Current);
 
-            if (!tokens.MoveNext())
+            if (!MoveNext(tokens))
             {
                 throw new InvalidOperationException("Expected variable identifier");
             }
@@ -922,7 +959,7 @@ public static class Parser
             throw new InvalidOperationException($"Expected variable identifier, got {tokens.Current}");
         }
 
-        if (!tokens.MoveNext())
+        if (!MoveNext(tokens))
         {
             throw new InvalidOperationException("Expected = or ; token, got nothing");
         }
@@ -932,16 +969,16 @@ public static class Parser
 
         if (tokens.Current.Type == TokenType.Colon)
         {
-            if (!tokens.MoveNext())
+            if (!MoveNext(tokens))
             {
                 throw new InvalidOperationException("Expected type");
             }
 
             type = GetTypeIdentifier(tokens);
 
-            if (tokens.TryPeek(out var peeked) && peeked.Type == TokenType.Equals)
+            if (TryPeek(tokens, out var peeked) && peeked.Type == TokenType.Equals)
             {
-                tokens.MoveNext();
+                MoveNext(tokens);
                 valueExpression = PopExpression(tokens)
                             ?? throw new InvalidOperationException("Expected value expression, got nothing");
             }

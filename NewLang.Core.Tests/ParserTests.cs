@@ -52,9 +52,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
         string source,
         IEnumerable<Token> tokens,
-        IExpression expectedProgram)
+        LangProgram expectedProgram)
     {
-        var result = Parser.PopExpression(tokens);
+        var result = Parser.Parse(tokens);
         result.Should().NotBeNull();
         
         // clear out the source spans, we don't actually care about them
@@ -96,6 +96,16 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         return new (string Source, LangProgram ExpectedProgram)[]
         {
             ("fn MyFn(a: int,){}", new LangProgram([], [
+                new LangFunction(
+                    null,
+                    null,
+                    Token.Identifier("MyFn", SourceSpan.Default),
+                    [],
+                    [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), Token.Identifier("a", SourceSpan.Default))],
+                    null,
+                    new Block([], []))
+            ], [])),
+            ("fn /* some comment */ MyFn(/*some comment*/a: int,)/**/{//}\r\n}", new LangProgram([], [
                 new LangFunction(
                     null,
                     null,
@@ -868,15 +878,19 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
 
     public static IEnumerable<object[]> SingleTestCase()
     {
-        return new (string Source, IExpression ExpectedProgram)[]
+        return new (string Source, LangProgram ExpectedProgram)[]
         {
-            ("a::<string>()", new MethodCallExpression(new MethodCall(
-                new GenericInstantiationExpression(new GenericInstantiation(
-                    new ValueAccessorExpression(new ValueAccessor(
-                                        ValueAccessType.Variable,
-                                        Token.Identifier("a", SourceSpan.Default))),
-                    [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])]
-                    )), [])))
+            ("fn /* some comment */ MyFn(/*some comment*/a: int,)/**/{//}\r\n}", new LangProgram([], [
+                new LangFunction(
+                    null,
+                    null,
+                    Token.Identifier("MyFn", SourceSpan.Default),
+                    [],
+                    [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), Token.Identifier("a", SourceSpan.Default))],
+                    null,
+                    new Block([], []))
+            ], [])),
+
         }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedProgram });
     }
 

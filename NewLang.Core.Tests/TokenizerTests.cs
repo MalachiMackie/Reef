@@ -107,6 +107,14 @@ public class TokenizerTests
             ["static", new[] { Token.Static(new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],
             ["class", new[] { Token.Class(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["// some comment here", new [] { Token.SingleLineComment(" some comment here", new SourceSpan(new SourcePosition(0, 0, 0), 20)) }],
+            [
+                "// some comment here\r\nfn",
+                new []
+                {
+                    Token.SingleLineComment(" some comment here", new SourceSpan(new SourcePosition(0, 0, 0), 20)),
+                    Token.Fn(new SourceSpan(new SourcePosition(22, 1, 0), 2))
+                }
+            ],
             ["""
              /*
              multi line

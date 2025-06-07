@@ -293,6 +293,7 @@ public class Tokenizer
             TokenType.Dot when source is "." => Token.Dot(new SourceSpan(position, (ushort)source.Length)),
             TokenType.SingleLineComment when source.StartsWith("//") => Token.SingleLineComment(source[2..].ToString(), new SourceSpan(position, (ushort)source.Length)),
             TokenType.MultiLineComment when source.StartsWith("/*") && source.EndsWith("*/") => Token.MultiLineComment(source[2..^2].ToString(), new SourceSpan(position, (ushort)source.Length)),
+            TokenType.None => throw new UnreachableException(),
             _ => null
         };
 
@@ -300,6 +301,7 @@ public class Tokenizer
     }
 
     private static readonly SearchValues<char> ValidIdentifierTokens =
+        // ReSharper disable once StringLiteralTypo
         SearchValues.Create("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_");
 
     // maximum potential token types at the same time
@@ -485,8 +487,9 @@ public class Tokenizer
             TokenType.Plus => source is "+",
             TokenType.Dash => source is "-",
             TokenType.Dot => source is ".",
-            TokenType.SingleLineComment => source.StartsWith("//"),
+            TokenType.SingleLineComment => source.StartsWith("//") && !source.EndsWith('\r'),
             TokenType.MultiLineComment => source.StartsWith("/*") && (source.EndsWith("*/") || !source.Contains("*/", StringComparison.Ordinal)),
+            TokenType.None => throw new UnreachableException(),
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
 
