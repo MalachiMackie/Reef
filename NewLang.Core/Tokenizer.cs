@@ -24,22 +24,34 @@ public class Tokenizer
         }
 
         var endIndex = sourceStr.Length - 1;
-        var nextToken = EatToken(sourceStr.AsSpan()[..(endIndex + 1)], new SourcePosition(0, 0, 0));
+        var chars = sourceStr.AsSpan()[..(endIndex + 1)];
+        var nextToken = EatToken(chars, new SourcePosition(0, 0, 0));
         while (nextToken is not null)
         {
             var token = nextToken;
             yield return token;
 
-            var nextSource = sourceStr.AsSpan()[(int)(token.SourceSpan.Position.Start + token.SourceSpan.Length)..(endIndex + 1)];
+            var startIndex = (int)(token.SourceSpan.Position.Start + token.SourceSpan.Length);
+
+            var nextSource = sourceStr.AsSpan()[startIndex..(endIndex + 1)];
             if (nextSource.IsEmpty)
             {
                 break;
             }
+
+            var previousTokensChars = sourceStr.AsSpan()[(int)token.SourceSpan.Position.Start..(startIndex - 1)];
+
+            var lastNewLine = previousTokensChars.LastIndexOf('\n');
+            var newLinesInToken = lastNewLine == -1 ? 0 : previousTokensChars.Count('\n');
+
+            var newLinePosition = lastNewLine == -1
+                ? (ushort)(token.SourceSpan.Position.LinePosition + token.SourceSpan.Length)
+                : (ushort)(token.SourceSpan.Length - (lastNewLine + 1));
             
             nextToken = EatToken(nextSource, new SourcePosition(
-                (token.SourceSpan.Position.Start + token.SourceSpan.Length),
-                token.SourceSpan.Position.LineNumber,
-                (ushort)(token.SourceSpan.Position.LinePosition + token.SourceSpan.Length)));
+                token.SourceSpan.Position.Start + token.SourceSpan.Length,
+                (ushort)(token.SourceSpan.Position.LineNumber + newLinesInToken),
+                newLinePosition));
         }
     }
 
@@ -88,7 +100,7 @@ public class Tokenizer
                 if (trimmed.Length != part.Length)
                 {
                     var trimmedCharacters = part[..^trimmed.Length];
-                    GetNextPosition(startPosition, trimmedCharacters);
+                    SetNextPosition(startPosition, trimmedCharacters);
                 }
                 
                 // previously we had at least one potential token, now we have none. need to resolve to one.
@@ -120,12 +132,12 @@ public class Tokenizer
 
         var outerTrimmedChars = source[..^sourceTrimmed.Length];
 
-        GetNextPosition(startPosition, outerTrimmedChars);
+        SetNextPosition(startPosition, outerTrimmedChars);
         
         return ResolveToken(sourceTrimmed, potentialTokens, startPosition);
     }
 
-    private static void GetNextPosition(SourcePosition start, ReadOnlySpan<char> trimmedCharacters)
+    private static void SetNextPosition(SourcePosition start, ReadOnlySpan<char> trimmedCharacters)
     {
         var outerLinePosition = start.LinePosition;
         var outerNewLines = 0;
@@ -279,6 +291,8 @@ public class Tokenizer
             TokenType.Plus when source is "+" => Token.Plus(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Dash when source is "-" => Token.Dash(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Dot when source is "." => Token.Dot(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.SingleLineComment when source.StartsWith("//") => Token.SingleLineComment(source[2..].ToString(), new SourceSpan(position, (ushort)source.Length)),
+            TokenType.MultiLineComment when source.StartsWith("/*") && source.EndsWith("*/") => Token.MultiLineComment(source[2..^2].ToString(), new SourceSpan(position, (ushort)source.Length)),
             _ => null
         };
 
@@ -390,6 +404,8 @@ public class Tokenizer
                 break;
             case '/':
                 tokens[i++] = TokenType.ForwardSlash;
+                tokens[i++] = TokenType.SingleLineComment;
+                tokens[i++] = TokenType.MultiLineComment;
                 break;
             case '+':
                 tokens[i++] = TokenType.Plus;
@@ -469,6 +485,8 @@ public class Tokenizer
             TokenType.Plus => source is "+",
             TokenType.Dash => source is "-",
             TokenType.Dot => source is ".",
+            TokenType.SingleLineComment => source.StartsWith("//"),
+            TokenType.MultiLineComment => source.StartsWith("/*") && (source.EndsWith("*/") || !source.Contains("*/", StringComparison.Ordinal)),
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
 

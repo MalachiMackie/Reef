@@ -106,6 +106,41 @@ public class TokenizerTests
             ["pub", new[] { Token.Pub(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             ["static", new[] { Token.Static(new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],
             ["class", new[] { Token.Class(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
+            ["// some comment here", new [] { Token.SingleLineComment(" some comment here", new SourceSpan(new SourcePosition(0, 0, 0), 20)) }],
+            ["""
+             /*
+             multi line
+             comment
+             */
+             """, new [] { Token.MultiLineComment("\r\nmulti line\r\ncomment\r\n", new SourceSpan(new SourcePosition(0, 0, 0), 27)) }],
+            [
+                """
+                 /*
+                 multi line
+                 comment
+                 */ fn
+                 """, new []
+                {
+                    Token.MultiLineComment("\r\nmulti line\r\ncomment\r\n", new SourceSpan(new SourcePosition(0, 0, 0), 27)),
+                    Token.Fn(new SourceSpan(new SourcePosition(28, 3, 3), 2))
+                }
+            ],
+            [
+                """
+                fn
+                /*
+                some contents
+                here
+                */
+                fn
+                """,
+                new []
+                {
+                    Token.Fn(new SourceSpan(new SourcePosition(0, 0, 0), 2)),
+                    Token.MultiLineComment("\r\nsome contents\r\nhere\r\n", new SourceSpan(new SourcePosition(4, 1, 0), 27)),
+                    Token.Fn(new SourceSpan(new SourcePosition(33, 5, 0), 2))
+                }
+            ],
             ["field", new[] { Token.Field(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["fn", new[] { Token.Fn(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["int", new[] { Token.IntKeyword(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],

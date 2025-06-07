@@ -382,14 +382,43 @@ public class TypeCheckerTests
         pub class Class2 {
             pub field A: string;
         }
-
+        
+        // todo: unions
+        
+        /*
         pub union MyUnion {
             A,
-            B { field MyField: string; }
+            B { field MyField: string; },
+            
+            fn SomeMethod() {
+                var foo = switch (this) {
+                    A => "",
+                    B { MyField } => MyField
+                };
+                
+                var bar = switch (this) {
+                    A => 1,
+                    B => 2
+                }
+            }
         }
-
+        
+        fn AnotherMethod(param: MyUnion) {
+            if (param is MyUnion::A) {
+            }
+            else if (param is MyUnion::B { MyField }) {
+            }
+            
+            var a = switch (param) {
+                MyUnion::A => 1,
+                MyUnion::B { MyField } => 2,
+            };
+        }
+        
         var a = MyUnion::A;
-        var a = MyUnion::A{};
-        var a = MyUnion::B{ MyField = ""};
+        
+        c = new MyUnion::B{ MyField = ""};
+        
+        */
         """;
 }

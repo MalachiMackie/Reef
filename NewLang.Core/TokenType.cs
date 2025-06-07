@@ -43,5 +43,7 @@ public enum TokenType
     Turbofish,
     DoubleColon,
     New,
-    Static
+    Static,
+    SingleLineComment,
+    MultiLineComment,
 }

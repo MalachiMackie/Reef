@@ -12,6 +12,8 @@ public record StringToken : Token
         {
             TokenType.Identifier => StringValue,
             TokenType.StringLiteral => $"\"{StringValue}\"",
+            TokenType.SingleLineComment => $"//{StringValue}",
+            TokenType.MultiLineComment => $"/*{StringValue}*/",
             _ => throw new ArgumentOutOfRangeException()
         };
     }
@@ -289,5 +291,25 @@ public record Token
     public static Token New(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.New, SourceSpan = sourceSpan };
+    }
+
+    public static Token SingleLineComment(string contents, SourceSpan sourceSpan)
+    {
+        return new StringToken
+        {
+            SourceSpan = sourceSpan,
+            StringValue = contents,
+            Type = TokenType.SingleLineComment
+        };
+    }
+
+    public static Token MultiLineComment(string contents, SourceSpan sourceSpan)
+    {
+        return new StringToken
+        {
+            SourceSpan = sourceSpan,
+            StringValue = contents,
+            Type = TokenType.MultiLineComment
+        };
     }
 }
