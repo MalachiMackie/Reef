@@ -437,7 +437,8 @@ public class TypeChecker
         return new InstantiatedFunction
         {
             Signature = instantiatedFunction.Signature,
-            TypeArguments = genericParameters
+            TypeArguments = genericParameters,
+            OwnerTypeArguments = instantiatedFunction.OwnerTypeArguments
         };
     }
 
@@ -476,7 +477,8 @@ public class TypeChecker
         return new InstantiatedFunction()
         {
             Signature = functionSignature,
-            TypeArguments = []
+            TypeArguments = [],
+            OwnerTypeArguments = new Dictionary<string, ITypeReference>(ownerTypeArguments)
         };
     }
 
@@ -705,9 +707,13 @@ public class TypeChecker
                 {
                     expectedParameterType = functionGeneric;
                 }
+                else if (functionType.OwnerTypeArguments.TryGetValue(genericName, out var functionOwnerGeneric))
+                {
+                    expectedParameterType = functionOwnerGeneric;
+                }
                 else
                 {
-                    throw new NotImplementedException("Todo: keep track of class type arguments");
+                    throw new InvalidOperationException("Unexpected generic name");
                 }
             }
             
@@ -726,10 +732,12 @@ public class TypeChecker
             {
                 return returnTypeGeneric;
             }
-            else
+            if (functionType.OwnerTypeArguments.TryGetValue(returnTypeGenericName, out var returnTypeOwnerGeneric))
             {
-                throw new NotImplementedException("Todo: keep track of class generics");
+                return returnTypeOwnerGeneric;
             }
+
+            throw new InvalidOperationException($"Did not find generic type {returnTypeGenericName}");
         }
 
         return functionType.Signature.ReturnType;
@@ -783,7 +791,8 @@ public class TypeChecker
             return new InstantiatedFunction
             {
                 Signature = function,
-                TypeArguments = []
+                TypeArguments = [],
+                OwnerTypeArguments = []
             };
         }
         
@@ -972,6 +981,11 @@ public class TypeChecker
     {
         public required FunctionSignature Signature { get; init; }
         public required Dictionary<string, ITypeReference> TypeArguments { get; init; }
+        
+        /// <summary>
+        /// If the function is a member of a generic type (ie class), this holds the generic type arguments of that class
+        /// </summary>
+        public required Dictionary<string, ITypeReference> OwnerTypeArguments { get; init; }
     }
     
     private class InstantiatedClass : IEquatable<InstantiatedClass>, ITypeReference

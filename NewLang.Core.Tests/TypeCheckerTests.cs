@@ -23,31 +23,6 @@ public class TypeCheckerTests
         act.Should().Throw<InvalidOperationException>();
     }
 
-    [Fact]
-    public void Testing()
-    {
-        const string str =
-            """
-            class MyClass<T> {
-                fn MyFn(param: T): T {
-                    return param;
-                }
-            }
-            
-            var a = new MyClass::<string>{};
-            
-            var b = a.MyFn;
-            
-            var c = b("");
-            """;
-
-
-        var program = Parser.Parse(Tokenizer.Tokenize(str));
-
-        var act = () => TypeChecker.TypeCheck(program);
-        act.Should().NotThrow();
-    }
-
     public static TheoryData<string> SuccessfulExpressionTestCases() =>
         new()
         {
@@ -56,6 +31,19 @@ public class TypeCheckerTests
             "var b: string = \"somestring\"",
             "var a = 2; var b: int = a",
             "fn MyFn(): int { return 1; }",
+            """
+            fn MyFn<T>(param: T): T {return param;}
+            var a: string = MyFn::<string>("");
+            """,
+            """
+            class MyClass<T> {
+                fn MyFn<T2>(param1: T, param2: T2) {
+                }
+            }
+            
+            var a = new MyClass::<int>{};
+            a.MyFn::<string>(1, "");
+            """,
             """
             fn MyFn(){}
             MyFn();
@@ -186,6 +174,33 @@ public class TypeCheckerTests
     public static TheoryData<string> FailedExpressionTestCases() =>
         new()
         {
+            """
+            class MyClass<T> {
+                fn MyFn<T2>(param1: T, param2: T2) {
+                }
+            }
+            
+            var a = new MyClass::<int>{};
+            a.MyFn::<string>("", 1);
+            """,
+            """
+            class MyClass<T> {
+                fn MyFn<T2>(param1: T, param2: T2) {
+                }
+            }
+            
+            var a = new MyClass::<int>{};
+            a.MyFn::<string>("", "");
+            """,
+            """
+            class MyClass<T> {
+                fn MyFn<T2>(param1: T, param2: T2) {
+                }
+            }
+            
+            var a = new MyClass::<int>{};
+            a.MyFn::<string>(1, 1);
+            """,
             "var a: string = 2",
             "var a: int = \"somestring\"",
             "var b;",
