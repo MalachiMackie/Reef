@@ -278,6 +278,20 @@ public static class Parser
                     }
                 }
 
+                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                {
+                    if (typeArguments.Count == 0)
+                    {
+                        throw new InvalidOperationException("Expected type argument");
+                    }
+
+                    if (!tokens.MoveNext())
+                    {
+                        throw new InvalidOperationException("Expected {");
+                    }
+                    break;
+                }
+
                 if (tokens.Current is not StringToken { Type: TokenType.Identifier } typeArgument)
                 {
                     throw new InvalidOperationException("Expected type argument");
@@ -354,6 +368,20 @@ public static class Parser
                         throw new InvalidOperationException("Expected type argument");
                     }
                 }
+                
+                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                {
+                    if (typeArguments.Count == 0)
+                    {
+                        throw new InvalidOperationException("Expected type argument");
+                    }
+
+                    if (!tokens.MoveNext())
+                    {
+                        throw new InvalidOperationException("Expected (");
+                    }
+                    break;
+                }
 
                 if (tokens.Current is not StringToken { Type: TokenType.Identifier } typeArgument)
                 {
@@ -393,6 +421,11 @@ public static class Parser
                 {
                     throw new InvalidOperationException("Expected parameter type");
                 }
+            }
+
+            if (tokens.Current.Type == TokenType.RightParenthesis)
+            {
+                break;
             }
 
             if (tokens.Current is not StringToken { Type: TokenType.Identifier } parameterName)
@@ -483,7 +516,6 @@ public static class Parser
 
                 if (tokens.Current.Type == TokenType.RightAngleBracket)
                 {
-                    // allow empty type arguments, that's a type checking error
                     break;
                 }
 
@@ -497,6 +529,11 @@ public static class Parser
                     {
                         throw new InvalidOperationException("Expected type argument");
                     }
+                }
+
+                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                {
+                    break;
                 }
 
                 typeArguments.Add(GetTypeIdentifier(tokens));
@@ -559,7 +596,6 @@ public static class Parser
     
             if (tokens.Current.Type == TokenType.RightAngleBracket)
             {
-                // allow empty type arguments, that's a type checking error
                 break;
             }
     
@@ -574,6 +610,11 @@ public static class Parser
                 {
                     throw new InvalidOperationException("Expected type argument");
                 }
+            }
+
+            if (tokens.Current.Type == TokenType.RightAngleBracket)
+            {
+                break;
             }
     
             typeArguments.Add(GetTypeIdentifier(tokens));
@@ -672,6 +713,11 @@ public static class Parser
                 }
             }
 
+            if (tokens.Current.Type == TokenType.RightBrace)
+            {
+                break;
+            }
+
             if (tokens.Current is not StringToken { Type: TokenType.Identifier } fieldName)
             {
                 throw new InvalidOperationException("Expected field name");
@@ -745,6 +791,12 @@ public static class Parser
 
                 // pop comma off
                 tokens.MoveNext();
+            }
+
+            if (tokens.TryPeek(out peeked) && peeked.Type == TokenType.RightParenthesis)
+            {
+                tokens.MoveNext();
+                return new MethodCallExpression(new MethodCall(method, parameterList));
             }
 
             var nextExpression = PopExpression(tokens);

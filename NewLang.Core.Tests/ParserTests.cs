@@ -95,6 +95,30 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
         return new (string Source, LangProgram ExpectedProgram)[]
         {
+            ("fn MyFn(a: int,){}", new LangProgram([], [
+                new LangFunction(
+                    null,
+                    null,
+                    Token.Identifier("MyFn", SourceSpan.Default),
+                    [],
+                    [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), Token.Identifier("a", SourceSpan.Default))],
+                    null,
+                    new Block([], []))
+            ], [])),
+            ("class MyClass<T,> {}", new LangProgram([], [], [new ProgramClass(
+                null,
+                Token.Identifier("MyClass", SourceSpan.Default),
+                [Token.Identifier("T", SourceSpan.Default)],
+                [], [])])),
+            ("fn MyFn<T,>(){}", new LangProgram([], [new LangFunction(
+                null,
+                null,
+                Token.Identifier("MyFn", SourceSpan.Default),
+                [Token.Identifier("T", SourceSpan.Default)],
+                [],
+                null,
+                new Block([], [])
+                )], [])),
             ("var a = 1;var b = 2;", new LangProgram([
                 new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default))))),
                 new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("b", SourceSpan.Default), null, null, new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default))))),
@@ -774,11 +798,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             // body has tail expression, but else doesn't
             "a(",
             "a<string>()",
-            "a::<string,>()",
             "a::<,>()",
             "a::<string string>()",
             "a::<string()",
-            "a(a, )",
             "a(,)",
             "a(a b)",
             "a(a; b)",
@@ -799,7 +821,6 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             "fn MyFn::<string>(){}",
             "fn MyFn<>(){}",
             "fn MyFn<,>(){}",
-            "fn MyFn<A,>(){}",
             "fn MyFn<A B>(){}",
             "fn MyFn<string>(){}",
             "fn MyFunction() {",
@@ -812,9 +833,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             "fn MyFunction(a) {}",
             "fn MyFunction(a: result<int>) {}",
             "fn MyFunction(a: result::<,>) {}",
-            "fn MyFunction(a: result::<int,>) {}",
             "fn MyFunction(a: result::<int int>) {}",
-            "fn MyFunction(a: int, ) {}",
             "fn MyFunction(,) {}",
             "fn MyFunction(a: int b: int) {}",
             // no semicolon
@@ -822,7 +841,6 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             "pub MyClass {}",
             "class MyClass<> {}",
             "class MyClass<,> {}",
-            "class MyClass<T1,> {}",
             "class MyClass<T1 T2> {}",
             "pub mut class MyClass {}",
             "static class MyClass {}",
@@ -1170,7 +1188,29 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ("new Thing {A = a}", new ObjectInitializerExpression(new ObjectInitializer(
                 new TypeIdentifier(Token.Identifier("Thing", SourceSpan.Default), []),
                 [new FieldInitializer(Token.Identifier("A", SourceSpan.Default), VariableAccessor("a"))]))),
-            // todo: trailing commas everwhere
+            ("myFn(a,)", new MethodCallExpression(new MethodCall(
+                new ValueAccessorExpression(new ValueAccessor(
+                    ValueAccessType.Variable,
+                    Token.Identifier("myFn", SourceSpan.Default))),
+                [
+                    new ValueAccessorExpression(new ValueAccessor(
+                        ValueAccessType.Variable,
+                        Token.Identifier("a", SourceSpan.Default)))
+                ]))),
+            ("new SomeType::<string,>{}", new ObjectInitializerExpression(new ObjectInitializer(
+                new TypeIdentifier(Token.Identifier("SomeType", SourceSpan.Default), [
+                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])
+                ]),
+                []))),
+            ("SomeFn::<string,>()", new MethodCallExpression(new MethodCall(
+                new GenericInstantiationExpression(
+                    new GenericInstantiation(
+                        new ValueAccessorExpression(new ValueAccessor(
+                                            ValueAccessType.Variable,
+                                            Token.Identifier("SomeFn", SourceSpan.Default))),
+                        [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])])),
+                []
+                ))),
             ("new Thing {A = a,}", new ObjectInitializerExpression(new ObjectInitializer(
                 new TypeIdentifier(Token.Identifier("Thing", SourceSpan.Default), []),
                 [new FieldInitializer(Token.Identifier("A", SourceSpan.Default), VariableAccessor("a"))]))),
