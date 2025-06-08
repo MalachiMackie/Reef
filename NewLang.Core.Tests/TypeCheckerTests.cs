@@ -327,7 +327,7 @@ public class TypeCheckerTests
                 return ok(a);
             }
             else if (a == b) {
-                return ok(b);
+                return result::<int, string>::Ok(b);
             }
 
             b = 3;
@@ -339,8 +339,14 @@ public class TypeCheckerTests
             MyClass::StaticMethod();
 
             PrivateFn::<string>();
+            
+            if (false) {
+                // lowercase error keyword
+                return error("something wrong");
+            }
 
-            return error("something wrong");
+            // Capital Error for fully resolved variant
+            return result::<int, string>::Error("something wrong");
         }
 
         fn PrivateFn<T>() {
@@ -351,7 +357,7 @@ public class TypeCheckerTests
             var b = DoSomething(a)?;
             var mut c = 2;
             
-            return b;
+            return result::<int, string>::Ok(b);
         }
 
         Println(DoSomething(5));
@@ -379,6 +385,7 @@ public class TypeCheckerTests
             }
         }
 
+        // a union
         pub class Class2 {
             pub field A: string;
         }
@@ -389,16 +396,19 @@ public class TypeCheckerTests
         pub union MyUnion {
             A,
             B { field MyField: string; },
+            C(string),
             
             fn SomeMethod() {
                 var foo = switch (this) {
                     A => "",
-                    B { MyField } => MyField
+                    B { MyField } => MyField,
+                    C(value) => value
                 };
                 
                 var bar = switch (this) {
                     A => 1,
-                    B => 2
+                    B => 2,
+                    C => 3
                 }
             }
         }
@@ -412,10 +422,11 @@ public class TypeCheckerTests
             var a = switch (param) {
                 MyUnion::A => 1,
                 MyUnion::B { MyField } => 2,
+                MyUnion::C(value) => 3
             };
         }
         
-        var a = MyUnion::A;
+        var a = new MyUnion::A;
         
         c = new MyUnion::B{ MyField = ""};
         

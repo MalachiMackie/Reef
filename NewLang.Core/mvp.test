@@ -5,7 +5,7 @@
         return ok(a);
     }
     else if (a == b) {
-        return ok(b);
+        return result::<int, string>::Ok(b);
     }
 
     b = 3;
@@ -17,8 +17,14 @@
     MyClass::StaticMethod();
 
     PrivateFn::<string>();
+    
+    if (false) {
+        // lowercase error keyword
+        return error("something wrong");
+    }
 
-    return error("something wrong");
+    // Capital Error for fully resolved variant
+    return result::<int, string>::Error("something wrong");
 }
 
 fn PrivateFn<T>() {
@@ -29,7 +35,7 @@ pub fn SomethingElse(a: int): result::<int, string> {
     var b = DoSomething(a)?;
     var mut c = 2;
     
-    return b;
+    return result::<int, string>::Ok(b);
 }
 
 Println(DoSomething(5));
@@ -57,23 +63,30 @@ pub class GenericClass<T> {
     }
 }
 
+// a class
 pub class Class2 {
     pub field A: string;
 }
 
+/*
+    A union
+*/
 pub union MyUnion {
     A,
     B { field MyField: string; },
+    C(string),
     
     fn SomeMethod() {
         var foo = switch (this) {
             A => "",
-            B { MyField } => MyField
+            B { MyField } => MyField,
+            C(value) => value
         };
         
         var bar = switch (this) {
             A => 1,
-            B => 2
+            B => 2,
+            C => 3
         }
     }
 }
@@ -87,9 +100,10 @@ fn AnotherMethod(param: MyUnion) {
     var a = switch (param) {
         MyUnion::A => 1,
         MyUnion::B { MyField } => 2,
+        MyUnion::C(value) => 3
     };
 }
 
-var a = MyUnion::A;
+var a = new MyUnion::A;
 
-var c = new MyUnion::B{ MyField = ""};
+c = new MyUnion::B{ MyField = ""};
