@@ -168,12 +168,31 @@ public class TypeCheckerTests
                 return "";
             }
             """,
+            """
+            fn MyFn(): result::<string, int> {
+                if (true) {
+                    return result::<string, int>::Ok("someValue");
+                }
+                
+                return result::<string, int>::Error(1);
+            }
+            """,
             Mvp
         };
 
     public static TheoryData<string> FailedExpressionTestCases() =>
         new()
         {
+            """
+            fn MyFn(): result::<int, string> {
+                if (true) {
+                    return result::<string, int>::Ok("someValue");
+                }
+                
+                return result::<string, int>::Error(1);
+            }
+            """,
+            "var a = result::<string, int>::Ok(1);",
             """
             class MyClass<T> {
                 fn MyFn<T2>(param1: T, param2: T2) {
