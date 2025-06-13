@@ -23,9 +23,47 @@ public class TypeCheckerTests
         act.Should().Throw<InvalidOperationException>();
     }
 
+    [Fact]
+    public void SingleTest()
+    {
+        var src = """
+                  MyClass::StaticMethod();
+
+                  class MyClass {
+                      pub static fn StaticMethod() {}
+                  }
+                  """;
+        
+        var program = Parser.Parse(Tokenizer.Tokenize(src));
+        var act = () => TypeChecker.TypeCheck(program);
+
+        act.Should().NotThrow();
+    }
+
     public static TheoryData<string> SuccessfulExpressionTestCases() =>
         new()
         {
+            """
+            MyClass::StaticMethod();
+            
+            class MyClass {
+                pub static fn StaticMethod() {}
+            }
+            """,
+            """
+            var a: string = MyClass::<string>::StaticMethod("");
+            
+            class MyClass<T> {
+                pub static fn StaticMethod(param: T): T { return param; }
+            }
+            """,
+            """
+            var a: int = MyClass::<string>::StaticMethod::<int>("", 1);
+            
+            class MyClass<T> {
+                pub static fn StaticMethod<T2>(param: T, param2: T2): T2 { return param2; }
+            }
+            """,
             "var a = 2",
             "var a: int = 2",
             "var b: string = \"somestring\"",
@@ -343,7 +381,8 @@ public class TypeCheckerTests
             var b: int = 2;
             
             if (a > b) {
-                return ok(a);
+                // return ok(a);
+                return result::<int, string>::Ok(a);
             }
             else if (a == b) {
                 return result::<int, string>::Ok(b);
@@ -352,7 +391,7 @@ public class TypeCheckerTests
             b = 3;
 
             var thing = new Class2 {
-                A = 3
+                A = "some value"
             };
 
             MyClass::StaticMethod();

@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Diagnostics;
+using System.Text;
 
 namespace NewLang.Core;
 
@@ -346,7 +347,8 @@ public class TypeChecker
         var fnSignature = new FunctionSignature(
             name,
             [..fn.TypeArguments.Select(x => x.StringValue)],
-            parameters)
+            parameters,
+            IsStatic: fn.StaticModifier is not null)
         {
             ReturnType = null!
         };
@@ -498,12 +500,31 @@ public class TypeChecker
         var type = GetTypeReference(staticMemberAccess.Type, genericPlaceholders);
 
         var memberName = staticMemberAccess.MemberName.StringValue;
-        if (type is InstantiatedClass { Signature: ClassSignature classSignature })
+        if (type is InstantiatedClass { Signature: ClassSignature classSignature, TypeArguments: var ownerTypeArguments })
         {
-            var field = classSignature.StaticFields.FirstOrDefault(x => x.Name == memberName)
-                ?? throw new InvalidOperationException($"No member with name {memberName}");
+            var field = classSignature.StaticFields.FirstOrDefault(x => x.Name == memberName);
+            if (field is not null)
+            {
+                return field.Type;
+            }
 
-            return field.Type;
+            var method = classSignature.Functions.FirstOrDefault(x => x.Name == memberName);
+            if (method is not null)
+            {
+                if (!method.IsStatic)
+                {
+                    throw new InvalidOperationException($"{memberName} is not static");
+                }
+
+                return new InstantiatedFunction
+                {
+                    Signature = method,
+                    TypeArguments = [],
+                    OwnerTypeArguments = new Dictionary<string, ITypeReference>(ownerTypeArguments)
+                };
+            }
+
+            throw new InvalidOperationException($"No member found with name {memberName}");
         }
 
         if (type is InstantiatedUnion { Signature: UnionSignature unionSignature } instantiatedUnion)
@@ -513,15 +534,7 @@ public class TypeChecker
 
             if (variant is TupleUnionVariant tupleVariant)
             {
-                return new InstantiatedFunction
-                {
-                    Signature = new FunctionSignature(tupleVariant.Name, [], tupleVariant.TupleMembers)
-                    {
-                        ReturnType = instantiatedUnion
-                    },
-                    TypeArguments = [],
-                    OwnerTypeArguments = new Dictionary<string, ITypeReference>(instantiatedUnion.TypeArguments)
-                };
+                return GetTupleUnionFunction(tupleVariant, instantiatedUnion);
             }
         }
         
@@ -807,9 +820,43 @@ public class TypeChecker
             {AccessType: ValueAccessType.Literal, Token.Type: TokenType.True or TokenType.False } => InstantiatedClass.Boolean,
             {AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: var variableName}} =>
                 TypeCheckVariableAccess(variableName),
+            {AccessType: ValueAccessType.Variable, Token.Type: TokenType.Ok } => TypeCheckOkKeyword(),
             _ => throw new NotImplementedException($"{valueAccessorExpression}")
         };
-        
+
+        ITypeReference TypeCheckOkKeyword()
+        {
+            if (!_types.TryGetValue("Result", out var resultType) || resultType is not UnionSignature unionSignature)
+            {
+                throw new UnreachableException("Result is a built in union");
+            }
+
+            var okVariant = unionSignature.Variants.FirstOrDefault(x => x.Name == "Ok")
+                ?? throw new UnreachableException("Ok is a built in variant of Result");
+
+            if (okVariant is not TupleUnionVariant okTupleVariant)
+            {
+                throw new UnreachableException("Ok is a tuple variant");
+            }
+
+            // todo: actually figure out types. This will require type inference 
+            var instantiatedUnion = InstantiatedUnion.Result(InstantiatedClass.Unit, InstantiatedClass.Unit);
+            
+            return GetTupleUnionFunction(okTupleVariant, instantiatedUnion);
+        }
+    }
+
+    private static InstantiatedFunction GetTupleUnionFunction(TupleUnionVariant tupleVariant, InstantiatedUnion instantiatedUnion)
+    {
+        return new InstantiatedFunction
+        {
+            Signature = new FunctionSignature(tupleVariant.Name, [], tupleVariant.TupleMembers, IsStatic: true)
+            {
+                ReturnType = instantiatedUnion
+            },
+            TypeArguments = [],
+            OwnerTypeArguments = new Dictionary<string, ITypeReference>(instantiatedUnion.TypeArguments)
+        };
     }
 
     private ITypeReference TypeCheckVariableAccess(
@@ -1190,7 +1237,8 @@ public class TypeChecker
     private record FunctionSignature(
         string Name,
         IReadOnlyList<string> GenericParameters,
-        IReadOnlyList<KeyValuePair<string, ITypeReference>> Arguments) : ITypeSignature
+        IReadOnlyList<KeyValuePair<string, ITypeReference>> Arguments,
+        bool IsStatic) : ITypeSignature
     {
         // mutable due to setting up signatures and generic stuff
         public required ITypeReference ReturnType { get; set; }
