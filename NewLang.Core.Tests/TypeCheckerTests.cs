@@ -46,11 +46,11 @@ public class TypeCheckerTests
         new()
         {
             """
-            fn MyFn(): result<string, int> {
+            fn MyFn(): result::<string, int> {
                 var a: string = OtherFn()?;
             }
             
-            fn OtherFn(): result<string, int> {
+            fn OtherFn(): result::<string, int> {
                 return result::<string, int>::Error(1);
             }
             """,

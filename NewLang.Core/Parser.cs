@@ -485,7 +485,7 @@ public static class Parser
             parameterList.Add(new FunctionParameter(parameterType, parameterName));
         }
 
-        if (!MoveNext(tokens) )
+        if (!MoveNext(tokens))
         {
             throw new InvalidOperationException("Expected { or :");
         }
