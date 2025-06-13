@@ -16,12 +16,13 @@ public class TypeChecker
     }
 
     private readonly LangProgram _program;
+
     private readonly Dictionary<string, ITypeSignature> _types = ClassSignature.BuiltInTypes
         .Concat(UnionSignature.BuiltInTypes)
         .ToDictionary(x => x.Name);
-    
+
     // todo: generic placeholders in scope?
-    private readonly Stack<TypeCheckingScope> _typeCheckingScopes = new ();
+    private readonly Stack<TypeCheckingScope> _typeCheckingScopes = new();
     private Dictionary<string, Variable> ScopedVariables => _typeCheckingScopes.Peek().Variables;
     private Dictionary<string, FunctionSignature> ScopedFunctions => _typeCheckingScopes.Peek().Functions;
     private ITypeReference ExpectedReturnType => _typeCheckingScopes.Peek().ExpectedReturnType;
@@ -58,6 +59,7 @@ public class TypeChecker
             {
                 throw new InvalidOperationException("Scope already disposed");
             }
+
             _disposed = true;
             onDispose();
         }
@@ -66,7 +68,7 @@ public class TypeChecker
     private void TypeCheckInner()
     {
         // initial scope
-        _typeCheckingScopes.Push(new TypeCheckingScope(new (), new(), InstantiatedClass.Unit));
+        _typeCheckingScopes.Push(new TypeCheckingScope(new(), new(), InstantiatedClass.Unit));
 
         SetupSignatures();
 
@@ -76,8 +78,10 @@ public class TypeChecker
             {
                 throw new InvalidOperationException($"Expected {@class.Name.StringValue} to be a class");
             }
+
             var classGenericPlaceholders =
-                @class.TypeArguments.ToDictionary<StringToken, string, ITypeSignature>(x => x.StringValue, _ => classSignature);
+                @class.TypeArguments.ToDictionary<StringToken, string, ITypeSignature>(x => x.StringValue,
+                    _ => classSignature);
 
             foreach (var field in @class.Fields)
             {
@@ -108,7 +112,7 @@ public class TypeChecker
             foreach (var function in @class.Functions)
             {
                 var fnSignature = classSignature.Functions.First(x => x.Name == function.Name.StringValue);
-                TypeCheckFunctionBody(function, fnSignature , classGenericPlaceholders);
+                TypeCheckFunctionBody(function, fnSignature, classGenericPlaceholders);
             }
         }
 
@@ -116,12 +120,12 @@ public class TypeChecker
         {
             TypeCheckFunctionBody(function, ScopedFunctions[function.Name.StringValue], []);
         }
-        
+
         foreach (var expression in _program.Expressions)
         {
             TypeCheckExpression(expression, []);
         }
-        
+
         // foreach (var (@class, typeDefinition, instanceFields, staticFields, functions) in classMembers)
         // {
         //     var genericPlaceholders = typeDefinition.GenericParameters.ToDictionary(x => x, x => typeDefinition);
@@ -179,14 +183,16 @@ public class TypeChecker
     private void SetupSignatures()
     {
         // class signatures
-        
+
         // class function signatures
-        
+
         // class fields
-        
+
         // global functions
 
-        var classes = new List<(ProgramClass, ClassSignature, List<FunctionSignature>, List<TypeField> fields, List<TypeField> staticFields)>();
+        var classes =
+            new List<(ProgramClass, ClassSignature, List<FunctionSignature>, List<TypeField> fields, List<TypeField>
+                staticFields)>();
 
         foreach (var @class in _program.Classes)
         {
@@ -202,7 +208,7 @@ public class TypeChecker
                 Fields = fields,
                 StaticFields = staticFields
             };
-            
+
             classes.Add((@class, signature, functions, fields, staticFields));
 
             if (!_types.TryAdd(name, signature))
@@ -210,7 +216,7 @@ public class TypeChecker
                 throw new InvalidOperationException($"Class with name {name} already defined");
             }
         }
-        
+
         foreach (var (@class, classSignature, functions, fields, staticFields) in classes)
         {
             var classGenericPlaceholders = new Dictionary<string, ITypeSignature>();
@@ -221,7 +227,7 @@ public class TypeChecker
                     throw new InvalidOperationException($"Generic name already defined {genericParameter}");
                 }
             }
-            
+
             foreach (var fn in @class.Functions)
             {
                 // todo: check function name collisions. also function overloading
@@ -244,6 +250,7 @@ public class TypeChecker
                     {
                         throw new InvalidOperationException($"Static field with name {field.Name} already defined");
                     }
+
                     staticFields.Add(typeField);
                 }
                 else
@@ -252,6 +259,7 @@ public class TypeChecker
                     {
                         throw new InvalidOperationException($"Field with name {field.Name} already defined");
                     }
+
                     fields.Add(typeField);
                 }
             }
@@ -260,7 +268,7 @@ public class TypeChecker
         foreach (var fn in _program.Functions)
         {
             var name = fn.Name.StringValue;
-            
+
             // todo: function overloading
             if (!ScopedFunctions.TryAdd(name, TypeCheckFunctionSignature(fn, [])))
             {
@@ -272,8 +280,8 @@ public class TypeChecker
         {
             if (typeSignature is ClassSignature classSignature)
             {
-                if (classSignature.GenericParameters.Any(x => 
-                        _types.ContainsKey(x) 
+                if (classSignature.GenericParameters.Any(x =>
+                        _types.ContainsKey(x)
                         || classSignature.Functions.Any(y => y.Name == x)
                         || _program.Functions.Any(y => y.Name.StringValue == x)))
                 {
@@ -282,7 +290,7 @@ public class TypeChecker
 
                 foreach (var fn in classSignature.Functions)
                 {
-                    if (fn.GenericParameters.Any(x => 
+                    if (fn.GenericParameters.Any(x =>
                             _types.ContainsKey(x)
                             || classSignature.Functions.Any(y => y.Name == x)
                             || _program.Functions.Any(y => y.Name.StringValue == x)))
@@ -293,24 +301,24 @@ public class TypeChecker
             }
             else if (typeSignature is UnionSignature unionSignature)
             {
-                if (unionSignature.GenericParameters.Any(x => 
-                         _types.ContainsKey(x) 
-                         || unionSignature.Functions.Any(y => y.Name == x)
-                         || _program.Functions.Any(y => y.Name.StringValue == x)))
-                 {
-                     throw new InvalidOperationException("Generic name collision");
-                 }
- 
-                 foreach (var fn in unionSignature.Functions)
-                 {
-                     if (fn.GenericParameters.Any(x => 
-                             _types.ContainsKey(x)
-                             || unionSignature.Functions.Any(y => y.Name == x)
-                             || _program.Functions.Any(y => y.Name.StringValue == x)))
-                     {
-                         throw new InvalidOperationException("Generic name collision");
-                     }
-                 }
+                if (unionSignature.GenericParameters.Any(x =>
+                        _types.ContainsKey(x)
+                        || unionSignature.Functions.Any(y => y.Name == x)
+                        || _program.Functions.Any(y => y.Name.StringValue == x)))
+                {
+                    throw new InvalidOperationException("Generic name collision");
+                }
+
+                foreach (var fn in unionSignature.Functions)
+                {
+                    if (fn.GenericParameters.Any(x =>
+                            _types.ContainsKey(x)
+                            || unionSignature.Functions.Any(y => y.Name == x)
+                            || _program.Functions.Any(y => y.Name.StringValue == x)))
+                    {
+                        throw new InvalidOperationException("Generic name collision");
+                    }
+                }
             }
         }
     }
@@ -334,15 +342,16 @@ public class TypeChecker
                 parameter.Value,
                 Instantiated: true);
         }
-        
+
         TypeCheckBlock(function.Block,
             innerGenericPlaceholders);
     }
 
-    private FunctionSignature TypeCheckFunctionSignature(LangFunction fn, Dictionary<string, ITypeSignature> genericPlaceholders)
+    private FunctionSignature TypeCheckFunctionSignature(LangFunction fn,
+        Dictionary<string, ITypeSignature> genericPlaceholders)
     {
         var parameters = new List<KeyValuePair<string, ITypeReference>>();
-                        
+
         var name = fn.Name.StringValue;
         var fnSignature = new FunctionSignature(
             name,
@@ -373,9 +382,11 @@ public class TypeChecker
             {
                 throw new InvalidOperationException($"Parameter with {paramName} already defined");
             }
-            parameters.Add(KeyValuePair.Create(parameter.Identifier.StringValue, GetTypeReference(parameter.Type, innerGenericPlaceholders)));
+
+            parameters.Add(KeyValuePair.Create(parameter.Identifier.StringValue,
+                GetTypeReference(parameter.Type, innerGenericPlaceholders)));
         }
-        
+
         // todo: check function name collisions. also function overloading
         return fnSignature;
     }
@@ -385,12 +396,12 @@ public class TypeChecker
         Dictionary<string, ITypeSignature> genericPlaceholders)
     {
         using var _ = PushScope();
-        
+
         foreach (var fn in block.Functions)
         {
             ScopedFunctions[fn.Name.StringValue] = TypeCheckFunctionSignature(fn, genericPlaceholders);
         }
-        
+
         foreach (var fn in block.Functions)
         {
             TypeCheckFunctionBody(fn, ScopedFunctions[fn.Name.StringValue], genericPlaceholders);
@@ -414,17 +425,65 @@ public class TypeChecker
             VariableDeclarationExpression variableDeclarationExpression => TypeCheckVariableDeclaration(
                 variableDeclarationExpression, genericPlaceholders),
             ValueAccessorExpression valueAccessorExpression => TypeCheckValueAccessor(valueAccessorExpression),
-            MethodReturnExpression methodReturnExpression => TypeCheckMethodReturn(methodReturnExpression, genericPlaceholders),
-            MethodCallExpression methodCallExpression => TypeCheckMethodCall(methodCallExpression.MethodCall, genericPlaceholders),
+            MethodReturnExpression methodReturnExpression => TypeCheckMethodReturn(methodReturnExpression,
+                genericPlaceholders),
+            MethodCallExpression methodCallExpression => TypeCheckMethodCall(methodCallExpression.MethodCall,
+                genericPlaceholders),
             BlockExpression blockExpression => TypeCheckBlock(blockExpression.Block, genericPlaceholders),
-            IfExpressionExpression ifExpressionExpression => TypeCheckIfExpression(ifExpressionExpression.IfExpression, genericPlaceholders),
-            BinaryOperatorExpression binaryOperatorExpression => TypeCheckBinaryOperatorExpression(binaryOperatorExpression.BinaryOperator, genericPlaceholders),
-            ObjectInitializerExpression objectInitializerExpression => TypeCheckObjectInitializer(objectInitializerExpression.ObjectInitializer, genericPlaceholders),
-            MemberAccessExpression memberAccessExpression => TypeCheckMemberAccess(memberAccessExpression.MemberAccess, genericPlaceholders),
-            StaticMemberAccessExpression staticMemberAccessExpression => TypeCheckStaticMemberAccess(staticMemberAccessExpression.StaticMemberAccess, genericPlaceholders),
-            GenericInstantiationExpression genericInstantiationExpression => TypeCheckGenericInstantiation(genericInstantiationExpression.GenericInstantiation, genericPlaceholders),
+            IfExpressionExpression ifExpressionExpression => TypeCheckIfExpression(ifExpressionExpression.IfExpression,
+                genericPlaceholders),
+            BinaryOperatorExpression binaryOperatorExpression => TypeCheckBinaryOperatorExpression(
+                binaryOperatorExpression.BinaryOperator, genericPlaceholders),
+            ObjectInitializerExpression objectInitializerExpression => TypeCheckObjectInitializer(
+                objectInitializerExpression.ObjectInitializer, genericPlaceholders),
+            MemberAccessExpression memberAccessExpression => TypeCheckMemberAccess(memberAccessExpression.MemberAccess,
+                genericPlaceholders),
+            StaticMemberAccessExpression staticMemberAccessExpression => TypeCheckStaticMemberAccess(
+                staticMemberAccessExpression.StaticMemberAccess, genericPlaceholders),
+            GenericInstantiationExpression genericInstantiationExpression => TypeCheckGenericInstantiation(
+                genericInstantiationExpression.GenericInstantiation, genericPlaceholders),
+            UnaryOperatorExpression unaryOperatorExpression => TypeCheckUnaryOperator(
+                unaryOperatorExpression.UnaryOperator,
+                genericPlaceholders),
             _ => throw new NotImplementedException($"{expression.ExpressionType}")
         };
+    }
+
+    private ITypeReference TypeCheckUnaryOperator(UnaryOperator unaryOperator, Dictionary<string, ITypeSignature> genericPlaceholders)
+    {
+        return unaryOperator.OperatorType switch
+        {
+            UnaryOperatorType.FallOut => TypeCheckFallout(unaryOperator.Operand, genericPlaceholders),
+            _ => throw new NotImplementedException($"{unaryOperator.OperatorType}")
+        };
+    }
+
+    private ITypeReference TypeCheckFallout(IExpression expression, Dictionary<string, ITypeSignature> genericPlaceholders)
+    {
+        var expressionType = TypeCheckExpression(expression, genericPlaceholders);
+
+        // todo: could implement with an interface? union Result : IFallout?
+        if (ExpectedReturnType is not InstantiatedUnion { Signature.Name: "Result" or "Option" } union)
+        {
+            throw new InvalidOperationException("Fallout operator is only valid for Result and Option return types");
+        }
+
+        if (!Equals(expressionType, ExpectedReturnType))
+        {
+            throw new InvalidOperationException($"Cannot perform fallout operator on {expressionType}");
+        }
+
+        if (union.Signature.Name == UnionSignature.Result.Name)
+        {
+            return union.TypeArguments.GetValueOrDefault("TValue") ?? throw new UnreachableException("Ok is a result variant");
+        }
+
+        if (union.Signature.Name == "Option")
+        {
+            throw new NotImplementedException("");
+        }
+
+        throw new UnreachableException();
     }
 
     private ITypeReference TypeCheckGenericInstantiation(GenericInstantiation genericInstantiation, Dictionary<string, ITypeSignature> genericPlaceholders)
@@ -820,29 +879,30 @@ public class TypeChecker
             {AccessType: ValueAccessType.Literal, Token.Type: TokenType.True or TokenType.False } => InstantiatedClass.Boolean,
             {AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: var variableName}} =>
                 TypeCheckVariableAccess(variableName),
-            {AccessType: ValueAccessType.Variable, Token.Type: TokenType.Ok } => TypeCheckOkKeyword(),
+            {AccessType: ValueAccessType.Variable, Token.Type: TokenType.Ok } => TypeCheckResultVariantKeyword("Ok"),
+            {AccessType: ValueAccessType.Variable, Token.Type: TokenType.Error } => TypeCheckResultVariantKeyword("Error"),
             _ => throw new NotImplementedException($"{valueAccessorExpression}")
         };
 
-        ITypeReference TypeCheckOkKeyword()
+        ITypeReference TypeCheckResultVariantKeyword(string variantName)
         {
             if (!_types.TryGetValue("Result", out var resultType) || resultType is not UnionSignature unionSignature)
             {
                 throw new UnreachableException("Result is a built in union");
             }
 
-            var okVariant = unionSignature.Variants.FirstOrDefault(x => x.Name == "Ok")
-                ?? throw new UnreachableException("Ok is a built in variant of Result");
+            var okVariant = unionSignature.Variants.FirstOrDefault(x => x.Name == variantName)
+                ?? throw new UnreachableException($"{variantName} is a built in variant of Result");
 
-            if (okVariant is not TupleUnionVariant okTupleVariant)
+            if (okVariant is not TupleUnionVariant tupleVariant)
             {
-                throw new UnreachableException("Ok is a tuple variant");
+                throw new UnreachableException($"{variantName} is a tuple variant");
             }
 
             // todo: actually figure out types. This will require type inference 
             var instantiatedUnion = InstantiatedUnion.Result(InstantiatedClass.Unit, InstantiatedClass.Unit);
             
-            return GetTupleUnionFunction(okTupleVariant, instantiatedUnion);
+            return GetTupleUnionFunction(tupleVariant, instantiatedUnion);
         }
     }
 

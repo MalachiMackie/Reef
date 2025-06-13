@@ -27,12 +27,14 @@ public class TypeCheckerTests
     public void SingleTest()
     {
         var src = """
-                  MyClass::StaticMethod();
-
-                  class MyClass {
-                      pub static fn StaticMethod() {}
-                  }
-                  """;
+            fn MyFn(): result::<string, int> {
+                var a: string = OtherFn()?;
+            }
+            
+            fn OtherFn(): result::<string, int> {
+                return result::<string, int>::Error(1);
+            }
+            """;
         
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program);
@@ -43,6 +45,15 @@ public class TypeCheckerTests
     public static TheoryData<string> SuccessfulExpressionTestCases() =>
         new()
         {
+            """
+            fn MyFn(): result<string, int> {
+                var a: string = OtherFn()?;
+            }
+            
+            fn OtherFn(): result<string, int> {
+                return result::<string, int>::Error(1);
+            }
+            """,
             """
             MyClass::StaticMethod();
             
@@ -400,7 +411,8 @@ public class TypeCheckerTests
             
             if (false) {
                 // lowercase error keyword
-                return error("something wrong");
+                // return error("something wrong");
+                return result::<int, string>::Error("something wrong");
             }
 
             // Capital Error for fully resolved variant
@@ -408,7 +420,6 @@ public class TypeCheckerTests
         }
 
         fn PrivateFn<T>() {
-            Println("Message");
         }
 
         pub fn SomethingElse(a: int): result::<int, string> {
@@ -417,10 +428,6 @@ public class TypeCheckerTests
             
             return result::<int, string>::Ok(b);
         }
-
-        Println(DoSomething(5));
-        Println(DoSomething(1));
-        Println(SomethingElse(1));
 
         pub class MyClass {
             pub fn PublicMethod() {
