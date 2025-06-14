@@ -194,6 +194,11 @@ public class TypeChecker
             new List<(ProgramClass, ClassSignature, List<FunctionSignature>, List<TypeField> fields, List<TypeField>
                 staticFields)>();
 
+        foreach (var union in _program.Unions)
+        {
+            throw new NotImplementedException("Type check unions");
+        }
+
         foreach (var @class in _program.Classes)
         {
             var name = @class.Name.StringValue;

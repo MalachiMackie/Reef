@@ -45,6 +45,7 @@ public class TypeCheckerTests
     public static TheoryData<string> SuccessfulExpressionTestCases() =>
         new()
         {
+            "union MyUnion {}",
             """
             fn MyFn(): result::<string, int> {
                 var a: string = OtherFn()?;
