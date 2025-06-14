@@ -92,6 +92,11 @@ public record Token
     {
         return new Token { Type = TokenType.Pub, SourceSpan = sourceSpan };
     }
+
+    public static Token Union(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.Union, SourceSpan = sourceSpan };
+    }
     
     public static Token Static(SourceSpan sourceSpan)
     {

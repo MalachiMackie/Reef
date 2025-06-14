@@ -119,7 +119,7 @@ public class TypeCheckerTests
             "if (true) var a = 2",
             "var a: result::<int, string>",
             """
-            class Class1 { field someField: Class1;}
+            class Class1 { field someField: Class1,}
             class Class2 { }
             """,
             // binary operators
@@ -141,17 +141,17 @@ public class TypeCheckerTests
             "var a = 2; a = 3",
             // Object Initializers
             """
-            class MyClass {field myField: int; field otherField: string;}
+            class MyClass {field myField: int, field otherField: string,}
             var a = new MyClass { myField = 1, otherField = "" };
             """,
             "class MyClass {} var a: MyClass = new MyClass {};",
             """
-            class MyClass {field someField: int;}
+            class MyClass {field someField: int,}
             var a = new MyClass { someField = 1 };
             var b: int = a.someField;
             """,
             """
-            class MyClass { static field someField: int = 3; }
+            class MyClass { static field someField: int = 3, }
             var a: int = MyClass::someField;
             """,
             """
@@ -168,15 +168,15 @@ public class TypeCheckerTests
             var c = b("");
             """,
             """
-            class MyClass<T> { static field someField: int = 1; }
+            class MyClass<T> { static field someField: int = 1, }
             var a = MyClass::<string>::someField;
             """,
             """
-            class MyClass<T> { field someField: T; }
+            class MyClass<T> { field someField: T, }
             var a = new MyClass::<int> {someField = 1};
             """,
             """
-            class MyClass<T> { field someField: T; }
+            class MyClass<T> { field someField: T, }
             var a = new MyClass::<string> {someField = ""};
             var b: string = a.someField;
             """,
@@ -302,29 +302,29 @@ public class TypeCheckerTests
             "fn Fn1<T1>(){} Fn1::<string, bool>();",
             """
             class MyClass {
-                field someField: string;
+                field someField: string,
             }
             var a = new MyClass { someField = 1 };
             """,
             """
             class MyClass {
-                field someField: string;
+                field someField: string,
             }
             var a = new MyClass { someField = "value", someField = "value" };
             """,
             """
             class MyClass {
-                field someField: string;
+                field someField: string,
             }
             var a = new MyClass { someField = "value", extraField = 1 };
             """,
             """
             class MyClass {
-                field someField: string;
+                field someField: string,
             }
             var a = new MyClass {};
             """,
-            "class MyClass { static field someField: string = 1; }",
+            "class MyClass { static field someField: string = 1, }",
             """
             class MyClass<T> {
                 fn MyFn<T>(){}
@@ -375,12 +375,12 @@ public class TypeCheckerTests
             // todo:
             // MemberAccess,
             """
-            class MyClass { static field someField: int = 3; }
+            class MyClass { static field someField: int = 3, }
             var a: string = MyClass::someField;
             """,
             // StaticMemberAccess
             """
-            class MyClass { field someField: int; }
+            class MyClass { field someField: int, }
             var a: MyClass = new MyClass { someField = 3 };
             var b: string = a.someField;
             """
@@ -437,12 +437,12 @@ public class TypeCheckerTests
 
             }
             
-            field FieldA: string;
-            mut field FieldB: string;
-            pub mut field FieldC: string;
-            pub field FieldD: string;
-            pub static field FieldE: string = "something";
-            pub static mut field FieldF: string = "something";
+            field FieldA: string,
+            mut field FieldB: string,
+            pub mut field FieldC: string,
+            pub field FieldD: string,
+            pub static field FieldE: string = "something",
+            pub static mut field FieldF: string = "something",
         }
 
         pub class GenericClass<T> {
@@ -452,7 +452,7 @@ public class TypeCheckerTests
 
         // a union
         pub class Class2 {
-            pub field A: string;
+            pub field A: string,
         }
         
         // todo: unions
@@ -460,7 +460,7 @@ public class TypeCheckerTests
         /*
         pub union MyUnion {
             A,
-            B { field MyField: string; },
+            B { field MyField: string, },
             C(string),
             
             fn SomeMethod() {

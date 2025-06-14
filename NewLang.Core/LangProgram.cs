@@ -5,7 +5,8 @@ namespace NewLang.Core;
 public record LangProgram(
     IReadOnlyList<IExpression> Expressions,
     IReadOnlyList<LangFunction> Functions,
-    IReadOnlyCollection<ProgramClass> Classes)
+    IReadOnlyCollection<ProgramClass> Classes,
+    IReadOnlyCollection<ProgramUnion> Unions)
 {
     public override string ToString()
     {

@@ -10,30 +10,25 @@ public static class Parser
     {
         using var tokensEnumerator = new PeekableEnumerator<Token>(tokens.GetEnumerator());
 
-        var (expressions, functions, classes, fields) = GetScope(tokensEnumerator, closingToken: null);
+        var scope = GetScope(tokensEnumerator, closingToken: null, isUnion: false);
 
-        if (fields.Count > 0)
+        if (scope.GetScopeTypes().Contains(Scope.ScopeType.Field))
         {
             throw new InvalidOperationException("A field is not a valid statement");
         }
 
-        return new LangProgram(expressions, functions, classes);
+        return new LangProgram(scope.Expressions, scope.Functions, scope.Classes, scope.Unions);
     }
 
     /// <summary>
     /// Get a scope. Expects first token to be the first token within the scope (or the closing token)
     /// </summary>
-    /// <param name="tokens"></param>
-    /// <param name="closingToken"></param>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    private static (
-        IReadOnlyList<IExpression> Expressions,
-        IReadOnlyList<LangFunction> Functions,
-        IReadOnlyList<ProgramClass> Classes,
-        IReadOnlyList<ClassField> Fields) GetScope(
+    private static Scope GetScope(
         PeekableEnumerator<Token> tokens,
-        TokenType? closingToken)
+        TokenType? closingToken,
+        bool isUnion)
     {
         var hasTailExpression = false;
         var foundClosingToken = false;
@@ -42,7 +37,11 @@ public static class Parser
         var functions = new List<LangFunction>();
         var fields = new List<ClassField>();
         var classes = new List<ProgramClass>();
+        var unions = new List<ProgramUnion>();
+        var variants = new List<IProgramUnionVariant>();
                 
+        var expectMemberComma = false;
+        
         while (TryPeek(tokens, out var peeked))
         {
             if (peeked.Type == closingToken)
@@ -52,11 +51,36 @@ public static class Parser
                 foundClosingToken = true;
                 break;
             }
-
-            if (IsMember(peeked.Type))
+            
+            if (expectMemberComma)
             {
+                if (peeked.Type != TokenType.Comma)
+                {
+                    throw new InvalidOperationException("Expected comma");
+                }
+
                 MoveNext(tokens);
-                var (function, @class, field) = GetMember(tokens);
+
+                if (!TryPeek(tokens, out peeked))
+                {
+                    break;
+                }
+            }
+            
+            if (peeked.Type == closingToken)
+            {
+                // pop the peeked closing token off
+                MoveNext(tokens);
+                foundClosingToken = true;
+                break;
+            }
+
+            if (IsMember(peeked.Type, isUnion))
+            {
+                expectMemberComma = false;
+                
+                MoveNext(tokens);
+                var (function, @class, field, union, variant) = GetMember(tokens, isUnion);
                 if (function is not null)
                 {
                     functions.Add(function);
@@ -69,10 +93,16 @@ public static class Parser
                 {
                     fields.Add(field);
 
-                    if (!MoveNext(tokens) || tokens.Current.Type != TokenType.Semicolon)
-                    {
-                        throw new InvalidOperationException("Expected ;");
-                    }
+                    expectMemberComma = true;
+                }
+                else if (union is not null)
+                {
+                    unions.Add(union);
+                }
+                else if (variant is not null)
+                {
+                    expectMemberComma = true;
+                    variants.Add(variant);
                 }
 
                 continue;
@@ -110,21 +140,31 @@ public static class Parser
             
             expressions.Add(expression);
         }
-
+        
         if (!foundClosingToken && closingToken.HasValue)
         {
             throw new InvalidOperationException($"Expected {closingToken.Value}, got nothing");
         }
 
-        return (expressions, functions, classes, fields);
+        return new Scope
+        {
+            Classes = classes,
+            Expressions = expressions,
+            Functions = functions,
+            Fields = fields,
+            Unions = unions,
+            Variants = variants
+        };
     }
 
-    private static bool IsMember(TokenType tokenType)
+    private static bool IsMember(TokenType tokenType, bool isUnion)
     {
-        return tokenType is TokenType.Pub or TokenType.Mut or TokenType.Static or TokenType.Fn or TokenType.Class or TokenType.Field;
+        return (tokenType is TokenType.Pub or TokenType.Mut or TokenType.Static or TokenType.Fn or TokenType.Class or TokenType.Field or TokenType.Union)
+            || (isUnion && tokenType == TokenType.Identifier);
     }
 
-    private static (LangFunction? Function, ProgramClass? Class, ClassField? Field) GetMember(PeekableEnumerator<Token> tokens)
+    private static (LangFunction? Function, ProgramClass? Class, ClassField? Field, ProgramUnion? Union, IProgramUnionVariant? Variant) GetMember(
+        PeekableEnumerator<Token> tokens, bool isUnion)
     {
         AccessModifier? accessModifier = null;
         MutabilityModifier? mutabilityModifier = null;
@@ -165,7 +205,7 @@ public static class Parser
             }
 
             var function = GetFunctionDeclaration(accessModifier, staticModifier, tokens);
-            return (function, null, null);
+            return (function, null, null, null, null);
         }
 
         if (tokens.Current.Type == TokenType.Class)
@@ -182,17 +222,116 @@ public static class Parser
 
             var @class = GetClassDefinition(accessModifier, tokens);
 
-            return (null, @class, null);
+            return (null, @class, null, null, null);
         }
 
         if (tokens.Current.Type == TokenType.Field)
         {
             var field = GetField(accessModifier, staticModifier, mutabilityModifier, tokens);
 
-            return (null, null, field);
+            return (null, null, field, null, null);
         }
 
-        throw new InvalidOperationException("Expected class, fn or field");
+        if (tokens.Current.Type == TokenType.Union)
+        {
+            if (mutabilityModifier is not null)
+            {
+                throw new InvalidOperationException("Union cannot have a mutability modifier");
+            }
+
+            if (staticModifier is not null)
+            {
+                throw new InvalidOperationException("Union cannot be static");
+            }
+            
+            var union = GetUnionDefinition(accessModifier, tokens);
+
+            return (null, null, null, union, null);
+        }
+
+        if (tokens.Current is StringToken {Type: TokenType.Identifier} name && isUnion)
+        {
+            return (null, null, null, null, GetUnionVariant(tokens, name));
+        }
+        
+        throw new InvalidOperationException("Expected class, fn, union, field, variant");
+    }
+
+    private static IProgramUnionVariant GetUnionVariant(PeekableEnumerator<Token> tokens, StringToken variantName)
+    {
+         if (!TryPeek(tokens, out var peeked))
+         {
+             throw new InvalidOperationException("Expected (, {, ',' or }");
+         }
+
+         if (peeked.Type == TokenType.RightBrace)
+         {
+             // we don't want to remove the right brace, this is the end of the union
+             return new UnitStructUnionVariant(variantName);
+         }
+
+         if (peeked.Type == TokenType.Comma)
+         {
+             return new UnitStructUnionVariant(variantName);
+         }
+
+         if (peeked.Type == TokenType.LeftParenthesis)
+         {
+             MoveNext(tokens);
+             
+             var tupleTypes = new List<TypeIdentifier>();
+             while (TryPeek(tokens, out peeked))
+             {
+                 if (peeked.Type == TokenType.RightParenthesis)
+                 {
+                     MoveNext(tokens);
+                     break;
+                 }
+     
+                 if (tupleTypes.Count > 0)
+                 {
+                     if (peeked.Type != TokenType.Comma)
+                     {
+                         throw new InvalidOperationException("Expected comma");
+                     }
+     
+                     // pop comma off
+                     MoveNext(tokens);
+                 }
+     
+                 if (TryPeek(tokens, out peeked) && peeked.Type == TokenType.RightParenthesis)
+                 {
+                     MoveNext(tokens);
+                     break;
+                 }
+
+                 MoveNext(tokens);
+
+                 var nextType = GetTypeIdentifier(tokens);
+                 tupleTypes.Add(nextType);
+             }
+
+             return new TupleUnionVariant(variantName, tupleTypes);
+         }
+
+         if (peeked.Type == TokenType.LeftBrace)
+         {
+             MoveNext(tokens);
+             var scope = GetScope(tokens, TokenType.RightBrace, isUnion: false);
+
+             if (scope.GetScopeTypes().Any(x => x is not Scope.ScopeType.Field))
+             {
+                 throw new InvalidOperationException("Struct union variants can only contain fields");
+             }
+
+             return new StructUnionVariant
+             {
+                 Name = variantName,
+                 Fields = scope.Fields
+             };
+         }
+
+         throw new InvalidOperationException($"Unexpected token {peeked}");
     }
 
     private static ClassField GetField(AccessModifier? accessModifier, StaticModifier? staticModifier, MutabilityModifier? mutabilityModifier, PeekableEnumerator<Token> tokens)
@@ -222,10 +361,102 @@ public static class Parser
             MoveNext(tokens);
 
             valueExpression = PopExpression(tokens)
-                ?? throw new InvalidOperationException("Expected field initailizer expression");
+                ?? throw new InvalidOperationException("Expected field initializer expression");
         }
 
         return new ClassField(accessModifier, staticModifier, mutabilityModifier, name, type, valueExpression);
+    }
+
+    private static ProgramUnion GetUnionDefinition(AccessModifier? accessModifier, PeekableEnumerator<Token> tokens)
+    {
+        if (!MoveNext(tokens) || tokens.Current is not StringToken { Type: TokenType.Identifier } name)
+        {
+            throw new InvalidOperationException("Expected union name");
+        }
+        
+        if (!MoveNext(tokens))
+        {
+            throw new InvalidOperationException("Expected { or <");
+        }
+        
+        var typeArguments = new List<StringToken>();
+        
+        if (tokens.Current.Type == TokenType.LeftAngleBracket)
+        {
+            while (true)
+            {
+                if (!MoveNext(tokens))
+                {
+                    throw new InvalidOperationException("Expected Type Argument");
+                }
+
+                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                {
+                    if (typeArguments.Count == 0)
+                    {
+                        throw new InvalidOperationException("Expected type argument");
+                    }
+
+                    if (!MoveNext(tokens))
+                    {
+                        throw new InvalidOperationException("Expected {");
+                    }
+                    break;
+                }
+
+                if (typeArguments.Count > 0)
+                {
+                    if (tokens.Current.Type != TokenType.Comma)
+                    {
+                        throw new InvalidOperationException("Expected ,");
+                    }
+
+                    if (!MoveNext(tokens))
+                    {
+                        throw new InvalidOperationException("Expected type argument");
+                    }
+                }
+
+                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                {
+                    if (typeArguments.Count == 0)
+                    {
+                        throw new InvalidOperationException("Expected type argument");
+                    }
+
+                    if (!MoveNext(tokens))
+                    {
+                        throw new InvalidOperationException("Expected {");
+                    }
+                    break;
+                }
+
+                if (tokens.Current is not StringToken { Type: TokenType.Identifier } typeArgument)
+                {
+                    throw new InvalidOperationException("Expected type argument");
+                }
+
+                typeArguments.Add(typeArgument);
+            }
+        }
+
+        if (tokens.Current.Type != TokenType.LeftBrace)
+        {
+            throw new InvalidOperationException("Expected {");
+        }
+
+        var scope = GetScope(tokens, closingToken: TokenType.RightBrace, isUnion: true);
+        if (scope.GetScopeTypes().Any(x => x is not (Scope.ScopeType.Function or Scope.ScopeType.Variant)))
+        {
+            throw new InvalidOperationException("Unions can only contain functions and variants");
+        }
+
+        return new ProgramUnion(
+            accessModifier,
+            name,
+            typeArguments,
+            scope.Functions,
+            scope.Variants);
     }
 
     private static ProgramClass GetClassDefinition(AccessModifier? accessModifier, PeekableEnumerator<Token> tokens)
@@ -237,7 +468,7 @@ public static class Parser
 
         if (!MoveNext(tokens))
         {
-            throw new InvalidOperationException("Expected or <");
+            throw new InvalidOperationException("Expected { or <");
         }
 
         var typeArguments = new List<StringToken>();
@@ -306,17 +537,13 @@ public static class Parser
             throw new InvalidOperationException("Expected {");
         }
 
-        var (expressions, functions, classes, fields) = GetScope(tokens, closingToken: TokenType.RightBrace);
-        if (expressions.Count > 0)
+        var scope = GetScope(tokens, closingToken: TokenType.RightBrace, isUnion: false);
+        if (scope.GetScopeTypes().Any(x => x is not (Scope.ScopeType.Function or Scope.ScopeType.Field)))
         {
-            throw new InvalidOperationException("Class cannot contain expressions");
-        }
-        if (classes.Count > 0)
-        {
-            throw new InvalidOperationException("Classes connot contain classes");
+            throw new InvalidOperationException("Class can only contain functions and fields");
         }
 
-        return new ProgramClass(accessModifier, name, typeArguments, functions, fields);
+        return new ProgramClass(accessModifier, name, typeArguments, scope.Functions, scope.Fields);
     }
 
     private static bool TryPeek(PeekableEnumerator<Token> tokens, [NotNullWhen(true)] out Token? foundToken)
@@ -507,19 +734,14 @@ public static class Parser
             }
         }
 
-        var (expressions, functions, classes, fields) = GetScope(tokens, closingToken: TokenType.RightBrace);
+        var scope = GetScope(tokens, closingToken: TokenType.RightBrace, isUnion: false);
 
-        if (classes.Count > 0)
+        if (scope.GetScopeTypes().Any(x => x is not (Scope.ScopeType.Expression or Scope.ScopeType.Function)))
         {
-            throw new InvalidOperationException("Functions cannot contain classes");
+            throw new InvalidOperationException("Functions can only contain expressions and local function");
         }
 
-        if (fields.Count > 0)
-        {
-            throw new InvalidOperationException("Functions cannot contain fields");
-        }
-
-        return new LangFunction(accessModifier, staticModifier, nameToken, typeArguments, parameterList, returnType, new Block(expressions, functions));
+        return new LangFunction(accessModifier, staticModifier, nameToken, typeArguments, parameterList, returnType, new Block(scope.Expressions, scope.Functions));
     }
 
     private static bool IsTypeTokenType(in TokenType tokenType)
@@ -921,18 +1143,14 @@ public static class Parser
 
     private static BlockExpression GetBlockExpression(PeekableEnumerator<Token> tokens)
     {
-        var (expressions, functions, classes, fields) = GetScope(tokens, TokenType.RightBrace);
+        var scope = GetScope(tokens, TokenType.RightBrace, isUnion: false);
 
-        if (classes.Count > 0)
+        if (scope.GetScopeTypes().Any(x => x is not (Scope.ScopeType.Expression or Scope.ScopeType.Function)))
         {
-            throw new InvalidOperationException("Block expressions cannot contain classes");
-        }
-        if (fields.Count > 0)
-        {
-            throw new InvalidOperationException("Block expressions cannot contain fields");
+            throw new InvalidOperationException("Block expressions can only contain expressions and functions");
         }
         
-        return new BlockExpression(new Block(expressions, functions));
+        return new BlockExpression(new Block(scope.Expressions, scope.Functions));
     }
 
     private static VariableDeclarationExpression GetVariableDeclaration(PeekableEnumerator<Token> tokens)
@@ -1085,5 +1303,44 @@ public static class Parser
             UnaryOperatorType.FallOut => 8,
             _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType, typeof(UnaryOperatorType))
         };
+    }
+
+    private class Scope
+    {
+         public required IReadOnlyList<IExpression> Expressions { get; init; }
+         public required IReadOnlyList<LangFunction> Functions { get; init; }
+         public required IReadOnlyList<ProgramClass> Classes { get; init; }
+         public required IReadOnlyList<ClassField> Fields { get; init; }
+         public required IReadOnlyList<ProgramUnion> Unions { get; init; }
+         public required IReadOnlyList<IProgramUnionVariant> Variants { get; init; }
+
+         public List<ScopeType> GetScopeTypes()
+         {
+             List<ScopeType> types = [];
+             if (Expressions.Count > 0)
+                 types.Add(ScopeType.Expression);
+             if (Functions.Count > 0)
+                 types.Add(ScopeType.Function);
+             if (Classes.Count > 0)
+                 types.Add(ScopeType.Class);
+             if (Fields.Count > 0)
+                 types.Add(ScopeType.Field);
+             if (Unions.Count > 0)
+                 types.Add(ScopeType.Union);
+             if (Variants.Count > 0)
+                 types.Add(ScopeType.Variant);
+
+             return types;
+         }
+         
+         public enum ScopeType
+         {
+             Expression,
+             Function,
+             Class,
+             Field,
+             Union,
+             Variant
+         }
     }
 }

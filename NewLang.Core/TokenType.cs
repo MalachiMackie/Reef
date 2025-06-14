@@ -46,4 +46,5 @@ public enum TokenType
     Static,
     SingleLineComment,
     MultiLineComment,
+    Union,
 }

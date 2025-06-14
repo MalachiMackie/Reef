@@ -910,7 +910,7 @@ public class TypeChecker
     {
         return new InstantiatedFunction
         {
-            Signature = new FunctionSignature(tupleVariant.Name, [], tupleVariant.TupleMembers, IsStatic: true)
+            Signature = new FunctionSignature(tupleVariant.Name, [], [..tupleVariant.TupleMembers.Select((x, i) => KeyValuePair.Create(i.ToString(), x))], IsStatic: true)
             {
                 ReturnType = instantiatedUnion
             },
@@ -1320,12 +1320,12 @@ public class TypeChecker
                 new TupleUnionVariant
                 {
                     Name = "Ok",
-                    TupleMembers = [KeyValuePair.Create<string, ITypeReference>("Value", new GenericTypeReference { GenericName = "TValue", OwnerType = Result })],
+                    TupleMembers = [new GenericTypeReference { GenericName = "TValue", OwnerType = Result }],
                 },
                 new TupleUnionVariant
                 {
                     Name = "Error",
-                    TupleMembers = [KeyValuePair.Create<string, ITypeReference>("Error", new GenericTypeReference { GenericName = "TError", OwnerType = Result })],
+                    TupleMembers = [new GenericTypeReference { GenericName = "TError", OwnerType = Result }],
                 }
             ]);
 
@@ -1352,7 +1352,7 @@ public class TypeChecker
     {
         public required string Name { get; init; }
         
-        public required IReadOnlyList<KeyValuePair<string, ITypeReference>> TupleMembers { get; init; }
+        public required IReadOnlyList<ITypeReference> TupleMembers { get; init; }
     }
 
     private class ClassUnionVariant : IUnionVariant
@@ -1360,8 +1360,6 @@ public class TypeChecker
         public required string Name { get; init; }
         
         public required IReadOnlyList<TypeField> Fields { get; init; }
-        
-        // methods?
     }
 
     private class NoMembersUnionVariant : IUnionVariant

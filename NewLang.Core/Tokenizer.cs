@@ -242,6 +242,7 @@ public class Tokenizer
             TokenType.Mut when source is "mut" => Token.Mut(new SourceSpan(position, (ushort)source.Length)),
             TokenType.DoubleColon when source is "::" => Token.DoubleColon(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Class when source is "class" => Token.Class(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Union when source is "union" => Token.Union(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Field when source is "field" => Token.Field(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Static when source is "static" => Token.Static(new SourceSpan(position, (ushort)source.Length)),
             TokenType.LeftParenthesis when source is "(" => Token.LeftParenthesis(new SourceSpan(position,
@@ -394,6 +395,9 @@ public class Tokenizer
                 tokens[i++] = TokenType.Ok;
                 tokens[i++] = TokenType.Identifier;
                 break;
+            case 'u':
+                tokens[i++] = TokenType.Union;
+                break;
             case '?':
                 tokens[i++] = TokenType.QuestionMark;
                 break;
@@ -447,46 +451,47 @@ public class Tokenizer
         return type switch
         {
             TokenType.Identifier => !source.ContainsAnyExcept(ValidIdentifierTokens) && !char.IsDigit(source[0]),
-            TokenType.If => "if".AsSpan().StartsWith(source) && source.Length <= "if".Length,
-            TokenType.LeftParenthesis => source is "(",
-            TokenType.RightParenthesis => source is ")",
-            TokenType.Semicolon => source is ";",
-            TokenType.LeftBrace => source is "{",
-            TokenType.Mut => "mut".AsSpan().StartsWith(source) && source.Length <= "mut".Length,
-            TokenType.New => "new".AsSpan().StartsWith(source) && source.Length <= "new".Length,
-            TokenType.Static => "static".AsSpan().StartsWith(source) && source.Length <= "static".Length,
-            TokenType.Class => "class".AsSpan().StartsWith(source) && source.Length <= "class".Length,
+            TokenType.If => Matches(source, "if"),
+            TokenType.LeftParenthesis => Matches(source, "("),
+            TokenType.RightParenthesis => Matches(source,")"),
+            TokenType.Semicolon => Matches(source, ";"),
+            TokenType.LeftBrace => Matches(source, "{"),
+            TokenType.Union => Matches(source, "union"),
+            TokenType.Mut => Matches(source, "mut"),
+            TokenType.New => Matches(source, "new"),
+            TokenType.Static => Matches(source, "static"),
+            TokenType.Class => Matches(source, "class"),
             TokenType.RightBrace => source is "}",
-            TokenType.Pub => "pub".AsSpan().StartsWith(source) && source.Length <= "pub".Length,
-            TokenType.Fn => "fn".AsSpan().StartsWith(source) && source.Length <= "fn".Length,
-            TokenType.Field => "field".AsSpan().StartsWith(source) && source.Length <= "field".Length,
-            TokenType.IntKeyword => "int".AsSpan().StartsWith(source) && source.Length <= "int".Length,
-            TokenType.Turbofish => "::<".AsSpan().StartsWith(source) && source.Length <= "::<".Length,
-            TokenType.Colon => source is ":",
-            TokenType.LeftAngleBracket => source is "<",
-            TokenType.RightAngleBracket => source is ">",
-            TokenType.Var => "var".AsSpan().StartsWith(source) && source.Length <= "var".Length,
-            TokenType.Equals => source is "=",
-            TokenType.Comma => source is ",",
-            TokenType.DoubleEquals => "==".AsSpan().StartsWith(source) && source.Length <= "==".Length,
-            TokenType.Else => "else".AsSpan().StartsWith(source) && source.Length <= "else".Length,
+            TokenType.Pub => Matches(source, "pub"),
+            TokenType.Fn => Matches(source, "fn"),
+            TokenType.Field => Matches(source, "field"),
+            TokenType.IntKeyword => Matches(source, "int"),
+            TokenType.Turbofish => Matches(source, "::<"),
+            TokenType.Colon => Matches(source, ":"),
+            TokenType.LeftAngleBracket => Matches(source, "<"),
+            TokenType.RightAngleBracket => Matches(source, ">"),
+            TokenType.Var => Matches(source, "var"),
+            TokenType.Equals => Matches(source, "="),
+            TokenType.Comma => Matches(source ,","),
+            TokenType.DoubleEquals => Matches(source, "=="),
+            TokenType.Else => Matches(source, "else"),
             TokenType.IntLiteral => !source.ContainsAnyExcept(Digits),
             TokenType.StringLiteral => MatchesStringLiteral(source),
-            TokenType.StringKeyword => "string".AsSpan().StartsWith(source) && source.Length <= "string".Length,
-            TokenType.Result => "result".AsSpan().StartsWith(source) && source.Length <= "result".Length,
-            TokenType.Ok => "ok".AsSpan().StartsWith(source) && source.Length <= "ok".Length,
-            TokenType.Error => "error".AsSpan().StartsWith(source) && source.Length <= "error".Length,
+            TokenType.StringKeyword => Matches(source, "string"),
+            TokenType.Result => Matches(source, "result"),
+            TokenType.Ok => Matches(source, "ok"),
+            TokenType.Error => Matches(source, "error"),
             TokenType.QuestionMark => source is "?",
-            TokenType.Return => "return".AsSpan().StartsWith(source) && source.Length <= "return".Length,
-            TokenType.True => "true".AsSpan().StartsWith(source) && source.Length <= "true".Length,
-            TokenType.False => "false".AsSpan().StartsWith(source) && source.Length <= "false".Length,
-            TokenType.Bool => "bool".AsSpan().StartsWith(source) && source.Length <= "bool".Length,
-            TokenType.DoubleColon => "::".AsSpan().StartsWith(source) && source.Length <= "::".Length,
-            TokenType.Star => source is "*",
-            TokenType.ForwardSlash => source is "/",
-            TokenType.Plus => source is "+",
-            TokenType.Dash => source is "-",
-            TokenType.Dot => source is ".",
+            TokenType.Return => Matches(source, "return"),
+            TokenType.True => Matches(source, "true"),
+            TokenType.False => Matches(source, "false"),
+            TokenType.Bool => Matches(source, "bool"),
+            TokenType.DoubleColon => Matches(source, "::"),
+            TokenType.Star => Matches(source, "*"),
+            TokenType.ForwardSlash => Matches(source, "/"),
+            TokenType.Plus => Matches(source, "+"),
+            TokenType.Dash => Matches(source, "-"),
+            TokenType.Dot => Matches(source, "."),
             TokenType.SingleLineComment => source.StartsWith("//") && !source.EndsWith('\r'),
             TokenType.MultiLineComment => source.StartsWith("/*") && (source.EndsWith("*/") || !source.Contains("*/", StringComparison.Ordinal)),
             TokenType.None => throw new UnreachableException(),
@@ -513,5 +518,8 @@ public class Tokenizer
             // the next quote either doesn't exist, or is at the end of the source
             return nextQuoteIndex < 0 || nextQuoteIndex == rest.Length - 1;
         }
+
+        static bool Matches(ReadOnlySpan<char> source, ReadOnlySpan<char> expected)
+            => expected.StartsWith(source) && source.Length <= expected.Length;
     }
 }
