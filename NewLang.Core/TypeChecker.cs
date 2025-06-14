@@ -546,8 +546,71 @@ public class TypeChecker
             UnaryOperatorExpression unaryOperatorExpression => TypeCheckUnaryOperator(
                 unaryOperatorExpression.UnaryOperator,
                 genericPlaceholders),
+            UnionStructVariantInitializerExpression unionStructVariantInitializerExpression => 
+                TypeCheckUnionStructInitializer(
+                    unionStructVariantInitializerExpression.UnionInitializer, genericPlaceholders),
             _ => throw new NotImplementedException($"{expression.ExpressionType}")
         };
+    }
+
+    private ITypeReference TypeCheckUnionStructInitializer(UnionStructVariantInitializer initializer, Dictionary<string, ITypeSignature> genericPlaceholders)
+    {
+        var type = GetTypeReference(initializer.UnionType, genericPlaceholders);
+
+        if (type is not InstantiatedUnion { UnionSignature: var signature, TypeArguments: var typeArguments })
+        {
+            throw new InvalidOperationException($"{type} is not a union");
+        }
+
+        var variant = signature.Variants.FirstOrDefault(x => x.Name == initializer.VariantIdentifier.StringValue)
+            ?? throw new InvalidOperationException($"No union variant found name {initializer.VariantIdentifier}");
+
+        if (variant is not ClassUnionVariant classVariant)
+        {
+            throw new InvalidOperationException($"{variant.Name} is not a union struct variant");
+        }
+        
+        if (initializer.FieldInitializers.GroupBy(x => x.FieldName.StringValue)
+            .Any(x => x.Count() > 1))
+        {
+            throw new InvalidOperationException("Field can only be initialized once");
+        }
+
+        if (initializer.FieldInitializers.Count != classVariant.Fields.Count)
+        {
+            throw new InvalidOperationException("Not all fields were initialized");
+        }
+        
+        var fields = classVariant.Fields.ToDictionary(x => x.Name);
+        
+        foreach (var fieldInitializer in initializer.FieldInitializers)
+        {
+            if (!fields.TryGetValue(fieldInitializer.FieldName.StringValue, out var field))
+            {
+                throw new InvalidOperationException($"No field named {fieldInitializer.FieldName.StringValue}");
+            }
+
+            var valueType = TypeCheckExpression(fieldInitializer.Value, genericPlaceholders);
+
+            if (field.Type is GenericTypeReference { OwnerType: var owner, GenericName: var genericName })
+            {
+                var instantiatedGenericFieldType = typeArguments[genericName];
+
+                if (!Equals(instantiatedGenericFieldType, valueType))
+                {
+                    throw new InvalidOperationException($"Expected {instantiatedGenericFieldType} but got {valueType}");
+                }
+            }
+            else
+            {
+                if (!Equals(field.Type, valueType))
+                {
+                    throw new InvalidOperationException($"Expected {field.Type} but got {valueType}");
+                }
+            }
+        }
+
+        return type;
     }
 
     private ITypeReference TypeCheckUnaryOperator(UnaryOperator unaryOperator, Dictionary<string, ITypeSignature> genericPlaceholders)
@@ -696,6 +759,16 @@ public class TypeChecker
             {
                 return GetTupleUnionFunction(tupleVariant, instantiatedUnion);
             }
+            if (variant is NoMembersUnionVariant)
+            {
+                return type;
+            }
+
+            if (variant is ClassUnionVariant)
+            {
+                throw new InvalidOperationException("Cannot create struct union variant without initializer");
+            }
+            
         }
         
         throw new InvalidOperationException("Cannot access static members");

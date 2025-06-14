@@ -45,6 +45,34 @@ public class TypeCheckerTests
     public static TheoryData<string> SuccessfulExpressionTestCases() =>
         new()
         {
+            """
+            union MyUnion {A}
+            
+            var a: MyUnion = MyUnion::A;
+            """,
+            """
+            union MyUnion<T> {
+                A {
+                    field MyField: T,
+                }
+            }
+            var a: MyUnion::<string> = new MyUnion::<string>::A {
+                MyField = ""
+            };
+            var b: MyUnion::<int> = new MyUnion::<int>::A {
+                MyField = 1
+            };
+            """,
+            """
+            union MyUnion {
+                A {
+                    field MyField: string,
+                }
+            }
+            var a: MyUnion = new MyUnion::A {
+                MyField = ""
+            };
+            """,
             "union MyUnion {}",
             """
             union MyUnion {
@@ -268,6 +296,64 @@ public class TypeCheckerTests
     public static TheoryData<string> FailedExpressionTestCases() =>
         new()
         {
+            """
+            union MyUnion<T> {
+                A {
+                    field MyField: T,
+                }
+            }
+            var a: MyUnion::<string> = new MyUnion::<string>::A {
+                MyField = 2
+            };
+            """,
+            """
+            union MyUnion {
+                A {
+                    field MyField: string
+                }
+            }
+            var a: MyUnion = new MyUnion::A {
+                MyField_ = ""
+            };
+            """,
+            """
+            union MyUnion {
+                A {
+                    field MyField: string
+                }
+            }
+            var a: MyUnion = new MyUnion::B {
+                MyField = ""
+            };
+            """,
+            """
+            union MyUnion {
+                A {
+                    field MyField: string
+                }
+            }
+            var a: MyUnion = new MyUnion::A {
+                MyField = 2
+            };
+            """,
+            """
+            union MyUnion {
+                A(string)
+            }
+            var a: MyUnion = new MyUnion::A {
+                MyField = 2
+            };
+            """,
+            """
+            union MyUnion {
+                A {
+                    field MyField: string,
+                }
+            }
+            var a: MyUnion = new MyUnion::A {
+                MyField = 2
+            };
+            """,
             """
             union MyUnion {
                 A(string)
