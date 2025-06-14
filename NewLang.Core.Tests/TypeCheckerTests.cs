@@ -26,26 +26,61 @@ public class TypeCheckerTests
     [Fact]
     public void SingleTest()
     {
-        var src = """
-            fn MyFn(): result::<string, int> {
-                var a: string = OtherFn()?;
-            }
-            
-            fn OtherFn(): result::<string, int> {
-                return result::<string, int>::Error(1);
+        var src =
+            """
+            union MyUnion {
+                A {
+                    field MyField: string,
+                    field MyField: string,
+                }
             }
             """;
         
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program);
 
-        act.Should().NotThrow();
+        act.Should().Throw<InvalidOperationException>();
     }
 
     public static TheoryData<string> SuccessfulExpressionTestCases() =>
         new()
         {
             "union MyUnion {}",
+            """
+            union MyUnion {
+                A,
+            }
+            """,
+            """
+            union myUnion {
+                A(string)
+            }
+            """,
+            """
+            class MyClass {}
+            union MyUnion {
+                A(MyClass, string)
+            }
+            """,
+            """
+            union MyUnion {
+                A { 
+                    field myField: string
+                }
+            }
+            """,
+            """
+            union MyUnion {
+                A
+            }
+            var a: MyUnion;
+            """,
+            """
+            union MyUnion {
+                A(string)
+            }
+            var a = MyUnion::A("");
+            """,
             """
             fn MyFn(): result::<string, int> {
                 var a: string = OtherFn()?;
@@ -233,6 +268,33 @@ public class TypeCheckerTests
     public static TheoryData<string> FailedExpressionTestCases() =>
         new()
         {
+            """
+            union MyUnion {
+                A(string)
+            }
+            var a = MyUnion::A(1);
+            """,
+            """
+            union MyUnion {
+                A,
+                A
+            }
+            """,
+            "union MyUnion {} union MyUnion {}",
+            "union MyUnion {} class MyUnion {}",
+            """
+            union MyUnion {
+                A {
+                    field MyField: string,
+                    field MyField: string,
+                }
+            }
+            """,
+            """
+            union MyUnion {
+                A()
+            }
+            """,
             """
             fn MyFn(): result::<int, string> {
                 if (true) {

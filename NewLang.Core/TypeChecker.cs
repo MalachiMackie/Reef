@@ -182,21 +182,30 @@ public class TypeChecker
 
     private void SetupSignatures()
     {
-        // class signatures
-
-        // class function signatures
-
-        // class fields
-
-        // global functions
-
         var classes =
             new List<(ProgramClass, ClassSignature, List<FunctionSignature>, List<TypeField> fields, List<TypeField>
                 staticFields)>();
+        var unions = new List<(ProgramUnion, UnionSignature, List<FunctionSignature>, List<IUnionVariant>)>();
 
+        // setup union and class signatures before setting up their functions/fields etc so that functions and fields can reference other types
         foreach (var union in _program.Unions)
         {
-            throw new NotImplementedException("Type check unions");
+            var variants = new List<IUnionVariant>();
+            var functions = new List<FunctionSignature>();
+            var unionSignature = new UnionSignature
+            {
+                Name = union.Name.StringValue,
+                GenericParameters = [..union.GenericArguments.Select(x => x.StringValue)],
+                Functions = functions,
+                Variants = variants
+            };
+            
+            unions.Add((union, unionSignature, functions, variants));
+
+            if (!_types.TryAdd(unionSignature.Name, unionSignature))
+            {
+                throw new InvalidOperationException($"Duplicate type {unionSignature.Name}");
+            }
         }
 
         foreach (var @class in _program.Classes)
@@ -219,6 +228,93 @@ public class TypeChecker
             if (!_types.TryAdd(name, signature))
             {
                 throw new InvalidOperationException($"Class with name {name} already defined");
+            }
+        }
+
+        foreach (var (union, unionSignature, functions, variants) in unions)
+        {
+            var unionGenericPlaceholders = new Dictionary<string, ITypeSignature>();
+            foreach (var genericParameter in unionSignature.GenericParameters)
+            {
+                if (!unionGenericPlaceholders.TryAdd(genericParameter, unionSignature))
+                {
+                    throw new InvalidOperationException($"Generic name already defined {genericParameter}");
+                }
+            }
+            
+            foreach (var function in union.Functions)
+            {
+                functions.Add(TypeCheckFunctionSignature(function, unionGenericPlaceholders));
+            }
+
+            foreach (var variant in union.Variants)
+            {
+                if (variants.Any(x => x.Name == variant.Name.StringValue))
+                {
+                    throw new InvalidOperationException("Cannot add multiple variants with the same name");
+                }
+                
+                variants.Add(variant switch
+                    {
+                        UnitStructUnionVariant => new NoMembersUnionVariant{Name = variant.Name.StringValue},
+                        Core.TupleUnionVariant tupleVariant => TypeCheckTupleVariant(tupleVariant),
+                        StructUnionVariant structUnionVariant => TypeCheckClassVariant(structUnionVariant),
+                        _ => throw new UnreachableException()
+                    });
+                
+                continue;
+
+                TupleUnionVariant TypeCheckTupleVariant(Core.TupleUnionVariant tupleVariant)
+                {
+                    if (tupleVariant.TupleMembers.Count == 0)
+                    {
+                        throw new InvalidOperationException("union Tuple variants must have at least one parameter. Use a unit variant instead");
+                    }
+                    
+                    return new TupleUnionVariant
+                    {
+                        Name = variant.Name.StringValue,
+                        TupleMembers =
+                            [..tupleVariant.TupleMembers.Select(x => GetTypeReference(x, unionGenericPlaceholders))]
+                    };
+                }
+
+                ClassUnionVariant TypeCheckClassVariant(StructUnionVariant structVariant)
+                {
+                    var fields = new List<TypeField>();
+                    foreach (var field in structVariant.Fields)
+                    {
+                        if (fields.Any(x => x.Name == field.Name.StringValue))
+                        {
+                            throw new InvalidOperationException($"Duplicate field {field.Name.StringValue}");
+                        }
+
+                        if (field.AccessModifier is not null)
+                        {
+                            throw new InvalidOperationException("Access modifier not allowed on class union variants. All fields are public");
+                        }
+
+                        if (field.StaticModifier is not null)
+                        {
+                            throw new InvalidOperationException("StaticModifier not allowed on class union variants");
+                        }
+                        
+                        var typeField = new TypeField
+                        {
+                            Name = field.Name.StringValue,
+                            Type = GetTypeReference(field.Type, unionGenericPlaceholders),
+                            IsMutable = field.MutabilityModifier is { Modifier.Type: TokenType.Mut },
+                            IsPublic = true,
+                        };
+                        fields.Add(typeField);
+                    }
+
+                    return new ClassUnionVariant
+                    {
+                        Fields = fields,
+                        Name = structVariant.Name.StringValue
+                    };
+                }
             }
         }
 
@@ -1031,24 +1127,55 @@ public class TypeChecker
         {
             if (_types.TryGetValue(stringToken.StringValue, out var nameMatchingType))
             {
-                if (!nameMatchingType.IsGeneric && typeIdentifier.TypeArguments.Count == 0)
+                if (nameMatchingType is ClassSignature classSignature)
                 {
+                    if (!nameMatchingType.IsGeneric && typeIdentifier.TypeArguments.Count == 0)
+                    {
+                        return new InstantiatedClass
+                        {
+                            ClassSignature = classSignature,
+                            TypeArguments = new Dictionary<string, ITypeReference>()
+                        };
+                    }
+
+                    if (nameMatchingType.GenericParameters.Count != typeIdentifier.TypeArguments.Count)
+                    {
+                        throw new InvalidOperationException($"Expected {nameMatchingType.GenericParameters.Count} type arguments, but found {typeIdentifier.TypeArguments.Count}");
+                    }
+                    
                     return new InstantiatedClass
-                        { Signature = nameMatchingType, TypeArguments = new Dictionary<string, ITypeReference>() };
+                    {
+                        ClassSignature = classSignature,
+                        TypeArguments = typeIdentifier.TypeArguments
+                            .Zip(nameMatchingType.GenericParameters)
+                            .ToDictionary(x => x.Second, x => GetTypeReference(x.First, genericPlaceholders))
+                    };
                 }
 
-                if (nameMatchingType.GenericParameters.Count != typeIdentifier.TypeArguments.Count)
+                if (nameMatchingType is UnionSignature unionSignature)
                 {
-                    throw new InvalidOperationException($"Expected {nameMatchingType.GenericParameters.Count} type arguments, but found {typeIdentifier.TypeArguments.Count}");
-                }
+                    if (!nameMatchingType.IsGeneric && typeIdentifier.TypeArguments.Count == 0)
+                    {
+                        return new InstantiatedUnion
+                        {
+                            UnionSignature = unionSignature,
+                            TypeArguments = new Dictionary<string, ITypeReference>()
+                        };
+                    }
 
-                return new InstantiatedClass
-                {
-                    Signature = nameMatchingType,
-                    TypeArguments = typeIdentifier.TypeArguments
-                        .Zip(nameMatchingType.GenericParameters)
-                        .ToDictionary(x => x.Second, x => GetTypeReference(x.First, genericPlaceholders))
-                };
+                    if (nameMatchingType.GenericParameters.Count != typeIdentifier.TypeArguments.Count)
+                    {
+                        throw new InvalidOperationException($"Expected {nameMatchingType.GenericParameters.Count} type arguments, but found {typeIdentifier.TypeArguments.Count}");
+                    }
+                    
+                    return new InstantiatedUnion
+                    {
+                        UnionSignature = unionSignature,
+                        TypeArguments = typeIdentifier.TypeArguments
+                            .Zip(nameMatchingType.GenericParameters)
+                            .ToDictionary(x => x.Second, x => GetTypeReference(x.First, genericPlaceholders))
+                    };
+                }
             }
 
             if (genericPlaceholders.TryGetValue(stringToken.StringValue, out var ownerType))
@@ -1131,16 +1258,18 @@ public class TypeChecker
     
     private class InstantiatedClass : IEquatable<InstantiatedClass>, ITypeReference
     {
-        public static InstantiatedClass String { get; } = new() { Signature = ClassSignature.String, TypeArguments = new Dictionary<string, ITypeReference>()};
-        public static InstantiatedClass Boolean { get; } = new() { Signature = ClassSignature.Boolean, TypeArguments = new Dictionary<string, ITypeReference>()};
+        public static InstantiatedClass String { get; } = new() { ClassSignature = ClassSignature.String, TypeArguments = new Dictionary<string, ITypeReference>()};
+        public static InstantiatedClass Boolean { get; } = new() { ClassSignature = ClassSignature.Boolean, TypeArguments = new Dictionary<string, ITypeReference>()};
         
-        public static InstantiatedClass Int { get; } = new() { Signature = ClassSignature.Int, TypeArguments = new Dictionary<string, ITypeReference>()};
+        public static InstantiatedClass Int { get; } = new() { ClassSignature = ClassSignature.Int, TypeArguments = new Dictionary<string, ITypeReference>()};
 
-        public static InstantiatedClass Unit { get; } = new() { Signature = ClassSignature.Unit, TypeArguments = new Dictionary<string, ITypeReference>()};
+        public static InstantiatedClass Unit { get; } = new() { ClassSignature = ClassSignature.Unit, TypeArguments = new Dictionary<string, ITypeReference>()};
         
-        public static InstantiatedClass Never { get; } = new() {Signature = ClassSignature.Never, TypeArguments = new Dictionary<string, ITypeReference>() };
+        public static InstantiatedClass Never { get; } = new() { ClassSignature = ClassSignature.Never, TypeArguments = new Dictionary<string, ITypeReference>() };
         
-        public required ITypeSignature Signature { get; init; }
+        public required ClassSignature ClassSignature { get; init; }
+
+        public ITypeSignature Signature => ClassSignature;
         
         // todo: be consistent with argument/parameter
         public required IReadOnlyDictionary<string, ITypeReference> TypeArguments { get; init; }
@@ -1215,7 +1344,7 @@ public class TypeChecker
         {
             return new InstantiatedUnion
             {
-                Signature = UnionSignature.Result,
+                UnionSignature = UnionSignature.Result,
                 TypeArguments = new Dictionary<string, ITypeReference>
                 {
                     { "TValue", value },
@@ -1224,7 +1353,8 @@ public class TypeChecker
             };
         }
         
-        public required ITypeSignature Signature { get; init; }
+        public required UnionSignature UnionSignature { get; init; }
+        public ITypeSignature Signature => UnionSignature;
         public required IReadOnlyDictionary<string, ITypeReference> TypeArguments { get; init; }
         
         public static bool operator ==(InstantiatedUnion? left, InstantiatedUnion? right)
