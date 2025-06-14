@@ -141,6 +141,19 @@ public record MethodReturnExpression(MethodReturn MethodReturn) : IExpression
     }
 }
 
+public record UnionStructVariantInitializerExpression(UnionStructVariantInitializer UnionInitializer) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.UnionStructVariantInitializer;
+}
+
+public record UnionStructVariantInitializer(TypeIdentifier UnionType, StringToken VariantIdentifier, IReadOnlyList<FieldInitializer> FieldInitializers)
+{
+    public override string ToString()
+    {
+        return $"{UnionType}::{VariantIdentifier} {{\r\n\t{string.Join("\r\n\t,", FieldInitializers)}\r\n}}";
+    }
+}
+
 public record ObjectInitializerExpression(ObjectInitializer ObjectInitializer) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.ObjectInitializer;
@@ -333,5 +346,6 @@ public enum ExpressionType
     ObjectInitializer,
     GenericInstantiation,
     MemberAccess,
-    StaticMemberAccess
+    StaticMemberAccess,
+    UnionStructVariantInitializer
 }

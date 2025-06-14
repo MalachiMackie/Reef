@@ -554,7 +554,7 @@ public class TypeCheckerTests
             };
         }
         
-        var a = new MyUnion::A;
+        var a = MyUnion::A;
         
         c = new MyUnion::B{ MyField = ""};
         

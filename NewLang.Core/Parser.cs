@@ -834,7 +834,7 @@ public static class Parser
             TokenType.If => GetIfExpression(tokens),
             TokenType.LeftParenthesis => GetMethodCall(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             TokenType.Return => GetMethodReturn(tokens),
-            TokenType.New => GetObjectInitializer(tokens),
+            TokenType.New => GetInitializer(tokens),
             TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
             TokenType.Dot => GetMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
             TokenType.DoubleColon => GetStaticMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
@@ -935,7 +935,7 @@ public static class Parser
         return new MemberAccessExpression(new MemberAccess(previousExpression, memberName));
     }
 
-    private static ObjectInitializerExpression GetObjectInitializer(PeekableEnumerator<Token> tokens)
+    private static IExpression GetInitializer(PeekableEnumerator<Token> tokens)
     {
         if (!MoveNext(tokens))
         {
@@ -944,13 +944,44 @@ public static class Parser
 
         var type = GetTypeIdentifier(tokens);
 
+        if (!MoveNext(tokens))
+        {
+            throw new InvalidOperationException("Expected :: or {");
+        }
+
+        if (tokens.Current.Type == TokenType.LeftBrace)
+        {
+            return GetObjectInitializer(type, tokens);
+        }
+        if (tokens.Current.Type == TokenType.DoubleColon)
+        {
+            return GetUnionStructVariantInitializer(type, tokens);
+        }
+        
+        throw new InvalidOperationException($"Unexpected token {tokens.Current}. Expected :: or {{");
+    }
+
+    private static UnionStructVariantInitializerExpression GetUnionStructVariantInitializer(
+        TypeIdentifier type,
+        PeekableEnumerator<Token> tokens)
+    {
+        if (!MoveNext(tokens) || tokens.Current is not StringToken { Type: TokenType.Identifier } variantName)
+        {
+            throw new InvalidOperationException("Expected union variant name");
+        }
+
         if (!MoveNext(tokens) || tokens.Current.Type != TokenType.LeftBrace)
         {
             throw new InvalidOperationException("Expected {");
         }
+        
+        return new UnionStructVariantInitializerExpression(new UnionStructVariantInitializer(type, variantName, GetFieldInitializers(tokens)));
+    }
 
+    private static List<FieldInitializer> GetFieldInitializers(PeekableEnumerator<Token> tokens)
+    {
         var fieldInitializers = new List<FieldInitializer>();
-
+        
         while (true)
         {
             if (!MoveNext(tokens))
@@ -997,8 +1028,13 @@ public static class Parser
 
             fieldInitializers.Add(new FieldInitializer(fieldName, fieldValue));
         }
+        
+        return fieldInitializers;
+    }
 
-        return new ObjectInitializerExpression(new ObjectInitializer(type, fieldInitializers));
+    private static ObjectInitializerExpression GetObjectInitializer(TypeIdentifier type, PeekableEnumerator<Token> tokens)
+    {
+        return new ObjectInitializerExpression(new ObjectInitializer(type, GetFieldInitializers(tokens)));
     }
 
     private static MethodReturnExpression GetMethodReturn(PeekableEnumerator<Token> tokens)

@@ -96,6 +96,111 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
         return new (string Source, LangProgram ExpectedProgram)[]
         {
+            (
+                """
+                union MyUnion<T> {
+                    A { }
+                }
+                
+                var a = new MyUnion::<string>::A {};
+                """,
+                new LangProgram(
+                    [
+                        new VariableDeclarationExpression(new VariableDeclaration(
+                            Token.Identifier("a", SourceSpan.Default),
+                            null,
+                            null,
+                            new UnionStructVariantInitializerExpression(new UnionStructVariantInitializer(
+                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])]),
+                                Token.Identifier("A", SourceSpan.Default),
+                                [
+                                    new FieldInitializer(
+                                        Token.Identifier("MyField", SourceSpan.Default),
+                                        new ValueAccessorExpression(new ValueAccessor(
+                                            ValueAccessType.Literal, Token.StringLiteral("value", SourceSpan.Default)))
+                                    ),
+                                    new FieldInitializer(
+                                        Token.Identifier("Field2", SourceSpan.Default),
+                                        new ValueAccessorExpression(new ValueAccessor(
+                                            ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default)))
+                                    )
+                                ]))
+                        ))
+                    ],
+                    [],
+                    [],
+                    [new ProgramUnion(
+                        null,
+                        Token.Identifier("MyUnion", SourceSpan.Default),
+                        [Token.Identifier("T", SourceSpan.Default)],
+                        [],
+                        [new StructUnionVariant
+                        {
+                            Name = Token.Identifier("A", SourceSpan.Default),
+                            Fields = [
+                                new ClassField(null,
+                                    null,
+                                    null,
+                                    Token.Identifier("MyField", SourceSpan.Default),
+                                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
+                                    null
+                            )]
+                        }])])
+            ),
+            (
+                """
+                union MyUnion {
+                    A { field MyField: string, field Field2: int }
+                }
+                
+                var a = new MyUnion::A {
+                    MyField = "value",
+                    Field2 = 2
+                };
+                """,
+                new LangProgram(
+                    [
+                        new VariableDeclarationExpression(new VariableDeclaration(
+                            Token.Identifier("a", SourceSpan.Default),
+                            null,
+                            null,
+                            new UnionStructVariantInitializerExpression(new UnionStructVariantInitializer(
+                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                Token.Identifier("A", SourceSpan.Default),
+                                [
+                                    new FieldInitializer(
+                                        Token.Identifier("MyField", SourceSpan.Default),
+                                        new ValueAccessorExpression(new ValueAccessor(
+                                            ValueAccessType.Literal, Token.StringLiteral("value", SourceSpan.Default)))
+                                    ),
+                                    new FieldInitializer(
+                                        Token.Identifier("Field2", SourceSpan.Default),
+                                        new ValueAccessorExpression(new ValueAccessor(
+                                            ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default)))
+                                    )
+                                ]))
+                        ))
+                    ],
+                    [],
+                    [],
+                    [new ProgramUnion(
+                        null,
+                        Token.Identifier("MyUnion", SourceSpan.Default),
+                        [],
+                        [],
+                        [new StructUnionVariant
+                        {
+                            Name = Token.Identifier("A", SourceSpan.Default),
+                            Fields = [
+                                new ClassField(null,
+                                    null,
+                                    null,
+                                    Token.Identifier("MyField", SourceSpan.Default),
+                                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
+                                    null
+                            )]
+                        }])])
+            ),
             ("class MyClass {field myFieldWithoutComma: string}",
                 new LangProgram([], [], 
                 [
@@ -2818,8 +2923,18 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             MemberAccessExpression memberAccessExpression => new MemberAccessExpression(RemoveSourceSpan(memberAccessExpression.MemberAccess)),
             StaticMemberAccessExpression staticMemberAccessExpression => new StaticMemberAccessExpression(RemoveSourceSpan(staticMemberAccessExpression.StaticMemberAccess)),
             GenericInstantiationExpression genericInstantiationExpression => new GenericInstantiationExpression(RemoveSourceSpan(genericInstantiationExpression.GenericInstantiation)),
-            _ => throw new NotImplementedException()
+            UnionStructVariantInitializerExpression unionStructVariantInitializerExpression => new UnionStructVariantInitializerExpression(RemoveSourceSpan(unionStructVariantInitializerExpression.UnionInitializer)),
+            _ => throw new NotImplementedException(expression.GetType().ToString())
         };
+    }
+
+    private static UnionStructVariantInitializer RemoveSourceSpan(
+        UnionStructVariantInitializer unionStructVariantInitializer)
+    {
+        return new UnionStructVariantInitializer(
+            RemoveSourceSpan(unionStructVariantInitializer.UnionType),
+            RemoveSourceSpan(unionStructVariantInitializer.VariantIdentifier),
+            [..unionStructVariantInitializer.FieldInitializers.Select(RemoveSourceSpan)]);
     }
 
     private static GenericInstantiation RemoveSourceSpan(GenericInstantiation genericInstantiation)
