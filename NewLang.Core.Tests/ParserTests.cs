@@ -621,7 +621,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     null,
                     Token.Identifier("MyField", SourceSpan.Default),
                     new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []), null)])], [])),
-            ("class MyClass {pub mut field MyField: string, pub fn MyFn() {}}", new LangProgram([], [], [new ProgramClass(
+            ("class MyClass {pub mut field MyField: string, pub fn MyFn() {},}", new LangProgram([], [], [new ProgramClass(
                 null,
                 Token.Identifier("MyClass", SourceSpan.Default),
                 [],

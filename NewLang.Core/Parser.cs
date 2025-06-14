@@ -41,6 +41,7 @@ public static class Parser
         var variants = new List<IProgramUnionVariant>();
                 
         var expectMemberComma = false;
+        var allowMemberComma = false;
         
         while (TryPeek(tokens, out var peeked))
         {
@@ -51,20 +52,23 @@ public static class Parser
                 foundClosingToken = true;
                 break;
             }
-            
-            if (expectMemberComma)
+
+            if (peeked.Type == TokenType.Comma)
             {
-                if (peeked.Type != TokenType.Comma)
+                if (!allowMemberComma)
                 {
-                    throw new InvalidOperationException("Expected comma");
+                    throw new InvalidOperationException("Unexpected ,");
                 }
 
                 MoveNext(tokens);
-
                 if (!TryPeek(tokens, out peeked))
                 {
                     break;
                 }
+            }
+            else if (expectMemberComma)
+            {
+                throw new InvalidOperationException("Expected comma");
             }
             
             if (peeked.Type == closingToken)
@@ -105,6 +109,7 @@ public static class Parser
                     variants.Add(variant);
                 }
 
+                allowMemberComma = true;
                 continue;
             }
 
