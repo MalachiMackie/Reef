@@ -243,6 +243,8 @@ public class Tokenizer
             TokenType.DoubleColon when source is "::" => Token.DoubleColon(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Class when source is "class" => Token.Class(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Union when source is "union" => Token.Union(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Matches when source is "matches" => Token.Matches(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Match when source is "match" => Token.Match(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Field when source is "field" => Token.Field(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Static when source is "static" => Token.Static(new SourceSpan(position, (ushort)source.Length)),
             TokenType.LeftParenthesis when source is "(" => Token.LeftParenthesis(new SourceSpan(position,
@@ -319,6 +321,8 @@ public class Tokenizer
                 break;
             case 'm':
                 tokens[i++] = TokenType.Mut;
+                tokens[i++] = TokenType.Matches;
+                tokens[i++] = TokenType.Match;
                 tokens[i++] = TokenType.Identifier;
                 break;
             case '(':
@@ -458,6 +462,8 @@ public class Tokenizer
             TokenType.LeftBrace => Matches(source, "{"),
             TokenType.Union => Matches(source, "union"),
             TokenType.Mut => Matches(source, "mut"),
+            TokenType.Match => Matches(source, "match"),
+            TokenType.Matches => Matches(source, "matches"),
             TokenType.New => Matches(source, "new"),
             TokenType.Static => Matches(source, "static"),
             TokenType.Class => Matches(source, "class"),

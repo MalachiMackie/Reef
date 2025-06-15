@@ -104,6 +104,16 @@ public record Token
         return new Token { Type = TokenType.Static, SourceSpan = sourceSpan };
     }
 
+    public static Token Matches(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.Matches, SourceSpan = sourceSpan };
+    }
+
+    public static Token Match(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.Match, SourceSpan = sourceSpan };
+    }
+
     public static Token DoubleColon(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.DoubleColon, SourceSpan = sourceSpan };

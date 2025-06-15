@@ -778,13 +778,13 @@ public class TypeCheckerTests
             
             fn SomeMethod() {
             /*
-                var foo = switch (this) {
+                var foo = match (this) {
                     A => "",
                     B { MyField } => MyField,
                     C(value) => value
                 };
                 
-                var bar = switch (this) {
+                var bar = match (this) {
                     A => 1,
                     B => 2,
                     C => 3
@@ -799,7 +799,7 @@ public class TypeCheckerTests
         
         /*
         
-        todo: pattern matching and switch expressions
+        todo: pattern matching and match expressions
         
         fn AnotherMethod(param: MyUnion) {
             if (param matches MyUnion::A) {
@@ -807,7 +807,7 @@ public class TypeCheckerTests
             else if (param matches MyUnion::B { MyField }) {
             }
             
-            var a = switch (param) {
+            var a = match (param) {
                 MyUnion::A => 1,
                 MyUnion::B { MyField } => 2,
                 MyUnion::C(value) => 3

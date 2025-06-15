@@ -133,6 +133,7 @@ public class TypeChecker
             // static functions
             using (PushScope())
             {
+                // static functions only have access to static fields
                 foreach (var variable in staticFieldVariables)
                 {
                     ScopedVariables.Add(variable.Name, variable);
@@ -149,6 +150,7 @@ public class TypeChecker
             // instance functions
             using (PushScope())
             {
+                // instance functions have access to both instance and static fields
                 foreach (var variable in instanceFieldVariables.Concat(staticFieldVariables))
                 {
                     ScopedVariables.Add(variable.Name, variable);

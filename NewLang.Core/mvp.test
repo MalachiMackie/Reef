@@ -77,13 +77,13 @@ pub union MyUnion {
     C(string),
     
     fn SomeMethod() {
-        var foo = switch (this) {
+        var foo = match (this) {
             A => "",
             B { MyField } => MyField,
             C(value) => value
         };
         
-        var bar = switch (this) {
+        var bar = match (this) {
             A => 1,
             B => 2,
             C => 3
@@ -97,7 +97,7 @@ fn AnotherMethod(param: MyUnion) {
     else if (param matches MyUnion::B { MyField }) {
     }
     
-    var a = switch (param) {
+    var a = match (param) {
         MyUnion::A => 1,
         MyUnion::B { MyField } => 2,
         MyUnion::C(value) => 3

@@ -47,4 +47,6 @@ public enum TokenType
     SingleLineComment,
     MultiLineComment,
     Union,
+    Match,
+    Matches
 }

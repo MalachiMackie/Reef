@@ -106,6 +106,8 @@ public class TokenizerTests
             ["pub", new[] { Token.Pub(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             ["union", new[] { Token.Union(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["static", new[] { Token.Static(new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],
+            ["matches", new[] { Token.Matches(new SourceSpan(new SourcePosition(0, 0, 0), 7)) }],
+            ["match", new[] { Token.Match(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["class", new[] { Token.Class(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["// some comment here", new [] { Token.SingleLineComment(" some comment here", new SourceSpan(new SourcePosition(0, 0, 0), 20)) }],
             [
