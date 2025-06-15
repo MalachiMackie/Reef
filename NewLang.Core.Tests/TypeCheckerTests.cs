@@ -755,9 +755,9 @@ public class TypeCheckerTests
         todo: pattern matching and switch expressions
         
         fn AnotherMethod(param: MyUnion) {
-            if (param is MyUnion::A) {
+            if (param matches MyUnion::A) {
             }
-            else if (param is MyUnion::B { MyField }) {
+            else if (param matches MyUnion::B { MyField }) {
             }
             
             var a = switch (param) {
