@@ -82,6 +82,7 @@ public record Token
             TokenType.New => "new",
             TokenType.DoubleColon => "::",
             TokenType.Static => "static",
+            TokenType.Union => "union",
             _ => throw new UnreachableException()
         };
     }

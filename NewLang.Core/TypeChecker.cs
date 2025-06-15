@@ -74,45 +74,58 @@ public class TypeChecker
 
         foreach (var @class in _program.Classes)
         {
-            if (_types[@class.Name.StringValue] is not ClassSignature classSignature)
+            using (PushScope())
             {
-                throw new InvalidOperationException($"Expected {@class.Name.StringValue} to be a class");
-            }
-
-            var classGenericPlaceholders =
-                @class.TypeArguments.ToDictionary<StringToken, string, ITypeSignature>(x => x.StringValue,
-                    _ => classSignature);
-
-            foreach (var field in @class.Fields)
-            {
-                var isStatic = field.StaticModifier is not null;
-
-                if (isStatic)
+                if (_types[@class.Name.StringValue] is not ClassSignature classSignature)
                 {
-                    // todo: static constructor?
-                    if (field.InitializerValue is null)
+                    throw new InvalidOperationException($"Expected {@class.Name.StringValue} to be a class");
+                }
+
+                var classGenericPlaceholders =
+                    @class.TypeArguments.ToDictionary<StringToken, string, ITypeSignature>(x => x.StringValue,
+                        _ => classSignature);
+
+                foreach (var field in @class.Fields)
+                {
+                    var isStatic = field.StaticModifier is not null;
+                    
+                    var fieldTypeReference = GetTypeReference(field.Type, classGenericPlaceholders);
+
+                    if (isStatic)
                     {
-                        throw new InvalidOperationException("Expected field initializer for static field");
+                        // todo: static constructor?
+                        if (field.InitializerValue is null)
+                        {
+                            throw new InvalidOperationException("Expected field initializer for static field");
+                        }
+
+                        var valueType = TypeCheckExpression(field.InitializerValue, classGenericPlaceholders);
+
+                        if (!Equals(valueType, fieldTypeReference))
+                        {
+                            throw new InvalidOperationException($"Expected {fieldTypeReference}");
+                        }
+                    }
+                    else if (field.InitializerValue is not null)
+                    {
+                        throw new InvalidOperationException("Instance fields cannot have initializers");
                     }
 
-                    var valueType = TypeCheckExpression(field.InitializerValue, classGenericPlaceholders);
-                    var expectedType = GetTypeReference(field.Type, classGenericPlaceholders);
+                    ScopedVariables[field.Name.StringValue] = new Variable(
+                        field.Name.StringValue,
+                        fieldTypeReference,
+                        // field will be instantiated by the time it is accessed
+                        Instantiated: true,
+                        Mutable: field.MutabilityModifier is not null);
 
-                    if (!Equals(valueType, expectedType))
-                    {
-                        throw new InvalidOperationException($"Expected {expectedType}");
-                    }
                 }
-                else if (field.InitializerValue is not null)
+
+                foreach (var function in @class.Functions)
                 {
-                    throw new InvalidOperationException("Instance fields cannot have initializers");
-                }
-            }
+                    var fnSignature = classSignature.Functions.First(x => x.Name == function.Name.StringValue);
 
-            foreach (var function in @class.Functions)
-            {
-                var fnSignature = classSignature.Functions.First(x => x.Name == function.Name.StringValue);
-                TypeCheckFunctionBody(function, fnSignature, classGenericPlaceholders);
+                    TypeCheckFunctionBody(function, fnSignature, classGenericPlaceholders);
+                }
             }
         }
 

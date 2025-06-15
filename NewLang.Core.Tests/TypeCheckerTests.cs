@@ -56,6 +56,24 @@ public class TypeCheckerTests
             """,
             """
             class MyClass {
+                mut field MyField: string,
+                
+                fn MyFn() {
+                    MyField = "";
+                }
+            }
+            """,
+            """
+            class MyClass {
+                field MyField: string,
+                
+                fn MyFn(): string {
+                    return MyField;
+                }
+            }
+            """,
+            """
+            class MyClass {
                 pub mut field MyField: string
             }
             
@@ -354,6 +372,15 @@ public class TypeCheckerTests
     public static TheoryData<string> FailedExpressionTestCases() =>
         new()
         {
+            """
+            class MyClass {
+                field MyField: string,
+                
+                fn MyFn() {
+                    MyField = "";
+                }
+            }
+            """,
             """
             var a: string;
             // initial assignment succeeds
