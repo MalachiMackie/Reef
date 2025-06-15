@@ -146,6 +146,11 @@ public record UnionStructVariantInitializerExpression(UnionStructVariantInitiali
     public ExpressionType ExpressionType => ExpressionType.UnionStructVariantInitializer;
 }
 
+public record MatchesExpression(IExpression ValueExpression, IPattern Pattern) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.Matches;
+}
+
 public record UnionStructVariantInitializer(TypeIdentifier UnionType, StringToken VariantIdentifier, IReadOnlyList<FieldInitializer> FieldInitializers)
 {
     public override string ToString()
@@ -347,5 +352,7 @@ public enum ExpressionType
     GenericInstantiation,
     MemberAccess,
     StaticMemberAccess,
-    UnionStructVariantInitializer
+    UnionStructVariantInitializer,
+    Matches,
+    Match
 }

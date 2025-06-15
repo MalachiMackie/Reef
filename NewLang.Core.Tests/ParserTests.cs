@@ -97,6 +97,273 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         return new (string Source, LangProgram ExpectedProgram)[]
         {
             (
+                "a matches MyUnion::A",
+                new LangProgram(
+                    [new MatchesExpression(
+                            VariableAccessor("a"),
+                            new UnionVariantPattern(
+                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                Token.Identifier("A", SourceSpan.Default)
+                            )
+                        )],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "a matches var a",
+                new LangProgram(
+                    [new MatchesExpression(
+                            VariableAccessor("a"),
+                            new VariableDeclarationPattern(Token.Identifier("a", SourceSpan.Default))
+                        )],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "a matches _",
+                new LangProgram(
+                    [new MatchesExpression(
+                            VariableAccessor("a"),
+                            new DiscardPattern()
+                        )],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "a matches MyUnion::A(var b)",
+                new LangProgram(
+                    [
+                        new MatchesExpression(
+                            VariableAccessor("a"),
+                            new UnionTupleVariantPattern(
+                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                Token.Identifier("A", SourceSpan.Default),
+                                [
+                                    new VariableDeclarationPattern(Token.Identifier("b", SourceSpan.Default))
+                                ])
+                        )
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "a matches MyUnion::A(var b, var c, _)",
+                new LangProgram(
+                    [
+                        new MatchesExpression(
+                            VariableAccessor("a"),
+                            new UnionTupleVariantPattern(
+                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                Token.Identifier("A", SourceSpan.Default),
+                                [
+                                    new VariableDeclarationPattern(Token.Identifier("b", SourceSpan.Default)),
+                                    new VariableDeclarationPattern(Token.Identifier("c", SourceSpan.Default)),
+                                    new DiscardPattern()
+                                ])
+                        )
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "a matches MyUnion::A(OtherUnion::C)",
+                new LangProgram(
+                    [
+                        new MatchesExpression(
+                            VariableAccessor("a"),
+                            new UnionTupleVariantPattern(
+                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                Token.Identifier("A", SourceSpan.Default),
+                                [
+                                    new UnionVariantPattern(
+                                        new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), []),
+                                        Token.Identifier("C", SourceSpan.Default)
+                                    )
+                                ])
+                        )
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "a matches MyUnion::A(OtherUnion::C var c)",
+                new LangProgram(
+                    [
+                        new MatchesExpression(
+                            VariableAccessor("a"),
+                            new UnionTupleVariantPattern(
+                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                Token.Identifier("A", SourceSpan.Default),
+                                [
+                                    new UnionVariantVariableDeclarationPattern(
+                                        new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), []),
+                                        Token.Identifier("C", SourceSpan.Default),
+                                        Token.Identifier("c", SourceSpan.Default)
+                                    )
+                                ])
+                        )
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "a matches MyUnion::A(OtherUnion::C(var d))",
+                new LangProgram(
+                    [
+                        new MatchesExpression(
+                            VariableAccessor("a"),
+                            new UnionTupleVariantPattern(
+                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                Token.Identifier("A", SourceSpan.Default),
+                                [
+                                    new UnionTupleVariantPattern(
+                                        new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), []),
+                                        Token.Identifier("C", SourceSpan.Default),
+                                        [new VariableDeclarationPattern(Token.Identifier("d", SourceSpan.Default))]
+                                    )
+                                ])
+                        )
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "a matches MyUnion::A { MyField }",
+                new LangProgram(
+                    [
+                        new MatchesExpression(
+                            VariableAccessor("a"),
+                            new UnionStructVariantPattern(
+                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                Token.Identifier("A", SourceSpan.Default),
+                                [
+                                    KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null)
+                                ],
+                                RemainingFieldsDiscarded: false
+                            ))
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "a matches MyUnion::A { MyField, OtherField: var f }",
+                new LangProgram(
+                    [
+                        new MatchesExpression(
+                            VariableAccessor("a"),
+                            new UnionStructVariantPattern(
+                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                Token.Identifier("A", SourceSpan.Default),
+                                [
+                                    KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null),
+                                    KeyValuePair.Create(
+                                        Token.Identifier("OtherField", SourceSpan.Default),
+                                        (IPattern?)new VariableDeclarationPattern(Token.Identifier("f", SourceSpan.Default))
+                                    )
+                                ],
+                                RemainingFieldsDiscarded: false
+                            ))
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "a matches MyUnion::A { MyField, .. }",
+                new LangProgram(
+                    [
+                        new MatchesExpression(
+                            VariableAccessor("a"),
+                            new UnionStructVariantPattern(
+                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                Token.Identifier("A", SourceSpan.Default),
+                                [
+                                    KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null),
+                                ],
+                                RemainingFieldsDiscarded: true
+                            ))
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "a matches MyUnion::A { MyField: MyUnion::B var f }",
+                new LangProgram(
+                    [
+                        new MatchesExpression(
+                            VariableAccessor("a"),
+                            new UnionStructVariantPattern(
+                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                Token.Identifier("A", SourceSpan.Default),
+                                [
+                                    KeyValuePair.Create(
+                                        Token.Identifier("MyField", SourceSpan.Default),
+                                        (IPattern?)new UnionVariantVariableDeclarationPattern(
+                                            new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                            Token.Identifier("B", SourceSpan.Default),
+                                            Token.Identifier("f", SourceSpan.Default))),
+                                ],
+                                RemainingFieldsDiscarded: true
+                            ))
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "a matches MyUnion::A { MyField: MyUnion::B(var c)  }",
+                new LangProgram(
+                    [
+                        new MatchesExpression(
+                            VariableAccessor("a"),
+                            new UnionStructVariantPattern(
+                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                Token.Identifier("A", SourceSpan.Default),
+                                [
+                                    KeyValuePair.Create(
+                                        Token.Identifier("MyField", SourceSpan.Default),
+                                        (IPattern?)new UnionTupleVariantPattern(
+                                            new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                            Token.Identifier("B", SourceSpan.Default),
+                                            [new VariableDeclarationPattern(Token.Identifier("c", SourceSpan.Default))])),
+                                ],
+                                RemainingFieldsDiscarded: true
+                            ))
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "a matches MyClass { MyField, .. }",
+                new LangProgram(
+                    [
+                        new MatchesExpression(
+                            VariableAccessor("a"),
+                            new ClassPattern(
+                                new TypeIdentifier(Token.Identifier("MyClass", SourceSpan.Default), []),
+                                [
+                                    KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null), 
+                                ],
+                                RemainingFieldsDiscarded: true
+                            )
+                        )
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
                 """
                 union MyUnion<T> {
                     A { }
