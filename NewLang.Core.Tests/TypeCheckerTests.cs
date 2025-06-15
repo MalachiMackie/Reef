@@ -28,12 +28,16 @@ public class TypeCheckerTests
     {
         var src =
             """
-            union MyUnion {
-                A {
-                    field MyField: string,
-                    field MyField: string,
-                }
+            class MyClass {
+                pub field MyField: string
             }
+            
+            var mut a = new MyClass {
+                MyField = ""
+            };
+            
+            // MyField is not mutable
+            a.MyField = "";
             """;
         
         var program = Parser.Parse(Tokenizer.Tokenize(src));
@@ -45,6 +49,60 @@ public class TypeCheckerTests
     public static TheoryData<string> SuccessfulExpressionTestCases() =>
         new()
         {
+            ";;;;;;;;",
+            """
+            var a: string;
+            a = "";
+            """,
+            """
+            class MyClass {
+                pub mut field MyField: string
+            }
+            
+            var mut a = new MyClass {
+                MyField = ""
+            };
+            
+            a.MyField = "";
+            """,
+            """
+            class MyClass { pub mut field MyField: string }
+            var mut a = new MyClass { MyField = "" };
+            
+            // a is not marked as mutable
+            a.MyField = "";
+            """,
+            """
+            var mut a = "";
+            a = "";
+            """,
+            """
+            class MyClass {
+                pub static mut field MyField: string = ""
+            };
+            
+            MyClass::MyField = "";
+            """,
+            """
+            class MyClass {
+                pub mut field MyField: string
+            }
+            fn MyFn(mut param: MyClass) { 
+                param.MyField = "";
+            }
+            """,
+            """
+            fn MyFn(mut param: string) {
+               param = ""; 
+            }
+            """,
+            """
+            fn MyFn(mut param: string) {
+            }
+            var mut a = "";
+            
+            MyFn(a);
+            """,
             """
             union MyUnion {A}
             
@@ -202,7 +260,7 @@ public class TypeCheckerTests
             // EqualityCheck,
             "var a: bool = 2 == 2",
             // ValueAssignment,
-            "var a = 2; a = 3",
+            "var mut a = 2; a = 3",
             // Object Initializers
             """
             class MyClass {field myField: int, field otherField: string,}
@@ -296,6 +354,68 @@ public class TypeCheckerTests
     public static TheoryData<string> FailedExpressionTestCases() =>
         new()
         {
+            """
+            var a: string;
+            // initial assignment succeeds
+            a = "";
+            // second assignment fails because it's not mutable
+            a = ";";
+            """,
+            """
+            class MyClass {
+                pub field MyField: string
+            }
+            
+            var mut a = new MyClass {
+                MyField = ""
+            };
+            
+            // MyField is not mutable
+            a.MyField = "";
+            """,
+            """
+            class MyClass { pub mut field MyField: string }
+            var a = new MyClass { MyField = "" };
+            
+            // a is not marked as mutable
+            a.MyField = "";
+            """,
+            """
+            var a = "";
+            // a is not marked as mutable
+            a = "";
+            """,
+            """
+            class MyClass {
+                pub static field MyField: string
+            };
+            
+            // MyField is not marked as mutable
+            MyClass::MyField = "";
+            """,
+            """
+            class MyClass {
+                pub mut field MyField: string
+            }
+            fn MyFn(param: MyClass) { 
+                // param is not marked as mutable
+                param.MyField = "";
+            }
+            """,
+            """
+            fn MyFn(param: string) {
+               // param is not marked as mutable
+               param = ""; 
+            }
+            """,
+            """
+            fn MyFn(mut param: string) {
+            }
+            var a = "";
+            
+            // param is mut, but a is not marked as mutable
+            MyFn(a);
+            """,
             """
             union MyUnion<T> {
                 A {
@@ -538,7 +658,7 @@ public class TypeCheckerTests
     private const string Mvp =
         """
         pub fn DoSomething(a: int): result::<int, string> {
-            var b: int = 2;
+            var mut b: int = 2;
             
             if (a > b) {
                 // return ok(a);
@@ -604,15 +724,13 @@ public class TypeCheckerTests
             pub field A: string,
         }
         
-        // todo: unions
-        
-        /*
         pub union MyUnion {
             A,
             B { field MyField: string, },
             C(string),
             
             fn SomeMethod() {
+            /*
                 var foo = switch (this) {
                     A => "",
                     B { MyField } => MyField,
@@ -624,8 +742,17 @@ public class TypeCheckerTests
                     B => 2,
                     C => 3
                 }
+                */
             }
         }
+        
+        var mut c = MyUnion::A;
+                
+        c = new MyUnion::B{ MyField = ""};
+        
+        /*
+        
+        todo: pattern matching and switch expressions
         
         fn AnotherMethod(param: MyUnion) {
             if (param is MyUnion::A) {
@@ -639,10 +766,6 @@ public class TypeCheckerTests
                 MyUnion::C(value) => 3
             };
         }
-        
-        var a = MyUnion::A;
-        
-        c = new MyUnion::B{ MyField = ""};
         
         */
         """;

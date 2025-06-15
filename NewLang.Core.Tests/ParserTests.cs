@@ -369,13 +369,69 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             }
                         ])])
             ),
+            ("fn MyFn(mut a: int,){}", new LangProgram([], [
+                new LangFunction(
+                    null,
+                    null,
+                    Token.Identifier("MyFn", SourceSpan.Default),
+                    [],
+                    [new FunctionParameter(
+                        new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), 
+                        new MutabilityModifier(Token.Mut(SourceSpan.Default)),
+                        Token.Identifier("a", SourceSpan.Default)
+                    )],
+                    null,
+                    new Block([], []))
+            ], [], [])),
+            ("fn MyFn(mut a: int, b: int){}", new LangProgram([], [
+                new LangFunction(
+                    null,
+                    null,
+                    Token.Identifier("MyFn", SourceSpan.Default),
+                    [],
+                    [
+                        new FunctionParameter(
+                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), 
+                            new MutabilityModifier(Token.Mut(SourceSpan.Default)),
+                            Token.Identifier("a", SourceSpan.Default)
+                        ),
+                        new FunctionParameter(
+                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), 
+                            null,
+                            Token.Identifier("b", SourceSpan.Default)
+                        ),
+                    ],
+                    null,
+                    new Block([], []))
+            ], [], [])),
+            ("fn MyFn(mut a: int, mut b: int){}", new LangProgram([], [
+                new LangFunction(
+                    null,
+                    null,
+                    Token.Identifier("MyFn", SourceSpan.Default),
+                    [],
+                    [
+                        new FunctionParameter(
+                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), 
+                            new MutabilityModifier(Token.Mut(SourceSpan.Default)),
+                            Token.Identifier("a", SourceSpan.Default)
+                        ),
+                        new FunctionParameter(
+                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), 
+                            new MutabilityModifier(Token.Mut(SourceSpan.Default)),
+                            Token.Identifier("b", SourceSpan.Default)
+                        ),
+                    ],
+                    null,
+                    new Block([], []))
+            ], [], [])),
             ("fn MyFn(a: int,){}", new LangProgram([], [
                 new LangFunction(
                     null,
                     null,
                     Token.Identifier("MyFn", SourceSpan.Default),
                     [],
-                    [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), Token.Identifier("a", SourceSpan.Default))],
+                    [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), null, Token.Identifier("a", SourceSpan.Default))],
                     null,
                     new Block([], []))
             ], [], [])),
@@ -385,7 +441,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     null,
                     Token.Identifier("MyFn", SourceSpan.Default),
                     [],
-                    [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), Token.Identifier("a", SourceSpan.Default))],
+                    [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), null, Token.Identifier("a", SourceSpan.Default))],
                     null,
                     new Block([], []))
             ], [], [])),
@@ -564,7 +620,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     null,
                     Token.Identifier("MyFn", SourceSpan.Default),
                     [],
-                    [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), Token.Identifier("a", SourceSpan.Default))],
+                    [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), null, Token.Identifier("a", SourceSpan.Default))],
                     null,
                     new Block([], [])
                 )
@@ -617,7 +673,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.Result(SourceSpan.Default), [
                             new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
                             new TypeIdentifier(Token.Identifier("MyType", SourceSpan.Default), []),
-                        ]), Token.Identifier("a", SourceSpan.Default))],
+                        ]), null, Token.Identifier("a", SourceSpan.Default))],
                     null,
                     new Block([], [])
                 )
@@ -629,8 +685,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     Token.Identifier("MyFn", SourceSpan.Default),
                     [],
                     [
-                        new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), Token.Identifier("a", SourceSpan.Default)),
-                        new FunctionParameter(new TypeIdentifier(Token.Identifier("MyType", SourceSpan.Default), []), Token.Identifier("b", SourceSpan.Default)),
+                        new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), null, Token.Identifier("a", SourceSpan.Default)),
+                        new FunctionParameter(new TypeIdentifier(Token.Identifier("MyType", SourceSpan.Default), []), null, Token.Identifier("b", SourceSpan.Default)),
                     ],
                     null,
                     new Block([], [])
@@ -756,7 +812,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         null,
                         Token.Identifier("DoSomething", SourceSpan.Default),
                         [],
-                        [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), Token.Identifier("a", SourceSpan.Default))],
+                        [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), null, Token.Identifier("a", SourceSpan.Default))],
                         new TypeIdentifier(Token.Result(SourceSpan.Default), [new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])]),
                         new Block([], []))
                 ],
@@ -858,7 +914,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     null,
                     Token.Identifier("DoSomething", SourceSpan.Default),
                     [],
-                    [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), Token.Identifier("a", SourceSpan.Default))],
+                    [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), null, Token.Identifier("a", SourceSpan.Default))],
                     new TypeIdentifier(Token.Result(SourceSpan.Default), [new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])]),
                     new Block(
                         [
@@ -953,7 +1009,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     null,
                     Token.Identifier("SomethingElse", SourceSpan.Default),
                     [],
-                    [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), Token.Identifier("a", SourceSpan.Default))],
+                    [new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), null, Token.Identifier("a", SourceSpan.Default))],
                     new TypeIdentifier(Token.Result(SourceSpan.Default), [new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])]),
                     new Block(
                         [
@@ -2902,6 +2958,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
         return new FunctionParameter(
             RemoveSourceSpan(parameter.Type),
+            RemoveSourceSpan(parameter.MutabilityModifier),
             RemoveSourceSpan(parameter.Identifier));
     }
 

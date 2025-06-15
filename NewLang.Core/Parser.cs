@@ -116,6 +116,8 @@ public static class Parser
             var expression = PopExpression(tokens);
             if (expression is null)
             {
+                // found semicolon, pop semicolon off and continue
+                MoveNext(tokens);
                 continue;
             }
             
@@ -697,6 +699,17 @@ public static class Parser
                 break;
             }
 
+            MutabilityModifier? mutabilityModifier = null;
+
+            if (tokens.Current.Type == TokenType.Mut)
+            {
+                mutabilityModifier = new MutabilityModifier(tokens.Current);
+                if (!MoveNext(tokens))
+                {
+                    throw new InvalidOperationException("Expected parameter name");
+                }
+            }
+
             if (tokens.Current is not StringToken { Type: TokenType.Identifier } parameterName)
             {
                 throw new InvalidOperationException("Expected parameter name");
@@ -714,7 +727,7 @@ public static class Parser
             
             var parameterType = GetTypeIdentifier(tokens);
 
-            parameterList.Add(new FunctionParameter(parameterType, parameterName));
+            parameterList.Add(new FunctionParameter(parameterType, mutabilityModifier, parameterName));
         }
 
         if (!MoveNext(tokens))

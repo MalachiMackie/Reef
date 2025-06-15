@@ -438,10 +438,11 @@ public class TypeChecker
         using var _ = PushScope(fnSignature.ReturnType);
         foreach (var parameter in fnSignature.Arguments)
         {
-            ScopedVariables[parameter.Key] = new Variable(
-                parameter.Key,
-                parameter.Value,
-                Instantiated: true);
+            ScopedVariables[parameter.Name] = new Variable(
+                parameter.Name,
+                parameter.Type,
+                Instantiated: true,
+                Mutable: parameter.Mutable);
         }
 
         TypeCheckBlock(function.Block,
@@ -451,7 +452,7 @@ public class TypeChecker
     private FunctionSignature TypeCheckFunctionSignature(LangFunction fn,
         Dictionary<string, ITypeSignature> genericPlaceholders)
     {
-        var parameters = new List<KeyValuePair<string, ITypeReference>>();
+        var parameters = new List<FunctionArgument>();
 
         var name = fn.Name.StringValue;
         var fnSignature = new FunctionSignature(
@@ -479,13 +480,14 @@ public class TypeChecker
         foreach (var parameter in fn.Parameters)
         {
             var paramName = parameter.Identifier.StringValue;
-            if (parameters.Any(x => x.Key == paramName))
+            if (parameters.Any(x => x.Name == paramName))
             {
                 throw new InvalidOperationException($"Parameter with {paramName} already defined");
             }
 
-            parameters.Add(KeyValuePair.Create(parameter.Identifier.StringValue,
-                GetTypeReference(parameter.Type, innerGenericPlaceholders)));
+            var type = GetTypeReference(parameter.Type, innerGenericPlaceholders);
+
+            parameters.Add(new FunctionArgument(paramName, type, Mutable: parameter.MutabilityModifier is not null));
         }
 
         // todo: check function name collisions. also function overloading
@@ -519,13 +521,14 @@ public class TypeChecker
 
     private ITypeReference TypeCheckExpression(
         IExpression expression,
-        Dictionary<string, ITypeSignature> genericPlaceholders)
+        Dictionary<string, ITypeSignature> genericPlaceholders,
+        bool allowUninstantiatedVariable = false)
     {
         return expression switch
         {
             VariableDeclarationExpression variableDeclarationExpression => TypeCheckVariableDeclaration(
                 variableDeclarationExpression, genericPlaceholders),
-            ValueAccessorExpression valueAccessorExpression => TypeCheckValueAccessor(valueAccessorExpression),
+            ValueAccessorExpression valueAccessorExpression => TypeCheckValueAccessor(valueAccessorExpression, allowUninstantiatedVariable),
             MethodReturnExpression methodReturnExpression => TypeCheckMethodReturn(methodReturnExpression,
                 genericPlaceholders),
             MethodCallExpression methodCallExpression => TypeCheckMethodCall(methodCallExpression.MethodCall,
@@ -592,7 +595,7 @@ public class TypeChecker
 
             var valueType = TypeCheckExpression(fieldInitializer.Value, genericPlaceholders);
 
-            if (field.Type is GenericTypeReference { OwnerType: var owner, GenericName: var genericName })
+            if (field.Type is GenericTypeReference { GenericName: var genericName })
             {
                 var instantiatedGenericFieldType = typeArguments[genericName];
 
@@ -807,7 +810,7 @@ public class TypeChecker
 
             var valueType = TypeCheckExpression(fieldInitializer.Value, genericPlaceholders);
 
-            if (field.Type is GenericTypeReference { OwnerType: var owner, GenericName: var genericName })
+            if (field.Type is GenericTypeReference { GenericName: var genericName })
             {
                 var instantiatedGenericFieldType = typeArguments[genericName];
 
@@ -834,11 +837,9 @@ public class TypeChecker
         {
             return true;
         }
-
-        if (typeReference is GenericTypeReference genericTypeReference)
-        {
-        }
-
+        
+        // todo: maybe other cases?
+        
         return false;
     }
 
@@ -846,13 +847,13 @@ public class TypeChecker
         BinaryOperator @operator,
         Dictionary<string, ITypeSignature> genericPlaceholders)
     {
-        var leftType = TypeCheckExpression(@operator.Left, genericPlaceholders);
-        var rightType = TypeCheckExpression(@operator.Right, genericPlaceholders);
         switch (@operator.OperatorType)
         {
             case BinaryOperatorType.LessThan:
             case BinaryOperatorType.GreaterThan:
             {
+                var leftType = TypeCheckExpression(@operator.Left, genericPlaceholders);
+                var rightType = TypeCheckExpression(@operator.Right, genericPlaceholders);
                 if (!IsTypeDefinition(leftType, ClassSignature.Int))
                     throw new InvalidOperationException("Expected int");
                 if (!IsTypeDefinition(rightType, ClassSignature.Int))
@@ -865,6 +866,8 @@ public class TypeChecker
             case BinaryOperatorType.Multiply:
             case BinaryOperatorType.Divide:
             {
+                var leftType = TypeCheckExpression(@operator.Left, genericPlaceholders);
+                var rightType = TypeCheckExpression(@operator.Right, genericPlaceholders);
                 if (!IsTypeDefinition(leftType, ClassSignature.Int))
                     throw new InvalidOperationException("Expected int");
                 if (!IsTypeDefinition(rightType, ClassSignature.Int))
@@ -874,6 +877,8 @@ public class TypeChecker
             }
             case BinaryOperatorType.EqualityCheck:
             {
+                var leftType = TypeCheckExpression(@operator.Left, genericPlaceholders);
+                var rightType = TypeCheckExpression(@operator.Right, genericPlaceholders);
                 if (!leftType.Equals(rightType))
                 {
                     throw new InvalidOperationException("Cannot compare values of different types");
@@ -883,9 +888,19 @@ public class TypeChecker
             }
             case BinaryOperatorType.ValueAssignment:
             {
-                if (!IsExpressionAssignable(@operator.Left))
+                var leftType = TypeCheckExpression(@operator.Left, genericPlaceholders, allowUninstantiatedVariable: true);
+                var rightType = TypeCheckExpression(@operator.Right, genericPlaceholders);
+                if (!IsExpressionAssignable(@operator.Left, genericPlaceholders))
                 {
                     throw new InvalidOperationException($"{@operator.Left} is not assignable");
+                }
+
+                if (@operator.Left is ValueAccessorExpression
+                    {
+                        ValueAccessor: { AccessType: ValueAccessType.Variable, Token: StringToken variableName }
+                    } && ScopedVariables[variableName.StringValue] is { Instantiated: false } variable)
+                {
+                    variable.Instantiated = true;
                 }
 
                 if (!Equals(leftType, rightType))
@@ -900,16 +915,36 @@ public class TypeChecker
         }
     }
 
-    private static bool IsExpressionAssignable(IExpression expression)
+    private bool IsExpressionAssignable(IExpression expression, Dictionary<string, ITypeSignature> genericPlaceholders)
     {
-        // todo: don't allow writing to immutable fields
-        return expression switch
+        if (expression is ValueAccessorExpression { ValueAccessor: {AccessType: ValueAccessType.Variable, Token: StringToken valueToken} })
         {
-            ValueAccessorExpression { ValueAccessor.AccessType: ValueAccessType.Variable } => true,
-            MemberAccessExpression => true,
-            StaticMemberAccessExpression => true,
-            _ => false
-        };
+            var variable = ScopedVariables[valueToken.StringValue];
+            return !variable.Instantiated || variable.Mutable;
+        }
+
+        if (expression is MemberAccessExpression memberAccess)
+        {
+            var owner = memberAccess.MemberAccess.Owner;
+
+            var isOwnerAssignable = IsExpressionAssignable(owner, genericPlaceholders);
+
+            // todo: this has already been type checked, we just need to reference the type
+            return isOwnerAssignable 
+                   && TypeCheckExpression(owner, genericPlaceholders) is InstantiatedClass { ClassSignature.Fields: var fields }
+                   && fields.Single(x => x.Name == memberAccess.MemberAccess.MemberName.StringValue).IsMutable;
+        }
+
+        if (expression is StaticMemberAccessExpression staticMemberAccess)
+        {
+            var ownerType = GetTypeReference(staticMemberAccess.StaticMemberAccess.Type, genericPlaceholders);
+
+            return ownerType is InstantiatedClass { ClassSignature.StaticFields: var staticFields }
+                   && staticFields.Single(x => x.Name == staticMemberAccess.StaticMemberAccess.MemberName.StringValue)
+                       .IsMutable;
+        }
+
+        return false;
     }
     
     private ITypeReference TypeCheckIfExpression(IfExpression ifExpression,
@@ -974,7 +1009,8 @@ public class TypeChecker
 
         for (var i = 0; i < functionType.Signature.Arguments.Count; i++)
         {
-            var expectedParameterType = functionType.Signature.Arguments[i].Value;
+            var functionArgument = functionType.Signature.Arguments[i];
+            var expectedParameterType = functionArgument.Type;
 
             if (expectedParameterType is GenericTypeReference { GenericName: var genericName })
             {
@@ -991,13 +1027,20 @@ public class TypeChecker
                     throw new InvalidOperationException("Unexpected generic name");
                 }
             }
+
+            var parameterExpression = methodCall.ParameterList[i];
             
-            var givenParameterType = TypeCheckExpression(methodCall.ParameterList[i], genericPlaceholders);
+            var givenParameterType = TypeCheckExpression(parameterExpression, genericPlaceholders);
 
             if (!Equals(expectedParameterType, givenParameterType))
             {
                 throw new InvalidOperationException(
                     $"Expected parameter type {expectedParameterType}, got {givenParameterType}");
+            }
+
+            if (functionArgument.Mutable && !IsExpressionAssignable(parameterExpression, genericPlaceholders))
+            {
+                throw new InvalidOperationException("Function argument is mutable, but provided expression is not");
             }
         }
 
@@ -1044,7 +1087,7 @@ public class TypeChecker
         return InstantiatedClass.Never;
     }
 
-    private ITypeReference TypeCheckValueAccessor(ValueAccessorExpression valueAccessorExpression)
+    private ITypeReference TypeCheckValueAccessor(ValueAccessorExpression valueAccessorExpression, bool allowUninstantiatedVariables)
     {
         return valueAccessorExpression.ValueAccessor switch
         {
@@ -1052,7 +1095,7 @@ public class TypeChecker
             {AccessType: ValueAccessType.Literal, Token: StringToken {Type: TokenType.StringLiteral}} => InstantiatedClass.String,
             {AccessType: ValueAccessType.Literal, Token.Type: TokenType.True or TokenType.False } => InstantiatedClass.Boolean,
             {AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: var variableName}} =>
-                TypeCheckVariableAccess(variableName),
+                TypeCheckVariableAccess(variableName, allowUninstantiatedVariables),
             {AccessType: ValueAccessType.Variable, Token.Type: TokenType.Ok } => TypeCheckResultVariantKeyword("Ok"),
             {AccessType: ValueAccessType.Variable, Token.Type: TokenType.Error } => TypeCheckResultVariantKeyword("Error"),
             _ => throw new NotImplementedException($"{valueAccessorExpression}")
@@ -1084,7 +1127,11 @@ public class TypeChecker
     {
         return new InstantiatedFunction
         {
-            Signature = new FunctionSignature(tupleVariant.Name, [], [..tupleVariant.TupleMembers.Select((x, i) => KeyValuePair.Create(i.ToString(), x))], IsStatic: true)
+            Signature = new FunctionSignature(
+                tupleVariant.Name,
+                [],
+                [..tupleVariant.TupleMembers.Select((x, i) => new FunctionArgument(i.ToString(), x, Mutable: false))],
+                IsStatic: true)
             {
                 ReturnType = instantiatedUnion
             },
@@ -1094,7 +1141,7 @@ public class TypeChecker
     }
 
     private ITypeReference TypeCheckVariableAccess(
-        string variableName)
+        string variableName, bool allowUninstantiated)
     {
         if (ScopedFunctions.TryGetValue(variableName, out var function))
         {
@@ -1111,7 +1158,7 @@ public class TypeChecker
             throw new InvalidOperationException($"No symbol found with name {variableName}");
         }
 
-        if (!value.Instantiated)
+        if (!allowUninstantiated && !value.Instantiated)
         {
             throw new InvalidOperationException($"{value.Name} is not instantiated");
         }
@@ -1119,7 +1166,10 @@ public class TypeChecker
         return value.Type;
     }
 
-    private record Variable(string Name, ITypeReference Type, bool Instantiated);
+    private record Variable(string Name, ITypeReference Type, bool Instantiated, bool Mutable)
+    {
+        public bool Instantiated { get; set; } = Instantiated;
+    }
 
     private ITypeReference TypeCheckVariableDeclaration(
         VariableDeclarationExpression expression,
@@ -1136,7 +1186,7 @@ public class TypeChecker
         {
             case {Value: null, Type: null}:
                 throw new InvalidOperationException("Variable declaration must have a type specifier or a value");
-            case { Value: { } value, Type: var type} :
+            case { Value: { } value, Type: var type, MutabilityModifier: var mutModifier} :
             {
                 var valueType = TypeCheckExpression(value, genericPlaceholders);
                 if (type is not null)
@@ -1148,14 +1198,14 @@ public class TypeChecker
                     }
                 }
 
-                ScopedVariables[varName] = new Variable(varName, valueType, Instantiated: true);
+                ScopedVariables[varName] = new Variable(varName, valueType, Instantiated: true, Mutable: mutModifier is not null);
 
                 break;
             }
-            case { Value: null, Type: { } type }:
+            case { Value: null, Type: { } type, MutabilityModifier: var mutModifier }:
             {
                 var langType = GetTypeReference(type, genericPlaceholders);
-                ScopedVariables[varName] = new Variable(varName, langType, Instantiated: false);
+                ScopedVariables[varName] = new Variable(varName, langType, Instantiated: false, Mutable: mutModifier is not null);
 
                 break;
             }
@@ -1505,12 +1555,14 @@ public class TypeChecker
     private record FunctionSignature(
         string Name,
         IReadOnlyList<string> GenericParameters,
-        IReadOnlyList<KeyValuePair<string, ITypeReference>> Arguments,
+        IReadOnlyList<FunctionArgument> Arguments,
         bool IsStatic) : ITypeSignature
     {
         // mutable due to setting up signatures and generic stuff
         public required ITypeReference ReturnType { get; set; }
     }
+
+    private record FunctionArgument(string Name, ITypeReference Type, bool Mutable);
 
     private class UnionSignature : ITypeSignature
     {
