@@ -74,53 +74,87 @@ public class TypeChecker
 
         foreach (var @class in _program.Classes)
         {
-            using (PushScope())
+            if (_types[@class.Name.StringValue] is not ClassSignature classSignature)
             {
-                if (_types[@class.Name.StringValue] is not ClassSignature classSignature)
+                throw new InvalidOperationException($"Expected {@class.Name.StringValue} to be a class");
+            }
+
+            var classGenericPlaceholders =
+                @class.TypeArguments.ToDictionary<StringToken, string, ITypeSignature>(x => x.StringValue,
+                    _ => classSignature);
+
+            var instanceFieldVariables = new List<Variable>();
+            var staticFieldVariables = new List<Variable>();
+            
+            foreach (var field in @class.Fields)
+            {
+                var isStatic = field.StaticModifier is not null;
+                
+                var fieldTypeReference = GetTypeReference(field.Type, classGenericPlaceholders);
+
+                if (isStatic)
                 {
-                    throw new InvalidOperationException($"Expected {@class.Name.StringValue} to be a class");
-                }
-
-                var classGenericPlaceholders =
-                    @class.TypeArguments.ToDictionary<StringToken, string, ITypeSignature>(x => x.StringValue,
-                        _ => classSignature);
-
-                foreach (var field in @class.Fields)
-                {
-                    var isStatic = field.StaticModifier is not null;
-                    
-                    var fieldTypeReference = GetTypeReference(field.Type, classGenericPlaceholders);
-
-                    if (isStatic)
+                    // todo: static constructor?
+                    if (field.InitializerValue is null)
                     {
-                        // todo: static constructor?
-                        if (field.InitializerValue is null)
-                        {
-                            throw new InvalidOperationException("Expected field initializer for static field");
-                        }
-
-                        var valueType = TypeCheckExpression(field.InitializerValue, classGenericPlaceholders);
-
-                        if (!Equals(valueType, fieldTypeReference))
-                        {
-                            throw new InvalidOperationException($"Expected {fieldTypeReference}");
-                        }
-                    }
-                    else if (field.InitializerValue is not null)
-                    {
-                        throw new InvalidOperationException("Instance fields cannot have initializers");
+                        throw new InvalidOperationException("Expected field initializer for static field");
                     }
 
-                    ScopedVariables[field.Name.StringValue] = new Variable(
+                    var valueType = TypeCheckExpression(field.InitializerValue, classGenericPlaceholders);
+
+                    if (!Equals(valueType, fieldTypeReference))
+                    {
+                        throw new InvalidOperationException($"Expected {fieldTypeReference}");
+                    }
+
+                    staticFieldVariables.Add(new Variable(
                         field.Name.StringValue,
                         fieldTypeReference,
                         // field will be instantiated by the time it is accessed
                         Instantiated: true,
-                        Mutable: field.MutabilityModifier is not null);
-
+                        Mutable: field.MutabilityModifier is not null));
                 }
+                else 
+                {
+                    if (field.InitializerValue is not null)
+                    {
+                        throw new InvalidOperationException("Instance fields cannot have initializers");
+                    }
 
-                foreach (var function in @class.Functions)
+                    instanceFieldVariables.Add(new Variable(
+                        field.Name.StringValue,
+                        fieldTypeReference,
+                        // field will be instantiated by the time it is accessed
+                        Instantiated: true,
+                        Mutable: field.MutabilityModifier is not null));
+                }
+            }
+
+            // static functions
+            using (PushScope())
+            {
+                foreach (var variable in staticFieldVariables)
+                {
+                    ScopedVariables.Add(variable.Name, variable);
+                }
+                
+                foreach (var function in @class.Functions.Where(x => x.StaticModifier is not null))
+                {
+                    var fnSignature = classSignature.Functions.First(x => x.Name == function.Name.StringValue);
+
+                    TypeCheckFunctionBody(function, fnSignature, classGenericPlaceholders);
+                }
+            }
+            
+            // instance functions
+            using (PushScope())
+            {
+                foreach (var variable in instanceFieldVariables.Concat(staticFieldVariables))
+                {
+                    ScopedVariables.Add(variable.Name, variable);
+                }
+                
+                foreach (var function in @class.Functions.Where(x => x.StaticModifier is null))
                 {
                     var fnSignature = classSignature.Functions.First(x => x.Name == function.Name.StringValue);
 

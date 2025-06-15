@@ -65,8 +65,19 @@ public class TypeCheckerTests
             """,
             """
             class MyClass {
+                static field MyField: string = "",
+                
+                // instance functions have access to static fields
+                fn MyFn(): string {
+                    return MyField;
+                }
+            }
+            """,
+            """
+            class MyClass {
                 field MyField: string,
                 
+                // instance functions have access to instance fields
                 fn MyFn(): string {
                     return MyField;
                 }
@@ -378,6 +389,15 @@ public class TypeCheckerTests
                 
                 fn MyFn() {
                     MyField = "";
+                }
+            }
+            """,
+            """
+            class MyClass {
+                field MyField: string,
+                
+                static fn MyFn() {
+                    var a = MyField;
                 }
             }
             """,
