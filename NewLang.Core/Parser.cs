@@ -4,13 +4,79 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace NewLang.Core;
 
-public static class Parser
+public sealed class Parser : IDisposable
 {
     public static LangProgram Parse(IEnumerable<Token> tokens)
     {
-        using var tokensEnumerator = new PeekableEnumerator<Token>(tokens.GetEnumerator());
+        using var parser = new Parser(tokens);
 
-        var scope = GetScope(tokensEnumerator, closingToken: null, isUnion: false);
+        return parser.ParseInner();
+    }
+    
+    /// <summary>
+    /// static entry point for a single expression. Used for testing
+    /// </summary>
+    /// <returns></returns>
+    public static IExpression? PopExpression(IEnumerable<Token> tokens)
+    {
+        using var parser = new Parser(tokens);
+
+        return parser.PopExpression();
+    }
+
+    private Parser(IEnumerable<Token> tokens)
+    {
+        _tokens = new PeekableEnumerator<Token>(tokens.GetEnumerator());
+    }
+
+    public void Dispose()
+    {
+        _tokens.Dispose();
+    }
+
+    private readonly PeekableEnumerator<Token> _tokens;
+    private Token Current => _tokens.Current;
+    
+    private bool TryPeek([NotNullWhen(true)] out Token? foundToken)
+    {
+        if (!_tokens.TryPeek(out foundToken))
+        {
+            return false;
+        }
+
+        var couldPeek = true;
+        while (couldPeek && foundToken!.Type is TokenType.MultiLineComment or TokenType.SingleLineComment)
+        {
+            // drop the comment and try again
+            _tokens.MoveNext();
+            
+            couldPeek = _tokens.TryPeek(out foundToken);
+        }
+
+        return couldPeek;
+    }
+
+    private bool MoveNext()
+    {
+        if (!_tokens.MoveNext())
+        {
+            return false;
+        }
+
+        var hasNext = true;
+        
+        while (hasNext && _tokens.Current.Type is TokenType.MultiLineComment or TokenType.SingleLineComment)
+        {
+            // drop the comment and try again
+            hasNext = _tokens.MoveNext();
+        }
+
+        return hasNext;
+    }
+    
+    private LangProgram ParseInner()
+    {
+        var scope = GetScope(closingToken: null, isUnion: false);
 
         if (scope.GetScopeTypes().Contains(Scope.ScopeType.Field))
         {
@@ -25,8 +91,7 @@ public static class Parser
     /// </summary>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    private static Scope GetScope(
-        PeekableEnumerator<Token> tokens,
+    private Scope GetScope(
         TokenType? closingToken,
         bool isUnion)
     {
@@ -43,12 +108,12 @@ public static class Parser
         var expectMemberComma = false;
         var allowMemberComma = false;
         
-        while (TryPeek(tokens, out var peeked))
+        while (TryPeek(out var peeked))
         {
             if (peeked.Type == closingToken)
             {
                 // pop the peeked closing token off
-                MoveNext(tokens);
+                MoveNext();
                 foundClosingToken = true;
                 break;
             }
@@ -60,8 +125,8 @@ public static class Parser
                     throw new InvalidOperationException("Unexpected ,");
                 }
 
-                MoveNext(tokens);
-                if (!TryPeek(tokens, out peeked))
+                MoveNext();
+                if (!TryPeek(out peeked))
                 {
                     break;
                 }
@@ -74,7 +139,7 @@ public static class Parser
             if (peeked.Type == closingToken)
             {
                 // pop the peeked closing token off
-                MoveNext(tokens);
+                MoveNext();
                 foundClosingToken = true;
                 break;
             }
@@ -83,8 +148,8 @@ public static class Parser
             {
                 expectMemberComma = false;
                 
-                MoveNext(tokens);
-                var (function, @class, field, union, variant) = GetMember(tokens, isUnion);
+                MoveNext();
+                var (function, @class, field, union, variant) = GetMember(isUnion);
                 if (function is not null)
                 {
                     functions.Add(function);
@@ -113,11 +178,11 @@ public static class Parser
                 continue;
             }
 
-            var expression = PopExpression(tokens);
+            var expression = PopExpression();
             if (expression is null)
             {
                 // found semicolon, pop semicolon off and continue
-                MoveNext(tokens);
+                MoveNext();
                 continue;
             }
             
@@ -126,7 +191,7 @@ public static class Parser
                 throw new InvalidOperationException("Tail expression must be at the end of a block");
             }
 
-            if (!TryPeek(tokens, out peeked) || peeked.Type != TokenType.Semicolon)
+            if (!TryPeek(out peeked) || peeked.Type != TokenType.Semicolon)
             {
                 if (expression.ExpressionType == ExpressionType.MethodReturn)
                 {
@@ -138,7 +203,7 @@ public static class Parser
             else
             {
                 // drop semicolon
-                MoveNext(tokens);
+                MoveNext();
                 if (!IsValidStatement(expression))
                 {
                     throw new InvalidOperationException($"{expression.ExpressionType} is not a valid statement");
@@ -166,56 +231,56 @@ public static class Parser
 
     private static bool IsMember(TokenType tokenType, bool isUnion)
     {
-        return (tokenType is TokenType.Pub or TokenType.Mut or TokenType.Static or TokenType.Fn or TokenType.Class or TokenType.Field or TokenType.Union)
+        return tokenType is TokenType.Pub or TokenType.Mut or TokenType.Static or TokenType.Fn or TokenType.Class or TokenType.Field or TokenType.Union
             || (isUnion && tokenType == TokenType.Identifier);
     }
 
-    private static (LangFunction? Function, ProgramClass? Class, ClassField? Field, ProgramUnion? Union, IProgramUnionVariant? Variant) GetMember(
-        PeekableEnumerator<Token> tokens, bool isUnion)
+    private (LangFunction? Function, ProgramClass? Class, ClassField? Field, ProgramUnion? Union, IProgramUnionVariant? Variant) GetMember(
+        bool isUnion)
     {
         AccessModifier? accessModifier = null;
         MutabilityModifier? mutabilityModifier = null;
         StaticModifier? staticModifier = null;
 
-        if (tokens.Current.Type == TokenType.Pub)
+        if (Current.Type == TokenType.Pub)
         {
-            accessModifier = new AccessModifier(tokens.Current);
-            if (!MoveNext(tokens))
+            accessModifier = new AccessModifier(Current);
+            if (!MoveNext())
             {
                 throw new InvalidOperationException("Expected field, mut, static, fn or class");
             }
         }
         
-        if (tokens.Current.Type == TokenType.Static)
+        if (Current.Type == TokenType.Static)
         {
-            staticModifier = new StaticModifier(tokens.Current);
-            if (!MoveNext(tokens))
+            staticModifier = new StaticModifier(Current);
+            if (!MoveNext())
             {
                 throw new InvalidOperationException("Expected field, fn or class");
             }
         }
         
-        if (tokens.Current.Type == TokenType.Mut)
+        if (Current.Type == TokenType.Mut)
         {
-            mutabilityModifier = new MutabilityModifier(tokens.Current);
-            if (!MoveNext(tokens))
+            mutabilityModifier = new MutabilityModifier(Current);
+            if (!MoveNext())
             {
                 throw new InvalidOperationException("Expected field, fn, static or class");
             }
         }
 
-        if (tokens.Current.Type == TokenType.Fn)
+        if (Current.Type == TokenType.Fn)
         {
             if (mutabilityModifier is not null)
             {
                 throw new InvalidOperationException("Function cannot have mutability modifier");
             }
 
-            var function = GetFunctionDeclaration(accessModifier, staticModifier, tokens);
+            var function = GetFunctionDeclaration(accessModifier, staticModifier);
             return (function, null, null, null, null);
         }
 
-        if (tokens.Current.Type == TokenType.Class)
+        if (Current.Type == TokenType.Class)
         {
             if (mutabilityModifier is not null)
             {
@@ -227,19 +292,19 @@ public static class Parser
                 throw new InvalidOperationException("Class cannot be static");
             }
 
-            var @class = GetClassDefinition(accessModifier, tokens);
+            var @class = GetClassDefinition(accessModifier);
 
             return (null, @class, null, null, null);
         }
 
-        if (tokens.Current.Type == TokenType.Field)
+        if (Current.Type == TokenType.Field)
         {
-            var field = GetField(accessModifier, staticModifier, mutabilityModifier, tokens);
+            var field = GetField(accessModifier, staticModifier, mutabilityModifier);
 
             return (null, null, field, null, null);
         }
 
-        if (tokens.Current.Type == TokenType.Union)
+        if (Current.Type == TokenType.Union)
         {
             if (mutabilityModifier is not null)
             {
@@ -251,22 +316,22 @@ public static class Parser
                 throw new InvalidOperationException("Union cannot be static");
             }
             
-            var union = GetUnionDefinition(accessModifier, tokens);
+            var union = GetUnionDefinition(accessModifier);
 
             return (null, null, null, union, null);
         }
 
-        if (tokens.Current is StringToken {Type: TokenType.Identifier} name && isUnion)
+        if (Current is StringToken {Type: TokenType.Identifier} name && isUnion)
         {
-            return (null, null, null, null, GetUnionVariant(tokens, name));
+            return (null, null, null, null, GetUnionVariant(name));
         }
         
         throw new InvalidOperationException("Expected class, fn, union, field, variant");
     }
 
-    private static IProgramUnionVariant GetUnionVariant(PeekableEnumerator<Token> tokens, StringToken variantName)
+    private IProgramUnionVariant GetUnionVariant(StringToken variantName)
     {
-         if (!TryPeek(tokens, out var peeked))
+         if (!TryPeek(out var peeked))
          {
              throw new InvalidOperationException("Expected (, {, ',' or }");
          }
@@ -284,14 +349,14 @@ public static class Parser
 
          if (peeked.Type == TokenType.LeftParenthesis)
          {
-             MoveNext(tokens);
+             MoveNext();
              
              var tupleTypes = new List<TypeIdentifier>();
-             while (TryPeek(tokens, out peeked))
+             while (TryPeek(out peeked))
              {
                  if (peeked.Type == TokenType.RightParenthesis)
                  {
-                     MoveNext(tokens);
+                     MoveNext();
                      break;
                  }
      
@@ -303,18 +368,18 @@ public static class Parser
                      }
      
                      // pop comma off
-                     MoveNext(tokens);
+                     MoveNext();
                  }
      
-                 if (TryPeek(tokens, out peeked) && peeked.Type == TokenType.RightParenthesis)
+                 if (TryPeek(out peeked) && peeked.Type == TokenType.RightParenthesis)
                  {
-                     MoveNext(tokens);
+                     MoveNext();
                      break;
                  }
 
-                 MoveNext(tokens);
+                 MoveNext();
 
-                 var nextType = GetTypeIdentifier(tokens);
+                 var nextType = GetTypeIdentifier();
                  tupleTypes.Add(nextType);
              }
 
@@ -323,8 +388,8 @@ public static class Parser
 
          if (peeked.Type == TokenType.LeftBrace)
          {
-             MoveNext(tokens);
-             var scope = GetScope(tokens, TokenType.RightBrace, isUnion: false);
+             MoveNext();
+             var scope = GetScope(TokenType.RightBrace, isUnion: false);
 
              if (scope.GetScopeTypes().Any(x => x is not Scope.ScopeType.Field))
              {
@@ -341,70 +406,70 @@ public static class Parser
          throw new InvalidOperationException($"Unexpected token {peeked}");
     }
 
-    private static ClassField GetField(AccessModifier? accessModifier, StaticModifier? staticModifier, MutabilityModifier? mutabilityModifier, PeekableEnumerator<Token> tokens)
+    private ClassField GetField(AccessModifier? accessModifier, StaticModifier? staticModifier, MutabilityModifier? mutabilityModifier)
     {
         // pub mut field MyField: string;
-        if (!MoveNext(tokens) || tokens.Current is not StringToken { Type: TokenType.Identifier } name)
+        if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } name)
         {
             throw new InvalidOperationException("Expected field name");
         }
 
-        if (!MoveNext(tokens) || tokens.Current.Type != TokenType.Colon)
+        if (!MoveNext() || Current.Type != TokenType.Colon)
         {
             throw new InvalidOperationException("Expected :");
         }
 
-        if (!MoveNext(tokens))
+        if (!MoveNext())
         {
             throw new InvalidOperationException("Expected field type");
         }
 
-        var type = GetTypeIdentifier(tokens);
+        var type = GetTypeIdentifier();
 
         IExpression? valueExpression = null;
 
-        if (TryPeek(tokens, out var peeked) && peeked.Type == TokenType.Equals)
+        if (TryPeek(out var peeked) && peeked.Type == TokenType.Equals)
         {
-            MoveNext(tokens);
+            MoveNext();
 
-            valueExpression = PopExpression(tokens)
+            valueExpression = PopExpression()
                 ?? throw new InvalidOperationException("Expected field initializer expression");
         }
 
         return new ClassField(accessModifier, staticModifier, mutabilityModifier, name, type, valueExpression);
     }
 
-    private static ProgramUnion GetUnionDefinition(AccessModifier? accessModifier, PeekableEnumerator<Token> tokens)
+    private ProgramUnion GetUnionDefinition(AccessModifier? accessModifier)
     {
-        if (!MoveNext(tokens) || tokens.Current is not StringToken { Type: TokenType.Identifier } name)
+        if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } name)
         {
             throw new InvalidOperationException("Expected union name");
         }
         
-        if (!MoveNext(tokens))
+        if (!MoveNext())
         {
             throw new InvalidOperationException("Expected { or <");
         }
         
         var typeArguments = new List<StringToken>();
         
-        if (tokens.Current.Type == TokenType.LeftAngleBracket)
+        if (Current.Type == TokenType.LeftAngleBracket)
         {
             while (true)
             {
-                if (!MoveNext(tokens))
+                if (!MoveNext())
                 {
                     throw new InvalidOperationException("Expected Type Argument");
                 }
 
-                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                if (Current.Type == TokenType.RightAngleBracket)
                 {
                     if (typeArguments.Count == 0)
                     {
                         throw new InvalidOperationException("Expected type argument");
                     }
 
-                    if (!MoveNext(tokens))
+                    if (!MoveNext())
                     {
                         throw new InvalidOperationException("Expected {");
                     }
@@ -413,32 +478,32 @@ public static class Parser
 
                 if (typeArguments.Count > 0)
                 {
-                    if (tokens.Current.Type != TokenType.Comma)
+                    if (Current.Type != TokenType.Comma)
                     {
                         throw new InvalidOperationException("Expected ,");
                     }
 
-                    if (!MoveNext(tokens))
+                    if (!MoveNext())
                     {
                         throw new InvalidOperationException("Expected type argument");
                     }
                 }
 
-                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                if (Current.Type == TokenType.RightAngleBracket)
                 {
                     if (typeArguments.Count == 0)
                     {
                         throw new InvalidOperationException("Expected type argument");
                     }
 
-                    if (!MoveNext(tokens))
+                    if (!MoveNext())
                     {
                         throw new InvalidOperationException("Expected {");
                     }
                     break;
                 }
 
-                if (tokens.Current is not StringToken { Type: TokenType.Identifier } typeArgument)
+                if (Current is not StringToken { Type: TokenType.Identifier } typeArgument)
                 {
                     throw new InvalidOperationException("Expected type argument");
                 }
@@ -447,12 +512,12 @@ public static class Parser
             }
         }
 
-        if (tokens.Current.Type != TokenType.LeftBrace)
+        if (Current.Type != TokenType.LeftBrace)
         {
             throw new InvalidOperationException("Expected {");
         }
 
-        var scope = GetScope(tokens, closingToken: TokenType.RightBrace, isUnion: true);
+        var scope = GetScope(closingToken: TokenType.RightBrace, isUnion: true);
         if (scope.GetScopeTypes().Any(x => x is not (Scope.ScopeType.Function or Scope.ScopeType.Variant)))
         {
             throw new InvalidOperationException("Unions can only contain functions and variants");
@@ -466,37 +531,37 @@ public static class Parser
             scope.Variants);
     }
 
-    private static ProgramClass GetClassDefinition(AccessModifier? accessModifier, PeekableEnumerator<Token> tokens)
+    private ProgramClass GetClassDefinition(AccessModifier? accessModifier)
     {
-        if (!MoveNext(tokens) || tokens.Current is not StringToken { Type: TokenType.Identifier } name)
+        if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } name)
         {
             throw new InvalidOperationException("Expected class name");
         }
 
-        if (!MoveNext(tokens))
+        if (!MoveNext())
         {
             throw new InvalidOperationException("Expected { or <");
         }
 
         var typeArguments = new List<StringToken>();
 
-        if (tokens.Current.Type == TokenType.LeftAngleBracket)
+        if (Current.Type == TokenType.LeftAngleBracket)
         {
             while (true)
             {
-                if (!MoveNext(tokens))
+                if (!MoveNext())
                 {
                     throw new InvalidOperationException("Expected Type Argument");
                 }
 
-                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                if (Current.Type == TokenType.RightAngleBracket)
                 {
                     if (typeArguments.Count == 0)
                     {
                         throw new InvalidOperationException("Expected type argument");
                     }
 
-                    if (!MoveNext(tokens))
+                    if (!MoveNext())
                     {
                         throw new InvalidOperationException("Expected {");
                     }
@@ -505,32 +570,32 @@ public static class Parser
 
                 if (typeArguments.Count > 0)
                 {
-                    if (tokens.Current.Type != TokenType.Comma)
+                    if (Current.Type != TokenType.Comma)
                     {
                         throw new InvalidOperationException("Expected ,");
                     }
 
-                    if (!MoveNext(tokens))
+                    if (!MoveNext())
                     {
                         throw new InvalidOperationException("Expected type argument");
                     }
                 }
 
-                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                if (Current.Type == TokenType.RightAngleBracket)
                 {
                     if (typeArguments.Count == 0)
                     {
                         throw new InvalidOperationException("Expected type argument");
                     }
 
-                    if (!MoveNext(tokens))
+                    if (!MoveNext())
                     {
                         throw new InvalidOperationException("Expected {");
                     }
                     break;
                 }
 
-                if (tokens.Current is not StringToken { Type: TokenType.Identifier } typeArgument)
+                if (Current is not StringToken { Type: TokenType.Identifier } typeArgument)
                 {
                     throw new InvalidOperationException("Expected type argument");
                 }
@@ -539,12 +604,12 @@ public static class Parser
             }
         }
 
-        if (tokens.Current.Type != TokenType.LeftBrace)
+        if (Current.Type != TokenType.LeftBrace)
         {
             throw new InvalidOperationException("Expected {");
         }
 
-        var scope = GetScope(tokens, closingToken: TokenType.RightBrace, isUnion: false);
+        var scope = GetScope(closingToken: TokenType.RightBrace, isUnion: false);
         if (scope.GetScopeTypes().Any(x => x is not (Scope.ScopeType.Function or Scope.ScopeType.Field)))
         {
             throw new InvalidOperationException("Class can only contain functions and fields");
@@ -553,74 +618,39 @@ public static class Parser
         return new ProgramClass(accessModifier, name, typeArguments, scope.Functions, scope.Fields);
     }
 
-    private static bool TryPeek(PeekableEnumerator<Token> tokens, [NotNullWhen(true)] out Token? foundToken)
-    {
-        if (!tokens.TryPeek(out foundToken))
-        {
-            return false;
-        }
-
-        var couldPeek = true;
-        while (couldPeek && foundToken!.Type is TokenType.MultiLineComment or TokenType.SingleLineComment)
-        {
-            // drop the comment and try again
-            tokens.MoveNext();
-            
-            couldPeek = tokens.TryPeek(out foundToken);
-        }
-
-        return couldPeek;
-    }
-
-    private static bool MoveNext(PeekableEnumerator<Token> tokens)
-    {
-        if (!tokens.MoveNext())
-        {
-            return false;
-        }
-
-        var hasNext = true;
-        
-        while (hasNext && tokens.Current.Type is TokenType.MultiLineComment or TokenType.SingleLineComment)
-        {
-            // drop the comment and try again
-            hasNext = tokens.MoveNext();
-        }
-
-        return hasNext;
-    }
     
-    private static LangFunction GetFunctionDeclaration(AccessModifier? accessModifier, StaticModifier? staticModifier, PeekableEnumerator<Token> tokens)
+    
+    private LangFunction GetFunctionDeclaration(AccessModifier? accessModifier, StaticModifier? staticModifier)
     {
-        if (!MoveNext(tokens) || tokens.Current is not StringToken {Type: TokenType.Identifier} nameToken)
+        if (!MoveNext() || Current is not StringToken {Type: TokenType.Identifier} nameToken)
         {
             throw new InvalidOperationException("Expected function name");
         }
 
-        if (!MoveNext(tokens))
+        if (!MoveNext())
         {
             throw new InvalidOperationException("Expected ( or <");
         }
 
         var typeArguments = new List<StringToken>();
 
-        if (tokens.Current.Type == TokenType.LeftAngleBracket)
+        if (Current.Type == TokenType.LeftAngleBracket)
         {
             while (true)
             {
-                if (!MoveNext(tokens))
+                if (!MoveNext())
                 {
                     throw new InvalidOperationException("Expected Type Argument");
                 }
 
-                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                if (Current.Type == TokenType.RightAngleBracket)
                 {
                     if (typeArguments.Count == 0)
                     {
                         throw new InvalidOperationException("Expected type argument");
                     }
 
-                    if (!MoveNext(tokens))
+                    if (!MoveNext())
                     {
                         throw new InvalidOperationException("Expected (");
                     }
@@ -629,32 +659,32 @@ public static class Parser
 
                 if (typeArguments.Count > 0)
                 {
-                    if (tokens.Current.Type != TokenType.Comma)
+                    if (Current.Type != TokenType.Comma)
                     {
                         throw new InvalidOperationException("Expected ,");
                     }
 
-                    if (!MoveNext(tokens))
+                    if (!MoveNext())
                     {
                         throw new InvalidOperationException("Expected type argument");
                     }
                 }
                 
-                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                if (Current.Type == TokenType.RightAngleBracket)
                 {
                     if (typeArguments.Count == 0)
                     {
                         throw new InvalidOperationException("Expected type argument");
                     }
 
-                    if (!MoveNext(tokens))
+                    if (!MoveNext())
                     {
                         throw new InvalidOperationException("Expected (");
                     }
                     break;
                 }
 
-                if (tokens.Current is not StringToken { Type: TokenType.Identifier } typeArgument)
+                if (Current is not StringToken { Type: TokenType.Identifier } typeArgument)
                 {
                     throw new InvalidOperationException("Expected type argument");
                 }
@@ -663,7 +693,7 @@ public static class Parser
             }
         }
 
-        if (tokens.Current.Type != TokenType.LeftParenthesis)
+        if (Current.Type != TokenType.LeftParenthesis)
         {
             throw new InvalidOperationException("Expected (");
         }
@@ -672,87 +702,87 @@ public static class Parser
 
         while (true)
         {
-            if (!MoveNext(tokens))
+            if (!MoveNext())
             {
                 throw new InvalidOperationException("Expected ) or parameter type");
             }
 
-            if (tokens.Current.Type == TokenType.RightParenthesis)
+            if (Current.Type == TokenType.RightParenthesis)
             {
                 break;
             }
 
             if (parameterList.Count != 0)
             {
-                if (tokens.Current.Type != TokenType.Comma)
+                if (Current.Type != TokenType.Comma)
                 {
                     throw new InvalidOperationException("Expected ,");
                 }
-                if (!MoveNext(tokens))
+                if (!MoveNext())
                 {
                     throw new InvalidOperationException("Expected parameter type");
                 }
             }
 
-            if (tokens.Current.Type == TokenType.RightParenthesis)
+            if (Current.Type == TokenType.RightParenthesis)
             {
                 break;
             }
 
             MutabilityModifier? mutabilityModifier = null;
 
-            if (tokens.Current.Type == TokenType.Mut)
+            if (Current.Type == TokenType.Mut)
             {
-                mutabilityModifier = new MutabilityModifier(tokens.Current);
-                if (!MoveNext(tokens))
+                mutabilityModifier = new MutabilityModifier(Current);
+                if (!MoveNext())
                 {
                     throw new InvalidOperationException("Expected parameter name");
                 }
             }
 
-            if (tokens.Current is not StringToken { Type: TokenType.Identifier } parameterName)
+            if (Current is not StringToken { Type: TokenType.Identifier } parameterName)
             {
                 throw new InvalidOperationException("Expected parameter name");
             }
 
-            if (!MoveNext(tokens) || tokens.Current.Type != TokenType.Colon)
+            if (!MoveNext() || Current.Type != TokenType.Colon)
             {
                 throw new InvalidOperationException("Expected :");
             }
 
-            if (!MoveNext(tokens))
+            if (!MoveNext())
             {
                 throw new InvalidOperationException("Expected parameter type");
             }
             
-            var parameterType = GetTypeIdentifier(tokens);
+            var parameterType = GetTypeIdentifier();
 
             parameterList.Add(new FunctionParameter(parameterType, mutabilityModifier, parameterName));
         }
 
-        if (!MoveNext(tokens))
+        if (!MoveNext())
         {
             throw new InvalidOperationException("Expected { or :");
         }
 
         TypeIdentifier? returnType = null;
 
-        if (tokens.Current.Type == TokenType.Colon)
+        if (Current.Type == TokenType.Colon)
         {
-            if (!MoveNext(tokens))
+            if (!MoveNext())
             {
                 throw new InvalidOperationException("Expected return type");
             }
 
-            returnType = GetTypeIdentifier(tokens);
+            returnType = GetTypeIdentifier();
 
-            if (!MoveNext(tokens))
+            if (!MoveNext())
             {
                 throw new InvalidOperationException("Expected {");
             }
         }
 
-        var scope = GetScope(tokens, closingToken: TokenType.RightBrace, isUnion: false);
+        var scope = GetScope(closingToken: TokenType.RightBrace, isUnion: false);
 
         if (scope.GetScopeTypes().Any(x => x is not (Scope.ScopeType.Expression or Scope.ScopeType.Function)))
         {
@@ -762,65 +792,65 @@ public static class Parser
         return new LangFunction(accessModifier, staticModifier, nameToken, typeArguments, parameterList, returnType, new Block(scope.Expressions, scope.Functions));
     }
 
-    private static bool IsTypeTokenType(in TokenType tokenType)
+    private bool IsTypeTokenType(in TokenType tokenType)
     {
         return tokenType is TokenType.IntKeyword or TokenType.StringKeyword or TokenType.Result or TokenType.Identifier or TokenType.Bool;
     } 
 
-    private static TypeIdentifier GetTypeIdentifier(PeekableEnumerator<Token> tokens)
+    private TypeIdentifier GetTypeIdentifier()
     {
-        if (!IsTypeTokenType(tokens.Current.Type))
+        if (!IsTypeTokenType(Current.Type))
         {
             throw new InvalidOperationException("Expected type");
         }
 
-        var typeIdentifier = tokens.Current;
+        var typeIdentifier = Current;
 
         var typeArguments = new List<TypeIdentifier>();
-        if (TryPeek(tokens, out var peeked) && peeked.Type == TokenType.Turbofish)
+        if (TryPeek(out var peeked) && peeked.Type == TokenType.Turbofish)
         {
-            if (!MoveNext(tokens) && tokens.Current.Type != TokenType.LeftAngleBracket)
+            if (!MoveNext() && Current.Type != TokenType.LeftAngleBracket)
             {
                 throw new InvalidOperationException("Expected <");
             }
 
             while (true)
             {
-                if (!MoveNext(tokens))
+                if (!MoveNext())
                 {
                     throw new InvalidOperationException("Expected type argument");
                 }
 
-                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                if (Current.Type == TokenType.RightAngleBracket)
                 {
                     break;
                 }
 
                 if (typeArguments.Count != 0)
                 {
-                    if (tokens.Current.Type != TokenType.Comma)
+                    if (Current.Type != TokenType.Comma)
                     {
                         throw new InvalidOperationException("Expected ,");
                     }
-                    if (!MoveNext(tokens))
+                    if (!MoveNext())
                     {
                         throw new InvalidOperationException("Expected type argument");
                     }
                 }
 
-                if (tokens.Current.Type == TokenType.RightAngleBracket)
+                if (Current.Type == TokenType.RightAngleBracket)
                 {
                     break;
                 }
 
-                typeArguments.Add(GetTypeIdentifier(tokens));
+                typeArguments.Add(GetTypeIdentifier());
             }
         }
 
         return new TypeIdentifier(typeIdentifier, typeArguments);
     }
 
-    private static bool IsValidStatement(IExpression expression)
+    private bool IsValidStatement(IExpression expression)
     {
         return expression is
             {
@@ -835,79 +865,77 @@ public static class Parser
             };
     }
     
-    private static IExpression MatchTokenToExpression(IExpression? previousExpression, PeekableEnumerator<Token> tokens)
+    private IExpression MatchTokenToExpression(IExpression? previousExpression)
     {
-        return tokens.Current.Type switch
+        return Current.Type switch
         {
             // value accessors
             TokenType.StringLiteral or TokenType.IntLiteral or TokenType.True or TokenType.False => new ValueAccessorExpression(
-                new ValueAccessor(ValueAccessType.Literal, tokens.Current)),
-            TokenType.Var => GetVariableDeclaration(tokens),
-            TokenType.LeftBrace => GetBlockExpression(tokens),
-            TokenType.If => GetIfExpression(tokens),
-            TokenType.LeftParenthesis => GetMethodCall(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
-            TokenType.Return => GetMethodReturn(tokens),
-            TokenType.New => GetInitializer(tokens),
+                new ValueAccessor(ValueAccessType.Literal, Current)),
+            TokenType.Var => GetVariableDeclaration(),
+            TokenType.LeftBrace => GetBlockExpression(),
+            TokenType.If => GetIfExpression(),
+            TokenType.LeftParenthesis => GetMethodCall(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
+            TokenType.Return => GetMethodReturn(),
+            TokenType.New => GetInitializer(),
             TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
-            TokenType.Dot => GetMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
-            TokenType.DoubleColon => GetStaticMemberAccess(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
-            TokenType.Ok or TokenType.Error => GetVariableAccess(tokens),
-            TokenType.Turbofish => GetGenericInstantiation(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}")),
-            _ when IsTypeTokenType(tokens.Current.Type) => GetVariableAccess(tokens),
-            _ when TryGetUnaryOperatorType(tokens.Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), tokens.Current, unaryOperatorType.Value),
-            _ when TryGetBinaryOperatorType(tokens.Current.Type, out var binaryOperatorType) => GetBinaryOperatorExpression(tokens, previousExpression ?? throw new InvalidOperationException($"Unexpected token {tokens.Current}"), binaryOperatorType.Value),
-            _ => throw new InvalidOperationException($"Token type {tokens.Current.Type} not supported")
+            TokenType.Dot => GetMemberAccess(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
+            TokenType.DoubleColon => GetStaticMemberAccess(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
+            TokenType.Ok or TokenType.Error => GetVariableAccess(),
+            TokenType.Turbofish => GetGenericInstantiation(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
+            _ when IsTypeTokenType(Current.Type) => GetVariableAccess(),
+            _ when TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}"), Current, unaryOperatorType.Value),
+            _ when TryGetBinaryOperatorType(Current.Type, out var binaryOperatorType) => GetBinaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}"), binaryOperatorType.Value),
+            _ => throw new InvalidOperationException($"Token type {Current.Type} not supported")
         };
     }
 
-    private static GenericInstantiationExpression GetGenericInstantiation(PeekableEnumerator<Token> tokens,
-        IExpression previousExpression)
+    private GenericInstantiationExpression GetGenericInstantiation(IExpression previousExpression)
     {
         var typeArguments = new List<TypeIdentifier>();
         while (true)
         {
-            if (!MoveNext(tokens))
+            if (!MoveNext())
             {
                 throw new InvalidOperationException("Expected type argument");
             }
     
-            if (tokens.Current.Type == TokenType.RightAngleBracket)
+            if (Current.Type == TokenType.RightAngleBracket)
             {
                 break;
             }
     
             if (typeArguments.Count > 0)
             {
-                if (tokens.Current.Type != TokenType.Comma)
+                if (Current.Type != TokenType.Comma)
                 {
                     throw new InvalidOperationException("Expected ,");
                 }
     
-                if (!MoveNext(tokens))
+                if (!MoveNext())
                 {
                     throw new InvalidOperationException("Expected type argument");
                 }
             }
 
-            if (tokens.Current.Type == TokenType.RightAngleBracket)
+            if (Current.Type == TokenType.RightAngleBracket)
             {
                 break;
             }
     
-            typeArguments.Add(GetTypeIdentifier(tokens));
+            typeArguments.Add(GetTypeIdentifier());
         }
 
         return new GenericInstantiationExpression(new GenericInstantiation(previousExpression, typeArguments));
     }
 
-    private static ValueAccessorExpression GetVariableAccess(PeekableEnumerator<Token> tokens)
+    private ValueAccessorExpression GetVariableAccess()
     {
-        var variableToken = tokens.Current;
+        var variableToken = Current;
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, variableToken));
     }
 
-    private static StaticMemberAccessExpression GetStaticMemberAccess(
-        PeekableEnumerator<Token> tokens,
+    private StaticMemberAccessExpression GetStaticMemberAccess(
         IExpression previousExpression)
     {
         IReadOnlyList<TypeIdentifier>? typeArguments = null;
@@ -930,17 +958,17 @@ public static class Parser
 
         var type = new TypeIdentifier(token, typeArguments ?? []);
 
-        if (!MoveNext(tokens) || tokens.Current is not StringToken { Type: TokenType.Identifier } memberName)
+        if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } memberName)
         {
-            throw new InvalidOperationException($"Unexpected token {tokens.Current}");
+            throw new InvalidOperationException($"Unexpected token {Current}");
         }
 
         return new StaticMemberAccessExpression(new StaticMemberAccess(type, memberName));
     }
 
-    private static MemberAccessExpression GetMemberAccess(PeekableEnumerator<Token> tokens, IExpression previousExpression)
+    private MemberAccessExpression GetMemberAccess(IExpression previousExpression)
     {
-        if (!MoveNext(tokens) || tokens.Current is not StringToken { Type: TokenType.Identifier } memberName)
+        if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } memberName)
         {
             throw new InvalidOperationException("Expected member name");
         }
@@ -948,61 +976,56 @@ public static class Parser
         return new MemberAccessExpression(new MemberAccess(previousExpression, memberName));
     }
 
-    private static IExpression GetInitializer(PeekableEnumerator<Token> tokens)
+    private IExpression GetInitializer()
     {
-        if (!MoveNext(tokens))
+        if (!MoveNext())
         {
             throw new InvalidOperationException("Expected type");
         }
 
-        var type = GetTypeIdentifier(tokens);
+        var type = GetTypeIdentifier();
 
-        if (!MoveNext(tokens))
+        if (!MoveNext())
         {
             throw new InvalidOperationException("Expected :: or {");
         }
 
-        if (tokens.Current.Type == TokenType.LeftBrace)
+        return Current.Type switch
         {
-            return GetObjectInitializer(type, tokens);
-        }
-        if (tokens.Current.Type == TokenType.DoubleColon)
-        {
-            return GetUnionStructVariantInitializer(type, tokens);
-        }
-        
-        throw new InvalidOperationException($"Unexpected token {tokens.Current}. Expected :: or {{");
+            TokenType.LeftBrace => GetObjectInitializer(type),
+            TokenType.DoubleColon => GetUnionStructVariantInitializer(type),
+            _ => throw new InvalidOperationException($"Unexpected token {Current}. Expected :: or {{")
+        };
     }
 
-    private static UnionStructVariantInitializerExpression GetUnionStructVariantInitializer(
-        TypeIdentifier type,
-        PeekableEnumerator<Token> tokens)
+    private UnionStructVariantInitializerExpression GetUnionStructVariantInitializer(
+        TypeIdentifier type)
     {
-        if (!MoveNext(tokens) || tokens.Current is not StringToken { Type: TokenType.Identifier } variantName)
+        if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } variantName)
         {
             throw new InvalidOperationException("Expected union variant name");
         }
 
-        if (!MoveNext(tokens) || tokens.Current.Type != TokenType.LeftBrace)
+        if (!MoveNext() || Current.Type != TokenType.LeftBrace)
         {
             throw new InvalidOperationException("Expected {");
         }
         
-        return new UnionStructVariantInitializerExpression(new UnionStructVariantInitializer(type, variantName, GetFieldInitializers(tokens)));
+        return new UnionStructVariantInitializerExpression(new UnionStructVariantInitializer(type, variantName, GetFieldInitializers()));
     }
 
-    private static List<FieldInitializer> GetFieldInitializers(PeekableEnumerator<Token> tokens)
+    private List<FieldInitializer> GetFieldInitializers()
     {
         var fieldInitializers = new List<FieldInitializer>();
         
         while (true)
         {
-            if (!MoveNext(tokens))
+            if (!MoveNext())
             {
                 throw new InvalidOperationException("Expected field name");
             }
 
-            if (tokens.Current.Type == TokenType.RightBrace)
+            if (Current.Type == TokenType.RightBrace)
             {
                 // allow 0 field initializers
                 break;
@@ -1010,33 +1033,33 @@ public static class Parser
 
             if (fieldInitializers.Count > 0)
             {
-                if (tokens.Current.Type != TokenType.Comma)
+                if (Current.Type != TokenType.Comma)
                 {
                     throw new InvalidOperationException("Expected ,");
                 }
 
-                if (!MoveNext(tokens))
+                if (!MoveNext())
                 {
                     throw new InvalidOperationException("Expected field name");
                 }
             }
 
-            if (tokens.Current.Type == TokenType.RightBrace)
+            if (Current.Type == TokenType.RightBrace)
             {
                 break;
             }
 
-            if (tokens.Current is not StringToken { Type: TokenType.Identifier } fieldName)
+            if (Current is not StringToken { Type: TokenType.Identifier } fieldName)
             {
                 throw new InvalidOperationException("Expected field name");
             }
 
-            if (!MoveNext(tokens) || tokens.Current.Type != TokenType.Equals)
+            if (!MoveNext() || Current.Type != TokenType.Equals)
             {
                 throw new InvalidOperationException("Expected =");
             }
 
-            var fieldValue = PopExpression(tokens)
+            var fieldValue = PopExpression()
                 ?? throw new InvalidOperationException("Expected field initializer value expression");
 
             fieldInitializers.Add(new FieldInitializer(fieldName, fieldValue));
@@ -1045,35 +1068,29 @@ public static class Parser
         return fieldInitializers;
     }
 
-    private static ObjectInitializerExpression GetObjectInitializer(TypeIdentifier type, PeekableEnumerator<Token> tokens)
+    private ObjectInitializerExpression GetObjectInitializer(TypeIdentifier type)
     {
-        return new ObjectInitializerExpression(new ObjectInitializer(type, GetFieldInitializers(tokens)));
+        return new ObjectInitializerExpression(new ObjectInitializer(type, GetFieldInitializers()));
     }
 
-    private static MethodReturnExpression GetMethodReturn(PeekableEnumerator<Token> tokens)
+    private MethodReturnExpression GetMethodReturn()
     {
-        var expression = new MethodReturn(PopExpression(tokens));
+        var expression = new MethodReturn(PopExpression());
 
         return new MethodReturnExpression(expression);
     }
 
-    public static IExpression? PopExpression(IEnumerable<Token> tokens)
-    {
-        using var enumerator = new PeekableEnumerator<Token>(tokens.GetEnumerator());
 
-        return PopExpression(enumerator);
-    }
-
-    private static IExpression? PopExpression(PeekableEnumerator<Token> tokens, uint? currentBindingStrength = null)
+    private IExpression? PopExpression(uint? currentBindingStrength = null)
     {
         IExpression? previousExpression = null;
-        while (TryPeek(tokens, out var peeked) 
+        while (TryPeek(out var peeked) 
                && peeked.Type != TokenType.Semicolon)
         {
-            MoveNext(tokens);
-            previousExpression = MatchTokenToExpression(previousExpression, tokens);
+            MoveNext();
+            previousExpression = MatchTokenToExpression(previousExpression);
             
-            if (!TryPeek(tokens, out peeked) 
+            if (!TryPeek(out peeked) 
                 || !TryGetBindingStrength(peeked, out var bindingStrength)
                 || bindingStrength <= currentBindingStrength)
             {
@@ -1084,14 +1101,14 @@ public static class Parser
         return previousExpression;
     }
 
-    private static MethodCallExpression GetMethodCall(PeekableEnumerator<Token> tokens, IExpression method)
+    private MethodCallExpression GetMethodCall(IExpression method)
     {
         var parameterList = new List<IExpression>();
-        while (TryPeek(tokens, out var peeked))
+        while (TryPeek(out var peeked))
         {
             if (peeked.Type == TokenType.RightParenthesis)
             {
-                MoveNext(tokens);
+                MoveNext();
                 return new MethodCallExpression(new MethodCall(method, parameterList));
             }
 
@@ -1103,16 +1120,16 @@ public static class Parser
                 }
 
                 // pop comma off
-                MoveNext(tokens);
+                MoveNext();
             }
 
-            if (TryPeek(tokens, out peeked) && peeked.Type == TokenType.RightParenthesis)
+            if (TryPeek(out peeked) && peeked.Type == TokenType.RightParenthesis)
             {
-                MoveNext(tokens);
+                MoveNext();
                 return new MethodCallExpression(new MethodCall(method, parameterList));
             }
 
-            var nextExpression = PopExpression(tokens);
+            var nextExpression = PopExpression();
             if (nextExpression is not null)
             {
                 parameterList.Add(nextExpression);
@@ -1122,67 +1139,67 @@ public static class Parser
         throw new InvalidOperationException("Expected ), found nothing");
     }
 
-    private static IfExpressionExpression GetIfExpression(PeekableEnumerator<Token> tokens)
+    private IfExpressionExpression GetIfExpression()
     {
-        if (!MoveNext(tokens))
+        if (!MoveNext())
         {
             throw new InvalidOperationException("Expected left parenthesis, found nothing");
         }
 
-        if (tokens.Current.Type != TokenType.LeftParenthesis)
+        if (Current.Type != TokenType.LeftParenthesis)
         {
-            throw new InvalidOperationException($"Expected left parenthesis, found {tokens.Current.Type}");
+            throw new InvalidOperationException($"Expected left parenthesis, found {Current.Type}");
         }
 
-        var checkExpression = PopExpression(tokens)
+        var checkExpression = PopExpression()
             ?? throw new InvalidOperationException("Expected check expression, found no expression");
 
-        if (!MoveNext(tokens))
+        if (!MoveNext())
         {
             throw new InvalidOperationException("Expected right parenthesis, found nothing");
         }
 
-        if (tokens.Current.Type != TokenType.RightParenthesis)
+        if (Current.Type != TokenType.RightParenthesis)
         {
-            throw new InvalidOperationException($"Expected right parenthesis, found {tokens.Current.Type}");
+            throw new InvalidOperationException($"Expected right parenthesis, found {Current.Type}");
         }
 
-        var body = PopExpression(tokens) ??
+        var body = PopExpression() ??
             throw new InvalidOperationException("Expected if body, found nothing");
 
         var elseIfs = new List<ElseIf>();
         IExpression? elseBody = null;
 
-        while (TryPeek(tokens, out var peeked) && peeked.Type == TokenType.Else)
+        while (TryPeek(out var peeked) && peeked.Type == TokenType.Else)
         {
             // pop the "else" token off
-            MoveNext(tokens);
+            MoveNext();
 
-            if (TryPeek(tokens, out var nextPeeked) && nextPeeked.Type == TokenType.If)
+            if (TryPeek(out var nextPeeked) && nextPeeked.Type == TokenType.If)
             {
                 // pop the "if" token off
-                MoveNext(tokens);
-                if (!MoveNext(tokens) || tokens.Current.Type != TokenType.LeftParenthesis)
+                MoveNext();
+                if (!MoveNext() || Current.Type != TokenType.LeftParenthesis)
                 {
                     throw new InvalidOperationException("Expected left Parenthesis");
                 }
 
-                var elseIfCheckExpression = PopExpression(tokens)
+                var elseIfCheckExpression = PopExpression()
                                             ?? throw new InvalidOperationException("Expected check expression");
 
-                if (!MoveNext(tokens) || tokens.Current.Type != TokenType.RightParenthesis)
+                if (!MoveNext() || Current.Type != TokenType.RightParenthesis)
                 {
                     throw new InvalidOperationException("Expected right Parenthesis");
                 }
 
-                var elseIfBody = PopExpression(tokens)
+                var elseIfBody = PopExpression()
                     ?? throw new InvalidOperationException("Expected else if body");
 
                 elseIfs.Add(new ElseIf(elseIfCheckExpression, elseIfBody));
             }
             else
             {
-                elseBody = PopExpression(tokens)
+                elseBody = PopExpression()
                                  ?? throw new InvalidOperationException("Expected else body, got nothing");
                 break;
             }
@@ -1195,9 +1212,9 @@ public static class Parser
             elseBody));
     }
 
-    private static BlockExpression GetBlockExpression(PeekableEnumerator<Token> tokens)
+    private BlockExpression GetBlockExpression()
     {
-        var scope = GetScope(tokens, TokenType.RightBrace, isUnion: false);
+        var scope = GetScope(TokenType.RightBrace, isUnion: false);
 
         if (scope.GetScopeTypes().Any(x => x is not (Scope.ScopeType.Expression or Scope.ScopeType.Function)))
         {
@@ -1207,31 +1224,31 @@ public static class Parser
         return new BlockExpression(new Block(scope.Expressions, scope.Functions));
     }
 
-    private static VariableDeclarationExpression GetVariableDeclaration(PeekableEnumerator<Token> tokens)
+    private VariableDeclarationExpression GetVariableDeclaration()
     {
-        if (!MoveNext(tokens))
+        if (!MoveNext())
         {
             throw new InvalidOperationException("Expected variable identifier, got nothing");
         }
 
         MutabilityModifier? mutabilityModifier = null;
 
-        if (tokens.Current.Type == TokenType.Mut)
+        if (Current.Type == TokenType.Mut)
         {
-            mutabilityModifier = new MutabilityModifier(tokens.Current);
+            mutabilityModifier = new MutabilityModifier(Current);
 
-            if (!MoveNext(tokens))
+            if (!MoveNext())
             {
                 throw new InvalidOperationException("Expected variable identifier");
             }
         }
 
-        if (tokens.Current is not StringToken { Type: TokenType.Identifier } identifier)
+        if (Current is not StringToken { Type: TokenType.Identifier } identifier)
         {
-            throw new InvalidOperationException($"Expected variable identifier, got {tokens.Current}");
+            throw new InvalidOperationException($"Expected variable identifier, got {Current}");
         }
 
-        if (!MoveNext(tokens))
+        if (!MoveNext())
         {
             throw new InvalidOperationException("Expected = or ; token, got nothing");
         }
@@ -1239,32 +1256,32 @@ public static class Parser
         TypeIdentifier? type = null;
         IExpression? valueExpression = null;
 
-        if (tokens.Current.Type == TokenType.Colon)
+        if (Current.Type == TokenType.Colon)
         {
-            if (!MoveNext(tokens))
+            if (!MoveNext())
             {
                 throw new InvalidOperationException("Expected type");
             }
 
-            type = GetTypeIdentifier(tokens);
+            type = GetTypeIdentifier();
 
-            if (TryPeek(tokens, out var peeked) && peeked.Type == TokenType.Equals)
+            if (TryPeek(out var peeked) && peeked.Type == TokenType.Equals)
             {
-                MoveNext(tokens);
-                valueExpression = PopExpression(tokens)
+                MoveNext();
+                valueExpression = PopExpression()
                             ?? throw new InvalidOperationException("Expected value expression, got nothing");
             }
         }
-        else if (tokens.Current.Type == TokenType.Equals)
+        else if (Current.Type == TokenType.Equals)
         {
-            valueExpression = PopExpression(tokens)
+            valueExpression = PopExpression()
                         ?? throw new InvalidOperationException("Expected value expression, got nothing");
         }
 
         return new VariableDeclarationExpression(new VariableDeclaration(identifier, mutabilityModifier, type, valueExpression));
     }
     
-    private static UnaryOperatorExpression GetUnaryOperatorExpression(
+    private UnaryOperatorExpression GetUnaryOperatorExpression(
         IExpression operand,
         Token operatorToken,
         UnaryOperatorType operatorType)
@@ -1272,24 +1289,23 @@ public static class Parser
         return new UnaryOperatorExpression(new UnaryOperator(operatorType, operand, operatorToken));
     }
     
-    private static BinaryOperatorExpression GetBinaryOperatorExpression(
-        PeekableEnumerator<Token> tokens,
+    private BinaryOperatorExpression GetBinaryOperatorExpression(
         IExpression leftOperand,
         BinaryOperatorType operatorType)
     {
-        var operatorToken = tokens.Current;
+        var operatorToken = Current;
         if (!TryGetBindingStrength(operatorToken, out var bindingStrength))
         {
             throw new UnreachableException("All operators have a binding strength");
         }
-        var right = PopExpression(tokens, bindingStrength.Value);
+        var right = PopExpression(bindingStrength.Value);
 
         return right is null
             ? throw new Exception("Expected expression but got null")
             : new BinaryOperatorExpression(new BinaryOperator(operatorType, leftOperand, right, operatorToken));
     }
 
-    private static bool TryGetBindingStrength(Token token, [NotNullWhen(true)] out uint? bindingStrength)
+    private bool TryGetBindingStrength(Token token, [NotNullWhen(true)] out uint? bindingStrength)
     {
         bindingStrength = token.Type switch
         {
@@ -1305,7 +1321,7 @@ public static class Parser
         return bindingStrength.HasValue;
     }
 
-    private static bool TryGetUnaryOperatorType(TokenType type, [NotNullWhen(true)] out UnaryOperatorType? operatorType)
+    private bool TryGetUnaryOperatorType(TokenType type, [NotNullWhen(true)] out UnaryOperatorType? operatorType)
     {
         operatorType = type switch
         {
@@ -1316,7 +1332,7 @@ public static class Parser
         return operatorType.HasValue;
     }
 
-    private static bool TryGetBinaryOperatorType(TokenType type, [NotNullWhen(true)] out BinaryOperatorType? operatorType)
+    private bool TryGetBinaryOperatorType(TokenType type, [NotNullWhen(true)] out BinaryOperatorType? operatorType)
     {
         operatorType = type switch
         {
@@ -1334,7 +1350,7 @@ public static class Parser
         return operatorType.HasValue;
     }
 
-    private static uint GetBinaryOperatorBindingStrength(BinaryOperatorType operatorType)
+    private uint GetBinaryOperatorBindingStrength(BinaryOperatorType operatorType)
     {
         return operatorType switch
         {
@@ -1350,7 +1366,7 @@ public static class Parser
         };
     }
     
-    private static uint GetUnaryOperatorBindingStrength(UnaryOperatorType operatorType)
+    private uint GetUnaryOperatorBindingStrength(UnaryOperatorType operatorType)
     {
         return operatorType switch
         {
