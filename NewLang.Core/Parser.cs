@@ -31,7 +31,7 @@ public sealed class Parser : IDisposable
 
     private Parser(IEnumerable<Token> tokens)
     {
-        _tokens = new PeekableEnumerator<Token>(tokens.GetEnumerator());
+        _tokens = tokens.GetEnumerator();
     }
 
     public void Dispose()
@@ -39,28 +39,9 @@ public sealed class Parser : IDisposable
         _tokens.Dispose();
     }
 
-    private readonly PeekableEnumerator<Token> _tokens;
+    private readonly IEnumerator<Token> _tokens;
     private Token Current => _tokens.Current;
     
-    private bool TryPeek([NotNullWhen(true)] out Token? foundToken)
-    {
-        if (!_tokens.TryPeek(out foundToken))
-        {
-            return false;
-        }
-
-        var couldPeek = true;
-        while (couldPeek && foundToken!.Type is TokenType.MultiLineComment or TokenType.SingleLineComment)
-        {
-            // drop the comment and try again
-            _tokens.MoveNext();
-            
-            couldPeek = _tokens.TryPeek(out foundToken);
-        }
-
-        return couldPeek;
-    }
-
     private bool _hasNext;
 
     private bool MoveNext()
@@ -630,7 +611,7 @@ public sealed class Parser : IDisposable
         return new LangFunction(accessModifier, staticModifier, nameToken, typeArguments, parameterList, returnType, new Block(scope.Expressions, scope.Functions));
     }
 
-    private bool IsTypeTokenType(in TokenType tokenType)
+    private static bool IsTypeTokenType(in TokenType tokenType)
     {
         return tokenType is TokenType.IntKeyword or TokenType.StringKeyword or TokenType.Result or TokenType.Identifier or TokenType.Bool;
     } 
@@ -656,7 +637,7 @@ public sealed class Parser : IDisposable
         return new TypeIdentifier(typeIdentifier, typeArguments);
     }
 
-    private bool IsValidStatement(IExpression expression)
+    private static bool IsValidStatement(IExpression expression)
     {
         return expression is
             {
@@ -1123,7 +1104,7 @@ public sealed class Parser : IDisposable
             : new BinaryOperatorExpression(new BinaryOperator(operatorType, leftOperand, right, operatorToken));
     }
 
-    private bool TryGetBindingStrength(Token token, [NotNullWhen(true)] out uint? bindingStrength)
+    private static bool TryGetBindingStrength(Token token, [NotNullWhen(true)] out uint? bindingStrength)
     {
         bindingStrength = token.Type switch
         {
@@ -1139,7 +1120,7 @@ public sealed class Parser : IDisposable
         return bindingStrength.HasValue;
     }
 
-    private bool TryGetUnaryOperatorType(TokenType type, [NotNullWhen(true)] out UnaryOperatorType? operatorType)
+    private static bool TryGetUnaryOperatorType(TokenType type, [NotNullWhen(true)] out UnaryOperatorType? operatorType)
     {
         operatorType = type switch
         {
@@ -1150,7 +1131,7 @@ public sealed class Parser : IDisposable
         return operatorType.HasValue;
     }
 
-    private bool TryGetBinaryOperatorType(TokenType type, [NotNullWhen(true)] out BinaryOperatorType? operatorType)
+    private static bool TryGetBinaryOperatorType(TokenType type, [NotNullWhen(true)] out BinaryOperatorType? operatorType)
     {
         operatorType = type switch
         {
@@ -1168,7 +1149,7 @@ public sealed class Parser : IDisposable
         return operatorType.HasValue;
     }
 
-    private uint GetBinaryOperatorBindingStrength(BinaryOperatorType operatorType)
+    private static uint GetBinaryOperatorBindingStrength(BinaryOperatorType operatorType)
     {
         return operatorType switch
         {
@@ -1184,7 +1165,7 @@ public sealed class Parser : IDisposable
         };
     }
     
-    private uint GetUnaryOperatorBindingStrength(UnaryOperatorType operatorType)
+    private static uint GetUnaryOperatorBindingStrength(UnaryOperatorType operatorType)
     {
         return operatorType switch
         {
