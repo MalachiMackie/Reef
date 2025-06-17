@@ -669,11 +669,176 @@ public sealed class Parser : IDisposable
             TokenType.DoubleColon => GetStaticMemberAccess(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
             TokenType.Ok or TokenType.Error => GetVariableAccess(),
             TokenType.Turbofish => GetGenericInstantiation(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
+            TokenType.Matches => GetMatchesExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
             _ when IsTypeTokenType(Current.Type) => GetVariableAccess(),
             _ when TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}"), Current, unaryOperatorType.Value),
             _ when TryGetBinaryOperatorType(Current.Type, out var binaryOperatorType) => GetBinaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}"), binaryOperatorType.Value),
             _ => throw new InvalidOperationException($"Token type {Current.Type} not supported")
         };
+    }
+
+    private MatchesExpression GetMatchesExpression(IExpression previousExpression)
+    {
+        if (!MoveNext())
+        {
+            throw new InvalidOperationException("Expected pattern");
+        }
+        
+        var pattern = GetPattern();
+
+        return new MatchesExpression(previousExpression, pattern);
+    }
+
+    private IPattern GetPattern()
+    {
+        if (Current.Type == TokenType.Underscore)
+        {
+            MoveNext();
+
+            return new DiscardPattern();
+        }
+
+        if (Current.Type == TokenType.Var)
+        {
+            if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } variableName)
+            {
+                throw new InvalidOperationException("Expected variable name");
+            }
+
+            MoveNext();
+
+            return new VariableDeclarationPattern(variableName);
+        }
+
+        if (Current.Type == TokenType.Identifier)
+        {
+            var type = GetTypeIdentifier();
+            
+            if (!_hasNext)
+            {
+                return new ClassPattern(type, [], false, null);
+            }
+
+            StringToken? variantName = null;
+            
+            if (Current.Type == TokenType.DoubleColon)
+            {
+                if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } x)
+                {
+                    throw new InvalidOperationException("Expected union variant name");
+                }
+
+                variantName = x;
+
+                MoveNext();
+            }
+
+            if (!_hasNext && variantName is not null)
+            {
+                return new UnionVariantPattern(type, variantName, null);
+            }
+
+            if (Current.Type == TokenType.Var)
+            {
+                if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } variableName)
+                {
+                    throw new InvalidOperationException("Expected variable name");
+                }
+
+                MoveNext();
+
+                return variantName is null
+                    ? new ClassPattern(type, [], false, variableName)
+                    : new UnionVariantPattern(type, variantName, variableName);
+            }
+
+            if (variantName is not null && Current.Type == TokenType.LeftParenthesis)
+            {
+                var patterns = GetCommaSeparatedList(
+                    TokenType.RightParenthesis,
+                    "Pattern",
+                    GetPattern);
+
+                StringToken? variableName = null;
+
+                if (_hasNext && Current.Type == TokenType.Var)
+                {
+                    if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } x)
+                    {
+                        throw new InvalidOperationException("Expected variable name");
+                    }
+
+                    variableName = x;
+                }
+
+                return new UnionTupleVariantPattern(type, variantName, patterns, variableName);
+            }
+
+            if (Current.Type == TokenType.LeftBrace)
+            {
+                var fieldPatterns = GetCommaSeparatedList(
+                    TokenType.RightBrace,
+                    "Field Pattern",
+                    () =>
+                    {
+                        if (Current.Type == TokenType.Underscore)
+                        {
+                            MoveNext();
+                            // hack to allow discard without field name
+                            return new KeyValuePair<StringToken, IPattern?>(Token.Identifier("", SourceSpan.Default),
+                                new DiscardPattern());
+                        }
+
+                        if (Current is not StringToken { Type: TokenType.Identifier } fieldName)
+                        {
+                            throw new InvalidOperationException("Expected field name");
+                        }
+
+                        if (!MoveNext())
+                        {
+                            throw new InvalidOperationException("Expected : or ,");
+                        }
+
+                        IPattern? pattern = null;
+
+                        if (Current.Type == TokenType.Colon)
+                        {
+                            if (!MoveNext())
+                            {
+                                throw new InvalidOperationException("Expected pattern");
+                            }
+                            
+                            pattern = GetPattern();
+                        }
+
+                        return KeyValuePair.Create(fieldName, pattern);
+                    });
+
+                var discards = fieldPatterns.Where(x => x.Key.StringValue.Length == 0 && x.Value is DiscardPattern)
+                    .ToArray();
+
+                switch (discards.Length)
+                {
+                    case > 1:
+                        throw new InvalidOperationException("Pattern can only have one field discard");
+                    case 1 when fieldPatterns[^1] is not {Key.StringValue.Length: 0, Value: DiscardPattern}:
+                        throw new InvalidOperationException("field discard must be at the end of the pattern");
+                    default:
+                        fieldPatterns = fieldPatterns.Where(x => x.Key.StringValue.Length > 0).ToList();
+                
+                        return variantName is not null
+                            ? new UnionStructVariantPattern(type, variantName, fieldPatterns, discards.Length == 1, null)
+                            : new ClassPattern(type, fieldPatterns, discards.Length == 1, null);
+                }
+            }
+
+            if (variantName is not null)
+            {
+                return new UnionVariantPattern(type, variantName, null);
+            }
+        }
+
+        throw new InvalidOperationException("Expected pattern");
     }
 
     private ValueAccessorExpression GetLiteralExpression()
@@ -707,6 +872,11 @@ public sealed class Parser : IDisposable
         var items = new List<T>();
         while (true)
         {
+            if (!_hasNext)
+            {
+                throw new InvalidOperationException($"Expected {itemName}");
+            }
+            
             if (Current.Type == terminator)
             {
                 break;
@@ -730,8 +900,12 @@ public sealed class Parser : IDisposable
                 break;
             }
 
-            var next = tryGetNext()
-                ?? throw new InvalidOperationException($"Expected {itemName}");
+            var next = tryGetNext();
+
+            if (next is null)
+            {
+                throw new InvalidOperationException($"Expected {itemName}");
+            }
             
             items.Add(next);
         }
@@ -1110,10 +1284,11 @@ public sealed class Parser : IDisposable
         {
             _ when TryGetUnaryOperatorType(token.Type, out var unaryOperatorType) => GetUnaryOperatorBindingStrength(unaryOperatorType.Value),
             _ when TryGetBinaryOperatorType(token.Type, out var binaryOperatorType) => GetBinaryOperatorBindingStrength(binaryOperatorType.Value),
-            TokenType.LeftParenthesis => 7,
-            TokenType.Turbofish => 6,
-            TokenType.Dot => 9,
-            TokenType.DoubleColon => 10,
+            TokenType.LeftParenthesis => 8,
+            TokenType.Turbofish => 7,
+            TokenType.Dot => 10,
+            TokenType.DoubleColon => 11,
+            TokenType.Matches => 1,
             _ => null
         };
 
@@ -1153,14 +1328,14 @@ public sealed class Parser : IDisposable
     {
         return operatorType switch
         {
-            BinaryOperatorType.Multiply => 5,
-            BinaryOperatorType.Divide => 5,
-            BinaryOperatorType.Plus => 4,
-            BinaryOperatorType.Minus => 4,
-            BinaryOperatorType.GreaterThan => 3,
-            BinaryOperatorType.LessThan => 3,
-            BinaryOperatorType.EqualityCheck => 2,
-            BinaryOperatorType.ValueAssignment => 1,
+            BinaryOperatorType.Multiply => 6,
+            BinaryOperatorType.Divide => 6,
+            BinaryOperatorType.Plus => 5,
+            BinaryOperatorType.Minus => 5,
+            BinaryOperatorType.GreaterThan => 4,
+            BinaryOperatorType.LessThan => 4,
+            BinaryOperatorType.EqualityCheck => 3,
+            BinaryOperatorType.ValueAssignment => 2,
             _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType, typeof(BinaryOperatorType))
         };
     }
@@ -1169,7 +1344,7 @@ public sealed class Parser : IDisposable
     {
         return operatorType switch
         {
-            UnaryOperatorType.FallOut => 8,
+            UnaryOperatorType.FallOut => 9,
             _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType, typeof(UnaryOperatorType))
         };
     }

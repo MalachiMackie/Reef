@@ -83,7 +83,10 @@ public record Token
             TokenType.DoubleColon => "::",
             TokenType.Static => "static",
             TokenType.Union => "union",
-            _ => throw new UnreachableException()
+            TokenType.Underscore => "_",
+            TokenType.Matches => "matches",
+            TokenType.Match => "match",
+            _ => throw new UnreachableException(Type.ToString())
         };
     }
 
@@ -112,6 +115,11 @@ public record Token
     public static Token Match(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.Match, SourceSpan = sourceSpan };
+    }
+
+    public static Token Underscore(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.Underscore, SourceSpan = sourceSpan };
     }
 
     public static Token DoubleColon(SourceSpan sourceSpan)

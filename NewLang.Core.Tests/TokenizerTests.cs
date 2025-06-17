@@ -108,6 +108,7 @@ public class TokenizerTests
             ["static", new[] { Token.Static(new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],
             ["matches", new[] { Token.Matches(new SourceSpan(new SourcePosition(0, 0, 0), 7)) }],
             ["match", new[] { Token.Match(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
+            ["_", new[] { Token.Underscore(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["class", new[] { Token.Class(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["// some comment here", new [] { Token.SingleLineComment(" some comment here", new SourceSpan(new SourcePosition(0, 0, 0), 20)) }],
             [
@@ -184,7 +185,7 @@ public class TokenizerTests
             ["+", new[] { Token.Plus(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             [".", new[] { Token.Dot(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             // all single char identifiers
-            .."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+            .."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
                 .Select(ch => ch.ToString())
                 .Select(ch => new object[] {ch, new [] {Token.Identifier(ch, new SourceSpan(new SourcePosition(0, 0, 0), 1))}}),
             [

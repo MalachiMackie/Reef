@@ -296,6 +296,7 @@ public class Tokenizer
             TokenType.Dot when source is "." => Token.Dot(new SourceSpan(position, (ushort)source.Length)),
             TokenType.SingleLineComment when source.StartsWith("//") => Token.SingleLineComment(source[2..].ToString(), new SourceSpan(position, (ushort)source.Length)),
             TokenType.MultiLineComment when source.StartsWith("/*") && source.EndsWith("*/") => Token.MultiLineComment(source[2..^2].ToString(), new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Underscore when source is "_" => Token.Underscore(new SourceSpan(position, (ushort)source.Length)),
             TokenType.None => throw new UnreachableException(),
             _ => null
         };
@@ -436,6 +437,10 @@ public class Tokenizer
             case '.':
                 tokens[i++] = TokenType.Dot;
                 break;
+            case '_':
+                tokens[i++] = TokenType.Underscore;
+                tokens[i++] = TokenType.Identifier;
+                break;
             default:
             {
                 if (ValidIdentifierTokens.Contains(firstChar))
@@ -458,6 +463,7 @@ public class Tokenizer
             TokenType.If => Matches(source, "if"),
             TokenType.LeftParenthesis => Matches(source, "("),
             TokenType.RightParenthesis => Matches(source,")"),
+            TokenType.Underscore => Matches(source,"_"),
             TokenType.Semicolon => Matches(source, ";"),
             TokenType.LeftBrace => Matches(source, "{"),
             TokenType.Union => Matches(source, "union"),
