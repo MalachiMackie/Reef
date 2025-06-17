@@ -1490,9 +1490,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             (
                 """
                 union MyUnion {
-                    A { 
-                        field MyField: string
-                    }
+                    A,
+                    B(string, int, MyClass::<string>)
                 }
                 """,
                 new LangProgram(
@@ -1505,18 +1504,19 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         [],
                         [],
                         [
-                            new StructUnionVariant
-                            {
-                                Name = Token.Identifier("A", SourceSpan.Default),
-                                Fields = [
-                                    new ClassField(null, null, null,
-                                        Token.Identifier("MyField", SourceSpan.Default),
-                                        new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []), null)
-                                ]
-                            }
+                            new UnitStructUnionVariant(Token.Identifier("A", SourceSpan.Default)),
+                            new TupleUnionVariant(
+                                Token.Identifier("B", SourceSpan.Default),
+                                [
+                                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
+                                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
+                                    new TypeIdentifier(
+                                        Token.Identifier("MyClass", SourceSpan.Default),
+                                        [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])]
+                                    ),
+                                ])
                         ])])
-            ),
-
+            )
         }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedProgram });
     }
 
