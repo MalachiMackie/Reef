@@ -23,6 +23,26 @@ public class TokenizerTests
     }
 
     [Fact]
+    public void Should_Throw_When_SymbolCharacterIsFound()
+    {
+        const string source = "@";
+
+        var act = () => Tokenizer.Tokenize(source).Count();
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Should_TokenizeNonEnglishCharacters()
+    {
+        const string source = "漢";
+        
+        var result = Tokenizer.Tokenize(source);
+
+        result.Should().BeEquivalentTo([Token.Identifier("漢", new SourceSpan(new SourcePosition(0, 0, 0), 1))]);
+    }
+
+    [Fact]
     public void Perf()
     {
         Tokenizer.Tokenize(LargeSource).Count().Should().BeGreaterThan(0);

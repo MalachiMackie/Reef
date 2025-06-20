@@ -71,7 +71,7 @@ public class Tokenizer
         var potentialTokensCount = GetPotentiallyValidTokenTypes(sourceTrimmed[0], ref potentialTokens);
         if (potentialTokensCount == 0)
         {
-            return null;
+            throw new InvalidOperationException($"Unexpected token {sourceTrimmed[0]}");
         }
         
         for (ushort i = 1; i < source.Length; i++)
@@ -236,7 +236,7 @@ public class Tokenizer
     {
         token = type switch
         {
-            TokenType.Identifier when source.Length > 0 && !source.ContainsAnyExcept(ValidIdentifierTokens) && !char.IsDigit(source[0]) => 
+            TokenType.Identifier when source.Length > 0 && IsValidIdentifier(source) => 
                 Token.Identifier(GetString(source), new SourceSpan(position, (ushort)source.Length)),
             TokenType.If when source is "if" => Token.If(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Mut when source is "mut" => Token.Mut(new SourceSpan(position, (ushort)source.Length)),
@@ -303,10 +303,6 @@ public class Tokenizer
 
         return token is not null;
     }
-
-    private static readonly SearchValues<char> ValidIdentifierTokens =
-        // ReSharper disable once StringLiteralTypo
-        SearchValues.Create("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_");
 
     // maximum potential token types at the same time
     private const int MaxPotentialTokenTypes = 4;
@@ -443,7 +439,7 @@ public class Tokenizer
                 break;
             default:
             {
-                if (ValidIdentifierTokens.Contains(firstChar))
+                if (IsValidIdentifier([firstChar]))
                 {
                     tokens[i++] = TokenType.Identifier;
                 }
@@ -459,7 +455,7 @@ public class Tokenizer
     {
         return type switch
         {
-            TokenType.Identifier => !source.ContainsAnyExcept(ValidIdentifierTokens) && !char.IsDigit(source[0]),
+            TokenType.Identifier => IsValidIdentifier(source),
             TokenType.If => Matches(source, "if"),
             TokenType.LeftParenthesis => Matches(source, "("),
             TokenType.RightParenthesis => Matches(source,")"),
@@ -533,5 +529,23 @@ public class Tokenizer
 
         static bool Matches(ReadOnlySpan<char> source, ReadOnlySpan<char> expected)
             => expected.StartsWith(source) && source.Length <= expected.Length;
+    }
+    
+    private static bool IsValidIdentifier(ReadOnlySpan<char> source)
+    {
+        if (char.IsDigit(source[0]))
+        {
+            return false;
+        }
+
+        foreach (var ch in source)
+        {
+            if (char.IsWhiteSpace(ch) || char.IsSymbol(ch) || char.IsPunctuation(ch))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
