@@ -297,6 +297,11 @@ public record Token
         return new Token { Type = TokenType.Star, SourceSpan = sourceSpan };
     }
 
+    public static Token Bang(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.Bang, SourceSpan = sourceSpan };
+    }
+
     public static Token ForwardSlash(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.ForwardSlash, SourceSpan = sourceSpan };

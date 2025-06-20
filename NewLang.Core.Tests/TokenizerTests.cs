@@ -200,6 +200,7 @@ public class TokenizerTests
             ["ok", new[] { Token.Ok(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["error", new[] { Token.Error(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["*", new[] { Token.Star(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
+            ["!", new[] { Token.Bang(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["-", new[] { Token.Dash(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["/", new[] { Token.ForwardSlash(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["+", new[] { Token.Plus(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],

@@ -253,6 +253,7 @@ public class Tokenizer
                 (ushort)source.Length)),
             TokenType.Semicolon when source is ";" => Token.Semicolon(new SourceSpan(position, (ushort)source.Length)),
             TokenType.LeftBrace when source is "{" => Token.LeftBrace(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Bang when source is "!" => Token.Bang(new SourceSpan(position, (ushort)source.Length)),
             TokenType.RightBrace when source is "}" => Token.RightBrace(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Pub when source is "pub" => Token.Pub(new SourceSpan(position, (ushort)source.Length)),
             TokenType.New when source is "new" => Token.New(new SourceSpan(position, (ushort)source.Length)),
@@ -321,6 +322,9 @@ public class Tokenizer
                 tokens[i++] = TokenType.Matches;
                 tokens[i++] = TokenType.Match;
                 tokens[i++] = TokenType.Identifier;
+                break;
+            case '!':
+                tokens[i++] = TokenType.Bang;
                 break;
             case '(':
                 tokens[i++] = TokenType.LeftParenthesis;
@@ -460,6 +464,7 @@ public class Tokenizer
             TokenType.LeftParenthesis => Matches(source, "("),
             TokenType.RightParenthesis => Matches(source,")"),
             TokenType.Underscore => Matches(source,"_"),
+            TokenType.Bang => Matches(source,"!"),
             TokenType.Semicolon => Matches(source, ";"),
             TokenType.LeftBrace => Matches(source, "{"),
             TokenType.Union => Matches(source, "union"),

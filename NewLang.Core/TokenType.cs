@@ -49,5 +49,6 @@ public enum TokenType
     Union,
     Match,
     Matches,
-    Underscore
+    Underscore,
+    Bang
 }
