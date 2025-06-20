@@ -28,27 +28,63 @@ public class TypeCheckerTests
     {
         var src =
             """
-            class MyClass {
-                pub field MyField: string
-            }
-            
-            var mut a = new MyClass {
-                MyField = ""
-            };
-            
-            // MyField is not mutable
-            a.MyField = "";
+            class MyClass {pub field MyField: string}
+            var a = new MyClass { MyField = "" };
+            var b: bool = a matches MyClass { MyField: _ };
             """;
         
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program);
 
-        act.Should().Throw<InvalidOperationException>();
+        act.Should().NotThrow<InvalidOperationException>();
     }
 
     public static TheoryData<string> SuccessfulExpressionTestCases() =>
         new()
         {
+            """
+            var a = "";
+            var b: bool = a matches string;
+            """,
+            """
+            var a = 1;
+            var b: bool = a matches int;
+            """,
+            """
+            union MyUnion {A}
+            var a = MyUnion::A;
+            var b: bool = a matches MyUnion;
+            """,
+            """
+            union MyUnion {A}
+            var a = MyUnion::A;
+            var b: bool = a matches _;
+            """,
+            """
+            union MyUnion {A, B(string)}
+            var a = MyUnion::B("");
+            var b: bool = a matches MyUnion::B(_);
+            """,
+            """
+            union MyUnion {A { field MyField: string }}
+            var a = new MyUnion::A { MyField = "" };
+            var b: bool = a matches MyUnion::A { MyField: _ };
+            """,
+            """
+            union MyUnion {A { field MyField: string, field OtherField: bool }}
+            var a = new MyUnion::A { MyField = "", OtherField = true };
+            var b: bool = a matches MyUnion::A { MyField: _, _ };
+            """,
+            """
+            class MyClass {pub field MyField: string}
+            var a = new MyClass { MyField = "" };
+            var b: bool = a matches MyClass { MyField: _ };
+            """,
+            """
+            class MyClass {pub field MyField: string}
+            var a = new MyClass { MyField = "" };
+            var b: bool = a matches MyClass;
+            """,
             ";;;;;;;;",
             """
             var a: string;
@@ -292,12 +328,12 @@ public class TypeCheckerTests
             "var mut a = 2; a = 3",
             // Object Initializers
             """
-            class MyClass {field myField: int, field otherField: string,}
+            class MyClass {pub field myField: int, pub field otherField: string,}
             var a = new MyClass { myField = 1, otherField = "" };
             """,
             "class MyClass {} var a: MyClass = new MyClass {};",
             """
-            class MyClass {field someField: int,}
+            class MyClass {pub field someField: int,}
             var a = new MyClass { someField = 1 };
             var b: int = a.someField;
             """,
@@ -323,13 +359,32 @@ public class TypeCheckerTests
             var a = MyClass::<string>::someField;
             """,
             """
-            class MyClass<T> { field someField: T, }
+            class MyClass<T> { pub field someField: T, }
             var a = new MyClass::<int> {someField = 1};
             """,
             """
-            class MyClass<T> { field someField: T, }
+            class MyClass<T> { pub field someField: T, }
             var a = new MyClass::<string> {someField = ""};
             var b: string = a.someField;
+            """,
+            """
+            union MyUnion {
+                A,
+                
+                fn SomeMethod() {
+                }
+            }
+            """,
+            """
+            class MyClass { 
+                field someField: string,
+                
+                pub static fn New(): MyClass {
+                    return new MyClass {
+                        someField = ""
+                    };
+                }
+            }
             """,
             """
             class MyClass<T> {}
@@ -383,6 +438,69 @@ public class TypeCheckerTests
     public static TheoryData<string> FailedExpressionTestCases() =>
         new()
         {
+            """
+            union MyUnion {
+                A,
+                
+                fn SomeMethod() {
+                    var a: bool = 1;
+                }
+            }
+            """,
+            "var b: bool = a matches MissingType;",
+            """
+            union MyUnion {A, B(string)}
+            var a = MyUnion::B("");
+            var b: bool = a matches MyUnion::B(_, _);
+            """,
+            """
+            union MyUnion {A, B(string)}
+            var a = MyUnion::B("");
+            var b: bool = a matches MyUnion::C;
+            """,
+            """
+            union MyUnion {A { field MyField: string }}
+            var a = new MyUnion::A { MyField = "" };
+            var b: bool = a matches MyUnion::A { MyField: int };
+            """,
+            """
+            union MyUnion {A { field MyField: string }}
+            var a = new MyUnion::A { MyField = "" };
+            var b: bool = a matches MyUnion { MyField: int };
+            """,
+            """
+            union MyUnion {A { field MyField: string, field OtherField: bool }}
+            var a = new MyUnion::A { MyField = "", OtherField = true };
+            var b: bool = a matches MyUnion::A { MyField: _ };
+            """,
+            """
+            class MyClass {pub field MyField: string}
+            var a = new MyClass { MyField = "" };
+            var b: bool = a matches MyClass { MyField: int };
+            """,
+            """
+            class MyClass {pub field MyField: string, pub field OtherField: bool}
+            var a = new MyClass { MyField = "", OtherField = true };
+            var b: bool = a matches MyClass { MyField: string };
+            """,
+            """
+            class MyClass {pub field MyField: string, field OtherField: bool}
+            var a = new MyClass { MyField = "", OtherField = true };
+            var b: bool = a matches MyClass { MyField: string, OtherField: _ };
+            """,
+            """
+            class MyClass {pub field MyField: string, pub field OtherField: bool}
+            var a = new MyClass { MyField = "", OtherField = true };
+            var b: bool = a matches string;
+            """,
+            """
+            class MyClass {
+                field MyField: string
+            }
+            
+            // MyField is not accessible
+            var a = new MyClass { MyField = "" };
+            """,
             """
             class MyClass {
                 field MyField: string,
@@ -688,7 +806,6 @@ public class TypeCheckerTests
             // ValueAssignment,
             "var a = 2; a = true",
             "true = false",
-            // todo:
             // MemberAccess,
             """
             class MyClass { static field someField: int = 3, }
@@ -779,15 +896,15 @@ public class TypeCheckerTests
             fn SomeMethod() {
             /*
                 var foo = match (this) {
-                    A => "",
-                    B { MyField } => MyField,
-                    C(value) => value
+                    MyUnion::A => "",
+                    MyUnion::B { MyField } => MyField,
+                    MyUnion::C(var value) => value
                 };
                 
                 var bar = match (this) {
-                    A => 1,
-                    B => 2,
-                    C => 3
+                    MyUnion::A => 1,
+                    MyUnion::B => 2,
+                    MyUnion::C => 3
                 }
                 */
             }
@@ -810,7 +927,7 @@ public class TypeCheckerTests
             var a = match (param) {
                 MyUnion::A => 1,
                 MyUnion::B { MyField } => 2,
-                MyUnion::C(value) => 3
+                MyUnion::C(var value) => 3
             };
         }
         

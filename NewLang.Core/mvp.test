@@ -78,15 +78,15 @@ pub union MyUnion {
     
     fn SomeMethod() {
         var foo = match (this) {
-            A => "",
-            B { MyField } => MyField,
-            C(value) => value
+            MyUnion::A => "",
+            MyUnion::B { MyField } => MyField,
+            MyUnion::C(var value) => value
         };
         
         var bar = match (this) {
-            A => 1,
-            B => 2,
-            C => 3
+            MyUnion::A => 1,
+            MyUnion::B => 2,
+            MyUnion::C => 3
         }
     }
 }

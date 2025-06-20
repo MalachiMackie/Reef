@@ -710,135 +710,137 @@ public sealed class Parser : IDisposable
             return new VariableDeclarationPattern(variableName);
         }
 
-        if (Current.Type == TokenType.Identifier)
+        if (!IsTypeTokenType(Current.Type))
         {
-            var type = GetTypeIdentifier();
-            
-            if (!_hasNext)
+            throw new InvalidOperationException("Expected pattern");
+        }
+
+        var type = GetTypeIdentifier();
+        
+        if (!_hasNext)
+        {
+            return new ClassPattern(type, [], false, null);
+        }
+
+        StringToken? variantName = null;
+        
+        if (Current.Type == TokenType.DoubleColon)
+        {
+            if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } x)
             {
-                return new ClassPattern(type, [], false, null);
+                throw new InvalidOperationException("Expected union variant name");
             }
 
-            StringToken? variantName = null;
-            
-            if (Current.Type == TokenType.DoubleColon)
+            variantName = x;
+
+            MoveNext();
+        }
+
+        if (!_hasNext && variantName is not null)
+        {
+            return new UnionVariantPattern(type, variantName, null);
+        }
+
+        if (Current.Type == TokenType.Var)
+        {
+            if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } variableName)
+            {
+                throw new InvalidOperationException("Expected variable name");
+            }
+
+            MoveNext();
+
+            return variantName is null
+                ? new ClassPattern(type, [], false, variableName)
+                : new UnionVariantPattern(type, variantName, variableName);
+        }
+
+        if (variantName is not null && Current.Type == TokenType.LeftParenthesis)
+        {
+            var patterns = GetCommaSeparatedList(
+                TokenType.RightParenthesis,
+                "Pattern",
+                GetPattern);
+
+            StringToken? variableName = null;
+
+            if (_hasNext && Current.Type == TokenType.Var)
             {
                 if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } x)
-                {
-                    throw new InvalidOperationException("Expected union variant name");
-                }
-
-                variantName = x;
-
-                MoveNext();
-            }
-
-            if (!_hasNext && variantName is not null)
-            {
-                return new UnionVariantPattern(type, variantName, null);
-            }
-
-            if (Current.Type == TokenType.Var)
-            {
-                if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } variableName)
                 {
                     throw new InvalidOperationException("Expected variable name");
                 }
 
-                MoveNext();
-
-                return variantName is null
-                    ? new ClassPattern(type, [], false, variableName)
-                    : new UnionVariantPattern(type, variantName, variableName);
+                variableName = x;
             }
 
-            if (variantName is not null && Current.Type == TokenType.LeftParenthesis)
-            {
-                var patterns = GetCommaSeparatedList(
-                    TokenType.RightParenthesis,
-                    "Pattern",
-                    GetPattern);
+            return new UnionTupleVariantPattern(type, variantName, patterns, variableName);
+        }
 
-                StringToken? variableName = null;
-
-                if (_hasNext && Current.Type == TokenType.Var)
+        if (Current.Type == TokenType.LeftBrace)
+        {
+            var fieldPatterns = GetCommaSeparatedList(
+                TokenType.RightBrace,
+                "Field Pattern",
+                () =>
                 {
-                    if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } x)
+                    if (Current.Type == TokenType.Underscore)
                     {
-                        throw new InvalidOperationException("Expected variable name");
+                        MoveNext();
+                        // hack to allow discard without field name
+                        return new KeyValuePair<StringToken, IPattern?>(Token.Identifier("", SourceSpan.Default),
+                            new DiscardPattern());
                     }
 
-                    variableName = x;
-                }
-
-                return new UnionTupleVariantPattern(type, variantName, patterns, variableName);
-            }
-
-            if (Current.Type == TokenType.LeftBrace)
-            {
-                var fieldPatterns = GetCommaSeparatedList(
-                    TokenType.RightBrace,
-                    "Field Pattern",
-                    () =>
+                    if (Current is not StringToken { Type: TokenType.Identifier } fieldName)
                     {
-                        if (Current.Type == TokenType.Underscore)
-                        {
-                            MoveNext();
-                            // hack to allow discard without field name
-                            return new KeyValuePair<StringToken, IPattern?>(Token.Identifier("", SourceSpan.Default),
-                                new DiscardPattern());
-                        }
+                        throw new InvalidOperationException("Expected field name");
+                    }
 
-                        if (Current is not StringToken { Type: TokenType.Identifier } fieldName)
-                        {
-                            throw new InvalidOperationException("Expected field name");
-                        }
+                    if (!MoveNext())
+                    {
+                        throw new InvalidOperationException("Expected : or ,");
+                    }
 
+                    IPattern? pattern = null;
+
+                    if (Current.Type == TokenType.Colon)
+                    {
                         if (!MoveNext())
                         {
-                            throw new InvalidOperationException("Expected : or ,");
+                            throw new InvalidOperationException("Expected pattern");
                         }
+                        
+                        pattern = GetPattern();
+                    }
 
-                        IPattern? pattern = null;
+                    return KeyValuePair.Create(fieldName, pattern);
+                });
 
-                        if (Current.Type == TokenType.Colon)
-                        {
-                            if (!MoveNext())
-                            {
-                                throw new InvalidOperationException("Expected pattern");
-                            }
-                            
-                            pattern = GetPattern();
-                        }
+            var discards = fieldPatterns.Where(x => x.Key.StringValue.Length == 0 && x.Value is DiscardPattern)
+                .ToArray();
 
-                        return KeyValuePair.Create(fieldName, pattern);
-                    });
-
-                var discards = fieldPatterns.Where(x => x.Key.StringValue.Length == 0 && x.Value is DiscardPattern)
-                    .ToArray();
-
-                switch (discards.Length)
-                {
-                    case > 1:
-                        throw new InvalidOperationException("Pattern can only have one field discard");
-                    case 1 when fieldPatterns[^1] is not {Key.StringValue.Length: 0, Value: DiscardPattern}:
-                        throw new InvalidOperationException("field discard must be at the end of the pattern");
-                    default:
-                        fieldPatterns = fieldPatterns.Where(x => x.Key.StringValue.Length > 0).ToList();
-                
-                        return variantName is not null
-                            ? new UnionStructVariantPattern(type, variantName, fieldPatterns, discards.Length == 1, null)
-                            : new ClassPattern(type, fieldPatterns, discards.Length == 1, null);
-                }
-            }
-
-            if (variantName is not null)
+            switch (discards.Length)
             {
-                return new UnionVariantPattern(type, variantName, null);
+                case > 1:
+                    throw new InvalidOperationException("Pattern can only have one field discard");
+                case 1 when fieldPatterns[^1] is not {Key.StringValue.Length: 0, Value: DiscardPattern}:
+                    throw new InvalidOperationException("field discard must be at the end of the pattern");
+                default:
+                    fieldPatterns = fieldPatterns.Where(x => x.Key.StringValue.Length > 0).ToList();
+            
+                    return variantName is not null
+                        ? new UnionStructVariantPattern(type, variantName, fieldPatterns, discards.Length == 1, null)
+                        : new ClassPattern(type, fieldPatterns, discards.Length == 1, null);
             }
         }
 
-        throw new InvalidOperationException("Expected pattern");
+        if (variantName is not null)
+        {
+            return new UnionVariantPattern(type, variantName, null);
+        }
+
+        return new ClassPattern(type, [], false, null);
     }
 
     private ValueAccessorExpression GetLiteralExpression()

@@ -25,21 +25,24 @@ public class TypeChecker
     private readonly Stack<TypeCheckingScope> _typeCheckingScopes = new();
     private Dictionary<string, Variable> ScopedVariables => _typeCheckingScopes.Peek().Variables;
     private Dictionary<string, FunctionSignature> ScopedFunctions => _typeCheckingScopes.Peek().Functions;
+    private ITypeSignature? CurrentTypeSignature => _typeCheckingScopes.Peek().CurrentTypeSignature;
     private ITypeReference ExpectedReturnType => _typeCheckingScopes.Peek().ExpectedReturnType;
 
     private record TypeCheckingScope(
         Dictionary<string, Variable> Variables,
         Dictionary<string, FunctionSignature> Functions,
-        ITypeReference ExpectedReturnType);
+        ITypeReference ExpectedReturnType,
+        ITypeSignature? CurrentTypeSignature);
 
-    private IDisposable PushScope(ITypeReference? expectedReturnType = null)
+    private IDisposable PushScope(ITypeSignature? currentTypeSignature = null, ITypeReference? expectedReturnType = null)
     {
         var currentScope = _typeCheckingScopes.Peek();
 
         _typeCheckingScopes.Push(new TypeCheckingScope(
             new Dictionary<string, Variable>(currentScope.Variables),
             new Dictionary<string, FunctionSignature>(currentScope.Functions),
-            expectedReturnType ?? currentScope.ExpectedReturnType));
+            expectedReturnType ?? currentScope.ExpectedReturnType,
+            currentTypeSignature ?? currentScope.CurrentTypeSignature));
 
         return new ScopeDisposable(PopScope);
     }
@@ -68,9 +71,30 @@ public class TypeChecker
     private void TypeCheckInner()
     {
         // initial scope
-        _typeCheckingScopes.Push(new TypeCheckingScope(new(), new(), InstantiatedClass.Unit));
+        _typeCheckingScopes.Push(new TypeCheckingScope(new(), new(), InstantiatedClass.Unit, null));
 
         SetupSignatures();
+
+        foreach (var union in _program.Unions)
+        {
+            if (_types[union.Name.StringValue] is not UnionSignature unionSignature)
+            {
+                throw new InvalidOperationException($"Expected {union.Name.StringValue} to be a union");
+            }
+
+            var unionGenericPlaceholders = union.GenericArguments.ToDictionary<StringToken, string, ITypeSignature>(
+                x => x.StringValue, _ => unionSignature);
+            
+            using (PushScope(unionSignature))
+            {
+                foreach (var function in union.Functions)
+                {
+                    var fnSignature = unionSignature.Functions.First(x => x.Name == function.Name.StringValue);
+
+                    TypeCheckFunctionBody(function, fnSignature, unionGenericPlaceholders);
+                }
+            }
+        }
 
         foreach (var @class in _program.Classes)
         {
@@ -131,7 +155,7 @@ public class TypeChecker
             }
 
             // static functions
-            using (PushScope())
+            using (PushScope(classSignature))
             {
                 // static functions only have access to static fields
                 foreach (var variable in staticFieldVariables)
@@ -148,7 +172,7 @@ public class TypeChecker
             }
             
             // instance functions
-            using (PushScope())
+            using (PushScope(classSignature))
             {
                 // instance functions have access to both instance and static fields
                 foreach (var variable in instanceFieldVariables.Concat(staticFieldVariables))
@@ -174,59 +198,6 @@ public class TypeChecker
         {
             TypeCheckExpression(expression, []);
         }
-
-        // foreach (var (@class, typeDefinition, instanceFields, staticFields, functions) in classMembers)
-        // {
-        //     var genericPlaceholders = typeDefinition.GenericParameters.ToDictionary(x => x, x => typeDefinition);
-        //     
-        //     foreach (var field in @class.Fields)
-        //     {
-        //         var typeField = new TypeField
-        //         {
-        //             Name = field.Name.StringValue,
-        //             Type = GetTypeReference(field.Type, genericPlaceholders),
-        //             IsMutable = field.MutabilityModifier is not null,
-        //             IsPublic = field.AccessModifier is {Token.Type: TokenType.Pub}
-        //         };
-        //         
-        //         if (field.StaticModifier is not null)
-        //         {
-        //             if (field.InitializerValue is null)
-        //             {
-        //                 throw new InvalidOperationException("Static members must be initialized");
-        //             }
-        //
-        //             // todo: should be able to call static functions here?
-        //             var valueType = TypeCheckExpression(field.InitializerValue, genericPlaceholders);
-        //             if (!Equals(valueType, typeField.Type))
-        //             {
-        //                 throw new InvalidOperationException($"Expected {typeField.Type} but found {valueType}");
-        //             }
-        //             staticFields.Add(typeField);
-        //         }
-        //         else
-        //         {
-        //             if (field.InitializerValue is not null)
-        //             {
-        //                 throw new InvalidOperationException("Instance members must not be initialized");
-        //             }
-        //             instanceFields.Add(typeField);
-        //         }
-        //     }
-        // }
-
-        // foreach (var fn in _program.Functions)
-        // {
-        //     Functions[fn.Name.StringValue] = TypeCheckFunctionSignature(fn, []);
-        // }
-
-        // foreach (var fn in _program.Functions)
-        // {
-        //     TypeCheckFunctionBody(fn, []);
-        // }
-
-
-
     }
 
     private void SetupSignatures()
@@ -484,7 +455,7 @@ public class TypeChecker
             innerGenericPlaceholders[genericParameter] = fnSignature;
         }
 
-        using var _ = PushScope(fnSignature.ReturnType);
+        using var _ = PushScope(null, fnSignature.ReturnType);
         foreach (var parameter in fnSignature.Arguments)
         {
             ScopedVariables[parameter.Name] = new Variable(
@@ -601,8 +572,198 @@ public class TypeChecker
             UnionStructVariantInitializerExpression unionStructVariantInitializerExpression => 
                 TypeCheckUnionStructInitializer(
                     unionStructVariantInitializerExpression.UnionInitializer, genericPlaceholders),
+            MatchesExpression matchesExpression => TypeCheckMatchesExpression(
+                matchesExpression.ValueExpression, matchesExpression.Pattern, genericPlaceholders),
             _ => throw new NotImplementedException($"{expression.ExpressionType}")
         };
+    }
+
+    private ITypeReference TypeCheckMatchesExpression(IExpression valueExpression, IPattern pattern, Dictionary<string, ITypeSignature> genericPlaceholders)
+    {
+        var valueType = TypeCheckExpression(valueExpression, genericPlaceholders);
+
+        TypeCheckPattern(valueType, pattern, genericPlaceholders);
+
+        return InstantiatedClass.Boolean;
+    }
+
+    private void TypeCheckPattern(ITypeReference typeReference, IPattern pattern, Dictionary<string, ITypeSignature> genericPlaceholders)
+    {
+        switch (pattern)
+        {
+            case DiscardPattern:
+                // discard pattern always type checks
+                break;
+            case UnionVariantPattern variantPattern:
+            {
+                var patternUnionType = GetTypeReference(variantPattern.Type, genericPlaceholders);
+                
+                if (typeReference is not InstantiatedUnion union)
+                {
+                    throw new InvalidOperationException($"{typeReference} is not a union");
+                }
+
+                if (!patternUnionType.Equals(union))
+                {
+                    throw new InvalidOperationException(
+                        $"Incompatible types. Expected {typeReference}, found {patternUnionType}");
+                }
+                
+                _ = union.UnionSignature.Variants.FirstOrDefault(x => x.Name == variantPattern.VariantName.StringValue)
+                    ?? throw new InvalidOperationException($"Variant {variantPattern.VariantName.StringValue} not found on type {union}");
+
+                if (variantPattern.VariableName is not null)
+                {
+                    throw new NotImplementedException();
+                }
+                
+                break;
+            }
+            case ClassPattern classPattern:
+            {
+                var patternType = GetTypeReference(classPattern.Type, genericPlaceholders);
+
+                if (!typeReference.Equals(patternType))
+                {
+                    throw new InvalidOperationException($"Incompatible types. Expected {typeReference}, found {patternType}");
+                }
+                
+                if (classPattern.FieldPatterns.Count > 0)
+                {
+                    if (patternType is not InstantiatedClass classType)
+                    {
+                        throw new InvalidOperationException($"Expected {typeReference} to be a class");
+                    }
+
+                    if (classPattern.FieldPatterns.GroupBy(x => x.Key.StringValue).Any(x => x.Count() > 1))
+                    {
+                        throw new InvalidOperationException("Duplicate fields found");
+                    }
+
+                    if (!classPattern.RemainingFieldsDiscarded &&
+                        classPattern.FieldPatterns.Count != classType.ClassSignature.Fields.Count)
+                    {
+                        throw new InvalidOperationException("Not all fields are listed");
+                    }
+
+                    foreach (var (fieldName, fieldPattern) in classPattern.FieldPatterns)
+                    {
+                        var fieldType = GetClassField(classType, fieldName.StringValue);
+                        
+                        if (fieldPattern is null)
+                        {
+                            throw new NotImplementedException();
+                        }
+                        
+                        TypeCheckPattern(fieldType, fieldPattern, genericPlaceholders);
+                    }
+                }
+
+                if (classPattern.VariableName is not null)
+                {
+                    throw new NotImplementedException();
+                }
+                
+                break;
+            }
+            case UnionStructVariantPattern structVariantPattern:
+             {
+                 var patternType = GetTypeReference(structVariantPattern.Type, genericPlaceholders);
+ 
+                 if (!typeReference.Equals(patternType))
+                 {
+                     throw new InvalidOperationException($"Incompatible types. Expected {typeReference}, found {patternType}");
+                 }
+
+                 if (patternType is not InstantiatedUnion union)
+                 {
+                     throw new InvalidOperationException($"{patternType} is not a union");
+                 }
+                 
+                 var variant = union.UnionSignature.Variants.FirstOrDefault(x => x.Name == structVariantPattern.VariantName.StringValue)
+                     ?? throw new InvalidOperationException($"No variant found named {structVariantPattern.VariantName.StringValue}");
+
+                 if (variant is not ClassUnionVariant structVariant)
+                 {
+                     throw new InvalidOperationException($"Variant {variant.Name} is not a struct variant");
+                 }
+                 
+                 if (structVariantPattern.FieldPatterns.GroupBy(x => x.Key.StringValue).Any(x => x.Count() > 1))
+                 {
+                     throw new InvalidOperationException("Duplicate fields found");
+                 }
+
+                 if (!structVariantPattern.RemainingFieldsDiscarded &&
+                     structVariantPattern.FieldPatterns.Count != structVariant.Fields.Count)
+                 {
+                     throw new InvalidOperationException("Not all fields are listed");
+                 }
+
+                 foreach (var (fieldName, fieldPattern) in structVariantPattern.FieldPatterns)
+                 {
+                     var fieldType = GetUnionStructVariantField(union, structVariant, fieldName.StringValue);
+                     
+                     if (fieldPattern is null)
+                     {
+                         throw new NotImplementedException();
+                     }
+                     
+                     TypeCheckPattern(fieldType, fieldPattern, genericPlaceholders);
+                 }
+ 
+                 if (structVariantPattern.VariableName is not null)
+                 {
+                     throw new NotImplementedException();
+                 }
+                 
+                 break;
+             }
+            case UnionTupleVariantPattern unionTupleVariantPattern:
+            {
+                var patternType = GetTypeReference(unionTupleVariantPattern.Type, genericPlaceholders);
+
+                if (!patternType.Equals(typeReference))
+                {
+                    throw new InvalidOperationException($"Expected {typeReference}, found {patternType}");
+                }
+
+                if (patternType is not InstantiatedUnion unionType)
+                {
+                    throw new InvalidOperationException($"{typeReference} is not a union");
+                }
+
+                var variant = unionType.UnionSignature.Variants.FirstOrDefault(x =>
+                        x.Name == unionTupleVariantPattern.VariantName.StringValue)
+                    ?? throw new InvalidOperationException($"No union variant found with name {unionTupleVariantPattern.VariantName.StringValue}");
+
+                if (variant is not TupleUnionVariant tupleUnionVariant)
+                {
+                    throw new InvalidOperationException("Expected union to be a tuple variant");
+                }
+
+                if (tupleUnionVariant.TupleMembers.Count != unionTupleVariantPattern.TupleParamPatterns.Count)
+                {
+                    throw new InvalidOperationException($"Expected {tupleUnionVariant.TupleMembers.Count} tuple members, found {unionTupleVariantPattern.TupleParamPatterns.Count}");
+                }
+
+                foreach (var (tupleMemberType, tupleMemberPattern) in tupleUnionVariant.TupleMembers.Zip(unionTupleVariantPattern.TupleParamPatterns))
+                {
+                    TypeCheckPattern(tupleMemberType, tupleMemberPattern, genericPlaceholders);
+                }
+
+                if (unionTupleVariantPattern.VariableName is not null)
+                {
+                    throw new NotImplementedException();
+                }
+                
+                break;
+            }
+            default:
+            {
+                throw new NotImplementedException(pattern.GetType().Name);
+            }
+        }
+
     }
 
     private ITypeReference TypeCheckUnionStructInitializer(UnionStructVariantInitializer initializer, Dictionary<string, ITypeSignature> genericPlaceholders)
@@ -735,36 +896,58 @@ public class TypeChecker
         var ownerExpression = memberAccess.Owner;
         var ownerType = TypeCheckExpression(ownerExpression, genericPlaceholders);
 
-        if (ownerType is not InstantiatedClass { Signature: ClassSignature classSignature, TypeArguments: var ownerTypeArguments })
+        if (ownerType is not InstantiatedClass { Signature: ClassSignature classSignature, TypeArguments: var ownerTypeArguments } classType)
         {
             // todo: generic argument constraints with interfaces?
             throw new InvalidOperationException("Can only access members on instantiated types");
         }
-
-        var fieldType = classSignature.Fields.FirstOrDefault(x => x.Name == memberAccess.MemberName.StringValue)?.Type;
-
-        if (fieldType is GenericTypeReference { GenericName: var fieldGenericName })
-        {
-            return ownerTypeArguments[fieldGenericName];
-        }
-
-        if (fieldType is InstantiatedClass)
-        {
-            return fieldType;
-        }
         
         var functionSignature = classSignature.Functions.FirstOrDefault(x => x.Name == memberAccess.MemberName.StringValue);
-
-        if (functionSignature is null)
+        
+        if (functionSignature is not null)
         {
-            throw new InvalidOperationException($"No member named {memberAccess.MemberName.StringValue}");
+            return new InstantiatedFunction
+            {
+                Signature = functionSignature,
+                TypeArguments = [],
+                OwnerTypeArguments = new Dictionary<string, ITypeReference>(ownerTypeArguments)
+            };
         }
 
-        return new InstantiatedFunction()
+        return GetClassField(classType, memberAccess.MemberName.StringValue);
+    }
+
+    private static ITypeReference GetUnionStructVariantField(InstantiatedUnion union, ClassUnionVariant variant, string fieldName)
+    {
+        var fieldType = variant.Fields.FirstOrDefault(x => x.Name == fieldName)?.Type
+            ?? throw new InvalidOperationException($"No field named {fieldName}");
+
+        return fieldType switch
         {
-            Signature = functionSignature,
-            TypeArguments = [],
-            OwnerTypeArguments = new Dictionary<string, ITypeReference>(ownerTypeArguments)
+            GenericTypeReference { GenericName: var fieldGenericName } => union.TypeArguments[fieldGenericName],
+            InstantiatedClass or InstantiatedUnion => fieldType,
+            _ => throw new UnreachableException($"{fieldType.GetType()} should not be a field type")
+        };
+    }
+
+    private ITypeReference GetClassField(InstantiatedClass classType, string fieldName)
+    {
+        var classSignature = classType.ClassSignature;
+        var field = classSignature.Fields.FirstOrDefault(x => x.Name == fieldName)
+            ?? throw new InvalidOperationException($"No field named {fieldName}");
+        
+        if (CurrentTypeSignature != classType.ClassSignature && !field.IsPublic)
+        {
+            throw new InvalidOperationException($"Cannot access private field {fieldName}");
+        }
+        
+        var fieldType = field.Type;
+        
+        return fieldType switch
+        {
+            GenericTypeReference {GenericName: var fieldGenericName} => classType.TypeArguments[fieldGenericName],
+            InstantiatedClass or InstantiatedUnion => fieldType,
+            _ => throw new UnreachableException($"{fieldType.GetType()} should not be a field type")
         };
     }
 
@@ -857,6 +1040,11 @@ public class TypeChecker
                 throw new InvalidOperationException($"No field named {fieldInitializer.FieldName.StringValue}");
             }
 
+            if (CurrentTypeSignature != classSignature && !field.IsPublic)
+            {
+                throw new InvalidOperationException("Cannot access private field");
+            }
+            
             var valueType = TypeCheckExpression(fieldInitializer.Value, genericPlaceholders);
 
             if (field.Type is GenericTypeReference { GenericName: var genericName })

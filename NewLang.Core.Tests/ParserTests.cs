@@ -1220,6 +1220,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             "union MyUnion { A { field}}",
             "union MyUnion { A B }",
             "union MyUnion< {}",
+            "a matches",
             "a matches B {",
             "a matches B { field }",
             "a matches B { SomeField: }",
@@ -1237,22 +1238,21 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         return new (string Source, IExpression ExpectedProgram)[]
         {
             (
-                "a matches MyUnion::A { MyField, OtherField: var f }",
-                        new MatchesExpression(
-                            VariableAccessor("a"),
-                            new UnionStructVariantPattern(
-                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
-                                Token.Identifier("A", SourceSpan.Default),
-                                [
-                                    KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null),
-                                    KeyValuePair.Create(
-                                        Token.Identifier("OtherField", SourceSpan.Default),
-                                        (IPattern?)new VariableDeclarationPattern(Token.Identifier("f", SourceSpan.Default))
-                                    )
-                                ],
-                                RemainingFieldsDiscarded: false,
-                                null
+                "var b: bool = a matches int;",
+                    new VariableDeclarationExpression(new VariableDeclaration(
+                            Token.Identifier("b", SourceSpan.Default),
+                            null,
+                            new TypeIdentifier(Token.Bool(SourceSpan.Default), []),
+                            new MatchesExpression(
+                                VariableAccessor("a"),
+                                new ClassPattern(
+                                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
+                                    [],
+                                    false,
+                                    null
+                                )
                             ))
+                        )
             )
         }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedProgram });
     }
@@ -1261,6 +1261,35 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
         return new (string Source, IExpression ExpectedExpression)[]
         {
+            (
+                "var b: bool = a matches int;",
+                    new VariableDeclarationExpression(new VariableDeclaration(
+                            Token.Identifier("b", SourceSpan.Default),
+                            null,
+                            new TypeIdentifier(Token.Bool(SourceSpan.Default), []),
+                            new MatchesExpression(
+                                VariableAccessor("a"),
+                                new ClassPattern(
+                                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
+                                    [],
+                                    false,
+                                    null
+                                )
+                            ))
+                        )
+            ),
+            (
+                "a matches string",
+                    new MatchesExpression(
+                            VariableAccessor("a"),
+                            new ClassPattern(
+                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
+                                [],
+                                false,
+                                null
+                            )
+                        )
+            ),
             (
                 "a matches MyUnion::A",
                     new MatchesExpression(
