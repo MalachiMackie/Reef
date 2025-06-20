@@ -671,7 +671,7 @@ public sealed class Parser : IDisposable
             TokenType.Turbofish => GetGenericInstantiation(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
             TokenType.Matches => GetMatchesExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
             _ when IsTypeTokenType(Current.Type) => GetVariableAccess(),
-            _ when TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}"), Current, unaryOperatorType.Value),
+            _ when TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(previousExpression, Current, unaryOperatorType.Value),
             _ when TryGetBinaryOperatorType(Current.Type, out var binaryOperatorType) => GetBinaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}"), binaryOperatorType.Value),
             _ => throw new InvalidOperationException($"Token type {Current.Type} not supported")
         };
@@ -1251,11 +1251,22 @@ public sealed class Parser : IDisposable
     }
     
     private UnaryOperatorExpression GetUnaryOperatorExpression(
-        IExpression operand,
+        IExpression? operand,
         Token operatorToken,
         UnaryOperatorType operatorType)
     {
         MoveNext();
+        
+        if (IsUnaryOperatorPrefix(operatorType))
+        {
+            operand = PopExpression(GetUnaryOperatorBindingStrength(operatorType))
+                ?? throw new InvalidOperationException("Expected expression");
+        }
+        else if (operand is null)
+        {
+            throw new InvalidOperationException($"Unexpected token {operatorToken}");
+        }
+        
         
         return new UnaryOperatorExpression(new UnaryOperator(operatorType, operand, operatorToken));
     }
@@ -1290,8 +1301,8 @@ public sealed class Parser : IDisposable
             _ when TryGetBinaryOperatorType(token.Type, out var binaryOperatorType) => GetBinaryOperatorBindingStrength(binaryOperatorType.Value),
             TokenType.LeftParenthesis => 8,
             TokenType.Turbofish => 7,
-            TokenType.Dot => 10,
-            TokenType.DoubleColon => 11,
+            TokenType.Dot => 11,
+            TokenType.DoubleColon => 12,
             TokenType.Matches => 1,
             _ => null
         };
@@ -1304,10 +1315,16 @@ public sealed class Parser : IDisposable
         operatorType = type switch
         {
             TokenType.QuestionMark => UnaryOperatorType.FallOut,
+            TokenType.Bang => UnaryOperatorType.Not,
             _ => null
         };
 
         return operatorType.HasValue;
+    }
+
+    private static bool IsUnaryOperatorPrefix(UnaryOperatorType unaryOperatorType)
+    {
+        return unaryOperatorType is UnaryOperatorType.Not;
     }
 
     private static bool TryGetBinaryOperatorType(TokenType type, [NotNullWhen(true)] out BinaryOperatorType? operatorType)
@@ -1349,6 +1366,7 @@ public sealed class Parser : IDisposable
         return operatorType switch
         {
             UnaryOperatorType.FallOut => 9,
+            UnaryOperatorType.Not => 10,
             _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType, typeof(UnaryOperatorType))
         };
     }

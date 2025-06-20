@@ -86,6 +86,7 @@ public record Token
             TokenType.Underscore => "_",
             TokenType.Matches => "matches",
             TokenType.Match => "match",
+            TokenType.Bang => "!",
             _ => throw new UnreachableException(Type.ToString())
         };
     }

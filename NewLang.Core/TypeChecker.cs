@@ -831,8 +831,21 @@ public class TypeChecker
         return unaryOperator.OperatorType switch
         {
             UnaryOperatorType.FallOut => TypeCheckFallout(unaryOperator.Operand, genericPlaceholders),
+            UnaryOperatorType.Not => TypeCheckNot(unaryOperator.Operand, genericPlaceholders),
             _ => throw new NotImplementedException($"{unaryOperator.OperatorType}")
         };
+    }
+
+    private InstantiatedClass TypeCheckNot(IExpression expression, Dictionary<string, ITypeSignature> genericPlaceholders)
+    {
+        var expressionType = TypeCheckExpression(expression, genericPlaceholders);
+
+        if (!expressionType.Equals(InstantiatedClass.Boolean))
+        {
+            throw new InvalidOperationException($"Expected {InstantiatedClass.Boolean} but got {expressionType}");
+        }
+        
+        return InstantiatedClass.Boolean;
     }
 
     private ITypeReference TypeCheckFallout(IExpression expression, Dictionary<string, ITypeSignature> genericPlaceholders)

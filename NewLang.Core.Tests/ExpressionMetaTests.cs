@@ -225,10 +225,18 @@ public class ExpressionMetaTests
         
         if (unaryA.HasValue && unaryB.HasValue)
         {
-            testCases.Should().Contain(x => x.ExpressionType == ExpressionType.UnaryOperator
-                                            && ((UnaryOperatorExpression)x).UnaryOperator.OperatorType == unaryA.Value
-                                            && ((UnaryOperatorExpression)x).UnaryOperator.Operand.ExpressionType == ExpressionType.UnaryOperator
-                                            && ((UnaryOperatorExpression)((UnaryOperatorExpression)x).UnaryOperator.Operand).UnaryOperator.OperatorType == unaryB.Value);
+            testCases.Count(x => x is UnaryOperatorExpression
+                {
+                    UnaryOperator: 
+                    {
+                        OperatorType: var a1,
+                        Operand: UnaryOperatorExpression
+                        {
+                            UnaryOperator.OperatorType: var b1
+                        }
+                    }
+                } && (a1 == unaryA.Value && b1 == unaryB.Value || a1 == unaryB.Value && b1 == unaryA.Value))
+                .Should().BeGreaterThan(0);
         }
     }
 

@@ -42,6 +42,7 @@ public class TypeCheckerTests
     public static TheoryData<string> SuccessfulExpressionTestCases() =>
         new()
         {
+            "var a: bool = !true",
             """
             var a = "";
             var b: bool = a matches string;
@@ -447,6 +448,7 @@ public class TypeCheckerTests
                 }
             }
             """,
+            "var a = !1",
             "var b: bool = a matches MissingType;",
             """
             union MyUnion {A, B(string)}

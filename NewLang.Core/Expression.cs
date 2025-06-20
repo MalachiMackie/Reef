@@ -334,7 +334,8 @@ public enum ValueAccessType
 public enum UnaryOperatorType
 {
     // ?
-    FallOut
+    FallOut,
+    Not
 }
 
 public enum ExpressionType
