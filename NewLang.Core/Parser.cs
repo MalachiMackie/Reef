@@ -772,6 +772,8 @@ public sealed class Parser : IDisposable
                 }
 
                 variableName = x;
+
+                MoveNext();
             }
 
             return new UnionTupleVariantPattern(type, variantName, patterns, variableName);

@@ -1262,6 +1262,23 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         return new (string Source, IExpression ExpectedExpression)[]
         {
             (
+                "if (a matches OtherUnion::B(MyUnion::A var c) var b) {}",
+                new IfExpressionExpression(new IfExpression(
+                    new MatchesExpression(
+                        VariableAccessor("a"),
+                        new UnionTupleVariantPattern(
+                            new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), []),
+                            Token.Identifier("B", SourceSpan.Default),
+                            [new UnionVariantPattern(
+                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                Token.Identifier("A", SourceSpan.Default),
+                                Token.Identifier("c", SourceSpan.Default))],
+                            Token.Identifier("b", SourceSpan.Default))),
+                    new BlockExpression(new Block([], [])),
+                    [],
+                    null))
+            ),
+            (
                 "var b: bool = a matches int;",
                     new VariableDeclarationExpression(new VariableDeclaration(
                             Token.Identifier("b", SourceSpan.Default),
