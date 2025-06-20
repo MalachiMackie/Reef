@@ -193,6 +193,7 @@ public class TokenizerTests
             [">", new[] { Token.RightAngleBracket(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             [",", new[] { Token.Comma(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["hello", new[] { Token.Identifier("hello", new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
+            ["hello_", new[] { Token.Identifier("hello_", new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],
             [":", new[] { Token.Colon(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["::<", new[] { Token.Turbofish(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             [";", new[] { Token.Semicolon(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],

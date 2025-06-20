@@ -347,6 +347,11 @@ public sealed class Parser : IDisposable
                  TokenType.RightParenthesis,
                  "Tuple Variant Parameter Type",
                  GetTypeIdentifier);
+
+             if (tupleTypes.Count > 10)
+             {
+                 throw new InvalidOperationException("Tuple variant can contain at most 10 elements");
+             }
              
              return new TupleUnionVariant(variantName, tupleTypes);
          }
@@ -661,7 +666,7 @@ public sealed class Parser : IDisposable
             TokenType.Var => GetVariableDeclaration(),
             TokenType.LeftBrace => GetBlockExpression(),
             TokenType.If => GetIfExpression(),
-            TokenType.LeftParenthesis => GetMethodCall(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
+            TokenType.LeftParenthesis => GetParenthesizedExpression(previousExpression),
             TokenType.Return => GetMethodReturn(),
             TokenType.New => GetInitializer(),
             TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
@@ -675,6 +680,33 @@ public sealed class Parser : IDisposable
             _ when TryGetBinaryOperatorType(Current.Type, out var binaryOperatorType) => GetBinaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}"), binaryOperatorType.Value),
             _ => throw new InvalidOperationException($"Token type {Current.Type} not supported")
         };
+    }
+
+    private IExpression GetParenthesizedExpression(IExpression? previousExpression)
+    {
+        if (previousExpression is not null)
+        {
+            return GetMethodCall(previousExpression);
+        }
+
+        return GetTupleExpression();
+    }
+
+    private TupleExpression GetTupleExpression()
+    {
+        var elements = GetCommaSeparatedList(TokenType.RightParenthesis, "Tuple Expression", () => PopExpression());
+
+        if (elements.Count == 0)
+        {
+            throw new InvalidOperationException("Expected at least one item in the tuple expression");
+        }
+
+        if (elements.Count > 10)
+        {
+            throw new InvalidOperationException("Tuple can contain at most 10 elements");
+        }
+
+        return new TupleExpression(elements);
     }
 
     private MatchesExpression GetMatchesExpression(IExpression previousExpression)

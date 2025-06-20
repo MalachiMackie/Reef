@@ -121,6 +121,11 @@ public record GenericInstantiation(IExpression Value, IReadOnlyList<TypeIdentifi
     }
 }
 
+public record TupleExpression(IReadOnlyList<IExpression> Values) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.Tuple;
+}
+
 public record MethodCallExpression(MethodCall MethodCall) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.MethodCall;
@@ -355,5 +360,6 @@ public enum ExpressionType
     StaticMemberAccess,
     UnionStructVariantInitializer,
     Matches,
-    Match
+    Match,
+    Tuple
 }

@@ -53,9 +53,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
         string source,
         IEnumerable<Token> tokens,
-        IExpression expectedProgram)
+        LangProgram expectedProgram)
     {
-        var result = Parser.PopExpression(tokens);
+        var result = Parser.Parse(tokens);
         result.Should().NotBeNull();
         
         // clear out the source spans, we don't actually care about them
@@ -96,7 +96,25 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
         return new (string Source, LangProgram ExpectedProgram)[]
         {
-            
+            ("var a: int = (1 + 2) * 3;", new LangProgram([new VariableDeclarationExpression(new VariableDeclaration(
+                Token.Identifier("a", SourceSpan.Default),
+                null,
+                new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.Multiply,
+                    new TupleExpression([
+                        new BinaryOperatorExpression(new BinaryOperator(
+                            BinaryOperatorType.Plus,
+                            new ValueAccessorExpression(new ValueAccessor(
+                                ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(
+                                ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default))),
+                            Token.Plus(SourceSpan.Default)))
+                    ]),
+                    new ValueAccessorExpression(new ValueAccessor(
+                        ValueAccessType.Literal,
+                        Token.IntLiteral(3, SourceSpan.Default))),
+                    Token.Plus(SourceSpan.Default)))))], [], [], [])),
             (
                 """
                 union MyUnion<T> {
@@ -1229,31 +1247,37 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             "a matches B(",
             "a matches B(,)",
             "a matches B{_, _}",
+            "(",
+            "(a",
+            "(a b)",
+            "()"
         ];
         return strings.Select(x => new object[] { x, Tokenizer.Tokenize(x) });
     }
 
     public static IEnumerable<object[]> SingleTestCase()
     {
-        return new (string Source, IExpression ExpectedProgram)[]
+        return new (string Source, LangProgram ExpectedProgram)[]
         {
-            (
-                "if (a matches OtherUnion::B(MyUnion::A var c) var b) {}",
-                new IfExpressionExpression(new IfExpression(
-                    new MatchesExpression(
-                        VariableAccessor("a"),
-                        new UnionTupleVariantPattern(
-                            new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), []),
-                            Token.Identifier("B", SourceSpan.Default),
-                            [new UnionVariantPattern(
-                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
-                                Token.Identifier("A", SourceSpan.Default),
-                                Token.Identifier("c", SourceSpan.Default))],
-                            Token.Identifier("b", SourceSpan.Default))),
-                    new BlockExpression(new Block([], [])),
-                    [],
-                    null))
-            )
+            ("var a: int = (1 + 2) * 3;", new LangProgram([new VariableDeclarationExpression(new VariableDeclaration(
+                Token.Identifier("a", SourceSpan.Default),
+                null,
+                new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.Multiply,
+                    new TupleExpression([
+                        new BinaryOperatorExpression(new BinaryOperator(
+                            BinaryOperatorType.Plus,
+                            new ValueAccessorExpression(new ValueAccessor(
+                                ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default))),
+                            new ValueAccessorExpression(new ValueAccessor(
+                                ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default))),
+                            Token.Plus(SourceSpan.Default)))
+                    ]),
+                    new ValueAccessorExpression(new ValueAccessor(
+                        ValueAccessType.Literal,
+                        Token.IntLiteral(3, SourceSpan.Default))),
+                    Token.Plus(SourceSpan.Default)))))], [], [], []))
         }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedProgram });
     }
 
@@ -1598,6 +1622,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ("ok", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(SourceSpan.Default)))),
             ("a == b", new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.EqualityCheck, VariableAccessor("a"), VariableAccessor("b"), Token.DoubleEquals(SourceSpan.Default)))),
             ("ok()", new MethodCallExpression(new MethodCall(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Ok(SourceSpan.Default))), []))),
+            ("(a)", new TupleExpression([VariableAccessor("a")])),
+            ("(a, b)", new TupleExpression([VariableAccessor("a"), VariableAccessor("b")])),
             ("!a", new UnaryOperatorExpression(new UnaryOperator(
                 UnaryOperatorType.Not,
                 VariableAccessor("a"),
@@ -3532,8 +3558,14 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             GenericInstantiationExpression genericInstantiationExpression => new GenericInstantiationExpression(RemoveSourceSpan(genericInstantiationExpression.GenericInstantiation)),
             UnionStructVariantInitializerExpression unionStructVariantInitializerExpression => new UnionStructVariantInitializerExpression(RemoveSourceSpan(unionStructVariantInitializerExpression.UnionInitializer)),
             MatchesExpression matchesExpression => RemoveSourceSpan(matchesExpression),
+            TupleExpression tupleExpression => RemoveSourceSpan(tupleExpression),
             _ => throw new NotImplementedException(expression.GetType().ToString())
         };
+    }
+
+    private static TupleExpression RemoveSourceSpan(TupleExpression tupleExpression)
+    {
+        return new TupleExpression([..tupleExpression.Values.Select(RemoveSourceSpan)!]);
     }
     
     private static MatchesExpression RemoveSourceSpan(

@@ -545,7 +545,7 @@ public class Tokenizer
 
         foreach (var ch in source)
         {
-            if (char.IsWhiteSpace(ch) || char.IsSymbol(ch) || char.IsPunctuation(ch))
+            if (char.IsWhiteSpace(ch) || char.IsSymbol(ch) || (ch != '_' && char.IsPunctuation(ch)))
             {
                 return false;
             }

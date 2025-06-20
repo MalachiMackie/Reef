@@ -42,7 +42,15 @@ public class TypeCheckerTests
     public static TheoryData<string> SuccessfulExpressionTestCases() =>
         new()
         {
-            "var a: bool = !true",
+            "var a: bool = !(true);",
+            """
+            var a = (1, true, "");
+            var b: int = a.First;
+            var c: bool = a.Second;
+            var d: string = a.Third;
+            """,
+            "var a: int = (1 + 2) * 3;",
+            "var a: bool = !true;",
             """
             var a = "";
             var b: bool = a matches string;
@@ -314,19 +322,19 @@ public class TypeCheckerTests
             // less than
             "var a: bool = 1 < 2;",
             // GreaterThan,
-            "var a: bool = 2 > 2",
+            "var a: bool = 2 > 2;",
             // Plus,
-            "var a: int = 2 + 2",
+            "var a: int = 2 + 2;",
             // Minus,
-            "var a: int = 2 - 2",
+            "var a: int = 2 - 2;",
             // Multiply,
-            "var a: int = 2 * 2",
+            "var a: int = 2 * 2;",
             // Divide,
-            "var a: int = 2 / 2",
+            "var a: int = 2 / 2;",
             // EqualityCheck,
-            "var a: bool = 2 == 2",
+            "var a: bool = 2 == 2;",
             // ValueAssignment,
-            "var mut a = 2; a = 3",
+            "var mut a = 2; a = 3;",
             // Object Initializers
             """
             class MyClass {pub field myField: int, pub field otherField: string,}

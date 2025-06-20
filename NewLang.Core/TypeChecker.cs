@@ -574,8 +574,21 @@ public class TypeChecker
                     unionStructVariantInitializerExpression.UnionInitializer, genericPlaceholders),
             MatchesExpression matchesExpression => TypeCheckMatchesExpression(
                 matchesExpression.ValueExpression, matchesExpression.Pattern, genericPlaceholders),
+            TupleExpression tupleExpression => TypeCheckTupleExpression(tupleExpression, genericPlaceholders),
             _ => throw new NotImplementedException($"{expression.ExpressionType}")
         };
+    }
+
+    private ITypeReference TypeCheckTupleExpression(TupleExpression tuple, Dictionary<string, ITypeSignature> genericPlaceholders)
+    {
+        if (tuple.Values.Count == 1)
+        {
+            return TypeCheckExpression(tuple.Values[0], genericPlaceholders);
+        }
+
+        var types = tuple.Values.Select(value => TypeCheckExpression(value, genericPlaceholders)).ToArray();
+        
+        return InstantiatedClass.Tuple(types);
     }
 
     private ITypeReference TypeCheckMatchesExpression(IExpression valueExpression, IPattern pattern, Dictionary<string, ITypeSignature> genericPlaceholders)
@@ -1639,6 +1652,12 @@ public class TypeChecker
         public static InstantiatedClass Unit { get; } = new() { ClassSignature = ClassSignature.Unit, TypeArguments = new Dictionary<string, ITypeReference>()};
         
         public static InstantiatedClass Never { get; } = new() { ClassSignature = ClassSignature.Never, TypeArguments = new Dictionary<string, ITypeReference>() };
+        public static InstantiatedClass Tuple(IReadOnlyList<ITypeReference> types) => new()
+        {
+            ClassSignature = ClassSignature.Tuple(types),
+            TypeArguments = types.Select((x, i) => (x, i))
+                .ToDictionary(x => x.i.ToString(), x => x.x)
+        };
         
         public required ClassSignature ClassSignature { get; init; }
 
@@ -1884,6 +1903,36 @@ public class TypeChecker
         public static ClassSignature Int { get; } = new() { GenericParameters = [], Name = "Int", Fields = [], StaticFields = [], Functions = []};
         public static ClassSignature Boolean { get; } = new() { GenericParameters = [], Name = "Boolean", Fields = [], StaticFields = [], Functions = []};
         public static ClassSignature Never { get; } = new() { GenericParameters = [], Name = "!", Fields = [], StaticFields = [], Functions = []};
+
+        public static ClassSignature Tuple(IReadOnlyList<ITypeReference> elements) => new()
+        {
+            GenericParameters = [..Enumerable.Range(0, elements.Count).Select(x => $"T{x}")],
+            Name = $"Tuple`{elements.Count}",
+            Fields = [..elements.Select((type, i) => new TypeField
+            {
+                // todo: verify this
+                IsMutable = false,
+                Name = TupleFieldNames.TryGetValue(i, out var name) ? name : throw new InvalidOperationException("Tuple can only contain at most 10 elements"),
+                Type = type,
+                IsPublic = true
+            })],
+            Functions = [],
+            StaticFields = []
+        };
+
+        private static readonly Dictionary<int, string> TupleFieldNames = new ()
+        {
+            {0, "First"},
+            {1, "Second"},
+            {2, "Third"},
+            {3, "Fourth"},
+            {4, "Fifth"},
+            {5, "Sixth"},
+            {6, "Seventh"},
+            {7, "Eighth"},
+            {8, "Ninth"},
+            {9, "Tenth"},
+        };
         
         public static IEnumerable<ITypeSignature> BuiltInTypes { get; } = [Unit, String, Int, Never, Boolean];
         
