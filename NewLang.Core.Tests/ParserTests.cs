@@ -53,9 +53,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
         string source,
         IEnumerable<Token> tokens,
-        LangProgram expectedProgram)
+        IExpression expectedProgram)
     {
-        var result = Parser.Parse(tokens);
+        var result = Parser.PopExpression(tokens);
         result.Should().NotBeNull();
         
         // clear out the source spans, we don't actually care about them
@@ -1257,27 +1257,16 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
 
     public static IEnumerable<object[]> SingleTestCase()
     {
-        return new (string Source, LangProgram ExpectedProgram)[]
+        return new (string Source, IExpression ExpectedProgram)[]
         {
-            ("var a: int = (1 + 2) * 3;", new LangProgram([new VariableDeclarationExpression(new VariableDeclaration(
-                Token.Identifier("a", SourceSpan.Default),
-                null,
-                new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
-                new BinaryOperatorExpression(new BinaryOperator(
-                    BinaryOperatorType.Multiply,
-                    new TupleExpression([
-                        new BinaryOperatorExpression(new BinaryOperator(
-                            BinaryOperatorType.Plus,
-                            new ValueAccessorExpression(new ValueAccessor(
-                                ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default))),
-                            new ValueAccessorExpression(new ValueAccessor(
-                                ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default))),
-                            Token.Plus(SourceSpan.Default)))
-                    ]),
-                    new ValueAccessorExpression(new ValueAccessor(
-                        ValueAccessType.Literal,
-                        Token.IntLiteral(3, SourceSpan.Default))),
-                    Token.Plus(SourceSpan.Default)))))], [], [], []))
+            (
+                """
+                match (a) {
+                    _ => b,
+                }
+                """,
+                new MatchExpression(VariableAccessor("a"), [new MatchArm(new DiscardPattern(), VariableAccessor("b"))])
+            )
         }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedProgram });
     }
 
@@ -1285,6 +1274,79 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
         return new (string Source, IExpression ExpectedExpression)[]
         {
+            (
+                """
+                match (a) {
+                    _ => b,
+                }
+                """,
+                new MatchExpression(VariableAccessor("a"), [new MatchArm(new DiscardPattern(), VariableAccessor("b"))])
+            ),
+            (
+                """
+                match (a) {
+                    SomeClass => b,
+                    _ => b
+                }
+                """,
+                new MatchExpression(VariableAccessor("a"), [
+                    new MatchArm(
+                        new ClassPattern(new TypeIdentifier(Token.Identifier("SomeClass", SourceSpan.Default), []),
+                            [],
+                            false,
+                            null),
+                        VariableAccessor("b")),
+                    new MatchArm(new DiscardPattern(), VariableAccessor("b"))
+                ])
+            ),
+            (
+                """
+                match (a) {
+                    SomeClass { SomeField } => b,
+                }
+                """,
+                new MatchExpression(VariableAccessor("a"), [
+                    new MatchArm(
+                        new ClassPattern(new TypeIdentifier(Token.Identifier("SomeClass", SourceSpan.Default), []),
+                            [KeyValuePair.Create(Token.Identifier("SomeField", SourceSpan.Default), (IPattern?)null)],
+                            false,
+                            null),
+                        VariableAccessor("b")),
+                    new MatchArm(new DiscardPattern(), VariableAccessor("b"))
+                ])
+            ),
+            (
+                """
+                match (a) {
+                    SomeUnion::B { SomeField: OtherUnion::C { OtherField: var d } } => d
+                }
+                """,
+                new MatchExpression(VariableAccessor("a"), [
+                    new MatchArm(
+                        new UnionStructVariantPattern(
+                            new TypeIdentifier(Token.Identifier("SomeUnion", SourceSpan.Default), []),
+                            Token.Identifier("B", SourceSpan.Default),
+                            [
+                                KeyValuePair.Create(
+                                    Token.Identifier("SomeField", SourceSpan.Default),
+                                    (IPattern?)new UnionStructVariantPattern(
+                                        new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), []),
+                                        Token.Identifier("C", SourceSpan.Default),
+                                        [
+                                            KeyValuePair.Create(
+                                                Token.Identifier("OtherField", SourceSpan.Default),
+                                                (IPattern?)new VariableDeclarationPattern(Token.Identifier("d", SourceSpan.Default))
+                                            )
+                                        ],
+                                        false,
+                                        null))
+                            ],
+                            false,
+                            null),
+                        VariableAccessor("d")),
+                    new MatchArm(new DiscardPattern(), VariableAccessor("b"))
+                ])
+            ),
             (
                 "if (a matches OtherUnion::B(MyUnion::A var c) var b) {}",
                 new IfExpressionExpression(new IfExpression(
@@ -3559,8 +3621,23 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             UnionStructVariantInitializerExpression unionStructVariantInitializerExpression => new UnionStructVariantInitializerExpression(RemoveSourceSpan(unionStructVariantInitializerExpression.UnionInitializer)),
             MatchesExpression matchesExpression => RemoveSourceSpan(matchesExpression),
             TupleExpression tupleExpression => RemoveSourceSpan(tupleExpression),
+            MatchExpression matchExpression => RemoveSourceSpan(matchExpression),
             _ => throw new NotImplementedException(expression.GetType().ToString())
         };
+    }
+
+    private static MatchExpression RemoveSourceSpan(MatchExpression matchExpression)
+    {
+        return new MatchExpression(
+            RemoveSourceSpan(matchExpression.Value),
+            [..matchExpression.Arms.Select(RemoveSourceSpan)]);
+    }
+
+    private static MatchArm RemoveSourceSpan(MatchArm matchArm)
+    {
+        return new MatchArm(
+            RemoveSourceSpan(matchArm.Pattern),
+            RemoveSourceSpan(matchArm.Expression));
     }
 
     private static TupleExpression RemoveSourceSpan(TupleExpression tupleExpression)

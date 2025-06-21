@@ -154,6 +154,11 @@ public record UnionStructVariantInitializerExpression(UnionStructVariantInitiali
 public record MatchesExpression(IExpression ValueExpression, IPattern Pattern) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.Matches;
+    
+    /// <summary>
+    /// Collection of declared variables within <see cref="Pattern"/>. Initialized during type checking
+    /// </summary>
+    public IReadOnlyList<string> DeclaredVariables { get; set; } = [];
 }
 
 public record UnionStructVariantInitializer(TypeIdentifier UnionType, StringToken VariantIdentifier, IReadOnlyList<FieldInitializer> FieldInitializers)
@@ -205,6 +210,13 @@ public record MutabilityModifier(Token Modifier)
         return Modifier.ToString();
     }
 }
+
+public record MatchExpression(IExpression Value, IReadOnlyList<MatchArm> Arms) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.Match;
+}
+
+public record MatchArm(IPattern Pattern, IExpression Expression);
 
 public record IfExpression(
     IExpression CheckExpression,

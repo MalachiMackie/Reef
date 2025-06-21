@@ -573,8 +573,9 @@ public class TypeChecker
                 TypeCheckUnionStructInitializer(
                     unionStructVariantInitializerExpression.UnionInitializer, genericPlaceholders),
             MatchesExpression matchesExpression => TypeCheckMatchesExpression(
-                matchesExpression.ValueExpression, matchesExpression.Pattern, genericPlaceholders),
+                matchesExpression, genericPlaceholders),
             TupleExpression tupleExpression => TypeCheckTupleExpression(tupleExpression, genericPlaceholders),
+            MatchExpression matchExpression => TypeCheckMatchExpression(matchExpression, genericPlaceholders),
             _ => throw new NotImplementedException($"{expression.ExpressionType}")
         };
     }
@@ -591,109 +592,86 @@ public class TypeChecker
         return InstantiatedClass.Tuple(types);
     }
 
-    private ITypeReference TypeCheckMatchesExpression(IExpression valueExpression, IPattern pattern, Dictionary<string, ITypeSignature> genericPlaceholders)
+    private ITypeReference TypeCheckMatchExpression(MatchExpression matchExpression,
+        Dictionary<string, ITypeSignature> genericPlaceholders)
     {
-        var valueType = TypeCheckExpression(valueExpression, genericPlaceholders);
+        var valueType = TypeCheckExpression(matchExpression.Value, genericPlaceholders);
 
-        TypeCheckPattern(valueType, pattern, genericPlaceholders);
+        ITypeReference? foundType = null;
+
+        IReadOnlyList<string> variantNames = [];
+
+        if (valueType is InstantiatedUnion union)
+        {
+            variantNames = [..union.UnionSignature.Variants.Select(x => x.Name)];
+        }
+
+        var matchedVariants = new HashSet<string>();
+        var foundDiscardPattern = false;
+        
+        foreach (var arm in matchExpression.Arms)
+        {
+            var patternVariables = TypeCheckPattern(valueType, arm.Pattern, genericPlaceholders);
+
+            foundDiscardPattern |= arm.Pattern is DiscardPattern;
+            
+            switch (arm.Pattern)
+            {
+                case UnionVariantPattern { VariantName.StringValue: var variantName }:
+                    matchedVariants.Add(variantName);
+                    break;
+                case UnionStructVariantPattern { VariantName.StringValue: var structVariantName }:
+                    matchedVariants.Add(structVariantName);
+                    break;
+                case UnionTupleVariantPattern { VariantName.StringValue: var tupleVariantName }:
+                    matchedVariants.Add(tupleVariantName);
+                    break;
+            }
+            
+            using var _ = PushScope();
+            foreach (var variable in patternVariables)
+            {
+                ScopedVariables[variable].Instantiated = true;
+            }
+
+            var armType = TypeCheckExpression(arm.Expression, genericPlaceholders);
+            foundType ??= armType;
+
+            if (!foundType.Equals(armType))
+            {
+                throw new InvalidOperationException($"Mismatched match arm expression type. Expected {foundType}");
+            }
+            
+            foreach (var variable in patternVariables)
+            {
+                ScopedVariables[variable].Instantiated = false;
+            }
+        }
+
+        var missingVariants = variantNames.Except(matchedVariants).ToArray();
+
+        if (!foundDiscardPattern && missingVariants.Length != 0)
+        {
+            throw new InvalidOperationException("match expression is not exhaustive");
+        }
+        
+        // todo: other type patterns and exhaustive checks. string, int, etc
+
+        return foundType ?? throw new UnreachableException("Parser checked match expression has at least one arm");
+    }
+
+    private ITypeReference TypeCheckMatchesExpression(MatchesExpression matchesExpression, Dictionary<string, ITypeSignature> genericPlaceholders)
+    {
+        var valueType = TypeCheckExpression(matchesExpression.ValueExpression, genericPlaceholders);
+
+        matchesExpression.DeclaredVariables = TypeCheckPattern(valueType, matchesExpression.Pattern, genericPlaceholders);
 
         return InstantiatedClass.Boolean;
     }
 
-    private IEnumerable<string> GetConditionallyInstantiatedPatternVariables(IPattern pattern, Dictionary<string, ITypeSignature> genericPlaceholders)
+    private IReadOnlyList<string> TypeCheckPattern(ITypeReference typeReference, IPattern pattern, Dictionary<string, ITypeSignature> genericPlaceholders)
     {
-        switch (pattern)
-        {
-            case DiscardPattern:
-                // discard pattern always type checks
-                break;
-            case UnionVariantPattern {VariableName.StringValue: var variableName}:
-            {
-                yield return variableName;
-                break;
-            }
-            case ClassPattern classPattern:
-            {
-                foreach (var (fieldName, fieldPattern) in classPattern.FieldPatterns)
-                {
-                    if (fieldPattern is null)
-                    {
-                        yield return fieldName.StringValue;
-                    }
-                    else
-                    {
-                        var fieldPatternVariables =
-                            GetConditionallyInstantiatedPatternVariables(fieldPattern, genericPlaceholders);
-                        foreach (var variable in fieldPatternVariables)
-                        {
-                            yield return variable;
-                        }
-                    }
-                }
-
-                if (classPattern.VariableName is {StringValue: var variableName})
-                {
-                    yield return variableName;
-                }
-                
-                break;
-            }
-            case UnionStructVariantPattern structVariantPattern:
-             {
-                 foreach (var (fieldName, fieldPattern) in structVariantPattern.FieldPatterns)
-                 {
-                     if (fieldPattern is null)
-                     {
-                         yield return fieldName.StringValue;
-                     }
-                     else
-                     {
-                         var fieldPatternVariables = GetConditionallyInstantiatedPatternVariables(fieldPattern, genericPlaceholders);
-                         foreach (var variable in fieldPatternVariables)
-                         {
-                             yield return variable;
-                         }
-                     }
-                 }
- 
-                 if (structVariantPattern.VariableName is {StringValue: var variableName})
-                 {
-                     yield return variableName;
-                 }
-                 
-                 break;
-             }
-            case UnionTupleVariantPattern unionTupleVariantPattern:
-            {
-                foreach (var tupleMemberPattern in unionTupleVariantPattern.TupleParamPatterns)
-                {
-                    var patternVariables =
-                        GetConditionallyInstantiatedPatternVariables(tupleMemberPattern, genericPlaceholders);
-                    foreach (var variable in patternVariables)
-                    {
-                        yield return variable;
-                    }
-                }
-
-                if (unionTupleVariantPattern.VariableName is {StringValue: var variableName})
-                {
-                    yield return variableName;
-                }
-                
-                break;
-            }
-            case VariableDeclarationPattern {VariableName.StringValue: var variableName}:
-            {
-                yield return variableName;
-                break;
-            }
-            default:
-                throw new NotImplementedException(pattern.GetType().Name);
-        }
-    }
-
-    private void TypeCheckPattern(ITypeReference typeReference, IPattern pattern, Dictionary<string, ITypeSignature> genericPlaceholders)
-    {
+        var patternVariables = new List<string>();
         switch (pattern)
         {
             case DiscardPattern:
@@ -719,6 +697,7 @@ public class TypeChecker
 
                 if (variantPattern.VariableName is {StringValue: var variableName})
                 {
+                    patternVariables.Add(variableName);
                     var variable = new Variable(
                         variableName,
                         patternUnionType,
@@ -765,6 +744,7 @@ public class TypeChecker
                         
                         if (fieldPattern is null)
                         {
+                            patternVariables.Add(fieldName.StringValue);
                             var variable = new Variable(
                                 fieldName.StringValue,
                                 fieldType,
@@ -777,13 +757,14 @@ public class TypeChecker
                         }
                         else
                         {
-                            TypeCheckPattern(fieldType, fieldPattern, genericPlaceholders);
+                            patternVariables.AddRange(TypeCheckPattern(fieldType, fieldPattern, genericPlaceholders));
                         }
                     }
                 }
 
                 if (classPattern.VariableName is {StringValue: var variableName})
                 {
+                    patternVariables.Add(variableName);
                     var variable = new Variable(
                         variableName,
                         patternType,
@@ -836,6 +817,8 @@ public class TypeChecker
                      
                      if (fieldPattern is null)
                      {
+                        patternVariables.Add(fieldName.StringValue);
+                         
                         var variable = new Variable(
                             fieldName.StringValue,
                             fieldType,
@@ -845,13 +828,16 @@ public class TypeChecker
                         {
                             throw new InvalidOperationException($"Duplicate variable {fieldName.StringValue}");
                         }
-                     } else {
-                         TypeCheckPattern(fieldType, fieldPattern, genericPlaceholders);
+                     } 
+                     else
+                     {
+                         patternVariables.AddRange(TypeCheckPattern(fieldType, fieldPattern, genericPlaceholders));
                      }
                  }
  
                  if (structVariantPattern.VariableName is {StringValue: var variableName})
                  {
+                     patternVariables.Add(variableName);
                     var variable = new Variable(
                         variableName,
                         patternType,
@@ -895,11 +881,12 @@ public class TypeChecker
 
                 foreach (var (tupleMemberType, tupleMemberPattern) in tupleUnionVariant.TupleMembers.Zip(unionTupleVariantPattern.TupleParamPatterns))
                 {
-                    TypeCheckPattern(tupleMemberType, tupleMemberPattern, genericPlaceholders);
+                    patternVariables.AddRange(TypeCheckPattern(tupleMemberType, tupleMemberPattern, genericPlaceholders));
                 }
 
                 if (unionTupleVariantPattern.VariableName is {StringValue: var variableName})
                 {
+                    patternVariables.Add(variableName);
                     var variable = new Variable(
                         variableName,
                         patternType,
@@ -915,6 +902,7 @@ public class TypeChecker
             }
             case VariableDeclarationPattern {VariableName.StringValue: var variableName}:
             {
+                patternVariables.Add(variableName);
                 var variable = new Variable(
                     variableName,
                     typeReference,
@@ -930,6 +918,7 @@ public class TypeChecker
                 throw new NotImplementedException(pattern.GetType().Name);
         }
 
+        return patternVariables;
     }
 
     private ITypeReference TypeCheckUnionStructInitializer(UnionStructVariantInitializer initializer, Dictionary<string, ITypeSignature> genericPlaceholders)
@@ -1379,10 +1368,9 @@ public class TypeChecker
 
         IReadOnlyList<string> conditionallyInstantiatedVariables = [];
 
-        if (ifExpression.CheckExpression is MatchesExpression {Pattern: var pattern})
+        if (ifExpression.CheckExpression is MatchesExpression {DeclaredVariables: var declaredVariables})
         {
-            conditionallyInstantiatedVariables =
-                [..GetConditionallyInstantiatedPatternVariables(pattern, genericPlaceholders)];
+            conditionallyInstantiatedVariables = declaredVariables;
         }
 
         foreach (var variable in conditionallyInstantiatedVariables)
@@ -1407,15 +1395,9 @@ public class TypeChecker
                 throw new InvalidOperationException("Expected bool");
             }
 
-            if (elseIf.CheckExpression is MatchesExpression { Pattern: var elseIfPattern })
-            {
-                conditionallyInstantiatedVariables =
-                    [..GetConditionallyInstantiatedPatternVariables(elseIfPattern, genericPlaceholders)];
-            }
-            else
-            {
-                conditionallyInstantiatedVariables = [];
-            }
+            conditionallyInstantiatedVariables = elseIf.CheckExpression is MatchesExpression { DeclaredVariables: var elseIfDeclaredVariables }
+                ? elseIfDeclaredVariables
+                : [];
             
             foreach (var variable in conditionallyInstantiatedVariables)
             {

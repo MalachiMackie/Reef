@@ -182,6 +182,11 @@ public record Token
     {
         return new Token { Type = TokenType.Turbofish, SourceSpan = sourceSpan };
     }
+    
+    public static Token EqualsArrow(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.EqualsArrow, SourceSpan = sourceSpan };
+    }
 
     public static Token Semicolon(SourceSpan sourceSpan)
     {

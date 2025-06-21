@@ -28,22 +28,67 @@ public class TypeCheckerTests
     {
         var src =
             """
-            union MyUnion { A }
+            union MyUnion {
+                A,
+                B(int),
+                C { field MyField: int }
+            }
             var a = MyUnion::A;
-            if (!(a matches MyUnion::A var b)) {
-                var c: MyUnion = b;
+            match (a) {
+                MyUnion::A => 1,
+                MyUnion::B(var b) => b,
+                MyUnion::C { MyField } => MyField,
             }
             """;
         
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program);
 
-        act.Should().Throw<InvalidOperationException>();
+        act.Should().NotThrow<InvalidOperationException>();
     }
 
     public static TheoryData<string> SuccessfulExpressionTestCases() =>
         new()
         {
+            """
+            union MyUnion {
+                A,
+                B(int),
+                C { field MyField: int }
+            }
+            var a = MyUnion::A;
+            match (a) {
+                MyUnion::A => 1,
+                MyUnion::B(var b) => b,
+                MyUnion::C { MyField } => MyField,
+            }
+            """,
+            """
+            union MyUnion {
+                A,
+                B(int),
+                C { field MyField: int }
+            }
+            var a = MyUnion::A;
+            match (a) {
+                MyUnion::A => 1,
+                MyUnion::B(var b) => b,
+                _ => 2,
+            }
+            """,
+            """
+            union MyUnion {
+                A,
+                B(int),
+                C { field MyField: int }
+            }
+            var a = MyUnion::A;
+            var d: int = match (a) {
+                MyUnion::A => 1,
+                MyUnion::B(var b) => b,
+                MyUnion::C { MyField } => MyField,
+            };
+            """,
             "var a: bool = !(true);",
             """
             var a = (1, true, "");
@@ -588,6 +633,52 @@ public class TypeCheckerTests
     public static TheoryData<string> FailedExpressionTestCases() =>
         new()
         {
+            """
+            union MyUnion {
+                A,
+                B(int),
+                C { field MyField: int }
+            }
+            var a = MyUnion::A;
+            match (a) {
+                MyUnion::A => 1,
+                MyUnion::B(var b) => b,
+                MyUnion::C { MyField } => b,// b not available in this arm
+            }
+            """,
+            """
+            union MyUnion {
+                A,
+                B(int),
+                C { field MyField: int }
+            }
+            var a = MyUnion::A;
+            match (a) {
+                MyUnion::A => 1,
+                MyUnion::B(var b) => b,
+                // non exhaustive
+            }
+            """,
+            """
+            var a = "";
+            match (a) {
+                int => 1 // incompatible pattern
+            }
+            """,
+            """
+            var a = "";
+            match (a) {
+                SomeType => 1 // missing type
+            }
+            """,
+            """
+            union MyUnion {A, B}
+            var a = MyUnion::A;
+            var b = match (a) {
+                MyUnion::A => 1,
+                MyUnion::B => "" // mismatched arm expression types
+            }
+            """,
             """
             union MyUnion { A }
             var a = MyUnion::A;

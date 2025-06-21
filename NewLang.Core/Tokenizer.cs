@@ -242,6 +242,7 @@ public class Tokenizer
             TokenType.Mut when source is "mut" => Token.Mut(new SourceSpan(position, (ushort)source.Length)),
             TokenType.DoubleColon when source is "::" => Token.DoubleColon(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Class when source is "class" => Token.Class(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.EqualsArrow when source is "=>" => Token.EqualsArrow(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Union when source is "union" => Token.Union(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Matches when source is "matches" => Token.Matches(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Match when source is "match" => Token.Match(new SourceSpan(position, (ushort)source.Length)),
@@ -373,6 +374,7 @@ public class Tokenizer
             case '=':
                 tokens[i++] = TokenType.Equals;
                 tokens[i++] = TokenType.DoubleEquals;
+                tokens[i++] = TokenType.EqualsArrow;
                 break;
             case ',':
                 tokens[i++] = TokenType.Comma;
@@ -480,6 +482,7 @@ public class Tokenizer
             TokenType.Field => Matches(source, "field"),
             TokenType.IntKeyword => Matches(source, "int"),
             TokenType.Turbofish => Matches(source, "::<"),
+            TokenType.EqualsArrow => Matches(source, "=>"),
             TokenType.Colon => Matches(source, ":"),
             TokenType.LeftAngleBracket => Matches(source, "<"),
             TokenType.RightAngleBracket => Matches(source, ">"),

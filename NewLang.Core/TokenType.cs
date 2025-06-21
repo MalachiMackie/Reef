@@ -50,5 +50,7 @@ public enum TokenType
     Match,
     Matches,
     Underscore,
-    Bang
+    Bang,
+    // todo: better name?
+    EqualsArrow
 }

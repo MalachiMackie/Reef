@@ -675,11 +675,67 @@ public sealed class Parser : IDisposable
             TokenType.Ok or TokenType.Error => GetVariableAccess(),
             TokenType.Turbofish => GetGenericInstantiation(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
             TokenType.Matches => GetMatchesExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
+            TokenType.Match => GetMatchExpression(),
             _ when IsTypeTokenType(Current.Type) => GetVariableAccess(),
             _ when TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(previousExpression, Current, unaryOperatorType.Value),
             _ when TryGetBinaryOperatorType(Current.Type, out var binaryOperatorType) => GetBinaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}"), binaryOperatorType.Value),
             _ => throw new InvalidOperationException($"Token type {Current.Type} not supported")
         };
+    }
+
+    private MatchExpression GetMatchExpression()
+    {
+        if (!MoveNext() || Current.Type != TokenType.LeftParenthesis)
+        {
+            throw new InvalidOperationException("Expected (");
+        }
+
+        if (!MoveNext())
+        {
+            throw new InvalidOperationException("Expected match expression value");
+        }
+
+        var valueExpression = PopExpression()
+                              ?? throw new InvalidOperationException("Expected match expression value");
+
+        if (!_hasNext || Current.Type != TokenType.RightParenthesis)
+        {
+            throw new InvalidOperationException("Expected )");
+        }
+
+        if (!MoveNext() || Current.Type != TokenType.LeftBrace)
+        {
+            throw new InvalidOperationException("Expected {");
+        }
+
+        var arms = GetCommaSeparatedList(
+            TokenType.RightBrace,
+            "Match Arm",
+            () =>
+            {
+                var pattern = GetPattern();
+                if (!_hasNext || Current.Type != TokenType.EqualsArrow)
+                {
+                    throw new InvalidOperationException("Expected =>");
+                }
+
+                if (!MoveNext())
+                {
+                    throw new InvalidOperationException("Expected match arm expression");
+                }
+
+                var armExpression = PopExpression()
+                    ?? throw new InvalidOperationException("Expected match arm expression");
+
+                return new MatchArm(pattern, armExpression);
+            });
+
+        if (arms.Count == 0)
+        {
+            throw new InvalidOperationException("Expected match expression to contain at least one arm");
+        }
+
+        return new MatchExpression(valueExpression, arms);
     }
 
     private IExpression GetParenthesizedExpression(IExpression? previousExpression)
