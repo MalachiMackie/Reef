@@ -28,15 +28,17 @@ public class TypeCheckerTests
     {
         var src =
             """
-            class MyClass {pub field MyField: string}
-            var a = new MyClass { MyField = "" };
-            var b: bool = a matches MyClass { MyField: _ };
+            union MyUnion { A }
+            var a = MyUnion::A;
+            if (!(a matches MyUnion::A var b)) {
+                var c: MyUnion = b;
+            }
             """;
         
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program);
 
-        act.Should().NotThrow<InvalidOperationException>();
+        act.Should().Throw<InvalidOperationException>();
     }
 
     public static TheoryData<string> SuccessfulExpressionTestCases() =>
@@ -441,12 +443,273 @@ public class TypeCheckerTests
                 return result::<string, int>::Error(1);
             }
             """,
+            """
+            union MyUnion { A }
+            var a = MyUnion::A;
+            if (a matches MyUnion::A var b) {
+                var c: MyUnion = b;
+            }
+            """,
+            """
+            union MyUnion { A(string) }
+            var a = MyUnion::A("hi");
+            if (a matches MyUnion::A(_) var b) {
+                var c: MyUnion = b;
+            }
+            """,
+            """
+            union MyUnion { A(string) }
+            var a = MyUnion::A("hi");
+            if (a matches MyUnion::A(string var b)) {
+                var c: string = b;
+            }
+            """,
+            """
+            union MyUnion { A(string) }
+            var a = MyUnion::A("hi");
+            if (a matches MyUnion::A(string var b)) {
+                var c: string = b;
+            }
+            """,
+            """
+            union MyUnion { A { field MyField: string } }
+            var a = new MyUnion::A { MyField = "" };
+            if (a matches MyUnion::A { MyField }) {
+                var c: string = MyField;
+            }
+            """,
+            """
+            union MyUnion { A { field MyField: string } }
+            var a = new MyUnion::A { MyField = "" };
+            if (a matches MyUnion::A { MyField: var b }) {
+                var c: string = b;
+            }
+            """,
+            """
+            union MyUnion { A }
+            var a = MyUnion::A;
+            if (a matches var b) {
+                var c: MyUnion = b;
+            }
+            """,
+            """
+            union MyUnion { A }
+            var a = MyUnion::A;
+            if (a matches MyUnion var b) {
+                var c: MyUnion = b;
+            }
+            """,
+            """
+            union MyUnion { A }
+            union OtherUnion { B(MyUnion) }
+            var a = OtherUnion::B(MyUnion::A);
+            if (a matches OtherUnion::B(MyUnion::A var c) var b) {
+                var d: OtherUnion = b;
+                var e: MyUnion = c;
+            }
+            """,
+            """
+            union MyUnion { A }
+            var a = MyUnion::A;
+            if (false) {}
+            else if (a matches MyUnion::A var b) {
+                var c: MyUnion = b;
+            }
+            """,
+            """
+            union MyUnion { A(string) }
+            var a = MyUnion::A("hi");
+            if (false) {}
+            else if (a matches MyUnion::A(_) var b) {
+                var c: MyUnion = b;
+            }
+            """,
+            """
+            union MyUnion { A(string) }
+            var a = MyUnion::A("hi");
+            if (false) {}
+            else if (a matches MyUnion::A(string var b)) {
+                var c: string = b;
+            }
+            """,
+            """
+            union MyUnion { A(string) }
+            var a = MyUnion::A("hi");
+            if (false) {}
+            else if (a matches MyUnion::A(string var b)) {
+                var c: string = b;
+            }
+            """,
+            """
+            union MyUnion { A { field MyField: string } }
+            var a = new MyUnion::A { MyField = "" };
+            if (false) {}
+            else if (a matches MyUnion::A { MyField }) {
+                var c: string = MyField;
+            }
+            """,
+            """
+            union MyUnion { A { field MyField: string } }
+            var a = new MyUnion::A { MyField = "" };
+            if (false) {}
+            else if (a matches MyUnion::A { MyField: var b }) {
+                var c: string = b;
+            }
+            """,
+            """
+            union MyUnion { A }
+            var a = MyUnion::A;
+            if (false) {}
+            else if (a matches var b) {
+                var c: MyUnion = b;
+            }
+            """,
+            """
+            union MyUnion { A }
+            var a = MyUnion::A;
+            if (false) {}
+            else if (a matches MyUnion var b) {
+                var c: MyUnion = b;
+            }
+            """,
+            """
+            union MyUnion { A }
+            union OtherUnion { B(MyUnion) }
+            var a = OtherUnion::B(MyUnion::A);
+            if (false) {}
+            else if (a matches OtherUnion::B(MyUnion::A var c) var b) {
+                var d: OtherUnion = b;
+                var e: MyUnion = c;
+            }
+            """,
             Mvp
         };
 
     public static TheoryData<string> FailedExpressionTestCases() =>
         new()
         {
+            """
+            union MyUnion { A }
+            var a = MyUnion::A;
+            var z = a matches MyUnion::A var b;
+            
+            var c: MyUnion = b;
+            """,
+            """
+            union MyUnion { A(string) }
+            var a = MyUnion::A("hi");
+            var z = a matches MyUnion::A(_) var b;
+            var c: MyUnion = b;
+            """,
+            """
+            union MyUnion { A(string) }
+            var a = MyUnion::A("hi");
+            var z = a matches MyUnion::A(string var b);
+            var c: string = b;
+            """,
+            """
+            union MyUnion { A(string) }
+            var a = MyUnion::A("hi");
+            var z = a matches MyUnion::A(string var b);
+            var c: string = b;
+            """,
+            """
+            union MyUnion { A { field MyField: string } }
+            var a = new MyUnion::A { MyField = "" };
+            var z = a matches MyUnion::A { MyField };
+            var c: string = MyField;
+            """,
+            """
+            union MyUnion { A { field MyField: string } }
+            var a = new MyUnion::A { MyField = "" };
+            var z = a matches MyUnion::A { MyField: var b };
+            var c: string = b;
+            """,
+            """
+            union MyUnion { A }
+            var a = MyUnion::A;
+            var z = a matches var b;
+            var c: MyUnion = b;
+            """,
+            """
+            union MyUnion { A }
+            var a = MyUnion::A;
+            var z = a matches MyUnion var b;
+            var c: MyUnion = b;
+            """,
+            """
+            union MyUnion { A }
+            union OtherUnion { B(MyUnion) }
+            var a = OtherUnion::B(MyUnion::A);
+            var z = a matches OtherUnion::B(MyUnion::A var c) var b;
+            var d: OtherUnion = b;
+            var e: MyUnion = c;
+            """,
+            """
+            union MyUnion { A }
+            var a = MyUnion::A;
+            if (!(a matches MyUnion::A var b)) {
+                var c: MyUnion = b;
+            }
+            """,
+            """
+            union MyUnion { A(string) }
+            var a = MyUnion::A("hi");
+            if (!(a matches MyUnion::A(_) var b)) {
+                var c: MyUnion = b;
+            }
+            """,
+            """
+            union MyUnion { A(string) }
+            var a = MyUnion::A("hi");
+            if (!(a matches MyUnion::A(string var b))) {
+                var c: string = b;
+            }
+            """,
+            """
+            union MyUnion { A(string) }
+            var a = MyUnion::A("hi");
+            if (!(a matches MyUnion::A(string var b))) {
+                var c: string = b;
+            }
+            """,
+            """
+            union MyUnion { A { field MyField: string } }
+            var a = new MyUnion::A { MyField = "" };
+            if (!(a matches MyUnion::A { MyField })) {
+                var c: string = MyField;
+            }
+            """,
+            """
+            union MyUnion { A { field MyField: string } }
+            var a = new MyUnion::A { MyField = "" };
+            if (!(a matches MyUnion::A { MyField: var b })) {
+                var c: string = b;
+            }
+            """,
+            """
+            union MyUnion { A }
+            var a = MyUnion::A;
+            if (!(a matches var b)) {
+                var c: MyUnion = b;
+            }
+            """,
+            """
+            union MyUnion { A }
+            var a = MyUnion::A;
+            if (!(a matches MyUnion var b)) {
+                var c: MyUnion = b;
+            }
+            """,
+            """
+            union MyUnion { A }
+            union OtherUnion { B(MyUnion) }
+            var a = OtherUnion::B(MyUnion::A);
+            if (!(a matches OtherUnion::B(MyUnion::A var c) var b)) {
+                var d: OtherUnion = b;
+                var e: MyUnion = c;
+            }
+            """,
             """
             union MyUnion {
                 A,
