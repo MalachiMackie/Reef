@@ -599,35 +599,10 @@ public class TypeChecker
 
         ITypeReference? foundType = null;
 
-        IReadOnlyList<string> variantNames = [];
-
-        if (valueType is InstantiatedUnion union)
-        {
-            variantNames = [..union.UnionSignature.Variants.Select(x => x.Name)];
-        }
-
-        var matchedVariants = new HashSet<string>();
-        var foundDiscardPattern = false;
-        
         foreach (var arm in matchExpression.Arms)
         {
             var patternVariables = TypeCheckPattern(valueType, arm.Pattern, genericPlaceholders);
 
-            foundDiscardPattern |= arm.Pattern is DiscardPattern;
-            
-            switch (arm.Pattern)
-            {
-                case UnionVariantPattern { VariantName.StringValue: var variantName }:
-                    matchedVariants.Add(variantName);
-                    break;
-                case UnionStructVariantPattern { VariantName.StringValue: var structVariantName }:
-                    matchedVariants.Add(structVariantName);
-                    break;
-                case UnionTupleVariantPattern { VariantName.StringValue: var tupleVariantName }:
-                    matchedVariants.Add(tupleVariantName);
-                    break;
-            }
-            
             using var _ = PushScope();
             foreach (var variable in patternVariables)
             {
@@ -648,16 +623,41 @@ public class TypeChecker
             }
         }
 
-        var missingVariants = variantNames.Except(matchedVariants).ToArray();
-
-        if (!foundDiscardPattern && missingVariants.Length != 0)
+        if (!IsMatchExhaustive(matchExpression.Arms, valueType))
         {
             throw new InvalidOperationException("match expression is not exhaustive");
+        }
+
+        return foundType ?? throw new UnreachableException("Parser checked match expression has at least one arm");
+    }
+
+    private static bool IsMatchExhaustive(IReadOnlyList<MatchArm> matchArms, ITypeReference type)
+    {
+        var foundDiscardPattern = false;
+        var matchedVariants = new List<string>();
+
+        foreach (var armPattern in matchArms.Select(x => x.Pattern))
+        {
+            foundDiscardPattern |= armPattern is DiscardPattern;
+            switch (armPattern)
+            {
+                case UnionVariantPattern { VariantName.StringValue: var variantName }:
+                    matchedVariants.Add(variantName);
+                    break;
+                case UnionStructVariantPattern { VariantName.StringValue: var structVariantName }:
+                    matchedVariants.Add(structVariantName);
+                    break;
+                case UnionTupleVariantPattern { VariantName.StringValue: var tupleVariantName }:
+                    matchedVariants.Add(tupleVariantName);
+                    break;
+            }
         }
         
         // todo: other type patterns and exhaustive checks. string, int, etc
 
-        return foundType ?? throw new UnreachableException("Parser checked match expression has at least one arm");
+        return foundDiscardPattern
+               || type is InstantiatedUnion { UnionSignature.Variants: var unionVariants }
+               && !unionVariants.Select(x => x.Name).Except(matchedVariants).Any();
     }
 
     private ITypeReference TypeCheckMatchesExpression(MatchesExpression matchesExpression, Dictionary<string, ITypeSignature> genericPlaceholders)
