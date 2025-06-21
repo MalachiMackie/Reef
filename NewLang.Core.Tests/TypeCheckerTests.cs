@@ -1226,15 +1226,15 @@ public class TypeCheckerTests
             else if (a == b) {
                 return result::<int, string>::Ok(b);
             }
-
+        
             b = 3;
-
+        
             var thing = new Class2 {
-                A = "some value"
+                A = "something"
             };
-
+        
             MyClass::StaticMethod();
-
+        
             PrivateFn::<string>();
             
             if (false) {
@@ -1242,27 +1242,27 @@ public class TypeCheckerTests
                 // return error("something wrong");
                 return result::<int, string>::Error("something wrong");
             }
-
+        
             // Capital Error for fully resolved variant
             return result::<int, string>::Error("something wrong");
         }
-
+        
         fn PrivateFn<T>() {
         }
-
+        
         pub fn SomethingElse(a: int): result::<int, string> {
             var b = DoSomething(a)?;
             var mut c = 2;
             
             return result::<int, string>::Ok(b);
         }
-
+        
         pub class MyClass {
             pub fn PublicMethod() {
             }
-
+        
             pub static fn StaticMethod() {
-
+        
             }
             
             field FieldA: string,
@@ -1272,24 +1272,26 @@ public class TypeCheckerTests
             pub static field FieldE: string = "something",
             pub static mut field FieldF: string = "something",
         }
-
+        
         pub class GenericClass<T> {
             pub fn PublicMethod<T1>() {
             }
         }
-
-        // a union
+        
+        // a class
         pub class Class2 {
             pub field A: string,
         }
         
+        /*
+            A union
+        */
         pub union MyUnion {
             A,
             B { field MyField: string, },
             C(string),
             
             fn SomeMethod() {
-            /*
                 var foo = match (this) {
                     MyUnion::A => "",
                     MyUnion::B { MyField } => MyField,
@@ -1301,17 +1303,8 @@ public class TypeCheckerTests
                     MyUnion::B => 2,
                     MyUnion::C => 3
                 }
-                */
             }
         }
-        
-        var mut c = MyUnion::A;
-                
-        c = new MyUnion::B{ MyField = ""};
-        
-        /*
-        
-        todo: pattern matching and match expressions
         
         fn AnotherMethod(param: MyUnion) {
             if (param matches MyUnion::A) {
@@ -1326,6 +1319,8 @@ public class TypeCheckerTests
             };
         }
         
-        */
+        var a = MyUnion::A;
+        
+        var c = new MyUnion::B{ MyField = ""};
         """;
 }

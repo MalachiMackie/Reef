@@ -1,5 +1,5 @@
 ﻿pub fn DoSomething(a: int): result::<int, string> {
-    var b: int = 2;
+    var mut b: int = 2;
     
     if (a > b) {
         return ok(a);
@@ -11,7 +11,7 @@
     b = 3;
 
     var thing = new Class2 {
-        A = 3
+        A = "thing"
     };
 
     MyClass::StaticMethod();
@@ -28,7 +28,6 @@
 }
 
 fn PrivateFn<T>() {
-    Println("Message");
 }
 
 pub fn SomethingElse(a: int): result::<int, string> {
@@ -38,10 +37,6 @@ pub fn SomethingElse(a: int): result::<int, string> {
     return result::<int, string>::Ok(b);
 }
 
-Println(DoSomething(5));
-Println(DoSomething(1));
-Println(SomethingElse(1));
-
 pub class MyClass {
     pub fn PublicMethod() {
     }
@@ -50,12 +45,12 @@ pub class MyClass {
 
     }
     
-    field FieldA: string;
-    mut field FieldB: string;
-    pub mut field FieldC: string;
-    pub field FieldD: string;
-    pub static field FieldE: string = "something";
-    pub static mut field FieldF: string = "something";
+    field FieldA: string,
+    mut field FieldB: string,
+    pub mut field FieldC: string,
+    pub field FieldD: string,
+    pub static field FieldE: string = "something",
+    pub static mut field FieldF: string = "something",
 }
 
 pub class GenericClass<T> {
@@ -65,7 +60,7 @@ pub class GenericClass<T> {
 
 // a class
 pub class Class2 {
-    pub field A: string;
+    pub field A: string,
 }
 
 /*
@@ -73,7 +68,7 @@ pub class Class2 {
 */
 pub union MyUnion {
     A,
-    B { field MyField: string; },
+    B { field MyField: string, },
     C(string),
     
     fn SomeMethod() {
@@ -100,10 +95,10 @@ fn AnotherMethod(param: MyUnion) {
     var a = match (param) {
         MyUnion::A => 1,
         MyUnion::B { MyField } => 2,
-        MyUnion::C(value) => 3
+        MyUnion::C(var value) => 3
     };
 }
 
 var a = MyUnion::A;
 
-c = new MyUnion::B{ MyField = ""};
+var c = new MyUnion::B{ MyField = ""};
