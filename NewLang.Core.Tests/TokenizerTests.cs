@@ -199,6 +199,7 @@ public class TokenizerTests
             ["=>", new[] { Token.EqualsArrow(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             [";", new[] { Token.Semicolon(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["result", new[] { Token.Result(new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],
+            ["this", new[] { Token.This(new SourceSpan(new SourcePosition(0, 0, 0), 4)) }],
             ["ok", new[] { Token.Ok(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["error", new[] { Token.Error(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["*", new[] { Token.Star(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],

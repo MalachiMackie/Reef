@@ -26,15 +26,20 @@ public class TypeChecker
     private Dictionary<string, Variable> ScopedVariables => _typeCheckingScopes.Peek().Variables;
     private Dictionary<string, FunctionSignature> ScopedFunctions => _typeCheckingScopes.Peek().Functions;
     private ITypeSignature? CurrentTypeSignature => _typeCheckingScopes.Peek().CurrentTypeSignature;
+    private FunctionSignature? CurrentFunctionSignature => _typeCheckingScopes.Peek().CurrentFunctionSignature;
     private ITypeReference ExpectedReturnType => _typeCheckingScopes.Peek().ExpectedReturnType;
 
     private record TypeCheckingScope(
         Dictionary<string, Variable> Variables,
         Dictionary<string, FunctionSignature> Functions,
         ITypeReference ExpectedReturnType,
-        ITypeSignature? CurrentTypeSignature);
+        ITypeSignature? CurrentTypeSignature,
+        FunctionSignature? CurrentFunctionSignature);
 
-    private IDisposable PushScope(ITypeSignature? currentTypeSignature = null, ITypeReference? expectedReturnType = null)
+    private IDisposable PushScope(
+        ITypeSignature? currentTypeSignature = null,
+        FunctionSignature? currentFunctionSignature = null,
+        ITypeReference? expectedReturnType = null)
     {
         var currentScope = _typeCheckingScopes.Peek();
 
@@ -42,7 +47,8 @@ public class TypeChecker
             new Dictionary<string, Variable>(currentScope.Variables),
             new Dictionary<string, FunctionSignature>(currentScope.Functions),
             expectedReturnType ?? currentScope.ExpectedReturnType,
-            currentTypeSignature ?? currentScope.CurrentTypeSignature));
+            currentTypeSignature ?? currentScope.CurrentTypeSignature,
+            currentFunctionSignature ?? currentScope.CurrentFunctionSignature));
 
         return new ScopeDisposable(PopScope);
     }
@@ -71,7 +77,12 @@ public class TypeChecker
     private void TypeCheckInner()
     {
         // initial scope
-        _typeCheckingScopes.Push(new TypeCheckingScope(new(), new(), InstantiatedClass.Unit, null));
+        _typeCheckingScopes.Push(new TypeCheckingScope(
+            new Dictionary<string, Variable>(),
+            new Dictionary<string, FunctionSignature>(),
+            ExpectedReturnType: InstantiatedClass.Unit,
+            null,
+            null));
 
         SetupSignatures();
 
@@ -455,7 +466,7 @@ public class TypeChecker
             innerGenericPlaceholders[genericParameter] = fnSignature;
         }
 
-        using var _ = PushScope(null, fnSignature.ReturnType);
+        using var _ = PushScope(null, fnSignature, fnSignature.ReturnType);
         foreach (var parameter in fnSignature.Arguments)
         {
             ScopedVariables[parameter.Name] = new Variable(
@@ -1534,8 +1545,43 @@ public class TypeChecker
                 TypeCheckVariableAccess(variableName, allowUninstantiatedVariables),
             {AccessType: ValueAccessType.Variable, Token.Type: TokenType.Ok } => TypeCheckResultVariantKeyword("Ok"),
             {AccessType: ValueAccessType.Variable, Token.Type: TokenType.Error } => TypeCheckResultVariantKeyword("Error"),
+            {AccessType: ValueAccessType.Variable, Token.Type: TokenType.This} => TypeCheckThis(),
             _ => throw new NotImplementedException($"{valueAccessorExpression}")
         };
+
+        ITypeReference TypeCheckThis()
+        {
+            if (CurrentTypeSignature is null)
+            {
+                throw new InvalidOperationException("this is only available in instance functions within a type");
+            }
+
+            if (CurrentFunctionSignature is null)
+            {
+                throw new InvalidOperationException("this is not available in static field initializer");
+            }
+
+            if (CurrentFunctionSignature.IsStatic)
+            {
+                throw new InvalidOperationException("this is not available in static functions");
+            }
+
+            return CurrentTypeSignature switch
+            {
+                UnionSignature unionSignature => new InstantiatedUnion
+                {
+                    UnionSignature = unionSignature,
+                    TypeArguments = new Dictionary<string, ITypeReference>()
+                },
+                ClassSignature classSignature => new InstantiatedClass
+                {
+                    ClassSignature = classSignature,
+                    TypeArguments = new Dictionary<string, ITypeReference>()
+                },
+                _ => throw new UnreachableException($"Unknown signature type {CurrentTypeSignature.GetType()}")
+            };
+
+        }
 
         ITypeReference TypeCheckResultVariantKeyword(string variantName)
         {

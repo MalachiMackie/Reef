@@ -244,6 +244,7 @@ public class Tokenizer
             TokenType.Class when source is "class" => Token.Class(new SourceSpan(position, (ushort)source.Length)),
             TokenType.EqualsArrow when source is "=>" => Token.EqualsArrow(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Union when source is "union" => Token.Union(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.This when source is "this" => Token.This(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Matches when source is "matches" => Token.Matches(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Match when source is "match" => Token.Match(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Field when source is "field" => Token.Field(new SourceSpan(position, (ushort)source.Length)),
@@ -411,6 +412,7 @@ public class Tokenizer
             case 't':
                 tokens[i++] = TokenType.True;
                 tokens[i++] = TokenType.Identifier;
+                tokens[i++] = TokenType.This;
                 break;
             case '*':
                 tokens[i++] = TokenType.Star;
@@ -470,6 +472,7 @@ public class Tokenizer
             TokenType.Semicolon => Matches(source, ";"),
             TokenType.LeftBrace => Matches(source, "{"),
             TokenType.Union => Matches(source, "union"),
+            TokenType.This => Matches(source, "this"),
             TokenType.Mut => Matches(source, "mut"),
             TokenType.Match => Matches(source, "match"),
             TokenType.Matches => Matches(source, "matches"),

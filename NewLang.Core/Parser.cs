@@ -672,7 +672,7 @@ public sealed class Parser : IDisposable
             TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
             TokenType.Dot => GetMemberAccess(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
             TokenType.DoubleColon => GetStaticMemberAccess(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
-            TokenType.Ok or TokenType.Error => GetVariableAccess(),
+            TokenType.Ok or TokenType.Error or TokenType.This => GetVariableAccess(),
             TokenType.Turbofish => GetGenericInstantiation(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
             TokenType.Matches => GetMatchesExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
             TokenType.Match => GetMatchExpression(),

@@ -87,6 +87,7 @@ public record Token
             TokenType.Matches => "matches",
             TokenType.Match => "match",
             TokenType.Bang => "!",
+            TokenType.This => "this",
             _ => throw new UnreachableException(Type.ToString())
         };
     }
@@ -251,6 +252,11 @@ public record Token
     public static Token IntLiteral(int value, SourceSpan sourceSpan)
     {
         return new IntToken { IntValue = value, Type = TokenType.IntLiteral, SourceSpan = sourceSpan };
+    }
+
+    public static Token This(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.This, SourceSpan = sourceSpan };
     }
 
     public static Token Result(SourceSpan sourceSpan)

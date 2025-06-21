@@ -27,6 +27,7 @@ public enum TokenType
     StringLiteral,
     StringKeyword,
     Result,
+    This,
     Ok,
     Error,
     QuestionMark,

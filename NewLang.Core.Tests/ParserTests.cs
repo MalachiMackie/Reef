@@ -1677,6 +1677,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             
             // value access expressions
             ("a", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.Identifier("a", SourceSpan.Default)))),
+            ("this", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Token.This(SourceSpan.Default)))),
             ("1", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default)))),
             ("\"my string\"", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral("my string", SourceSpan.Default)))),
             ("true", new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default)))),

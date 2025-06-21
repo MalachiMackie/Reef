@@ -51,6 +51,22 @@ public class TypeCheckerTests
         new()
         {
             """
+            class MyClass {
+                fn SomeFn() {
+                    var a: MyClass = this;
+                }
+            }
+            """,
+            """
+            union MyUnion {
+                A,
+                
+                fn SomeFn() {
+                    var a: MyUnion = this;
+                }
+            }
+            """,
+            """
             union MyUnion {
                 A,
                 B(int),
@@ -633,6 +649,21 @@ public class TypeCheckerTests
     public static TheoryData<string> FailedExpressionTestCases() =>
         new()
         {
+            "var a = this;",
+            """
+            class MyClass {
+                static fn SomeFn() {
+                    var a = this;
+                }
+            }
+            """,
+            """
+            union MyUnion {
+                static fn SomeFn() {
+                    var a = this;
+                }
+            }
+            """,
             """
             union MyUnion {
                 A,
