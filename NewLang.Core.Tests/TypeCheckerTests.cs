@@ -28,22 +28,29 @@ public class TypeCheckerTests
     {
         var src =
             """
-            var a = (1, true, "");
-            var b: int = a.First;
-            var c: bool = a.Second;
-            var d: string = a.Third;
+            fn SomeFn<T>() {
+            }
+            
+            SomeFn();
             """;
         
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program);
 
-        act.Should().NotThrow<InvalidOperationException>();
+        act.Should().Throw<InvalidOperationException>();
     }
 
     public static TheoryData<string> SuccessfulExpressionTestCases() =>
         new()
         {
+            """
+            fn SomeFn<T>(param: T) {
+            }
             
+            var a = SomeFn("");
+            var b = SomeFn(2);
+            var c = b + b;
+            """,
             """
             class MyClass<T> {
                 fn SomeFn(param: T): result::<T, string> {
@@ -679,6 +686,12 @@ public class TypeCheckerTests
     public static TheoryData<string> FailedExpressionTestCases() =>
         new()
         {
+            """
+            fn SomeFn<T>() {
+            }
+            
+            SomeFn();
+            """,
             """
             var mut a = ok(1);
             a = ok(true);
