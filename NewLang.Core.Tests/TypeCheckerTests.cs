@@ -28,17 +28,10 @@ public class TypeCheckerTests
     {
         var src =
             """
-            union MyUnion {
-                A,
-                B(int),
-                C { field MyField: int }
-            }
-            var a = MyUnion::A;
-            match (a) {
-                MyUnion::A => 1,
-                MyUnion::B(var b) => b,
-                MyUnion::C { MyField } => MyField,
-            }
+            var a = (1, true, "");
+            var b: int = a.First;
+            var c: bool = a.Second;
+            var d: string = a.Third;
             """;
         
         var program = Parser.Parse(Tokenizer.Tokenize(src));
@@ -50,6 +43,43 @@ public class TypeCheckerTests
     public static TheoryData<string> SuccessfulExpressionTestCases() =>
         new()
         {
+            
+            """
+            class MyClass<T> {
+                fn SomeFn(param: T): result::<T, string> {
+                    if (true) {
+                        return ok(param);
+                    }
+                    return error("some error");
+                }
+            }
+            """,
+            "var a: result::<int, bool> = error(false);",
+            "var a: result::<int, bool> = ok(1);",
+            """
+            var a = match ("") {
+                var b => ok(1),
+                _ => error("")
+            };
+            """,
+            """
+            fn SomeFn(): result::<int, bool> {
+                if (true) {
+                    return ok(1);
+                }
+                
+                return error(false);
+            }
+            """,
+            """
+            fn SomeFn(param: result::<int, bool>) {
+            }
+            
+            var a = ok(1);
+            SomeFn(a);
+            var b = error(false);
+            SomeFn(b);
+            """,
             """
             class MyClass {
                 fn SomeFn() {
@@ -649,6 +679,13 @@ public class TypeCheckerTests
     public static TheoryData<string> FailedExpressionTestCases() =>
         new()
         {
+            """
+            var mut a = ok(1);
+            a = ok(true);
+            a = error("");
+            """,
+            "var a: result::<int, string> = error(1);",
+            "var a = ok(1);",
             "var a = this;",
             """
             class MyClass {
