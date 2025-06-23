@@ -4,7 +4,11 @@ public interface IPattern;
 
 public record UnionVariantPattern(TypeIdentifier Type, StringToken VariantName, StringToken? VariableName) : IPattern;
 
-public record UnionTupleVariantPattern(TypeIdentifier Type, StringToken VariantName, IReadOnlyList<IPattern> TupleParamPatterns, StringToken? VariableName) : IPattern;
+public record UnionTupleVariantPattern(
+    TypeIdentifier Type,
+    StringToken VariantName,
+    IReadOnlyList<IPattern> TupleParamPatterns,
+    StringToken? VariableName) : IPattern;
 
 public record UnionStructVariantPattern(
     TypeIdentifier Type,

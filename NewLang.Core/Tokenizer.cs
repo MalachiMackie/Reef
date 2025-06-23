@@ -7,15 +7,21 @@ namespace NewLang.Core;
 // todo: try pool allocations 
 public class Tokenizer
 {
+    // maximum potential token types at the same time
+    private const int MaxPotentialTokenTypes = 4;
     private static readonly SearchValues<char> Digits = SearchValues.Create("0123456789");
-    private readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> _stringsAlternateLookup = new HashSet<string>().GetAlternateLookup<ReadOnlySpan<char>>();
+
+    private readonly List<int> _notTokens = [];
+
+    private readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> _stringsAlternateLookup =
+        new HashSet<string>().GetAlternateLookup<ReadOnlySpan<char>>();
 
     public static IEnumerable<Token> Tokenize(string sourceStr)
     {
         var tokenizer = new Tokenizer();
         return tokenizer.TokenizeInner(sourceStr);
     }
-    
+
     private IEnumerable<Token> TokenizeInner(string sourceStr)
     {
         if (sourceStr.Length == 0)
@@ -47,7 +53,7 @@ public class Tokenizer
             var newLinePosition = lastNewLine == -1
                 ? (ushort)(token.SourceSpan.Position.LinePosition + token.SourceSpan.Length)
                 : (ushort)(token.SourceSpan.Length - (lastNewLine + 1));
-            
+
             nextToken = EatToken(nextSource, new SourcePosition(
                 token.SourceSpan.Position.Start + token.SourceSpan.Length,
                 (ushort)(token.SourceSpan.Position.LineNumber + newLinesInToken),
@@ -55,8 +61,6 @@ public class Tokenizer
         }
     }
 
-    private readonly List<int> _notTokens = [];
-    
     private Token? EatToken(
         ReadOnlySpan<char> source,
         SourcePosition startPosition)
@@ -73,7 +77,7 @@ public class Tokenizer
         {
             throw new InvalidOperationException($"Unexpected token {sourceTrimmed[0]}");
         }
-        
+
         for (ushort i = 1; i < source.Length; i++)
         {
             var part = source[..(i + 1)];
@@ -93,7 +97,7 @@ public class Tokenizer
                     _notTokens.Add(j);
                 }
             }
-            
+
             if (_notTokens.Count == potentialTokensCount)
             {
                 // only calculate new position when we are going to resolve the token
@@ -102,7 +106,7 @@ public class Tokenizer
                     var trimmedCharacters = part[..^trimmed.Length];
                     SetNextPosition(startPosition, trimmedCharacters);
                 }
-                
+
                 // previously we had at least one potential token, now we have none. need to resolve to one.
                 // this will happen in the case of `int)`
                 var tokenSource = trimmed[..^1];
@@ -125,6 +129,7 @@ public class Tokenizer
                 break;
             }
         }
+
         if (allNull)
         {
             return null;
@@ -133,7 +138,7 @@ public class Tokenizer
         var outerTrimmedChars = source[..^sourceTrimmed.Length];
 
         SetNextPosition(startPosition, outerTrimmedChars);
-        
+
         return ResolveToken(sourceTrimmed, potentialTokens, startPosition);
     }
 
@@ -150,6 +155,7 @@ public class Tokenizer
                 lastNewLineIndex = i;
             }
         }
+
         if (outerNewLines > 0)
         {
             if (lastNewLineIndex == trimmedCharacters.Length - 1)
@@ -190,7 +196,7 @@ public class Tokenizer
             {
                 continue;
             }
-            
+
             // skip identifier so that keywords take precedent
             if (tokenType == TokenType.Identifier)
             {
@@ -222,7 +228,7 @@ public class Tokenizer
         {
             return str;
         }
-        
+
         _stringsAlternateLookup.Add(source);
 
         return source.ToString();
@@ -236,17 +242,20 @@ public class Tokenizer
     {
         token = type switch
         {
-            TokenType.Identifier when source.Length > 0 && IsValidIdentifier(source) => 
+            TokenType.Identifier when source.Length > 0 && IsValidIdentifier(source) =>
                 Token.Identifier(GetString(source), new SourceSpan(position, (ushort)source.Length)),
             TokenType.If when source is "if" => Token.If(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Mut when source is "mut" => Token.Mut(new SourceSpan(position, (ushort)source.Length)),
-            TokenType.DoubleColon when source is "::" => Token.DoubleColon(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.DoubleColon when source is "::" => Token.DoubleColon(new SourceSpan(position,
+                (ushort)source.Length)),
             TokenType.Class when source is "class" => Token.Class(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Todo when source is "todo!" => Token.Todo(new SourceSpan(position, (ushort)source.Length)),
-            TokenType.EqualsArrow when source is "=>" => Token.EqualsArrow(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.EqualsArrow when source is "=>" => Token.EqualsArrow(new SourceSpan(position,
+                (ushort)source.Length)),
             TokenType.Union when source is "union" => Token.Union(new SourceSpan(position, (ushort)source.Length)),
             TokenType.This when source is "this" => Token.This(new SourceSpan(position, (ushort)source.Length)),
-            TokenType.Matches when source is "matches" => Token.Matches(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Matches when source is "matches" =>
+                Token.Matches(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Match when source is "match" => Token.Match(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Field when source is "field" => Token.Field(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Static when source is "static" => Token.Static(new SourceSpan(position, (ushort)source.Length)),
@@ -257,7 +266,8 @@ public class Tokenizer
             TokenType.Semicolon when source is ";" => Token.Semicolon(new SourceSpan(position, (ushort)source.Length)),
             TokenType.LeftBrace when source is "{" => Token.LeftBrace(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Bang when source is "!" => Token.Bang(new SourceSpan(position, (ushort)source.Length)),
-            TokenType.RightBrace when source is "}" => Token.RightBrace(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.RightBrace when source is "}" =>
+                Token.RightBrace(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Pub when source is "pub" => Token.Pub(new SourceSpan(position, (ushort)source.Length)),
             TokenType.New when source is "new" => Token.New(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Fn when source is "fn" => Token.Fn(new SourceSpan(position, (ushort)source.Length)),
@@ -293,14 +303,18 @@ public class Tokenizer
             TokenType.True when source is "true" => Token.True(new SourceSpan(position, (ushort)source.Length)),
             TokenType.False when source is "false" => Token.False(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Bool when source is "bool" => Token.Bool(new SourceSpan(position, (ushort)source.Length)),
-            TokenType.ForwardSlash when source is "/" => Token.ForwardSlash(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.ForwardSlash when source is "/" => Token.ForwardSlash(new SourceSpan(position,
+                (ushort)source.Length)),
             TokenType.Star when source is "*" => Token.Star(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Plus when source is "+" => Token.Plus(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Dash when source is "-" => Token.Dash(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Dot when source is "." => Token.Dot(new SourceSpan(position, (ushort)source.Length)),
-            TokenType.SingleLineComment when source.StartsWith("//") => Token.SingleLineComment(source[2..].ToString(), new SourceSpan(position, (ushort)source.Length)),
-            TokenType.MultiLineComment when source.StartsWith("/*") && source.EndsWith("*/") => Token.MultiLineComment(source[2..^2].ToString(), new SourceSpan(position, (ushort)source.Length)),
-            TokenType.Underscore when source is "_" => Token.Underscore(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.SingleLineComment when source.StartsWith("//") => Token.SingleLineComment(source[2..].ToString(),
+                new SourceSpan(position, (ushort)source.Length)),
+            TokenType.MultiLineComment when source.StartsWith("/*") && source.EndsWith("*/") => Token.MultiLineComment(
+                source[2..^2].ToString(), new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Underscore when source is "_" =>
+                Token.Underscore(new SourceSpan(position, (ushort)source.Length)),
             TokenType.None => throw new UnreachableException(),
             _ => null
         };
@@ -308,8 +322,6 @@ public class Tokenizer
         return token is not null;
     }
 
-    // maximum potential token types at the same time
-    private const int MaxPotentialTokenTypes = 4;
     private static int GetPotentiallyValidTokenTypes(char firstChar, ref Span<TokenType?> tokens)
     {
         var i = 0;
@@ -457,10 +469,10 @@ public class Tokenizer
                 break;
             }
         }
-        
+
         return i;
     }
-    
+
     private static bool IsPotentiallyValid(TokenType type, ReadOnlySpan<char> source)
     {
         return type switch
@@ -468,10 +480,10 @@ public class Tokenizer
             TokenType.Identifier => IsValidIdentifier(source),
             TokenType.If => Matches(source, "if"),
             TokenType.LeftParenthesis => Matches(source, "("),
-            TokenType.RightParenthesis => Matches(source,")"),
-            TokenType.Todo => Matches(source,"todo!"),
-            TokenType.Underscore => Matches(source,"_"),
-            TokenType.Bang => Matches(source,"!"),
+            TokenType.RightParenthesis => Matches(source, ")"),
+            TokenType.Todo => Matches(source, "todo!"),
+            TokenType.Underscore => Matches(source, "_"),
+            TokenType.Bang => Matches(source, "!"),
             TokenType.Semicolon => Matches(source, ";"),
             TokenType.LeftBrace => Matches(source, "{"),
             TokenType.Union => Matches(source, "union"),
@@ -494,7 +506,7 @@ public class Tokenizer
             TokenType.RightAngleBracket => Matches(source, ">"),
             TokenType.Var => Matches(source, "var"),
             TokenType.Equals => Matches(source, "="),
-            TokenType.Comma => Matches(source ,","),
+            TokenType.Comma => Matches(source, ","),
             TokenType.DoubleEquals => Matches(source, "=="),
             TokenType.Else => Matches(source, "else"),
             TokenType.IntLiteral => !source.ContainsAnyExcept(Digits),
@@ -515,7 +527,8 @@ public class Tokenizer
             TokenType.Dash => Matches(source, "-"),
             TokenType.Dot => Matches(source, "."),
             TokenType.SingleLineComment => source.StartsWith("//") && !source.EndsWith('\r'),
-            TokenType.MultiLineComment => source.StartsWith("/*") && (source.EndsWith("*/") || !source.Contains("*/", StringComparison.Ordinal)),
+            TokenType.MultiLineComment => source.StartsWith("/*") &&
+                                          (source.EndsWith("*/") || !source.Contains("*/", StringComparison.Ordinal)),
             TokenType.None => throw new UnreachableException(),
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
@@ -542,9 +555,11 @@ public class Tokenizer
         }
 
         static bool Matches(ReadOnlySpan<char> source, ReadOnlySpan<char> expected)
-            => expected.StartsWith(source) && source.Length <= expected.Length;
+        {
+            return expected.StartsWith(source) && source.Length <= expected.Length;
+        }
     }
-    
+
     private static bool IsValidIdentifier(ReadOnlySpan<char> source)
     {
         if (char.IsDigit(source[0]))

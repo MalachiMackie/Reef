@@ -8,7 +8,7 @@ public class ExpressionMetaTests
         .Select(x => new object?[] { x, null, null })
         .Concat(Enum.GetValues<UnaryOperatorType>().Select(x => new object?[] { null, x, null }))
         .Concat(Enum.GetValues<BinaryOperatorType>().Select(x => new object?[] { null, null, x }));
-    
+
     [Theory]
     [MemberData(nameof(ExpressionTypes))]
     public void Meta_Should_TestAllExpressionTypes(
@@ -27,7 +27,7 @@ public class ExpressionMetaTests
             .Select(x => x.UnaryOperator.OperatorType);
         var checkedBinaryOperatorTypes = testCases.OfType<BinaryOperatorExpression>()
             .Where(x => x.BinaryOperator.Left.ExpressionType == ExpressionType.ValueAccess
-                && x.BinaryOperator.Right.ExpressionType == ExpressionType.ValueAccess)
+                        && x.BinaryOperator.Right.ExpressionType == ExpressionType.ValueAccess)
             .Select(x => x.BinaryOperator.OperatorType);
 
         if (valueAccessType.HasValue)
@@ -48,7 +48,8 @@ public class ExpressionMetaTests
 
     [Theory]
     [MemberData(nameof(OperatorCombinationMetaTestCases))]
-    public void Meta_Should_TestAllOperatorCombinations(BinaryOperatorType? binaryA, BinaryOperatorType? binaryB, UnaryOperatorType? unaryA, UnaryOperatorType? unaryB)
+    public void Meta_Should_TestAllOperatorCombinations(BinaryOperatorType? binaryA, BinaryOperatorType? binaryB,
+        UnaryOperatorType? unaryA, UnaryOperatorType? unaryB)
     {
         var testCases = ParserTests.PopExpressionTestCases()
             .Select(x => x[^1])
@@ -60,32 +61,35 @@ public class ExpressionMetaTests
             foreach (var x in testCases)
             {
                 if (
-                        //  a < (b * c)
-                        x is BinaryOperatorExpression
+                    //  a < (b * c)
+                    (x is BinaryOperatorExpression
+                    {
+                        BinaryOperator:
+                        {
+                            OperatorType: var a1,
+                            Left.ExpressionType: ExpressionType.ValueAccess,
+                            Right:
+                            BinaryOperatorExpression
+                            {
+                                BinaryOperator:
+                                {
+                                    OperatorType: var b1,
+                                    Left.ExpressionType: ExpressionType.ValueAccess,
+                                    Right.ExpressionType: ExpressionType.ValueAccess
+                                }
+                            }
+                        }
+                    } && a1 == binaryA.Value && b1 == binaryB.Value)
+                    // (a < b) > c
+                    || (x is
+                        BinaryOperatorExpression
                         {
                             BinaryOperator:
                             {
-                                OperatorType: var a1,
-                                Left.ExpressionType: ExpressionType.ValueAccess,
-                                Right:
-                                BinaryOperatorExpression {
-                                    BinaryOperator:
-                                    {
-                                        OperatorType: var b1,
-                                        Left.ExpressionType: ExpressionType.ValueAccess,
-                                        Right.ExpressionType: ExpressionType.ValueAccess
-                                    }
-                                }
-                            }
-                        } && a1 == binaryA.Value && b1 == binaryB.Value
-                        // (a < b) > c
-                        || x is
-                        BinaryOperatorExpression {
-                            BinaryOperator:
-                            {
                                 OperatorType: var b2,
                                 Left:
-                                BinaryOperatorExpression {
+                                BinaryOperatorExpression
+                                {
                                     BinaryOperator:
                                     {
                                         OperatorType: var a2,
@@ -95,48 +99,52 @@ public class ExpressionMetaTests
                                 },
                                 Right.ExpressionType: ExpressionType.ValueAccess
                             }
-                        } && a2 == binaryA.Value && b2 == binaryB.Value)
+                        } && a2 == binaryA.Value && b2 == binaryB.Value))
                 {
-                    
                 }
             }
-            testCases.Count(x => 
+
+            testCases.Count(x =>
                 //  a < (b * c)
-                        x is
-                        BinaryOperatorExpression {
-                            BinaryOperator:
+                (x is
+                    BinaryOperatorExpression
+                    {
+                        BinaryOperator:
+                        {
+                            OperatorType: var a1,
+                            Left.ExpressionType: ExpressionType.ValueAccess,
+                            Right:
+                            BinaryOperatorExpression
                             {
-                                OperatorType: var a1,
-                                Left.ExpressionType: ExpressionType.ValueAccess,
-                                Right:
-                                BinaryOperatorExpression {
-                                    BinaryOperator:
-                                    {
-                                        OperatorType: var b1,
-                                        Left.ExpressionType: ExpressionType.ValueAccess,
-                                        Right.ExpressionType: ExpressionType.ValueAccess
-                                    }
+                                BinaryOperator:
+                                {
+                                    OperatorType: var b1,
+                                    Left.ExpressionType: ExpressionType.ValueAccess,
+                                    Right.ExpressionType: ExpressionType.ValueAccess
                                 }
                             }
-                        } && a1 == binaryA.Value && b1 == binaryB.Value
-                        // (a < b) > c
-                        || x is
-                        BinaryOperatorExpression {
-                            BinaryOperator:
+                        }
+                    } && a1 == binaryA.Value && b1 == binaryB.Value)
+                // (a < b) > c
+                || (x is
+                    BinaryOperatorExpression
+                    {
+                        BinaryOperator:
+                        {
+                            OperatorType: var b2,
+                            Left:
+                            BinaryOperatorExpression
                             {
-                                OperatorType: var b2,
-                                Left:
-                                BinaryOperatorExpression {
-                                    BinaryOperator:
-                                    {
-                                        OperatorType: var a2,
-                                        Left.ExpressionType: ExpressionType.ValueAccess,
-                                        Right.ExpressionType: ExpressionType.ValueAccess
-                                    }
-                                },
-                                Right.ExpressionType: ExpressionType.ValueAccess
-                            }
-                        } && a2 == binaryA.Value && b2 == binaryB.Value).Should().BeGreaterThan(0);
+                                BinaryOperator:
+                                {
+                                    OperatorType: var a2,
+                                    Left.ExpressionType: ExpressionType.ValueAccess,
+                                    Right.ExpressionType: ExpressionType.ValueAccess
+                                }
+                            },
+                            Right.ExpressionType: ExpressionType.ValueAccess
+                        }
+                    } && a2 == binaryA.Value && b2 == binaryB.Value)).Should().BeGreaterThan(0);
         }
 
         // a < b?
@@ -144,30 +152,34 @@ public class ExpressionMetaTests
         {
             testCases.Count(x =>
                     //  a < (b?)
-                        x is
-                        BinaryOperatorExpression {
+                    (x is
+                        BinaryOperatorExpression
+                        {
                             BinaryOperator:
                             {
                                 OperatorType: var a1,
                                 Left.ExpressionType: ExpressionType.ValueAccess,
                                 Right:
-                                UnaryOperatorExpression {
+                                UnaryOperatorExpression
+                                {
                                     UnaryOperator:
                                     {
                                         OperatorType: var b1,
-                                        Operand.ExpressionType: ExpressionType.ValueAccess,
+                                        Operand.ExpressionType: ExpressionType.ValueAccess
                                     }
                                 }
                             }
-                        } && a1 == binaryA.Value && b1 == unaryB.Value
-                        // (a < b)?
-                        || x is
-                        UnaryOperatorExpression {
+                        } && a1 == binaryA.Value && b1 == unaryB.Value)
+                    // (a < b)?
+                    || (x is
+                        UnaryOperatorExpression
+                        {
                             UnaryOperator:
                             {
                                 OperatorType: var b2,
                                 Operand:
-                                BinaryOperatorExpression {
+                                BinaryOperatorExpression
+                                {
                                     BinaryOperator:
                                     {
                                         OperatorType: var a2,
@@ -176,40 +188,44 @@ public class ExpressionMetaTests
                                     }
                                 }
                             }
-                        } && a2 == binaryA.Value && b2 == unaryB.Value
+                        } && a2 == binaryA.Value && b2 == unaryB.Value)
                 )
                 .Should().BeGreaterThan(0);
         }
-        
+
         // a? < b
         if (unaryA.HasValue && binaryB.HasValue)
         {
             testCases.Count(x =>
                     //  !(a < b)
-                        x is
-                        UnaryOperatorExpression {
+                    (x is
+                        UnaryOperatorExpression
+                        {
                             UnaryOperator:
                             {
                                 OperatorType: var a1,
                                 Operand:
-                                BinaryOperatorExpression {
+                                BinaryOperatorExpression
+                                {
                                     BinaryOperator:
                                     {
                                         OperatorType: var b1,
                                         Left.ExpressionType: ExpressionType.ValueAccess,
-                                        Right.ExpressionType: ExpressionType.ValueAccess,
+                                        Right.ExpressionType: ExpressionType.ValueAccess
                                     }
                                 }
                             }
-                        } && a1 == unaryA.Value && b1 == binaryB.Value
-                        // (!a) < b
-                        || x is
-                        BinaryOperatorExpression {
+                        } && a1 == unaryA.Value && b1 == binaryB.Value)
+                    // (!a) < b
+                    || (x is
+                        BinaryOperatorExpression
+                        {
                             BinaryOperator:
                             {
                                 OperatorType: var b2,
                                 Left:
-                                UnaryOperatorExpression {
+                                UnaryOperatorExpression
+                                {
                                     UnaryOperator:
                                     {
                                         OperatorType: var a2,
@@ -218,16 +234,16 @@ public class ExpressionMetaTests
                                 },
                                 Right.ExpressionType: ExpressionType.ValueAccess
                             }
-                        } && a2 == unaryA.Value && b2 == binaryB.Value
+                        } && a2 == unaryA.Value && b2 == binaryB.Value)
                 )
                 .Should().BeGreaterThan(0);
         }
-        
+
         if (unaryA.HasValue && unaryB.HasValue)
         {
             testCases.Count(x => x is UnaryOperatorExpression
                 {
-                    UnaryOperator: 
+                    UnaryOperator:
                     {
                         OperatorType: var a1,
                         Operand: UnaryOperatorExpression
@@ -235,37 +251,37 @@ public class ExpressionMetaTests
                             UnaryOperator.OperatorType: var b1
                         }
                     }
-                } && (a1 == unaryA.Value && b1 == unaryB.Value || a1 == unaryB.Value && b1 == unaryA.Value))
+                } && ((a1 == unaryA.Value && b1 == unaryB.Value) || (a1 == unaryB.Value && b1 == unaryA.Value)))
                 .Should().BeGreaterThan(0);
         }
     }
 
     public static IEnumerable<object?[]> OperatorCombinationMetaTestCases()
     {
-         var binaryCombinations = Enum.GetValues<BinaryOperatorType>()
-             .SelectMany(x => Enum.GetValues<BinaryOperatorType>().Select(y => (x, y)));
-         foreach (var (binaryA, binaryB) in binaryCombinations) 
-         {
-             // a + b - c
+        var binaryCombinations = Enum.GetValues<BinaryOperatorType>()
+            .SelectMany(x => Enum.GetValues<BinaryOperatorType>().Select(y => (x, y)));
+        foreach (var (binaryA, binaryB) in binaryCombinations)
+        {
+            // a + b - c
             yield return [binaryA, binaryB, null, null];
-         }
-         
-         var unaryCombinations = Enum.GetValues<UnaryOperatorType>()
-             .SelectMany(x => Enum.GetValues<UnaryOperatorType>().Select(y => (x, y)));
-         foreach (var (unaryA, unaryB) in unaryCombinations) 
-         {
-             // a??
+        }
+
+        var unaryCombinations = Enum.GetValues<UnaryOperatorType>()
+            .SelectMany(x => Enum.GetValues<UnaryOperatorType>().Select(y => (x, y)));
+        foreach (var (unaryA, unaryB) in unaryCombinations)
+        {
+            // a??
             yield return [null, null, unaryA, unaryB];
-         }
-         
-         var binaryToUnaryCombinations = Enum.GetValues<BinaryOperatorType>()
-             .SelectMany(x => Enum.GetValues<UnaryOperatorType>().Select(y => (x, y)));
-         foreach (var (binary, unary) in binaryToUnaryCombinations)
-         {
-             // a + b?;
-             yield return [binary, null, null, unary];
-             // a? + b;
-             yield return [null, binary, unary, null];
-         }
+        }
+
+        var binaryToUnaryCombinations = Enum.GetValues<BinaryOperatorType>()
+            .SelectMany(x => Enum.GetValues<UnaryOperatorType>().Select(y => (x, y)));
+        foreach (var (binary, unary) in binaryToUnaryCombinations)
+        {
+            // a + b?;
+            yield return [binary, null, null, unary];
+            // a? + b;
+            yield return [null, binary, unary, null];
+        }
     }
 }

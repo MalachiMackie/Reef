@@ -6,21 +6,6 @@ namespace NewLang.Core.Benchmarks;
 [MemoryDiagnoser]
 public class TokenizerBenchmarks
 {
-    [Params(SmallSource, MediumSource, LargeSource)]
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
-    // ReSharper disable once UnassignedField.Global
-    public string Source;
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
-
-    private readonly Consumer _consumer = new();
-
-    [Benchmark]
-    public void BenchmarkTokenize()
-    {
-        Tokenizer.Tokenize(Source).Consume(_consumer);
-    }
-    
-
     private const string SmallSource = "var a = 2;";
 
     private const string MediumSource = """
@@ -50,31 +35,44 @@ public class TokenizerBenchmarks
                                         """;
 
     private const string LargeSource = $"""
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       """;
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        """;
+
+    private readonly Consumer _consumer = new();
+    [Params(SmallSource, MediumSource, LargeSource)]
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+    // ReSharper disable once UnassignedField.Global
+    public string Source;
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+
+    [Benchmark]
+    public void BenchmarkTokenize()
+    {
+        Tokenizer.Tokenize(Source).Consume(_consumer);
+    }
 }

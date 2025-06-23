@@ -43,6 +43,7 @@ public record TypeIdentifier(Token Identifier, IReadOnlyList<TypeIdentifier> Typ
             sb.AppendJoin(", ", TypeArguments);
             sb.Append('>');
         }
+
         return sb.ToString();
     }
 }
@@ -56,9 +57,8 @@ public record LangFunction(
     TypeIdentifier? ReturnType,
     Block Block)
 {
-    
     public TypeChecker.FunctionSignature? Signature { get; set; }
-    
+
     public override string ToString()
     {
         var sb = new StringBuilder();
@@ -66,6 +66,7 @@ public record LangFunction(
         {
             sb.Append($"{AccessModifier} ");
         }
+
         sb.Append($"fn {Name}");
         if (TypeArguments.Count > 0)
         {
@@ -73,6 +74,7 @@ public record LangFunction(
             sb.AppendJoin(", ", TypeArguments);
             sb.Append('>');
         }
+
         sb.Append('(');
         sb.AppendJoin(", ", Parameters);
         sb.Append(')');
@@ -80,6 +82,7 @@ public record LangFunction(
         {
             sb.Append($": {ReturnType}");
         }
+
         sb.Append($"{Block}");
 
         return sb.ToString();

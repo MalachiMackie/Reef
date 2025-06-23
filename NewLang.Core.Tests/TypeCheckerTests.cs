@@ -4,6 +4,114 @@ namespace NewLang.Core.Tests;
 
 public class TypeCheckerTests
 {
+    private const string Mvp =
+        """
+        pub fn DoSomething(a: int): result::<int, string> {
+            var mut b: int = 2;
+            
+            if (a > b) {
+                return ok(a);
+            }
+            else if (a == b) {
+                return result::<int, string>::Ok(b);
+            }
+        
+            b = 3;
+        
+            var thing = new Class2 {
+                A = "thing"
+            };
+        
+            MyClass::StaticMethod();
+        
+            PrivateFn::<string>();
+            
+            if (false) {
+                // lowercase error keyword
+                return error("something wrong");
+            }
+        
+            // Capital Error for fully resolved variant
+            return result::<int, string>::Error("something wrong");
+        }
+
+        fn PrivateFn<T>() {
+        }
+
+        pub fn SomethingElse(a: int): result::<int, string> {
+            var b = DoSomething(a)?;
+            var mut c = 2;
+            
+            return result::<int, string>::Ok(b);
+        }
+
+        pub class MyClass {
+            pub fn PublicMethod() {
+            }
+        
+            pub static fn StaticMethod() {
+        
+            }
+            
+            field FieldA: string,
+            mut field FieldB: string,
+            pub mut field FieldC: string,
+            pub field FieldD: string,
+            pub static field FieldE: string = "something",
+            pub static mut field FieldF: string = "something",
+        }
+
+        pub class GenericClass<T> {
+            pub fn PublicMethod<T1>() {
+            }
+        }
+
+        // a class
+        pub class Class2 {
+            pub field A: string,
+        }
+
+        /*
+            A union
+        */
+        pub union MyUnion {
+            A,
+            B { field MyField: string, },
+            C(string),
+            
+            fn SomeMethod() {
+                var foo = match (this) {
+                    MyUnion::A => "",
+                    MyUnion::B { MyField } => MyField,
+                    MyUnion::C(var value) => value
+                };
+                
+                var bar = match (this) {
+                    MyUnion::A => 1,
+                    MyUnion::B => 2,
+                    MyUnion::C => 3
+                }
+            }
+        }
+
+        fn AnotherMethod(param: MyUnion) {
+            if (param matches MyUnion::A) {
+            }
+            else if (param matches MyUnion::B { MyField }) {
+            }
+            
+            var a = match (param) {
+                MyUnion::A => 1,
+                MyUnion::B { MyField } => 2,
+                MyUnion::C(var value) => 3
+            };
+        }
+
+        var a = MyUnion::A;
+
+        var c = new MyUnion::B{ MyField = ""};
+        """;
+
     [Theory]
     [MemberData(nameof(SuccessfulExpressionTestCases))]
     public void Should_SuccessfullyTypeCheckExpressions(string source)
@@ -26,32 +134,33 @@ public class TypeCheckerTests
     [Fact]
     public void SingleTest()
     {
-        const string src = 
+        const string src =
             """
-             var a = SomeFn();
-             var b = a;
-             
-             var c = OtherFn(b);
-             
-             var d: String = c;
+            var a = SomeFn();
+            var b = a;
 
-             fn OtherFn<T>(param: T): T {
-                 return param;
-             }
+            var c = OtherFn(b);
 
-             fn SomeFn<T>(): T {
-                 return todo!;
-             }
-             """;
-        
+            var d: String = c;
+
+            fn OtherFn<T>(param: T): T {
+                return param;
+            }
+
+            fn SomeFn<T>(): T {
+                return todo!;
+            }
+            """;
+
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program);
 
         act.Should().NotThrow<InvalidOperationException>();
     }
 
-    public static TheoryData<string> SuccessfulExpressionTestCases() =>
-        new()
+    public static TheoryData<string> SuccessfulExpressionTestCases()
+    {
+        return new TheoryData<string>
         {
             """
             fn OtherFn<T2>(param2: T2): T2 {
@@ -78,112 +187,112 @@ public class TypeCheckerTests
                 var a = OtherFn();
                 return a;
             }
-            
+
             fn OtherFn<T>(): T {
                 return todo!;
             }
             """,
-             """
-             var a = SomeFn();
-             var b = a;
-             
-             var c = OtherFn(b);
-             
-             var d: String = c;
+            """
+            var a = SomeFn();
+            var b = a;
 
-             fn OtherFn<T>(param: T): T {
-                 return param;
-             }
+            var c = OtherFn(b);
 
-             fn SomeFn<T>(): T {
-                 return todo!;
-             }
-             """,
-             "var a: string = todo!",
-             """
-             fn SomeFn() {
-                 return todo!;
-             }
-             """,
-             """
-             fn SomeFn(): string {
-                 return todo!;
-             }
-             """,
-             """
-             fn SomeFn<T>(param: T): T {
-                 return param;
-             }
-             
-             var a = SomeFn("");
-             var b = SomeFn(2);
-             var c = b + b;
-             """,
-             """
-             class MyClass<T> {
-                 fn SomeFn(param: T): result::<T, string> {
-                     if (true) {
-                         return ok(param);
-                     }
-                     return error("some error");
-                 }
-             }
-             """,
-             "var a: result::<int, bool> = error(false);",
-             "var a: result::<int, bool> = ok(1);",
-             """
-             var a = match ("") {
-                 var b => ok(1),
-                 _ => error("")
-             };
-             """,
-             """
-             fn SomeFn(): result::<int, bool> {
-                 if (true) {
-                     return ok(1);
-                 }
-                 
-                 return error(false);
-             }
-             """,
-             """
-             fn SomeFn(param: result::<int, bool>) {
-             }
-             
-             var a = ok(1);
-             SomeFn(a);
-             var b = error(false);
-             SomeFn(b);
-             """,
-             """
-             class MyClass {
-                 fn SomeFn() {
-                     var a: MyClass = this;
-                 }
-             }
-             """,
-             """
-             union MyUnion {
-                 A,
-                 
-                 fn SomeFn() {
-                     var a: MyUnion = this;
-                 }
-             }
-             """,
-             """
-             union MyUnion {
-                 A,
-                 B(int),
-                 C { field MyField: int }
-             }
-             var a = MyUnion::A;
-             match (a) {
-                 MyUnion::A => 1,
-                 MyUnion::B(var b) => b,
-                 MyUnion::C { MyField } => MyField,
-             }
-             """,
+            var d: String = c;
+
+            fn OtherFn<T>(param: T): T {
+                return param;
+            }
+
+            fn SomeFn<T>(): T {
+                return todo!;
+            }
+            """,
+            "var a: string = todo!",
+            """
+            fn SomeFn() {
+                return todo!;
+            }
+            """,
+            """
+            fn SomeFn(): string {
+                return todo!;
+            }
+            """,
+            """
+            fn SomeFn<T>(param: T): T {
+                return param;
+            }
+
+            var a = SomeFn("");
+            var b = SomeFn(2);
+            var c = b + b;
+            """,
+            """
+            class MyClass<T> {
+                fn SomeFn(param: T): result::<T, string> {
+                    if (true) {
+                        return ok(param);
+                    }
+                    return error("some error");
+                }
+            }
+            """,
+            "var a: result::<int, bool> = error(false);",
+            "var a: result::<int, bool> = ok(1);",
+            """
+            var a = match ("") {
+                var b => ok(1),
+                _ => error("")
+            };
+            """,
+            """
+            fn SomeFn(): result::<int, bool> {
+                if (true) {
+                    return ok(1);
+                }
+                
+                return error(false);
+            }
+            """,
+            """
+            fn SomeFn(param: result::<int, bool>) {
+            }
+
+            var a = ok(1);
+            SomeFn(a);
+            var b = error(false);
+            SomeFn(b);
+            """,
+            """
+            class MyClass {
+                fn SomeFn() {
+                    var a: MyClass = this;
+                }
+            }
+            """,
+            """
+            union MyUnion {
+                A,
+                
+                fn SomeFn() {
+                    var a: MyUnion = this;
+                }
+            }
+            """,
+            """
+            union MyUnion {
+                A,
+                B(int),
+                C { field MyField: int }
+            }
+            var a = MyUnion::A;
+            match (a) {
+                MyUnion::A => 1,
+                MyUnion::B(var b) => b,
+                MyUnion::C { MyField } => MyField,
+            }
+            """,
             """
             union MyUnion {
                 A,
@@ -300,17 +409,17 @@ public class TypeCheckerTests
             class MyClass {
                 pub mut field MyField: string
             }
-            
+
             var mut a = new MyClass {
                 MyField = ""
             };
-            
+
             a.MyField = "";
             """,
             """
             class MyClass { pub mut field MyField: string }
             var mut a = new MyClass { MyField = "" };
-            
+
             // a is not marked as mutable
             a.MyField = "";
             """,
@@ -322,7 +431,7 @@ public class TypeCheckerTests
             class MyClass {
                 pub static mut field MyField: string = ""
             };
-            
+
             MyClass::MyField = "";
             """,
             """
@@ -342,12 +451,12 @@ public class TypeCheckerTests
             fn MyFn(mut param: string) {
             }
             var mut a = "";
-            
+
             MyFn(a);
             """,
             """
             union MyUnion {A}
-            
+
             var a: MyUnion = MyUnion::A;
             """,
             """
@@ -413,28 +522,28 @@ public class TypeCheckerTests
             fn MyFn(): result::<string, int> {
                 var a: string = OtherFn()?;
             }
-            
+
             fn OtherFn(): result::<string, int> {
                 return result::<string, int>::Error(1);
             }
             """,
             """
             MyClass::StaticMethod();
-            
+
             class MyClass {
                 pub static fn StaticMethod() {}
             }
             """,
             """
             var a: string = MyClass::<string>::StaticMethod("");
-            
+
             class MyClass<T> {
                 pub static fn StaticMethod(param: T): T { return param; }
             }
             """,
             """
             var a: int = MyClass::<string>::StaticMethod::<int>("", 1);
-            
+
             class MyClass<T> {
                 pub static fn StaticMethod<T2>(param: T, param2: T2): T2 { return param2; }
             }
@@ -453,7 +562,7 @@ public class TypeCheckerTests
                 fn MyFn<T2>(param1: T, param2: T2) {
                 }
             }
-            
+
             var a = new MyClass::<int>{};
             a.MyFn::<string>(1, "");
             """,
@@ -524,11 +633,11 @@ public class TypeCheckerTests
                     return param;
                 }
             }
-            
+
             var a = new MyClass::<string>{};
-            
+
             var b = a.MyFn;
-            
+
             var c = b("");
             """,
             """
@@ -572,7 +681,7 @@ public class TypeCheckerTests
                  fn MyFn<T2>() {
                  }
             }
-            
+
             var a = new MyClass::<string>{};
             var b = a.MyFn::<int>();
             """,
@@ -750,9 +859,11 @@ public class TypeCheckerTests
             """,
             Mvp
         };
+    }
 
-    public static TheoryData<string> FailedExpressionTestCases() =>
-        new()
+    public static TheoryData<string> FailedExpressionTestCases()
+    {
+        return new TheoryData<string>
         {
             """
             fn SomeFn<T>(param: T) {
@@ -770,7 +881,7 @@ public class TypeCheckerTests
             """
             fn SomeFn<T>() {
             }
-            
+
             SomeFn();
             """,
             """
@@ -845,7 +956,7 @@ public class TypeCheckerTests
             union MyUnion { A }
             var a = MyUnion::A;
             var z = a matches MyUnion::A var b;
-            
+
             var c: MyUnion = b;
             """,
             """
@@ -1023,7 +1134,7 @@ public class TypeCheckerTests
             class MyClass {
                 field MyField: string
             }
-            
+
             // MyField is not accessible
             var a = new MyClass { MyField = "" };
             """,
@@ -1056,18 +1167,18 @@ public class TypeCheckerTests
             class MyClass {
                 pub field MyField: string
             }
-            
+
             var mut a = new MyClass {
                 MyField = ""
             };
-            
+
             // MyField is not mutable
             a.MyField = "";
             """,
             """
             class MyClass { pub mut field MyField: string }
             var a = new MyClass { MyField = "" };
-            
+
             // a is not marked as mutable
             a.MyField = "";
             """,
@@ -1080,7 +1191,7 @@ public class TypeCheckerTests
             class MyClass {
                 pub static field MyField: string
             };
-            
+
             // MyField is not marked as mutable
             MyClass::MyField = "";
             """,
@@ -1103,7 +1214,7 @@ public class TypeCheckerTests
             fn MyFn(mut param: string) {
             }
             var a = "";
-            
+
             // param is mut, but a is not marked as mutable
             MyFn(a);
             """,
@@ -1207,7 +1318,7 @@ public class TypeCheckerTests
                 fn MyFn<T2>(param1: T, param2: T2) {
                 }
             }
-            
+
             var a = new MyClass::<int>{};
             a.MyFn::<string>("", 1);
             """,
@@ -1216,7 +1327,7 @@ public class TypeCheckerTests
                 fn MyFn<T2>(param1: T, param2: T2) {
                 }
             }
-            
+
             var a = new MyClass::<int>{};
             a.MyFn::<string>("", "");
             """,
@@ -1225,7 +1336,7 @@ public class TypeCheckerTests
                 fn MyFn<T2>(param1: T, param2: T2) {
                 }
             }
-            
+
             var a = new MyClass::<int>{};
             a.MyFn::<string>(1, 1);
             """,
@@ -1344,112 +1455,5 @@ public class TypeCheckerTests
             var b: string = a.someField;
             """
         };
-
-    private const string Mvp =
-        """
-        pub fn DoSomething(a: int): result::<int, string> {
-            var mut b: int = 2;
-            
-            if (a > b) {
-                return ok(a);
-            }
-            else if (a == b) {
-                return result::<int, string>::Ok(b);
-            }
-        
-            b = 3;
-        
-            var thing = new Class2 {
-                A = "thing"
-            };
-        
-            MyClass::StaticMethod();
-        
-            PrivateFn::<string>();
-            
-            if (false) {
-                // lowercase error keyword
-                return error("something wrong");
-            }
-        
-            // Capital Error for fully resolved variant
-            return result::<int, string>::Error("something wrong");
-        }
-
-        fn PrivateFn<T>() {
-        }
-
-        pub fn SomethingElse(a: int): result::<int, string> {
-            var b = DoSomething(a)?;
-            var mut c = 2;
-            
-            return result::<int, string>::Ok(b);
-        }
-
-        pub class MyClass {
-            pub fn PublicMethod() {
-            }
-        
-            pub static fn StaticMethod() {
-        
-            }
-            
-            field FieldA: string,
-            mut field FieldB: string,
-            pub mut field FieldC: string,
-            pub field FieldD: string,
-            pub static field FieldE: string = "something",
-            pub static mut field FieldF: string = "something",
-        }
-
-        pub class GenericClass<T> {
-            pub fn PublicMethod<T1>() {
-            }
-        }
-
-        // a class
-        pub class Class2 {
-            pub field A: string,
-        }
-
-        /*
-            A union
-        */
-        pub union MyUnion {
-            A,
-            B { field MyField: string, },
-            C(string),
-            
-            fn SomeMethod() {
-                var foo = match (this) {
-                    MyUnion::A => "",
-                    MyUnion::B { MyField } => MyField,
-                    MyUnion::C(var value) => value
-                };
-                
-                var bar = match (this) {
-                    MyUnion::A => 1,
-                    MyUnion::B => 2,
-                    MyUnion::C => 3
-                }
-            }
-        }
-
-        fn AnotherMethod(param: MyUnion) {
-            if (param matches MyUnion::A) {
-            }
-            else if (param matches MyUnion::B { MyField }) {
-            }
-            
-            var a = match (param) {
-                MyUnion::A => 1,
-                MyUnion::B { MyField } => 2,
-                MyUnion::C(var value) => 3
-            };
-        }
-
-        var a = MyUnion::A;
-
-        var c = new MyUnion::B{ MyField = ""};
-        """;
+    }
 }

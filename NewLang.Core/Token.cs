@@ -104,7 +104,7 @@ public record Token
     {
         return new Token { Type = TokenType.Union, SourceSpan = sourceSpan };
     }
-    
+
     public static Token Static(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.Static, SourceSpan = sourceSpan };
@@ -184,7 +184,7 @@ public record Token
     {
         return new Token { Type = TokenType.Turbofish, SourceSpan = sourceSpan };
     }
-    
+
     public static Token EqualsArrow(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.EqualsArrow, SourceSpan = sourceSpan };

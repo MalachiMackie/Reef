@@ -8,7 +8,7 @@ public class TokenizerMetaTests
     public static readonly IEnumerable<object[]> TokenTypes = Enum.GetValues<TokenType>()
         .Except([TokenType.None])
         .Select(x => new object[] { x });
-    
+
     [Theory]
     [MemberData(nameof(TokenTypes))]
     public void Should_TestAllTokenTypes(TokenType tokenType)

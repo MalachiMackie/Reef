@@ -4,6 +4,86 @@ namespace NewLang.Core.Tests;
 
 public class TokenizerTests
 {
+    private const string MediumSource = """
+                                        pub fn DoSomething(a: int): result<int, string> {
+                                            var b = 2;
+                                            
+                                            if (a > b) {
+                                                return ok(a);
+                                            }
+                                            else if (a == b) {
+                                                return ok(b);
+                                            }
+                                            
+                                            return error("something wrong");
+                                        }
+
+                                        pub fn SomethingElse(a: int): result<int, string> {
+                                            b = DoSomething(a)?;
+                                            
+                                            return b;
+                                        }
+
+                                        Println(DoSomething(5));
+                                        Println(DoSomething(1));
+                                        Println(SomethingElse(1));
+
+                                        """;
+
+    private const string LargeSource = $"""
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        """;
+
     [Theory]
     [MemberData(nameof(TestCases))]
     public void Tests(string source, IEnumerable<Token> expectedTokens)
@@ -12,7 +92,7 @@ public class TokenizerTests
 
         result.Should().BeEquivalentTo(expectedTokens);
     }
-    
+
     [Theory]
     [MemberData(nameof(SingleTestCases))]
     public void SingleTests(string source, IEnumerable<Token> expectedTokens)
@@ -36,7 +116,7 @@ public class TokenizerTests
     public void Should_TokenizeNonEnglishCharacters()
     {
         const string source = "漢";
-        
+
         var result = Tokenizer.Tokenize(source);
 
         result.Should().BeEquivalentTo([Token.Identifier("漢", new SourceSpan(new SourcePosition(0, 0, 0), 1))]);
@@ -50,7 +130,8 @@ public class TokenizerTests
 
     public static IEnumerable<object[]> SingleTestCases()
     {
-        return [
+        return
+        [
             [
                 """
                 pub fn DoSomething(a: int): result<int, string> {
@@ -109,7 +190,7 @@ public class TokenizerTests
             ]
         ];
     }
-    
+
 
     public static IEnumerable<object[]> TestCases()
     {
@@ -120,7 +201,7 @@ public class TokenizerTests
             [" ", Array.Empty<Token>()],
             ["  ", Array.Empty<Token>()],
             ["\t\t", Array.Empty<Token>()],
-            
+
             // single tokens
             ["::", new[] { Token.DoubleColon(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["pub", new[] { Token.Pub(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
@@ -130,30 +211,42 @@ public class TokenizerTests
             ["match", new[] { Token.Match(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["_", new[] { Token.Underscore(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["class", new[] { Token.Class(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
-            ["// some comment here", new [] { Token.SingleLineComment(" some comment here", new SourceSpan(new SourcePosition(0, 0, 0), 20)) }],
+            [
+                "// some comment here",
+                new[] { Token.SingleLineComment(" some comment here", new SourceSpan(new SourcePosition(0, 0, 0), 20)) }
+            ],
             [
                 "// some comment here\r\nfn",
-                new []
+                new[]
                 {
                     Token.SingleLineComment(" some comment here", new SourceSpan(new SourcePosition(0, 0, 0), 20)),
                     Token.Fn(new SourceSpan(new SourcePosition(22, 1, 0), 2))
                 }
             ],
-            ["""
-             /*
-             multi line
-             comment
-             */
-             """, new [] { Token.MultiLineComment("\r\nmulti line\r\ncomment\r\n", new SourceSpan(new SourcePosition(0, 0, 0), 27)) }],
             [
                 """
-                 /*
-                 multi line
-                 comment
-                 */ fn
-                 """, new []
+                /*
+                multi line
+                comment
+                */
+                """,
+                new[]
                 {
-                    Token.MultiLineComment("\r\nmulti line\r\ncomment\r\n", new SourceSpan(new SourcePosition(0, 0, 0), 27)),
+                    Token.MultiLineComment("\r\nmulti line\r\ncomment\r\n",
+                        new SourceSpan(new SourcePosition(0, 0, 0), 27))
+                }
+            ],
+            [
+                """
+                /*
+                multi line
+                comment
+                */ fn
+                """,
+                new[]
+                {
+                    Token.MultiLineComment("\r\nmulti line\r\ncomment\r\n",
+                        new SourceSpan(new SourcePosition(0, 0, 0), 27)),
                     Token.Fn(new SourceSpan(new SourcePosition(28, 3, 3), 2))
                 }
             ],
@@ -166,10 +259,11 @@ public class TokenizerTests
                 */
                 fn
                 """,
-                new []
+                new[]
                 {
                     Token.Fn(new SourceSpan(new SourcePosition(0, 0, 0), 2)),
-                    Token.MultiLineComment("\r\nsome contents\r\nhere\r\n", new SourceSpan(new SourcePosition(4, 1, 0), 27)),
+                    Token.MultiLineComment("\r\nsome contents\r\nhere\r\n",
+                        new SourceSpan(new SourcePosition(4, 1, 0), 27)),
                     Token.Fn(new SourceSpan(new SourcePosition(33, 5, 0), 2))
                 }
             ],
@@ -212,7 +306,8 @@ public class TokenizerTests
             // all single char identifiers
             .."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
                 .Select(ch => ch.ToString())
-                .Select(ch => new object[] {ch, new [] {Token.Identifier(ch, new SourceSpan(new SourcePosition(0, 0, 0), 1))}}),
+                .Select(ch => new object[]
+                    { ch, new[] { Token.Identifier(ch, new SourceSpan(new SourcePosition(0, 0, 0), 1)) } }),
             [
                 "\"hello this is a string\"",
                 new[] { Token.StringLiteral("hello this is a string", new SourceSpan(new SourcePosition(0, 0, 0), 24)) }
@@ -227,7 +322,7 @@ public class TokenizerTests
             ["\r\n\r\nbool", new[] { Token.Bool(new SourceSpan(new SourcePosition(4, 2, 0), 4)) }],
             ["\r\n\r\n  bool", new[] { Token.Bool(new SourceSpan(new SourcePosition(6, 2, 2), 4)) }],
             ["\r\n  \r\n  bool", new[] { Token.Bool(new SourceSpan(new SourcePosition(8, 2, 2), 4)) }],
-            
+
             // single token padding tests
             [" fn ", new[] { Token.Fn(new SourceSpan(new SourcePosition(1, 0, 1), 2)) }],
             ["fn ", new[] { Token.Fn(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
@@ -267,7 +362,7 @@ public class TokenizerTests
                     Token.Pub(new SourceSpan(new SourcePosition(9, 0, 9), 3))
                 }
             ],
-            
+
             // multiple tokens without separation
             [
                 "int)",
@@ -302,7 +397,7 @@ public class TokenizerTests
                     Token.Semicolon(new SourceSpan(new SourcePosition(3, 0, 3), 1))
                 }
             ],
-            
+
             // two tokens padding tests
             [
                 " pub fn ",
@@ -344,7 +439,7 @@ public class TokenizerTests
                     Token.Fn(new SourceSpan(new SourcePosition(5, 0, 5), 2))
                 }
             ],
-            
+
             // full source
             [
                 """
@@ -404,84 +499,4 @@ public class TokenizerTests
             ]
         ];
     }
-    
-    private const string MediumSource = """
-                                        pub fn DoSomething(a: int): result<int, string> {
-                                            var b = 2;
-                                            
-                                            if (a > b) {
-                                                return ok(a);
-                                            }
-                                            else if (a == b) {
-                                                return ok(b);
-                                            }
-                                            
-                                            return error("something wrong");
-                                        }
-
-                                        pub fn SomethingElse(a: int): result<int, string> {
-                                            b = DoSomething(a)?;
-                                            
-                                            return b;
-                                        }
-
-                                        Println(DoSomething(5));
-                                        Println(DoSomething(1));
-                                        Println(SomethingElse(1));
-
-                                        """;
-
-    private const string LargeSource = $"""
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       """;
 }

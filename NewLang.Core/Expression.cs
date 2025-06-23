@@ -5,14 +5,14 @@ namespace NewLang.Core;
 public interface IExpression
 {
     ExpressionType ExpressionType { get; }
-    
+
     TypeChecker.ITypeReference? ResolvedType { get; set; }
 }
 
 public record ValueAccessorExpression(ValueAccessor ValueAccessor) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.ValueAccess;
-    
+
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public override string ToString()
@@ -97,7 +97,7 @@ public record IfExpressionExpression(IfExpression IfExpression) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.IfExpression;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
-    
+
     public override string ToString()
     {
         return IfExpression.ToString();
@@ -128,7 +128,7 @@ public record GenericInstantiation(IExpression Value, IReadOnlyList<TypeIdentifi
         var sb = new StringBuilder($"{Value}::<");
         sb.AppendJoin(", ", GenericArguments);
         sb.Append('>');
-        
+
         return sb.ToString();
     }
 }
@@ -169,16 +169,19 @@ public record UnionStructVariantInitializerExpression(UnionStructVariantInitiali
 
 public record MatchesExpression(IExpression ValueExpression, IPattern Pattern) : IExpression
 {
-    public ExpressionType ExpressionType => ExpressionType.Matches;
-    public TypeChecker.ITypeReference? ResolvedType { get; set; }
-    
     /// <summary>
-    /// Collection of declared variables within <see cref="Pattern"/>. Initialized during type checking
+    ///     Collection of declared variables within <see cref="Pattern" />. Initialized during type checking
     /// </summary>
     public IReadOnlyList<string> DeclaredVariables { get; set; } = [];
+
+    public ExpressionType ExpressionType => ExpressionType.Matches;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
 }
 
-public record UnionStructVariantInitializer(TypeIdentifier UnionType, StringToken VariantIdentifier, IReadOnlyList<FieldInitializer> FieldInitializers)
+public record UnionStructVariantInitializer(
+    TypeIdentifier UnionType,
+    StringToken VariantIdentifier,
+    IReadOnlyList<FieldInitializer> FieldInitializers)
 {
     public override string ToString()
     {
@@ -198,7 +201,10 @@ public record ObjectInitializerExpression(ObjectInitializer ObjectInitializer) :
 }
 
 public record VariableDeclaration(
-    StringToken VariableNameToken, MutabilityModifier? MutabilityModifier, TypeIdentifier? Type, IExpression? Value)
+    StringToken VariableNameToken,
+    MutabilityModifier? MutabilityModifier,
+    TypeIdentifier? Type,
+    IExpression? Value)
 {
     public override string ToString()
     {
@@ -207,11 +213,13 @@ public record VariableDeclaration(
         {
             sb.Append($"{MutabilityModifier} ");
         }
+
         sb.Append($"{VariableNameToken}");
         if (Type is not null)
         {
             sb.Append($": {Type} ");
         }
+
         if (Value is not null)
         {
             sb.Append($" = {Value}");
@@ -250,6 +258,7 @@ public record IfExpression(
         {
             sb.Append($" {elseIf}");
         }
+
         if (ElseBody is not null)
         {
             sb.Append($" else {ElseBody}");
@@ -341,6 +350,7 @@ public record ObjectInitializer(TypeIdentifier Type, IReadOnlyList<FieldInitiali
         {
             sb.AppendLine($"{fieldInitializer.FieldName} = {fieldInitializer.Value},");
         }
+
         sb.Append('}');
 
         return sb.ToString();
@@ -358,7 +368,7 @@ public enum BinaryOperatorType
     Multiply,
     Divide,
     EqualityCheck,
-    ValueAssignment,
+    ValueAssignment
 }
 
 public enum ValueAccessType

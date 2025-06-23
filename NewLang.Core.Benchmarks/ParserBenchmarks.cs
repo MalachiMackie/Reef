@@ -5,27 +5,6 @@ namespace NewLang.Core.Benchmarks;
 [MemoryDiagnoser]
 public class ParserBenchmarks
 {
-    [Params(SmallSource, MediumSource, LargeSource)]
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
-    // ReSharper disable once UnassignedField.Global
-    public string Source;
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
-
-    private IReadOnlyCollection<Token> _tokens = [];
-
-    [GlobalSetup]
-    public void Setup()
-    {
-        _tokens = [..Tokenizer.Tokenize(Source)];
-    }
-    
-    [Benchmark]
-    public void BenchmarkParse()
-    {
-        Parser.Parse(_tokens);
-    }
-    
-
     private const string SmallSource = "var a = 2;";
 
     private const string MediumSource = """
@@ -38,17 +17,17 @@ public class ParserBenchmarks
                                             else if (a == b) {
                                                 return ok(b);
                                             }
-
+                                        
                                             b = 3;
-
+                                        
                                             var thing = new Class2 {
                                                 A = 3
                                             };
-
+                                        
                                             MyClass::StaticMethod();
-
+                                        
                                             PrivateFn::<string>();
-
+                                        
                                             return error("something wrong");
                                         }
 
@@ -70,9 +49,9 @@ public class ParserBenchmarks
                                         pub class MyClass {
                                             pub fn PublicMethod() {
                                             }
-
+                                        
                                             pub static fn StaticMethod() {
-
+                                        
                                             }
                                             
                                             field FieldA: string;
@@ -93,31 +72,50 @@ public class ParserBenchmarks
                                         """;
 
     private const string LargeSource = $"""
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       {MediumSource}
-                                       """;
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        {MediumSource}
+                                        """;
+
+    private IReadOnlyCollection<Token> _tokens = [];
+    [Params(SmallSource, MediumSource, LargeSource)]
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+    // ReSharper disable once UnassignedField.Global
+    public string Source;
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        _tokens = [..Tokenizer.Tokenize(Source)];
+    }
+
+    [Benchmark]
+    public void BenchmarkParse()
+    {
+        Parser.Parse(_tokens);
+    }
 }

@@ -3,11 +3,14 @@
 namespace NewLang.Core;
 
 public record ProgramClass(
-    AccessModifier? AccessModifier, StringToken Name, IReadOnlyList<StringToken> TypeArguments, IReadOnlyCollection<LangFunction> Functions, IReadOnlyCollection<ClassField> Fields)
+    AccessModifier? AccessModifier,
+    StringToken Name,
+    IReadOnlyList<StringToken> TypeArguments,
+    IReadOnlyCollection<LangFunction> Functions,
+    IReadOnlyCollection<ClassField> Fields)
 {
-    
     public TypeChecker.ClassSignature? Signature { get; set; }
-    
+
     public override string ToString()
     {
         var sb = new StringBuilder();
@@ -23,6 +26,7 @@ public record ProgramClass(
             sb.AppendJoin(", ", TypeArguments);
             sb.Append('>');
         }
+
         sb.AppendLine(" {");
 
         foreach (var function in Functions)
@@ -42,7 +46,12 @@ public record ProgramClass(
 }
 
 public record ClassField(
-    AccessModifier? AccessModifier, StaticModifier? StaticModifier, MutabilityModifier? MutabilityModifier, StringToken Name, TypeIdentifier Type, IExpression? InitializerValue)
+    AccessModifier? AccessModifier,
+    StaticModifier? StaticModifier,
+    MutabilityModifier? MutabilityModifier,
+    StringToken Name,
+    TypeIdentifier Type,
+    IExpression? InitializerValue)
 {
     public override string ToString()
     {
@@ -52,14 +61,17 @@ public record ClassField(
         {
             sb.Append($"{AccessModifier} ");
         }
+
         if (StaticModifier is not null)
         {
             sb.Append($"{StaticModifier} ");
         }
+
         if (MutabilityModifier is not null)
         {
             sb.Append($"{MutabilityModifier} ");
         }
+
         sb.Append($"field {Name}: {Type}");
         if (InitializerValue is not null)
         {

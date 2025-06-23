@@ -6,15 +6,31 @@ namespace NewLang.Core;
 
 public sealed class Parser : IDisposable
 {
+    private readonly IEnumerator<Token> _tokens;
+
+    private bool _hasNext;
+
+    private Parser(IEnumerable<Token> tokens)
+    {
+        _tokens = tokens.GetEnumerator();
+    }
+
+    private Token Current => _tokens.Current;
+
+    public void Dispose()
+    {
+        _tokens.Dispose();
+    }
+
     public static LangProgram Parse(IEnumerable<Token> tokens)
     {
         using var parser = new Parser(tokens);
 
         return parser.ParseInner();
     }
-    
+
     /// <summary>
-    /// static entry point for a single expression. Used for testing
+    ///     static entry point for a single expression. Used for testing
     /// </summary>
     /// <returns></returns>
     public static IExpression? PopExpression(IEnumerable<Token> tokens)
@@ -25,24 +41,9 @@ public sealed class Parser : IDisposable
         {
             return null;
         }
-        
+
         return parser.PopExpression();
     }
-
-    private Parser(IEnumerable<Token> tokens)
-    {
-        _tokens = tokens.GetEnumerator();
-    }
-
-    public void Dispose()
-    {
-        _tokens.Dispose();
-    }
-
-    private readonly IEnumerator<Token> _tokens;
-    private Token Current => _tokens.Current;
-    
-    private bool _hasNext;
 
     private bool MoveNext()
     {
@@ -53,7 +54,7 @@ public sealed class Parser : IDisposable
         }
 
         var hasNext = true;
-        
+
         while (hasNext && _tokens.Current.Type is TokenType.MultiLineComment or TokenType.SingleLineComment)
         {
             // drop the comment and try again
@@ -64,15 +65,15 @@ public sealed class Parser : IDisposable
 
         return hasNext;
     }
-    
+
     private LangProgram ParseInner()
     {
         if (!MoveNext())
         {
             return new LangProgram([], [], [], []);
         }
-        
-        var scope = GetScope(closingToken: null, isUnion: false);
+
+        var scope = GetScope(null, false);
 
         if (scope.GetScopeTypes().Contains(Scope.ScopeType.Field))
         {
@@ -83,7 +84,8 @@ public sealed class Parser : IDisposable
     }
 
     /// <summary>
-    /// Get a scope. Expects first token to be the token that opened the scope, or the first token in the scope when no token opened the scope
+    ///     Get a scope. Expects first token to be the token that opened the scope, or the first token in the scope when no
+    ///     token opened the scope
     /// </summary>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
@@ -96,7 +98,7 @@ public sealed class Parser : IDisposable
         {
             throw new InvalidOperationException("Unexpected EOF");
         }
-        
+
         var hasTailExpression = false;
         var foundClosingToken = false;
 
@@ -106,7 +108,7 @@ public sealed class Parser : IDisposable
         var classes = new List<ProgramClass>();
         var unions = new List<ProgramUnion>();
         var variants = new List<IProgramUnionVariant>();
-                
+
         var expectMemberComma = false;
         var allowMemberComma = false;
 
@@ -126,14 +128,14 @@ public sealed class Parser : IDisposable
                     break;
                 }
             }
-            
+
             if (Current.Type == closingToken)
             {
                 MoveNext();
                 foundClosingToken = true;
                 break;
             }
-            
+
             if (Current.Type != TokenType.Comma && expectMemberComma)
             {
                 throw new InvalidOperationException("Expected ,");
@@ -172,6 +174,7 @@ public sealed class Parser : IDisposable
                     {
                         throw new InvalidOperationException($"Expected {closingToken}");
                     }
+
                     break;
                 }
 
@@ -214,10 +217,10 @@ public sealed class Parser : IDisposable
                 hasTailExpression =
                     expression.ExpressionType is not (ExpressionType.IfExpression or ExpressionType.Block);
             }
-            expressions.Add(expression);
 
+            expressions.Add(expression);
         } while (_hasNext);
-        
+
         if (!foundClosingToken && closingToken.HasValue)
         {
             throw new InvalidOperationException($"Expected {closingToken.Value}, got nothing");
@@ -236,12 +239,14 @@ public sealed class Parser : IDisposable
 
     private static bool IsMember(TokenType tokenType, bool isUnion)
     {
-        return tokenType is TokenType.Pub or TokenType.Mut or TokenType.Static or TokenType.Fn or TokenType.Class or TokenType.Field or TokenType.Union
-            || (isUnion && tokenType == TokenType.Identifier);
+        return tokenType is TokenType.Pub or TokenType.Mut or TokenType.Static or TokenType.Fn or TokenType.Class
+                   or TokenType.Field or TokenType.Union
+               || (isUnion && tokenType == TokenType.Identifier);
     }
 
-    private (LangFunction? Function, ProgramClass? Class, ClassField? Field, ProgramUnion? Union, IProgramUnionVariant? Variant) GetMember(
-        bool isUnion)
+    private (LangFunction? Function, ProgramClass? Class, ClassField? Field, ProgramUnion? Union, IProgramUnionVariant?
+        Variant) GetMember(
+            bool isUnion)
     {
         AccessModifier? accessModifier = null;
         MutabilityModifier? mutabilityModifier = null;
@@ -255,7 +260,7 @@ public sealed class Parser : IDisposable
                 throw new InvalidOperationException("Expected field, mut, static, fn or class");
             }
         }
-        
+
         if (Current.Type == TokenType.Static)
         {
             staticModifier = new StaticModifier(Current);
@@ -264,7 +269,7 @@ public sealed class Parser : IDisposable
                 throw new InvalidOperationException("Expected field, fn or class");
             }
         }
-        
+
         if (Current.Type == TokenType.Mut)
         {
             mutabilityModifier = new MutabilityModifier(Current);
@@ -320,62 +325,63 @@ public sealed class Parser : IDisposable
             {
                 throw new InvalidOperationException("Union cannot be static");
             }
-            
+
             var union = GetUnionDefinition(accessModifier);
 
             return (null, null, null, union, null);
         }
 
-        if (Current is StringToken {Type: TokenType.Identifier} name && isUnion)
+        if (Current is StringToken { Type: TokenType.Identifier } name && isUnion)
         {
             return (null, null, null, null, GetUnionVariant(name));
         }
-        
+
         throw new InvalidOperationException("Expected class, fn, union, field, variant");
     }
 
     private IProgramUnionVariant GetUnionVariant(StringToken variantName)
     {
-         if (!MoveNext())
-         {
-             return new UnitStructUnionVariant(variantName);
-         }
+        if (!MoveNext())
+        {
+            return new UnitStructUnionVariant(variantName);
+        }
 
-         if (Current.Type == TokenType.LeftParenthesis)
-         {
-             var tupleTypes = GetCommaSeparatedList(
-                 TokenType.RightParenthesis,
-                 "Tuple Variant Parameter Type",
-                 GetTypeIdentifier);
+        if (Current.Type == TokenType.LeftParenthesis)
+        {
+            var tupleTypes = GetCommaSeparatedList(
+                TokenType.RightParenthesis,
+                "Tuple Variant Parameter Type",
+                GetTypeIdentifier);
 
-             if (tupleTypes.Count > 10)
-             {
-                 throw new InvalidOperationException("Tuple variant can contain at most 10 elements");
-             }
-             
-             return new TupleUnionVariant(variantName, tupleTypes);
-         }
+            if (tupleTypes.Count > 10)
+            {
+                throw new InvalidOperationException("Tuple variant can contain at most 10 elements");
+            }
 
-         if (Current.Type == TokenType.LeftBrace)
-         {
-             var scope = GetScope(TokenType.RightBrace, isUnion: false);
+            return new TupleUnionVariant(variantName, tupleTypes);
+        }
 
-             if (scope.GetScopeTypes().Any(x => x is not Scope.ScopeType.Field))
-             {
-                 throw new InvalidOperationException("Struct union variants can only contain fields");
-             }
+        if (Current.Type == TokenType.LeftBrace)
+        {
+            var scope = GetScope(TokenType.RightBrace, false);
 
-             return new StructUnionVariant
-             {
-                 Name = variantName,
-                 Fields = scope.Fields
-             };
-         }
+            if (scope.GetScopeTypes().Any(x => x is not Scope.ScopeType.Field))
+            {
+                throw new InvalidOperationException("Struct union variants can only contain fields");
+            }
 
-         return new UnitStructUnionVariant(variantName);
+            return new StructUnionVariant
+            {
+                Name = variantName,
+                Fields = scope.Fields
+            };
+        }
+
+        return new UnitStructUnionVariant(variantName);
     }
 
-    private ClassField GetField(AccessModifier? accessModifier, StaticModifier? staticModifier, MutabilityModifier? mutabilityModifier)
+    private ClassField GetField(AccessModifier? accessModifier, StaticModifier? staticModifier,
+        MutabilityModifier? mutabilityModifier)
     {
         // pub mut field MyField: string;
         if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } name)
@@ -403,9 +409,9 @@ public sealed class Parser : IDisposable
             {
                 throw new InvalidOperationException("Expected field initializer expression");
             }
-            
+
             valueExpression = PopExpression()
-                ?? throw new InvalidOperationException("Expected field initializer expression");
+                              ?? throw new InvalidOperationException("Expected field initializer expression");
         }
 
         return new ClassField(accessModifier, staticModifier, mutabilityModifier, name, type, valueExpression);
@@ -437,14 +443,14 @@ public sealed class Parser : IDisposable
         {
             throw new InvalidOperationException("Expected union name");
         }
-        
+
         if (!MoveNext())
         {
             throw new InvalidOperationException("Expected { or <");
         }
-        
+
         var typeArguments = new List<StringToken>();
-        
+
         if (Current.Type == TokenType.LeftAngleBracket)
         {
             typeArguments = GetGenericParameterList();
@@ -460,7 +466,7 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Expected {");
         }
 
-        var scope = GetScope(closingToken: TokenType.RightBrace, isUnion: true);
+        var scope = GetScope(TokenType.RightBrace, true);
         if (scope.GetScopeTypes().Any(x => x is not (Scope.ScopeType.Function or Scope.ScopeType.Variant)))
         {
             throw new InvalidOperationException("Unions can only contain functions and variants");
@@ -490,7 +496,7 @@ public sealed class Parser : IDisposable
 
         if (Current.Type == TokenType.LeftAngleBracket)
         {
-            typeArguments = GetGenericParameterList() is { Count: > 0} x
+            typeArguments = GetGenericParameterList() is { Count: > 0 } x
                 ? x
                 : throw new InvalidOperationException("Expected Type Argument");
 
@@ -505,7 +511,7 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Expected {");
         }
 
-        var scope = GetScope(closingToken: TokenType.RightBrace, isUnion: false);
+        var scope = GetScope(TokenType.RightBrace, false);
         if (scope.GetScopeTypes().Any(x => x is not (Scope.ScopeType.Function or Scope.ScopeType.Field)))
         {
             throw new InvalidOperationException("Class can only contain functions and fields");
@@ -513,10 +519,10 @@ public sealed class Parser : IDisposable
 
         return new ProgramClass(accessModifier, name, typeArguments, scope.Functions, scope.Fields);
     }
-    
+
     private LangFunction GetFunctionDeclaration(AccessModifier? accessModifier, StaticModifier? staticModifier)
     {
-        if (!MoveNext() || Current is not StringToken {Type: TokenType.Identifier} nameToken)
+        if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } nameToken)
         {
             throw new InvalidOperationException("Expected function name");
         }
@@ -551,7 +557,7 @@ public sealed class Parser : IDisposable
             () =>
             {
                 MutabilityModifier? mutabilityModifier = null;
-            
+
                 if (Current.Type == TokenType.Mut)
                 {
                     mutabilityModifier = new MutabilityModifier(Current);
@@ -559,22 +565,23 @@ public sealed class Parser : IDisposable
                     {
                         throw new InvalidOperationException("Expected parameter name");
                     }
-                }    
-                
+                }
+
                 if (Current is not StringToken { Type: TokenType.Identifier } parameterName)
                 {
                     throw new InvalidOperationException("Expected parameter name");
                 }
-                
+
                 if (!MoveNext() || Current.Type != TokenType.Colon)
                 {
                     throw new InvalidOperationException("Expected :");
                 }
+
                 if (!MoveNext())
                 {
                     throw new InvalidOperationException("Expected parameter type");
                 }
-                
+
                 var parameterType = GetTypeIdentifier();
                 return new FunctionParameter(parameterType, mutabilityModifier, parameterName);
             });
@@ -606,20 +613,22 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Expected {");
         }
 
-        var scope = GetScope(closingToken: TokenType.RightBrace, isUnion: false);
+        var scope = GetScope(TokenType.RightBrace, false);
 
         if (scope.GetScopeTypes().Any(x => x is not (Scope.ScopeType.Expression or Scope.ScopeType.Function)))
         {
             throw new InvalidOperationException("Functions can only contain expressions and local function");
         }
 
-        return new LangFunction(accessModifier, staticModifier, nameToken, typeArguments, parameterList, returnType, new Block(scope.Expressions, scope.Functions));
+        return new LangFunction(accessModifier, staticModifier, nameToken, typeArguments, parameterList, returnType,
+            new Block(scope.Expressions, scope.Functions));
     }
 
     private static bool IsTypeTokenType(in TokenType tokenType)
     {
-        return tokenType is TokenType.IntKeyword or TokenType.StringKeyword or TokenType.Result or TokenType.Identifier or TokenType.Bool;
-    } 
+        return tokenType is TokenType.IntKeyword or TokenType.StringKeyword or TokenType.Result or TokenType.Identifier
+            or TokenType.Bool;
+    }
 
     private TypeIdentifier GetTypeIdentifier()
     {
@@ -638,7 +647,7 @@ public sealed class Parser : IDisposable
                 "Type Argument",
                 GetTypeIdentifier);
         }
-        
+
         return new TypeIdentifier(typeIdentifier, typeArguments);
     }
 
@@ -652,17 +661,19 @@ public sealed class Parser : IDisposable
                 or ExpressionType.MethodCall
                 or ExpressionType.MethodReturn
             } or
-            BinaryOperatorExpression {
+            BinaryOperatorExpression
+            {
                 BinaryOperator.OperatorType: BinaryOperatorType.ValueAssignment
             };
     }
-    
+
     private IExpression MatchTokenToExpression(IExpression? previousExpression)
     {
         return Current.Type switch
         {
             // value accessors
-            TokenType.StringLiteral or TokenType.IntLiteral or TokenType.True or TokenType.False => GetLiteralExpression(),
+            TokenType.StringLiteral or TokenType.IntLiteral or TokenType.True or TokenType.False =>
+                GetLiteralExpression(),
             TokenType.Var => GetVariableDeclaration(),
             TokenType.LeftBrace => GetBlockExpression(),
             TokenType.If => GetIfExpression(),
@@ -670,15 +681,25 @@ public sealed class Parser : IDisposable
             TokenType.Return => GetMethodReturn(),
             TokenType.New => GetInitializer(),
             TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
-            TokenType.Dot => GetMemberAccess(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
-            TokenType.DoubleColon => GetStaticMemberAccess(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
+            TokenType.Dot => GetMemberAccess(previousExpression ??
+                                             throw new InvalidOperationException($"Unexpected token {Current}")),
+            TokenType.DoubleColon => GetStaticMemberAccess(previousExpression ??
+                                                           throw new InvalidOperationException(
+                                                               $"Unexpected token {Current}")),
             TokenType.Ok or TokenType.Error or TokenType.This or TokenType.Todo => GetVariableAccess(),
-            TokenType.Turbofish => GetGenericInstantiation(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
-            TokenType.Matches => GetMatchesExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}")),
+            TokenType.Turbofish => GetGenericInstantiation(previousExpression ??
+                                                           throw new InvalidOperationException(
+                                                               $"Unexpected token {Current}")),
+            TokenType.Matches => GetMatchesExpression(previousExpression ??
+                                                      throw new InvalidOperationException(
+                                                          $"Unexpected token {Current}")),
             TokenType.Match => GetMatchExpression(),
             _ when IsTypeTokenType(Current.Type) => GetVariableAccess(),
-            _ when TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(previousExpression, Current, unaryOperatorType.Value),
-            _ when TryGetBinaryOperatorType(Current.Type, out var binaryOperatorType) => GetBinaryOperatorExpression(previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}"), binaryOperatorType.Value),
+            _ when TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(
+                previousExpression, Current, unaryOperatorType.Value),
+            _ when TryGetBinaryOperatorType(Current.Type, out var binaryOperatorType) => GetBinaryOperatorExpression(
+                previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}"),
+                binaryOperatorType.Value),
             _ => throw new InvalidOperationException($"Token type {Current.Type} not supported")
         };
     }
@@ -725,7 +746,7 @@ public sealed class Parser : IDisposable
                 }
 
                 var armExpression = PopExpression()
-                    ?? throw new InvalidOperationException("Expected match arm expression");
+                                    ?? throw new InvalidOperationException("Expected match arm expression");
 
                 return new MatchArm(pattern, armExpression);
             });
@@ -771,7 +792,7 @@ public sealed class Parser : IDisposable
         {
             throw new InvalidOperationException("Expected pattern");
         }
-        
+
         var pattern = GetPattern();
 
         return new MatchesExpression(previousExpression, pattern);
@@ -804,14 +825,14 @@ public sealed class Parser : IDisposable
         }
 
         var type = GetTypeIdentifier();
-        
+
         if (!_hasNext)
         {
             return new ClassPattern(type, [], false, null);
         }
 
         StringToken? variantName = null;
-        
+
         if (Current.Type == TokenType.DoubleColon)
         {
             if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } x)
@@ -900,7 +921,7 @@ public sealed class Parser : IDisposable
                         {
                             throw new InvalidOperationException("Expected pattern");
                         }
-                        
+
                         pattern = GetPattern();
                     }
 
@@ -914,11 +935,11 @@ public sealed class Parser : IDisposable
             {
                 case > 1:
                     throw new InvalidOperationException("Pattern can only have one field discard");
-                case 1 when fieldPatterns[^1] is not {Key.StringValue.Length: 0, Value: DiscardPattern}:
+                case 1 when fieldPatterns[^1] is not { Key.StringValue.Length: 0, Value: DiscardPattern }:
                     throw new InvalidOperationException("field discard must be at the end of the pattern");
                 default:
                     fieldPatterns = fieldPatterns.Where(x => x.Key.StringValue.Length > 0).ToList();
-            
+
                     return variantName is not null
                         ? new UnionStructVariantPattern(type, variantName, fieldPatterns, discards.Length == 1, null)
                         : new ClassPattern(type, fieldPatterns, discards.Length == 1, null);
@@ -943,10 +964,10 @@ public sealed class Parser : IDisposable
     }
 
     /// <summary>
-    /// Get a comma separated list of items.
-    /// Expects Current to be the opening token.
-    /// tryGetNext will be performed on the second token.
-    /// Current will be left on token after the terminator
+    ///     Get a comma separated list of items.
+    ///     Expects Current to be the opening token.
+    ///     tryGetNext will be performed on the second token.
+    ///     Current will be left on token after the terminator
     /// </summary>
     /// <param name="terminator"></param>
     /// <param name="itemName"></param>
@@ -960,7 +981,7 @@ public sealed class Parser : IDisposable
         {
             throw new InvalidOperationException($"Expected {itemName}");
         }
-        
+
         var items = new List<T>();
         while (true)
         {
@@ -968,7 +989,7 @@ public sealed class Parser : IDisposable
             {
                 throw new InvalidOperationException($"Expected {itemName}");
             }
-            
+
             if (Current.Type == terminator)
             {
                 break;
@@ -986,7 +1007,7 @@ public sealed class Parser : IDisposable
                     throw new InvalidOperationException($"Expected {itemName}");
                 }
             }
-            
+
             if (Current.Type == terminator)
             {
                 break;
@@ -998,12 +1019,12 @@ public sealed class Parser : IDisposable
             {
                 throw new InvalidOperationException($"Expected {itemName}");
             }
-            
+
             items.Add(next);
         }
 
         MoveNext();
-        
+
         return items;
     }
 
@@ -1019,7 +1040,7 @@ public sealed class Parser : IDisposable
         var variableToken = Current;
 
         MoveNext();
-        
+
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, variableToken));
     }
 
@@ -1032,7 +1053,7 @@ public sealed class Parser : IDisposable
             typeArguments = genericInstantiationExpression.GenericInstantiation.GenericArguments;
             previousExpression = genericInstantiationExpression.GenericInstantiation.Value;
         }
-        
+
         if (previousExpression is not ValueAccessorExpression
             {
                 ValueAccessor:
@@ -1102,8 +1123,9 @@ public sealed class Parser : IDisposable
         {
             throw new InvalidOperationException("Expected {");
         }
-        
-        return new UnionStructVariantInitializerExpression(new UnionStructVariantInitializer(type, variantName, GetFieldInitializers()));
+
+        return new UnionStructVariantInitializerExpression(
+            new UnionStructVariantInitializer(type, variantName, GetFieldInitializers()));
     }
 
     private List<FieldInitializer> GetFieldInitializers()
@@ -1113,25 +1135,25 @@ public sealed class Parser : IDisposable
             "Field Initializer",
             () =>
             {
-                 if (Current is not StringToken { Type: TokenType.Identifier } fieldName)
-                 {
-                     throw new InvalidOperationException("Expected field name");
-                 }
-     
-                 if (!MoveNext() || Current.Type != TokenType.Equals)
-                 {
-                     throw new InvalidOperationException("Expected =");
-                 }
+                if (Current is not StringToken { Type: TokenType.Identifier } fieldName)
+                {
+                    throw new InvalidOperationException("Expected field name");
+                }
 
-                 if (!MoveNext())
-                 {
-                     throw new InvalidOperationException("Expected field initializer valuej expression");
-                 }
+                if (!MoveNext() || Current.Type != TokenType.Equals)
+                {
+                    throw new InvalidOperationException("Expected =");
+                }
 
-                 var fieldValue = PopExpression()
-                                  ?? throw new InvalidOperationException("Expected field initializer value expression");
+                if (!MoveNext())
+                {
+                    throw new InvalidOperationException("Expected field initializer valuej expression");
+                }
 
-                 return new FieldInitializer(fieldName, fieldValue);
+                var fieldValue = PopExpression()
+                                 ?? throw new InvalidOperationException("Expected field initializer value expression");
+
+                return new FieldInitializer(fieldName, fieldValue);
             });
     }
 
@@ -1145,13 +1167,13 @@ public sealed class Parser : IDisposable
         var valueExpression = MoveNext()
             ? PopExpression()
             : null;
-            
+
         return new MethodReturnExpression(new MethodReturn(valueExpression));
     }
 
     /// <summary>
-    /// Pops the next expression.
-    /// Expects Current to be on the first token of the expression
+    ///     Pops the next expression.
+    ///     Expects Current to be on the first token of the expression
     /// </summary>
     /// <param name="currentBindingStrength"></param>
     /// <returns></returns>
@@ -1167,7 +1189,7 @@ public sealed class Parser : IDisposable
                           && TryGetBindingStrength(Current, out var bindingStrength)
                           && bindingStrength > (currentBindingStrength ?? 0);
         }
-        
+
         return previousExpression;
     }
 
@@ -1199,7 +1221,7 @@ public sealed class Parser : IDisposable
         }
 
         var checkExpression = PopExpression()
-            ?? throw new InvalidOperationException("Expected check expression, found no expression");
+                              ?? throw new InvalidOperationException("Expected check expression, found no expression");
 
         if (!_hasNext || Current.Type != TokenType.RightParenthesis)
         {
@@ -1212,7 +1234,7 @@ public sealed class Parser : IDisposable
         }
 
         var body = PopExpression() ??
-            throw new InvalidOperationException("Expected if body, found nothing");
+                   throw new InvalidOperationException("Expected if body, found nothing");
 
         var elseIfs = new List<ElseIf>();
         IExpression? elseBody = null;
@@ -1240,7 +1262,7 @@ public sealed class Parser : IDisposable
 
                 var elseIfCheckExpression = PopExpression()
                                             ?? throw new InvalidOperationException("Expected check expression");
-                
+
                 if (!_hasNext || Current.Type != TokenType.RightParenthesis)
                 {
                     throw new InvalidOperationException("Expected right Parenthesis");
@@ -1252,14 +1274,14 @@ public sealed class Parser : IDisposable
                 }
 
                 var elseIfBody = PopExpression()
-                    ?? throw new InvalidOperationException("Expected else if body");
+                                 ?? throw new InvalidOperationException("Expected else if body");
 
                 elseIfs.Add(new ElseIf(elseIfCheckExpression, elseIfBody));
             }
             else
             {
                 elseBody = PopExpression()
-                                 ?? throw new InvalidOperationException("Expected else body, got nothing");
+                           ?? throw new InvalidOperationException("Expected else body, got nothing");
                 break;
             }
         }
@@ -1273,13 +1295,13 @@ public sealed class Parser : IDisposable
 
     private BlockExpression GetBlockExpression()
     {
-        var scope = GetScope(TokenType.RightBrace, isUnion: false);
+        var scope = GetScope(TokenType.RightBrace, false);
 
         if (scope.GetScopeTypes().Any(x => x is not (Scope.ScopeType.Expression or Scope.ScopeType.Function)))
         {
             throw new InvalidOperationException("Block expressions can only contain expressions and functions");
         }
-        
+
         return new BlockExpression(new Block(scope.Expressions, scope.Functions));
     }
 
@@ -1324,41 +1346,43 @@ public sealed class Parser : IDisposable
 
             type = GetTypeIdentifier();
         }
-        
+
         if (_hasNext && Current.Type == TokenType.Equals)
         {
             if (!MoveNext())
             {
                 throw new InvalidOperationException("Expected value expression");
             }
+
             valueExpression = PopExpression()
-                        ?? throw new InvalidOperationException("Expected value expression, got nothing");
+                              ?? throw new InvalidOperationException("Expected value expression, got nothing");
         }
 
-        return new VariableDeclarationExpression(new VariableDeclaration(identifier, mutabilityModifier, type, valueExpression));
+        return new VariableDeclarationExpression(new VariableDeclaration(identifier, mutabilityModifier, type,
+            valueExpression));
     }
-    
+
     private UnaryOperatorExpression GetUnaryOperatorExpression(
         IExpression? operand,
         Token operatorToken,
         UnaryOperatorType operatorType)
     {
         MoveNext();
-        
+
         if (IsUnaryOperatorPrefix(operatorType))
         {
             operand = PopExpression(GetUnaryOperatorBindingStrength(operatorType))
-                ?? throw new InvalidOperationException("Expected expression");
+                      ?? throw new InvalidOperationException("Expected expression");
         }
         else if (operand is null)
         {
             throw new InvalidOperationException($"Unexpected token {operatorToken}");
         }
-        
-        
+
+
         return new UnaryOperatorExpression(new UnaryOperator(operatorType, operand, operatorToken));
     }
-    
+
     private BinaryOperatorExpression GetBinaryOperatorExpression(
         IExpression leftOperand,
         BinaryOperatorType operatorType)
@@ -1373,7 +1397,7 @@ public sealed class Parser : IDisposable
         {
             throw new InvalidOperationException("Expected right operand");
         }
-        
+
         var right = PopExpression(bindingStrength.Value);
 
         return right is null
@@ -1385,8 +1409,10 @@ public sealed class Parser : IDisposable
     {
         bindingStrength = token.Type switch
         {
-            _ when TryGetUnaryOperatorType(token.Type, out var unaryOperatorType) => GetUnaryOperatorBindingStrength(unaryOperatorType.Value),
-            _ when TryGetBinaryOperatorType(token.Type, out var binaryOperatorType) => GetBinaryOperatorBindingStrength(binaryOperatorType.Value),
+            _ when TryGetUnaryOperatorType(token.Type, out var unaryOperatorType) => GetUnaryOperatorBindingStrength(
+                unaryOperatorType.Value),
+            _ when TryGetBinaryOperatorType(token.Type, out var binaryOperatorType) => GetBinaryOperatorBindingStrength(
+                binaryOperatorType.Value),
             TokenType.LeftParenthesis => 8,
             TokenType.Turbofish => 7,
             TokenType.Dot => 11,
@@ -1415,7 +1441,8 @@ public sealed class Parser : IDisposable
         return unaryOperatorType is UnaryOperatorType.Not;
     }
 
-    private static bool TryGetBinaryOperatorType(TokenType type, [NotNullWhen(true)] out BinaryOperatorType? operatorType)
+    private static bool TryGetBinaryOperatorType(TokenType type,
+        [NotNullWhen(true)] out BinaryOperatorType? operatorType)
     {
         operatorType = type switch
         {
@@ -1445,56 +1472,75 @@ public sealed class Parser : IDisposable
             BinaryOperatorType.LessThan => 4,
             BinaryOperatorType.EqualityCheck => 3,
             BinaryOperatorType.ValueAssignment => 2,
-            _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType, typeof(BinaryOperatorType))
+            _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType,
+                typeof(BinaryOperatorType))
         };
     }
-    
+
     private static uint GetUnaryOperatorBindingStrength(UnaryOperatorType operatorType)
     {
         return operatorType switch
         {
             UnaryOperatorType.FallOut => 9,
             UnaryOperatorType.Not => 10,
-            _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType, typeof(UnaryOperatorType))
+            _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType,
+                typeof(UnaryOperatorType))
         };
     }
 
     private class Scope
     {
-         public required IReadOnlyList<IExpression> Expressions { get; init; }
-         public required IReadOnlyList<LangFunction> Functions { get; init; }
-         public required IReadOnlyList<ProgramClass> Classes { get; init; }
-         public required IReadOnlyList<ClassField> Fields { get; init; }
-         public required IReadOnlyList<ProgramUnion> Unions { get; init; }
-         public required IReadOnlyList<IProgramUnionVariant> Variants { get; init; }
+        public enum ScopeType
+        {
+            Expression,
+            Function,
+            Class,
+            Field,
+            Union,
+            Variant
+        }
 
-         public List<ScopeType> GetScopeTypes()
-         {
-             List<ScopeType> types = [];
-             if (Expressions.Count > 0)
-                 types.Add(ScopeType.Expression);
-             if (Functions.Count > 0)
-                 types.Add(ScopeType.Function);
-             if (Classes.Count > 0)
-                 types.Add(ScopeType.Class);
-             if (Fields.Count > 0)
-                 types.Add(ScopeType.Field);
-             if (Unions.Count > 0)
-                 types.Add(ScopeType.Union);
-             if (Variants.Count > 0)
-                 types.Add(ScopeType.Variant);
+        public required IReadOnlyList<IExpression> Expressions { get; init; }
+        public required IReadOnlyList<LangFunction> Functions { get; init; }
+        public required IReadOnlyList<ProgramClass> Classes { get; init; }
+        public required IReadOnlyList<ClassField> Fields { get; init; }
+        public required IReadOnlyList<ProgramUnion> Unions { get; init; }
+        public required IReadOnlyList<IProgramUnionVariant> Variants { get; init; }
 
-             return types;
-         }
-         
-         public enum ScopeType
-         {
-             Expression,
-             Function,
-             Class,
-             Field,
-             Union,
-             Variant
-         }
+        public List<ScopeType> GetScopeTypes()
+        {
+            List<ScopeType> types = [];
+            if (Expressions.Count > 0)
+            {
+                types.Add(ScopeType.Expression);
+            }
+
+            if (Functions.Count > 0)
+            {
+                types.Add(ScopeType.Function);
+            }
+
+            if (Classes.Count > 0)
+            {
+                types.Add(ScopeType.Class);
+            }
+
+            if (Fields.Count > 0)
+            {
+                types.Add(ScopeType.Field);
+            }
+
+            if (Unions.Count > 0)
+            {
+                types.Add(ScopeType.Union);
+            }
+
+            if (Variants.Count > 0)
+            {
+                types.Add(ScopeType.Variant);
+            }
+
+            return types;
+        }
     }
 }
