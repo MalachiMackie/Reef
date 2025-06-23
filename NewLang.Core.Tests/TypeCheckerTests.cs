@@ -748,7 +748,7 @@ public class TypeCheckerTests
                 var e: MyUnion = c;
             }
             """,
-            // Mvp
+            Mvp
         };
 
     public static TheoryData<string> FailedExpressionTestCases() =>
@@ -1351,8 +1351,7 @@ public class TypeCheckerTests
             var mut b: int = 2;
             
             if (a > b) {
-                // return ok(a);
-                return result::<int, string>::Ok(a);
+                return ok(a);
             }
             else if (a == b) {
                 return result::<int, string>::Ok(b);
@@ -1361,7 +1360,7 @@ public class TypeCheckerTests
             b = 3;
         
             var thing = new Class2 {
-                A = "something"
+                A = "thing"
             };
         
             MyClass::StaticMethod();
@@ -1370,24 +1369,23 @@ public class TypeCheckerTests
             
             if (false) {
                 // lowercase error keyword
-                // return error("something wrong");
-                return result::<int, string>::Error("something wrong");
+                return error("something wrong");
             }
         
             // Capital Error for fully resolved variant
             return result::<int, string>::Error("something wrong");
         }
-        
+
         fn PrivateFn<T>() {
         }
-        
+
         pub fn SomethingElse(a: int): result::<int, string> {
             var b = DoSomething(a)?;
             var mut c = 2;
             
             return result::<int, string>::Ok(b);
         }
-        
+
         pub class MyClass {
             pub fn PublicMethod() {
             }
@@ -1403,17 +1401,17 @@ public class TypeCheckerTests
             pub static field FieldE: string = "something",
             pub static mut field FieldF: string = "something",
         }
-        
+
         pub class GenericClass<T> {
             pub fn PublicMethod<T1>() {
             }
         }
-        
+
         // a class
         pub class Class2 {
             pub field A: string,
         }
-        
+
         /*
             A union
         */
@@ -1436,7 +1434,7 @@ public class TypeCheckerTests
                 }
             }
         }
-        
+
         fn AnotherMethod(param: MyUnion) {
             if (param matches MyUnion::A) {
             }
@@ -1449,9 +1447,9 @@ public class TypeCheckerTests
                 MyUnion::C(var value) => 3
             };
         }
-        
+
         var a = MyUnion::A;
-        
+
         var c = new MyUnion::B{ MyField = ""};
         """;
 }
