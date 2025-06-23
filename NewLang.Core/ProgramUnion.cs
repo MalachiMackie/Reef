@@ -2,6 +2,7 @@
 
 public record ProgramUnion(AccessModifier? AccessModifier ,StringToken Name, IReadOnlyList<StringToken> GenericArguments, IReadOnlyList<LangFunction> Functions, IReadOnlyList<IProgramUnionVariant> Variants)
 {
+    public TypeChecker.UnionSignature? Signature { get; set; }
 }
 
 public interface IProgramUnionVariant

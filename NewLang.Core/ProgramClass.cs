@@ -5,6 +5,9 @@ namespace NewLang.Core;
 public record ProgramClass(
     AccessModifier? AccessModifier, StringToken Name, IReadOnlyList<StringToken> TypeArguments, IReadOnlyCollection<LangFunction> Functions, IReadOnlyCollection<ClassField> Fields)
 {
+    
+    public TypeChecker.ClassSignature? Signature { get; set; }
+    
     public override string ToString()
     {
         var sb = new StringBuilder();

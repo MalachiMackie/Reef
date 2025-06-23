@@ -31,7 +31,12 @@ public static class ResolvedTypeChecker
 
     private static void CheckUnion(ProgramUnion union)
     {
-        IReadOnlyList<string> unionGenerics = [..union.GenericArguments.Select(x => x.StringValue)];
+        if (union.Signature is null)
+        {
+            throw new Exception("Union Signature was not created");
+        }
+
+        var unionGenerics = union.Signature.GenericParameters.ToHashSet();
         foreach (var function in union.Functions)
         {
             CheckFunction(function, unionGenerics);
@@ -40,7 +45,12 @@ public static class ResolvedTypeChecker
 
     private static void CheckClass(ProgramClass programClass)
     {
-        IReadOnlyList<string> classGenerics = [..programClass.TypeArguments.Select(x => x.StringValue)];
+        if (programClass.Signature is null)
+        {
+            throw new InvalidOperationException("Class signature was not created");
+        }
+        
+        var classGenerics = programClass.Signature.GenericParameters.ToHashSet();
         foreach (var function in programClass.Functions)
         {
             CheckFunction(function, classGenerics);
@@ -54,9 +64,14 @@ public static class ResolvedTypeChecker
         }
     }
     
-    private static void CheckFunction(LangFunction function, IReadOnlyList<string> expectedGenerics)
+    private static void CheckFunction(LangFunction function, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
-        IReadOnlyList<string> innerGenerics = [..function.TypeArguments.Select(x => x.StringValue), ..expectedGenerics];
+        if (function.Signature is null)
+        {
+            throw new InvalidOperationException("Function signature was not created");
+        }
+        
+        HashSet<TypeChecker.GenericTypeReference> innerGenerics = [..function.Signature.GenericParameters, ..expectedGenerics];
         foreach (var blockFunction in function.Block.Functions)
         {
             CheckFunction(blockFunction, innerGenerics);
@@ -68,7 +83,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckExpression(IExpression expression, IReadOnlyList<string> expectedGenerics)
+    private static void CheckExpression(IExpression expression, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         if (expression.ResolvedType is null)
         {
@@ -131,7 +146,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckMatchExpression(MatchExpression matchExpression, IReadOnlyList<string> expectedGenerics)
+    private static void CheckMatchExpression(MatchExpression matchExpression, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         CheckExpression(matchExpression.Value, expectedGenerics);
         foreach (var arm in matchExpression.Arms)
@@ -140,7 +155,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckTupleExpression(TupleExpression tupleExpression, IReadOnlyList<string> expectedGenerics)
+    private static void CheckTupleExpression(TupleExpression tupleExpression, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         foreach (var element in tupleExpression.Values)
         {
@@ -148,12 +163,12 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckMatchesExpression(MatchesExpression matchesExpression, IReadOnlyList<string> expectedGenerics)
+    private static void CheckMatchesExpression(MatchesExpression matchesExpression, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         CheckExpression(matchesExpression.ValueExpression, expectedGenerics);
     }
 
-    private static void CheckUnionStructInitializer(UnionStructVariantInitializer unionInitializer, IReadOnlyList<string> expectedGenerics)
+    private static void CheckUnionStructInitializer(UnionStructVariantInitializer unionInitializer, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         foreach (var initializer in unionInitializer.FieldInitializers)
         {
@@ -161,22 +176,22 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckUnaryOperator(UnaryOperator unaryOperator, IReadOnlyList<string> expectedGenerics)
+    private static void CheckUnaryOperator(UnaryOperator unaryOperator, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         CheckExpression(unaryOperator.Operand, expectedGenerics);
     }
 
-    private static void CheckGenericInstantiation(GenericInstantiation genericInstantiation, IReadOnlyList<string> expectedGenerics)
+    private static void CheckGenericInstantiation(GenericInstantiation genericInstantiation, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         CheckExpression(genericInstantiation.Value, expectedGenerics);
     }
 
-    private static void CheckMemberAccess(MemberAccess memberAccess, IReadOnlyList<string> expectedGenerics)
+    private static void CheckMemberAccess(MemberAccess memberAccess, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         CheckExpression(memberAccess.Owner, expectedGenerics);
     }
 
-    private static void CheckObjectInitializer(ObjectInitializer objectInitializer, IReadOnlyList<string> expectedGenerics)
+    private static void CheckObjectInitializer(ObjectInitializer objectInitializer, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         foreach (var initializer in objectInitializer.FieldInitializers)
         {
@@ -184,13 +199,13 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckBinaryOperatorExpression(BinaryOperator binaryOperator, IReadOnlyList<string> expectedGenerics)
+    private static void CheckBinaryOperatorExpression(BinaryOperator binaryOperator, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         CheckExpression(binaryOperator.Left, expectedGenerics);
         CheckExpression(binaryOperator.Right, expectedGenerics);
     }
 
-    private static void CheckIfExpression(IfExpression ifExpression, IReadOnlyList<string> expectedGenerics)
+    private static void CheckIfExpression(IfExpression ifExpression, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         CheckExpression(ifExpression.CheckExpression, expectedGenerics);
         CheckExpression(ifExpression.Body, expectedGenerics);
@@ -206,7 +221,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckBlock(Block blockExpressionBlock, IReadOnlyList<string> expectedGenerics)
+    private static void CheckBlock(Block blockExpressionBlock, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         foreach (var function in blockExpressionBlock.Functions)
         {
@@ -219,7 +234,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckMethodCall(MethodCall methodCall, IReadOnlyList<string> expectedGenerics)
+    private static void CheckMethodCall(MethodCall methodCall, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         CheckExpression(methodCall.Method, expectedGenerics);
         foreach (var parameter in methodCall.ParameterList)
@@ -228,7 +243,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckMethodReturn(MethodReturnExpression methodReturnExpression, IReadOnlyList<string> expectedGenerics)
+    private static void CheckMethodReturn(MethodReturnExpression methodReturnExpression, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         if (methodReturnExpression.MethodReturn.Expression is not null)
         {
@@ -236,7 +251,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckVariableDeclaration(VariableDeclarationExpression variableDeclarationExpression, IReadOnlyList<string> expectedGenerics)
+    private static void CheckVariableDeclaration(VariableDeclarationExpression variableDeclarationExpression, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         if (variableDeclarationExpression.VariableDeclaration.Value is {} value)
         {
@@ -244,7 +259,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckTypeReference(TypeChecker.ITypeReference typeReference, IExpression expression, IReadOnlyList<string> expectedGenerics)
+    private static void CheckTypeReference(TypeChecker.ITypeReference typeReference, IExpression expression, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         switch (typeReference)
         {
@@ -275,7 +290,7 @@ public static class ResolvedTypeChecker
             }
             case TypeChecker.GenericTypeReference genericTypeReference:
             {
-                if (expectedGenerics.Contains(genericTypeReference.GenericName))
+                if (expectedGenerics.Contains(genericTypeReference))
                 {
                     if (genericTypeReference.ResolvedType is not null)
                     {

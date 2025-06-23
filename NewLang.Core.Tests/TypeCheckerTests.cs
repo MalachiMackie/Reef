@@ -26,16 +26,23 @@ public class TypeCheckerTests
     [Fact]
     public void SingleTest()
     {
-        const string src = """
-            class MyClass<T> {
-                fn SomeFn(param: T): result::<T, string> {
-                    if (true) {
-                        return ok(param);
-                    }
-                    return error("some error");
-                }
-            }
-            """;
+        const string src = 
+            """
+             var a = SomeFn();
+             var b = a;
+             
+             var c = OtherFn(b);
+             
+             var d: String = c;
+
+             fn OtherFn<T>(param: T): T {
+                 return param;
+             }
+
+             fn SomeFn<T>(): T {
+                 return todo!;
+             }
+             """;
         
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program);
@@ -47,132 +54,142 @@ public class TypeCheckerTests
         new()
         {
             """
-            var a = SomeFn();
-            var b = a;
+            fn SomeFn<T>(): int {
+                var a = OtherFn();
+                return a;
+            }
             
-            var c = OtherFn(b);
-            
-            var d: String = c;
+            fn OtherFn<T>(): T {
+                return todo!;
+            }
+            """,
+             """
+             var a = SomeFn();
+             var b = a;
+             
+             var c = OtherFn(b);
+             
+             var d: String = c;
 
-            fn OtherFn<T>(param: T): T {
-                return param;
-            }
+             fn OtherFn<T>(param: T): T {
+                 return param;
+             }
 
-            fn SomeFn<T>(): T {
-                return todo!;
+             fn SomeFn<T>(): T {
+                 return todo!;
+             }
+             """,
+             "var a: string = todo!",
+             """
+             fn SomeFn() {
+                 return todo!;
+             }
+             """,
+             """
+             fn SomeFn(): string {
+                 return todo!;
+             }
+             """,
+             """
+             fn SomeFn<T>(param: T): T {
+                 return param;
+             }
+             
+             var a = SomeFn("");
+             var b = SomeFn(2);
+             var c = b + b;
+             """,
+             """
+             class MyClass<T> {
+                 fn SomeFn(param: T): result::<T, string> {
+                     if (true) {
+                         return ok(param);
+                     }
+                     return error("some error");
+                 }
+             }
+             """,
+             "var a: result::<int, bool> = error(false);",
+             "var a: result::<int, bool> = ok(1);",
+             """
+             var a = match ("") {
+                 var b => ok(1),
+                 _ => error("")
+             };
+             """,
+             """
+             fn SomeFn(): result::<int, bool> {
+                 if (true) {
+                     return ok(1);
+                 }
+                 
+                 return error(false);
+             }
+             """,
+             """
+             fn SomeFn(param: result::<int, bool>) {
+             }
+             
+             var a = ok(1);
+             SomeFn(a);
+             var b = error(false);
+             SomeFn(b);
+             """,
+             """
+             class MyClass {
+                 fn SomeFn() {
+                     var a: MyClass = this;
+                 }
+             }
+             """,
+             """
+             union MyUnion {
+                 A,
+                 
+                 fn SomeFn() {
+                     var a: MyUnion = this;
+                 }
+             }
+             """,
+             """
+             union MyUnion {
+                 A,
+                 B(int),
+                 C { field MyField: int }
+             }
+             var a = MyUnion::A;
+             match (a) {
+                 MyUnion::A => 1,
+                 MyUnion::B(var b) => b,
+                 MyUnion::C { MyField } => MyField,
+             }
+             """,
+            """
+            union MyUnion {
+                A,
+                B(int),
+                C { field MyField: int }
             }
-            """,
-            "var a: string = todo!",
-            """
-            fn SomeFn() {
-                return todo!;
-            }
-            """,
-            """
-            fn SomeFn(): string {
-                return todo!;
-            }
-            """,
-            """
-            fn SomeFn<T>(param: T): T {
-                return param;
-            }
-            
-            var a = SomeFn("");
-            var b = SomeFn(2);
-            var c = b + b;
-            """,
-            """
-            class MyClass<T> {
-                fn SomeFn(param: T): result::<T, string> {
-                    if (true) {
-                        return ok(param);
-                    }
-                    return error("some error");
-                }
-            }
-            """,
-            "var a: result::<int, bool> = error(false);",
-            "var a: result::<int, bool> = ok(1);",
-            """
-            var a = match ("") {
-                var b => ok(1),
-                _ => error("")
-            };
-            """,
-            """
-            fn SomeFn(): result::<int, bool> {
-                if (true) {
-                    return ok(1);
-                }
-                
-                return error(false);
-            }
-            """,
-            """
-            fn SomeFn(param: result::<int, bool>) {
-            }
-            
-            var a = ok(1);
-            SomeFn(a);
-            var b = error(false);
-            SomeFn(b);
-            """,
-            """
-            class MyClass {
-                fn SomeFn() {
-                    var a: MyClass = this;
-                }
+            var a = MyUnion::A;
+            match (a) {
+                MyUnion::A => 1,
+                MyUnion::B(var b) => b,
+                _ => 2,
             }
             """,
             """
             union MyUnion {
                 A,
-                
-                fn SomeFn() {
-                    var a: MyUnion = this;
-                }
+                B(int),
+                C { field MyField: int }
             }
+            var a = MyUnion::A;
+            var d: int = match (a) {
+                MyUnion::A => 1,
+                MyUnion::B(var b) => b,
+                MyUnion::C { MyField } => MyField,
+            };
             """,
-            // """
-            // union MyUnion {
-            //     A,
-            //     B(int),
-            //     C { field MyField: int }
-            // }
-            // var a = MyUnion::A;
-            // match (a) {
-            //     MyUnion::A => 1,
-            //     MyUnion::B(var b) => b,
-            //     MyUnion::C { MyField } => MyField,
-            // }
-            // """,
-            // """
-            // union MyUnion {
-            //     A,
-            //     B(int),
-            //     C { field MyField: int }
-            // }
-            // var a = MyUnion::A;
-            // match (a) {
-            //     MyUnion::A => 1,
-            //     MyUnion::B(var b) => b,
-            //     _ => 2,
-            // }
-            // """,
-            // """
-            // union MyUnion {
-            //     A,
-            //     B(int),
-            //     C { field MyField: int }
-            // }
-            // var a = MyUnion::A;
-            // var d: int = match (a) {
-            //     MyUnion::A => 1,
-            //     MyUnion::B(var b) => b,
-            //     MyUnion::C { MyField } => MyField,
-            // };
-            // """,
             "var a: bool = !(true);",
             """
             var a = (1, true, "");

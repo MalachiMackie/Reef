@@ -56,6 +56,9 @@ public record LangFunction(
     TypeIdentifier? ReturnType,
     Block Block)
 {
+    
+    public TypeChecker.FunctionSignature? Signature { get; set; }
+    
     public override string ToString()
     {
         var sb = new StringBuilder();
