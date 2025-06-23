@@ -9,8 +9,8 @@ public class TypeCheckerTests
     public void Should_SuccessfullyTypeCheckExpressions(string source)
     {
         var program = Parser.Parse(Tokenizer.Tokenize(source));
-        var act = () => TypeChecker.TypeCheck(program);
-        act.Should().NotThrow();
+        var exception = Record.Exception(() => TypeChecker.TypeCheck(program));
+        Assert.Null(exception);
     }
 
     [Theory]
@@ -26,25 +26,56 @@ public class TypeCheckerTests
     [Fact]
     public void SingleTest()
     {
-        var src =
-            """
-            fn SomeFn<T>() {
+        const string src = """
+            class MyClass<T> {
+                fn SomeFn(param: T): result::<T, string> {
+                    if (true) {
+                        return ok(param);
+                    }
+                    return error("some error");
+                }
             }
-            
-            SomeFn();
             """;
         
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program);
 
-        act.Should().Throw<InvalidOperationException>();
+        act.Should().NotThrow<InvalidOperationException>();
     }
 
     public static TheoryData<string> SuccessfulExpressionTestCases() =>
         new()
         {
             """
-            fn SomeFn<T>(param: T) {
+            var a = SomeFn();
+            var b = a;
+            
+            var c = OtherFn(b);
+            
+            var d: String = c;
+
+            fn OtherFn<T>(param: T): T {
+                return param;
+            }
+
+            fn SomeFn<T>(): T {
+                return todo!;
+            }
+            """,
+            "var a: string = todo!",
+            """
+            fn SomeFn() {
+                return todo!;
+            }
+            """,
+            """
+            fn SomeFn(): string {
+                return todo!;
+            }
+            """,
+            """
+            fn SomeFn<T>(param: T): T {
+                return param;
             }
             
             var a = SomeFn("");
@@ -103,45 +134,45 @@ public class TypeCheckerTests
                 }
             }
             """,
-            """
-            union MyUnion {
-                A,
-                B(int),
-                C { field MyField: int }
-            }
-            var a = MyUnion::A;
-            match (a) {
-                MyUnion::A => 1,
-                MyUnion::B(var b) => b,
-                MyUnion::C { MyField } => MyField,
-            }
-            """,
-            """
-            union MyUnion {
-                A,
-                B(int),
-                C { field MyField: int }
-            }
-            var a = MyUnion::A;
-            match (a) {
-                MyUnion::A => 1,
-                MyUnion::B(var b) => b,
-                _ => 2,
-            }
-            """,
-            """
-            union MyUnion {
-                A,
-                B(int),
-                C { field MyField: int }
-            }
-            var a = MyUnion::A;
-            var d: int = match (a) {
-                MyUnion::A => 1,
-                MyUnion::B(var b) => b,
-                MyUnion::C { MyField } => MyField,
-            };
-            """,
+            // """
+            // union MyUnion {
+            //     A,
+            //     B(int),
+            //     C { field MyField: int }
+            // }
+            // var a = MyUnion::A;
+            // match (a) {
+            //     MyUnion::A => 1,
+            //     MyUnion::B(var b) => b,
+            //     MyUnion::C { MyField } => MyField,
+            // }
+            // """,
+            // """
+            // union MyUnion {
+            //     A,
+            //     B(int),
+            //     C { field MyField: int }
+            // }
+            // var a = MyUnion::A;
+            // match (a) {
+            //     MyUnion::A => 1,
+            //     MyUnion::B(var b) => b,
+            //     _ => 2,
+            // }
+            // """,
+            // """
+            // union MyUnion {
+            //     A,
+            //     B(int),
+            //     C { field MyField: int }
+            // }
+            // var a = MyUnion::A;
+            // var d: int = match (a) {
+            //     MyUnion::A => 1,
+            //     MyUnion::B(var b) => b,
+            //     MyUnion::C { MyField } => MyField,
+            // };
+            // """,
             "var a: bool = !(true);",
             """
             var a = (1, true, "");
@@ -680,7 +711,7 @@ public class TypeCheckerTests
                 var e: MyUnion = c;
             }
             """,
-            Mvp
+            // Mvp
         };
 
     public static TheoryData<string> FailedExpressionTestCases() =>

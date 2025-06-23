@@ -5,11 +5,15 @@ namespace NewLang.Core;
 public interface IExpression
 {
     ExpressionType ExpressionType { get; }
+    
+    TypeChecker.ITypeReference? ResolvedType { get; set; }
 }
 
 public record ValueAccessorExpression(ValueAccessor ValueAccessor) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.ValueAccess;
+    
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public override string ToString()
     {
@@ -20,6 +24,7 @@ public record ValueAccessorExpression(ValueAccessor ValueAccessor) : IExpression
 public record MemberAccessExpression(MemberAccess MemberAccess) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.MemberAccess;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public override string ToString()
     {
@@ -30,6 +35,7 @@ public record MemberAccessExpression(MemberAccess MemberAccess) : IExpression
 public record StaticMemberAccessExpression(StaticMemberAccess StaticMemberAccess) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.StaticMemberAccess;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public override string ToString()
     {
@@ -56,6 +62,7 @@ public record StaticMemberAccess(TypeIdentifier Type, StringToken MemberName)
 public record UnaryOperatorExpression(UnaryOperator UnaryOperator) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.UnaryOperator;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public override string ToString()
     {
@@ -66,6 +73,7 @@ public record UnaryOperatorExpression(UnaryOperator UnaryOperator) : IExpression
 public record BinaryOperatorExpression(BinaryOperator BinaryOperator) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.BinaryOperator;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public override string ToString()
     {
@@ -76,6 +84,7 @@ public record BinaryOperatorExpression(BinaryOperator BinaryOperator) : IExpress
 public record VariableDeclarationExpression(VariableDeclaration VariableDeclaration) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.VariableDeclaration;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public override string ToString()
     {
@@ -87,6 +96,7 @@ public record VariableDeclarationExpression(VariableDeclaration VariableDeclarat
 public record IfExpressionExpression(IfExpression IfExpression) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.IfExpression;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
     
     public override string ToString()
     {
@@ -97,6 +107,7 @@ public record IfExpressionExpression(IfExpression IfExpression) : IExpression
 public record BlockExpression(Block Block) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.Block;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public override string ToString()
     {
@@ -107,6 +118,7 @@ public record BlockExpression(Block Block) : IExpression
 public record GenericInstantiationExpression(GenericInstantiation GenericInstantiation) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.GenericInstantiation;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
 }
 
 public record GenericInstantiation(IExpression Value, IReadOnlyList<TypeIdentifier> GenericArguments)
@@ -124,11 +136,13 @@ public record GenericInstantiation(IExpression Value, IReadOnlyList<TypeIdentifi
 public record TupleExpression(IReadOnlyList<IExpression> Values) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.Tuple;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
 }
 
 public record MethodCallExpression(MethodCall MethodCall) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.MethodCall;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public override string ToString()
     {
@@ -139,6 +153,7 @@ public record MethodCallExpression(MethodCall MethodCall) : IExpression
 public record MethodReturnExpression(MethodReturn MethodReturn) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.MethodReturn;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public override string ToString()
     {
@@ -149,11 +164,13 @@ public record MethodReturnExpression(MethodReturn MethodReturn) : IExpression
 public record UnionStructVariantInitializerExpression(UnionStructVariantInitializer UnionInitializer) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.UnionStructVariantInitializer;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
 }
 
 public record MatchesExpression(IExpression ValueExpression, IPattern Pattern) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.Matches;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
     
     /// <summary>
     /// Collection of declared variables within <see cref="Pattern"/>. Initialized during type checking
@@ -172,6 +189,7 @@ public record UnionStructVariantInitializer(TypeIdentifier UnionType, StringToke
 public record ObjectInitializerExpression(ObjectInitializer ObjectInitializer) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.ObjectInitializer;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public override string ToString()
     {
@@ -214,6 +232,7 @@ public record MutabilityModifier(Token Modifier)
 public record MatchExpression(IExpression Value, IReadOnlyList<MatchArm> Arms) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.Match;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
 }
 
 public record MatchArm(IPattern Pattern, IExpression Expression);

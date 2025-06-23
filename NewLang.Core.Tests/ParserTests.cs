@@ -1275,6 +1275,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         return new (string Source, IExpression ExpectedExpression)[]
         {
             (
+                "todo!",
+                new ValueAccessorExpression(new ValueAccessor(
+                    ValueAccessType.Variable, Token.Todo(SourceSpan.Default)))
+            ),
+            (
                 """
                 match (a) {
                     _ => b,

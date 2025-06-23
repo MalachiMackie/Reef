@@ -53,5 +53,6 @@ public enum TokenType
     Underscore,
     Bang,
     // todo: better name?
-    EqualsArrow
+    EqualsArrow,
+    Todo,
 }

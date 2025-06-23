@@ -242,6 +242,7 @@ public class Tokenizer
             TokenType.Mut when source is "mut" => Token.Mut(new SourceSpan(position, (ushort)source.Length)),
             TokenType.DoubleColon when source is "::" => Token.DoubleColon(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Class when source is "class" => Token.Class(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Todo when source is "todo!" => Token.Todo(new SourceSpan(position, (ushort)source.Length)),
             TokenType.EqualsArrow when source is "=>" => Token.EqualsArrow(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Union when source is "union" => Token.Union(new SourceSpan(position, (ushort)source.Length)),
             TokenType.This when source is "this" => Token.This(new SourceSpan(position, (ushort)source.Length)),
@@ -413,6 +414,7 @@ public class Tokenizer
                 tokens[i++] = TokenType.True;
                 tokens[i++] = TokenType.Identifier;
                 tokens[i++] = TokenType.This;
+                tokens[i++] = TokenType.Todo;
                 break;
             case '*':
                 tokens[i++] = TokenType.Star;
@@ -467,6 +469,7 @@ public class Tokenizer
             TokenType.If => Matches(source, "if"),
             TokenType.LeftParenthesis => Matches(source, "("),
             TokenType.RightParenthesis => Matches(source,")"),
+            TokenType.Todo => Matches(source,"todo!"),
             TokenType.Underscore => Matches(source,"_"),
             TokenType.Bang => Matches(source,"!"),
             TokenType.Semicolon => Matches(source, ";"),

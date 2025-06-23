@@ -88,6 +88,7 @@ public record Token
             TokenType.Match => "match",
             TokenType.Bang => "!",
             TokenType.This => "this",
+            TokenType.Todo => "todo!",
             _ => throw new UnreachableException(Type.ToString())
         };
     }
@@ -257,6 +258,11 @@ public record Token
     public static Token This(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.This, SourceSpan = sourceSpan };
+    }
+
+    public static Token Todo(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.Todo, SourceSpan = sourceSpan };
     }
 
     public static Token Result(SourceSpan sourceSpan)
