@@ -290,20 +290,12 @@ public static class ResolvedTypeChecker
             }
             case TypeChecker.GenericTypeReference genericTypeReference:
             {
-                if (expectedGenerics.Contains(genericTypeReference))
+                if (!expectedGenerics.Contains(genericTypeReference) && genericTypeReference.ResolvedType is null)
                 {
-                    if (genericTypeReference.ResolvedType is not null)
-                    {
-                        throw new Exception("Should not resolve an expected generic type");
-                    }
+                    throw new InvalidOperationException(
+                        $"Could not infer type {genericTypeReference} for {expression}");
                 }
-                else
-                {
-                    if (genericTypeReference.ResolvedType is null)
-                    {
-                        throw new InvalidOperationException($"Could not infer type {genericTypeReference} for {expression}");
-                    }
-                }
+
                 break;
             }
         }

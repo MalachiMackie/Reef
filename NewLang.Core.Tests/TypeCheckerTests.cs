@@ -54,6 +54,26 @@ public class TypeCheckerTests
         new()
         {
             """
+            fn OtherFn<T2>(param2: T2): T2 {
+                return ThirdFn(param2);
+            
+                fn ThirdFn<T3>(param3: T3): T3 {
+                    return param3;
+                }
+            }
+            """,
+            """
+            fn SomeFn<T>(param: T) {
+                fn OtherFn<T2>(param2: T2) {
+                    fn ThirdFn<T3>(param3: T3) {
+                        var a: T = param;
+                        var b: T2 = param2;
+                        var c: T3 = param3;
+                    }
+                }
+            }
+            """,
+            """
             fn SomeFn<T>(): int {
                 var a = OtherFn();
                 return a;
@@ -734,6 +754,19 @@ public class TypeCheckerTests
     public static TheoryData<string> FailedExpressionTestCases() =>
         new()
         {
+            """
+            fn SomeFn<T>(param: T) {
+                fn OtherFn<T2>(param2: T2) {
+                    fn ThirdFn<T3>(param3: T3): T2 {
+                        var a: T = param;
+                        var b: T2 = param2;
+                        var c: T3 = param3;
+                        
+                        return a;
+                    }
+                }
+            }
+            """,
             """
             fn SomeFn<T>() {
             }
