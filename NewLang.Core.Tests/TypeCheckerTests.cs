@@ -163,6 +163,16 @@ public class TypeCheckerTests
         return new TheoryData<string>
         {
             """
+            var a = SomeFn;
+            
+            var b: String = a();
+            var c: String = a();
+            
+            fn SomeFn<T>(): T {
+                return todo!;
+            }
+            """,
+            """
             fn OtherFn<T2>(param2: T2): T2 {
                 return ThirdFn(param2);
             
@@ -194,11 +204,15 @@ public class TypeCheckerTests
             """,
             """
             var a = SomeFn();
+            var a2 = SomeFn();
             var b = a;
+            var b2 = a2;
 
             var c = OtherFn(b);
+            var c2 = OtherFn(b2);
 
             var d: String = c;
+            var d2: int = c2;
 
             fn OtherFn<T>(param: T): T {
                 return param;
@@ -865,6 +879,16 @@ public class TypeCheckerTests
     {
         return new TheoryData<string>
         {
+            """
+            var a = SomeFn;
+            
+            var b: String = a();
+            var c: int = a();
+            
+            fn SomeFn<T>(): T {
+                return todo!;
+            }
+            """,
             """
             fn SomeFn<T>(param: T) {
                 fn OtherFn<T2>(param2: T2) {
