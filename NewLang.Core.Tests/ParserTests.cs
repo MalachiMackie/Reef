@@ -164,6 +164,14 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 ], [], [], []),
                 [ParserError.VariableDeclaration_MissingValue(SourcePosition.Default)]
             ),
+            (
+                "var a = ; var b = 2",
+                new LangProgram([
+                    VariableDeclaration("a"),
+                    VariableDeclaration("b", Literal(2))
+                ], [], [], []),
+                [ParserError.VariableDeclaration_MissingValue(SourcePosition.Default)]
+            ),
         ];
 
         var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();
