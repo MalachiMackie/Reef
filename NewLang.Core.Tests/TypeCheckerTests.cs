@@ -117,7 +117,7 @@ public class TypeCheckerTests
     public void Should_SuccessfullyTypeCheckExpressions(string source)
     {
         var program = Parser.Parse(Tokenizer.Tokenize(source));
-        var exception = Record.Exception(() => TypeChecker.TypeCheck(program));
+        var exception = Record.Exception(() => TypeChecker.TypeCheck(program.ParsedProgram));
         Assert.Null(exception);
     }
 
@@ -126,7 +126,7 @@ public class TypeCheckerTests
     public void Should_FailTypeChecking_When_ExpressionsAreNotValid(string source)
     {
         var program = Parser.Parse(Tokenizer.Tokenize(source));
-        var act = () => TypeChecker.TypeCheck(program);
+        var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
 
         act.Should().Throw<InvalidOperationException>();
     }
@@ -153,7 +153,7 @@ public class TypeCheckerTests
             """;
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
-        var act = () => TypeChecker.TypeCheck(program);
+        var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
 
         act.Should().NotThrow<InvalidOperationException>();
     }

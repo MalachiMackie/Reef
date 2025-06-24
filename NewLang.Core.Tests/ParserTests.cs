@@ -17,9 +17,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         string source,
         IEnumerable<Token> tokens)
     {
-        var act = () => Parser.Parse(tokens);
+        var result = Parser.Parse(tokens);
 
-        act.Should().Throw<InvalidOperationException>();
+        result.Errors.Should().NotBeEmpty();
     }
 
     [Theory]
@@ -79,7 +79,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         IEnumerable<Token> tokens,
         LangProgram expectedProgram)
     {
-        var program = RemoveSourceSpan(Parser.Parse(tokens));
+        var program = RemoveSourceSpan(Parser.Parse(tokens).ParsedProgram);
 
         try
         {
@@ -90,6 +90,89 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             testOutputHelper.WriteLine("Expected [{0}], found [{1}]", expectedProgram, program);
             throw;
         }
+    }
+
+    [Theory]
+    [MemberData(nameof(ParseErrorTestCases))]
+    public void ParseErrorTests(string source, LangProgram expectedProgram, IEnumerable<ParserError> expectedErrors)
+    {
+        var tokens = Tokenizer.Tokenize(source);
+
+        var output = Parser.Parse(tokens);
+
+        expectedProgram = RemoveSourceSpan(expectedProgram);
+        expectedErrors = RemoveSourceSpan(expectedErrors.ToArray());
+        var program = RemoveSourceSpan(output.ParsedProgram);
+        var errors = RemoveSourceSpan(output.Errors);
+
+        program.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion());
+        errors.Should().BeEquivalentTo(expectedErrors);
+    }
+
+    public static TheoryData<string, LangProgram, IEnumerable<ParserError>> ParseErrorTestCases()
+    {
+        IEnumerable<(string, LangProgram, IEnumerable<ParserError>)> data =
+        [
+            ("", new LangProgram([], [], [], []), []),
+            (
+                "var a",
+                new LangProgram([VariableDeclaration("a")], [], [], []),
+                []
+            ),
+            (
+                "var ",
+                new LangProgram([], [], [], []),
+                [ParserError.VariableDeclaration_MissingIdentifier(SourcePosition.Default)]
+            ),
+            (
+                "var ;",
+                new LangProgram([], [], [], []),
+                [ParserError.VariableDeclaration_InvalidIdentifier(Token.Semicolon(SourceSpan.Default))]
+            ),
+            (
+                "var a = ",
+                new LangProgram([
+                    VariableDeclaration("a")
+                ], [], [], []),
+                [ParserError.VariableDeclaration_MissingValue(SourcePosition.Default)]
+            ),
+            (
+                "var a = ;",
+                new LangProgram([
+                    VariableDeclaration("a")
+                ], [], [], []),
+                [ParserError.VariableDeclaration_MissingValue(SourcePosition.Default)]
+            ),
+            (
+                "var a: = 2;",
+                new LangProgram([
+                    VariableDeclaration("a", Literal(2))
+                ], [], [], []),
+                [ParserError.VariableDeclaration_MissingType(SourcePosition.Default)]
+            ),
+            (
+                "var a: int = ;",
+                new LangProgram([
+                    VariableDeclaration("a", type: IntType())
+                ], [], [], []),
+                [ParserError.VariableDeclaration_MissingValue(SourcePosition.Default)]
+            ),
+            (
+                "var mut a: int = ;",
+                new LangProgram([
+                    VariableDeclaration("a", type: IntType(), isMutable: true)
+                ], [], [], []),
+                [ParserError.VariableDeclaration_MissingValue(SourcePosition.Default)]
+            ),
+        ];
+
+        var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();
+        foreach (var item in data)
+        {
+            theoryData.Add(item.Item1, item.Item2, item.Item3);
+        }
+
+        return theoryData;
     }
 
     public static IEnumerable<object[]> ParseTestCases()
@@ -4044,10 +4127,50 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedExpression });
     }
 
+    private static ValueAccessorExpression Literal(int value)
+    {
+        return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(value, SourceSpan.Default)));
+    }
+
+    private static ValueAccessorExpression Literal(string value)
+    {
+        return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral(value, SourceSpan.Default)));
+    }
+
+    private static VariableDeclarationExpression VariableDeclaration(
+        string name,
+        IExpression? value = null,
+        TypeIdentifier? type = null,
+        bool isMutable = false)
+    {
+        return new VariableDeclarationExpression(new VariableDeclaration(
+            Token.Identifier(name, SourceSpan.Default),
+            isMutable
+                ? new MutabilityModifier(Token.Mut(SourceSpan.Default))
+                : null,
+            type,
+            value));
+    }
+
+    private static TypeIdentifier IntType()
+    {
+        return new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []);
+    }
+
     private static ValueAccessorExpression VariableAccessor(string name)
     {
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
             Token.Identifier(name, SourceSpan.Default)));
+    }
+
+    private static IReadOnlyList<ParserError> RemoveSourceSpan(IReadOnlyList<ParserError> errors)
+    {
+        return [..errors.Select(RemoveSourceSpan)];
+    }
+
+    private static ParserError RemoveSourceSpan(ParserError error)
+    {
+        return error with { Position = SourcePosition.Default };
     }
 
     private static LangFunction RemoveSourceSpan(LangFunction function)

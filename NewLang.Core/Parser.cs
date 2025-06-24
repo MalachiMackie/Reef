@@ -7,22 +7,23 @@ namespace NewLang.Core;
 public sealed class Parser : IDisposable
 {
     private readonly IEnumerator<Token> _tokens;
-
+    private Token Current => _tokens.Current;
     private bool _hasNext;
+    private readonly List<ParserError> _errors = [];
 
     private Parser(IEnumerable<Token> tokens)
     {
         _tokens = tokens.GetEnumerator();
     }
 
-    private Token Current => _tokens.Current;
-
     public void Dispose()
     {
         _tokens.Dispose();
     }
 
-    public static LangProgram Parse(IEnumerable<Token> tokens)
+    public record ParseResult(LangProgram ParsedProgram, IReadOnlyList<ParserError> Errors);
+
+    public static ParseResult Parse(IEnumerable<Token> tokens)
     {
         using var parser = new Parser(tokens);
 
@@ -66,11 +67,11 @@ public sealed class Parser : IDisposable
         return hasNext;
     }
 
-    private LangProgram ParseInner()
+    private ParseResult ParseInner()
     {
         if (!MoveNext())
         {
-            return new LangProgram([], [], [], []);
+            return new ParseResult(new LangProgram([], [], [], []), []);
         }
 
         var scope = GetScope(null, false);
@@ -80,7 +81,10 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("A field is not a valid statement");
         }
 
-        return new LangProgram(scope.Expressions, scope.Functions, scope.Classes, scope.Unions);
+        return new ParseResult(
+            new LangProgram(scope.Expressions, scope.Functions, scope.Classes, scope.Unions),
+            _errors
+        );
     }
 
     /// <summary>
@@ -399,7 +403,8 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Expected field type");
         }
 
-        var type = GetTypeIdentifier();
+        var type = GetTypeIdentifier()
+            ?? throw new InvalidOperationException("Expected type");
 
         IExpression? valueExpression = null;
 
@@ -582,7 +587,8 @@ public sealed class Parser : IDisposable
                     throw new InvalidOperationException("Expected parameter type");
                 }
 
-                var parameterType = GetTypeIdentifier();
+                var parameterType = GetTypeIdentifier()
+                    ?? throw new InvalidOperationException("Expected type");
                 return new FunctionParameter(parameterType, mutabilityModifier, parameterName);
             });
 
@@ -600,7 +606,8 @@ public sealed class Parser : IDisposable
                 throw new InvalidOperationException("Expected return type");
             }
 
-            returnType = GetTypeIdentifier();
+            returnType = GetTypeIdentifier()
+                ?? throw new InvalidOperationException("Expected type");
 
             if (!_hasNext)
             {
@@ -630,11 +637,11 @@ public sealed class Parser : IDisposable
             or TokenType.Bool;
     }
 
-    private TypeIdentifier GetTypeIdentifier()
+    private TypeIdentifier? GetTypeIdentifier()
     {
         if (!IsTypeTokenType(Current.Type))
         {
-            throw new InvalidOperationException("Expected type");
+            return null;
         }
 
         var typeIdentifier = Current;
@@ -667,7 +674,7 @@ public sealed class Parser : IDisposable
             };
     }
 
-    private IExpression MatchTokenToExpression(IExpression? previousExpression)
+    private IExpression? MatchTokenToExpression(IExpression? previousExpression)
     {
         return Current.Type switch
         {
@@ -824,7 +831,8 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Expected pattern");
         }
 
-        var type = GetTypeIdentifier();
+        var type = GetTypeIdentifier()
+            ?? throw new InvalidOperationException("Expected type");
 
         if (!_hasNext)
         {
@@ -1096,7 +1104,8 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Expected type");
         }
 
-        var type = GetTypeIdentifier();
+        var type = GetTypeIdentifier()
+            ?? throw new InvalidOperationException("Expected type");
 
         if (!_hasNext)
         {
@@ -1305,11 +1314,12 @@ public sealed class Parser : IDisposable
         return new BlockExpression(new Block(scope.Expressions, scope.Functions));
     }
 
-    private VariableDeclarationExpression GetVariableDeclaration()
+    private VariableDeclarationExpression? GetVariableDeclaration()
     {
         if (!MoveNext())
         {
-            throw new InvalidOperationException("Expected variable identifier, got nothing");
+            _errors.Add(ParserError.VariableDeclaration_MissingIdentifier(Current.SourceSpan.Position));
+            return null;
         }
 
         MutabilityModifier? mutabilityModifier = null;
@@ -1320,18 +1330,21 @@ public sealed class Parser : IDisposable
 
             if (!MoveNext())
             {
-                throw new InvalidOperationException("Expected variable identifier");
+                _errors.Add(ParserError.VariableDeclaration_MissingIdentifier(Current.SourceSpan.Position));
+                return null;
             }
         }
 
         if (Current is not StringToken { Type: TokenType.Identifier } identifier)
         {
-            throw new InvalidOperationException($"Expected variable identifier, got {Current}");
+            _errors.Add(ParserError.VariableDeclaration_InvalidIdentifier(receivedToken: Current));
+            return null;
         }
 
         if (!MoveNext())
         {
-            throw new InvalidOperationException("Expected = or ; token, got nothing");
+            return new VariableDeclarationExpression(
+                new VariableDeclaration(identifier, mutabilityModifier, null, null));
         }
 
         TypeIdentifier? type = null;
@@ -1341,21 +1354,35 @@ public sealed class Parser : IDisposable
         {
             if (!MoveNext())
             {
-                throw new InvalidOperationException("Expected type");
+                _errors.Add(ParserError.VariableDeclaration_MissingType(Current.SourceSpan.Position));
+                return new VariableDeclarationExpression(new VariableDeclaration(
+                    identifier, mutabilityModifier, null, null));
             }
 
             type = GetTypeIdentifier();
+            if (type is null)
+            {
+                _errors.Add(ParserError.VariableDeclaration_MissingType(Current.SourceSpan.Position));
+            }
         }
 
         if (_hasNext && Current.Type == TokenType.Equals)
         {
             if (!MoveNext())
             {
-                throw new InvalidOperationException("Expected value expression");
+                _errors.Add(ParserError.VariableDeclaration_MissingValue(Current.SourceSpan.Position));
+                return new VariableDeclarationExpression(new VariableDeclaration(identifier, mutabilityModifier,
+                    type, null));
             }
 
-            valueExpression = PopExpression()
-                              ?? throw new InvalidOperationException("Expected value expression, got nothing");
+            valueExpression = PopExpression();
+
+            if (valueExpression is null)
+            {
+                _errors.Add(ParserError.VariableDeclaration_MissingValue(Current.SourceSpan.Position));
+                return new VariableDeclarationExpression(new VariableDeclaration(identifier, mutabilityModifier, type,
+                    null));
+            }
         }
 
         return new VariableDeclarationExpression(new VariableDeclaration(identifier, mutabilityModifier, type,
