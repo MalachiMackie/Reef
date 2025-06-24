@@ -172,6 +172,44 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 ], [], [], []),
                 [ParserError.VariableDeclaration_MissingValue(SourcePosition.Default)]
             ),
+            (
+                "*",
+                new LangProgram([
+                    Multiply(null, null)
+                ], [], [], []),
+                [
+                    ParserError.BinaryOperator_MissingLeftValue(SourcePosition.Default),
+                    ParserError.BinaryOperator_MissingRightValue(SourcePosition.Default),
+                ]
+            ),
+            (
+                "a *",
+                new LangProgram([
+                    Multiply(VariableAccessor("a"), null)
+                ], [], [], []),
+                [
+                    ParserError.BinaryOperator_MissingRightValue(SourcePosition.Default),
+                ]
+            ),
+            (
+                "* a",
+                new LangProgram([
+                    Multiply(null, VariableAccessor("a"))
+                ], [], [], []),
+                [
+                    ParserError.BinaryOperator_MissingLeftValue(SourcePosition.Default),
+                ]
+            ),
+            (
+                "a * ;var b = 2",
+                new LangProgram([
+                    Multiply(VariableAccessor("a"), null),
+                    VariableDeclaration("b", Literal(2))
+                ], [], [], []),
+                [
+                    ParserError.BinaryOperator_MissingRightValue(SourcePosition.Default),
+                ]
+            ),
         ];
 
         var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();
@@ -4143,6 +4181,15 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     private static ValueAccessorExpression Literal(string value)
     {
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral(value, SourceSpan.Default)));
+    }
+
+    private static BinaryOperatorExpression Multiply(IExpression? left, IExpression? right)
+    {
+        return new BinaryOperatorExpression(new BinaryOperator(
+            BinaryOperatorType.Multiply,
+            left,
+            right,
+            Token.Star(SourceSpan.Default)));
     }
 
     private static VariableDeclarationExpression VariableDeclaration(

@@ -24,6 +24,12 @@ public record ParserError
     
     public static ParserError VariableDeclaration_MissingValue(SourcePosition sourcePosition) =>
         new("Value expression expected", sourcePosition, ParserErrorType.VariableDeclaration_MissingValue);
+
+    public static ParserError BinaryOperator_MissingLeftValue(SourcePosition sourcePosition) =>
+        new("Value expression expected", sourcePosition, ParserErrorType.BinaryOperator_MissingLeftValue);
+    
+    public static ParserError BinaryOperator_MissingRightValue(SourcePosition sourcePosition) =>
+        new("Value expression expected", sourcePosition, ParserErrorType.BinaryOperator_MissingRightValue);
 }
 
 public enum ParserErrorType
@@ -33,6 +39,9 @@ public enum ParserErrorType
     VariableDeclaration_MissingIdentifier,
     VariableDeclaration_MissingType,
     VariableDeclaration_MissingValue,
+    
+    BinaryOperator_MissingLeftValue,
+    BinaryOperator_MissingRightValue,
     
     // ReSharper restore InconsistentNaming
 }

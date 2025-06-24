@@ -206,10 +206,6 @@ public sealed class Parser : IDisposable
             {
                 // drop semicolon
                 MoveNext();
-                if (!IsValidStatement(expression))
-                {
-                    throw new InvalidOperationException($"{expression.ExpressionType} is not a valid statement");
-                }
             }
             else
             {
@@ -658,22 +654,6 @@ public sealed class Parser : IDisposable
         return new TypeIdentifier(typeIdentifier, typeArguments);
     }
 
-    private static bool IsValidStatement(IExpression expression)
-    {
-        return expression is
-            {
-                ExpressionType: ExpressionType.Block
-                or ExpressionType.IfExpression
-                or ExpressionType.VariableDeclaration
-                or ExpressionType.MethodCall
-                or ExpressionType.MethodReturn
-            } or
-            BinaryOperatorExpression
-            {
-                BinaryOperator.OperatorType: BinaryOperatorType.ValueAssignment
-            };
-    }
-
     private IExpression? MatchTokenToExpression(IExpression? previousExpression)
     {
         return Current.Type switch
@@ -705,7 +685,7 @@ public sealed class Parser : IDisposable
             _ when TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(
                 previousExpression, Current, unaryOperatorType.Value),
             _ when TryGetBinaryOperatorType(Current.Type, out var binaryOperatorType) => GetBinaryOperatorExpression(
-                previousExpression ?? throw new InvalidOperationException($"Unexpected token {Current}"),
+                previousExpression,
                 binaryOperatorType.Value),
             _ => throw new InvalidOperationException($"Token type {Current.Type} not supported")
         };
@@ -1411,9 +1391,14 @@ public sealed class Parser : IDisposable
     }
 
     private BinaryOperatorExpression GetBinaryOperatorExpression(
-        IExpression leftOperand,
+        IExpression? leftOperand,
         BinaryOperatorType operatorType)
     {
+        if (leftOperand is null)
+        {
+            _errors.Add(ParserError.BinaryOperator_MissingLeftValue(Current.SourceSpan.Position));
+        }
+        
         var operatorToken = Current;
         if (!TryGetBindingStrength(operatorToken, out var bindingStrength))
         {
@@ -1422,14 +1407,19 @@ public sealed class Parser : IDisposable
 
         if (!MoveNext())
         {
-            throw new InvalidOperationException("Expected right operand");
+            _errors.Add(ParserError.BinaryOperator_MissingRightValue(Current.SourceSpan.Position));
+            return new BinaryOperatorExpression(
+                new BinaryOperator(operatorType, leftOperand, Right: null, operatorToken));
         }
 
         var right = PopExpression(bindingStrength.Value);
 
-        return right is null
-            ? throw new Exception("Expected expression but got null")
-            : new BinaryOperatorExpression(new BinaryOperator(operatorType, leftOperand, right, operatorToken));
+        if (right is null)
+        {
+            _errors.Add(ParserError.BinaryOperator_MissingRightValue(Current.SourceSpan.Position));
+        }
+
+        return new BinaryOperatorExpression(new BinaryOperator(operatorType, leftOperand, right, operatorToken));
     }
 
     private static bool TryGetBindingStrength(Token token, [NotNullWhen(true)] out uint? bindingStrength)

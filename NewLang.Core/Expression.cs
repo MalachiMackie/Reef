@@ -306,7 +306,7 @@ public record UnaryOperator(UnaryOperatorType OperatorType, IExpression Operand,
     }
 }
 
-public record BinaryOperator(BinaryOperatorType OperatorType, IExpression Left, IExpression Right, Token OperatorToken)
+public record BinaryOperator(BinaryOperatorType OperatorType, IExpression? Left, IExpression? Right, Token OperatorToken)
 {
     public override string ToString()
     {

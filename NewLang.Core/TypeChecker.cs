@@ -1232,8 +1232,8 @@ public class TypeChecker
             case BinaryOperatorType.LessThan:
             case BinaryOperatorType.GreaterThan:
             {
-                var leftType = TypeCheckExpression(@operator.Left, genericPlaceholders);
-                var rightType = TypeCheckExpression(@operator.Right, genericPlaceholders);
+                var leftType = @operator.Left is null ? new UnknownType() : TypeCheckExpression(@operator.Left, genericPlaceholders);
+                var rightType = @operator.Right is null ? new UnknownType() : TypeCheckExpression(@operator.Right, genericPlaceholders);
                 ExpectType(leftType, InstantiatedClass.Int, genericPlaceholders);
                 ExpectType(rightType, InstantiatedClass.Int, genericPlaceholders);
 
@@ -1244,8 +1244,8 @@ public class TypeChecker
             case BinaryOperatorType.Multiply:
             case BinaryOperatorType.Divide:
             {
-                var leftType = TypeCheckExpression(@operator.Left, genericPlaceholders);
-                var rightType = TypeCheckExpression(@operator.Right, genericPlaceholders);
+                var leftType = @operator.Left is null ? new UnknownType() : TypeCheckExpression(@operator.Left, genericPlaceholders);
+                var rightType = @operator.Right is null ? new UnknownType() : TypeCheckExpression(@operator.Right, genericPlaceholders);
                 ExpectType(leftType, InstantiatedClass.Int, genericPlaceholders);
                 ExpectType(rightType, InstantiatedClass.Int, genericPlaceholders);
 
@@ -1253,17 +1253,17 @@ public class TypeChecker
             }
             case BinaryOperatorType.EqualityCheck:
             {
-                var leftType = TypeCheckExpression(@operator.Left, genericPlaceholders);
-                var rightType = TypeCheckExpression(@operator.Right, genericPlaceholders);
+                var leftType = @operator.Left is null ? new UnknownType() : TypeCheckExpression(@operator.Left, genericPlaceholders);
+                var rightType = @operator.Right is null ? new UnknownType() : TypeCheckExpression(@operator.Right, genericPlaceholders);
                 ExpectType(rightType, leftType, genericPlaceholders);
 
                 return InstantiatedClass.Boolean;
             }
             case BinaryOperatorType.ValueAssignment:
             {
-                var leftType = TypeCheckExpression(@operator.Left, genericPlaceholders, true);
-                var rightType = TypeCheckExpression(@operator.Right, genericPlaceholders);
-                if (!IsExpressionAssignable(@operator.Left, genericPlaceholders))
+                var leftType = @operator.Left is null ? new UnknownType() : TypeCheckExpression(@operator.Left, genericPlaceholders, true);
+                var rightType = @operator.Right is null ? new UnknownType() : TypeCheckExpression(@operator.Right, genericPlaceholders);
+                if (@operator.Left is not null && !IsExpressionAssignable(@operator.Left, genericPlaceholders))
                 {
                     throw new InvalidOperationException($"{@operator.Left} is not assignable");
                 }
@@ -1870,6 +1870,8 @@ public class TypeChecker
     }
 
     public interface ITypeReference;
+
+    public class UnknownType : ITypeReference;
 
     public class GenericTypeReference : ITypeReference, IEquatable<GenericTypeReference>
     {

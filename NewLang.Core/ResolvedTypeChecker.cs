@@ -212,8 +212,10 @@ public static class ResolvedTypeChecker
     private static void CheckBinaryOperatorExpression(BinaryOperator binaryOperator,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
-        CheckExpression(binaryOperator.Left, expectedGenerics);
-        CheckExpression(binaryOperator.Right, expectedGenerics);
+        if (binaryOperator.Left is not null)
+            CheckExpression(binaryOperator.Left, expectedGenerics);
+        if (binaryOperator.Right is not null)
+            CheckExpression(binaryOperator.Right, expectedGenerics);
     }
 
     private static void CheckIfExpression(IfExpression ifExpression,
