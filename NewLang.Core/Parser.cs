@@ -1176,6 +1176,7 @@ public sealed class Parser : IDisposable
 
             keepBinding = _hasNext
                           && TryGetBindingStrength(Current, out var bindingStrength)
+                          && (!TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) || !IsUnaryOperatorPrefix(unaryOperatorType.Value))
                           && bindingStrength > (currentBindingStrength ?? 0);
         }
 
@@ -1374,18 +1375,29 @@ public sealed class Parser : IDisposable
         Token operatorToken,
         UnaryOperatorType operatorType)
     {
-        MoveNext();
-
         if (IsUnaryOperatorPrefix(operatorType))
         {
-            operand = PopExpression(GetUnaryOperatorBindingStrength(operatorType))
-                      ?? throw new InvalidOperationException("Expected expression");
-        }
-        else if (operand is null)
-        {
-            throw new InvalidOperationException($"Unexpected token {operatorToken}");
-        }
+            MoveNext();
+            if (!_hasNext)
+            {
+                _errors.Add(ParserError.UnaryOperator_MissingValue(Current.SourceSpan.Position));
+                return new UnaryOperatorExpression(new UnaryOperator(operatorType, null, operatorToken));
+            }
 
+            operand = PopExpression(GetUnaryOperatorBindingStrength(operatorType));
+            if (operand is null)
+            {
+                _errors.Add(ParserError.UnaryOperator_MissingValue(Current.SourceSpan.Position));
+            }
+        }
+        else
+        {
+            if (operand is null)
+            {
+                _errors.Add(ParserError.UnaryOperator_MissingValue(Current.SourceSpan.Position));
+            }
+            MoveNext();
+        }
 
         return new UnaryOperatorExpression(new UnaryOperator(operatorType, operand, operatorToken));
     }

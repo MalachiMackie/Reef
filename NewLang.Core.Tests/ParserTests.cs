@@ -210,6 +210,54 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     ParserError.BinaryOperator_MissingRightValue(SourcePosition.Default),
                 ]
             ),
+            (
+                "?",
+                new LangProgram([
+                    FallOut(null),
+                ], [], [], []),
+                [
+                    ParserError.UnaryOperator_MissingValue(SourcePosition.Default),
+                ]
+            ),
+            (
+                "?; a;",
+                new LangProgram([
+                    FallOut(null),
+                    VariableAccessor("a")
+                ], [], [], []),
+                [
+                    ParserError.UnaryOperator_MissingValue(SourcePosition.Default),
+                ]
+            ),
+            (
+                "!",
+                new LangProgram([
+                    Not(null),
+                ], [], [], []),
+                [
+                    ParserError.UnaryOperator_MissingValue(SourcePosition.Default),
+                ]
+            ),
+            (
+                "a;!",
+                new LangProgram([
+                    VariableAccessor("a"),
+                    Not(null),
+                ], [], [], []),
+                [
+                    ParserError.UnaryOperator_MissingValue(SourcePosition.Default),
+                ]
+            ),
+            (
+                "!;var a = 2;",
+                new LangProgram([
+                    Not(null),
+                    VariableDeclaration("a", Literal(2))
+                ], [], [], []),
+                [
+                    ParserError.UnaryOperator_MissingValue(SourcePosition.Default),
+                ]
+            ),
         ];
 
         var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();
@@ -4190,6 +4238,18 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             left,
             right,
             Token.Star(SourceSpan.Default)));
+    }
+
+    private static UnaryOperatorExpression FallOut(IExpression? value)
+    {
+        return new UnaryOperatorExpression(new UnaryOperator(UnaryOperatorType.FallOut, value,
+            Token.QuestionMark(SourceSpan.Default)));
+    }
+    
+    private static UnaryOperatorExpression Not(IExpression? value)
+    {
+        return new UnaryOperatorExpression(new UnaryOperator(UnaryOperatorType.Not, value,
+            Token.QuestionMark(SourceSpan.Default)));
     }
 
     private static VariableDeclarationExpression VariableDeclaration(

@@ -30,6 +30,9 @@ public record ParserError
     
     public static ParserError BinaryOperator_MissingRightValue(SourcePosition sourcePosition) =>
         new("Value expression expected", sourcePosition, ParserErrorType.BinaryOperator_MissingRightValue);
+    
+    public static ParserError UnaryOperator_MissingValue(SourcePosition sourcePosition) =>
+        new("Value expression expected", sourcePosition, ParserErrorType.UnaryOperator_MissingValue);
 }
 
 public enum ParserErrorType
@@ -42,6 +45,8 @@ public enum ParserErrorType
     
     BinaryOperator_MissingLeftValue,
     BinaryOperator_MissingRightValue,
+    
+    UnaryOperator_MissingValue
     
     // ReSharper restore InconsistentNaming
 }

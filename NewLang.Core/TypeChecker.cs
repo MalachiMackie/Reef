@@ -1026,18 +1026,20 @@ public class TypeChecker
         };
     }
 
-    private InstantiatedClass TypeCheckNot(IExpression expression, HashSet<GenericTypeReference> genericPlaceholders)
+    private InstantiatedClass TypeCheckNot(IExpression? expression, HashSet<GenericTypeReference> genericPlaceholders)
     {
-        var expressionType = TypeCheckExpression(expression, genericPlaceholders);
+        var expressionType = expression is null
+            ? new UnknownType()
+            : TypeCheckExpression(expression, genericPlaceholders);
 
         ExpectType(expressionType, InstantiatedClass.Boolean, genericPlaceholders);
 
         return InstantiatedClass.Boolean;
     }
 
-    private ITypeReference TypeCheckFallout(IExpression expression, HashSet<GenericTypeReference> genericPlaceholders)
+    private ITypeReference TypeCheckFallout(IExpression? expression, HashSet<GenericTypeReference> genericPlaceholders)
     {
-        var expressionType = TypeCheckExpression(expression, genericPlaceholders);
+        var expressionType = expression is null ? new UnknownType() : TypeCheckExpression(expression, genericPlaceholders);
 
         // todo: could implement with an interface? union Result : IFallout?
         if (ExpectedReturnType is not InstantiatedUnion { Name: "Result" or "Option" } union)

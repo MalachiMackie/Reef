@@ -297,7 +297,7 @@ public record ValueAccessor(ValueAccessType AccessType, Token Token)
     }
 }
 
-public record UnaryOperator(UnaryOperatorType OperatorType, IExpression Operand, Token OperatorToken)
+public record UnaryOperator(UnaryOperatorType OperatorType, IExpression? Operand, Token OperatorToken)
 {
     public override string ToString()
     {

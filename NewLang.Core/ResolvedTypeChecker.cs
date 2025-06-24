@@ -185,7 +185,8 @@ public static class ResolvedTypeChecker
     private static void CheckUnaryOperator(UnaryOperator unaryOperator,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
-        CheckExpression(unaryOperator.Operand, expectedGenerics);
+        if (unaryOperator.Operand is not null)
+            CheckExpression(unaryOperator.Operand, expectedGenerics);
     }
 
     private static void CheckGenericInstantiation(GenericInstantiation genericInstantiation,
