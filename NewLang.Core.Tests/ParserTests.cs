@@ -122,7 +122,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             (
                 "var ",
                 new LangProgram([], [], [], []),
-                [ParserError.VariableDeclaration_MissingIdentifier(SourcePosition.Default)]
+                [ParserError.VariableDeclaration_MissingIdentifier(Token.Var(SourceSpan.Default))]
             ),
             (
                 "var ;",
@@ -134,35 +134,35 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new LangProgram([
                     VariableDeclaration("a")
                 ], [], [], []),
-                [ParserError.VariableDeclaration_MissingValue(SourcePosition.Default)]
+                [ParserError.VariableDeclaration_MissingValue(Token.Equals(SourceSpan.Default))]
             ),
             (
                 "var a = ;",
                 new LangProgram([
                     VariableDeclaration("a")
                 ], [], [], []),
-                [ParserError.VariableDeclaration_MissingValue(SourcePosition.Default)]
+                [ParserError.VariableDeclaration_MissingValue(Token.Semicolon(SourceSpan.Default))]
             ),
             (
                 "var a: = 2;",
                 new LangProgram([
                     VariableDeclaration("a", Literal(2))
                 ], [], [], []),
-                [ParserError.VariableDeclaration_MissingType(SourcePosition.Default)]
+                [ParserError.VariableDeclaration_MissingType(Token.Equals(SourceSpan.Default))]
             ),
             (
                 "var a: int = ;",
                 new LangProgram([
                     VariableDeclaration("a", type: IntType())
                 ], [], [], []),
-                [ParserError.VariableDeclaration_MissingValue(SourcePosition.Default)]
+                [ParserError.VariableDeclaration_MissingValue(Token.Semicolon(SourceSpan.Default))]
             ),
             (
                 "var mut a: int = ;",
                 new LangProgram([
                     VariableDeclaration("a", type: IntType(), isMutable: true)
                 ], [], [], []),
-                [ParserError.VariableDeclaration_MissingValue(SourcePosition.Default)]
+                [ParserError.VariableDeclaration_MissingValue(Token.Semicolon(SourceSpan.Default))]
             ),
             (
                 "var a = ; var b = 2",
@@ -170,7 +170,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     VariableDeclaration("a"),
                     VariableDeclaration("b", Literal(2))
                 ], [], [], []),
-                [ParserError.VariableDeclaration_MissingValue(SourcePosition.Default)]
+                [ParserError.VariableDeclaration_MissingValue(Token.Semicolon(SourceSpan.Default))]
             ),
             (
                 "*",
@@ -178,8 +178,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     Multiply(null, null)
                 ], [], [], []),
                 [
-                    ParserError.BinaryOperator_MissingLeftValue(SourcePosition.Default),
-                    ParserError.BinaryOperator_MissingRightValue(SourcePosition.Default),
+                    ParserError.BinaryOperator_MissingLeftValue(Token.Star(SourceSpan.Default)),
+                    ParserError.BinaryOperator_MissingRightValue(Token.Star(SourceSpan.Default)),
                 ]
             ),
             (
@@ -188,7 +188,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     Multiply(VariableAccessor("a"), null)
                 ], [], [], []),
                 [
-                    ParserError.BinaryOperator_MissingRightValue(SourcePosition.Default),
+                    ParserError.BinaryOperator_MissingRightValue(Token.Star(SourceSpan.Default)),
                 ]
             ),
             (
@@ -197,7 +197,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     Multiply(null, VariableAccessor("a"))
                 ], [], [], []),
                 [
-                    ParserError.BinaryOperator_MissingLeftValue(SourcePosition.Default),
+                    ParserError.BinaryOperator_MissingLeftValue(Token.Star(SourceSpan.Default)),
                 ]
             ),
             (
@@ -207,7 +207,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     VariableDeclaration("b", Literal(2))
                 ], [], [], []),
                 [
-                    ParserError.BinaryOperator_MissingRightValue(SourcePosition.Default),
+                    ParserError.BinaryOperator_MissingRightValue(Token.Semicolon(SourceSpan.Default)),
                 ]
             ),
             (
@@ -216,7 +216,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     FallOut(null),
                 ], [], [], []),
                 [
-                    ParserError.UnaryOperator_MissingValue(SourcePosition.Default),
+                    ParserError.UnaryOperator_MissingValue(Token.QuestionMark(SourceSpan.Default)),
                 ]
             ),
             (
@@ -226,7 +226,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     VariableAccessor("a")
                 ], [], [], []),
                 [
-                    ParserError.UnaryOperator_MissingValue(SourcePosition.Default),
+                    ParserError.UnaryOperator_MissingValue(Token.QuestionMark(SourceSpan.Default)),
                 ]
             ),
             (
@@ -235,7 +235,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     Not(null),
                 ], [], [], []),
                 [
-                    ParserError.UnaryOperator_MissingValue(SourcePosition.Default),
+                    ParserError.UnaryOperator_MissingValue(Token.Bang(SourceSpan.Default)),
                 ]
             ),
             (
@@ -245,7 +245,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     Not(null),
                 ], [], [], []),
                 [
-                    ParserError.UnaryOperator_MissingValue(SourcePosition.Default),
+                    ParserError.UnaryOperator_MissingValue(Token.Bang(SourceSpan.Default)),
                 ]
             ),
             (
@@ -255,7 +255,88 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     VariableDeclaration("a", Literal(2))
                 ], [], [], []),
                 [
-                    ParserError.UnaryOperator_MissingValue(SourcePosition.Default),
+                    ParserError.UnaryOperator_MissingValue(Token.Semicolon(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "{",
+                new LangProgram([
+                    Block(),
+                ], [], [], []),
+                [
+                    ParserError.Scope_MissingClosingTag(Token.LeftBrace(SourceSpan.Default)),
+                ]
+            ),
+            (
+                ",",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.Scope_UnexpectedComma(Token.Comma(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "a;,b",
+                new LangProgram([
+                    VariableAccessor("a"),
+                    VariableAccessor("b"),
+                ], [], [], []),
+                [
+                    ParserError.Scope_UnexpectedComma(Token.Comma(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "a b",
+                new LangProgram([
+                    VariableAccessor("a"),
+                    VariableAccessor("b"),
+                ], [], [], []),
+                [
+                    ParserError.Scope_EarlyTailReturnExpression(VariableAccessor("a")),
+                ]
+            ),
+            (
+                "a b; c; d e",
+                new LangProgram([
+                    VariableAccessor("a"),
+                    VariableAccessor("b"),
+                    VariableAccessor("c"),
+                    VariableAccessor("d"),
+                    VariableAccessor("e"),
+                ], [], [], []),
+                [
+                    ParserError.Scope_EarlyTailReturnExpression(VariableAccessor("a")),
+                    ParserError.Scope_EarlyTailReturnExpression(VariableAccessor("d")),
+                ]
+            ),
+            (
+                "class MyClass {field MyField: string field OtherField: string}",
+                new LangProgram([], [], [
+                    new ProgramClass(null, Token.Identifier("MyClass", SourceSpan.Default), [], [], [
+                        ClassField("MyField", StringType()),
+                        ClassField("OtherField", StringType()),
+                    ])], []),
+                [
+                    ParserError.Scope_ExpectedComma(Token.Field(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "class MyClass {field MyField: string, field OtherField: string",
+                new LangProgram([], [], [
+                    new ProgramClass(null, Token.Identifier("MyClass", SourceSpan.Default), [], [], [
+                    ClassField("MyField", StringType()),
+                    ClassField("OtherField", StringType()),
+                ])], []),
+                [
+                    ParserError.Scope_MissingClosingTag(Token.StringKeyword(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "{a",
+                new LangProgram([
+                    Block([VariableAccessor("a")]),
+                ], [], [], []),
+                [
+                    ParserError.Scope_MissingClosingTag(Token.StringKeyword(SourceSpan.Default)),
                 ]
             ),
         ];
@@ -277,7 +358,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new VariableDeclarationExpression(new VariableDeclaration(
                     Token.Identifier("a", SourceSpan.Default),
                     null,
-                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
+                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Multiply,
                         new TupleExpression([
@@ -288,11 +369,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                 new ValueAccessorExpression(new ValueAccessor(
                                     ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default))),
                                 Token.Plus(SourceSpan.Default)))
-                        ]),
+                        ], SourceRange.Default),
                         new ValueAccessorExpression(new ValueAccessor(
                             ValueAccessType.Literal,
                             Token.IntLiteral(3, SourceSpan.Default))),
-                        Token.Plus(SourceSpan.Default)))))
+                        Token.Plus(SourceSpan.Default)))), SourceRange.Default)
             ], [], [], [])),
             (
                 """
@@ -310,7 +391,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             null,
                             new UnionStructVariantInitializerExpression(new UnionStructVariantInitializer(
                                 new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default),
-                                    [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])]),
+                                    [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)], SourceRange.Default),
                                 Token.Identifier("A", SourceSpan.Default),
                                 [
                                     new FieldInitializer(
@@ -323,8 +404,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                         new ValueAccessorExpression(new ValueAccessor(
                                             ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default)))
                                     )
-                                ]))
-                        ))
+                                ]), SourceRange.Default)
+                        ), SourceRange.Default)
                     ],
                     [],
                     [],
@@ -344,7 +425,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                             null,
                                             null,
                                             Token.Identifier("MyField", SourceSpan.Default),
-                                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
+                                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
                                             null
                                         )
                                     ]
@@ -370,7 +451,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             null,
                             null,
                             new UnionStructVariantInitializerExpression(new UnionStructVariantInitializer(
-                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                                 Token.Identifier("A", SourceSpan.Default),
                                 [
                                     new FieldInitializer(
@@ -383,8 +464,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                         new ValueAccessorExpression(new ValueAccessor(
                                             ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default)))
                                     )
-                                ]))
-                        ))
+                                ]), SourceRange.Default)
+                        ), SourceRange.Default)
                     ],
                     [],
                     [],
@@ -404,7 +485,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                             null,
                                             null,
                                             Token.Identifier("MyField", SourceSpan.Default),
-                                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
+                                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
                                             null
                                         )
                                     ]
@@ -421,7 +502,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             null,
                             null,
                             Token.Identifier("myFieldWithoutComma", SourceSpan.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
+                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
                             null)
                     ])
                 ], [])),
@@ -551,12 +632,12 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                 new TupleUnionVariant(
                                     Token.Identifier("B", SourceSpan.Default),
                                     [
-                                        new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
-                                        new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
+                                        new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
+                                        new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
                                         new TypeIdentifier(
                                             Token.Identifier("MyClass", SourceSpan.Default),
-                                            [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])]
-                                        )
+                                            [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)]
+                                        , SourceRange.Default)
                                     ])
                             ])
                     ])
@@ -587,7 +668,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                     [
                                         new ClassField(null, null, null,
                                             Token.Identifier("MyField", SourceSpan.Default),
-                                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []), null)
+                                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
                                     ]
                                 }
                             ])
@@ -601,7 +682,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     [],
                     [
                         new FunctionParameter(
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
+                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Token.Identifier("a", SourceSpan.Default)
                         )
@@ -617,12 +698,12 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     [],
                     [
                         new FunctionParameter(
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
+                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Token.Identifier("a", SourceSpan.Default)
                         ),
                         new FunctionParameter(
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
+                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
                             null,
                             Token.Identifier("b", SourceSpan.Default)
                         )
@@ -638,12 +719,12 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     [],
                     [
                         new FunctionParameter(
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
+                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Token.Identifier("a", SourceSpan.Default)
                         ),
                         new FunctionParameter(
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
+                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Token.Identifier("b", SourceSpan.Default)
                         )
@@ -658,7 +739,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     Token.Identifier("MyFn", SourceSpan.Default),
                     [],
                     [
-                        new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), null,
+                        new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default), null,
                             Token.Identifier("a", SourceSpan.Default))
                     ],
                     null,
@@ -671,7 +752,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     Token.Identifier("MyFn", SourceSpan.Default),
                     [],
                     [
-                        new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), null,
+                        new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default), null,
                             Token.Identifier("a", SourceSpan.Default))
                     ],
                     null,
@@ -699,11 +780,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default),
                     null, null,
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(1, SourceSpan.Default))))),
+                        Token.IntLiteral(1, SourceSpan.Default)))), SourceRange.Default),
                 new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("b", SourceSpan.Default),
                     null, null,
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(2, SourceSpan.Default)))))
+                        Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default)
             ], [], [], [])),
             ("a = b;", new LangProgram([
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
@@ -712,7 +793,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ("error();", new LangProgram([
                 new MethodCallExpression(new MethodCall(
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Token.Error(SourceSpan.Default))), []))
+                        Token.Error(SourceSpan.Default))), []), SourceRange.Default)
             ], [], [], [])),
             ("something(a,);", new LangProgram([
                 new MethodCallExpression(new MethodCall(
@@ -720,25 +801,25 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.Identifier("something", SourceSpan.Default))),
                     [
                         VariableAccessor("a")
-                    ]))
+                    ]), SourceRange.Default)
             ], [], [], [])),
             ("ok();", new LangProgram([
                 new MethodCallExpression(new MethodCall(
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Token.Ok(SourceSpan.Default))), []))
+                        Token.Ok(SourceSpan.Default))), []), SourceRange.Default)
             ], [], [], [])),
             ("ok().b()", new LangProgram([
                 new MethodCallExpression(new MethodCall(
                     new MemberAccessExpression(new MemberAccess(
                         new MethodCallExpression(new MethodCall(
                             new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                                Token.Ok(SourceSpan.Default))), [])),
-                        Token.Identifier("b", SourceSpan.Default))), []))
+                                Token.Ok(SourceSpan.Default))), []), SourceRange.Default),
+                        Token.Identifier("b", SourceSpan.Default))), []), SourceRange.Default)
             ], [], [], [])),
             ("if (a) {} b = c;", new LangProgram(
                 [
                     new IfExpressionExpression(new IfExpression(VariableAccessor("a"),
-                        new BlockExpression(new Block([], [])), [], null)),
+                        new BlockExpression(new Block([], []), SourceRange.Default), [], null), SourceRange.Default),
                     new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
                         VariableAccessor("b"), VariableAccessor("c"), Token.Equals(SourceSpan.Default)))
                 ],
@@ -746,7 +827,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 [], [])),
             ("{} b = c;", new LangProgram(
                 [
-                    new BlockExpression(new Block([], [])),
+                    new BlockExpression(new Block([], []), SourceRange.Default),
                     new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
                         VariableAccessor("b"), VariableAccessor("c"), Token.Equals(SourceSpan.Default)))
                 ],
@@ -759,10 +840,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ("if (a) {return b;}", new LangProgram([
                 new IfExpressionExpression(new IfExpression(
                     VariableAccessor("a"),
-                    new BlockExpression(new Block([new MethodReturnExpression(new MethodReturn(VariableAccessor("b")))],
-                        [])),
+                    new BlockExpression(new Block([new MethodReturnExpression(new MethodReturn(VariableAccessor("b")), SourceRange.Default)],
+                        []), SourceRange.Default),
                     [],
-                    null))
+                    null), SourceRange.Default)
             ], [], [], [])),
             ("fn MyFn() {if (a) {return b;}}", new LangProgram([], [
                 new LangFunction(
@@ -776,9 +857,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         new IfExpressionExpression(new IfExpression(
                             VariableAccessor("a"),
                             new BlockExpression(
-                                new Block([new MethodReturnExpression(new MethodReturn(VariableAccessor("b")))], [])),
+                                new Block([new MethodReturnExpression(new MethodReturn(VariableAccessor("b")), SourceRange.Default)], []), SourceRange.Default),
                             [],
-                            null))
+                            null), SourceRange.Default)
                     ], []))
             ], [], [])),
             ("fn MyFn() {if (a) {return b();}}", new LangProgram([], [
@@ -796,15 +877,15 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             [
                                 new MethodReturnExpression(
                                     new MethodReturn(
-                                        new MethodCallExpression(new MethodCall(VariableAccessor("b"), []))))
-                            ], [])),
+                                        new MethodCallExpression(new MethodCall(VariableAccessor("b"), []), SourceRange.Default)), SourceRange.Default)
+                            ], []), SourceRange.Default),
                             [],
-                            null))
+                            null), SourceRange.Default)
                     ], []))
             ], [], [])),
             ("fn MyFn(): string {}", new LangProgram([], [
                 new LangFunction(null, null, Token.Identifier("MyFn", SourceSpan.Default), [], [],
-                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []), new Block([], []))
+                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), new Block([], []))
             ], [], [])),
             ("fn MyFn(): result::<int, MyErrorType> {}", new LangProgram([], [
                 new LangFunction(
@@ -816,9 +897,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     new TypeIdentifier(
                         Token.Result(SourceSpan.Default),
                         [
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
-                            new TypeIdentifier(Token.Identifier("MyErrorType", SourceSpan.Default), [])
-                        ]),
+                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
+                            new TypeIdentifier(Token.Identifier("MyErrorType", SourceSpan.Default), [], SourceRange.Default)
+                        ], SourceRange.Default),
                     new Block([], []))
             ], [], [])),
             ("fn MyFn(): Outer::<Inner::<int>> {}", new LangProgram([], [
@@ -832,9 +913,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.Identifier("Outer", SourceSpan.Default),
                         [
                             new TypeIdentifier(Token.Identifier("Inner", SourceSpan.Default), [
-                                new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [])
-                            ])
-                        ]),
+                                new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default)
+                            ], SourceRange.Default)
+                        ], SourceRange.Default),
                     new Block([], []))
             ], [], [])),
             ("fn MyFn(): Outer::<Inner::<int>, Inner::<int>> {}", new LangProgram([], [
@@ -848,10 +929,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.Identifier("Outer", SourceSpan.Default),
                         [
                             new TypeIdentifier(Token.Identifier("Inner", SourceSpan.Default),
-                                [new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [])]),
+                                [new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default)], SourceRange.Default),
                             new TypeIdentifier(Token.Identifier("Inner", SourceSpan.Default),
-                                [new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [])])
-                        ]),
+                                [new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default)], SourceRange.Default)
+                        ], SourceRange.Default),
                     new Block([], []))
             ], [], [])),
             ("fn MyFn(): result::<int, MyErrorType, ThirdTypeArgument> {}", new LangProgram([], [
@@ -864,10 +945,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     new TypeIdentifier(
                         Token.Result(SourceSpan.Default),
                         [
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
-                            new TypeIdentifier(Token.Identifier("MyErrorType", SourceSpan.Default), []),
-                            new TypeIdentifier(Token.Identifier("ThirdTypeArgument", SourceSpan.Default), [])
-                        ]),
+                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
+                            new TypeIdentifier(Token.Identifier("MyErrorType", SourceSpan.Default), [], SourceRange.Default),
+                            new TypeIdentifier(Token.Identifier("ThirdTypeArgument", SourceSpan.Default), [], SourceRange.Default)
+                        ], SourceRange.Default),
                     new Block([], []))
             ], [], [])),
             ("fn MyFn() { var a = 2; }", new LangProgram([], [
@@ -884,7 +965,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             null,
                             null,
                             new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                Token.IntLiteral(2, SourceSpan.Default)))))
+                                Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default)
                     ], [])
                 )
             ], [], [])),
@@ -895,7 +976,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     Token.Identifier("MyFn", SourceSpan.Default),
                     [],
                     [
-                        new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), null,
+                        new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default), null,
                             Token.Identifier("a", SourceSpan.Default))
                     ],
                     null,
@@ -958,9 +1039,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     [
                         new FunctionParameter(new TypeIdentifier(
                             Token.Result(SourceSpan.Default), [
-                                new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
-                                new TypeIdentifier(Token.Identifier("MyType", SourceSpan.Default), [])
-                            ]), null, Token.Identifier("a", SourceSpan.Default))
+                                new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
+                                new TypeIdentifier(Token.Identifier("MyType", SourceSpan.Default), [], SourceRange.Default)
+                            ], SourceRange.Default), null, Token.Identifier("a", SourceSpan.Default))
                     ],
                     null,
                     new Block([], [])
@@ -973,9 +1054,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     Token.Identifier("MyFn", SourceSpan.Default),
                     [],
                     [
-                        new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), null,
+                        new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default), null,
                             Token.Identifier("a", SourceSpan.Default)),
-                        new FunctionParameter(new TypeIdentifier(Token.Identifier("MyType", SourceSpan.Default), []),
+                        new FunctionParameter(new TypeIdentifier(Token.Identifier("MyType", SourceSpan.Default), [], SourceRange.Default),
                             null, Token.Identifier("b", SourceSpan.Default))
                     ],
                     null,
@@ -989,11 +1070,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     Token.Identifier("MyFn", SourceSpan.Default),
                     [],
                     [],
-                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
+                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
                     new Block(
                     [
                         new MethodReturnExpression(new MethodReturn(new ValueAccessorExpression(
-                            new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default)))))
+                            new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default)))), SourceRange.Default)
                     ], [])
                 )
             ], [], [])),
@@ -1044,7 +1125,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             null,
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Token.Identifier("MyField", SourceSpan.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []), null)
+                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
                     ])
             ], [])),
             ("class MyClass {pub static mut field MyField: string,}", new LangProgram([], [], [
@@ -1059,7 +1140,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             new StaticModifier(Token.Static(SourceSpan.Default)),
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Token.Identifier("MyField", SourceSpan.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []), null)
+                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
                     ])
             ], [])),
             ("class MyClass {mut field MyField: string,}", new LangProgram([], [], [
@@ -1074,7 +1155,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             null,
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Token.Identifier("MyField", SourceSpan.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []), null)
+                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
                     ])
             ], [])),
             ("class MyClass {field MyField: string,}", new LangProgram([], [], [
@@ -1089,7 +1170,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             null,
                             null,
                             Token.Identifier("MyField", SourceSpan.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []), null)
+                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
                     ])
             ], [])),
             ("class MyClass {pub field MyField: string,}", new LangProgram([], [], [
@@ -1104,7 +1185,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             null,
                             null,
                             Token.Identifier("MyField", SourceSpan.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []), null)
+                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
                     ])
             ], [])),
             ("class MyClass {pub mut field MyField: string, pub fn MyFn() {},}", new LangProgram([], [], [
@@ -1122,7 +1203,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             null,
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Token.Identifier("MyField", SourceSpan.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []), null)
+                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
                     ])
             ], [])),
             ("class MyClass {field MyField: string, fn MyFn() {}}", new LangProgram([], [], [
@@ -1140,7 +1221,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             null,
                             null,
                             Token.Identifier("MyField", SourceSpan.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []), null)
+                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
                     ])
             ], [])),
             ("pub fn DoSomething(a: int): result::<int, string> {}", new LangProgram(
@@ -1152,14 +1233,14 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.Identifier("DoSomething", SourceSpan.Default),
                         [],
                         [
-                            new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), null,
+                            new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default), null,
                                 Token.Identifier("a", SourceSpan.Default))
                         ],
                         new TypeIdentifier(Token.Result(SourceSpan.Default),
                         [
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])
-                        ]),
+                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
+                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)
+                        ], SourceRange.Default),
                         new Block([], []))
                 ],
                 [], [])),
@@ -1180,7 +1261,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                     new StaticModifier(Token.Static(SourceSpan.Default)),
                                     null,
                                     Token.Identifier("someField", SourceSpan.Default),
-                                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
+                                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
                                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                                         Token.IntLiteral(3, SourceSpan.Default))))
                             ]
@@ -1261,24 +1342,24 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         [
                             new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                                 Token.IntLiteral(5, SourceSpan.Default)))
-                        ]))
-                    ])),
+                        ]), SourceRange.Default)
+                    ]), SourceRange.Default),
                     new MethodCallExpression(new MethodCall(VariableAccessor("Println"),
                     [
                         new MethodCallExpression(new MethodCall(VariableAccessor("DoSomething"),
                         [
                             new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                                 Token.IntLiteral(1, SourceSpan.Default)))
-                        ]))
-                    ])),
+                        ]), SourceRange.Default)
+                    ]), SourceRange.Default),
                     new MethodCallExpression(new MethodCall(VariableAccessor("Println"),
                     [
                         new MethodCallExpression(new MethodCall(VariableAccessor("SomethingElse"),
                         [
                             new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                                 Token.IntLiteral(1, SourceSpan.Default)))
-                        ]))
-                    ]))
+                        ]), SourceRange.Default)
+                    ]), SourceRange.Default)
                 ],
                 [
                     new LangFunction(
@@ -1287,22 +1368,22 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.Identifier("DoSomething", SourceSpan.Default),
                         [],
                         [
-                            new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), null,
+                            new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default), null,
                                 Token.Identifier("a", SourceSpan.Default))
                         ],
                         new TypeIdentifier(Token.Result(SourceSpan.Default),
                         [
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])
-                        ]),
+                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
+                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)
+                        ], SourceRange.Default),
                         new Block(
                             [
                                 new VariableDeclarationExpression(new VariableDeclaration(
                                     Token.Identifier("b", SourceSpan.Default),
                                     null,
-                                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
+                                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
                                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                        Token.IntLiteral(2, SourceSpan.Default))))),
+                                        Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default),
                                 new IfExpressionExpression(new IfExpression(
                                     new BinaryOperatorExpression(new BinaryOperator(
                                         BinaryOperatorType.GreaterThan,
@@ -1316,11 +1397,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                                         new ValueAccessorExpression(
                                                             new ValueAccessor(ValueAccessType.Variable,
                                                                 Token.Ok(SourceSpan.Default))),
-                                                        [VariableAccessor("a")]))
+                                                        [VariableAccessor("a")]), SourceRange.Default)
                                                 )
-                                            )
+                                            , SourceRange.Default)
                                         ],
-                                        [])),
+                                        []), SourceRange.Default),
                                     [
                                         new ElseIf(
                                             new BinaryOperatorExpression(new BinaryOperator(
@@ -1332,14 +1413,14 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                                             new ValueAccessorExpression(
                                                                 new ValueAccessor(ValueAccessType.Variable,
                                                                     Token.Ok(SourceSpan.Default))),
-                                                            [VariableAccessor("b")]))
+                                                            [VariableAccessor("b")]), SourceRange.Default)
                                                     )
-                                                )
-                                            ], []))
+                                                , SourceRange.Default)
+                                            ], []), SourceRange.Default)
                                         )
                                     ],
-                                    new BlockExpression(new Block([], []))
-                                )),
+                                    new BlockExpression(new Block([], []), SourceRange.Default)
+                                ), SourceRange.Default),
                                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
                                     VariableAccessor("b"),
                                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
@@ -1349,26 +1430,26 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                     null,
                                     null,
                                     new ObjectInitializerExpression(new ObjectInitializer(
-                                        new TypeIdentifier(Token.Identifier("Class2", SourceSpan.Default), []),
+                                        new TypeIdentifier(Token.Identifier("Class2", SourceSpan.Default), [], SourceRange.Default),
                                         [
                                             new FieldInitializer(Token.Identifier("A", SourceSpan.Default),
                                                 new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                                                     Token.IntLiteral(3, SourceSpan.Default))))
-                                        ])))),
+                                        ]), SourceRange.Default)), SourceRange.Default),
                                 new MethodCallExpression(new MethodCall(
                                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                                        new TypeIdentifier(Token.Identifier("MyClass", SourceSpan.Default), []),
+                                        new TypeIdentifier(Token.Identifier("MyClass", SourceSpan.Default), [], SourceRange.Default),
                                         Token.Identifier("StaticMethod", SourceSpan.Default)
                                     )),
-                                    [])),
+                                    []), SourceRange.Default),
                                 new MethodCallExpression(new MethodCall(
                                     new GenericInstantiationExpression(new GenericInstantiation(
                                         new ValueAccessorExpression(
                                             new ValueAccessor(ValueAccessType.Variable,
                                                 Token.Identifier("PrivateFn", SourceSpan.Default))),
-                                        [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])])),
+                                        [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)]), SourceRange.Default),
                                     []
-                                )),
+                                ), SourceRange.Default),
                                 new MethodReturnExpression(new MethodReturn(
                                     new MethodCallExpression(new MethodCall(
                                         new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
@@ -1377,7 +1458,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                             new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                                                 Token.StringLiteral("something wrong", SourceSpan.Default)))
                                         ]
-                                    ))))
+                                    ), SourceRange.Default)), SourceRange.Default)
                             ],
                             [])),
                     new LangFunction(
@@ -1394,7 +1475,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                     [
                                         new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                                             Token.StringLiteral("Message", SourceSpan.Default)))
-                                    ]))
+                                    ]), SourceRange.Default)
                             ],
                             [
                                 new LangFunction(
@@ -1412,7 +1493,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                                     new ValueAccessorExpression(
                                                         new ValueAccessor(ValueAccessType.Literal,
                                                             Token.StringLiteral("Something", SourceSpan.Default)))
-                                                ]))
+                                                ]), SourceRange.Default)
                                         ],
                                         [
                                         ]))
@@ -1423,14 +1504,14 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.Identifier("SomethingElse", SourceSpan.Default),
                         [],
                         [
-                            new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []), null,
+                            new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default), null,
                                 Token.Identifier("a", SourceSpan.Default))
                         ],
                         new TypeIdentifier(Token.Result(SourceSpan.Default),
                         [
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])
-                        ]),
+                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
+                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)
+                        ], SourceRange.Default),
                         new Block(
                             [
                                 new VariableDeclarationExpression(new VariableDeclaration(
@@ -1443,15 +1524,15 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                             VariableAccessor("DoSomething"),
                                             [
                                                 VariableAccessor("a")
-                                            ])),
-                                        Token.QuestionMark(SourceSpan.Default))))),
+                                            ]), SourceRange.Default),
+                                        Token.QuestionMark(SourceSpan.Default)))), SourceRange.Default),
                                 new VariableDeclarationExpression(new VariableDeclaration(
                                     Token.Identifier("c", SourceSpan.Default),
                                     new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                                     null,
                                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                        Token.IntLiteral(2, SourceSpan.Default))))),
-                                new MethodReturnExpression(new MethodReturn(VariableAccessor("b")))
+                                        Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default),
+                                new MethodReturnExpression(new MethodReturn(VariableAccessor("b")), SourceRange.Default)
                             ],
                             [])
                     )
@@ -1484,22 +1565,22 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                 null,
                                 null,
                                 Token.Identifier("FieldA", SourceSpan.Default),
-                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []), null),
+                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null),
                             new ClassField(null,
                                 null,
                                 new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                                 Token.Identifier("FieldB", SourceSpan.Default),
-                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []), null),
+                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null),
                             new ClassField(new AccessModifier(Token.Pub(SourceSpan.Default)),
                                 null,
                                 new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                                 Token.Identifier("FieldC", SourceSpan.Default),
-                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []), null),
+                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null),
                             new ClassField(new AccessModifier(Token.Pub(SourceSpan.Default)),
                                 null,
                                 null,
                                 Token.Identifier("FieldD", SourceSpan.Default),
-                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []), null)
+                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
                         ]),
                     new ProgramClass(
                         new AccessModifier(Token.Pub(SourceSpan.Default)),
@@ -1527,7 +1608,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                                 null,
                                 null,
                                 Token.Identifier("A", SourceSpan.Default),
-                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []), null)
+                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
                         ]
                     )
                 ], []))
@@ -1563,7 +1644,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             // else before else if
             "if (a) {} else {} else if (a) {}",
             "if (a;) {}",
-            // body has tail expression, but else doesn't
+            // body has tail expression but else doesn't
             "a(",
             "a<string>()",
             "a::<,>()",
@@ -1667,7 +1748,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     _ => b,
                 }
                 """,
-                new MatchExpression(VariableAccessor("a"), [new MatchArm(new DiscardPattern(), VariableAccessor("b"))])
+                new MatchExpression(VariableAccessor("a"), [new MatchArm(new DiscardPattern(SourceRange.Default), VariableAccessor("b"))], SourceRange.Default)
             )
         }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedProgram });
     }
@@ -1687,7 +1768,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     _ => b,
                 }
                 """,
-                new MatchExpression(VariableAccessor("a"), [new MatchArm(new DiscardPattern(), VariableAccessor("b"))])
+                new MatchExpression(VariableAccessor("a"), [new MatchArm(new DiscardPattern(SourceRange.Default), VariableAccessor("b"))], SourceRange.Default)
             ),
             (
                 """
@@ -1698,13 +1779,13 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 """,
                 new MatchExpression(VariableAccessor("a"), [
                     new MatchArm(
-                        new ClassPattern(new TypeIdentifier(Token.Identifier("SomeClass", SourceSpan.Default), []),
+                        new ClassPattern(new TypeIdentifier(Token.Identifier("SomeClass", SourceSpan.Default), [], SourceRange.Default),
                             [],
                             false,
-                            null),
+                            null, SourceRange.Default),
                         VariableAccessor("b")),
-                    new MatchArm(new DiscardPattern(), VariableAccessor("b"))
-                ])
+                    new MatchArm(new DiscardPattern(SourceRange.Default), VariableAccessor("b"))
+                ], SourceRange.Default)
             ),
             (
                 """
@@ -1714,13 +1795,13 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 """,
                 new MatchExpression(VariableAccessor("a"), [
                     new MatchArm(
-                        new ClassPattern(new TypeIdentifier(Token.Identifier("SomeClass", SourceSpan.Default), []),
+                        new ClassPattern(new TypeIdentifier(Token.Identifier("SomeClass", SourceSpan.Default), [], SourceRange.Default),
                             [KeyValuePair.Create(Token.Identifier("SomeField", SourceSpan.Default), (IPattern?)null)],
                             false,
-                            null),
+                            null, SourceRange.Default),
                         VariableAccessor("b")),
-                    new MatchArm(new DiscardPattern(), VariableAccessor("b"))
-                ])
+                    new MatchArm(new DiscardPattern(SourceRange.Default), VariableAccessor("b"))
+                ], SourceRange.Default)
             ),
             (
                 """
@@ -1731,29 +1812,29 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new MatchExpression(VariableAccessor("a"), [
                     new MatchArm(
                         new UnionStructVariantPattern(
-                            new TypeIdentifier(Token.Identifier("SomeUnion", SourceSpan.Default), []),
+                            new TypeIdentifier(Token.Identifier("SomeUnion", SourceSpan.Default), [], SourceRange.Default),
                             Token.Identifier("B", SourceSpan.Default),
                             [
                                 KeyValuePair.Create(
                                     Token.Identifier("SomeField", SourceSpan.Default),
                                     (IPattern?)new UnionStructVariantPattern(
-                                        new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), []),
+                                        new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), [], SourceRange.Default),
                                         Token.Identifier("C", SourceSpan.Default),
                                         [
                                             KeyValuePair.Create(
                                                 Token.Identifier("OtherField", SourceSpan.Default),
                                                 (IPattern?)new VariableDeclarationPattern(
-                                                    Token.Identifier("d", SourceSpan.Default))
+                                                    Token.Identifier("d", SourceSpan.Default), SourceRange.Default)
                                             )
                                         ],
                                         false,
-                                        null))
+                                        null, SourceRange.Default))
                             ],
                             false,
-                            null),
+                            null, SourceRange.Default),
                         VariableAccessor("d")),
-                    new MatchArm(new DiscardPattern(), VariableAccessor("b"))
-                ])
+                    new MatchArm(new DiscardPattern(SourceRange.Default), VariableAccessor("b"))
+                ], SourceRange.Default)
             ),
             (
                 "if (a matches OtherUnion::B(MyUnion::A var c) var b) {}",
@@ -1761,327 +1842,327 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     new MatchesExpression(
                         VariableAccessor("a"),
                         new UnionTupleVariantPattern(
-                            new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), []),
+                            new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), [], SourceRange.Default),
                             Token.Identifier("B", SourceSpan.Default),
                             [
                                 new UnionVariantPattern(
-                                    new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                    new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                                     Token.Identifier("A", SourceSpan.Default),
-                                    Token.Identifier("c", SourceSpan.Default))
+                                    Token.Identifier("c", SourceSpan.Default), SourceRange.Default)
                             ],
-                            Token.Identifier("b", SourceSpan.Default))),
-                    new BlockExpression(new Block([], [])),
+                            Token.Identifier("b", SourceSpan.Default), SourceRange.Default), SourceRange.Default),
+                    new BlockExpression(new Block([], []), SourceRange.Default),
                     [],
-                    null))
+                    null), SourceRange.Default)
             ),
             (
                 "var b: bool = a matches int;",
                 new VariableDeclarationExpression(new VariableDeclaration(
                     Token.Identifier("b", SourceSpan.Default),
                     null,
-                    new TypeIdentifier(Token.Bool(SourceSpan.Default), []),
+                    new TypeIdentifier(Token.Bool(SourceSpan.Default), [], SourceRange.Default),
                     new MatchesExpression(
                         VariableAccessor("a"),
                         new ClassPattern(
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
+                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
                             [],
                             false,
                             null
-                        )
-                    ))
-                )
+                        , SourceRange.Default)
+                    , SourceRange.Default))
+                , SourceRange.Default)
             ),
             (
                 "a matches string",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new ClassPattern(
-                        new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
+                        new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
                         [],
                         false,
                         null
-                    )
-                )
+                    , SourceRange.Default)
+                , SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionVariantPattern(
-                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         null
-                    )
-                )
+                    , SourceRange.Default)
+                , SourceRange.Default)
             ),
             (
                 "a matches var a",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new VariableDeclarationPattern(Token.Identifier("a", SourceSpan.Default))
-                )
+                    new VariableDeclarationPattern(Token.Identifier("a", SourceSpan.Default), SourceRange.Default)
+                , SourceRange.Default)
             ),
             (
                 "a matches _",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new DiscardPattern()
-                )
+                    new DiscardPattern(SourceRange.Default)
+                , SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(var b)",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionTupleVariantPattern(
-                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
-                            new VariableDeclarationPattern(Token.Identifier("b", SourceSpan.Default))
+                            new VariableDeclarationPattern(Token.Identifier("b", SourceSpan.Default), SourceRange.Default)
                         ],
-                        null)
-                )
+                        null, SourceRange.Default)
+                , SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(var b) var c",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionTupleVariantPattern(
-                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
-                            new VariableDeclarationPattern(Token.Identifier("b", SourceSpan.Default))
+                            new VariableDeclarationPattern(Token.Identifier("b", SourceSpan.Default), SourceRange.Default)
                         ],
-                        Token.Identifier("c", SourceSpan.Default))
-                )
+                        Token.Identifier("c", SourceSpan.Default), SourceRange.Default)
+                , SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(var b, var c, _)",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionTupleVariantPattern(
-                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
-                            new VariableDeclarationPattern(Token.Identifier("b", SourceSpan.Default)),
-                            new VariableDeclarationPattern(Token.Identifier("c", SourceSpan.Default)),
-                            new DiscardPattern()
-                        ], null)
-                )
+                            new VariableDeclarationPattern(Token.Identifier("b", SourceSpan.Default), SourceRange.Default),
+                            new VariableDeclarationPattern(Token.Identifier("c", SourceSpan.Default), SourceRange.Default),
+                            new DiscardPattern(SourceRange.Default)
+                        ], null, SourceRange.Default)
+                , SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(OtherUnion::C)",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionTupleVariantPattern(
-                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
                             new UnionVariantPattern(
-                                new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), []),
+                                new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), [], SourceRange.Default),
                                 Token.Identifier("C", SourceSpan.Default),
                                 null
-                            )
+                            , SourceRange.Default)
                         ],
-                        null)
-                )
+                        null, SourceRange.Default)
+                , SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(OtherUnion::C var c)",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionTupleVariantPattern(
-                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
                             new UnionVariantPattern(
-                                new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), []),
+                                new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), [], SourceRange.Default),
                                 Token.Identifier("C", SourceSpan.Default),
                                 Token.Identifier("c", SourceSpan.Default)
-                            )
+                            , SourceRange.Default)
                         ],
-                        null)
-                )
+                        null, SourceRange.Default)
+                , SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(OtherUnion::C(var d))",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionTupleVariantPattern(
-                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
                             new UnionTupleVariantPattern(
-                                new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), []),
+                                new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), [], SourceRange.Default),
                                 Token.Identifier("C", SourceSpan.Default),
-                                [new VariableDeclarationPattern(Token.Identifier("d", SourceSpan.Default))],
+                                [new VariableDeclarationPattern(Token.Identifier("d", SourceSpan.Default), SourceRange.Default)],
                                 null
-                            )
+                            , SourceRange.Default)
                         ],
-                        null)
-                )
+                        null, SourceRange.Default)
+                , SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField }",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionStructVariantPattern(
-                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
                             KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null)
                         ],
                         false,
                         null
-                    ))
+                    , SourceRange.Default), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField } var a",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionStructVariantPattern(
-                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
                             KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null)
                         ],
                         false,
                         Token.Identifier("a", SourceSpan.Default)
-                    ))
+                    , SourceRange.Default), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField, OtherField: var f }",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionStructVariantPattern(
-                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
                             KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null),
                             KeyValuePair.Create(
                                 Token.Identifier("OtherField", SourceSpan.Default),
-                                (IPattern?)new VariableDeclarationPattern(Token.Identifier("f", SourceSpan.Default))
+                                (IPattern?)new VariableDeclarationPattern(Token.Identifier("f", SourceSpan.Default), SourceRange.Default)
                             )
                         ],
                         false,
                         null
-                    ))
+                    , SourceRange.Default), SourceRange.Default)
             ),
             (
                 "a matches MyClass { MyField }",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new ClassPattern(
-                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         [
                             KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null)
                         ],
                         false,
                         null
-                    ))
+                    , SourceRange.Default), SourceRange.Default)
             ),
             (
                 "a matches MyClass { MyField } var a",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new ClassPattern(
-                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         [
                             KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null)
                         ],
                         false,
                         Token.Identifier("a", SourceSpan.Default)
-                    ))
+                    , SourceRange.Default), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField, _ }",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionStructVariantPattern(
-                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
                             KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null)
                         ],
                         true,
                         null
-                    ))
+                    , SourceRange.Default), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField: MyUnion::B var f }",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionStructVariantPattern(
-                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
                             KeyValuePair.Create(
                                 Token.Identifier("MyField", SourceSpan.Default),
                                 (IPattern?)new UnionVariantPattern(
-                                    new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                    new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                                     Token.Identifier("B", SourceSpan.Default),
-                                    Token.Identifier("f", SourceSpan.Default)))
+                                    Token.Identifier("f", SourceSpan.Default), SourceRange.Default))
                         ],
                         true,
                         null
-                    ))
+                    , SourceRange.Default), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField: MyUnion::B(var c)  }",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionStructVariantPattern(
-                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
                             KeyValuePair.Create(
                                 Token.Identifier("MyField", SourceSpan.Default),
                                 (IPattern?)new UnionTupleVariantPattern(
-                                    new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), []),
+                                    new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                                     Token.Identifier("B", SourceSpan.Default),
-                                    [new VariableDeclarationPattern(Token.Identifier("c", SourceSpan.Default))],
-                                    null))
+                                    [new VariableDeclarationPattern(Token.Identifier("c", SourceSpan.Default), SourceRange.Default)],
+                                    null, SourceRange.Default))
                         ],
                         true,
                         null
-                    ))
+                    , SourceRange.Default), SourceRange.Default)
             ),
             (
                 "a matches MyClass { MyField, _ }",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new ClassPattern(
-                        new TypeIdentifier(Token.Identifier("MyClass", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyClass", SourceSpan.Default), [], SourceRange.Default),
                         [
                             KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null)
                         ],
                         true,
                         null
-                    )
-                )
+                    , SourceRange.Default)
+                , SourceRange.Default)
             ),
             (
                 "a matches MyClass",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new ClassPattern(
-                        new TypeIdentifier(Token.Identifier("MyClass", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyClass", SourceSpan.Default), [], SourceRange.Default),
                         [],
                         false,
                         null
-                    )
-                )
+                    , SourceRange.Default)
+                , SourceRange.Default)
             ),
             (
                 "a matches MyClass var b",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new ClassPattern(
-                        new TypeIdentifier(Token.Identifier("MyClass", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyClass", SourceSpan.Default), [], SourceRange.Default),
                         [],
                         false,
                         Token.Identifier("b", SourceSpan.Default)
-                    )
-                )
+                    , SourceRange.Default)
+                , SourceRange.Default)
             ),
 
 
@@ -2112,9 +2193,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ("ok()",
                 new MethodCallExpression(new MethodCall(
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Token.Ok(SourceSpan.Default))), []))),
-            ("(a)", new TupleExpression([VariableAccessor("a")])),
-            ("(a, b)", new TupleExpression([VariableAccessor("a"), VariableAccessor("b")])),
+                        Token.Ok(SourceSpan.Default))), []), SourceRange.Default)),
+            ("(a)", new TupleExpression([VariableAccessor("a")], SourceRange.Default)),
+            ("(a, b)", new TupleExpression([VariableAccessor("a"), VariableAccessor("b")], SourceRange.Default)),
             ("!a", new UnaryOperatorExpression(new UnaryOperator(
                 UnaryOperatorType.Not,
                 VariableAccessor("a"),
@@ -2136,8 +2217,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ),
             ("return 1", new MethodReturnExpression(
                 new MethodReturn(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.IntLiteral(1, SourceSpan.Default)))))),
-            ("return", new MethodReturnExpression(new MethodReturn(null))),
+                    Token.IntLiteral(1, SourceSpan.Default)))), SourceRange.Default)),
+            ("return", new MethodReturnExpression(new MethodReturn(null), SourceRange.Default)),
             // binary operator expressions
             ("a < 5", new BinaryOperatorExpression(new BinaryOperator(
                 BinaryOperatorType.LessThan,
@@ -2176,109 +2257,109 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new VariableDeclaration(
                     Token.Identifier("a", SourceSpan.Default),
                     null,
-                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
-                    VariableAccessor("b")))),
+                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
+                    VariableAccessor("b")), SourceRange.Default)),
             ("var a: int", new VariableDeclarationExpression(
                 new VariableDeclaration(
                     Token.Identifier("a", SourceSpan.Default),
                     null,
-                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
-                    null))),
+                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
+                    null), SourceRange.Default)),
             ("var mut a = 2", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                 null,
                 new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.IntLiteral(2, SourceSpan.Default)))))),
+                    Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default)),
             ("a = b",
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
                     VariableAccessor("a"), VariableAccessor("b"), Token.Equals(SourceSpan.Default)))),
             ("var mut a: int = 2", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 new MutabilityModifier(Token.Mut(SourceSpan.Default)),
-                new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
+                new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
                 new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.IntLiteral(2, SourceSpan.Default)))))),
+                    Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default)),
             ("var a: bool = b", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 null,
-                new TypeIdentifier(Token.Bool(SourceSpan.Default), []),
-                VariableAccessor("b")))),
+                new TypeIdentifier(Token.Bool(SourceSpan.Default), [], SourceRange.Default),
+                VariableAccessor("b")), SourceRange.Default)),
             ("var a: int = b", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 null,
-                new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
-                VariableAccessor("b")))),
+                new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
+                VariableAccessor("b")), SourceRange.Default)),
             ("var a: string = b", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 null,
-                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
-                VariableAccessor("b")))),
+                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
+                VariableAccessor("b")), SourceRange.Default)),
             ("var a: result = b", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 null,
-                new TypeIdentifier(Token.Result(SourceSpan.Default), []),
-                VariableAccessor("b")))),
+                new TypeIdentifier(Token.Result(SourceSpan.Default), [], SourceRange.Default),
+                VariableAccessor("b")), SourceRange.Default)),
             ("var a: MyType = b", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 null,
-                new TypeIdentifier(Token.Identifier("MyType", SourceSpan.Default), []),
-                VariableAccessor("b")))),
+                new TypeIdentifier(Token.Identifier("MyType", SourceSpan.Default), [], SourceRange.Default),
+                VariableAccessor("b")), SourceRange.Default)),
             ("var a = 1", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 null,
                 null,
                 new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.IntLiteral(1, SourceSpan.Default)))))),
+                    Token.IntLiteral(1, SourceSpan.Default)))), SourceRange.Default)),
             ("var a = true", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 null,
                 null,
                 new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.True(SourceSpan.Default)))))),
+                    Token.True(SourceSpan.Default)))), SourceRange.Default)),
             ("var a = \"thing\"", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 null,
                 null,
                 new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.StringLiteral("thing", SourceSpan.Default)))))),
-            ("{}", new BlockExpression(new Block([], []))),
+                    Token.StringLiteral("thing", SourceSpan.Default)))), SourceRange.Default)),
+            ("{}", new BlockExpression(new Block([], []), SourceRange.Default)),
             ("{var a = 1;}", new BlockExpression(new Block([
                 new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default),
                     null, null,
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(1, SourceSpan.Default)))))
-            ], []))),
+                        Token.IntLiteral(1, SourceSpan.Default)))), SourceRange.Default)
+            ], []), SourceRange.Default)),
             // tail expression
             ("{var a = 1}", new BlockExpression(new Block(
             [
                 new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default),
                     null, null,
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(1, SourceSpan.Default)))))
-            ], []))),
+                        Token.IntLiteral(1, SourceSpan.Default)))), SourceRange.Default)
+            ], []), SourceRange.Default)),
             // tail expression
             ("{var a = 1;var b = 2}", new BlockExpression(new Block(
             [
                 new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default),
                     null, null,
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(1, SourceSpan.Default))))),
+                        Token.IntLiteral(1, SourceSpan.Default)))), SourceRange.Default),
                 new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("b", SourceSpan.Default),
                     null, null,
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(2, SourceSpan.Default)))))
-            ], []))),
+                        Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default)
+            ], []), SourceRange.Default)),
             ("{var a = 1; var b = 2;}", new BlockExpression(new Block([
                 new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default),
                     null, null,
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(1, SourceSpan.Default))))),
+                        Token.IntLiteral(1, SourceSpan.Default)))), SourceRange.Default),
                 new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("b", SourceSpan.Default),
                     null, null,
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(2, SourceSpan.Default)))))
-            ], []))),
+                        Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default)
+            ], []), SourceRange.Default)),
             ("if (a) var c = 2;", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
                 new VariableDeclarationExpression(new VariableDeclaration(
@@ -2286,7 +2367,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     null,
                     null,
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(2, SourceSpan.Default))))), [], null))),
+                        Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default), [], null), SourceRange.Default)),
             ("if (a > b) {var c = \"value\";}", new IfExpressionExpression(new IfExpression(
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.GreaterThan,
@@ -2299,11 +2380,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         null,
                         null,
                         new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                            Token.StringLiteral("value", SourceSpan.Default)))))
-                ], [])), [], null))),
+                            Token.StringLiteral("value", SourceSpan.Default)))), SourceRange.Default)
+                ], []), SourceRange.Default), [], null), SourceRange.Default)),
             ("if (a) {} else {var b = 2;}", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
-                new BlockExpression(new Block([], [])),
+                new BlockExpression(new Block([], []), SourceRange.Default),
                 [],
                 new BlockExpression(new Block([
                     new VariableDeclarationExpression(new VariableDeclaration(
@@ -2311,38 +2392,38 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         null,
                         null,
                         new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                            Token.IntLiteral(2, SourceSpan.Default)))))
-                ], []))))),
+                            Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default)
+                ], []), SourceRange.Default)), SourceRange.Default)),
             ("if (a) {} else if (b) {}", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
-                new BlockExpression(new Block([], [])),
-                [new ElseIf(VariableAccessor("b"), new BlockExpression(new Block([], [])))],
-                null))),
+                new BlockExpression(new Block([], []), SourceRange.Default),
+                [new ElseIf(VariableAccessor("b"), new BlockExpression(new Block([], []), SourceRange.Default))],
+                null), SourceRange.Default)),
             ("if (a) {} else if (b) {} else {}", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
-                new BlockExpression(new Block([], [])),
+                new BlockExpression(new Block([], []), SourceRange.Default),
                 [
-                    new ElseIf(VariableAccessor("b"), new BlockExpression(new Block([], [])))
+                    new ElseIf(VariableAccessor("b"), new BlockExpression(new Block([], []), SourceRange.Default))
                 ],
-                new BlockExpression(new Block([], []))))),
+                new BlockExpression(new Block([], []), SourceRange.Default)), SourceRange.Default)),
             ("if (a) {} else if (b) {} else if (c) {} else {}", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
-                new BlockExpression(new Block([], [])),
+                new BlockExpression(new Block([], []), SourceRange.Default),
                 [
-                    new ElseIf(VariableAccessor("b"), new BlockExpression(new Block([], []))),
-                    new ElseIf(VariableAccessor("c"), new BlockExpression(new Block([], [])))
+                    new ElseIf(VariableAccessor("b"), new BlockExpression(new Block([], []), SourceRange.Default)),
+                    new ElseIf(VariableAccessor("c"), new BlockExpression(new Block([], []), SourceRange.Default))
                 ],
-                new BlockExpression(new Block([], []))))),
+                new BlockExpression(new Block([], []), SourceRange.Default)), SourceRange.Default)),
             ("if (a) {b} else {c}", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
-                new BlockExpression(new Block([VariableAccessor("b")], [])),
+                new BlockExpression(new Block([VariableAccessor("b")], []), SourceRange.Default),
                 [],
-                new BlockExpression(new Block([VariableAccessor("c")], []))))),
+                new BlockExpression(new Block([VariableAccessor("c")], []), SourceRange.Default)), SourceRange.Default)),
             ("if (a) b else c", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
                 VariableAccessor("b"),
                 [],
-                VariableAccessor("c")))),
+                VariableAccessor("c")), SourceRange.Default)),
             ("if (a) {if (b) {1} else {2}} else {3}", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
                 new BlockExpression(new Block([
@@ -2352,20 +2433,20 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         [
                             new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                                 Token.IntLiteral(1, SourceSpan.Default)))
-                        ], [])),
+                        ], []), SourceRange.Default),
                         [],
                         new BlockExpression(new Block(
                         [
                             new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                                 Token.IntLiteral(2, SourceSpan.Default)))
-                        ], []))))
-                ], [])),
+                        ], []), SourceRange.Default)), SourceRange.Default)
+                ], []), SourceRange.Default),
                 [],
                 new BlockExpression(new Block(
                 [
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                         Token.IntLiteral(3, SourceSpan.Default)))
-                ], []))))),
+                ], []), SourceRange.Default)), SourceRange.Default)),
             ("if (a) if (b) 1 else 2 else 3", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
                 new IfExpressionExpression(new IfExpression(
@@ -2374,10 +2455,10 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.IntLiteral(1, SourceSpan.Default))),
                     [],
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(2, SourceSpan.Default))))),
+                        Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default),
                 [],
                 new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.IntLiteral(3, SourceSpan.Default)))))),
+                    Token.IntLiteral(3, SourceSpan.Default)))), SourceRange.Default)),
             ("var a = if (b) 1 else 2;", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 null,
@@ -2388,7 +2469,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.IntLiteral(1, SourceSpan.Default))),
                     [],
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(2, SourceSpan.Default)))))))),
+                        Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default)), SourceRange.Default)),
             ("var a = if (b) {1} else {2};", new VariableDeclarationExpression(new VariableDeclaration(
                 Token.Identifier("a", SourceSpan.Default),
                 null,
@@ -2399,14 +2480,14 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     [
                         new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                             Token.IntLiteral(1, SourceSpan.Default)))
-                    ], [])),
+                    ], []), SourceRange.Default),
                     [],
                     new BlockExpression(new Block(
                     [
                         new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                             Token.IntLiteral(2, SourceSpan.Default)))
-                    ], []))))))),
-            ("a()", new MethodCallExpression(new MethodCall(VariableAccessor("a"), []))),
+                    ], []), SourceRange.Default)), SourceRange.Default)), SourceRange.Default)),
+            ("a()", new MethodCallExpression(new MethodCall(VariableAccessor("a"), []), SourceRange.Default)),
             ("a.b::<int>()", new MethodCallExpression(new MethodCall(
                 new GenericInstantiationExpression(new GenericInstantiation(
                     new MemberAccessExpression(new MemberAccess(
@@ -2416,56 +2497,56 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.Identifier("b", SourceSpan.Default)
                     )),
                     []
-                )),
+                ), SourceRange.Default),
                 []
-            ))),
+            ), SourceRange.Default)),
             ("a::<string>()", new MethodCallExpression(new MethodCall(
                 new GenericInstantiationExpression(new GenericInstantiation(
                     new ValueAccessorExpression(new ValueAccessor(
                         ValueAccessType.Variable,
                         Token.Identifier("a", SourceSpan.Default))),
-                    [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])])),
-                []))),
+                    [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)]), SourceRange.Default),
+                []), SourceRange.Default)),
             ("a::<string, int>()", new MethodCallExpression(new MethodCall(
                 new GenericInstantiationExpression(new GenericInstantiation(new ValueAccessorExpression(
                     new ValueAccessor(
                         ValueAccessType.Variable,
                         Token.Identifier("a", SourceSpan.Default)
                     )), [
-                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
-                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [])
-                ])), []))),
+                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
+                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default)
+                ]), SourceRange.Default), []), SourceRange.Default)),
             ("a::<string, int, result::<int>>()", new MethodCallExpression(new MethodCall(
                 new GenericInstantiationExpression(new GenericInstantiation(new ValueAccessorExpression(
                     new ValueAccessor(
                         ValueAccessType.Variable,
                         Token.Identifier("a", SourceSpan.Default)
                     )), [
-                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
-                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []),
+                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
+                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
                     new TypeIdentifier(Token.Result(SourceSpan.Default),
-                        [new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [])])
-                ])),
-                []))),
+                        [new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default)], SourceRange.Default)
+                ]), SourceRange.Default),
+                []), SourceRange.Default)),
             ("a(b)", new MethodCallExpression(new MethodCall(VariableAccessor("a"), [
                 VariableAccessor("b")
-            ]))),
+            ]), SourceRange.Default)),
             ("a(b, c)", new MethodCallExpression(new MethodCall(VariableAccessor("a"), [
                 VariableAccessor("b"), VariableAccessor("c")
-            ]))),
+            ]), SourceRange.Default)),
             ("a(b, c > d, e)", new MethodCallExpression(new MethodCall(VariableAccessor("a"), [
                 VariableAccessor("b"),
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.GreaterThan, VariableAccessor("c"),
                     VariableAccessor("d"), Token.RightAngleBracket(SourceSpan.Default))),
                 VariableAccessor("e")
-            ]))),
+            ]), SourceRange.Default)),
             ("a.b",
                 new MemberAccessExpression(new MemberAccess(VariableAccessor("a"),
                     Token.Identifier("b", SourceSpan.Default)))),
             ("a.b()",
                 new MethodCallExpression(new MethodCall(
                     new MemberAccessExpression(new MemberAccess(VariableAccessor("a"),
-                        Token.Identifier("b", SourceSpan.Default))), []))),
+                        Token.Identifier("b", SourceSpan.Default))), []), SourceRange.Default)),
             ("a?.b", new MemberAccessExpression(new MemberAccess(
                 new UnaryOperatorExpression(new UnaryOperator(UnaryOperatorType.FallOut, VariableAccessor("a"),
                     Token.QuestionMark(SourceSpan.Default))),
@@ -2488,11 +2569,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 VariableAccessor("a"),
                 Token.Star(SourceSpan.Default)))),
             ("new Thing {}", new ObjectInitializerExpression(new ObjectInitializer(
-                new TypeIdentifier(Token.Identifier("Thing", SourceSpan.Default), []),
-                []))),
+                new TypeIdentifier(Token.Identifier("Thing", SourceSpan.Default), [], SourceRange.Default),
+                []), SourceRange.Default)),
             ("new Thing {A = a}", new ObjectInitializerExpression(new ObjectInitializer(
-                new TypeIdentifier(Token.Identifier("Thing", SourceSpan.Default), []),
-                [new FieldInitializer(Token.Identifier("A", SourceSpan.Default), VariableAccessor("a"))]))),
+                new TypeIdentifier(Token.Identifier("Thing", SourceSpan.Default), [], SourceRange.Default),
+                [new FieldInitializer(Token.Identifier("A", SourceSpan.Default), VariableAccessor("a"))]), SourceRange.Default)),
             ("myFn(a,)", new MethodCallExpression(new MethodCall(
                 new ValueAccessorExpression(new ValueAccessor(
                     ValueAccessType.Variable,
@@ -2501,48 +2582,48 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     new ValueAccessorExpression(new ValueAccessor(
                         ValueAccessType.Variable,
                         Token.Identifier("a", SourceSpan.Default)))
-                ]))),
+                ]), SourceRange.Default)),
             ("new SomeType::<string,>{}", new ObjectInitializerExpression(new ObjectInitializer(
                 new TypeIdentifier(Token.Identifier("SomeType", SourceSpan.Default), [
-                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])
-                ]),
-                []))),
+                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)
+                ], SourceRange.Default),
+                []), SourceRange.Default)),
             ("SomeFn::<string,>()", new MethodCallExpression(new MethodCall(
                 new GenericInstantiationExpression(
                     new GenericInstantiation(
                         new ValueAccessorExpression(new ValueAccessor(
                             ValueAccessType.Variable,
                             Token.Identifier("SomeFn", SourceSpan.Default))),
-                        [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])])),
+                        [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)]), SourceRange.Default),
                 []
-            ))),
+            ), SourceRange.Default)),
             ("new Thing {A = a,}", new ObjectInitializerExpression(new ObjectInitializer(
-                new TypeIdentifier(Token.Identifier("Thing", SourceSpan.Default), []),
-                [new FieldInitializer(Token.Identifier("A", SourceSpan.Default), VariableAccessor("a"))]))),
+                new TypeIdentifier(Token.Identifier("Thing", SourceSpan.Default), [], SourceRange.Default),
+                [new FieldInitializer(Token.Identifier("A", SourceSpan.Default), VariableAccessor("a"))]), SourceRange.Default)),
             ("new Thing {A = a, B = b}", new ObjectInitializerExpression(new ObjectInitializer(
-                new TypeIdentifier(Token.Identifier("Thing", SourceSpan.Default), []),
+                new TypeIdentifier(Token.Identifier("Thing", SourceSpan.Default), [], SourceRange.Default),
                 [
                     new FieldInitializer(Token.Identifier("A", SourceSpan.Default), VariableAccessor("a")),
                     new FieldInitializer(Token.Identifier("B", SourceSpan.Default), VariableAccessor("b"))
-                ]))),
+                ]), SourceRange.Default)),
             ("MyType::CallMethod",
                 new StaticMemberAccessExpression(new StaticMemberAccess(
-                    new TypeIdentifier(Token.Identifier("MyType", SourceSpan.Default), []),
+                    new TypeIdentifier(Token.Identifier("MyType", SourceSpan.Default), [], SourceRange.Default),
                     Token.Identifier("CallMethod", SourceSpan.Default)))),
             ("MyType::StaticField.InstanceField", new MemberAccessExpression(
                 new MemberAccess(
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("MyType", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("MyType", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("StaticField", SourceSpan.Default))),
                     Token.Identifier("InstanceField", SourceSpan.Default)
                 ))),
             ("string::CallMethod",
                 new StaticMemberAccessExpression(new StaticMemberAccess(
-                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), []),
+                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
                     Token.Identifier("CallMethod", SourceSpan.Default)))),
             ("result::<string>::CallMethod", new StaticMemberAccessExpression(new StaticMemberAccess(
                 new TypeIdentifier(Token.Result(SourceSpan.Default),
-                    [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [])]),
+                    [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)], SourceRange.Default),
                 Token.Identifier("CallMethod", SourceSpan.Default)))),
             // ____binding strength tests
             // __greater than
@@ -2690,7 +2771,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     BinaryOperatorType.GreaterThan,
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("b", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("b", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("c", SourceSpan.Default))),
                     Token.RightAngleBracket(SourceSpan.Default)))
             ),
@@ -2846,7 +2927,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     BinaryOperatorType.LessThan,
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("b", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("b", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("c", SourceSpan.Default)
                     )),
                     Token.LeftAngleBracket(SourceSpan.Default)))
@@ -2995,7 +3076,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     BinaryOperatorType.Multiply,
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("b", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("b", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("c", SourceSpan.Default)
                     )),
                     Token.Star(SourceSpan.Default)))
@@ -3152,7 +3233,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     BinaryOperatorType.Divide,
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("b", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("b", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("c", SourceSpan.Default)
                     )),
                     Token.ForwardSlash(SourceSpan.Default)))
@@ -3309,7 +3390,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     BinaryOperatorType.Plus,
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("b", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("b", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("c", SourceSpan.Default)
                     )),
                     Token.Plus(SourceSpan.Default)))
@@ -3466,7 +3547,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     BinaryOperatorType.Minus,
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("b", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("b", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("c", SourceSpan.Default)
                     )),
                     Token.Dash(SourceSpan.Default)))
@@ -3722,7 +3803,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("b", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("b", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("c", SourceSpan.Default)
                     )),
                     Token.Equals(SourceSpan.Default)))
@@ -3879,7 +3960,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.EqualityCheck,
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("b", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("b", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("c", SourceSpan.Default)
                     )),
                     Token.DoubleEquals(SourceSpan.Default)))
@@ -3999,7 +4080,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.GreaterThan,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("b", SourceSpan.Default)
                     )),
                     VariableAccessor("c"),
@@ -4010,7 +4091,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.LessThan,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("b", SourceSpan.Default)
                     )),
                     VariableAccessor("c"),
@@ -4021,7 +4102,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.Multiply,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("b", SourceSpan.Default)
                     )),
                     VariableAccessor("c"),
@@ -4032,7 +4113,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.Divide,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("b", SourceSpan.Default)
                     )),
                     VariableAccessor("c"),
@@ -4043,7 +4124,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.Plus,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("b", SourceSpan.Default)
                     )),
                     VariableAccessor("c"),
@@ -4054,7 +4135,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.Minus,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("b", SourceSpan.Default)
                     )),
                     VariableAccessor("c"),
@@ -4065,7 +4146,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new UnaryOperatorExpression(new UnaryOperator(
                     UnaryOperatorType.FallOut,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("b", SourceSpan.Default)
                     )),
                     Token.QuestionMark(SourceSpan.Default)))
@@ -4075,7 +4156,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.ValueAssignment,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("b", SourceSpan.Default)
                     )),
                     VariableAccessor("c"),
@@ -4086,7 +4167,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.EqualityCheck,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("b", SourceSpan.Default)
                     )),
                     VariableAccessor("c"),
@@ -4096,7 +4177,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 "a::b.c",
                 new MemberAccessExpression(new MemberAccess(
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), []),
+                        new TypeIdentifier(Token.Identifier("a", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("b", SourceSpan.Default)
                     )),
                     Token.Identifier("c", SourceSpan.Default)))
@@ -4252,6 +4333,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             Token.QuestionMark(SourceSpan.Default)));
     }
 
+    private static BlockExpression Block(IReadOnlyList<IExpression>? expressions = null)
+    {
+        return new BlockExpression(new Block(expressions ?? [], []), SourceRange.Default);
+    }
+
     private static VariableDeclarationExpression VariableDeclaration(
         string name,
         IExpression? value = null,
@@ -4264,12 +4350,34 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 ? new MutabilityModifier(Token.Mut(SourceSpan.Default))
                 : null,
             type,
-            value));
+            value), SourceRange.Default);
     }
 
     private static TypeIdentifier IntType()
     {
-        return new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), []);
+        return new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default);
+    }
+    
+    private static TypeIdentifier StringType()
+    {
+        return new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default);
+    }
+
+    public static ClassField ClassField(
+        string name,
+        TypeIdentifier type,
+        bool isMutable = false,
+        bool isStatic = false,
+        bool isPublic = false,
+        IExpression? value = null)
+    {
+        return new ClassField(
+            AccessModifier: isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
+            StaticModifier: isStatic ? new StaticModifier(Token.Static(SourceSpan.Default)) : null,
+            MutabilityModifier: isMutable ? new MutabilityModifier(Token.Mut(SourceSpan.Default)) : null,
+            Name: Token.Identifier(name, SourceSpan.Default),
+            Type: type,
+            InitializerValue: value);
     }
 
     private static ValueAccessorExpression VariableAccessor(string name)
@@ -4285,7 +4393,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
 
     private static ParserError RemoveSourceSpan(ParserError error)
     {
-        return error with { Position = SourcePosition.Default };
+        return error with { Range = SourceRange.Default };
     }
 
     private static LangFunction RemoveSourceSpan(LangFunction function)
@@ -4324,7 +4432,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         }
 
         return new TypeIdentifier(RemoveSourceSpan(typeIdentifier.Identifier),
-            [..typeIdentifier.TypeArguments.Select(RemoveSourceSpan)!]);
+            [..typeIdentifier.TypeArguments.Select(RemoveSourceSpan)!], SourceRange.Default);
     }
 
     private static FunctionParameter RemoveSourceSpan(FunctionParameter parameter)
@@ -4348,25 +4456,25 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             BinaryOperatorExpression binaryOperatorExpression => new BinaryOperatorExpression(
                 RemoveSourceSpan(binaryOperatorExpression.BinaryOperator)),
             VariableDeclarationExpression variableDeclarationExpression => new VariableDeclarationExpression(
-                RemoveSourceSpan(variableDeclarationExpression.VariableDeclaration)),
+                RemoveSourceSpan(variableDeclarationExpression.VariableDeclaration), SourceRange.Default),
             IfExpressionExpression ifExpressionExpression => new IfExpressionExpression(
-                RemoveSourceSpan(ifExpressionExpression.IfExpression)),
-            BlockExpression blockExpression => new BlockExpression(RemoveSourceSpan(blockExpression.Block)),
+                RemoveSourceSpan(ifExpressionExpression.IfExpression), SourceRange.Default),
+            BlockExpression blockExpression => new BlockExpression(RemoveSourceSpan(blockExpression.Block), SourceRange.Default),
             MethodCallExpression methodCallExpression => new MethodCallExpression(
-                RemoveSourceSpan(methodCallExpression.MethodCall)),
+                RemoveSourceSpan(methodCallExpression.MethodCall), SourceRange.Default),
             MethodReturnExpression methodReturnExpression => new MethodReturnExpression(
-                RemoveSourceSpan(methodReturnExpression.MethodReturn)),
+                RemoveSourceSpan(methodReturnExpression.MethodReturn), SourceRange.Default),
             ObjectInitializerExpression objectInitializerExpression => new ObjectInitializerExpression(
-                RemoveSourceSpan(objectInitializerExpression.ObjectInitializer)),
+                RemoveSourceSpan(objectInitializerExpression.ObjectInitializer), SourceRange.Default),
             MemberAccessExpression memberAccessExpression => new MemberAccessExpression(
                 RemoveSourceSpan(memberAccessExpression.MemberAccess)),
             StaticMemberAccessExpression staticMemberAccessExpression => new StaticMemberAccessExpression(
                 RemoveSourceSpan(staticMemberAccessExpression.StaticMemberAccess)),
             GenericInstantiationExpression genericInstantiationExpression => new GenericInstantiationExpression(
-                RemoveSourceSpan(genericInstantiationExpression.GenericInstantiation)),
+                RemoveSourceSpan(genericInstantiationExpression.GenericInstantiation), SourceRange.Default),
             UnionStructVariantInitializerExpression unionStructVariantInitializerExpression => new
                 UnionStructVariantInitializerExpression(
-                    RemoveSourceSpan(unionStructVariantInitializerExpression.UnionInitializer)),
+                    RemoveSourceSpan(unionStructVariantInitializerExpression.UnionInitializer), SourceRange.Default),
             MatchesExpression matchesExpression => RemoveSourceSpan(matchesExpression),
             TupleExpression tupleExpression => RemoveSourceSpan(tupleExpression),
             MatchExpression matchExpression => RemoveSourceSpan(matchExpression),
@@ -4378,7 +4486,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
         return new MatchExpression(
             RemoveSourceSpan(matchExpression.Value),
-            [..matchExpression.Arms.Select(RemoveSourceSpan)]);
+            [..matchExpression.Arms.Select(RemoveSourceSpan)], SourceRange.Default);
     }
 
     private static MatchArm RemoveSourceSpan(MatchArm matchArm)
@@ -4390,7 +4498,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
 
     private static TupleExpression RemoveSourceSpan(TupleExpression tupleExpression)
     {
-        return new TupleExpression([..tupleExpression.Values.Select(RemoveSourceSpan)!]);
+        return new TupleExpression([..tupleExpression.Values.Select(RemoveSourceSpan)!], SourceRange.Default);
     }
 
     private static MatchesExpression RemoveSourceSpan(
@@ -4398,7 +4506,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
         return new MatchesExpression(
             RemoveSourceSpan(matchesExpression.ValueExpression),
-            RemoveSourceSpan(matchesExpression.Pattern));
+            RemoveSourceSpan(matchesExpression.Pattern),
+            SourceRange.Default);
     }
 
     private static IPattern RemoveSourceSpan(IPattern pattern)
@@ -4407,19 +4516,19 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         {
             DiscardPattern discardPattern => discardPattern,
             VariableDeclarationPattern variablePattern => new VariableDeclarationPattern(
-                RemoveSourceSpan(variablePattern.VariableName)),
+                RemoveSourceSpan(variablePattern.VariableName), SourceRange.Default),
             UnionVariantPattern unionVariantPattern => new UnionVariantPattern(
                 RemoveSourceSpan(unionVariantPattern.Type),
                 RemoveSourceSpan(unionVariantPattern.VariantName),
                 unionVariantPattern.VariableName is null ? null : RemoveSourceSpan(unionVariantPattern.VariableName)
-            ),
+            , SourceRange.Default),
             UnionTupleVariantPattern unionTupleVariantPattern => new UnionTupleVariantPattern(
                 RemoveSourceSpan(unionTupleVariantPattern.Type),
                 RemoveSourceSpan(unionTupleVariantPattern.VariantName),
                 [..unionTupleVariantPattern.TupleParamPatterns.Select(RemoveSourceSpan)],
                 unionTupleVariantPattern.VariableName is null
                     ? null
-                    : RemoveSourceSpan(unionTupleVariantPattern.VariableName)),
+                    : RemoveSourceSpan(unionTupleVariantPattern.VariableName), SourceRange.Default),
             ClassPattern classPattern => new ClassPattern(RemoveSourceSpan(classPattern.Type),
                 [
                     ..classPattern.FieldPatterns.Select(x =>
@@ -4427,7 +4536,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             x.Value is not null ? RemoveSourceSpan(x.Value) : null))
                 ],
                 classPattern.RemainingFieldsDiscarded,
-                classPattern.VariableName is null ? null : RemoveSourceSpan(classPattern.VariableName)),
+                classPattern.VariableName is null ? null : RemoveSourceSpan(classPattern.VariableName), SourceRange.Default),
             UnionStructVariantPattern unionStructVariantPattern => new UnionStructVariantPattern(
                 RemoveSourceSpan(unionStructVariantPattern.Type),
                 RemoveSourceSpan(unionStructVariantPattern.VariantName),
@@ -4439,7 +4548,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 unionStructVariantPattern.RemainingFieldsDiscarded,
                 unionStructVariantPattern.VariableName is null
                     ? null
-                    : RemoveSourceSpan(unionStructVariantPattern.VariableName)),
+                    : RemoveSourceSpan(unionStructVariantPattern.VariableName), SourceRange.Default),
             _ => throw new NotImplementedException($"{pattern}")
         };
     }

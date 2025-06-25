@@ -7,6 +7,8 @@ public interface IExpression
     ExpressionType ExpressionType { get; }
 
     TypeChecker.ITypeReference? ResolvedType { get; set; }
+    
+    SourceRange SourceRange { get; }
 }
 
 public record ValueAccessorExpression(ValueAccessor ValueAccessor) : IExpression
@@ -14,6 +16,8 @@ public record ValueAccessorExpression(ValueAccessor ValueAccessor) : IExpression
     public ExpressionType ExpressionType => ExpressionType.ValueAccess;
 
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
+
+    public SourceRange SourceRange => new(ValueAccessor.Token.SourceSpan, ValueAccessor.Token.SourceSpan);
 
     public override string ToString()
     {
@@ -25,6 +29,7 @@ public record MemberAccessExpression(MemberAccess MemberAccess) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.MemberAccess;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
+    public SourceRange SourceRange => MemberAccess.Owner.SourceRange with { End = MemberAccess.MemberName.SourceSpan };
 
     public override string ToString()
     {
@@ -36,6 +41,7 @@ public record StaticMemberAccessExpression(StaticMemberAccess StaticMemberAccess
 {
     public ExpressionType ExpressionType => ExpressionType.StaticMemberAccess;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
+    public SourceRange SourceRange => StaticMemberAccess.Type.SourceRange with { End = StaticMemberAccess.MemberName.SourceSpan };
 
     public override string ToString()
     {
@@ -64,6 +70,23 @@ public record UnaryOperatorExpression(UnaryOperator UnaryOperator) : IExpression
     public ExpressionType ExpressionType => ExpressionType.UnaryOperator;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
+    public SourceRange SourceRange
+    {
+        get
+        {
+            if (UnaryOperator.OperatorType.IsPrefix())
+            {
+                return new SourceRange(
+                    UnaryOperator.OperatorToken.SourceSpan,
+                    UnaryOperator.Operand?.SourceRange.End ?? UnaryOperator.OperatorToken.SourceSpan);
+            }
+
+            return new SourceRange(
+                UnaryOperator.Operand?.SourceRange.Start ?? UnaryOperator.OperatorToken.SourceSpan,
+                UnaryOperator.OperatorToken.SourceSpan);
+        }
+    }
+
     public override string ToString()
     {
         return UnaryOperator.ToString();
@@ -75,13 +98,24 @@ public record BinaryOperatorExpression(BinaryOperator BinaryOperator) : IExpress
     public ExpressionType ExpressionType => ExpressionType.BinaryOperator;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
+    public SourceRange SourceRange
+    {
+        get
+        {
+            var start = BinaryOperator.Left?.SourceRange.Start ?? BinaryOperator.OperatorToken.SourceSpan;
+            var end = BinaryOperator.Right?.SourceRange.End ?? BinaryOperator.OperatorToken.SourceSpan;
+
+            return new SourceRange(start, end);
+        }
+    }
+
     public override string ToString()
     {
         return BinaryOperator.ToString();
     }
 }
 
-public record VariableDeclarationExpression(VariableDeclaration VariableDeclaration) : IExpression
+public record VariableDeclarationExpression(VariableDeclaration VariableDeclaration, SourceRange SourceRange) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.VariableDeclaration;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
@@ -93,7 +127,7 @@ public record VariableDeclarationExpression(VariableDeclaration VariableDeclarat
 }
 
 // todo: better name
-public record IfExpressionExpression(IfExpression IfExpression) : IExpression
+public record IfExpressionExpression(IfExpression IfExpression, SourceRange SourceRange) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.IfExpression;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
@@ -104,7 +138,7 @@ public record IfExpressionExpression(IfExpression IfExpression) : IExpression
     }
 }
 
-public record BlockExpression(Block Block) : IExpression
+public record BlockExpression(Block Block, SourceRange SourceRange) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.Block;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
@@ -115,7 +149,7 @@ public record BlockExpression(Block Block) : IExpression
     }
 }
 
-public record GenericInstantiationExpression(GenericInstantiation GenericInstantiation) : IExpression
+public record GenericInstantiationExpression(GenericInstantiation GenericInstantiation, SourceRange SourceRange) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.GenericInstantiation;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
@@ -133,13 +167,13 @@ public record GenericInstantiation(IExpression Value, IReadOnlyList<TypeIdentifi
     }
 }
 
-public record TupleExpression(IReadOnlyList<IExpression> Values) : IExpression
+public record TupleExpression(IReadOnlyList<IExpression> Values, SourceRange SourceRange) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.Tuple;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
 }
 
-public record MethodCallExpression(MethodCall MethodCall) : IExpression
+public record MethodCallExpression(MethodCall MethodCall, SourceRange SourceRange) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.MethodCall;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
@@ -150,7 +184,7 @@ public record MethodCallExpression(MethodCall MethodCall) : IExpression
     }
 }
 
-public record MethodReturnExpression(MethodReturn MethodReturn) : IExpression
+public record MethodReturnExpression(MethodReturn MethodReturn, SourceRange SourceRange) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.MethodReturn;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
@@ -161,13 +195,13 @@ public record MethodReturnExpression(MethodReturn MethodReturn) : IExpression
     }
 }
 
-public record UnionStructVariantInitializerExpression(UnionStructVariantInitializer UnionInitializer) : IExpression
+public record UnionStructVariantInitializerExpression(UnionStructVariantInitializer UnionInitializer, SourceRange SourceRange) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.UnionStructVariantInitializer;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
 }
 
-public record MatchesExpression(IExpression ValueExpression, IPattern Pattern) : IExpression
+public record MatchesExpression(IExpression ValueExpression, IPattern Pattern, SourceRange SourceRange) : IExpression
 {
     /// <summary>
     ///     Collection of declared variables within <see cref="Pattern" />. Initialized during type checking
@@ -189,7 +223,7 @@ public record UnionStructVariantInitializer(
     }
 }
 
-public record ObjectInitializerExpression(ObjectInitializer ObjectInitializer) : IExpression
+public record ObjectInitializerExpression(ObjectInitializer ObjectInitializer, SourceRange SourceRange) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.ObjectInitializer;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
@@ -237,7 +271,7 @@ public record MutabilityModifier(Token Modifier)
     }
 }
 
-public record MatchExpression(IExpression Value, IReadOnlyList<MatchArm> Arms) : IExpression
+public record MatchExpression(IExpression Value, IReadOnlyList<MatchArm> Arms, SourceRange SourceRange) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.Match;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
@@ -303,6 +337,14 @@ public record UnaryOperator(UnaryOperatorType OperatorType, IExpression? Operand
     {
         // todo: prefix and postfix
         return $"|{Operand}{OperatorToken}|";
+    }
+}
+
+public static class UnaryOperatorTypeExtensions
+{
+    public static bool IsPrefix(this UnaryOperatorType @operator)
+    {
+        return @operator is UnaryOperatorType.Not;
     }
 }
 

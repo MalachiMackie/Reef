@@ -97,13 +97,25 @@ public sealed class Parser : IDisposable
         TokenType? closingToken,
         bool isUnion)
     {
+        var start = Current.SourceSpan;
+        SourceSpan? end = null;
         // if there's a closing token, then we're expecting 
         if (closingToken.HasValue && !MoveNext())
         {
-            throw new InvalidOperationException("Unexpected EOF");
+            _errors.Add(ParserError.Scope_MissingClosingTag(Current));
+            return new Scope
+            {
+                Classes = [],
+                Expressions = [],
+                Fields = [],
+                Functions = [],
+                Unions = [],
+                Variants = [],
+                SourceRange = new SourceRange(start, start)
+            };
         }
 
-        var hasTailExpression = false;
+        IExpression? tailCallExpression = null;
         var foundClosingToken = false;
 
         var expressions = new List<IExpression>();
@@ -122,19 +134,21 @@ public sealed class Parser : IDisposable
             {
                 if (!allowMemberComma)
                 {
-                    throw new InvalidOperationException("Unexpected ,");
+                    _errors.Add(ParserError.Scope_UnexpectedComma(Current));
                 }
 
                 expectMemberComma = false;
 
                 if (!MoveNext())
                 {
+                    end = Current.SourceSpan;
                     break;
                 }
             }
 
             if (Current.Type == closingToken)
             {
+                end = Current.SourceSpan;
                 MoveNext();
                 foundClosingToken = true;
                 break;
@@ -142,7 +156,7 @@ public sealed class Parser : IDisposable
 
             if (Current.Type != TokenType.Comma && expectMemberComma)
             {
-                throw new InvalidOperationException("Expected ,");
+                _errors.Add(ParserError.Scope_ExpectedComma(Current));
             }
 
             if (IsMember(Current.Type, isUnion))
@@ -174,11 +188,7 @@ public sealed class Parser : IDisposable
 
                 if (!_hasNext)
                 {
-                    if (closingToken.HasValue)
-                    {
-                        throw new InvalidOperationException($"Expected {closingToken}");
-                    }
-
+                    end = Current.SourceSpan;
                     break;
                 }
 
@@ -191,15 +201,17 @@ public sealed class Parser : IDisposable
             {
                 if (!MoveNext())
                 {
+                    end = Current.SourceSpan;
                     break;
                 }
 
                 continue;
             }
 
-            if (hasTailExpression)
+            if (tailCallExpression is not null)
             {
-                throw new InvalidOperationException("Tail expression must be at the end of a block");
+                _errors.Add(ParserError.Scope_EarlyTailReturnExpression(tailCallExpression));
+                tailCallExpression = null;
             }
 
             if (_hasNext && Current.Type == TokenType.Semicolon)
@@ -209,21 +221,23 @@ public sealed class Parser : IDisposable
             }
             else
             {
-                if (expression.ExpressionType == ExpressionType.MethodReturn)
-                {
-                    throw new InvalidOperationException("Return statement cannot be a tail expression");
-                }
-
-                hasTailExpression =
-                    expression.ExpressionType is not (ExpressionType.IfExpression or ExpressionType.Block);
+                tailCallExpression =
+                    expression.ExpressionType is not (ExpressionType.IfExpression or ExpressionType.Block)
+                    ? expression
+                    : null;
             }
 
             expressions.Add(expression);
         } while (_hasNext);
 
+        if (!_hasNext)
+        {
+            end = Current.SourceSpan;
+        }
+
         if (!foundClosingToken && closingToken.HasValue)
         {
-            throw new InvalidOperationException($"Expected {closingToken.Value}, got nothing");
+            _errors.Add(ParserError.Scope_MissingClosingTag(Current));
         }
 
         return new Scope
@@ -233,7 +247,8 @@ public sealed class Parser : IDisposable
             Functions = functions,
             Fields = fields,
             Unions = unions,
-            Variants = variants
+            Variants = variants,
+            SourceRange = new SourceRange(start, end ?? throw new UnreachableException("end should always be set"))
         };
     }
 
@@ -348,7 +363,7 @@ public sealed class Parser : IDisposable
 
         if (Current.Type == TokenType.LeftParenthesis)
         {
-            var tupleTypes = GetCommaSeparatedList(
+            var (tupleTypes, _) = GetCommaSeparatedList(
                 TokenType.RightParenthesis,
                 "Tuple Variant Parameter Type",
                 GetTypeIdentifier);
@@ -418,7 +433,7 @@ public sealed class Parser : IDisposable
         return new ClassField(accessModifier, staticModifier, mutabilityModifier, name, type, valueExpression);
     }
 
-    private List<StringToken> GetGenericParameterList()
+    private (List<StringToken> items, Token lastToken) GetGenericParameterList()
     {
         return GetCommaSeparatedList(
             TokenType.RightAngleBracket,
@@ -454,7 +469,7 @@ public sealed class Parser : IDisposable
 
         if (Current.Type == TokenType.LeftAngleBracket)
         {
-            typeArguments = GetGenericParameterList();
+            (typeArguments, _) = GetGenericParameterList();
 
             if (!_hasNext)
             {
@@ -497,7 +512,7 @@ public sealed class Parser : IDisposable
 
         if (Current.Type == TokenType.LeftAngleBracket)
         {
-            typeArguments = GetGenericParameterList() is { Count: > 0 } x
+            typeArguments = GetGenericParameterList().items is { Count: > 0 } x
                 ? x
                 : throw new InvalidOperationException("Expected Type Argument");
 
@@ -537,7 +552,7 @@ public sealed class Parser : IDisposable
 
         if (Current.Type == TokenType.LeftAngleBracket)
         {
-            typeArguments = GetGenericParameterList() is { Count: > 0 } x
+            typeArguments = GetGenericParameterList().items is { Count: > 0 } x
                 ? x
                 : throw new InvalidOperationException("Expected Type Argument");
 
@@ -552,7 +567,7 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Expected (");
         }
 
-        var parameterList = GetCommaSeparatedList(
+        var (parameterList, _) = GetCommaSeparatedList(
             TokenType.RightParenthesis,
             "Parameter",
             () =>
@@ -643,15 +658,16 @@ public sealed class Parser : IDisposable
         var typeIdentifier = Current;
 
         var typeArguments = new List<TypeIdentifier>();
+        Token? lastToken = null;
         if (MoveNext() && Current.Type == TokenType.Turbofish)
         {
-            typeArguments = GetCommaSeparatedList(
+            (typeArguments, lastToken) = GetCommaSeparatedList(
                 TokenType.RightAngleBracket,
                 "Type Argument",
                 GetTypeIdentifier);
         }
 
-        return new TypeIdentifier(typeIdentifier, typeArguments);
+        return new TypeIdentifier(typeIdentifier, typeArguments, new SourceRange(typeIdentifier.SourceSpan, lastToken?.SourceSpan ?? typeIdentifier.SourceSpan));
     }
 
     private IExpression? MatchTokenToExpression(IExpression? previousExpression)
@@ -693,6 +709,7 @@ public sealed class Parser : IDisposable
 
     private MatchExpression GetMatchExpression()
     {
+        var matchToken = Current;
         if (!MoveNext() || Current.Type != TokenType.LeftParenthesis)
         {
             throw new InvalidOperationException("Expected (");
@@ -716,7 +733,7 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Expected {");
         }
 
-        var arms = GetCommaSeparatedList(
+        var (arms, lastToken) = GetCommaSeparatedList(
             TokenType.RightBrace,
             "Match Arm",
             () =>
@@ -743,7 +760,7 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Expected match expression to contain at least one arm");
         }
 
-        return new MatchExpression(valueExpression, arms);
+        return new MatchExpression(valueExpression, arms, new SourceRange(matchToken.SourceSpan, lastToken.SourceSpan));
     }
 
     private IExpression GetParenthesizedExpression(IExpression? previousExpression)
@@ -758,7 +775,8 @@ public sealed class Parser : IDisposable
 
     private TupleExpression GetTupleExpression()
     {
-        var elements = GetCommaSeparatedList(TokenType.RightParenthesis, "Tuple Expression", () => PopExpression());
+        var startToken = Current;
+        var (elements, lastToken) = GetCommaSeparatedList(TokenType.RightParenthesis, "Tuple Expression", () => PopExpression());
 
         if (elements.Count == 0)
         {
@@ -770,7 +788,7 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Tuple can contain at most 10 elements");
         }
 
-        return new TupleExpression(elements);
+        return new TupleExpression(elements, new SourceRange(startToken.SourceSpan, lastToken.SourceSpan));
     }
 
     private MatchesExpression GetMatchesExpression(IExpression previousExpression)
@@ -782,16 +800,17 @@ public sealed class Parser : IDisposable
 
         var pattern = GetPattern();
 
-        return new MatchesExpression(previousExpression, pattern);
+        return new MatchesExpression(previousExpression, pattern, previousExpression.SourceRange with {});
     }
 
     private IPattern GetPattern()
     {
+        var start = Current.SourceSpan;
         if (Current.Type == TokenType.Underscore)
         {
             MoveNext();
 
-            return new DiscardPattern();
+            return new DiscardPattern(new SourceRange(start, Current.SourceSpan));
         }
 
         if (Current.Type == TokenType.Var)
@@ -803,7 +822,7 @@ public sealed class Parser : IDisposable
 
             MoveNext();
 
-            return new VariableDeclarationPattern(variableName);
+            return new VariableDeclarationPattern(variableName, new SourceRange(start, Current.SourceSpan));
         }
 
         if (!IsTypeTokenType(Current.Type))
@@ -816,7 +835,7 @@ public sealed class Parser : IDisposable
 
         if (!_hasNext)
         {
-            return new ClassPattern(type, [], false, null);
+            return new ClassPattern(type, [], false, null, new SourceRange(start, Current.SourceSpan));
         }
 
         StringToken? variantName = null;
@@ -835,7 +854,7 @@ public sealed class Parser : IDisposable
 
         if (!_hasNext && variantName is not null)
         {
-            return new UnionVariantPattern(type, variantName, null);
+            return new UnionVariantPattern(type, variantName, null, new SourceRange(start, Current.SourceSpan));
         }
 
         if (Current.Type == TokenType.Var)
@@ -848,13 +867,13 @@ public sealed class Parser : IDisposable
             MoveNext();
 
             return variantName is null
-                ? new ClassPattern(type, [], false, variableName)
-                : new UnionVariantPattern(type, variantName, variableName);
+                ? new ClassPattern(type, [], false, variableName, new SourceRange(start, Current.SourceSpan))
+                : new UnionVariantPattern(type, variantName, variableName, new SourceRange(start, Current.SourceSpan));
         }
 
         if (variantName is not null && Current.Type == TokenType.LeftParenthesis)
         {
-            var patterns = GetCommaSeparatedList(
+            var (patterns, patternsLastToken) = GetCommaSeparatedList(
                 TokenType.RightParenthesis,
                 "Pattern",
                 GetPattern);
@@ -873,22 +892,23 @@ public sealed class Parser : IDisposable
                 MoveNext();
             }
 
-            return new UnionTupleVariantPattern(type, variantName, patterns, variableName);
+            return new UnionTupleVariantPattern(type, variantName, patterns, variableName, new SourceRange(start, variableName?.SourceSpan ?? patternsLastToken.SourceSpan));
         }
 
         if (Current.Type == TokenType.LeftBrace)
         {
-            var fieldPatterns = GetCommaSeparatedList(
+            var (fieldPatterns, fieldsLastToken) = GetCommaSeparatedList(
                 TokenType.RightBrace,
                 "Field Pattern",
                 () =>
                 {
                     if (Current.Type == TokenType.Underscore)
                     {
+                        var underscore = Current;
                         MoveNext();
                         // hack to allow discard without field name
                         return new KeyValuePair<StringToken, IPattern?>(Token.Identifier("", SourceSpan.Default),
-                            new DiscardPattern());
+                            new DiscardPattern(new SourceRange(underscore.SourceSpan, underscore.SourceSpan)));
                     }
 
                     if (Current is not StringToken { Type: TokenType.Identifier } fieldName)
@@ -929,17 +949,17 @@ public sealed class Parser : IDisposable
                     fieldPatterns = fieldPatterns.Where(x => x.Key.StringValue.Length > 0).ToList();
 
                     return variantName is not null
-                        ? new UnionStructVariantPattern(type, variantName, fieldPatterns, discards.Length == 1, null)
-                        : new ClassPattern(type, fieldPatterns, discards.Length == 1, null);
+                        ? new UnionStructVariantPattern(type, variantName, fieldPatterns, discards.Length == 1, null, new SourceRange(start, fieldsLastToken.SourceSpan))
+                        : new ClassPattern(type, fieldPatterns, discards.Length == 1, null, new SourceRange(start, fieldsLastToken.SourceSpan));
             }
         }
 
         if (variantName is not null)
         {
-            return new UnionVariantPattern(type, variantName, null);
+            return new UnionVariantPattern(type, variantName, null, new SourceRange(start, variantName.SourceSpan));
         }
 
-        return new ClassPattern(type, [], false, null);
+        return new ClassPattern(type, [], false, null, type.SourceRange);
     }
 
     private ValueAccessorExpression GetLiteralExpression()
@@ -963,7 +983,7 @@ public sealed class Parser : IDisposable
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    private List<T> GetCommaSeparatedList<T>(TokenType terminator, string itemName, Func<T?> tryGetNext)
+    private (List<T> items, Token lastToken) GetCommaSeparatedList<T>(TokenType terminator, string itemName, Func<T?> tryGetNext)
     {
         if (!MoveNext())
         {
@@ -1011,16 +1031,19 @@ public sealed class Parser : IDisposable
             items.Add(next);
         }
 
+        var lastToken = Current;
+
         MoveNext();
 
-        return items;
+        return (items, lastToken);
     }
 
     private GenericInstantiationExpression GetGenericInstantiation(IExpression previousExpression)
     {
-        var typeArguments = GetCommaSeparatedList(TokenType.RightAngleBracket, "Type Argument", GetTypeIdentifier);
+        var (typeArguments, lastToken) = GetCommaSeparatedList(TokenType.RightAngleBracket, "Type Argument", GetTypeIdentifier);
 
-        return new GenericInstantiationExpression(new GenericInstantiation(previousExpression, typeArguments));
+        return new GenericInstantiationExpression(new GenericInstantiation(previousExpression, typeArguments),
+            previousExpression.SourceRange with { End = lastToken.SourceSpan });
     }
 
     private ValueAccessorExpression GetVariableAccess()
@@ -1053,7 +1076,7 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException($"Cannot perform static member access on {previousExpression}");
         }
 
-        var type = new TypeIdentifier(token, typeArguments ?? []);
+        var type = new TypeIdentifier(token, typeArguments ?? [], previousExpression.SourceRange);
 
         if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } memberName)
         {
@@ -1113,11 +1136,14 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Expected {");
         }
 
+        var (fieldInitializers, lastToken) = GetFieldInitializers();
+
         return new UnionStructVariantInitializerExpression(
-            new UnionStructVariantInitializer(type, variantName, GetFieldInitializers()));
+            new UnionStructVariantInitializer(type, variantName, fieldInitializers),
+            type.SourceRange with {End = lastToken.SourceSpan});
     }
 
-    private List<FieldInitializer> GetFieldInitializers()
+    private (List<FieldInitializer> fieldInitializers, Token lastToken) GetFieldInitializers()
     {
         return GetCommaSeparatedList(
             TokenType.RightBrace,
@@ -1148,16 +1174,18 @@ public sealed class Parser : IDisposable
 
     private ObjectInitializerExpression GetObjectInitializer(TypeIdentifier type)
     {
-        return new ObjectInitializerExpression(new ObjectInitializer(type, GetFieldInitializers()));
+        var (fieldInitializers, lastToken) = GetFieldInitializers();
+        return new ObjectInitializerExpression(new ObjectInitializer(type, fieldInitializers), type.SourceRange with {End = lastToken.SourceSpan});
     }
 
     private MethodReturnExpression GetMethodReturn()
     {
+        var start = Current.SourceSpan;
         var valueExpression = MoveNext()
             ? PopExpression()
             : null;
 
-        return new MethodReturnExpression(new MethodReturn(valueExpression));
+        return new MethodReturnExpression(new MethodReturn(valueExpression), new SourceRange(start, valueExpression?.SourceRange.End ?? start));
     }
 
     /// <summary>
@@ -1176,7 +1204,7 @@ public sealed class Parser : IDisposable
 
             keepBinding = _hasNext
                           && TryGetBindingStrength(Current, out var bindingStrength)
-                          && (!TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) || !IsUnaryOperatorPrefix(unaryOperatorType.Value))
+                          && (!TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) || !unaryOperatorType.Value.IsPrefix())
                           && bindingStrength > (currentBindingStrength ?? 0);
         }
 
@@ -1185,16 +1213,17 @@ public sealed class Parser : IDisposable
 
     private MethodCallExpression GetMethodCall(IExpression method)
     {
-        var parameterList = GetCommaSeparatedList(
+        var (parameterList, lastToken) = GetCommaSeparatedList(
             TokenType.RightParenthesis,
             "Method Parameter",
             () => PopExpression());
 
-        return new MethodCallExpression(new MethodCall(method, parameterList));
+        return new MethodCallExpression(new MethodCall(method, parameterList), method.SourceRange with {End = lastToken.SourceSpan});
     }
 
     private IfExpressionExpression GetIfExpression()
     {
+        var start = Current.SourceSpan;
         if (!MoveNext())
         {
             throw new InvalidOperationException("Expected left parenthesis, found nothing");
@@ -1280,7 +1309,8 @@ public sealed class Parser : IDisposable
             checkExpression,
             body,
             elseIfs,
-            elseBody));
+            elseBody),
+            new SourceRange(start, elseBody?.SourceRange.End ?? elseIfs.LastOrDefault()?.Body.SourceRange.End ?? body.SourceRange.End));
     }
 
     private BlockExpression GetBlockExpression()
@@ -1292,14 +1322,15 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Block expressions can only contain expressions and functions");
         }
 
-        return new BlockExpression(new Block(scope.Expressions, scope.Functions));
+        return new BlockExpression(new Block(scope.Expressions, scope.Functions), scope.SourceRange);
     }
 
     private VariableDeclarationExpression? GetVariableDeclaration()
     {
+        var start = Current.SourceSpan;
         if (!MoveNext())
         {
-            _errors.Add(ParserError.VariableDeclaration_MissingIdentifier(Current.SourceSpan.Position));
+            _errors.Add(ParserError.VariableDeclaration_MissingIdentifier(Current));
             return null;
         }
 
@@ -1311,7 +1342,7 @@ public sealed class Parser : IDisposable
 
             if (!MoveNext())
             {
-                _errors.Add(ParserError.VariableDeclaration_MissingIdentifier(Current.SourceSpan.Position));
+                _errors.Add(ParserError.VariableDeclaration_MissingIdentifier(Current));
                 return null;
             }
         }
@@ -1325,49 +1356,54 @@ public sealed class Parser : IDisposable
         if (!MoveNext())
         {
             return new VariableDeclarationExpression(
-                new VariableDeclaration(identifier, mutabilityModifier, null, null));
+                new VariableDeclaration(identifier, mutabilityModifier, null, null), new SourceRange(start, identifier.SourceSpan));
         }
 
         TypeIdentifier? type = null;
         IExpression? valueExpression = null;
+        var lastTokenSpan = identifier.SourceSpan;
 
         if (Current.Type == TokenType.Colon)
         {
+            lastTokenSpan = Current.SourceSpan;
             if (!MoveNext())
             {
-                _errors.Add(ParserError.VariableDeclaration_MissingType(Current.SourceSpan.Position));
+                _errors.Add(ParserError.VariableDeclaration_MissingType(Current));
                 return new VariableDeclarationExpression(new VariableDeclaration(
-                    identifier, mutabilityModifier, null, null));
+                    identifier, mutabilityModifier, null, null), new SourceRange(start, Current.SourceSpan));
             }
 
             type = GetTypeIdentifier();
+            lastTokenSpan = type?.SourceRange.End ?? lastTokenSpan;
             if (type is null)
             {
-                _errors.Add(ParserError.VariableDeclaration_MissingType(Current.SourceSpan.Position));
+                _errors.Add(ParserError.VariableDeclaration_MissingType(Current));
             }
         }
 
         if (_hasNext && Current.Type == TokenType.Equals)
         {
+            lastTokenSpan = Current.SourceSpan;
             if (!MoveNext())
             {
-                _errors.Add(ParserError.VariableDeclaration_MissingValue(Current.SourceSpan.Position));
+                _errors.Add(ParserError.VariableDeclaration_MissingValue(Current));
                 return new VariableDeclarationExpression(new VariableDeclaration(identifier, mutabilityModifier,
-                    type, null));
+                    type, null), new SourceRange(start, Current.SourceSpan));
             }
 
             valueExpression = PopExpression();
+            lastTokenSpan = valueExpression?.SourceRange.End ?? lastTokenSpan;
 
             if (valueExpression is null)
             {
-                _errors.Add(ParserError.VariableDeclaration_MissingValue(Current.SourceSpan.Position));
+                _errors.Add(ParserError.VariableDeclaration_MissingValue(Current));
                 return new VariableDeclarationExpression(new VariableDeclaration(identifier, mutabilityModifier, type,
-                    null));
+                    null), new SourceRange(start, lastTokenSpan));
             }
         }
 
         return new VariableDeclarationExpression(new VariableDeclaration(identifier, mutabilityModifier, type,
-            valueExpression));
+            valueExpression), new SourceRange(start, lastTokenSpan));
     }
 
     private UnaryOperatorExpression GetUnaryOperatorExpression(
@@ -1375,26 +1411,26 @@ public sealed class Parser : IDisposable
         Token operatorToken,
         UnaryOperatorType operatorType)
     {
-        if (IsUnaryOperatorPrefix(operatorType))
+        if (operatorType.IsPrefix())
         {
             MoveNext();
             if (!_hasNext)
             {
-                _errors.Add(ParserError.UnaryOperator_MissingValue(Current.SourceSpan.Position));
+                _errors.Add(ParserError.UnaryOperator_MissingValue(Current));
                 return new UnaryOperatorExpression(new UnaryOperator(operatorType, null, operatorToken));
             }
 
             operand = PopExpression(GetUnaryOperatorBindingStrength(operatorType));
             if (operand is null)
             {
-                _errors.Add(ParserError.UnaryOperator_MissingValue(Current.SourceSpan.Position));
+                _errors.Add(ParserError.UnaryOperator_MissingValue(Current));
             }
         }
         else
         {
             if (operand is null)
             {
-                _errors.Add(ParserError.UnaryOperator_MissingValue(Current.SourceSpan.Position));
+                _errors.Add(ParserError.UnaryOperator_MissingValue(Current));
             }
             MoveNext();
         }
@@ -1408,7 +1444,7 @@ public sealed class Parser : IDisposable
     {
         if (leftOperand is null)
         {
-            _errors.Add(ParserError.BinaryOperator_MissingLeftValue(Current.SourceSpan.Position));
+            _errors.Add(ParserError.BinaryOperator_MissingLeftValue(Current));
         }
         
         var operatorToken = Current;
@@ -1419,7 +1455,7 @@ public sealed class Parser : IDisposable
 
         if (!MoveNext())
         {
-            _errors.Add(ParserError.BinaryOperator_MissingRightValue(Current.SourceSpan.Position));
+            _errors.Add(ParserError.BinaryOperator_MissingRightValue(Current));
             return new BinaryOperatorExpression(
                 new BinaryOperator(operatorType, leftOperand, Right: null, operatorToken));
         }
@@ -1428,7 +1464,7 @@ public sealed class Parser : IDisposable
 
         if (right is null)
         {
-            _errors.Add(ParserError.BinaryOperator_MissingRightValue(Current.SourceSpan.Position));
+            _errors.Add(ParserError.BinaryOperator_MissingRightValue(Current));
         }
 
         return new BinaryOperatorExpression(new BinaryOperator(operatorType, leftOperand, right, operatorToken));
@@ -1463,11 +1499,6 @@ public sealed class Parser : IDisposable
         };
 
         return operatorType.HasValue;
-    }
-
-    private static bool IsUnaryOperatorPrefix(UnaryOperatorType unaryOperatorType)
-    {
-        return unaryOperatorType is UnaryOperatorType.Not;
     }
 
     private static bool TryGetBinaryOperatorType(TokenType type,
@@ -1535,6 +1566,7 @@ public sealed class Parser : IDisposable
         public required IReadOnlyList<ClassField> Fields { get; init; }
         public required IReadOnlyList<ProgramUnion> Unions { get; init; }
         public required IReadOnlyList<IProgramUnionVariant> Variants { get; init; }
+        public required SourceRange SourceRange { get; init; }
 
         public List<ScopeType> GetScopeTypes()
         {
