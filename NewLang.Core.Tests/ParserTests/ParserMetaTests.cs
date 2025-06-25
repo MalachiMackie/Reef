@@ -1,8 +1,9 @@
 ﻿using FluentAssertions;
+using NewLang.Core.Tests.ParserTests.TestCases;
 
-namespace NewLang.Core.Tests;
+namespace NewLang.Core.Tests.ParserTests;
 
-public class ExpressionMetaTests
+public class ParserMetaTests
 {
     public static readonly IEnumerable<object?[]> ExpressionTypes = Enum.GetValues<ValueAccessType>()
         .Select(x => new object?[] { x, null, null })
@@ -14,7 +15,7 @@ public class ExpressionMetaTests
     public void Meta_Should_TestAllExpressionTypes(
         ValueAccessType? valueAccessType, UnaryOperatorType? unaryOperatorType, BinaryOperatorType? binaryOperatorType)
     {
-        var testCases = ParserTests.PopExpressionTestCases()
+        var testCases = PopExpressionTestCases.TestCases()
             .Select(x => x[^1])
             .Cast<IExpression>()
             // only check test cases that check for a single expression
@@ -23,11 +24,11 @@ public class ExpressionMetaTests
         var checkedAccessTypes = testCases.OfType<ValueAccessorExpression>()
             .Select(x => x.ValueAccessor.AccessType);
         var checkedUnaryOperatorTypes = testCases.OfType<UnaryOperatorExpression>()
-            .Where(x => x.UnaryOperator.Operand.ExpressionType == ExpressionType.ValueAccess)
+            .Where(x => x.UnaryOperator.Operand?.ExpressionType == ExpressionType.ValueAccess)
             .Select(x => x.UnaryOperator.OperatorType);
         var checkedBinaryOperatorTypes = testCases.OfType<BinaryOperatorExpression>()
-            .Where(x => x.BinaryOperator.Left.ExpressionType == ExpressionType.ValueAccess
-                        && x.BinaryOperator.Right.ExpressionType == ExpressionType.ValueAccess)
+            .Where(x => x.BinaryOperator.Left?.ExpressionType == ExpressionType.ValueAccess
+                        && x.BinaryOperator.Right?.ExpressionType == ExpressionType.ValueAccess)
             .Select(x => x.BinaryOperator.OperatorType);
 
         if (valueAccessType.HasValue)
@@ -51,7 +52,7 @@ public class ExpressionMetaTests
     public void Meta_Should_TestAllOperatorCombinations(BinaryOperatorType? binaryA, BinaryOperatorType? binaryB,
         UnaryOperatorType? unaryA, UnaryOperatorType? unaryB)
     {
-        var testCases = ParserTests.PopExpressionTestCases()
+        var testCases = PopExpressionTestCases.TestCases()
             .Select(x => x[^1])
             .Cast<IExpression>()
             .ToArray();

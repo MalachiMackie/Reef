@@ -1039,7 +1039,8 @@ public class TypeChecker
 
     private ITypeReference TypeCheckFallout(IExpression? expression, HashSet<GenericTypeReference> genericPlaceholders)
     {
-        var expressionType = expression is null ? new UnknownType() : TypeCheckExpression(expression, genericPlaceholders);
+        var expressionType =
+            expression is null ? new UnknownType() : TypeCheckExpression(expression, genericPlaceholders);
 
         // todo: could implement with an interface? union Result : IFallout?
         if (ExpectedReturnType is not InstantiatedUnion { Name: "Result" or "Option" } union)
@@ -1234,8 +1235,12 @@ public class TypeChecker
             case BinaryOperatorType.LessThan:
             case BinaryOperatorType.GreaterThan:
             {
-                var leftType = @operator.Left is null ? new UnknownType() : TypeCheckExpression(@operator.Left, genericPlaceholders);
-                var rightType = @operator.Right is null ? new UnknownType() : TypeCheckExpression(@operator.Right, genericPlaceholders);
+                var leftType = @operator.Left is null
+                    ? new UnknownType()
+                    : TypeCheckExpression(@operator.Left, genericPlaceholders);
+                var rightType = @operator.Right is null
+                    ? new UnknownType()
+                    : TypeCheckExpression(@operator.Right, genericPlaceholders);
                 ExpectType(leftType, InstantiatedClass.Int, genericPlaceholders);
                 ExpectType(rightType, InstantiatedClass.Int, genericPlaceholders);
 
@@ -1246,8 +1251,12 @@ public class TypeChecker
             case BinaryOperatorType.Multiply:
             case BinaryOperatorType.Divide:
             {
-                var leftType = @operator.Left is null ? new UnknownType() : TypeCheckExpression(@operator.Left, genericPlaceholders);
-                var rightType = @operator.Right is null ? new UnknownType() : TypeCheckExpression(@operator.Right, genericPlaceholders);
+                var leftType = @operator.Left is null
+                    ? new UnknownType()
+                    : TypeCheckExpression(@operator.Left, genericPlaceholders);
+                var rightType = @operator.Right is null
+                    ? new UnknownType()
+                    : TypeCheckExpression(@operator.Right, genericPlaceholders);
                 ExpectType(leftType, InstantiatedClass.Int, genericPlaceholders);
                 ExpectType(rightType, InstantiatedClass.Int, genericPlaceholders);
 
@@ -1255,16 +1264,24 @@ public class TypeChecker
             }
             case BinaryOperatorType.EqualityCheck:
             {
-                var leftType = @operator.Left is null ? new UnknownType() : TypeCheckExpression(@operator.Left, genericPlaceholders);
-                var rightType = @operator.Right is null ? new UnknownType() : TypeCheckExpression(@operator.Right, genericPlaceholders);
+                var leftType = @operator.Left is null
+                    ? new UnknownType()
+                    : TypeCheckExpression(@operator.Left, genericPlaceholders);
+                var rightType = @operator.Right is null
+                    ? new UnknownType()
+                    : TypeCheckExpression(@operator.Right, genericPlaceholders);
                 ExpectType(rightType, leftType, genericPlaceholders);
 
                 return InstantiatedClass.Boolean;
             }
             case BinaryOperatorType.ValueAssignment:
             {
-                var leftType = @operator.Left is null ? new UnknownType() : TypeCheckExpression(@operator.Left, genericPlaceholders, true);
-                var rightType = @operator.Right is null ? new UnknownType() : TypeCheckExpression(@operator.Right, genericPlaceholders);
+                var leftType = @operator.Left is null
+                    ? new UnknownType()
+                    : TypeCheckExpression(@operator.Left, genericPlaceholders, true);
+                var rightType = @operator.Right is null
+                    ? new UnknownType()
+                    : TypeCheckExpression(@operator.Right, genericPlaceholders);
                 if (@operator.Left is not null && !IsExpressionAssignable(@operator.Left, genericPlaceholders))
                 {
                     throw new InvalidOperationException($"{@operator.Left} is not assignable");

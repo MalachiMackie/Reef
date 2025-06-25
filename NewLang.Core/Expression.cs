@@ -7,7 +7,7 @@ public interface IExpression
     ExpressionType ExpressionType { get; }
 
     TypeChecker.ITypeReference? ResolvedType { get; set; }
-    
+
     SourceRange SourceRange { get; }
 }
 
@@ -41,7 +41,11 @@ public record StaticMemberAccessExpression(StaticMemberAccess StaticMemberAccess
 {
     public ExpressionType ExpressionType => ExpressionType.StaticMemberAccess;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
-    public SourceRange SourceRange => StaticMemberAccess.Type.SourceRange with { End = StaticMemberAccess.MemberName.SourceSpan };
+
+    public SourceRange SourceRange => StaticMemberAccess.Type.SourceRange with
+    {
+        End = StaticMemberAccess.MemberName.SourceSpan
+    };
 
     public override string ToString()
     {
@@ -115,7 +119,8 @@ public record BinaryOperatorExpression(BinaryOperator BinaryOperator) : IExpress
     }
 }
 
-public record VariableDeclarationExpression(VariableDeclaration VariableDeclaration, SourceRange SourceRange) : IExpression
+public record VariableDeclarationExpression(VariableDeclaration VariableDeclaration, SourceRange SourceRange)
+    : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.VariableDeclaration;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
@@ -149,7 +154,8 @@ public record BlockExpression(Block Block, SourceRange SourceRange) : IExpressio
     }
 }
 
-public record GenericInstantiationExpression(GenericInstantiation GenericInstantiation, SourceRange SourceRange) : IExpression
+public record GenericInstantiationExpression(GenericInstantiation GenericInstantiation, SourceRange SourceRange)
+    : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.GenericInstantiation;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
@@ -195,7 +201,9 @@ public record MethodReturnExpression(MethodReturn MethodReturn, SourceRange Sour
     }
 }
 
-public record UnionStructVariantInitializerExpression(UnionStructVariantInitializer UnionInitializer, SourceRange SourceRange) : IExpression
+public record UnionStructVariantInitializerExpression(
+    UnionStructVariantInitializer UnionInitializer,
+    SourceRange SourceRange) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.UnionStructVariantInitializer;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
@@ -348,7 +356,11 @@ public static class UnaryOperatorTypeExtensions
     }
 }
 
-public record BinaryOperator(BinaryOperatorType OperatorType, IExpression? Left, IExpression? Right, Token OperatorToken)
+public record BinaryOperator(
+    BinaryOperatorType OperatorType,
+    IExpression? Left,
+    IExpression? Right,
+    Token OperatorToken)
 {
     public override string ToString()
     {

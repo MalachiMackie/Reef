@@ -15,22 +15,22 @@ public class TypeCheckerTests
             else if (a == b) {
                 return result::<int, string>::Ok(b);
             }
-        
+
             b = 3;
-        
+
             var thing = new Class2 {
                 A = "thing"
             };
-        
+
             MyClass::StaticMethod();
-        
+
             PrivateFn::<string>();
             
             if (false) {
                 // lowercase error keyword
                 return error("something wrong");
             }
-        
+
             // Capital Error for fully resolved variant
             return result::<int, string>::Error("something wrong");
         }
@@ -48,9 +48,9 @@ public class TypeCheckerTests
         pub class MyClass {
             pub fn PublicMethod() {
             }
-        
+
             pub static fn StaticMethod() {
-        
+
             }
             
             field FieldA: string,
@@ -164,10 +164,10 @@ public class TypeCheckerTests
         {
             """
             var a = SomeFn;
-            
+
             var b: String = a();
             var c: String = a();
-            
+
             fn SomeFn<T>(): T {
                 return todo!;
             }
@@ -175,7 +175,7 @@ public class TypeCheckerTests
             """
             fn OtherFn<T2>(param2: T2): T2 {
                 return ThirdFn(param2);
-            
+
                 fn ThirdFn<T3>(param3: T3): T3 {
                     return param3;
                 }
@@ -881,10 +881,10 @@ public class TypeCheckerTests
         {
             """
             var a = SomeFn;
-            
+
             var b: String = a();
             var c: int = a();
-            
+
             fn SomeFn<T>(): T {
                 return todo!;
             }

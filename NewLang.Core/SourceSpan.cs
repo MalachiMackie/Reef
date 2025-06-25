@@ -13,7 +13,7 @@ public record SourceRange(SourceSpan Start, SourceSpan End)
 public class SourcePosition(uint start, ushort lineNumber, ushort linePosition)
 {
     public static readonly SourcePosition Default = new(0, 0, 0);
-    
+
     public ushort LineNumber = lineNumber;
     public ushort LinePosition = linePosition;
     public uint Start = start;

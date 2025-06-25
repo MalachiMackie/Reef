@@ -186,7 +186,9 @@ public static class ResolvedTypeChecker
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         if (unaryOperator.Operand is not null)
+        {
             CheckExpression(unaryOperator.Operand, expectedGenerics);
+        }
     }
 
     private static void CheckGenericInstantiation(GenericInstantiation genericInstantiation,
@@ -214,9 +216,14 @@ public static class ResolvedTypeChecker
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         if (binaryOperator.Left is not null)
+        {
             CheckExpression(binaryOperator.Left, expectedGenerics);
+        }
+
         if (binaryOperator.Right is not null)
+        {
             CheckExpression(binaryOperator.Right, expectedGenerics);
+        }
     }
 
     private static void CheckIfExpression(IfExpression ifExpression,

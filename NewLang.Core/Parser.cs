@@ -6,22 +6,21 @@ namespace NewLang.Core;
 
 public sealed class Parser : IDisposable
 {
-    private readonly IEnumerator<Token> _tokens;
-    private Token Current => _tokens.Current;
-    private bool _hasNext;
     private readonly List<ParserError> _errors = [];
+    private readonly IEnumerator<Token> _tokens;
+    private bool _hasNext;
 
     private Parser(IEnumerable<Token> tokens)
     {
         _tokens = tokens.GetEnumerator();
     }
 
+    private Token Current => _tokens.Current;
+
     public void Dispose()
     {
         _tokens.Dispose();
     }
-
-    public record ParseResult(LangProgram ParsedProgram, IReadOnlyList<ParserError> Errors);
 
     public static ParseResult Parse(IEnumerable<Token> tokens)
     {
@@ -223,8 +222,8 @@ public sealed class Parser : IDisposable
             {
                 tailCallExpression =
                     expression.ExpressionType is not (ExpressionType.IfExpression or ExpressionType.Block)
-                    ? expression
-                    : null;
+                        ? expression
+                        : null;
             }
 
             expressions.Add(expression);
@@ -415,7 +414,7 @@ public sealed class Parser : IDisposable
         }
 
         var type = GetTypeIdentifier()
-            ?? throw new InvalidOperationException("Expected type");
+                   ?? throw new InvalidOperationException("Expected type");
 
         IExpression? valueExpression = null;
 
@@ -599,7 +598,7 @@ public sealed class Parser : IDisposable
                 }
 
                 var parameterType = GetTypeIdentifier()
-                    ?? throw new InvalidOperationException("Expected type");
+                                    ?? throw new InvalidOperationException("Expected type");
                 return new FunctionParameter(parameterType, mutabilityModifier, parameterName);
             });
 
@@ -618,7 +617,7 @@ public sealed class Parser : IDisposable
             }
 
             returnType = GetTypeIdentifier()
-                ?? throw new InvalidOperationException("Expected type");
+                         ?? throw new InvalidOperationException("Expected type");
 
             if (!_hasNext)
             {
@@ -667,7 +666,8 @@ public sealed class Parser : IDisposable
                 GetTypeIdentifier);
         }
 
-        return new TypeIdentifier(typeIdentifier, typeArguments, new SourceRange(typeIdentifier.SourceSpan, lastToken?.SourceSpan ?? typeIdentifier.SourceSpan));
+        return new TypeIdentifier(typeIdentifier, typeArguments,
+            new SourceRange(typeIdentifier.SourceSpan, lastToken?.SourceSpan ?? typeIdentifier.SourceSpan));
     }
 
     private IExpression? MatchTokenToExpression(IExpression? previousExpression)
@@ -776,7 +776,8 @@ public sealed class Parser : IDisposable
     private TupleExpression GetTupleExpression()
     {
         var startToken = Current;
-        var (elements, lastToken) = GetCommaSeparatedList(TokenType.RightParenthesis, "Tuple Expression", () => PopExpression());
+        var (elements, lastToken) =
+            GetCommaSeparatedList(TokenType.RightParenthesis, "Tuple Expression", () => PopExpression());
 
         if (elements.Count == 0)
         {
@@ -800,7 +801,7 @@ public sealed class Parser : IDisposable
 
         var pattern = GetPattern();
 
-        return new MatchesExpression(previousExpression, pattern, previousExpression.SourceRange with {});
+        return new MatchesExpression(previousExpression, pattern, previousExpression.SourceRange with { });
     }
 
     private IPattern GetPattern()
@@ -831,7 +832,7 @@ public sealed class Parser : IDisposable
         }
 
         var type = GetTypeIdentifier()
-            ?? throw new InvalidOperationException("Expected type");
+                   ?? throw new InvalidOperationException("Expected type");
 
         if (!_hasNext)
         {
@@ -892,7 +893,8 @@ public sealed class Parser : IDisposable
                 MoveNext();
             }
 
-            return new UnionTupleVariantPattern(type, variantName, patterns, variableName, new SourceRange(start, variableName?.SourceSpan ?? patternsLastToken.SourceSpan));
+            return new UnionTupleVariantPattern(type, variantName, patterns, variableName,
+                new SourceRange(start, variableName?.SourceSpan ?? patternsLastToken.SourceSpan));
         }
 
         if (Current.Type == TokenType.LeftBrace)
@@ -949,8 +951,10 @@ public sealed class Parser : IDisposable
                     fieldPatterns = fieldPatterns.Where(x => x.Key.StringValue.Length > 0).ToList();
 
                     return variantName is not null
-                        ? new UnionStructVariantPattern(type, variantName, fieldPatterns, discards.Length == 1, null, new SourceRange(start, fieldsLastToken.SourceSpan))
-                        : new ClassPattern(type, fieldPatterns, discards.Length == 1, null, new SourceRange(start, fieldsLastToken.SourceSpan));
+                        ? new UnionStructVariantPattern(type, variantName, fieldPatterns, discards.Length == 1, null,
+                            new SourceRange(start, fieldsLastToken.SourceSpan))
+                        : new ClassPattern(type, fieldPatterns, discards.Length == 1, null,
+                            new SourceRange(start, fieldsLastToken.SourceSpan));
             }
         }
 
@@ -983,7 +987,8 @@ public sealed class Parser : IDisposable
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    private (List<T> items, Token lastToken) GetCommaSeparatedList<T>(TokenType terminator, string itemName, Func<T?> tryGetNext)
+    private (List<T> items, Token lastToken) GetCommaSeparatedList<T>(TokenType terminator, string itemName,
+        Func<T?> tryGetNext)
     {
         if (!MoveNext())
         {
@@ -1040,7 +1045,8 @@ public sealed class Parser : IDisposable
 
     private GenericInstantiationExpression GetGenericInstantiation(IExpression previousExpression)
     {
-        var (typeArguments, lastToken) = GetCommaSeparatedList(TokenType.RightAngleBracket, "Type Argument", GetTypeIdentifier);
+        var (typeArguments, lastToken) =
+            GetCommaSeparatedList(TokenType.RightAngleBracket, "Type Argument", GetTypeIdentifier);
 
         return new GenericInstantiationExpression(new GenericInstantiation(previousExpression, typeArguments),
             previousExpression.SourceRange with { End = lastToken.SourceSpan });
@@ -1108,7 +1114,7 @@ public sealed class Parser : IDisposable
         }
 
         var type = GetTypeIdentifier()
-            ?? throw new InvalidOperationException("Expected type");
+                   ?? throw new InvalidOperationException("Expected type");
 
         if (!_hasNext)
         {
@@ -1140,7 +1146,7 @@ public sealed class Parser : IDisposable
 
         return new UnionStructVariantInitializerExpression(
             new UnionStructVariantInitializer(type, variantName, fieldInitializers),
-            type.SourceRange with {End = lastToken.SourceSpan});
+            type.SourceRange with { End = lastToken.SourceSpan });
     }
 
     private (List<FieldInitializer> fieldInitializers, Token lastToken) GetFieldInitializers()
@@ -1175,7 +1181,8 @@ public sealed class Parser : IDisposable
     private ObjectInitializerExpression GetObjectInitializer(TypeIdentifier type)
     {
         var (fieldInitializers, lastToken) = GetFieldInitializers();
-        return new ObjectInitializerExpression(new ObjectInitializer(type, fieldInitializers), type.SourceRange with {End = lastToken.SourceSpan});
+        return new ObjectInitializerExpression(new ObjectInitializer(type, fieldInitializers),
+            type.SourceRange with { End = lastToken.SourceSpan });
     }
 
     private MethodReturnExpression GetMethodReturn()
@@ -1185,7 +1192,8 @@ public sealed class Parser : IDisposable
             ? PopExpression()
             : null;
 
-        return new MethodReturnExpression(new MethodReturn(valueExpression), new SourceRange(start, valueExpression?.SourceRange.End ?? start));
+        return new MethodReturnExpression(new MethodReturn(valueExpression),
+            new SourceRange(start, valueExpression?.SourceRange.End ?? start));
     }
 
     /// <summary>
@@ -1204,7 +1212,8 @@ public sealed class Parser : IDisposable
 
             keepBinding = _hasNext
                           && TryGetBindingStrength(Current, out var bindingStrength)
-                          && (!TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) || !unaryOperatorType.Value.IsPrefix())
+                          && (!TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) ||
+                              !unaryOperatorType.Value.IsPrefix())
                           && bindingStrength > (currentBindingStrength ?? 0);
         }
 
@@ -1218,7 +1227,8 @@ public sealed class Parser : IDisposable
             "Method Parameter",
             () => PopExpression());
 
-        return new MethodCallExpression(new MethodCall(method, parameterList), method.SourceRange with {End = lastToken.SourceSpan});
+        return new MethodCallExpression(new MethodCall(method, parameterList),
+            method.SourceRange with { End = lastToken.SourceSpan });
     }
 
     private IfExpressionExpression GetIfExpression()
@@ -1306,11 +1316,12 @@ public sealed class Parser : IDisposable
         }
 
         return new IfExpressionExpression(new IfExpression(
-            checkExpression,
-            body,
-            elseIfs,
-            elseBody),
-            new SourceRange(start, elseBody?.SourceRange.End ?? elseIfs.LastOrDefault()?.Body.SourceRange.End ?? body.SourceRange.End));
+                checkExpression,
+                body,
+                elseIfs,
+                elseBody),
+            new SourceRange(start,
+                elseBody?.SourceRange.End ?? elseIfs.LastOrDefault()?.Body.SourceRange.End ?? body.SourceRange.End));
     }
 
     private BlockExpression GetBlockExpression()
@@ -1349,14 +1360,15 @@ public sealed class Parser : IDisposable
 
         if (Current is not StringToken { Type: TokenType.Identifier } identifier)
         {
-            _errors.Add(ParserError.VariableDeclaration_InvalidIdentifier(receivedToken: Current));
+            _errors.Add(ParserError.VariableDeclaration_InvalidIdentifier(Current));
             return null;
         }
 
         if (!MoveNext())
         {
             return new VariableDeclarationExpression(
-                new VariableDeclaration(identifier, mutabilityModifier, null, null), new SourceRange(start, identifier.SourceSpan));
+                new VariableDeclaration(identifier, mutabilityModifier, null, null),
+                new SourceRange(start, identifier.SourceSpan));
         }
 
         TypeIdentifier? type = null;
@@ -1432,6 +1444,7 @@ public sealed class Parser : IDisposable
             {
                 _errors.Add(ParserError.UnaryOperator_MissingValue(Current));
             }
+
             MoveNext();
         }
 
@@ -1446,7 +1459,7 @@ public sealed class Parser : IDisposable
         {
             _errors.Add(ParserError.BinaryOperator_MissingLeftValue(Current));
         }
-        
+
         var operatorToken = Current;
         if (!TryGetBindingStrength(operatorToken, out var bindingStrength))
         {
@@ -1457,7 +1470,7 @@ public sealed class Parser : IDisposable
         {
             _errors.Add(ParserError.BinaryOperator_MissingRightValue(Current));
             return new BinaryOperatorExpression(
-                new BinaryOperator(operatorType, leftOperand, Right: null, operatorToken));
+                new BinaryOperator(operatorType, leftOperand, null, operatorToken));
         }
 
         var right = PopExpression(bindingStrength.Value);
@@ -1547,6 +1560,8 @@ public sealed class Parser : IDisposable
                 typeof(UnaryOperatorType))
         };
     }
+
+    public record ParseResult(LangProgram ParsedProgram, IReadOnlyList<ParserError> Errors);
 
     private class Scope
     {

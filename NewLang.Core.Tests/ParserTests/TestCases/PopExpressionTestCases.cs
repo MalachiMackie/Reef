@@ -1,1759 +1,10 @@
-﻿using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using FluentAssertions;
-using Xunit.Abstractions;
+﻿namespace NewLang.Core.Tests.ParserTests.TestCases;
 
-#pragma warning disable IDE0060 // Remove unused parameter
-// ReSharper disable PossibleMultipleEnumeration
+using static ParserHelpers;
 
-namespace NewLang.Core.Tests;
-
-public class ParserTests(ITestOutputHelper testOutputHelper)
+public static class PopExpressionTestCases
 {
-    [Theory]
-    [MemberData(nameof(FailTestCases))]
-    public void FailTests(
-        [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
-        string source,
-        IEnumerable<Token> tokens)
-    {
-        var result = Parser.Parse(tokens);
-
-        result.Errors.Should().NotBeEmpty();
-    }
-
-    [Theory]
-    [MemberData(nameof(PopExpressionTestCases))]
-    public void PopExpressionTests(
-        [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
-        string source,
-        IEnumerable<Token> tokens,
-        IExpression expectedExpression)
-    {
-        var result = Parser.PopExpression(tokens);
-        result.Should().NotBeNull();
-
-        // clear out the source spans, we don't actually care about them
-        var expression = RemoveSourceSpan(result);
-
-        try
-        {
-            expression.Should().BeEquivalentTo(expectedExpression, opts => opts.AllowingInfiniteRecursion());
-        }
-        catch
-        {
-            testOutputHelper.WriteLine("Expected {0}, found {1}", expectedExpression, expression);
-            throw;
-        }
-    }
-
-    [Theory]
-    [MemberData(nameof(SingleTestCase))]
-    public void SingleTest(
-        [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
-        string source,
-        IEnumerable<Token> tokens,
-        IExpression expectedProgram)
-    {
-        var result = Parser.PopExpression(tokens);
-        result.Should().NotBeNull();
-
-        // clear out the source spans, we don't actually care about them
-        var program = RemoveSourceSpan(result);
-
-        try
-        {
-            program.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion());
-        }
-        catch
-        {
-            testOutputHelper.WriteLine("Expected {0}, found {1}", expectedProgram, program);
-            throw;
-        }
-    }
-
-    [Theory]
-    [MemberData(nameof(ParseTestCases))]
-    public void ParseTest(
-        [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")] string source,
-        IEnumerable<Token> tokens,
-        LangProgram expectedProgram)
-    {
-        var program = RemoveSourceSpan(Parser.Parse(tokens).ParsedProgram);
-
-        try
-        {
-            program.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion());
-        }
-        catch
-        {
-            testOutputHelper.WriteLine("Expected [{0}], found [{1}]", expectedProgram, program);
-            throw;
-        }
-    }
-
-    [Theory]
-    [MemberData(nameof(ParseErrorTestCases))]
-    public void ParseErrorTests(string source, LangProgram expectedProgram, IEnumerable<ParserError> expectedErrors)
-    {
-        var tokens = Tokenizer.Tokenize(source);
-
-        var output = Parser.Parse(tokens);
-
-        expectedProgram = RemoveSourceSpan(expectedProgram);
-        expectedErrors = RemoveSourceSpan(expectedErrors.ToArray());
-        var program = RemoveSourceSpan(output.ParsedProgram);
-        var errors = RemoveSourceSpan(output.Errors);
-
-        program.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion());
-        errors.Should().BeEquivalentTo(expectedErrors);
-    }
-
-    public static TheoryData<string, LangProgram, IEnumerable<ParserError>> ParseErrorTestCases()
-    {
-        IEnumerable<(string, LangProgram, IEnumerable<ParserError>)> data =
-        [
-            ("", new LangProgram([], [], [], []), []),
-            (
-                "var a",
-                new LangProgram([VariableDeclaration("a")], [], [], []),
-                []
-            ),
-            (
-                "var ",
-                new LangProgram([], [], [], []),
-                [ParserError.VariableDeclaration_MissingIdentifier(Token.Var(SourceSpan.Default))]
-            ),
-            (
-                "var ;",
-                new LangProgram([], [], [], []),
-                [ParserError.VariableDeclaration_InvalidIdentifier(Token.Semicolon(SourceSpan.Default))]
-            ),
-            (
-                "var a = ",
-                new LangProgram([
-                    VariableDeclaration("a")
-                ], [], [], []),
-                [ParserError.VariableDeclaration_MissingValue(Token.Equals(SourceSpan.Default))]
-            ),
-            (
-                "var a = ;",
-                new LangProgram([
-                    VariableDeclaration("a")
-                ], [], [], []),
-                [ParserError.VariableDeclaration_MissingValue(Token.Semicolon(SourceSpan.Default))]
-            ),
-            (
-                "var a: = 2;",
-                new LangProgram([
-                    VariableDeclaration("a", Literal(2))
-                ], [], [], []),
-                [ParserError.VariableDeclaration_MissingType(Token.Equals(SourceSpan.Default))]
-            ),
-            (
-                "var a: int = ;",
-                new LangProgram([
-                    VariableDeclaration("a", type: IntType())
-                ], [], [], []),
-                [ParserError.VariableDeclaration_MissingValue(Token.Semicolon(SourceSpan.Default))]
-            ),
-            (
-                "var mut a: int = ;",
-                new LangProgram([
-                    VariableDeclaration("a", type: IntType(), isMutable: true)
-                ], [], [], []),
-                [ParserError.VariableDeclaration_MissingValue(Token.Semicolon(SourceSpan.Default))]
-            ),
-            (
-                "var a = ; var b = 2",
-                new LangProgram([
-                    VariableDeclaration("a"),
-                    VariableDeclaration("b", Literal(2))
-                ], [], [], []),
-                [ParserError.VariableDeclaration_MissingValue(Token.Semicolon(SourceSpan.Default))]
-            ),
-            (
-                "*",
-                new LangProgram([
-                    Multiply(null, null)
-                ], [], [], []),
-                [
-                    ParserError.BinaryOperator_MissingLeftValue(Token.Star(SourceSpan.Default)),
-                    ParserError.BinaryOperator_MissingRightValue(Token.Star(SourceSpan.Default)),
-                ]
-            ),
-            (
-                "a *",
-                new LangProgram([
-                    Multiply(VariableAccessor("a"), null)
-                ], [], [], []),
-                [
-                    ParserError.BinaryOperator_MissingRightValue(Token.Star(SourceSpan.Default)),
-                ]
-            ),
-            (
-                "* a",
-                new LangProgram([
-                    Multiply(null, VariableAccessor("a"))
-                ], [], [], []),
-                [
-                    ParserError.BinaryOperator_MissingLeftValue(Token.Star(SourceSpan.Default)),
-                ]
-            ),
-            (
-                "a * ;var b = 2",
-                new LangProgram([
-                    Multiply(VariableAccessor("a"), null),
-                    VariableDeclaration("b", Literal(2))
-                ], [], [], []),
-                [
-                    ParserError.BinaryOperator_MissingRightValue(Token.Semicolon(SourceSpan.Default)),
-                ]
-            ),
-            (
-                "?",
-                new LangProgram([
-                    FallOut(null),
-                ], [], [], []),
-                [
-                    ParserError.UnaryOperator_MissingValue(Token.QuestionMark(SourceSpan.Default)),
-                ]
-            ),
-            (
-                "?; a;",
-                new LangProgram([
-                    FallOut(null),
-                    VariableAccessor("a")
-                ], [], [], []),
-                [
-                    ParserError.UnaryOperator_MissingValue(Token.QuestionMark(SourceSpan.Default)),
-                ]
-            ),
-            (
-                "!",
-                new LangProgram([
-                    Not(null),
-                ], [], [], []),
-                [
-                    ParserError.UnaryOperator_MissingValue(Token.Bang(SourceSpan.Default)),
-                ]
-            ),
-            (
-                "a;!",
-                new LangProgram([
-                    VariableAccessor("a"),
-                    Not(null),
-                ], [], [], []),
-                [
-                    ParserError.UnaryOperator_MissingValue(Token.Bang(SourceSpan.Default)),
-                ]
-            ),
-            (
-                "!;var a = 2;",
-                new LangProgram([
-                    Not(null),
-                    VariableDeclaration("a", Literal(2))
-                ], [], [], []),
-                [
-                    ParserError.UnaryOperator_MissingValue(Token.Semicolon(SourceSpan.Default)),
-                ]
-            ),
-            (
-                "{",
-                new LangProgram([
-                    Block(),
-                ], [], [], []),
-                [
-                    ParserError.Scope_MissingClosingTag(Token.LeftBrace(SourceSpan.Default)),
-                ]
-            ),
-            (
-                ",",
-                new LangProgram([], [], [], []),
-                [
-                    ParserError.Scope_UnexpectedComma(Token.Comma(SourceSpan.Default)),
-                ]
-            ),
-            (
-                "a;,b",
-                new LangProgram([
-                    VariableAccessor("a"),
-                    VariableAccessor("b"),
-                ], [], [], []),
-                [
-                    ParserError.Scope_UnexpectedComma(Token.Comma(SourceSpan.Default)),
-                ]
-            ),
-            (
-                "a b",
-                new LangProgram([
-                    VariableAccessor("a"),
-                    VariableAccessor("b"),
-                ], [], [], []),
-                [
-                    ParserError.Scope_EarlyTailReturnExpression(VariableAccessor("a")),
-                ]
-            ),
-            (
-                "a b; c; d e",
-                new LangProgram([
-                    VariableAccessor("a"),
-                    VariableAccessor("b"),
-                    VariableAccessor("c"),
-                    VariableAccessor("d"),
-                    VariableAccessor("e"),
-                ], [], [], []),
-                [
-                    ParserError.Scope_EarlyTailReturnExpression(VariableAccessor("a")),
-                    ParserError.Scope_EarlyTailReturnExpression(VariableAccessor("d")),
-                ]
-            ),
-            (
-                "class MyClass {field MyField: string field OtherField: string}",
-                new LangProgram([], [], [
-                    new ProgramClass(null, Token.Identifier("MyClass", SourceSpan.Default), [], [], [
-                        ClassField("MyField", StringType()),
-                        ClassField("OtherField", StringType()),
-                    ])], []),
-                [
-                    ParserError.Scope_ExpectedComma(Token.Field(SourceSpan.Default)),
-                ]
-            ),
-            (
-                "class MyClass {field MyField: string, field OtherField: string",
-                new LangProgram([], [], [
-                    new ProgramClass(null, Token.Identifier("MyClass", SourceSpan.Default), [], [], [
-                    ClassField("MyField", StringType()),
-                    ClassField("OtherField", StringType()),
-                ])], []),
-                [
-                    ParserError.Scope_MissingClosingTag(Token.StringKeyword(SourceSpan.Default)),
-                ]
-            ),
-            (
-                "{a",
-                new LangProgram([
-                    Block([VariableAccessor("a")]),
-                ], [], [], []),
-                [
-                    ParserError.Scope_MissingClosingTag(Token.StringKeyword(SourceSpan.Default)),
-                ]
-            ),
-        ];
-
-        var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();
-        foreach (var item in data)
-        {
-            theoryData.Add(item.Item1, item.Item2, item.Item3);
-        }
-
-        return theoryData;
-    }
-
-    public static IEnumerable<object[]> ParseTestCases()
-    {
-        return new (string Source, LangProgram ExpectedProgram)[]
-        {
-            ("var a: int = (1 + 2) * 3;", new LangProgram([
-                new VariableDeclarationExpression(new VariableDeclaration(
-                    Token.Identifier("a", SourceSpan.Default),
-                    null,
-                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
-                    new BinaryOperatorExpression(new BinaryOperator(
-                        BinaryOperatorType.Multiply,
-                        new TupleExpression([
-                            new BinaryOperatorExpression(new BinaryOperator(
-                                BinaryOperatorType.Plus,
-                                new ValueAccessorExpression(new ValueAccessor(
-                                    ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default))),
-                                new ValueAccessorExpression(new ValueAccessor(
-                                    ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default))),
-                                Token.Plus(SourceSpan.Default)))
-                        ], SourceRange.Default),
-                        new ValueAccessorExpression(new ValueAccessor(
-                            ValueAccessType.Literal,
-                            Token.IntLiteral(3, SourceSpan.Default))),
-                        Token.Plus(SourceSpan.Default)))), SourceRange.Default)
-            ], [], [], [])),
-            (
-                """
-                union MyUnion<T> {
-                    A { }
-                }
-
-                var a = new MyUnion::<string>::A {};
-                """,
-                new LangProgram(
-                    [
-                        new VariableDeclarationExpression(new VariableDeclaration(
-                            Token.Identifier("a", SourceSpan.Default),
-                            null,
-                            null,
-                            new UnionStructVariantInitializerExpression(new UnionStructVariantInitializer(
-                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default),
-                                    [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)], SourceRange.Default),
-                                Token.Identifier("A", SourceSpan.Default),
-                                [
-                                    new FieldInitializer(
-                                        Token.Identifier("MyField", SourceSpan.Default),
-                                        new ValueAccessorExpression(new ValueAccessor(
-                                            ValueAccessType.Literal, Token.StringLiteral("value", SourceSpan.Default)))
-                                    ),
-                                    new FieldInitializer(
-                                        Token.Identifier("Field2", SourceSpan.Default),
-                                        new ValueAccessorExpression(new ValueAccessor(
-                                            ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default)))
-                                    )
-                                ]), SourceRange.Default)
-                        ), SourceRange.Default)
-                    ],
-                    [],
-                    [],
-                    [
-                        new ProgramUnion(
-                            null,
-                            Token.Identifier("MyUnion", SourceSpan.Default),
-                            [Token.Identifier("T", SourceSpan.Default)],
-                            [],
-                            [
-                                new StructUnionVariant
-                                {
-                                    Name = Token.Identifier("A", SourceSpan.Default),
-                                    Fields =
-                                    [
-                                        new ClassField(null,
-                                            null,
-                                            null,
-                                            Token.Identifier("MyField", SourceSpan.Default),
-                                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
-                                            null
-                                        )
-                                    ]
-                                }
-                            ])
-                    ])
-            ),
-            (
-                """
-                union MyUnion {
-                    A { field MyField: string, field Field2: int }
-                }
-
-                var a = new MyUnion::A {
-                    MyField = "value",
-                    Field2 = 2
-                };
-                """,
-                new LangProgram(
-                    [
-                        new VariableDeclarationExpression(new VariableDeclaration(
-                            Token.Identifier("a", SourceSpan.Default),
-                            null,
-                            null,
-                            new UnionStructVariantInitializerExpression(new UnionStructVariantInitializer(
-                                new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
-                                Token.Identifier("A", SourceSpan.Default),
-                                [
-                                    new FieldInitializer(
-                                        Token.Identifier("MyField", SourceSpan.Default),
-                                        new ValueAccessorExpression(new ValueAccessor(
-                                            ValueAccessType.Literal, Token.StringLiteral("value", SourceSpan.Default)))
-                                    ),
-                                    new FieldInitializer(
-                                        Token.Identifier("Field2", SourceSpan.Default),
-                                        new ValueAccessorExpression(new ValueAccessor(
-                                            ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default)))
-                                    )
-                                ]), SourceRange.Default)
-                        ), SourceRange.Default)
-                    ],
-                    [],
-                    [],
-                    [
-                        new ProgramUnion(
-                            null,
-                            Token.Identifier("MyUnion", SourceSpan.Default),
-                            [],
-                            [],
-                            [
-                                new StructUnionVariant
-                                {
-                                    Name = Token.Identifier("A", SourceSpan.Default),
-                                    Fields =
-                                    [
-                                        new ClassField(null,
-                                            null,
-                                            null,
-                                            Token.Identifier("MyField", SourceSpan.Default),
-                                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
-                                            null
-                                        )
-                                    ]
-                                }
-                            ])
-                    ])
-            ),
-            ("class MyClass {field myFieldWithoutComma: string}",
-                new LangProgram([], [],
-                [
-                    new ProgramClass(null, Token.Identifier("MyClass", SourceSpan.Default), [], [], [
-                        new ClassField(
-                            null,
-                            null,
-                            null,
-                            Token.Identifier("myFieldWithoutComma", SourceSpan.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
-                            null)
-                    ])
-                ], [])),
-            (
-                """
-                union MyUnion {
-                }
-                """,
-                new LangProgram(
-                    [],
-                    [],
-                    [],
-                    [
-                        new ProgramUnion(
-                            null,
-                            Token.Identifier("MyUnion", SourceSpan.Default),
-                            [],
-                            [],
-                            [])
-                    ])
-            ),
-            (
-                "pub union MyUnion {}",
-                new LangProgram(
-                    [],
-                    [],
-                    [],
-                    [
-                        new ProgramUnion(
-                            new AccessModifier(Token.Pub(SourceSpan.Default)),
-                            Token.Identifier("MyUnion", SourceSpan.Default),
-                            [],
-                            [],
-                            [])
-                    ])
-            ),
-            (
-                "union MyUnion<T1, T2,> {} ",
-                new LangProgram([],
-                    [],
-                    [],
-                    [
-                        new ProgramUnion(
-                            null,
-                            Token.Identifier("MyUnion", SourceSpan.Default),
-                            [Token.Identifier("T1", SourceSpan.Default), Token.Identifier("T2", SourceSpan.Default)],
-                            [],
-                            []
-                        )
-                    ])
-            ),
-            (
-                "union MyUnion {fn SomeFn(){}}",
-                new LangProgram([],
-                    [],
-                    [],
-                    [
-                        new ProgramUnion(
-                            null,
-                            Token.Identifier("MyUnion", SourceSpan.Default),
-                            [],
-                            [
-                                new LangFunction(null, null, Token.Identifier("SomeFn", SourceSpan.Default),
-                                    [], [], null, new Block([], []))
-                            ],
-                            []
-                        )
-                    ])
-            ),
-            (
-                """
-                union MyUnion {
-                    A
-                }
-                """,
-                new LangProgram(
-                    [],
-                    [],
-                    [],
-                    [
-                        new ProgramUnion(
-                            null,
-                            Token.Identifier("MyUnion", SourceSpan.Default),
-                            [],
-                            [],
-                            [new UnitStructUnionVariant(Token.Identifier("A", SourceSpan.Default))])
-                    ])
-            ),
-            (
-                """
-                union MyUnion {
-                    A,
-                }
-                """,
-                new LangProgram(
-                    [],
-                    [],
-                    [],
-                    [
-                        new ProgramUnion(
-                            null,
-                            Token.Identifier("MyUnion", SourceSpan.Default),
-                            [],
-                            [],
-                            [new UnitStructUnionVariant(Token.Identifier("A", SourceSpan.Default))])
-                    ])
-            ),
-            (
-                """
-                union MyUnion {
-                    A,
-                    B(string, int, MyClass::<string>)
-                }
-                """,
-                new LangProgram(
-                    [],
-                    [],
-                    [],
-                    [
-                        new ProgramUnion(
-                            null,
-                            Token.Identifier("MyUnion", SourceSpan.Default),
-                            [],
-                            [],
-                            [
-                                new UnitStructUnionVariant(Token.Identifier("A", SourceSpan.Default)),
-                                new TupleUnionVariant(
-                                    Token.Identifier("B", SourceSpan.Default),
-                                    [
-                                        new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
-                                        new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
-                                        new TypeIdentifier(
-                                            Token.Identifier("MyClass", SourceSpan.Default),
-                                            [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)]
-                                        , SourceRange.Default)
-                                    ])
-                            ])
-                    ])
-            ),
-            (
-                """
-                union MyUnion {
-                    A { 
-                        field MyField: string,
-                    }
-                }
-                """,
-                new LangProgram(
-                    [],
-                    [],
-                    [],
-                    [
-                        new ProgramUnion(
-                            null,
-                            Token.Identifier("MyUnion", SourceSpan.Default),
-                            [],
-                            [],
-                            [
-                                new StructUnionVariant
-                                {
-                                    Name = Token.Identifier("A", SourceSpan.Default),
-                                    Fields =
-                                    [
-                                        new ClassField(null, null, null,
-                                            Token.Identifier("MyField", SourceSpan.Default),
-                                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
-                                    ]
-                                }
-                            ])
-                    ])
-            ),
-            ("fn MyFn(mut a: int,){}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [
-                        new FunctionParameter(
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
-                            new MutabilityModifier(Token.Mut(SourceSpan.Default)),
-                            Token.Identifier("a", SourceSpan.Default)
-                        )
-                    ],
-                    null,
-                    new Block([], []))
-            ], [], [])),
-            ("fn MyFn(mut a: int, b: int){}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [
-                        new FunctionParameter(
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
-                            new MutabilityModifier(Token.Mut(SourceSpan.Default)),
-                            Token.Identifier("a", SourceSpan.Default)
-                        ),
-                        new FunctionParameter(
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
-                            null,
-                            Token.Identifier("b", SourceSpan.Default)
-                        )
-                    ],
-                    null,
-                    new Block([], []))
-            ], [], [])),
-            ("fn MyFn(mut a: int, mut b: int){}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [
-                        new FunctionParameter(
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
-                            new MutabilityModifier(Token.Mut(SourceSpan.Default)),
-                            Token.Identifier("a", SourceSpan.Default)
-                        ),
-                        new FunctionParameter(
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
-                            new MutabilityModifier(Token.Mut(SourceSpan.Default)),
-                            Token.Identifier("b", SourceSpan.Default)
-                        )
-                    ],
-                    null,
-                    new Block([], []))
-            ], [], [])),
-            ("fn MyFn(a: int,){}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [
-                        new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default), null,
-                            Token.Identifier("a", SourceSpan.Default))
-                    ],
-                    null,
-                    new Block([], []))
-            ], [], [])),
-            ("fn /* some comment */ MyFn(/*some comment*/a: int,)/**/{//}\r\n}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [
-                        new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default), null,
-                            Token.Identifier("a", SourceSpan.Default))
-                    ],
-                    null,
-                    new Block([], []))
-            ], [], [])),
-            ("class MyClass<T,> {}", new LangProgram([], [], [
-                new ProgramClass(
-                    null,
-                    Token.Identifier("MyClass", SourceSpan.Default),
-                    [Token.Identifier("T", SourceSpan.Default)],
-                    [], [])
-            ], [])),
-            ("fn MyFn<T,>(){}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [Token.Identifier("T", SourceSpan.Default)],
-                    [],
-                    null,
-                    new Block([], [])
-                )
-            ], [], [])),
-            ("var a = 1;var b = 2;", new LangProgram([
-                new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("a", SourceSpan.Default),
-                    null, null,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(1, SourceSpan.Default)))), SourceRange.Default),
-                new VariableDeclarationExpression(new VariableDeclaration(Token.Identifier("b", SourceSpan.Default),
-                    null, null,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default)
-            ], [], [], [])),
-            ("a = b;", new LangProgram([
-                new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
-                    VariableAccessor("a"), VariableAccessor("b"), Token.Equals(SourceSpan.Default)))
-            ], [], [], [])),
-            ("error();", new LangProgram([
-                new MethodCallExpression(new MethodCall(
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Token.Error(SourceSpan.Default))), []), SourceRange.Default)
-            ], [], [], [])),
-            ("something(a,);", new LangProgram([
-                new MethodCallExpression(new MethodCall(
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Token.Identifier("something", SourceSpan.Default))),
-                    [
-                        VariableAccessor("a")
-                    ]), SourceRange.Default)
-            ], [], [], [])),
-            ("ok();", new LangProgram([
-                new MethodCallExpression(new MethodCall(
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Token.Ok(SourceSpan.Default))), []), SourceRange.Default)
-            ], [], [], [])),
-            ("ok().b()", new LangProgram([
-                new MethodCallExpression(new MethodCall(
-                    new MemberAccessExpression(new MemberAccess(
-                        new MethodCallExpression(new MethodCall(
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                                Token.Ok(SourceSpan.Default))), []), SourceRange.Default),
-                        Token.Identifier("b", SourceSpan.Default))), []), SourceRange.Default)
-            ], [], [], [])),
-            ("if (a) {} b = c;", new LangProgram(
-                [
-                    new IfExpressionExpression(new IfExpression(VariableAccessor("a"),
-                        new BlockExpression(new Block([], []), SourceRange.Default), [], null), SourceRange.Default),
-                    new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
-                        VariableAccessor("b"), VariableAccessor("c"), Token.Equals(SourceSpan.Default)))
-                ],
-                [],
-                [], [])),
-            ("{} b = c;", new LangProgram(
-                [
-                    new BlockExpression(new Block([], []), SourceRange.Default),
-                    new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
-                        VariableAccessor("b"), VariableAccessor("c"), Token.Equals(SourceSpan.Default)))
-                ],
-                [],
-                [], [])),
-            ("fn MyFn() {}", new LangProgram([], [
-                new LangFunction(null, null, Token.Identifier("MyFn", SourceSpan.Default), [], [], null,
-                    new Block([], []))
-            ], [], [])),
-            ("if (a) {return b;}", new LangProgram([
-                new IfExpressionExpression(new IfExpression(
-                    VariableAccessor("a"),
-                    new BlockExpression(new Block([new MethodReturnExpression(new MethodReturn(VariableAccessor("b")), SourceRange.Default)],
-                        []), SourceRange.Default),
-                    [],
-                    null), SourceRange.Default)
-            ], [], [], [])),
-            ("fn MyFn() {if (a) {return b;}}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [],
-                    null,
-                    new Block([
-                        new IfExpressionExpression(new IfExpression(
-                            VariableAccessor("a"),
-                            new BlockExpression(
-                                new Block([new MethodReturnExpression(new MethodReturn(VariableAccessor("b")), SourceRange.Default)], []), SourceRange.Default),
-                            [],
-                            null), SourceRange.Default)
-                    ], []))
-            ], [], [])),
-            ("fn MyFn() {if (a) {return b();}}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [],
-                    null,
-                    new Block([
-                        new IfExpressionExpression(new IfExpression(
-                            VariableAccessor("a"),
-                            new BlockExpression(new Block(
-                            [
-                                new MethodReturnExpression(
-                                    new MethodReturn(
-                                        new MethodCallExpression(new MethodCall(VariableAccessor("b"), []), SourceRange.Default)), SourceRange.Default)
-                            ], []), SourceRange.Default),
-                            [],
-                            null), SourceRange.Default)
-                    ], []))
-            ], [], [])),
-            ("fn MyFn(): string {}", new LangProgram([], [
-                new LangFunction(null, null, Token.Identifier("MyFn", SourceSpan.Default), [], [],
-                    new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), new Block([], []))
-            ], [], [])),
-            ("fn MyFn(): result::<int, MyErrorType> {}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [],
-                    new TypeIdentifier(
-                        Token.Result(SourceSpan.Default),
-                        [
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
-                            new TypeIdentifier(Token.Identifier("MyErrorType", SourceSpan.Default), [], SourceRange.Default)
-                        ], SourceRange.Default),
-                    new Block([], []))
-            ], [], [])),
-            ("fn MyFn(): Outer::<Inner::<int>> {}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [],
-                    new TypeIdentifier(
-                        Token.Identifier("Outer", SourceSpan.Default),
-                        [
-                            new TypeIdentifier(Token.Identifier("Inner", SourceSpan.Default), [
-                                new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default)
-                            ], SourceRange.Default)
-                        ], SourceRange.Default),
-                    new Block([], []))
-            ], [], [])),
-            ("fn MyFn(): Outer::<Inner::<int>, Inner::<int>> {}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [],
-                    new TypeIdentifier(
-                        Token.Identifier("Outer", SourceSpan.Default),
-                        [
-                            new TypeIdentifier(Token.Identifier("Inner", SourceSpan.Default),
-                                [new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default)], SourceRange.Default),
-                            new TypeIdentifier(Token.Identifier("Inner", SourceSpan.Default),
-                                [new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default)], SourceRange.Default)
-                        ], SourceRange.Default),
-                    new Block([], []))
-            ], [], [])),
-            ("fn MyFn(): result::<int, MyErrorType, ThirdTypeArgument> {}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [],
-                    new TypeIdentifier(
-                        Token.Result(SourceSpan.Default),
-                        [
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
-                            new TypeIdentifier(Token.Identifier("MyErrorType", SourceSpan.Default), [], SourceRange.Default),
-                            new TypeIdentifier(Token.Identifier("ThirdTypeArgument", SourceSpan.Default), [], SourceRange.Default)
-                        ], SourceRange.Default),
-                    new Block([], []))
-            ], [], [])),
-            ("fn MyFn() { var a = 2; }", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [],
-                    null,
-                    new Block([
-                        new VariableDeclarationExpression(new VariableDeclaration(
-                            Token.Identifier("a", SourceSpan.Default),
-                            null,
-                            null,
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default)
-                    ], [])
-                )
-            ], [], [])),
-            ("fn MyFn(a: int) {}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [
-                        new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default), null,
-                            Token.Identifier("a", SourceSpan.Default))
-                    ],
-                    null,
-                    new Block([], [])
-                )
-            ], [], [])),
-            ("static fn MyFn() {}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    new StaticModifier(Token.Static(SourceSpan.Default)),
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [],
-                    null,
-                    new Block([], [])
-                )
-            ], [], [])),
-            ("fn MyFn<T1>() {}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [Token.Identifier("T1", SourceSpan.Default)],
-                    [],
-                    null,
-                    new Block([], [])
-                )
-            ], [], [])),
-            ("fn MyFn<T1, T2>() {}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [Token.Identifier("T1", SourceSpan.Default), Token.Identifier("T2", SourceSpan.Default)],
-                    [],
-                    null,
-                    new Block([], [])
-                )
-            ], [], [])),
-            ("fn MyFn<T1, T2, T3>() {}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [
-                        Token.Identifier("T1", SourceSpan.Default), Token.Identifier("T2", SourceSpan.Default),
-                        Token.Identifier("T3", SourceSpan.Default)
-                    ],
-                    [],
-                    null,
-                    new Block([], [])
-                )
-            ], [], [])),
-            ("fn MyFn(a: result::<int, MyType>) {}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [
-                        new FunctionParameter(new TypeIdentifier(
-                            Token.Result(SourceSpan.Default), [
-                                new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
-                                new TypeIdentifier(Token.Identifier("MyType", SourceSpan.Default), [], SourceRange.Default)
-                            ], SourceRange.Default), null, Token.Identifier("a", SourceSpan.Default))
-                    ],
-                    null,
-                    new Block([], [])
-                )
-            ], [], [])),
-            ("fn MyFn(a: int, b: MyType) {}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [
-                        new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default), null,
-                            Token.Identifier("a", SourceSpan.Default)),
-                        new FunctionParameter(new TypeIdentifier(Token.Identifier("MyType", SourceSpan.Default), [], SourceRange.Default),
-                            null, Token.Identifier("b", SourceSpan.Default))
-                    ],
-                    null,
-                    new Block([], [])
-                )
-            ], [], [])),
-            ("fn MyFn(): int {return 1;}", new LangProgram([], [
-                new LangFunction(
-                    null,
-                    null,
-                    Token.Identifier("MyFn", SourceSpan.Default),
-                    [],
-                    [],
-                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
-                    new Block(
-                    [
-                        new MethodReturnExpression(new MethodReturn(new ValueAccessorExpression(
-                            new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default)))), SourceRange.Default)
-                    ], [])
-                )
-            ], [], [])),
-            ("class MyClass {}", new LangProgram([], [], [
-                new ProgramClass(
-                    null,
-                    Token.Identifier("MyClass", SourceSpan.Default),
-                    [],
-                    [],
-                    [])
-            ], [])),
-            ("class MyClass<T> {}", new LangProgram([], [], [
-                new ProgramClass(
-                    null,
-                    Token.Identifier("MyClass", SourceSpan.Default),
-                    [Token.Identifier("T", SourceSpan.Default)],
-                    [],
-                    [])
-            ], [])),
-            ("class MyClass<T, T2, T3> {}", new LangProgram([], [], [
-                new ProgramClass(
-                    null,
-                    Token.Identifier("MyClass", SourceSpan.Default),
-                    [
-                        Token.Identifier("T", SourceSpan.Default), Token.Identifier("T2", SourceSpan.Default),
-                        Token.Identifier("T3", SourceSpan.Default)
-                    ],
-                    [],
-                    [])
-            ], [])),
-            ("pub class MyClass {}", new LangProgram([], [], [
-                new ProgramClass(
-                    new AccessModifier(Token.Pub(SourceSpan.Default)),
-                    Token.Identifier("MyClass", SourceSpan.Default),
-                    [],
-                    [],
-                    [])
-            ], [])),
-            ("class MyClass {pub mut field MyField: string,}", new LangProgram([], [], [
-                new ProgramClass(
-                    null,
-                    Token.Identifier("MyClass", SourceSpan.Default),
-                    [],
-                    [],
-                    [
-                        new ClassField(
-                            new AccessModifier(Token.Pub(SourceSpan.Default)),
-                            null,
-                            new MutabilityModifier(Token.Mut(SourceSpan.Default)),
-                            Token.Identifier("MyField", SourceSpan.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
-                    ])
-            ], [])),
-            ("class MyClass {pub static mut field MyField: string,}", new LangProgram([], [], [
-                new ProgramClass(
-                    null,
-                    Token.Identifier("MyClass", SourceSpan.Default),
-                    [],
-                    [],
-                    [
-                        new ClassField(
-                            new AccessModifier(Token.Pub(SourceSpan.Default)),
-                            new StaticModifier(Token.Static(SourceSpan.Default)),
-                            new MutabilityModifier(Token.Mut(SourceSpan.Default)),
-                            Token.Identifier("MyField", SourceSpan.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
-                    ])
-            ], [])),
-            ("class MyClass {mut field MyField: string,}", new LangProgram([], [], [
-                new ProgramClass(
-                    null,
-                    Token.Identifier("MyClass", SourceSpan.Default),
-                    [],
-                    [],
-                    [
-                        new ClassField(
-                            null,
-                            null,
-                            new MutabilityModifier(Token.Mut(SourceSpan.Default)),
-                            Token.Identifier("MyField", SourceSpan.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
-                    ])
-            ], [])),
-            ("class MyClass {field MyField: string,}", new LangProgram([], [], [
-                new ProgramClass(
-                    null,
-                    Token.Identifier("MyClass", SourceSpan.Default),
-                    [],
-                    [],
-                    [
-                        new ClassField(
-                            null,
-                            null,
-                            null,
-                            Token.Identifier("MyField", SourceSpan.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
-                    ])
-            ], [])),
-            ("class MyClass {pub field MyField: string,}", new LangProgram([], [], [
-                new ProgramClass(
-                    null,
-                    Token.Identifier("MyClass", SourceSpan.Default),
-                    [],
-                    [],
-                    [
-                        new ClassField(
-                            new AccessModifier(Token.Pub(SourceSpan.Default)),
-                            null,
-                            null,
-                            Token.Identifier("MyField", SourceSpan.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
-                    ])
-            ], [])),
-            ("class MyClass {pub mut field MyField: string, pub fn MyFn() {},}", new LangProgram([], [], [
-                new ProgramClass(
-                    null,
-                    Token.Identifier("MyClass", SourceSpan.Default),
-                    [],
-                    [
-                        new LangFunction(new AccessModifier(Token.Pub(SourceSpan.Default)), null,
-                            Token.Identifier("MyFn", SourceSpan.Default), [], [], null, new Block([], []))
-                    ],
-                    [
-                        new ClassField(
-                            new AccessModifier(Token.Pub(SourceSpan.Default)),
-                            null,
-                            new MutabilityModifier(Token.Mut(SourceSpan.Default)),
-                            Token.Identifier("MyField", SourceSpan.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
-                    ])
-            ], [])),
-            ("class MyClass {field MyField: string, fn MyFn() {}}", new LangProgram([], [], [
-                new ProgramClass(
-                    null,
-                    Token.Identifier("MyClass", SourceSpan.Default),
-                    [],
-                    [
-                        new LangFunction(null, null, Token.Identifier("MyFn", SourceSpan.Default), [], [], null,
-                            new Block([], []))
-                    ],
-                    [
-                        new ClassField(
-                            null,
-                            null,
-                            null,
-                            Token.Identifier("MyField", SourceSpan.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
-                    ])
-            ], [])),
-            ("pub fn DoSomething(a: int): result::<int, string> {}", new LangProgram(
-                [],
-                [
-                    new LangFunction(
-                        new AccessModifier(Token.Pub(SourceSpan.Default)),
-                        null,
-                        Token.Identifier("DoSomething", SourceSpan.Default),
-                        [],
-                        [
-                            new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default), null,
-                                Token.Identifier("a", SourceSpan.Default))
-                        ],
-                        new TypeIdentifier(Token.Result(SourceSpan.Default),
-                        [
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)
-                        ], SourceRange.Default),
-                        new Block([], []))
-                ],
-                [], [])),
-            (
-                "class MyClass { static field someField: int = 3, }",
-                new LangProgram(
-                    [],
-                    [],
-                    [
-                        new ProgramClass(
-                            null,
-                            Token.Identifier("MyClass", SourceSpan.Default),
-                            [],
-                            [],
-                            [
-                                new ClassField(
-                                    null,
-                                    new StaticModifier(Token.Static(SourceSpan.Default)),
-                                    null,
-                                    Token.Identifier("someField", SourceSpan.Default),
-                                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
-                                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                        Token.IntLiteral(3, SourceSpan.Default))))
-                            ]
-                        )
-                    ], [])
-            ),
-            ("""
-             pub fn DoSomething(a: int): result::<int, string> {
-                 var b: int = 2;
-                 
-                 if (a > b) {
-                     return ok(a);
-                 }
-                 else if (a == b) {
-                     return ok(b);
-                 }
-                 else {
-                 }
-             
-                 b = 3;
-             
-                 var thing = new Class2 {
-                     A = 3
-                 };
-             
-                 MyClass::StaticMethod();
-             
-                 PrivateFn::<string>();
-             
-                 return error("something wrong");
-             }
-
-             fn PrivateFn<T>() {
-                 fn InnerFn() {
-                     Println("Something");
-                 }
-                 Println("Message");
-             }
-
-             pub fn SomethingElse(a: int): result::<int, string> {
-                 var b = DoSomething(a)?;
-                 var mut c = 2;
-                 
-                 return b;
-             }
-
-             Println(DoSomething(5));
-             Println(DoSomething(1));
-             Println(SomethingElse(1));
-
-             pub class MyClass {
-                 pub fn PublicMethod() {
-                 }
-             
-                 pub static fn StaticMethod() {
-             
-                 }
-                 
-                 field FieldA: string,
-                 mut field FieldB: string,
-                 pub mut field FieldC: string,
-                 pub field FieldD: string,
-             }
-
-             pub class GenericClass<T> {
-                 pub fn PublicMethod<T1>() {
-                 }
-             }
-
-             pub class Class2 {
-                 pub field A: string,
-             }
-             """, new LangProgram(
-                [
-                    new MethodCallExpression(new MethodCall(VariableAccessor("Println"),
-                    [
-                        new MethodCallExpression(new MethodCall(VariableAccessor("DoSomething"),
-                        [
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                Token.IntLiteral(5, SourceSpan.Default)))
-                        ]), SourceRange.Default)
-                    ]), SourceRange.Default),
-                    new MethodCallExpression(new MethodCall(VariableAccessor("Println"),
-                    [
-                        new MethodCallExpression(new MethodCall(VariableAccessor("DoSomething"),
-                        [
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                Token.IntLiteral(1, SourceSpan.Default)))
-                        ]), SourceRange.Default)
-                    ]), SourceRange.Default),
-                    new MethodCallExpression(new MethodCall(VariableAccessor("Println"),
-                    [
-                        new MethodCallExpression(new MethodCall(VariableAccessor("SomethingElse"),
-                        [
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                Token.IntLiteral(1, SourceSpan.Default)))
-                        ]), SourceRange.Default)
-                    ]), SourceRange.Default)
-                ],
-                [
-                    new LangFunction(
-                        new AccessModifier(Token.Pub(SourceSpan.Default)),
-                        null,
-                        Token.Identifier("DoSomething", SourceSpan.Default),
-                        [],
-                        [
-                            new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default), null,
-                                Token.Identifier("a", SourceSpan.Default))
-                        ],
-                        new TypeIdentifier(Token.Result(SourceSpan.Default),
-                        [
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)
-                        ], SourceRange.Default),
-                        new Block(
-                            [
-                                new VariableDeclarationExpression(new VariableDeclaration(
-                                    Token.Identifier("b", SourceSpan.Default),
-                                    null,
-                                    new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
-                                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                        Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default),
-                                new IfExpressionExpression(new IfExpression(
-                                    new BinaryOperatorExpression(new BinaryOperator(
-                                        BinaryOperatorType.GreaterThan,
-                                        VariableAccessor("a"),
-                                        VariableAccessor("b"),
-                                        Token.RightAngleBracket(SourceSpan.Default))),
-                                    new BlockExpression(new Block(
-                                        [
-                                            new MethodReturnExpression(new MethodReturn(
-                                                    new MethodCallExpression(new MethodCall(
-                                                        new ValueAccessorExpression(
-                                                            new ValueAccessor(ValueAccessType.Variable,
-                                                                Token.Ok(SourceSpan.Default))),
-                                                        [VariableAccessor("a")]), SourceRange.Default)
-                                                )
-                                            , SourceRange.Default)
-                                        ],
-                                        []), SourceRange.Default),
-                                    [
-                                        new ElseIf(
-                                            new BinaryOperatorExpression(new BinaryOperator(
-                                                BinaryOperatorType.EqualityCheck, VariableAccessor("a"),
-                                                VariableAccessor("b"), Token.DoubleEquals(SourceSpan.Default))),
-                                            new BlockExpression(new Block([
-                                                new MethodReturnExpression(new MethodReturn(
-                                                        new MethodCallExpression(new MethodCall(
-                                                            new ValueAccessorExpression(
-                                                                new ValueAccessor(ValueAccessType.Variable,
-                                                                    Token.Ok(SourceSpan.Default))),
-                                                            [VariableAccessor("b")]), SourceRange.Default)
-                                                    )
-                                                , SourceRange.Default)
-                                            ], []), SourceRange.Default)
-                                        )
-                                    ],
-                                    new BlockExpression(new Block([], []), SourceRange.Default)
-                                ), SourceRange.Default),
-                                new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
-                                    VariableAccessor("b"),
-                                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                        Token.IntLiteral(3, SourceSpan.Default))), Token.Equals(SourceSpan.Default))),
-                                new VariableDeclarationExpression(new VariableDeclaration(
-                                    Token.Identifier("thing", SourceSpan.Default),
-                                    null,
-                                    null,
-                                    new ObjectInitializerExpression(new ObjectInitializer(
-                                        new TypeIdentifier(Token.Identifier("Class2", SourceSpan.Default), [], SourceRange.Default),
-                                        [
-                                            new FieldInitializer(Token.Identifier("A", SourceSpan.Default),
-                                                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                                    Token.IntLiteral(3, SourceSpan.Default))))
-                                        ]), SourceRange.Default)), SourceRange.Default),
-                                new MethodCallExpression(new MethodCall(
-                                    new StaticMemberAccessExpression(new StaticMemberAccess(
-                                        new TypeIdentifier(Token.Identifier("MyClass", SourceSpan.Default), [], SourceRange.Default),
-                                        Token.Identifier("StaticMethod", SourceSpan.Default)
-                                    )),
-                                    []), SourceRange.Default),
-                                new MethodCallExpression(new MethodCall(
-                                    new GenericInstantiationExpression(new GenericInstantiation(
-                                        new ValueAccessorExpression(
-                                            new ValueAccessor(ValueAccessType.Variable,
-                                                Token.Identifier("PrivateFn", SourceSpan.Default))),
-                                        [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)]), SourceRange.Default),
-                                    []
-                                ), SourceRange.Default),
-                                new MethodReturnExpression(new MethodReturn(
-                                    new MethodCallExpression(new MethodCall(
-                                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                                            Token.Error(SourceSpan.Default))),
-                                        [
-                                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                                Token.StringLiteral("something wrong", SourceSpan.Default)))
-                                        ]
-                                    ), SourceRange.Default)), SourceRange.Default)
-                            ],
-                            [])),
-                    new LangFunction(
-                        null,
-                        null,
-                        Token.Identifier("PrivateFn", SourceSpan.Default),
-                        [Token.Identifier("T", SourceSpan.Default)],
-                        [],
-                        null,
-                        new Block(
-                            [
-                                new MethodCallExpression(
-                                    new MethodCall(VariableAccessor("Println"),
-                                    [
-                                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                            Token.StringLiteral("Message", SourceSpan.Default)))
-                                    ]), SourceRange.Default)
-                            ],
-                            [
-                                new LangFunction(
-                                    null,
-                                    null,
-                                    Token.Identifier("InnerFn", SourceSpan.Default),
-                                    [],
-                                    [],
-                                    null,
-                                    new Block(
-                                        [
-                                            new MethodCallExpression(
-                                                new MethodCall(VariableAccessor("Println"),
-                                                [
-                                                    new ValueAccessorExpression(
-                                                        new ValueAccessor(ValueAccessType.Literal,
-                                                            Token.StringLiteral("Something", SourceSpan.Default)))
-                                                ]), SourceRange.Default)
-                                        ],
-                                        [
-                                        ]))
-                            ])),
-                    new LangFunction(
-                        new AccessModifier(Token.Pub(SourceSpan.Default)),
-                        null,
-                        Token.Identifier("SomethingElse", SourceSpan.Default),
-                        [],
-                        [
-                            new FunctionParameter(new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default), null,
-                                Token.Identifier("a", SourceSpan.Default))
-                        ],
-                        new TypeIdentifier(Token.Result(SourceSpan.Default),
-                        [
-                            new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)
-                        ], SourceRange.Default),
-                        new Block(
-                            [
-                                new VariableDeclarationExpression(new VariableDeclaration(
-                                    Token.Identifier("b", SourceSpan.Default),
-                                    null,
-                                    null,
-                                    new UnaryOperatorExpression(new UnaryOperator(
-                                        UnaryOperatorType.FallOut,
-                                        new MethodCallExpression(new MethodCall(
-                                            VariableAccessor("DoSomething"),
-                                            [
-                                                VariableAccessor("a")
-                                            ]), SourceRange.Default),
-                                        Token.QuestionMark(SourceSpan.Default)))), SourceRange.Default),
-                                new VariableDeclarationExpression(new VariableDeclaration(
-                                    Token.Identifier("c", SourceSpan.Default),
-                                    new MutabilityModifier(Token.Mut(SourceSpan.Default)),
-                                    null,
-                                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                        Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default),
-                                new MethodReturnExpression(new MethodReturn(VariableAccessor("b")), SourceRange.Default)
-                            ],
-                            [])
-                    )
-                ],
-                [
-                    new ProgramClass(
-                        new AccessModifier(Token.Pub(SourceSpan.Default)),
-                        Token.Identifier("MyClass", SourceSpan.Default),
-                        [],
-                        [
-                            new LangFunction(
-                                new AccessModifier(Token.Pub(SourceSpan.Default)),
-                                null,
-                                Token.Identifier("PublicMethod", SourceSpan.Default),
-                                [],
-                                [],
-                                null,
-                                new Block([], [])),
-                            new LangFunction(
-                                new AccessModifier(Token.Pub(SourceSpan.Default)),
-                                new StaticModifier(Token.Static(SourceSpan.Default)),
-                                Token.Identifier("StaticMethod", SourceSpan.Default),
-                                [],
-                                [],
-                                null,
-                                new Block([], []))
-                        ],
-                        [
-                            new ClassField(null,
-                                null,
-                                null,
-                                Token.Identifier("FieldA", SourceSpan.Default),
-                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null),
-                            new ClassField(null,
-                                null,
-                                new MutabilityModifier(Token.Mut(SourceSpan.Default)),
-                                Token.Identifier("FieldB", SourceSpan.Default),
-                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null),
-                            new ClassField(new AccessModifier(Token.Pub(SourceSpan.Default)),
-                                null,
-                                new MutabilityModifier(Token.Mut(SourceSpan.Default)),
-                                Token.Identifier("FieldC", SourceSpan.Default),
-                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null),
-                            new ClassField(new AccessModifier(Token.Pub(SourceSpan.Default)),
-                                null,
-                                null,
-                                Token.Identifier("FieldD", SourceSpan.Default),
-                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
-                        ]),
-                    new ProgramClass(
-                        new AccessModifier(Token.Pub(SourceSpan.Default)),
-                        Token.Identifier("GenericClass", SourceSpan.Default),
-                        [Token.Identifier("T", SourceSpan.Default)],
-                        [
-                            new LangFunction(
-                                new AccessModifier(Token.Pub(SourceSpan.Default)),
-                                null,
-                                Token.Identifier("PublicMethod", SourceSpan.Default),
-                                [Token.Identifier("T1", SourceSpan.Default)],
-                                [],
-                                null,
-                                new Block([], []))
-                        ],
-                        []
-                    ),
-                    new ProgramClass(
-                        new AccessModifier(Token.Pub(SourceSpan.Default)),
-                        Token.Identifier("Class2", SourceSpan.Default),
-                        [],
-                        [],
-                        [
-                            new ClassField(new AccessModifier(Token.Pub(SourceSpan.Default)),
-                                null,
-                                null,
-                                Token.Identifier("A", SourceSpan.Default),
-                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default), null)
-                        ]
-                    )
-                ], []))
-        }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedProgram });
-    }
-
-    public static IEnumerable<object[]> FailTestCases()
-    {
-        IEnumerable<string> strings =
-        [
-            // missing variable declaration value 
-            "var a = ",
-            // missing variable declaration equals
-            "var a ",
-            // missing variable declaration name
-            "var",
-            // missing if pieces
-            "if {}",
-            "if () {}",
-            "if (a {}",
-            "if (a)",
-            "if",
-            // else without else body
-            "if (a) {} else",
-            // else if without check expression
-            "if (a) {} else if",
-            "if (a) {} else if (",
-            "if (a) {} else if ()",
-            // else if without body
-            "if (a) {} else if (a)",
-            // else without body
-            "if (a) {} else if (a) {} else",
-            // else before else if
-            "if (a) {} else {} else if (a) {}",
-            "if (a;) {}",
-            // body has tail expression but else doesn't
-            "a(",
-            "a<string>()",
-            "a::<,>()",
-            "a::<string string>()",
-            "a::<string()",
-            "a(,)",
-            "a(a b)",
-            "a(a; b)",
-            // missing semicolon,
-            "{var a = 1 var b = 2;}",
-            "{",
-            "}",
-            "?",
-            "+",
-            ">",
-            "<",
-            "*",
-            "/",
-            "-",
-            // invalid statement
-            "a;",
-            "{a;}",
-            "fn MyFn::<string>(){}",
-            "fn MyFn<>(){}",
-            "fn MyFn<,>(){}",
-            "fn MyFn<A B>(){}",
-            "fn MyFn<string>(){}",
-            "fn MyFunction() {",
-            "fn MyFunction()",
-            "fn a MyFunction() {}",
-            "fn MyFunction",
-            "fn MyFunction(",
-            "fn MyFunction(int) {}",
-            "fn MyFunction(a:) {}",
-            "fn MyFunction(a) {}",
-            "fn MyFunction(a: result<int>) {}",
-            "fn MyFunction(a: result::<,>) {}",
-            "fn MyFunction(a: result::<int int>) {}",
-            "fn MyFunction(,) {}",
-            "fn MyFunction(a: int b: int) {}",
-            // no semicolon
-            "return 1",
-            "pub MyClass {}",
-            "class MyClass<> {}",
-            "class MyClass<,> {}",
-            "class MyClass<T1 T2> {}",
-            "pub mut class MyClass {}",
-            "static class MyClass {}",
-            "class pub MyClass {}",
-            "class MyClass {field myFieldWithoutSemicolon}",
-            "class MyClass {field mut myField;}",
-            "class MyClass {fieldName}",
-            "class MyClass {field pub myField;}",
-            "class MyClass {fn MyFnWithSemicolon{};}",
-            "class MyClass {fn FnWithoutBody}",
-            "class MyClass { class InnerClassAreNotAllowed {} }",
-            "class MyClass { static field someField: int =; }",
-            "class MyClass { union MyUnion {}}",
-            "{union MyUnion{}}",
-            "fn MyFn(){union MyUnion{}}",
-            "fn SomeFn() { class NoClassesInFunctions {}}",
-            "new",
-            "new Thing",
-            "new Thing {",
-            "new Thing{ a }",
-            "new Thing{ a = }",
-            "new Thing{ a = 1 b = 2 }",
-            "new Thing { , }",
-            "new Thing { , a = 1 }",
-            "union MyUnion",
-            "union MyUnion {",
-            "union MyUnion { A(}",
-            "union MyUnion { A {}",
-            "union MyUnion { A { field}}",
-            "union MyUnion { A B }",
-            "union MyUnion< {}",
-            "a matches",
-            "a matches B {",
-            "a matches B { field }",
-            "a matches B { SomeField: }",
-            "a matches B { SomeField OtherField }",
-            "a matches B { SomeField: var field }",
-            "a matches B(",
-            "a matches B(,)",
-            "a matches B{_, _}",
-            "(",
-            "(a",
-            "(a b)",
-            "()"
-        ];
-        return strings.Select(x => new object[] { x, Tokenizer.Tokenize(x) });
-    }
-
-    public static IEnumerable<object[]> SingleTestCase()
-    {
-        return new (string Source, IExpression ExpectedProgram)[]
-        {
-            (
-                """
-                match (a) {
-                    _ => b,
-                }
-                """,
-                new MatchExpression(VariableAccessor("a"), [new MatchArm(new DiscardPattern(SourceRange.Default), VariableAccessor("b"))], SourceRange.Default)
-            )
-        }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedProgram });
-    }
-
-    public static IEnumerable<object[]> PopExpressionTestCases()
+    public static IEnumerable<object[]> TestCases()
     {
         return new (string Source, IExpression ExpectedExpression)[]
         {
@@ -1768,7 +19,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     _ => b,
                 }
                 """,
-                new MatchExpression(VariableAccessor("a"), [new MatchArm(new DiscardPattern(SourceRange.Default), VariableAccessor("b"))], SourceRange.Default)
+                new MatchExpression(VariableAccessor("a"),
+                    [new MatchArm(new DiscardPattern(SourceRange.Default), VariableAccessor("b"))], SourceRange.Default)
             ),
             (
                 """
@@ -1779,7 +31,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 """,
                 new MatchExpression(VariableAccessor("a"), [
                     new MatchArm(
-                        new ClassPattern(new TypeIdentifier(Token.Identifier("SomeClass", SourceSpan.Default), [], SourceRange.Default),
+                        new ClassPattern(
+                            new TypeIdentifier(Token.Identifier("SomeClass", SourceSpan.Default), [],
+                                SourceRange.Default),
                             [],
                             false,
                             null, SourceRange.Default),
@@ -1795,7 +49,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 """,
                 new MatchExpression(VariableAccessor("a"), [
                     new MatchArm(
-                        new ClassPattern(new TypeIdentifier(Token.Identifier("SomeClass", SourceSpan.Default), [], SourceRange.Default),
+                        new ClassPattern(
+                            new TypeIdentifier(Token.Identifier("SomeClass", SourceSpan.Default), [],
+                                SourceRange.Default),
                             [KeyValuePair.Create(Token.Identifier("SomeField", SourceSpan.Default), (IPattern?)null)],
                             false,
                             null, SourceRange.Default),
@@ -1812,13 +68,15 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new MatchExpression(VariableAccessor("a"), [
                     new MatchArm(
                         new UnionStructVariantPattern(
-                            new TypeIdentifier(Token.Identifier("SomeUnion", SourceSpan.Default), [], SourceRange.Default),
+                            new TypeIdentifier(Token.Identifier("SomeUnion", SourceSpan.Default), [],
+                                SourceRange.Default),
                             Token.Identifier("B", SourceSpan.Default),
                             [
                                 KeyValuePair.Create(
                                     Token.Identifier("SomeField", SourceSpan.Default),
                                     (IPattern?)new UnionStructVariantPattern(
-                                        new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), [], SourceRange.Default),
+                                        new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), [],
+                                            SourceRange.Default),
                                         Token.Identifier("C", SourceSpan.Default),
                                         [
                                             KeyValuePair.Create(
@@ -1842,11 +100,13 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     new MatchesExpression(
                         VariableAccessor("a"),
                         new UnionTupleVariantPattern(
-                            new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), [], SourceRange.Default),
+                            new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), [],
+                                SourceRange.Default),
                             Token.Identifier("B", SourceSpan.Default),
                             [
                                 new UnionVariantPattern(
-                                    new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
+                                    new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [],
+                                        SourceRange.Default),
                                     Token.Identifier("A", SourceSpan.Default),
                                     Token.Identifier("c", SourceSpan.Default), SourceRange.Default)
                             ],
@@ -1858,19 +118,19 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             (
                 "var b: bool = a matches int;",
                 new VariableDeclarationExpression(new VariableDeclaration(
-                    Token.Identifier("b", SourceSpan.Default),
-                    null,
-                    new TypeIdentifier(Token.Bool(SourceSpan.Default), [], SourceRange.Default),
-                    new MatchesExpression(
-                        VariableAccessor("a"),
-                        new ClassPattern(
-                            new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
-                            [],
-                            false,
-                            null
-                        , SourceRange.Default)
-                    , SourceRange.Default))
-                , SourceRange.Default)
+                        Token.Identifier("b", SourceSpan.Default),
+                        null,
+                        new TypeIdentifier(Token.Bool(SourceSpan.Default), [], SourceRange.Default),
+                        new MatchesExpression(
+                            VariableAccessor("a"),
+                            new ClassPattern(
+                                new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
+                                [],
+                                false,
+                                null
+                                , SourceRange.Default)
+                            , SourceRange.Default))
+                    , SourceRange.Default)
             ),
             (
                 "a matches string",
@@ -1881,8 +141,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         [],
                         false,
                         null
+                        , SourceRange.Default)
                     , SourceRange.Default)
-                , SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A",
@@ -1892,22 +152,22 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         null
+                        , SourceRange.Default)
                     , SourceRange.Default)
-                , SourceRange.Default)
             ),
             (
                 "a matches var a",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new VariableDeclarationPattern(Token.Identifier("a", SourceSpan.Default), SourceRange.Default)
-                , SourceRange.Default)
+                    , SourceRange.Default)
             ),
             (
                 "a matches _",
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new DiscardPattern(SourceRange.Default)
-                , SourceRange.Default)
+                    , SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(var b)",
@@ -1917,10 +177,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
-                            new VariableDeclarationPattern(Token.Identifier("b", SourceSpan.Default), SourceRange.Default)
+                            new VariableDeclarationPattern(Token.Identifier("b", SourceSpan.Default),
+                                SourceRange.Default)
                         ],
                         null, SourceRange.Default)
-                , SourceRange.Default)
+                    , SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(var b) var c",
@@ -1930,10 +191,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
-                            new VariableDeclarationPattern(Token.Identifier("b", SourceSpan.Default), SourceRange.Default)
+                            new VariableDeclarationPattern(Token.Identifier("b", SourceSpan.Default),
+                                SourceRange.Default)
                         ],
                         Token.Identifier("c", SourceSpan.Default), SourceRange.Default)
-                , SourceRange.Default)
+                    , SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(var b, var c, _)",
@@ -1943,11 +205,13 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
-                            new VariableDeclarationPattern(Token.Identifier("b", SourceSpan.Default), SourceRange.Default),
-                            new VariableDeclarationPattern(Token.Identifier("c", SourceSpan.Default), SourceRange.Default),
+                            new VariableDeclarationPattern(Token.Identifier("b", SourceSpan.Default),
+                                SourceRange.Default),
+                            new VariableDeclarationPattern(Token.Identifier("c", SourceSpan.Default),
+                                SourceRange.Default),
                             new DiscardPattern(SourceRange.Default)
                         ], null, SourceRange.Default)
-                , SourceRange.Default)
+                    , SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(OtherUnion::C)",
@@ -1958,13 +222,14 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.Identifier("A", SourceSpan.Default),
                         [
                             new UnionVariantPattern(
-                                new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), [], SourceRange.Default),
+                                new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), [],
+                                    SourceRange.Default),
                                 Token.Identifier("C", SourceSpan.Default),
                                 null
-                            , SourceRange.Default)
+                                , SourceRange.Default)
                         ],
                         null, SourceRange.Default)
-                , SourceRange.Default)
+                    , SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(OtherUnion::C var c)",
@@ -1975,13 +240,14 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.Identifier("A", SourceSpan.Default),
                         [
                             new UnionVariantPattern(
-                                new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), [], SourceRange.Default),
+                                new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), [],
+                                    SourceRange.Default),
                                 Token.Identifier("C", SourceSpan.Default),
                                 Token.Identifier("c", SourceSpan.Default)
-                            , SourceRange.Default)
+                                , SourceRange.Default)
                         ],
                         null, SourceRange.Default)
-                , SourceRange.Default)
+                    , SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(OtherUnion::C(var d))",
@@ -1992,14 +258,18 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.Identifier("A", SourceSpan.Default),
                         [
                             new UnionTupleVariantPattern(
-                                new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), [], SourceRange.Default),
+                                new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), [],
+                                    SourceRange.Default),
                                 Token.Identifier("C", SourceSpan.Default),
-                                [new VariableDeclarationPattern(Token.Identifier("d", SourceSpan.Default), SourceRange.Default)],
+                                [
+                                    new VariableDeclarationPattern(Token.Identifier("d", SourceSpan.Default),
+                                        SourceRange.Default)
+                                ],
                                 null
-                            , SourceRange.Default)
+                                , SourceRange.Default)
                         ],
                         null, SourceRange.Default)
-                , SourceRange.Default)
+                    , SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField }",
@@ -2013,7 +283,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         ],
                         false,
                         null
-                    , SourceRange.Default), SourceRange.Default)
+                        , SourceRange.Default), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField } var a",
@@ -2027,7 +297,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         ],
                         false,
                         Token.Identifier("a", SourceSpan.Default)
-                    , SourceRange.Default), SourceRange.Default)
+                        , SourceRange.Default), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField, OtherField: var f }",
@@ -2040,12 +310,13 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null),
                             KeyValuePair.Create(
                                 Token.Identifier("OtherField", SourceSpan.Default),
-                                (IPattern?)new VariableDeclarationPattern(Token.Identifier("f", SourceSpan.Default), SourceRange.Default)
+                                (IPattern?)new VariableDeclarationPattern(Token.Identifier("f", SourceSpan.Default),
+                                    SourceRange.Default)
                             )
                         ],
                         false,
                         null
-                    , SourceRange.Default), SourceRange.Default)
+                        , SourceRange.Default), SourceRange.Default)
             ),
             (
                 "a matches MyClass { MyField }",
@@ -2058,7 +329,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         ],
                         false,
                         null
-                    , SourceRange.Default), SourceRange.Default)
+                        , SourceRange.Default), SourceRange.Default)
             ),
             (
                 "a matches MyClass { MyField } var a",
@@ -2071,7 +342,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         ],
                         false,
                         Token.Identifier("a", SourceSpan.Default)
-                    , SourceRange.Default), SourceRange.Default)
+                        , SourceRange.Default), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField, _ }",
@@ -2085,7 +356,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         ],
                         true,
                         null
-                    , SourceRange.Default), SourceRange.Default)
+                        , SourceRange.Default), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField: MyUnion::B var f }",
@@ -2098,13 +369,14 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             KeyValuePair.Create(
                                 Token.Identifier("MyField", SourceSpan.Default),
                                 (IPattern?)new UnionVariantPattern(
-                                    new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
+                                    new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [],
+                                        SourceRange.Default),
                                     Token.Identifier("B", SourceSpan.Default),
                                     Token.Identifier("f", SourceSpan.Default), SourceRange.Default))
                         ],
                         true,
                         null
-                    , SourceRange.Default), SourceRange.Default)
+                        , SourceRange.Default), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField: MyUnion::B(var c)  }",
@@ -2117,14 +389,18 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                             KeyValuePair.Create(
                                 Token.Identifier("MyField", SourceSpan.Default),
                                 (IPattern?)new UnionTupleVariantPattern(
-                                    new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
+                                    new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [],
+                                        SourceRange.Default),
                                     Token.Identifier("B", SourceSpan.Default),
-                                    [new VariableDeclarationPattern(Token.Identifier("c", SourceSpan.Default), SourceRange.Default)],
+                                    [
+                                        new VariableDeclarationPattern(Token.Identifier("c", SourceSpan.Default),
+                                            SourceRange.Default)
+                                    ],
                                     null, SourceRange.Default))
                         ],
                         true,
                         null
-                    , SourceRange.Default), SourceRange.Default)
+                        , SourceRange.Default), SourceRange.Default)
             ),
             (
                 "a matches MyClass { MyField, _ }",
@@ -2137,8 +413,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         ],
                         true,
                         null
+                        , SourceRange.Default)
                     , SourceRange.Default)
-                , SourceRange.Default)
             ),
             (
                 "a matches MyClass",
@@ -2149,8 +425,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         [],
                         false,
                         null
+                        , SourceRange.Default)
                     , SourceRange.Default)
-                , SourceRange.Default)
             ),
             (
                 "a matches MyClass var b",
@@ -2161,8 +437,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         [],
                         false,
                         Token.Identifier("b", SourceSpan.Default)
+                        , SourceRange.Default)
                     , SourceRange.Default)
-                , SourceRange.Default)
             ),
 
 
@@ -2361,13 +637,14 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default)
             ], []), SourceRange.Default)),
             ("if (a) var c = 2;", new IfExpressionExpression(new IfExpression(
-                VariableAccessor("a"),
-                new VariableDeclarationExpression(new VariableDeclaration(
-                    Token.Identifier("c", SourceSpan.Default),
-                    null,
-                    null,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default), [], null), SourceRange.Default)),
+                    VariableAccessor("a"),
+                    new VariableDeclarationExpression(new VariableDeclaration(
+                        Token.Identifier("c", SourceSpan.Default),
+                        null,
+                        null,
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
+                            Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default), [], null),
+                SourceRange.Default)),
             ("if (a > b) {var c = \"value\";}", new IfExpressionExpression(new IfExpression(
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.GreaterThan,
@@ -2415,10 +692,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 ],
                 new BlockExpression(new Block([], []), SourceRange.Default)), SourceRange.Default)),
             ("if (a) {b} else {c}", new IfExpressionExpression(new IfExpression(
-                VariableAccessor("a"),
-                new BlockExpression(new Block([VariableAccessor("b")], []), SourceRange.Default),
-                [],
-                new BlockExpression(new Block([VariableAccessor("c")], []), SourceRange.Default)), SourceRange.Default)),
+                    VariableAccessor("a"),
+                    new BlockExpression(new Block([VariableAccessor("b")], []), SourceRange.Default),
+                    [],
+                    new BlockExpression(new Block([VariableAccessor("c")], []), SourceRange.Default)),
+                SourceRange.Default)),
             ("if (a) b else c", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
                 VariableAccessor("b"),
@@ -2502,10 +780,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             ), SourceRange.Default)),
             ("a::<string>()", new MethodCallExpression(new MethodCall(
                 new GenericInstantiationExpression(new GenericInstantiation(
-                    new ValueAccessorExpression(new ValueAccessor(
-                        ValueAccessType.Variable,
-                        Token.Identifier("a", SourceSpan.Default))),
-                    [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)]), SourceRange.Default),
+                        new ValueAccessorExpression(new ValueAccessor(
+                            ValueAccessType.Variable,
+                            Token.Identifier("a", SourceSpan.Default))),
+                        [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)]),
+                    SourceRange.Default),
                 []), SourceRange.Default)),
             ("a::<string, int>()", new MethodCallExpression(new MethodCall(
                 new GenericInstantiationExpression(new GenericInstantiation(new ValueAccessorExpression(
@@ -2525,7 +804,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default),
                     new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default),
                     new TypeIdentifier(Token.Result(SourceSpan.Default),
-                        [new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default)], SourceRange.Default)
+                        [new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default)],
+                        SourceRange.Default)
                 ]), SourceRange.Default),
                 []), SourceRange.Default)),
             ("a(b)", new MethodCallExpression(new MethodCall(VariableAccessor("a"), [
@@ -2572,8 +852,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                 new TypeIdentifier(Token.Identifier("Thing", SourceSpan.Default), [], SourceRange.Default),
                 []), SourceRange.Default)),
             ("new Thing {A = a}", new ObjectInitializerExpression(new ObjectInitializer(
-                new TypeIdentifier(Token.Identifier("Thing", SourceSpan.Default), [], SourceRange.Default),
-                [new FieldInitializer(Token.Identifier("A", SourceSpan.Default), VariableAccessor("a"))]), SourceRange.Default)),
+                    new TypeIdentifier(Token.Identifier("Thing", SourceSpan.Default), [], SourceRange.Default),
+                    [new FieldInitializer(Token.Identifier("A", SourceSpan.Default), VariableAccessor("a"))]),
+                SourceRange.Default)),
             ("myFn(a,)", new MethodCallExpression(new MethodCall(
                 new ValueAccessorExpression(new ValueAccessor(
                     ValueAccessType.Variable,
@@ -2594,12 +875,14 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                         new ValueAccessorExpression(new ValueAccessor(
                             ValueAccessType.Variable,
                             Token.Identifier("SomeFn", SourceSpan.Default))),
-                        [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)]), SourceRange.Default),
+                        [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)]),
+                    SourceRange.Default),
                 []
             ), SourceRange.Default)),
             ("new Thing {A = a,}", new ObjectInitializerExpression(new ObjectInitializer(
-                new TypeIdentifier(Token.Identifier("Thing", SourceSpan.Default), [], SourceRange.Default),
-                [new FieldInitializer(Token.Identifier("A", SourceSpan.Default), VariableAccessor("a"))]), SourceRange.Default)),
+                    new TypeIdentifier(Token.Identifier("Thing", SourceSpan.Default), [], SourceRange.Default),
+                    [new FieldInitializer(Token.Identifier("A", SourceSpan.Default), VariableAccessor("a"))]),
+                SourceRange.Default)),
             ("new Thing {A = a, B = b}", new ObjectInitializerExpression(new ObjectInitializer(
                 new TypeIdentifier(Token.Identifier("Thing", SourceSpan.Default), [], SourceRange.Default),
                 [
@@ -2623,7 +906,8 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     Token.Identifier("CallMethod", SourceSpan.Default)))),
             ("result::<string>::CallMethod", new StaticMemberAccessExpression(new StaticMemberAccess(
                 new TypeIdentifier(Token.Result(SourceSpan.Default),
-                    [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)], SourceRange.Default),
+                    [new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default)],
+                    SourceRange.Default),
                 Token.Identifier("CallMethod", SourceSpan.Default)))),
             // ____binding strength tests
             // __greater than
@@ -4300,441 +2584,5 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
                     Token.Bang(SourceSpan.Default)))
             )
         }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedExpression });
-    }
-
-    private static ValueAccessorExpression Literal(int value)
-    {
-        return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(value, SourceSpan.Default)));
-    }
-
-    private static ValueAccessorExpression Literal(string value)
-    {
-        return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral(value, SourceSpan.Default)));
-    }
-
-    private static BinaryOperatorExpression Multiply(IExpression? left, IExpression? right)
-    {
-        return new BinaryOperatorExpression(new BinaryOperator(
-            BinaryOperatorType.Multiply,
-            left,
-            right,
-            Token.Star(SourceSpan.Default)));
-    }
-
-    private static UnaryOperatorExpression FallOut(IExpression? value)
-    {
-        return new UnaryOperatorExpression(new UnaryOperator(UnaryOperatorType.FallOut, value,
-            Token.QuestionMark(SourceSpan.Default)));
-    }
-    
-    private static UnaryOperatorExpression Not(IExpression? value)
-    {
-        return new UnaryOperatorExpression(new UnaryOperator(UnaryOperatorType.Not, value,
-            Token.QuestionMark(SourceSpan.Default)));
-    }
-
-    private static BlockExpression Block(IReadOnlyList<IExpression>? expressions = null)
-    {
-        return new BlockExpression(new Block(expressions ?? [], []), SourceRange.Default);
-    }
-
-    private static VariableDeclarationExpression VariableDeclaration(
-        string name,
-        IExpression? value = null,
-        TypeIdentifier? type = null,
-        bool isMutable = false)
-    {
-        return new VariableDeclarationExpression(new VariableDeclaration(
-            Token.Identifier(name, SourceSpan.Default),
-            isMutable
-                ? new MutabilityModifier(Token.Mut(SourceSpan.Default))
-                : null,
-            type,
-            value), SourceRange.Default);
-    }
-
-    private static TypeIdentifier IntType()
-    {
-        return new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default);
-    }
-    
-    private static TypeIdentifier StringType()
-    {
-        return new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default);
-    }
-
-    public static ClassField ClassField(
-        string name,
-        TypeIdentifier type,
-        bool isMutable = false,
-        bool isStatic = false,
-        bool isPublic = false,
-        IExpression? value = null)
-    {
-        return new ClassField(
-            AccessModifier: isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
-            StaticModifier: isStatic ? new StaticModifier(Token.Static(SourceSpan.Default)) : null,
-            MutabilityModifier: isMutable ? new MutabilityModifier(Token.Mut(SourceSpan.Default)) : null,
-            Name: Token.Identifier(name, SourceSpan.Default),
-            Type: type,
-            InitializerValue: value);
-    }
-
-    private static ValueAccessorExpression VariableAccessor(string name)
-    {
-        return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-            Token.Identifier(name, SourceSpan.Default)));
-    }
-
-    private static IReadOnlyList<ParserError> RemoveSourceSpan(IReadOnlyList<ParserError> errors)
-    {
-        return [..errors.Select(RemoveSourceSpan)];
-    }
-
-    private static ParserError RemoveSourceSpan(ParserError error)
-    {
-        return error with { Range = SourceRange.Default };
-    }
-
-    private static LangFunction RemoveSourceSpan(LangFunction function)
-    {
-        return new LangFunction(
-            RemoveSourceSpan(function.AccessModifier),
-            RemoveSourceSpan(function.StaticModifier),
-            RemoveSourceSpan(function.Name),
-            [..function.TypeArguments.Select(RemoveSourceSpan)],
-            [..function.Parameters.Select(RemoveSourceSpan)],
-            RemoveSourceSpan(function.ReturnType),
-            RemoveSourceSpan(function.Block)
-        );
-    }
-
-    private static Block RemoveSourceSpan(Block block)
-    {
-        return new Block(
-            [..block.Expressions.Select(RemoveSourceSpan)!],
-            [..block.Functions.Select(RemoveSourceSpan)]);
-    }
-
-    private static AccessModifier? RemoveSourceSpan(AccessModifier? accessModifier)
-    {
-        return accessModifier is null
-            ? null
-            : new AccessModifier(RemoveSourceSpan(accessModifier.Token));
-    }
-
-    [return: NotNullIfNotNull(nameof(typeIdentifier))]
-    private static TypeIdentifier? RemoveSourceSpan(TypeIdentifier? typeIdentifier)
-    {
-        if (typeIdentifier is null)
-        {
-            return null;
-        }
-
-        return new TypeIdentifier(RemoveSourceSpan(typeIdentifier.Identifier),
-            [..typeIdentifier.TypeArguments.Select(RemoveSourceSpan)!], SourceRange.Default);
-    }
-
-    private static FunctionParameter RemoveSourceSpan(FunctionParameter parameter)
-    {
-        return new FunctionParameter(
-            RemoveSourceSpan(parameter.Type),
-            RemoveSourceSpan(parameter.MutabilityModifier),
-            RemoveSourceSpan(parameter.Identifier));
-    }
-
-    [return: NotNullIfNotNull(nameof(expression))]
-    private static IExpression? RemoveSourceSpan(IExpression? expression)
-    {
-        return expression switch
-        {
-            null => null,
-            ValueAccessorExpression valueAccessorExpression => new ValueAccessorExpression(
-                RemoveSourceSpan(valueAccessorExpression.ValueAccessor)),
-            UnaryOperatorExpression unaryOperatorExpression => new UnaryOperatorExpression(
-                RemoveSourceSpan(unaryOperatorExpression.UnaryOperator)),
-            BinaryOperatorExpression binaryOperatorExpression => new BinaryOperatorExpression(
-                RemoveSourceSpan(binaryOperatorExpression.BinaryOperator)),
-            VariableDeclarationExpression variableDeclarationExpression => new VariableDeclarationExpression(
-                RemoveSourceSpan(variableDeclarationExpression.VariableDeclaration), SourceRange.Default),
-            IfExpressionExpression ifExpressionExpression => new IfExpressionExpression(
-                RemoveSourceSpan(ifExpressionExpression.IfExpression), SourceRange.Default),
-            BlockExpression blockExpression => new BlockExpression(RemoveSourceSpan(blockExpression.Block), SourceRange.Default),
-            MethodCallExpression methodCallExpression => new MethodCallExpression(
-                RemoveSourceSpan(methodCallExpression.MethodCall), SourceRange.Default),
-            MethodReturnExpression methodReturnExpression => new MethodReturnExpression(
-                RemoveSourceSpan(methodReturnExpression.MethodReturn), SourceRange.Default),
-            ObjectInitializerExpression objectInitializerExpression => new ObjectInitializerExpression(
-                RemoveSourceSpan(objectInitializerExpression.ObjectInitializer), SourceRange.Default),
-            MemberAccessExpression memberAccessExpression => new MemberAccessExpression(
-                RemoveSourceSpan(memberAccessExpression.MemberAccess)),
-            StaticMemberAccessExpression staticMemberAccessExpression => new StaticMemberAccessExpression(
-                RemoveSourceSpan(staticMemberAccessExpression.StaticMemberAccess)),
-            GenericInstantiationExpression genericInstantiationExpression => new GenericInstantiationExpression(
-                RemoveSourceSpan(genericInstantiationExpression.GenericInstantiation), SourceRange.Default),
-            UnionStructVariantInitializerExpression unionStructVariantInitializerExpression => new
-                UnionStructVariantInitializerExpression(
-                    RemoveSourceSpan(unionStructVariantInitializerExpression.UnionInitializer), SourceRange.Default),
-            MatchesExpression matchesExpression => RemoveSourceSpan(matchesExpression),
-            TupleExpression tupleExpression => RemoveSourceSpan(tupleExpression),
-            MatchExpression matchExpression => RemoveSourceSpan(matchExpression),
-            _ => throw new NotImplementedException(expression.GetType().ToString())
-        };
-    }
-
-    private static MatchExpression RemoveSourceSpan(MatchExpression matchExpression)
-    {
-        return new MatchExpression(
-            RemoveSourceSpan(matchExpression.Value),
-            [..matchExpression.Arms.Select(RemoveSourceSpan)], SourceRange.Default);
-    }
-
-    private static MatchArm RemoveSourceSpan(MatchArm matchArm)
-    {
-        return new MatchArm(
-            RemoveSourceSpan(matchArm.Pattern),
-            RemoveSourceSpan(matchArm.Expression));
-    }
-
-    private static TupleExpression RemoveSourceSpan(TupleExpression tupleExpression)
-    {
-        return new TupleExpression([..tupleExpression.Values.Select(RemoveSourceSpan)!], SourceRange.Default);
-    }
-
-    private static MatchesExpression RemoveSourceSpan(
-        MatchesExpression matchesExpression)
-    {
-        return new MatchesExpression(
-            RemoveSourceSpan(matchesExpression.ValueExpression),
-            RemoveSourceSpan(matchesExpression.Pattern),
-            SourceRange.Default);
-    }
-
-    private static IPattern RemoveSourceSpan(IPattern pattern)
-    {
-        return pattern switch
-        {
-            DiscardPattern discardPattern => discardPattern,
-            VariableDeclarationPattern variablePattern => new VariableDeclarationPattern(
-                RemoveSourceSpan(variablePattern.VariableName), SourceRange.Default),
-            UnionVariantPattern unionVariantPattern => new UnionVariantPattern(
-                RemoveSourceSpan(unionVariantPattern.Type),
-                RemoveSourceSpan(unionVariantPattern.VariantName),
-                unionVariantPattern.VariableName is null ? null : RemoveSourceSpan(unionVariantPattern.VariableName)
-            , SourceRange.Default),
-            UnionTupleVariantPattern unionTupleVariantPattern => new UnionTupleVariantPattern(
-                RemoveSourceSpan(unionTupleVariantPattern.Type),
-                RemoveSourceSpan(unionTupleVariantPattern.VariantName),
-                [..unionTupleVariantPattern.TupleParamPatterns.Select(RemoveSourceSpan)],
-                unionTupleVariantPattern.VariableName is null
-                    ? null
-                    : RemoveSourceSpan(unionTupleVariantPattern.VariableName), SourceRange.Default),
-            ClassPattern classPattern => new ClassPattern(RemoveSourceSpan(classPattern.Type),
-                [
-                    ..classPattern.FieldPatterns.Select(x =>
-                        KeyValuePair.Create(RemoveSourceSpan(x.Key),
-                            x.Value is not null ? RemoveSourceSpan(x.Value) : null))
-                ],
-                classPattern.RemainingFieldsDiscarded,
-                classPattern.VariableName is null ? null : RemoveSourceSpan(classPattern.VariableName), SourceRange.Default),
-            UnionStructVariantPattern unionStructVariantPattern => new UnionStructVariantPattern(
-                RemoveSourceSpan(unionStructVariantPattern.Type),
-                RemoveSourceSpan(unionStructVariantPattern.VariantName),
-                [
-                    ..unionStructVariantPattern.FieldPatterns.Select(x =>
-                        KeyValuePair.Create(RemoveSourceSpan(x.Key),
-                            x.Value is not null ? RemoveSourceSpan(x.Value) : null))
-                ],
-                unionStructVariantPattern.RemainingFieldsDiscarded,
-                unionStructVariantPattern.VariableName is null
-                    ? null
-                    : RemoveSourceSpan(unionStructVariantPattern.VariableName), SourceRange.Default),
-            _ => throw new NotImplementedException($"{pattern}")
-        };
-    }
-
-
-    private static UnionStructVariantInitializer RemoveSourceSpan(
-        UnionStructVariantInitializer unionStructVariantInitializer)
-    {
-        return new UnionStructVariantInitializer(
-            RemoveSourceSpan(unionStructVariantInitializer.UnionType),
-            RemoveSourceSpan(unionStructVariantInitializer.VariantIdentifier),
-            [..unionStructVariantInitializer.FieldInitializers.Select(RemoveSourceSpan)]);
-    }
-
-    private static GenericInstantiation RemoveSourceSpan(GenericInstantiation genericInstantiation)
-    {
-        return new GenericInstantiation(
-            RemoveSourceSpan(genericInstantiation.Value),
-            [..genericInstantiation.GenericArguments.Select(RemoveSourceSpan)!]);
-    }
-
-    private static MemberAccess RemoveSourceSpan(MemberAccess memberAccess)
-    {
-        return new MemberAccess(RemoveSourceSpan(memberAccess.Owner),
-            RemoveSourceSpan(memberAccess.MemberName));
-    }
-
-    private static StaticMemberAccess RemoveSourceSpan(StaticMemberAccess staticMemberAccess)
-    {
-        return new StaticMemberAccess(RemoveSourceSpan(staticMemberAccess.Type),
-            RemoveSourceSpan(staticMemberAccess.MemberName));
-    }
-
-    private static ObjectInitializer RemoveSourceSpan(ObjectInitializer objectInitializer)
-    {
-        return new ObjectInitializer(
-            RemoveSourceSpan(objectInitializer.Type),
-            [..objectInitializer.FieldInitializers.Select(RemoveSourceSpan)]);
-    }
-
-    private static FieldInitializer RemoveSourceSpan(FieldInitializer fieldInitializer)
-    {
-        return new FieldInitializer(
-            RemoveSourceSpan(fieldInitializer.FieldName),
-            RemoveSourceSpan(fieldInitializer.Value));
-    }
-
-    private static MethodCall RemoveSourceSpan(MethodCall methodCall)
-    {
-        return new MethodCall(
-            RemoveSourceSpan(methodCall.Method),
-            [..methodCall.ParameterList.Select(RemoveSourceSpan)!]);
-    }
-
-    private static IfExpression RemoveSourceSpan(IfExpression ifExpression)
-    {
-        return new IfExpression(
-            RemoveSourceSpan(ifExpression.CheckExpression),
-            RemoveSourceSpan(ifExpression.Body),
-            [..ifExpression.ElseIfs.Select(RemoveSourceSpan)],
-            RemoveSourceSpan(ifExpression.ElseBody));
-    }
-
-    private static ElseIf RemoveSourceSpan(ElseIf elseIf)
-    {
-        return new ElseIf(RemoveSourceSpan(elseIf.CheckExpression), RemoveSourceSpan(elseIf.Body));
-    }
-
-    private static VariableDeclaration RemoveSourceSpan(VariableDeclaration variableDeclaration)
-    {
-        return new VariableDeclaration(
-            RemoveSourceSpan(variableDeclaration.VariableNameToken),
-            RemoveSourceSpan(variableDeclaration.MutabilityModifier),
-            RemoveSourceSpan(variableDeclaration.Type),
-            RemoveSourceSpan(variableDeclaration.Value));
-    }
-
-    private static MutabilityModifier? RemoveSourceSpan(MutabilityModifier? mutabilityModifier)
-    {
-        return mutabilityModifier is null
-            ? null
-            : new MutabilityModifier(RemoveSourceSpan(mutabilityModifier.Modifier));
-    }
-
-    private static BinaryOperator RemoveSourceSpan(BinaryOperator binaryOperator)
-    {
-        return binaryOperator with
-        {
-            Left = RemoveSourceSpan(binaryOperator.Left),
-            Right = RemoveSourceSpan(binaryOperator.Right),
-            OperatorToken = RemoveSourceSpan(binaryOperator.OperatorToken)
-        };
-    }
-
-    private static UnaryOperator RemoveSourceSpan(UnaryOperator unaryOperator)
-    {
-        return unaryOperator with
-        {
-            OperatorToken = RemoveSourceSpan(unaryOperator.OperatorToken),
-            Operand = RemoveSourceSpan(unaryOperator.Operand)
-        };
-    }
-
-    private static ValueAccessor RemoveSourceSpan(ValueAccessor valueAccessor)
-    {
-        return valueAccessor with { Token = RemoveSourceSpan(valueAccessor.Token) };
-    }
-
-    private static Token RemoveSourceSpan(Token token)
-    {
-        return token with { SourceSpan = SourceSpan.Default };
-    }
-
-    private static StringToken RemoveSourceSpan(StringToken token)
-    {
-        return token with { SourceSpan = SourceSpan.Default };
-    }
-
-    private static LangProgram RemoveSourceSpan(LangProgram program)
-    {
-        return new LangProgram(
-            [..program.Expressions.Select(RemoveSourceSpan)!],
-            [..program.Functions.Select(RemoveSourceSpan)],
-            [..program.Classes.Select(RemoveSourceSpan)],
-            [..program.Unions.Select(RemoveSourceSpan)]);
-    }
-
-    private static ProgramUnion RemoveSourceSpan(ProgramUnion union)
-    {
-        return new ProgramUnion(
-            RemoveSourceSpan(union.AccessModifier),
-            RemoveSourceSpan(union.Name),
-            [..union.GenericArguments.Select(RemoveSourceSpan)],
-            [..union.Functions.Select(RemoveSourceSpan)],
-            [..union.Variants.Select(RemoveSourceSpan)]
-        );
-    }
-
-    private static IProgramUnionVariant RemoveSourceSpan(IProgramUnionVariant variant)
-    {
-        return variant switch
-        {
-            UnitStructUnionVariant unitStructVariant => new UnitStructUnionVariant(
-                RemoveSourceSpan(unitStructVariant.Name)),
-            TupleUnionVariant tupleUnionVariant => new TupleUnionVariant(
-                RemoveSourceSpan(tupleUnionVariant.Name),
-                [..tupleUnionVariant.TupleMembers.Select(RemoveSourceSpan)!]),
-            StructUnionVariant structUnionVariant => new StructUnionVariant
-            {
-                Name = RemoveSourceSpan(structUnionVariant.Name),
-                Fields = [..structUnionVariant.Fields.Select(RemoveSourceSpan)]
-            },
-            _ => throw new UnreachableException()
-        };
-    }
-
-    private static ProgramClass RemoveSourceSpan(ProgramClass @class)
-    {
-        return new ProgramClass(
-            RemoveSourceSpan(@class.AccessModifier),
-            RemoveSourceSpan(@class.Name),
-            [..@class.TypeArguments.Select(RemoveSourceSpan)],
-            [..@class.Functions.Select(RemoveSourceSpan)],
-            [..@class.Fields.Select(RemoveSourceSpan)]);
-    }
-
-    private static ClassField RemoveSourceSpan(ClassField field)
-    {
-        return new ClassField(
-            RemoveSourceSpan(field.AccessModifier),
-            RemoveSourceSpan(field.StaticModifier),
-            RemoveSourceSpan(field.MutabilityModifier),
-            RemoveSourceSpan(field.Name),
-            RemoveSourceSpan(field.Type),
-            RemoveSourceSpan(field.InitializerValue));
-    }
-
-    private static StaticModifier? RemoveSourceSpan(StaticModifier? staticModifier)
-    {
-        return staticModifier is null
-            ? null
-            : new StaticModifier(RemoveSourceSpan(staticModifier.Token));
-    }
-
-    private static MethodReturn RemoveSourceSpan(MethodReturn methodReturn)
-    {
-        return new MethodReturn(RemoveSourceSpan(methodReturn.Expression));
     }
 }

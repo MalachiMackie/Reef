@@ -136,7 +136,7 @@ public class TokenizerTests
                 """
                 pub fn DoSomething(a: int): result<int, string> {
                     var b = 2;
-                
+
                     if (a == b) {
                         return ok(a);
                     }
@@ -445,7 +445,7 @@ public class TokenizerTests
                 """
                 pub fn DoSomething(a: int): result<int, string> {
                     var b = 2;
-                
+
                     if (a == b) {
                         return ok(a);
                     }

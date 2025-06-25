@@ -17,17 +17,17 @@ public class ParserBenchmarks
                                             else if (a == b) {
                                                 return ok(b);
                                             }
-                                        
+
                                             b = 3;
-                                        
+
                                             var thing = new Class2 {
                                                 A = 3
                                             };
-                                        
+
                                             MyClass::StaticMethod();
-                                        
+
                                             PrivateFn::<string>();
-                                        
+
                                             return error("something wrong");
                                         }
 
@@ -49,9 +49,9 @@ public class ParserBenchmarks
                                         pub class MyClass {
                                             pub fn PublicMethod() {
                                             }
-                                        
+
                                             pub static fn StaticMethod() {
-                                        
+
                                             }
                                             
                                             field FieldA: string;
