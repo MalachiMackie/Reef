@@ -73,12 +73,7 @@ public sealed class Parser : IDisposable
             return new ParseResult(new LangProgram([], [], [], []), []);
         }
 
-        var scope = GetScope(null, false);
-
-        if (scope.GetScopeTypes().Contains(Scope.ScopeType.Field))
-        {
-            throw new InvalidOperationException("A field is not a valid statement");
-        }
+        var scope = GetScope(null, [Scope.ScopeType.Class, Scope.ScopeType.Expression, Scope.ScopeType.Function, Scope.ScopeType.Union]);
 
         return new ParseResult(
             new LangProgram(scope.Expressions, scope.Functions, scope.Classes, scope.Unions),
@@ -94,8 +89,10 @@ public sealed class Parser : IDisposable
     /// <exception cref="InvalidOperationException"></exception>
     private Scope GetScope(
         TokenType? closingToken,
-        bool isUnion)
+        IReadOnlyList<Scope.ScopeType> allowedScopeTypes)
     {
+        var allowVariant = allowedScopeTypes.Contains(Scope.ScopeType.Variant);
+        
         var start = Current.SourceSpan;
         SourceSpan? end = null;
         // if there's a closing token, then we're expecting 
@@ -158,9 +155,9 @@ public sealed class Parser : IDisposable
                 _errors.Add(ParserError.Scope_ExpectedComma(Current));
             }
 
-            if (IsMember(Current.Type, isUnion))
+            if (IsMember(Current.Type, allowVariant))
             {
-                var (function, @class, field, union, variant) = GetMember(isUnion);
+                var (function, @class, field, union, variant) = GetMember(allowedScopeTypes);
                 if (function is not null)
                 {
                     functions.Add(function);
@@ -251,45 +248,68 @@ public sealed class Parser : IDisposable
         };
     }
 
-    private static bool IsMember(TokenType tokenType, bool isUnion)
+    private static bool IsMember(TokenType tokenType, bool allowVariant)
     {
         return tokenType is TokenType.Pub or TokenType.Mut or TokenType.Static or TokenType.Fn or TokenType.Class
                    or TokenType.Field or TokenType.Union
-               || (isUnion && tokenType == TokenType.Identifier);
+               || (allowVariant && tokenType == TokenType.Identifier);
     }
 
     private (LangFunction? Function, ProgramClass? Class, ClassField? Field, ProgramUnion? Union, IProgramUnionVariant?
         Variant) GetMember(
-            bool isUnion)
+            IReadOnlyList<Scope.ScopeType> allowedScopeTypes)
     {
         AccessModifier? accessModifier = null;
         MutabilityModifier? mutabilityModifier = null;
         StaticModifier? staticModifier = null;
 
-        if (Current.Type == TokenType.Pub)
+        while (Current.Type is TokenType.Pub or TokenType.Static or TokenType.Mut)
         {
-            accessModifier = new AccessModifier(Current);
-            if (!MoveNext())
+            // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
+            switch (Current.Type)
             {
-                throw new InvalidOperationException("Expected field, mut, static, fn or class");
+                case TokenType.Pub:
+                {
+                    if (accessModifier is not null)
+                    {
+                        _errors.Add(ParserError.Scope_DuplicateModifier(Current));
+                    }
+                    else
+                    {
+                        accessModifier = new AccessModifier(Current);
+                    }
+                    break;
+                }
+                case TokenType.Static:
+                {
+                    if (staticModifier is not null)
+                    {
+                        _errors.Add(ParserError.Scope_DuplicateModifier(Current));
+                    }
+                    else
+                    {
+                        staticModifier = new StaticModifier(Current);
+                    }
+                    break;
+                }
+                case TokenType.Mut:
+                {
+                    if (mutabilityModifier is not null)
+                    {
+                        _errors.Add(ParserError.Scope_DuplicateModifier(Current));
+                    }
+                    else
+                    {
+                        mutabilityModifier = new MutabilityModifier(Current);
+                    }
+                    break;
+                }
             }
-        }
-
-        if (Current.Type == TokenType.Static)
-        {
-            staticModifier = new StaticModifier(Current);
+            
             if (!MoveNext())
             {
-                throw new InvalidOperationException("Expected field, fn or class");
-            }
-        }
-
-        if (Current.Type == TokenType.Mut)
-        {
-            mutabilityModifier = new MutabilityModifier(Current);
-            if (!MoveNext())
-            {
-                throw new InvalidOperationException("Expected field, fn, static or class");
+                _errors.Add(ParserError.Scope_MissingMember(Current, allowedScopeTypes));
+                return (null, null, null, null, null);
             }
         }
 
@@ -297,7 +317,7 @@ public sealed class Parser : IDisposable
         {
             if (mutabilityModifier is not null)
             {
-                throw new InvalidOperationException("Function cannot have mutability modifier");
+                _errors.Add(ParserError.Function_UnexpectedModifier(mutabilityModifier.Modifier));
             }
 
             var function = GetFunctionDeclaration(accessModifier, staticModifier);
@@ -308,12 +328,12 @@ public sealed class Parser : IDisposable
         {
             if (mutabilityModifier is not null)
             {
-                throw new InvalidOperationException("Class cannot have a mutability modifier");
+                _errors.Add(ParserError.Class_UnexpectedModifier(mutabilityModifier.Modifier));
             }
 
             if (staticModifier is not null)
             {
-                throw new InvalidOperationException("Class cannot be static");
+                _errors.Add(ParserError.Class_UnexpectedModifier(staticModifier.Token));
             }
 
             var @class = GetClassDefinition(accessModifier);
@@ -332,25 +352,26 @@ public sealed class Parser : IDisposable
         {
             if (mutabilityModifier is not null)
             {
-                throw new InvalidOperationException("Union cannot have a mutability modifier");
+                _errors.Add(ParserError.Union_UnexpectedModifier(mutabilityModifier.Modifier));
             }
 
             if (staticModifier is not null)
             {
-                throw new InvalidOperationException("Union cannot be static");
+                _errors.Add(ParserError.Union_UnexpectedModifier(staticModifier.Token));
             }
 
             var union = GetUnionDefinition(accessModifier);
 
             return (null, null, null, union, null);
         }
-
-        if (Current is StringToken { Type: TokenType.Identifier } name && isUnion)
+        
+        if (Current is StringToken { Type: TokenType.Identifier } name && allowedScopeTypes.Contains(Scope.ScopeType.Variant))
         {
             return (null, null, null, null, GetUnionVariant(name));
         }
-
-        throw new InvalidOperationException("Expected class, fn, union, field, variant");
+        
+        _errors.Add(ParserError.Scope_MissingMember(Current, allowedScopeTypes));
+        return (null, null, null, null, null);
     }
 
     private IProgramUnionVariant GetUnionVariant(StringToken variantName)
@@ -377,12 +398,7 @@ public sealed class Parser : IDisposable
 
         if (Current.Type == TokenType.LeftBrace)
         {
-            var scope = GetScope(TokenType.RightBrace, false);
-
-            if (scope.GetScopeTypes().Any(x => x is not Scope.ScopeType.Field))
-            {
-                throw new InvalidOperationException("Struct union variants can only contain fields");
-            }
+            var scope = GetScope(TokenType.RightBrace, [Scope.ScopeType.Field]);
 
             return new StructUnionVariant
             {
@@ -481,11 +497,7 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Expected {");
         }
 
-        var scope = GetScope(TokenType.RightBrace, true);
-        if (scope.GetScopeTypes().Any(x => x is not (Scope.ScopeType.Function or Scope.ScopeType.Variant)))
-        {
-            throw new InvalidOperationException("Unions can only contain functions and variants");
-        }
+        var scope = GetScope(TokenType.RightBrace, [Scope.ScopeType.Function, Scope.ScopeType.Variant]);
 
         return new ProgramUnion(
             accessModifier,
@@ -526,11 +538,7 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Expected {");
         }
 
-        var scope = GetScope(TokenType.RightBrace, false);
-        if (scope.GetScopeTypes().Any(x => x is not (Scope.ScopeType.Function or Scope.ScopeType.Field)))
-        {
-            throw new InvalidOperationException("Class can only contain functions and fields");
-        }
+        var scope = GetScope(TokenType.RightBrace, [Scope.ScopeType.Function, Scope.ScopeType.Field]);
 
         return new ProgramClass(accessModifier, name, typeArguments, scope.Functions, scope.Fields);
     }
@@ -630,12 +638,7 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Expected {");
         }
 
-        var scope = GetScope(TokenType.RightBrace, false);
-
-        if (scope.GetScopeTypes().Any(x => x is not (Scope.ScopeType.Expression or Scope.ScopeType.Function)))
-        {
-            throw new InvalidOperationException("Functions can only contain expressions and local function");
-        }
+        var scope = GetScope(TokenType.RightBrace, [Scope.ScopeType.Expression, Scope.ScopeType.Function]);
 
         return new LangFunction(accessModifier, staticModifier, nameToken, typeArguments, parameterList, returnType,
             new Block(scope.Expressions, scope.Functions));
@@ -1326,12 +1329,7 @@ public sealed class Parser : IDisposable
 
     private BlockExpression GetBlockExpression()
     {
-        var scope = GetScope(TokenType.RightBrace, false);
-
-        if (scope.GetScopeTypes().Any(x => x is not (Scope.ScopeType.Expression or Scope.ScopeType.Function)))
-        {
-            throw new InvalidOperationException("Block expressions can only contain expressions and functions");
-        }
+        var scope = GetScope(TokenType.RightBrace, [Scope.ScopeType.Expression, Scope.ScopeType.Function]);
 
         return new BlockExpression(new Block(scope.Expressions, scope.Functions), scope.SourceRange);
     }
@@ -1563,7 +1561,7 @@ public sealed class Parser : IDisposable
 
     public record ParseResult(LangProgram ParsedProgram, IReadOnlyList<ParserError> Errors);
 
-    private class Scope
+    public class Scope
     {
         public enum ScopeType
         {
@@ -1582,41 +1580,5 @@ public sealed class Parser : IDisposable
         public required IReadOnlyList<ProgramUnion> Unions { get; init; }
         public required IReadOnlyList<IProgramUnionVariant> Variants { get; init; }
         public required SourceRange SourceRange { get; init; }
-
-        public List<ScopeType> GetScopeTypes()
-        {
-            List<ScopeType> types = [];
-            if (Expressions.Count > 0)
-            {
-                types.Add(ScopeType.Expression);
-            }
-
-            if (Functions.Count > 0)
-            {
-                types.Add(ScopeType.Function);
-            }
-
-            if (Classes.Count > 0)
-            {
-                types.Add(ScopeType.Class);
-            }
-
-            if (Fields.Count > 0)
-            {
-                types.Add(ScopeType.Field);
-            }
-
-            if (Unions.Count > 0)
-            {
-                types.Add(ScopeType.Union);
-            }
-
-            if (Variants.Count > 0)
-            {
-                types.Add(ScopeType.Variant);
-            }
-
-            return types;
-        }
     }
 }

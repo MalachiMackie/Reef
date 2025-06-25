@@ -235,7 +235,81 @@ public static class ParseErrorTestCases
                 [
                     ParserError.Scope_MissingClosingTag(Token.StringKeyword(SourceSpan.Default))
                 ]
-            )
+            ),
+            (
+                "var a = 2;pub",
+                new LangProgram([
+                    VariableDeclaration("a", Literal(2))
+                ], [], [], []),
+                [
+                    ParserError.Scope_MissingMember(
+                        Token.StringKeyword(SourceSpan.Default),
+                        [Parser.Scope.ScopeType.Function, Parser.Scope.ScopeType.Class, Parser.Scope.ScopeType.Expression, Parser.Scope.ScopeType.Union])
+                ]
+            ),
+            (
+                "mut class MyClass {}",
+                new LangProgram([ ], [], [Class("MyClass")], []),
+                [
+                    ParserError.Class_UnexpectedModifier(Token.Mut(SourceSpan.Default))
+                ]
+            ),
+            (
+                "mut static class MyClass {}",
+                new LangProgram([], [], [Class("MyClass")], []),
+                [
+                    ParserError.Class_UnexpectedModifier(Token.Static(SourceSpan.Default)),
+                    ParserError.Class_UnexpectedModifier(Token.Mut(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "mut pub static class MyClass {}",
+                new LangProgram([], [], [Class("MyClass", isPublic: true)], []),
+                [
+                    ParserError.Class_UnexpectedModifier(Token.Static(SourceSpan.Default)),
+                    ParserError.Class_UnexpectedModifier(Token.Mut(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "mut union MyUnion {}",
+                new LangProgram([ ], [], [], [Union("MyUnion")]),
+                [
+                    ParserError.Union_UnexpectedModifier(Token.Mut(SourceSpan.Default))
+                ]
+            ),
+            (
+                "mut static union MyUnion {}",
+                new LangProgram([], [], [], [Union("MyUnion")]),
+                [
+                    ParserError.Union_UnexpectedModifier(Token.Static(SourceSpan.Default)),
+                    ParserError.Union_UnexpectedModifier(Token.Mut(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "mut pub static union MyUnion {}",
+                new LangProgram([], [], [], [Union("MyUnion", isPublic: true)]),
+                [
+                    ParserError.Union_UnexpectedModifier(Token.Static(SourceSpan.Default)),
+                    ParserError.Union_UnexpectedModifier(Token.Mut(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "mut static fn MyFn() {}",
+                new LangProgram([], [Function("MyFn", isStatic: true)], [], []),
+                [
+                    ParserError.Function_UnexpectedModifier(Token.Mut(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "mut mut static static pub pub fn MyFn() {}",
+                new LangProgram([], [Function("MyFn", isStatic: true, isPublic: true)], [], []),
+                [
+                    ParserError.Function_UnexpectedModifier(Token.Mut(SourceSpan.Default)),
+                    ParserError.Scope_DuplicateModifier(Token.Mut(SourceSpan.Default)),
+                    ParserError.Scope_DuplicateModifier(Token.Static(SourceSpan.Default)),
+                    ParserError.Scope_DuplicateModifier(Token.Pub(SourceSpan.Default)),
+                ]
+            ),
         ];
 
         var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();

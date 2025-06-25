@@ -68,6 +68,16 @@ public record ParserError
         return new ParserError("Scope missing closing tag", token.SourceSpan, ParserErrorType.Scope_MissingClosingTag);
     }
 
+    public static ParserError Scope_UnexpectedModifier(Token token)
+    {
+        return new ParserError("Unexpected modifier", token.SourceSpan, ParserErrorType.Scope_UnexpectedModifier);
+    }
+
+    public static ParserError Scope_DuplicateModifier(Token token)
+    {
+        return new ParserError($"Duplicate modifier {token}", token.SourceSpan, ParserErrorType.Scope_DuplicateModifier);
+    }
+
     public static ParserError Scope_UnexpectedComma(Token token)
     {
         return new ParserError("Unexpected comma in scope", token.SourceSpan, ParserErrorType.Scope_UnexpectedComma);
@@ -82,6 +92,27 @@ public record ParserError
     {
         return new ParserError("Tail return expression must be at the end of a block", expression.SourceRange,
             ParserErrorType.Scope_EarlyTailReturnExpression);
+    }
+    
+    public static ParserError Scope_MissingMember(Token current, IReadOnlyList<Parser.Scope.ScopeType> allowedScopeTypes)
+    {
+        return new ParserError($"Expected member: {string.Join(",", allowedScopeTypes.Order())}", current.SourceSpan,
+            ParserErrorType.Scope_MissingMember);
+    }
+
+    public static ParserError Function_UnexpectedModifier(Token current)
+    {
+        return new ParserError($"{current} modifier is invalid for a function", current.SourceSpan, ParserErrorType.Function_UnexpectedModifier);
+    }
+    
+    public static ParserError Class_UnexpectedModifier(Token current)
+    {
+        return new ParserError($"{current} modifier is invalid for a class", current.SourceSpan, ParserErrorType.Class_UnexpectedModifier);
+    }
+    
+    public static ParserError Union_UnexpectedModifier(Token current)
+    {
+        return new ParserError($"{current} modifier is invalid for a union", current.SourceSpan, ParserErrorType.Union_UnexpectedModifier);
     }
 }
 
@@ -101,7 +132,17 @@ public enum ParserErrorType
     Scope_MissingClosingTag,
     Scope_UnexpectedComma,
     Scope_ExpectedComma,
-    Scope_EarlyTailReturnExpression
+    Scope_EarlyTailReturnExpression,
+    Scope_UnexpectedModifier,
+    Scope_MissingMember,
+    
+    Scope_DuplicateModifier,
+    
+    Function_UnexpectedModifier,
+    
+    Class_UnexpectedModifier,
+    
+    Union_UnexpectedModifier,
 
     // ReSharper restore InconsistentNaming
 }

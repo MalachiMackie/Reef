@@ -87,4 +87,35 @@ public static class ParserHelpers
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
             Token.Identifier(name, SourceSpan.Default)));
     }
+
+    public static ProgramClass Class(string name, bool isPublic = false, IReadOnlyList<ClassField>? fields = null)
+    {
+        return new ProgramClass(
+            isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
+            Token.Identifier(name, SourceSpan.Default),
+            [],
+            [],
+            fields ?? []);
+    }
+    
+    public static ProgramUnion Union(string name, bool isPublic = false, IReadOnlyList<IProgramUnionVariant>? variants = null)
+    {
+        return new ProgramUnion(
+            isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
+            Token.Identifier(name, SourceSpan.Default),
+            [],
+            [],
+            variants ?? []);
+    }
+
+    public static LangFunction Function(string name, bool isPublic = false, bool isStatic = false)
+    {
+        return new LangFunction(isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
+            isStatic ? new StaticModifier(Token.Static(SourceSpan.Default)) : null,
+            Token.Identifier(name, SourceSpan.Default),
+            [],
+            [],
+            null,
+            new Block([], []));
+    }
 }

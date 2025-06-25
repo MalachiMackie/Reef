@@ -56,29 +56,12 @@ public class Tests(ITestOutputHelper testOutputHelper)
         }
     }
 
-    [Theory]
-    [MemberData(nameof(SingleTestCase))]
-    public void SingleTest(
-        [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
-        string source,
-        IEnumerable<Token> tokens,
-        IExpression expectedProgram)
+    [Fact]
+    public void SingleTest()
     {
-        var result = Parser.PopExpression(tokens);
+        const string source = "mut pub static class MyClass {}";
+        var result = Parser.Parse(Tokenizer.Tokenize(source));
         result.Should().NotBeNull();
-
-        // clear out the source spans, we don't actually care about them
-        var program = RemoveSourceSpan(result);
-
-        try
-        {
-            program.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion());
-        }
-        catch
-        {
-            testOutputHelper.WriteLine("Expected {0}, found {1}", expectedProgram, program);
-            throw;
-        }
     }
 
     [Theory]
@@ -121,21 +104,5 @@ public class Tests(ITestOutputHelper testOutputHelper)
 
         program.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion());
         errors.Should().BeEquivalentTo(expectedErrors);
-    }
-
-    public static IEnumerable<object[]> SingleTestCase()
-    {
-        return new (string Source, IExpression ExpectedProgram)[]
-        {
-            (
-                """
-                match (a) {
-                    _ => b,
-                }
-                """,
-                new MatchExpression(VariableAccessor("a"),
-                    [new MatchArm(new DiscardPattern(SourceRange.Default), VariableAccessor("b"))], SourceRange.Default)
-            )
-        }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedProgram });
     }
 }
