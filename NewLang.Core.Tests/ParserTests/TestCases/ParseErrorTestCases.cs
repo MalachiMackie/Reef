@@ -455,6 +455,31 @@ public static class ParseErrorTestCases
                     ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier),
                 ]
             ),
+            (
+                ".",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedExpression(Token.Dot(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "a.",
+                new LangProgram([
+                    MemberAccess(VariableAccessor("a"), null)
+                ], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier),
+                ]
+            ),
+            (
+                "a.;",
+                new LangProgram([
+                    MemberAccess(VariableAccessor("a"), null)
+                ], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier),
+                ]
+            ),
         ];
 
         var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();

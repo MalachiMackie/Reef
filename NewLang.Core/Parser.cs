@@ -850,8 +850,7 @@ public sealed class Parser : IDisposable
             TokenType.Return => GetMethodReturn(),
             TokenType.New => GetInitializer(),
             TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
-            TokenType.Dot => GetMemberAccess(previousExpression ??
-                                             throw new InvalidOperationException($"Unexpected token {Current}")),
+            TokenType.Dot => GetMemberAccess(previousExpression),
             TokenType.DoubleColon => GetStaticMemberAccess(previousExpression ??
                                                            throw new InvalidOperationException(
                                                                $"Unexpected token {Current}")),
@@ -1337,13 +1336,17 @@ public sealed class Parser : IDisposable
         return new StaticMemberAccessExpression(new StaticMemberAccess(type, memberName));
     }
 
-    private MemberAccessExpression GetMemberAccess(IExpression previousExpression)
+    private MemberAccessExpression? GetMemberAccess(IExpression? previousExpression)
     {
-        if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } memberName)
+        if (previousExpression is null)
         {
-            throw new InvalidOperationException("Expected member name");
+            _errors.Add(ParserError.ExpectedExpression(Current));
+            MoveNext();
+            return null;
         }
 
+        ExpectNextIdentifier(out var memberName);
+        
         MoveNext();
 
         return new MemberAccessExpression(new MemberAccess(previousExpression, memberName));

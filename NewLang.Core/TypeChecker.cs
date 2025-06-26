@@ -1102,6 +1102,11 @@ public class TypeChecker
             throw new InvalidOperationException("Can only access members on instantiated types");
         }
 
+        if (memberAccess.MemberName is null)
+        {
+            return new UnknownType();
+        }
+
         if (classType.TryInstantiateFunction(memberAccess.MemberName.StringValue, null, out var function))
         {
             return function;
@@ -1319,6 +1324,11 @@ public class TypeChecker
         {
             var owner = memberAccess.MemberAccess.Owner;
 
+            if (memberAccess.MemberAccess.MemberName is null)
+            {
+                return false;
+            }
+            
             var isOwnerAssignable = IsExpressionAssignable(owner, genericPlaceholders);
 
             // todo: this has already been type checked, we just need to reference the type

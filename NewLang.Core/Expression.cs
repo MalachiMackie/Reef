@@ -29,7 +29,7 @@ public record MemberAccessExpression(MemberAccess MemberAccess) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.MemberAccess;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
-    public SourceRange SourceRange => MemberAccess.Owner.SourceRange with { End = MemberAccess.MemberName.SourceSpan };
+    public SourceRange SourceRange => MemberAccess.Owner.SourceRange with { End = MemberAccess.MemberName?.SourceSpan ?? MemberAccess.Owner.SourceRange.End };
 
     public override string ToString()
     {
@@ -53,7 +53,7 @@ public record StaticMemberAccessExpression(StaticMemberAccess StaticMemberAccess
     }
 }
 
-public record MemberAccess(IExpression Owner, StringToken MemberName)
+public record MemberAccess(IExpression Owner, StringToken? MemberName)
 {
     public override string ToString()
     {

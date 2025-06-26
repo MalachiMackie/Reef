@@ -118,4 +118,9 @@ public static class ParserHelpers
             null,
             new Block([], []));
     }
+
+    public static MemberAccessExpression MemberAccess(IExpression owner, string? memberName)
+    {
+        return new MemberAccessExpression(new MemberAccess(owner, memberName is null ? null : Token.Identifier(memberName, SourceSpan.Default)));
+    }
 }

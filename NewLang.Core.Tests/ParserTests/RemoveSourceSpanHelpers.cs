@@ -21,7 +21,7 @@ public static class RemoveSourceSpanHelpers
             RemoveSourceSpan(function.AccessModifier),
             RemoveSourceSpan(function.StaticModifier),
             RemoveSourceSpan(function.Name),
-            [..function.TypeArguments.Select(RemoveSourceSpan)],
+            [..function.TypeArguments.Select(RemoveSourceSpan)!],
             [..function.Parameters.Select(RemoveSourceSpan)],
             RemoveSourceSpan(function.ReturnType),
             RemoveSourceSpan(function.Block)
@@ -283,9 +283,10 @@ public static class RemoveSourceSpanHelpers
         return token with { SourceSpan = SourceSpan.Default };
     }
 
-    private static StringToken RemoveSourceSpan(StringToken token)
+    [return: NotNullIfNotNull(nameof(token))]
+    private static StringToken? RemoveSourceSpan(StringToken? token)
     {
-        return token with { SourceSpan = SourceSpan.Default };
+        return token is null ? null : token with { SourceSpan = SourceSpan.Default };
     }
 
     public static LangProgram RemoveSourceSpan(LangProgram program)
@@ -302,7 +303,7 @@ public static class RemoveSourceSpanHelpers
         return new ProgramUnion(
             RemoveSourceSpan(union.AccessModifier),
             RemoveSourceSpan(union.Name),
-            [..union.GenericArguments.Select(RemoveSourceSpan)],
+            [..union.GenericArguments.Select(RemoveSourceSpan)!],
             [..union.Functions.Select(RemoveSourceSpan)],
             [..union.Variants.Select(RemoveSourceSpan)]
         );
@@ -331,7 +332,7 @@ public static class RemoveSourceSpanHelpers
         return new ProgramClass(
             RemoveSourceSpan(@class.AccessModifier),
             RemoveSourceSpan(@class.Name),
-            [..@class.TypeArguments.Select(RemoveSourceSpan)],
+            [..@class.TypeArguments.Select(RemoveSourceSpan)!],
             [..@class.Functions.Select(RemoveSourceSpan)],
             [..@class.Fields.Select(RemoveSourceSpan)]);
     }
