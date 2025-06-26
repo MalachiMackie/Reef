@@ -528,13 +528,6 @@ public sealed class Parser : IDisposable
             return false;
         }
         
-        // if (Current.Type != TokenType.Identifier)
-        // {
-        //     _errors.Add(ParserError.ExpectedType(Current));
-        //     typeIdentifier = null;
-        //     return false;
-        // }
-        
         typeIdentifier = GetTypeIdentifier();
 
         return typeIdentifier is not null;
@@ -548,13 +541,6 @@ public sealed class Parser : IDisposable
             typeIdentifier = null;
             return false;
         }
-
-        // if (Current.Type != TokenType.Identifier)
-        // {
-        //     _errors.Add(ParserError.ExpectedType(Current));
-        //     typeIdentifier = null;
-        //     return false;
-        // }
 
         typeIdentifier = GetTypeIdentifier();
 
@@ -807,12 +793,6 @@ public sealed class Parser : IDisposable
         return new LangFunction(accessModifier, staticModifier, nameToken, typeArguments, parameterList, returnType,
             new Block(scope.Expressions, scope.Functions));
     }
-
-    // private static bool IsTypeTokenType(in TokenType tokenType)
-    // {
-    //     return tokenType is TokenType.IntKeyword or TokenType.StringKeyword or TokenType.Result or TokenType.Identifier
-    //         or TokenType.Bool;
-    // }
 
     private TypeIdentifier? GetTypeIdentifier()
     {
