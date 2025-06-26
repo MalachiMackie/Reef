@@ -1075,8 +1075,8 @@ public sealed class Parser : IDisposable
                     {
                         var underscore = Current;
                         MoveNext();
-                        // hack to allow discard without field name
-                        return new KeyValuePair<StringToken, IPattern?>(Token.Identifier("", SourceSpan.Default),
+                        return new KeyValuePair<StringToken?, IPattern?>(
+                            null,
                             new DiscardPattern(new SourceRange(underscore.SourceSpan, underscore.SourceSpan)));
                     }
 
@@ -1102,25 +1102,27 @@ public sealed class Parser : IDisposable
                         pattern = GetPattern();
                     }
 
-                    return KeyValuePair.Create(fieldName, pattern);
+                    return KeyValuePair.Create<StringToken?, IPattern?>(fieldName, pattern);
                 });
 
-            var discards = fieldPatterns.Where(x => x.Key.StringValue.Length == 0 && x.Value is DiscardPattern)
+            var discards = fieldPatterns.Where(x => x.Key is null && x.Value is DiscardPattern)
                 .ToArray();
 
             switch (discards.Length)
             {
                 case > 1:
                     throw new InvalidOperationException("Pattern can only have one field discard");
-                case 1 when fieldPatterns[^1] is not { Key.StringValue.Length: 0, Value: DiscardPattern }:
+                case 1 when fieldPatterns[^1] is not { Key: null, Value: DiscardPattern }:
                     throw new InvalidOperationException("field discard must be at the end of the pattern");
                 default:
-                    fieldPatterns = fieldPatterns.Where(x => x.Key.StringValue.Length > 0).ToList();
+                    var newFieldPatterns = fieldPatterns.Where(x => x.Key is not null)
+                        .Select(x => KeyValuePair.Create(x.Key!, x.Value))
+                        .ToList();
 
                     return variantName is not null
-                        ? new UnionStructVariantPattern(type, variantName, fieldPatterns, discards.Length == 1, null,
+                        ? new UnionStructVariantPattern(type, variantName, newFieldPatterns, discards.Length == 1, null,
                             new SourceRange(start, fieldsLastToken?.SourceSpan ?? leftBrace.SourceSpan))
-                        : new ClassPattern(type, fieldPatterns, discards.Length == 1, null,
+                        : new ClassPattern(type, newFieldPatterns, discards.Length == 1, null,
                             new SourceRange(start, fieldsLastToken?.SourceSpan ?? leftBrace.SourceSpan));
             }
         }
