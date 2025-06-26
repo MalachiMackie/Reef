@@ -50,7 +50,7 @@ public record ClassField(
     StaticModifier? StaticModifier,
     MutabilityModifier? MutabilityModifier,
     StringToken Name,
-    TypeIdentifier Type,
+    TypeIdentifier? Type,
     IExpression? InitializerValue)
 {
     public override string ToString()

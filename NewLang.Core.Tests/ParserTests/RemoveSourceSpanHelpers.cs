@@ -12,7 +12,7 @@ public static class RemoveSourceSpanHelpers
 
     private static ParserError RemoveSourceSpan(ParserError error)
     {
-        return error with { Range = SourceRange.Default };
+        return error with { ReceivedToken = error.ReceivedToken is null ? null : RemoveSourceSpan(error.ReceivedToken) };
     }
 
     private static LangFunction RemoveSourceSpan(LangFunction function)

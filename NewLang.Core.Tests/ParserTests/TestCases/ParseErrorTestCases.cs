@@ -17,47 +17,47 @@ public static class ParseErrorTestCases
             (
                 "var ",
                 new LangProgram([], [], [], []),
-                [ParserError.VariableDeclaration_MissingIdentifier(Token.Var(SourceSpan.Default))]
+                [ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.Mut)]
             ),
             (
                 "var ;",
                 new LangProgram([], [], [], []),
-                [ParserError.VariableDeclaration_InvalidIdentifier(Token.Semicolon(SourceSpan.Default))]
+                [ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)]
             ),
             (
                 "var a = ",
                 new LangProgram([
                     VariableDeclaration("a")
                 ], [], [], []),
-                [ParserError.VariableDeclaration_MissingValue(Token.Equals(SourceSpan.Default))]
+                [ParserError.ExpectedExpression(null)]
             ),
             (
                 "var a = ;",
                 new LangProgram([
                     VariableDeclaration("a")
                 ], [], [], []),
-                [ParserError.VariableDeclaration_MissingValue(Token.Semicolon(SourceSpan.Default))]
+                [ParserError.ExpectedExpression(Token.Semicolon(SourceSpan.Default))]
             ),
             (
                 "var a: = 2;",
                 new LangProgram([
                     VariableDeclaration("a", Literal(2))
                 ], [], [], []),
-                [ParserError.VariableDeclaration_MissingType(Token.Equals(SourceSpan.Default))]
+                [ParserError.ExpectedType(Token.Equals(SourceSpan.Default))]
             ),
             (
                 "var a: int = ;",
                 new LangProgram([
                     VariableDeclaration("a", type: IntType())
                 ], [], [], []),
-                [ParserError.VariableDeclaration_MissingValue(Token.Semicolon(SourceSpan.Default))]
+                [ParserError.ExpectedExpression(Token.Semicolon(SourceSpan.Default))]
             ),
             (
                 "var mut a: int = ;",
                 new LangProgram([
                     VariableDeclaration("a", type: IntType(), isMutable: true)
                 ], [], [], []),
-                [ParserError.VariableDeclaration_MissingValue(Token.Semicolon(SourceSpan.Default))]
+                [ParserError.ExpectedExpression(Token.Semicolon(SourceSpan.Default))]
             ),
             (
                 "var a = ; var b = 2",
@@ -65,16 +65,13 @@ public static class ParseErrorTestCases
                     VariableDeclaration("a"),
                     VariableDeclaration("b", Literal(2))
                 ], [], [], []),
-                [ParserError.VariableDeclaration_MissingValue(Token.Semicolon(SourceSpan.Default))]
+                [ParserError.ExpectedExpression(Token.Semicolon(SourceSpan.Default))]
             ),
             (
                 "*",
-                new LangProgram([
-                    Multiply(null, null)
-                ], [], [], []),
+                new LangProgram([], [], [], []),
                 [
-                    ParserError.BinaryOperator_MissingLeftValue(Token.Star(SourceSpan.Default)),
-                    ParserError.BinaryOperator_MissingRightValue(Token.Star(SourceSpan.Default))
+                    ParserError.ExpectedExpression(Token.Star(SourceSpan.Default)),
                 ]
             ),
             (
@@ -83,16 +80,25 @@ public static class ParseErrorTestCases
                     Multiply(VariableAccessor("a"), null)
                 ], [], [], []),
                 [
-                    ParserError.BinaryOperator_MissingRightValue(Token.Star(SourceSpan.Default))
+                    ParserError.ExpectedExpression(null)
                 ]
             ),
             (
                 "* a",
                 new LangProgram([
-                    Multiply(null, VariableAccessor("a"))
+                    VariableAccessor("a")
                 ], [], [], []),
                 [
-                    ParserError.BinaryOperator_MissingLeftValue(Token.Star(SourceSpan.Default))
+                    ParserError.ExpectedExpression(Token.Star(SourceSpan.Default))
+                ]
+            ),
+            (
+                "a * var b = 2",
+                new LangProgram([
+                    Multiply(VariableAccessor("a"), VariableDeclaration("b", Literal(2))),
+                ], [], [], []),
+                [
+                    // ParserError.ExpectedExpression(Token.Var(SourceSpan.Default))
                 ]
             ),
             (
@@ -102,7 +108,7 @@ public static class ParseErrorTestCases
                     VariableDeclaration("b", Literal(2))
                 ], [], [], []),
                 [
-                    ParserError.BinaryOperator_MissingRightValue(Token.Semicolon(SourceSpan.Default))
+                    ParserError.ExpectedExpression(Token.Semicolon(SourceSpan.Default))
                 ]
             ),
             (
@@ -111,17 +117,18 @@ public static class ParseErrorTestCases
                     FallOut(null)
                 ], [], [], []),
                 [
-                    ParserError.UnaryOperator_MissingValue(Token.QuestionMark(SourceSpan.Default))
+                    ParserError.ExpectedExpression(Token.QuestionMark(SourceSpan.Default))
                 ]
             ),
             (
-                "?; a;",
+                "? a;",
                 new LangProgram([
                     FallOut(null),
                     VariableAccessor("a")
                 ], [], [], []),
                 [
-                    ParserError.UnaryOperator_MissingValue(Token.QuestionMark(SourceSpan.Default))
+                    ParserError.ExpectedExpression(Token.QuestionMark(SourceSpan.Default)),
+                    ParserError.ExpectedToken(Token.Identifier("a", SourceSpan.Default), TokenType.Semicolon)
                 ]
             ),
             (
@@ -130,7 +137,7 @@ public static class ParseErrorTestCases
                     Not(null)
                 ], [], [], []),
                 [
-                    ParserError.UnaryOperator_MissingValue(Token.Bang(SourceSpan.Default))
+                    ParserError.ExpectedExpression(null)
                 ]
             ),
             (
@@ -140,7 +147,17 @@ public static class ParseErrorTestCases
                     Not(null)
                 ], [], [], []),
                 [
-                    ParserError.UnaryOperator_MissingValue(Token.Bang(SourceSpan.Default))
+                    ParserError.ExpectedExpression(null)
+                ]
+            ),
+            (
+                "a * var",
+                new LangProgram([
+                    Multiply(VariableAccessor("a"), null)
+                ], [], [], []),
+                [
+                    ParserError.ExpectedExpression(Token.Var(SourceSpan.Default)),
+                    ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.Mut)
                 ]
             ),
             (
@@ -150,7 +167,7 @@ public static class ParseErrorTestCases
                     VariableDeclaration("a", Literal(2))
                 ], [], [], []),
                 [
-                    ParserError.UnaryOperator_MissingValue(Token.Semicolon(SourceSpan.Default))
+                    ParserError.ExpectedExpression(Token.Semicolon(SourceSpan.Default))
                 ]
             ),
             (
@@ -159,14 +176,14 @@ public static class ParseErrorTestCases
                     Block()
                 ], [], [], []),
                 [
-                    ParserError.Scope_MissingClosingTag(Token.LeftBrace(SourceSpan.Default))
+                    ParserError.ExpectedToken(null, TokenType.RightBrace)
                 ]
             ),
             (
                 ",",
                 new LangProgram([], [], [], []),
                 [
-                    ParserError.Scope_UnexpectedComma(Token.Comma(SourceSpan.Default))
+                    ParserError.UnexpectedToken(Token.Comma(SourceSpan.Default))
                 ]
             ),
             (
@@ -176,7 +193,7 @@ public static class ParseErrorTestCases
                     VariableAccessor("b")
                 ], [], [], []),
                 [
-                    ParserError.Scope_UnexpectedComma(Token.Comma(SourceSpan.Default))
+                    ParserError.UnexpectedToken(Token.Comma(SourceSpan.Default))
                 ]
             ),
             (
@@ -186,7 +203,7 @@ public static class ParseErrorTestCases
                     VariableAccessor("b")
                 ], [], [], []),
                 [
-                    ParserError.Scope_EarlyTailReturnExpression(VariableAccessor("a"))
+                    ParserError.ExpectedToken(Token.Identifier("b", SourceSpan.Default), TokenType.Semicolon)
                 ]
             ),
             (
@@ -199,8 +216,8 @@ public static class ParseErrorTestCases
                     VariableAccessor("e")
                 ], [], [], []),
                 [
-                    ParserError.Scope_EarlyTailReturnExpression(VariableAccessor("a")),
-                    ParserError.Scope_EarlyTailReturnExpression(VariableAccessor("d"))
+                    ParserError.ExpectedToken(Token.Identifier("b", SourceSpan.Default), TokenType.Semicolon),
+                    ParserError.ExpectedToken(Token.Identifier("e", SourceSpan.Default), TokenType.Semicolon),
                 ]
             ),
             (
@@ -212,7 +229,7 @@ public static class ParseErrorTestCases
                     ])
                 ], []),
                 [
-                    ParserError.Scope_ExpectedComma(Token.Field(SourceSpan.Default))
+                    ParserError.ExpectedToken(Token.Field(SourceSpan.Default), TokenType.Comma)
                 ]
             ),
             (
@@ -224,7 +241,7 @@ public static class ParseErrorTestCases
                     ])
                 ], []),
                 [
-                    ParserError.Scope_MissingClosingTag(Token.StringKeyword(SourceSpan.Default))
+                    ParserError.ExpectedToken(null, TokenType.RightBrace)
                 ]
             ),
             (
@@ -233,7 +250,7 @@ public static class ParseErrorTestCases
                     Block([VariableAccessor("a")])
                 ], [], [], []),
                 [
-                    ParserError.Scope_MissingClosingTag(Token.StringKeyword(SourceSpan.Default))
+                    ParserError.ExpectedToken(null, TokenType.RightBrace)
                 ]
             ),
             (
@@ -242,9 +259,7 @@ public static class ParseErrorTestCases
                     VariableDeclaration("a", Literal(2))
                 ], [], [], []),
                 [
-                    ParserError.Scope_MissingMember(
-                        Token.StringKeyword(SourceSpan.Default),
-                        [Parser.Scope.ScopeType.Function, Parser.Scope.ScopeType.Class, Parser.Scope.ScopeType.Expression, Parser.Scope.ScopeType.Union])
+                    ParserError.ExpectedToken(null, TokenType.Fn, TokenType.Static, TokenType.Class, TokenType.Union),
                 ]
             ),
             (
@@ -308,6 +323,91 @@ public static class ParseErrorTestCases
                     ParserError.Scope_DuplicateModifier(Token.Mut(SourceSpan.Default)),
                     ParserError.Scope_DuplicateModifier(Token.Static(SourceSpan.Default)),
                     ParserError.Scope_DuplicateModifier(Token.Pub(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "class MyClass { field}",
+                new LangProgram([], [], [
+                    Class("MyClass", fields: [])
+                ], []),
+                [
+                    ParserError.ExpectedToken(Token.RightBrace(SourceSpan.Default), TokenType.Identifier),
+                ]
+            ),
+            (
+                "class MyClass { field",
+                new LangProgram([], [], [
+                    Class("MyClass", fields: [])
+                ], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace),
+                ]
+            ),
+            (
+                "class MyClass { field MyField}",
+                new LangProgram([], [], [
+                    Class("MyClass", fields: [ClassField("MyField")])
+                ], []),
+                [
+                    ParserError.ExpectedToken(Token.RightBrace(SourceSpan.Default), TokenType.Colon),
+                ]
+            ),
+            (
+                "class MyClass { field MyField",
+                new LangProgram([], [], [
+                    Class("MyClass", fields: [ClassField("MyField")])
+                ], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Colon),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace),
+                ]
+            ),
+            (
+                "class MyClass { field MyField:}",
+                new LangProgram([], [], [
+                    Class("MyClass", fields: [ClassField("MyField")])
+                ], []),
+                [
+                    ParserError.ExpectedType(Token.RightBrace(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "class MyClass { field MyField:",
+                new LangProgram([], [], [
+                    Class("MyClass", fields: [ClassField("MyField")])
+                ], []),
+                [
+                    ParserError.ExpectedType(null),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace),
+                ]
+            ),
+            (
+                "class MyClass { field MyField: int =}",
+                new LangProgram([], [], [
+                    Class("MyClass", fields: [ClassField("MyField", type: IntType())])
+                ], []),
+                [
+                    ParserError.ExpectedExpression(Token.RightBrace(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "class MyClass { field MyField: int =",
+                new LangProgram([], [], [
+                    Class("MyClass", fields: [ClassField("MyField", type: IntType())])
+                ], []),
+                [
+                    ParserError.ExpectedExpression(null),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace),
+                ]
+            ),
+            (
+                "class MyClass { field, field MyField: int }",
+                new LangProgram([], [], [
+                    Class("MyClass", fields: [ClassField("MyField", type: IntType())])
+                ], []),
+                [
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier),
                 ]
             ),
         ];

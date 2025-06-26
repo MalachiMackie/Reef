@@ -126,7 +126,7 @@ public class TypeChecker
             {
                 var isStatic = field.StaticModifier is not null;
 
-                var fieldTypeReference = GetTypeReference(field.Type, classGenericPlaceholders);
+                var fieldTypeReference = field.Type is null ? new UnknownType() : GetTypeReference(field.Type, classGenericPlaceholders);
 
                 if (isStatic)
                 {
@@ -353,7 +353,7 @@ public class TypeChecker
                         var typeField = new TypeField
                         {
                             Name = field.Name.StringValue,
-                            Type = GetTypeReference(field.Type, unionGenericPlaceholders),
+                            Type = field.Type is null ? new UnknownType() : GetTypeReference(field.Type, unionGenericPlaceholders),
                             IsMutable = field.MutabilityModifier is { Modifier.Type: TokenType.Mut },
                             IsPublic = true
                         };
@@ -386,7 +386,7 @@ public class TypeChecker
                 var typeField = new TypeField
                 {
                     Name = field.Name.StringValue,
-                    Type = GetTypeReference(field.Type, classGenericPlaceholders),
+                    Type = field.Type is null ? new UnknownType() : GetTypeReference(field.Type, classGenericPlaceholders),
                     IsMutable = field.MutabilityModifier is { Modifier.Type: TokenType.Mut },
                     IsPublic = field.AccessModifier is { Token.Type: TokenType.Pub }
                 };

@@ -67,7 +67,7 @@ public static class ParserHelpers
 
     public static ClassField ClassField(
         string name,
-        TypeIdentifier type,
+        TypeIdentifier? type = null,
         bool isMutable = false,
         bool isStatic = false,
         bool isPublic = false,
