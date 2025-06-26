@@ -480,6 +480,31 @@ public static class ParseErrorTestCases
                     ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier),
                 ]
             ),
+            (
+                "::",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedExpression(Token.DoubleColon(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "int::",
+                new LangProgram([
+                    StaticMemberAccess(IntType(), null)
+                ], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier),
+                ]
+            ),
+            (
+                "int::;",
+                new LangProgram([
+                    StaticMemberAccess(IntType(), null)
+                ], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier),
+                ]
+            )
         ];
 
         var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();

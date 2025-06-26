@@ -59,7 +59,7 @@ public class Tests(ITestOutputHelper testOutputHelper)
     [Fact]
     public void SingleTest()
     {
-        const string source = "class MyClass<T,,,,T2>{}";
+        const string source = "var string = a;";
         var result = Parser.Parse(Tokenizer.Tokenize(source));
         result.Should().NotBeNull();
     }
@@ -102,7 +102,7 @@ public class Tests(ITestOutputHelper testOutputHelper)
         var program = RemoveSourceSpan(output.ParsedProgram);
         var errors = RemoveSourceSpan(output.Errors);
 
-        program.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion());
         errors.Should().BeEquivalentTo(expectedErrors);
+        program.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion());
     }
 }

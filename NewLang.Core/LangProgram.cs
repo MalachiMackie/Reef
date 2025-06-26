@@ -32,7 +32,7 @@ public record LangProgram(
 }
 
 // todo: is this an ok name?
-public record TypeIdentifier(Token Identifier, IReadOnlyList<TypeIdentifier> TypeArguments, SourceRange SourceRange)
+public record TypeIdentifier(StringToken Identifier, IReadOnlyList<TypeIdentifier> TypeArguments, SourceRange SourceRange)
 {
     public override string ToString()
     {

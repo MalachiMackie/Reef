@@ -52,8 +52,6 @@ public static class FailTestCases
             "/",
             "-",
             // invalid statement
-            "a;",
-            "{a;}",
             "fn MyFn::<string>(){}",
             "fn MyFn<>(){}",
             "fn MyFn<,>(){}",
@@ -120,7 +118,6 @@ public static class FailTestCases
             "(",
             "(a",
             "(a b)",
-            "()"
         ];
         return strings.Select(x => new object[] { x, Tokenizer.Tokenize(x) });
     }

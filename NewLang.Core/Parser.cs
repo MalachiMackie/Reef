@@ -527,17 +527,17 @@ public sealed class Parser : IDisposable
             typeIdentifier = null;
             return false;
         }
-
-        if (!IsTypeTokenType(Current.Type))
-        {
-            _errors.Add(ParserError.ExpectedType(Current));
-            typeIdentifier = null;
-            return false;
-        }
+        
+        // if (Current.Type != TokenType.Identifier)
+        // {
+        //     _errors.Add(ParserError.ExpectedType(Current));
+        //     typeIdentifier = null;
+        //     return false;
+        // }
         
         typeIdentifier = GetTypeIdentifier();
 
-        return true;
+        return typeIdentifier is not null;
     }
 
     private bool ExpectNextTypeIdentifier([NotNullWhen(true)] out TypeIdentifier? typeIdentifier)
@@ -549,16 +549,16 @@ public sealed class Parser : IDisposable
             return false;
         }
 
-        if (!IsTypeTokenType(Current.Type))
-        {
-            _errors.Add(ParserError.ExpectedType(Current));
-            typeIdentifier = null;
-            return false;
-        }
+        // if (Current.Type != TokenType.Identifier)
+        // {
+        //     _errors.Add(ParserError.ExpectedType(Current));
+        //     typeIdentifier = null;
+        //     return false;
+        // }
 
         typeIdentifier = GetTypeIdentifier();
 
-        return true;
+        return typeIdentifier is not null;
     }
 
     private bool ExpectNextExpression([NotNullWhen(true)] out IExpression? expression)
@@ -808,16 +808,21 @@ public sealed class Parser : IDisposable
             new Block(scope.Expressions, scope.Functions));
     }
 
-    private static bool IsTypeTokenType(in TokenType tokenType)
-    {
-        return tokenType is TokenType.IntKeyword or TokenType.StringKeyword or TokenType.Result or TokenType.Identifier
-            or TokenType.Bool;
-    }
+    // private static bool IsTypeTokenType(in TokenType tokenType)
+    // {
+    //     return tokenType is TokenType.IntKeyword or TokenType.StringKeyword or TokenType.Result or TokenType.Identifier
+    //         or TokenType.Bool;
+    // }
 
-    private TypeIdentifier GetTypeIdentifier()
+    private TypeIdentifier? GetTypeIdentifier()
     {
-        var typeIdentifier = Current;
-
+        // use manual check instead of `ExpectCurrentIdentifier` so we can display the `ExpectedType` error
+        if (Current is not StringToken { Type: TokenType.Identifier } typeIdentifier)
+        {
+            _errors.Add(ParserError.ExpectedType(Current));
+            return null;
+        }
+        
         var typeArguments = new List<TypeIdentifier>();
         Token? lastToken = null;
         if (MoveNext() && Current.Type == TokenType.Turbofish)
@@ -851,10 +856,8 @@ public sealed class Parser : IDisposable
             TokenType.New => GetInitializer(),
             TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
             TokenType.Dot => GetMemberAccess(previousExpression),
-            TokenType.DoubleColon => GetStaticMemberAccess(previousExpression ??
-                                                           throw new InvalidOperationException(
-                                                               $"Unexpected token {Current}")),
-            TokenType.Ok or TokenType.Error or TokenType.This or TokenType.Todo => GetVariableAccess(),
+            TokenType.DoubleColon => GetStaticMemberAccess(previousExpression),
+            TokenType.Todo or TokenType.Identifier => GetVariableAccess(),
             TokenType.Turbofish => GetGenericInstantiation(previousExpression ??
                                                            throw new InvalidOperationException(
                                                                $"Unexpected token {Current}")),
@@ -862,7 +865,7 @@ public sealed class Parser : IDisposable
                                                       throw new InvalidOperationException(
                                                           $"Unexpected token {Current}")),
             TokenType.Match => GetMatchExpression(),
-            _ when IsTypeTokenType(Current.Type) => GetVariableAccess(),
+            // _ when IsTypeTokenType(Current.Type) => GetVariableAccess(),
             _ when TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(
                 previousExpression, Current, unaryOperatorType.Value),
             _ when TryGetBinaryOperatorType(Current.Type, out var binaryOperatorType) => GetBinaryOperatorExpression(
@@ -998,7 +1001,7 @@ public sealed class Parser : IDisposable
             return new VariableDeclarationPattern(variableName, new SourceRange(start, end));
         }
 
-        if (!IsTypeTokenType(Current.Type))
+        if (Current.Type != TokenType.Identifier)
         {
             throw new InvalidOperationException("Expected pattern");
         }
@@ -1303,9 +1306,17 @@ public sealed class Parser : IDisposable
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, variableToken));
     }
 
-    private StaticMemberAccessExpression GetStaticMemberAccess(
-        IExpression previousExpression)
+    private StaticMemberAccessExpression? GetStaticMemberAccess(
+        IExpression? previousExpression)
     {
+        if (previousExpression is null)
+        {
+            _errors.Add(ParserError.ExpectedExpression(Current));
+            MoveNext();
+            
+            return null;
+        }
+        
         IReadOnlyList<TypeIdentifier>? typeArguments = null;
         if (previousExpression is GenericInstantiationExpression genericInstantiationExpression)
         {
@@ -1317,19 +1328,16 @@ public sealed class Parser : IDisposable
             {
                 ValueAccessor:
                 {
-                    AccessType: ValueAccessType.Variable, Token: var token
+                    AccessType: ValueAccessType.Variable, Token: StringToken token
                 }
             })
         {
-            throw new InvalidOperationException($"Cannot perform static member access on {previousExpression}");
+            throw new UnreachableException("It should be impossible to get here");
         }
 
         var type = new TypeIdentifier(token, typeArguments ?? [], previousExpression.SourceRange);
 
-        if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } memberName)
-        {
-            throw new InvalidOperationException($"Unexpected token {Current}");
-        }
+        ExpectNextIdentifier(out var memberName);
 
         MoveNext();
 

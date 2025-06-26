@@ -1145,7 +1145,12 @@ public class TypeChecker
     {
         var type = GetTypeReference(staticMemberAccess.Type, genericPlaceholders);
 
-        var memberName = staticMemberAccess.MemberName.StringValue;
+        var memberName = staticMemberAccess.MemberName?.StringValue;
+        if (memberName is null)
+        {
+            return new UnknownType();
+        }
+        
         if (type is InstantiatedClass { StaticFields: var staticFields } instantiatedClass)
         {
             var field = staticFields.FirstOrDefault(x => x.Name == memberName);
@@ -1341,6 +1346,11 @@ public class TypeChecker
         {
             var ownerType = GetTypeReference(staticMemberAccess.StaticMemberAccess.Type, genericPlaceholders);
 
+            if (staticMemberAccess.StaticMemberAccess.MemberName is null)
+            {
+                return false;
+            }
+
             return ownerType is InstantiatedClass { StaticFields: var staticFields }
                    && staticFields.Single(x => x.Name == staticMemberAccess.StaticMemberAccess.MemberName.StringValue)
                        .IsMutable;
@@ -1477,16 +1487,16 @@ public class TypeChecker
                 InstantiatedClass.String,
             { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True or TokenType.False } => InstantiatedClass
                 .Boolean,
+            { AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: "ok"}} => TypeCheckResultVariantKeyword("Ok"),
+            { AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: "error"}} =>
+                TypeCheckResultVariantKeyword("Error"),
+            { AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: "this" }} => TypeCheckThis(),
+            { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Todo } => InstantiatedClass.Never,
             {
                     AccessType: ValueAccessType.Variable,
                     Token: StringToken { Type: TokenType.Identifier, StringValue: var variableName }
                 } =>
                 TypeCheckVariableAccess(variableName, allowUninstantiatedVariables, genericPlaceholders),
-            { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Ok } => TypeCheckResultVariantKeyword("Ok"),
-            { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Error } =>
-                TypeCheckResultVariantKeyword("Error"),
-            { AccessType: ValueAccessType.Variable, Token.Type: TokenType.This } => TypeCheckThis(),
-            { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Todo } => InstantiatedClass.Never,
             _ => throw new NotImplementedException($"{valueAccessorExpression}")
         };
 
@@ -1618,22 +1628,24 @@ public class TypeChecker
         TypeIdentifier typeIdentifier,
         HashSet<GenericTypeReference> genericPlaceholders)
     {
-        if (typeIdentifier.Identifier.Type == TokenType.StringKeyword)
+        var identifierName = typeIdentifier.Identifier.StringValue;
+        
+        if (identifierName == "string")
         {
             return InstantiatedClass.String;
         }
 
-        if (typeIdentifier.Identifier.Type == TokenType.IntKeyword)
+        if (identifierName == "int")
         {
             return InstantiatedClass.Int;
         }
 
-        if (typeIdentifier.Identifier.Type == TokenType.Bool)
+        if (identifierName == "bool")
         {
             return InstantiatedClass.Boolean;
         }
 
-        if (typeIdentifier.Identifier.Type == TokenType.Result)
+        if (identifierName == "result")
         {
             if (typeIdentifier.TypeArguments.Count != 2)
             {
@@ -1645,36 +1657,32 @@ public class TypeChecker
                 GetTypeReference(typeIdentifier.TypeArguments[1], genericPlaceholders));
         }
 
-        if (typeIdentifier.Identifier is StringToken { Type: TokenType.Identifier } stringToken)
+        if (_types.TryGetValue(identifierName, out var nameMatchingType))
         {
-            if (_types.TryGetValue(stringToken.StringValue, out var nameMatchingType))
+            if (nameMatchingType is ClassSignature classSignature)
             {
-                if (nameMatchingType is ClassSignature classSignature)
-                {
-                    return classSignature.Instantiate([
-                        ..typeIdentifier.TypeArguments
-                            .Select(x => GetTypeReference(x, genericPlaceholders))
-                    ]);
-                }
-
-                if (nameMatchingType is UnionSignature unionSignature)
-                {
-                    return unionSignature.Instantiate([
-                        ..typeIdentifier.TypeArguments
-                            .Select(x => GetTypeReference(x, genericPlaceholders))
-                    ]);
-                }
+                return classSignature.Instantiate([
+                    ..typeIdentifier.TypeArguments
+                        .Select(x => GetTypeReference(x, genericPlaceholders))
+                ]);
             }
 
-            var genericTypeReference =
-                genericPlaceholders.FirstOrDefault(x => x.GenericName == stringToken.StringValue);
-
-            if (genericTypeReference is not null)
+            if (nameMatchingType is UnionSignature unionSignature)
             {
-                return genericTypeReference;
+                return unionSignature.Instantiate([
+                    ..typeIdentifier.TypeArguments
+                        .Select(x => GetTypeReference(x, genericPlaceholders))
+                ]);
             }
         }
 
+        var genericTypeReference =
+            genericPlaceholders.FirstOrDefault(x => x.GenericName == identifierName);
+
+        if (genericTypeReference is not null)
+        {
+            return genericTypeReference;
+        }
         throw new InvalidOperationException($"No type found {typeIdentifier}");
     }
 

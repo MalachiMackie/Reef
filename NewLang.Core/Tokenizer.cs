@@ -253,7 +253,7 @@ public class Tokenizer
             TokenType.EqualsArrow when source is "=>" => Token.EqualsArrow(new SourceSpan(position,
                 (ushort)source.Length)),
             TokenType.Union when source is "union" => Token.Union(new SourceSpan(position, (ushort)source.Length)),
-            TokenType.This when source is "this" => Token.This(new SourceSpan(position, (ushort)source.Length)),
+            // TokenType.This when source is "this" => Token.This(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Matches when source is "matches" =>
                 Token.Matches(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Match when source is "match" => Token.Match(new SourceSpan(position, (ushort)source.Length)),
@@ -271,8 +271,8 @@ public class Tokenizer
             TokenType.Pub when source is "pub" => Token.Pub(new SourceSpan(position, (ushort)source.Length)),
             TokenType.New when source is "new" => Token.New(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Fn when source is "fn" => Token.Fn(new SourceSpan(position, (ushort)source.Length)),
-            TokenType.IntKeyword when source is "int" =>
-                Token.IntKeyword(new SourceSpan(position, (ushort)source.Length)),
+            // TokenType.IntKeyword when source is "int" =>
+            //     Token.IntKeyword(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Colon when source is ":" => Token.Colon(new SourceSpan(position, (ushort)source.Length)),
             TokenType.LeftAngleBracket when source is "<" => Token.LeftAngleBracket(new SourceSpan(position,
                 (ushort)source.Length)),
@@ -292,17 +292,17 @@ public class Tokenizer
                                          && source[^1] == '"'
                                          && source[1..].IndexOf('"') == source.Length - 2 => Token.StringLiteral(
                 GetString(source[1..^1]), new SourceSpan(position, (ushort)source.Length)),
-            TokenType.StringKeyword when source is "string" => Token.StringKeyword(new SourceSpan(position,
-                (ushort)source.Length)),
-            TokenType.Result when source is "result" => Token.Result(new SourceSpan(position, (ushort)source.Length)),
-            TokenType.Ok when source is "ok" => Token.Ok(new SourceSpan(position, (ushort)source.Length)),
-            TokenType.Error when source is "error" => Token.Error(new SourceSpan(position, (ushort)source.Length)),
+            // TokenType.StringKeyword when source is "string" => Token.StringKeyword(new SourceSpan(position,
+            //     (ushort)source.Length)),
+            // TokenType.Result when source is "result" => Token.Result(new SourceSpan(position, (ushort)source.Length)),
+            // TokenType.Ok when source is "ok" => Token.Ok(new SourceSpan(position, (ushort)source.Length)),
+            // TokenType.Error when source is "error" => Token.Error(new SourceSpan(position, (ushort)source.Length)),
             TokenType.QuestionMark when source is "?" => Token.QuestionMark(new SourceSpan(position,
                 (ushort)source.Length)),
             TokenType.Return when source is "return" => Token.Return(new SourceSpan(position, (ushort)source.Length)),
             TokenType.True when source is "true" => Token.True(new SourceSpan(position, (ushort)source.Length)),
             TokenType.False when source is "false" => Token.False(new SourceSpan(position, (ushort)source.Length)),
-            TokenType.Bool when source is "bool" => Token.Bool(new SourceSpan(position, (ushort)source.Length)),
+            // TokenType.Bool when source is "bool" => Token.Bool(new SourceSpan(position, (ushort)source.Length)),
             TokenType.ForwardSlash when source is "/" => Token.ForwardSlash(new SourceSpan(position,
                 (ushort)source.Length)),
             TokenType.Star when source is "*" => Token.Star(new SourceSpan(position, (ushort)source.Length)),
@@ -328,7 +328,7 @@ public class Tokenizer
         switch (firstChar)
         {
             case 'i':
-                tokens[i++] = TokenType.IntKeyword;
+                // tokens[i++] = TokenType.IntKeyword;
                 tokens[i++] = TokenType.If;
                 tokens[i++] = TokenType.Identifier;
                 break;
@@ -395,25 +395,25 @@ public class Tokenizer
                 break;
             case 'e':
                 tokens[i++] = TokenType.Else;
-                tokens[i++] = TokenType.Error;
+                // tokens[i++] = TokenType.Error;
                 tokens[i++] = TokenType.Identifier;
                 break;
             case 's':
-                tokens[i++] = TokenType.StringKeyword;
+                // tokens[i++] = TokenType.StringKeyword;
                 tokens[i++] = TokenType.Identifier;
                 tokens[i++] = TokenType.Static;
                 break;
             case 'r':
                 tokens[i++] = TokenType.Return;
-                tokens[i++] = TokenType.Result;
+                // tokens[i++] = TokenType.Result;
                 tokens[i++] = TokenType.Identifier;
                 break;
             case 'b':
-                tokens[i++] = TokenType.Bool;
+                // tokens[i++] = TokenType.Bool;
                 tokens[i++] = TokenType.Identifier;
                 break;
             case 'o':
-                tokens[i++] = TokenType.Ok;
+                // tokens[i++] = TokenType.Ok;
                 tokens[i++] = TokenType.Identifier;
                 break;
             case 'u':
@@ -425,7 +425,7 @@ public class Tokenizer
             case 't':
                 tokens[i++] = TokenType.True;
                 tokens[i++] = TokenType.Identifier;
-                tokens[i++] = TokenType.This;
+                // tokens[i++] = TokenType.This;
                 tokens[i++] = TokenType.Todo;
                 break;
             case '*':
@@ -487,7 +487,7 @@ public class Tokenizer
             TokenType.Semicolon => Matches(source, ";"),
             TokenType.LeftBrace => Matches(source, "{"),
             TokenType.Union => Matches(source, "union"),
-            TokenType.This => Matches(source, "this"),
+            // TokenType.This => Matches(source, "this"),
             TokenType.Mut => Matches(source, "mut"),
             TokenType.Match => Matches(source, "match"),
             TokenType.Matches => Matches(source, "matches"),
@@ -498,7 +498,7 @@ public class Tokenizer
             TokenType.Pub => Matches(source, "pub"),
             TokenType.Fn => Matches(source, "fn"),
             TokenType.Field => Matches(source, "field"),
-            TokenType.IntKeyword => Matches(source, "int"),
+            // TokenType.IntKeyword => Matches(source, "int"),
             TokenType.Turbofish => Matches(source, "::<"),
             TokenType.EqualsArrow => Matches(source, "=>"),
             TokenType.Colon => Matches(source, ":"),
@@ -511,15 +511,15 @@ public class Tokenizer
             TokenType.Else => Matches(source, "else"),
             TokenType.IntLiteral => !source.ContainsAnyExcept(Digits),
             TokenType.StringLiteral => MatchesStringLiteral(source),
-            TokenType.StringKeyword => Matches(source, "string"),
-            TokenType.Result => Matches(source, "result"),
-            TokenType.Ok => Matches(source, "ok"),
-            TokenType.Error => Matches(source, "error"),
+            // TokenType.StringKeyword => Matches(source, "string"),
+            // TokenType.Result => Matches(source, "result"),
+            // TokenType.Ok => Matches(source, "ok"),
+            // TokenType.Error => Matches(source, "error"),
             TokenType.QuestionMark => source is "?",
             TokenType.Return => Matches(source, "return"),
             TokenType.True => Matches(source, "true"),
             TokenType.False => Matches(source, "false"),
-            TokenType.Bool => Matches(source, "bool"),
+            // TokenType.Bool => Matches(source, "bool"),
             TokenType.DoubleColon => Matches(source, "::"),
             TokenType.Star => Matches(source, "*"),
             TokenType.ForwardSlash => Matches(source, "/"),

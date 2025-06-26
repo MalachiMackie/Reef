@@ -57,12 +57,12 @@ public static class ParserHelpers
 
     public static TypeIdentifier IntType()
     {
-        return new TypeIdentifier(Token.IntKeyword(SourceSpan.Default), [], SourceRange.Default);
+        return new TypeIdentifier(Token.Identifier("int", SourceSpan.Default), [], SourceRange.Default);
     }
 
     public static TypeIdentifier StringType()
     {
-        return new TypeIdentifier(Token.StringKeyword(SourceSpan.Default), [], SourceRange.Default);
+        return new TypeIdentifier(Token.Identifier("string", SourceSpan.Default), [], SourceRange.Default);
     }
 
     public static ClassField ClassField(
@@ -122,5 +122,10 @@ public static class ParserHelpers
     public static MemberAccessExpression MemberAccess(IExpression owner, string? memberName)
     {
         return new MemberAccessExpression(new MemberAccess(owner, memberName is null ? null : Token.Identifier(memberName, SourceSpan.Default)));
+    }
+    
+    public static StaticMemberAccessExpression StaticMemberAccess(TypeIdentifier type, string? memberName)
+    {
+        return new StaticMemberAccessExpression(new StaticMemberAccess(type, memberName is null ? null : Token.Identifier(memberName, SourceSpan.Default)));
     }
 }

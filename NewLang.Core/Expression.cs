@@ -44,7 +44,7 @@ public record StaticMemberAccessExpression(StaticMemberAccess StaticMemberAccess
 
     public SourceRange SourceRange => StaticMemberAccess.Type.SourceRange with
     {
-        End = StaticMemberAccess.MemberName.SourceSpan
+        End = StaticMemberAccess.MemberName?.SourceSpan ?? StaticMemberAccess.Type.SourceRange.End
     };
 
     public override string ToString()
@@ -61,7 +61,7 @@ public record MemberAccess(IExpression Owner, StringToken? MemberName)
     }
 }
 
-public record StaticMemberAccess(TypeIdentifier Type, StringToken MemberName)
+public record StaticMemberAccess(TypeIdentifier Type, StringToken? MemberName)
 {
     public override string ToString()
     {

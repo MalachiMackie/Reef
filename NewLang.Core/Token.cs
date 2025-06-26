@@ -51,7 +51,7 @@ public record Token
             TokenType.RightBrace => "}",
             TokenType.Pub => "pub",
             TokenType.Fn => "fn",
-            TokenType.IntKeyword => "int",
+            // TokenType.IntKeyword => "int",
             TokenType.Colon => ":",
             TokenType.LeftAngleBracket => "<",
             TokenType.RightAngleBracket => ">",
@@ -60,15 +60,15 @@ public record Token
             TokenType.Comma => ",",
             TokenType.DoubleEquals => "==",
             TokenType.Else => "else",
-            TokenType.StringKeyword => "string",
-            TokenType.Result => "result",
-            TokenType.Ok => "ok",
-            TokenType.Error => "error",
+            // TokenType.StringKeyword => "string",
+            // TokenType.Result => "result",
+            // TokenType.Ok => "ok",
+            // TokenType.Error => "error",
             TokenType.QuestionMark => "?",
             TokenType.Return => "return",
             TokenType.True => "true",
             TokenType.False => "false",
-            TokenType.Bool => "bool",
+            // TokenType.Bool => "bool",
             TokenType.Plus => "+",
             TokenType.Dash => "-",
             TokenType.Star => "*",
@@ -87,7 +87,7 @@ public record Token
             TokenType.Matches => "matches",
             TokenType.Match => "match",
             TokenType.Bang => "!",
-            TokenType.This => "this",
+            // TokenType.This => "this",
             TokenType.Todo => "todo!",
             _ => throw new UnreachableException(Type.ToString())
         };
@@ -135,10 +135,10 @@ public record Token
         return new Token { Type = TokenType.Fn, SourceSpan = sourceSpan };
     }
 
-    public static Token IntKeyword(SourceSpan sourceSpan)
-    {
-        return new Token { Type = TokenType.IntKeyword, SourceSpan = sourceSpan };
-    }
+    // public static Token IntKeyword(SourceSpan sourceSpan)
+    // {
+    //     return new Token { Type = TokenType.IntKeyword, SourceSpan = sourceSpan };
+    // }
 
     public static Token LeftParenthesis(SourceSpan sourceSpan)
     {
@@ -240,10 +240,10 @@ public record Token
         return new Token { Type = TokenType.If, SourceSpan = sourceSpan };
     }
 
-    public static Token StringKeyword(SourceSpan sourceSpan)
-    {
-        return new Token { Type = TokenType.StringKeyword, SourceSpan = sourceSpan };
-    }
+    // public static Token StringKeyword(SourceSpan sourceSpan)
+    // {
+    //     return new Token { Type = TokenType.StringKeyword, SourceSpan = sourceSpan };
+    // }
 
     public static Token StringLiteral(string value, SourceSpan sourceSpan)
     {
@@ -255,30 +255,30 @@ public record Token
         return new IntToken { IntValue = value, Type = TokenType.IntLiteral, SourceSpan = sourceSpan };
     }
 
-    public static Token This(SourceSpan sourceSpan)
-    {
-        return new Token { Type = TokenType.This, SourceSpan = sourceSpan };
-    }
+    // public static Token This(SourceSpan sourceSpan)
+    // {
+    //     return new Token { Type = TokenType.This, SourceSpan = sourceSpan };
+    // }
 
     public static Token Todo(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.Todo, SourceSpan = sourceSpan };
     }
 
-    public static Token Result(SourceSpan sourceSpan)
-    {
-        return new Token { Type = TokenType.Result, SourceSpan = sourceSpan };
-    }
+    // public static Token Result(SourceSpan sourceSpan)
+    // {
+    //     return new Token { Type = TokenType.Result, SourceSpan = sourceSpan };
+    // }
 
-    public static Token Ok(SourceSpan sourceSpan)
-    {
-        return new Token { Type = TokenType.Ok, SourceSpan = sourceSpan };
-    }
-
-    public static Token Error(SourceSpan sourceSpan)
-    {
-        return new Token { Type = TokenType.Error, SourceSpan = sourceSpan };
-    }
+    // public static Token Ok(SourceSpan sourceSpan)
+    // {
+    //     return new Token { Type = TokenType.Ok, SourceSpan = sourceSpan };
+    // }
+    //
+    // public static Token Error(SourceSpan sourceSpan)
+    // {
+    //     return new Token { Type = TokenType.Error, SourceSpan = sourceSpan };
+    // }
 
     public static Token QuestionMark(SourceSpan sourceSpan)
     {
@@ -300,10 +300,10 @@ public record Token
         return new Token { Type = TokenType.False, SourceSpan = sourceSpan };
     }
 
-    public static Token Bool(SourceSpan sourceSpan)
-    {
-        return new Token { Type = TokenType.Bool, SourceSpan = sourceSpan };
-    }
+    // public static Token Bool(SourceSpan sourceSpan)
+    // {
+    //     return new Token { Type = TokenType.Bool, SourceSpan = sourceSpan };
+    // }
 
     public static Token Dash(SourceSpan sourceSpan)
     {
