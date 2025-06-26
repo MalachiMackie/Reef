@@ -427,8 +427,18 @@ public sealed class Parser : IDisposable
         {
             var (tupleTypes, _) = GetCommaSeparatedList(
                 TokenType.RightParenthesis,
-                "Tuple Variant Parameter Type",
-                GetTypeIdentifier);
+                expectedTokens: [],
+                expectExpression: false,
+                expectType: true,
+                expectPattern: false,
+                () =>
+                {
+                    if (!ExpectCurrentTypeIdentifier(out var identifier))
+                    {
+                        MoveNext();
+                    }
+                    return identifier;
+                });
 
             return new TupleUnionVariant(variantName, tupleTypes);
         }
@@ -486,6 +496,17 @@ public sealed class Parser : IDisposable
         identifier = identifierToken;
         return true;
     }
+    
+    private bool ExpectCurrentToken(TokenType tokenType)
+    {
+        if (!_hasNext || Current.Type != tokenType)
+        {
+            _errors.Add(ParserError.ExpectedToken(_hasNext ? Current : null, tokenType));
+            return false;
+        }
+
+        return true;
+    }
 
     private bool ExpectNextToken(TokenType tokenType)
     {
@@ -494,6 +515,27 @@ public sealed class Parser : IDisposable
             _errors.Add(ParserError.ExpectedToken(_hasNext ? Current : null, tokenType));
             return false;
         }
+
+        return true;
+    }
+    
+    private bool ExpectCurrentTypeIdentifier([NotNullWhen(true)] out TypeIdentifier? typeIdentifier)
+    {
+        if (!_hasNext)
+        {
+            _errors.Add(ParserError.ExpectedType(null));
+            typeIdentifier = null;
+            return false;
+        }
+
+        if (!IsTypeTokenType(Current.Type))
+        {
+            _errors.Add(ParserError.ExpectedType(Current));
+            typeIdentifier = null;
+            return false;
+        }
+        
+        typeIdentifier = GetTypeIdentifier();
 
         return true;
     }
@@ -507,15 +549,16 @@ public sealed class Parser : IDisposable
             return false;
         }
 
-        var beforeType = Current;
+        if (!IsTypeTokenType(Current.Type))
+        {
+            _errors.Add(ParserError.ExpectedType(Current));
+            typeIdentifier = null;
+            return false;
+        }
+
         typeIdentifier = GetTypeIdentifier();
 
-        if (typeIdentifier is null)
-        {
-            _errors.Add(ParserError.ExpectedType(beforeType));
-        }
-        
-        return typeIdentifier is not null;
+        return true;
     }
 
     private bool ExpectNextExpression([NotNullWhen(true)] out IExpression? expression)
@@ -551,8 +594,12 @@ public sealed class Parser : IDisposable
             return null;
         }
         
-        if (!ExpectNextToken(TokenType.Colon)
-            || !ExpectNextTypeIdentifier(out var type))
+        if (!ExpectNextToken(TokenType.Colon))
+        {
+            return new ClassField(accessModifier, staticModifier, mutabilityModifier, name, null, null);
+        }
+        
+        if (!ExpectNextTypeIdentifier(out var type))
         {
             return new ClassField(accessModifier, staticModifier, mutabilityModifier, name, null, null);
         }
@@ -567,23 +614,20 @@ public sealed class Parser : IDisposable
         return new ClassField(accessModifier, staticModifier, mutabilityModifier, name, type, valueExpression);
     }
 
-    private (List<StringToken> items, Token lastToken) GetGenericParameterList()
+    private (List<StringToken> items, Token? lastToken) GetGenericParameterList()
     {
         return GetCommaSeparatedList(
             TokenType.RightAngleBracket,
-            "Type Argument",
+            [TokenType.Identifier],
+            expectExpression: false,
+            expectType: false,
+            expectPattern: false,
             () =>
             {
-                var result = Current is not StringToken { Type: TokenType.Identifier } typeArgument
-                    ? null
-                    : typeArgument;
+                ExpectCurrentIdentifier(out var typeArgument);
+                MoveNext();
 
-                if (!MoveNext())
-                {
-                    throw new InvalidOperationException("Expected >, ',' or Type Argument");
-                }
-
-                return result;
+                return typeArgument;
             });
     }
 
@@ -642,9 +686,7 @@ public sealed class Parser : IDisposable
 
         if (Current.Type == TokenType.LeftAngleBracket)
         {
-            typeArguments = GetGenericParameterList().items is { Count: > 0 } x
-                ? x
-                : throw new InvalidOperationException("Expected Type Argument");
+            typeArguments = GetGenericParameterList().items;
 
             if (!_hasNext)
             {
@@ -695,7 +737,10 @@ public sealed class Parser : IDisposable
 
         var (parameterList, _) = GetCommaSeparatedList(
             TokenType.RightParenthesis,
-            "Parameter",
+            expectedTokens: [TokenType.Identifier, TokenType.Mut],
+            expectExpression: false,
+            expectType: false,
+            expectPattern: false,
             () =>
             {
                 MutabilityModifier? mutabilityModifier = null;
@@ -769,13 +814,8 @@ public sealed class Parser : IDisposable
             or TokenType.Bool;
     }
 
-    private TypeIdentifier? GetTypeIdentifier()
+    private TypeIdentifier GetTypeIdentifier()
     {
-        if (!IsTypeTokenType(Current.Type))
-        {
-            return null;
-        }
-
         var typeIdentifier = Current;
 
         var typeArguments = new List<TypeIdentifier>();
@@ -784,7 +824,10 @@ public sealed class Parser : IDisposable
         {
             (typeArguments, lastToken) = GetCommaSeparatedList(
                 TokenType.RightAngleBracket,
-                "Type Argument",
+                expectedTokens: [],
+                expectExpression: false,
+                expectType: true,
+                expectPattern: false,
                 GetTypeIdentifier);
         }
 
@@ -864,7 +907,10 @@ public sealed class Parser : IDisposable
 
         var (arms, lastToken) = GetCommaSeparatedList(
             TokenType.RightBrace,
-            "Match Arm",
+            expectedTokens: [],
+            expectExpression: false,
+            expectType: false,
+            expectPattern: true,
             () =>
             {
                 var pattern = GetPattern();
@@ -889,7 +935,7 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Expected match expression to contain at least one arm");
         }
 
-        return new MatchExpression(valueExpression, arms, new SourceRange(matchToken.SourceSpan, lastToken.SourceSpan));
+        return new MatchExpression(valueExpression, arms, new SourceRange(matchToken.SourceSpan, lastToken?.SourceSpan ?? matchToken.SourceSpan));
     }
 
     private IExpression GetParenthesizedExpression(IExpression? previousExpression)
@@ -906,19 +952,15 @@ public sealed class Parser : IDisposable
     {
         var startToken = Current;
         var (elements, lastToken) =
-            GetCommaSeparatedList(TokenType.RightParenthesis, "Tuple Expression", () => PopExpression());
+            GetCommaSeparatedList(
+                TokenType.RightParenthesis,
+                expectedTokens: [],
+                expectExpression: true,
+                expectType: false,
+                expectPattern: false,
+                () => PopExpression());
 
-        if (elements.Count == 0)
-        {
-            throw new InvalidOperationException("Expected at least one item in the tuple expression");
-        }
-
-        if (elements.Count > 10)
-        {
-            throw new InvalidOperationException("Tuple can contain at most 10 elements");
-        }
-
-        return new TupleExpression(elements, new SourceRange(startToken.SourceSpan, lastToken.SourceSpan));
+        return new TupleExpression(elements, new SourceRange(startToken.SourceSpan, lastToken?.SourceSpan ?? startToken.SourceSpan));
     }
 
     private MatchesExpression GetMatchesExpression(IExpression previousExpression)
@@ -1006,10 +1048,17 @@ public sealed class Parser : IDisposable
 
         if (variantName is not null && Current.Type == TokenType.LeftParenthesis)
         {
+            var leftParenthesis = Current;
             var (patterns, patternsLastToken) = GetCommaSeparatedList(
                 TokenType.RightParenthesis,
-                "Pattern",
-                GetPattern);
+                expectedTokens: [],
+                expectExpression: false,
+                expectType: false,
+                expectPattern: true,
+                () =>
+                {
+                    return GetPattern();
+                });
 
             StringToken? variableName = null;
 
@@ -1026,14 +1075,18 @@ public sealed class Parser : IDisposable
             }
 
             return new UnionTupleVariantPattern(type, variantName, patterns, variableName,
-                new SourceRange(start, variableName?.SourceSpan ?? patternsLastToken.SourceSpan));
+                new SourceRange(start, variableName?.SourceSpan ?? patternsLastToken?.SourceSpan ?? leftParenthesis.SourceSpan));
         }
 
         if (Current.Type == TokenType.LeftBrace)
         {
+            var leftBrace = Current;
             var (fieldPatterns, fieldsLastToken) = GetCommaSeparatedList(
                 TokenType.RightBrace,
-                "Field Pattern",
+                expectedTokens: [TokenType.Underscore, TokenType.Identifier],
+                expectExpression: false,
+                expectType: false,
+                expectPattern: false,
                 () =>
                 {
                     if (Current.Type == TokenType.Underscore)
@@ -1084,9 +1137,9 @@ public sealed class Parser : IDisposable
 
                     return variantName is not null
                         ? new UnionStructVariantPattern(type, variantName, fieldPatterns, discards.Length == 1, null,
-                            new SourceRange(start, fieldsLastToken.SourceSpan))
+                            new SourceRange(start, fieldsLastToken?.SourceSpan ?? leftBrace.SourceSpan))
                         : new ClassPattern(type, fieldPatterns, discards.Length == 1, null,
-                            new SourceRange(start, fieldsLastToken.SourceSpan));
+                            new SourceRange(start, fieldsLastToken?.SourceSpan ?? leftBrace.SourceSpan));
             }
         }
 
@@ -1111,20 +1164,39 @@ public sealed class Parser : IDisposable
     ///     Get a comma separated list of items.
     ///     Expects Current to be the opening token.
     ///     tryGetNext will be performed on the second token.
-    ///     Current will be left on token after the terminator
+    ///     Current will be left on token after the terminator.
     /// </summary>
     /// <param name="terminator"></param>
-    /// <param name="itemName"></param>
+    /// <param name="expectPattern"></param>
     /// <param name="tryGetNext"></param>
+    /// <param name="expectedTokens"></param>
+    /// <param name="expectExpression"></param>
+    /// <param name="expectType"></param>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    private (List<T> items, Token lastToken) GetCommaSeparatedList<T>(TokenType terminator, string itemName,
+    private (List<T> items, Token? lastToken) GetCommaSeparatedList<T>(
+        TokenType terminator,
+        HashSet<TokenType> expectedTokens,
+        bool expectExpression,
+        bool expectType,
+        bool expectPattern,
         Func<T?> tryGetNext)
     {
+        var expectCount = (expectedTokens.Count != 0 ? 1 : 0)
+            + (expectExpression ? 1 : 0)
+            + (expectType ? 1 : 0)
+            + (expectPattern ? 1 : 0);
+
+        if (expectCount != 1)
+        {
+            throw new InvalidOperationException("Expected only one expect item");
+        }
+
         if (!MoveNext())
         {
-            throw new InvalidOperationException($"Expected {itemName}");
+            LogError(null);
+            return ([], null);
         }
 
         var items = new List<T>();
@@ -1132,7 +1204,8 @@ public sealed class Parser : IDisposable
         {
             if (!_hasNext)
             {
-                throw new InvalidOperationException($"Expected {itemName}");
+                LogError(null);
+                break;
             }
 
             if (Current.Type == terminator)
@@ -1142,15 +1215,24 @@ public sealed class Parser : IDisposable
 
             if (items.Count > 0)
             {
-                if (Current.Type != TokenType.Comma)
-                {
-                    throw new InvalidOperationException("Expected ,");
-                }
-
+                ExpectCurrentToken(TokenType.Comma);
                 if (!MoveNext())
                 {
-                    throw new InvalidOperationException($"Expected {itemName}");
+                    LogError(null);
+                    break;
                 }
+            }
+            
+            while (_hasNext && Current.Type == TokenType.Comma)
+            {
+                LogError(Current);
+                MoveNext();
+            }
+
+            if (!_hasNext)
+            {
+                LogError(null);
+                break;
             }
 
             if (Current.Type == terminator)
@@ -1160,28 +1242,57 @@ public sealed class Parser : IDisposable
 
             var next = tryGetNext();
 
-            if (next is null)
+            if (next is not null)
             {
-                throw new InvalidOperationException($"Expected {itemName}");
+                items.Add(next);
             }
-
-            items.Add(next);
         }
 
-        var lastToken = Current;
+        var lastToken = _hasNext ? Current : LastToken;
 
         MoveNext();
 
         return (items, lastToken);
+
+        void LogError(Token? current) 
+        {
+            if (expectedTokens.Count != 0)
+            {
+                _errors.Add(ParserError.ExpectedToken(current, [..expectedTokens]));
+            }
+            else if (expectExpression)
+            {
+                _errors.Add(ParserError.ExpectedExpression(current));
+            }
+            else if (expectType)
+            {
+                _errors.Add(ParserError.ExpectedType(current));
+            }
+            else if (expectPattern)
+            {
+                throw new NotImplementedException();
+            }
+        }
     }
 
     private GenericInstantiationExpression GetGenericInstantiation(IExpression previousExpression)
     {
+        var firstToken = Current;
         var (typeArguments, lastToken) =
-            GetCommaSeparatedList(TokenType.RightAngleBracket, "Type Argument", GetTypeIdentifier);
+            GetCommaSeparatedList(
+                TokenType.RightAngleBracket,
+                expectedTokens: [],
+                expectExpression: false,
+                expectType: true,
+                expectPattern: false,
+                () =>
+                {
+                    ExpectCurrentTypeIdentifier(out var typeIdentifier);
+                    return typeIdentifier;
+                });
 
         return new GenericInstantiationExpression(new GenericInstantiation(previousExpression, typeArguments),
-            previousExpression.SourceRange with { End = lastToken.SourceSpan });
+            previousExpression.SourceRange with { End = lastToken?.SourceSpan ?? firstToken.SourceSpan });
     }
 
     private ValueAccessorExpression GetVariableAccess()
@@ -1274,18 +1385,23 @@ public sealed class Parser : IDisposable
             throw new InvalidOperationException("Expected {");
         }
 
+        var leftBrace = Current;
+
         var (fieldInitializers, lastToken) = GetFieldInitializers();
 
         return new UnionStructVariantInitializerExpression(
             new UnionStructVariantInitializer(type, variantName, fieldInitializers),
-            type.SourceRange with { End = lastToken.SourceSpan });
+            type.SourceRange with { End = lastToken?.SourceSpan ?? leftBrace.SourceSpan });
     }
 
-    private (List<FieldInitializer> fieldInitializers, Token lastToken) GetFieldInitializers()
+    private (List<FieldInitializer> fieldInitializers, Token? lastToken) GetFieldInitializers()
     {
         return GetCommaSeparatedList(
             TokenType.RightBrace,
-            "Field Initializer",
+            expectedTokens: [TokenType.Identifier],
+            expectExpression: false,
+            expectType: false,
+            expectPattern: false,
             () =>
             {
                 if (Current is not StringToken { Type: TokenType.Identifier } fieldName)
@@ -1312,9 +1428,10 @@ public sealed class Parser : IDisposable
 
     private ObjectInitializerExpression GetObjectInitializer(TypeIdentifier type)
     {
+        var firstToken = Current;
         var (fieldInitializers, lastToken) = GetFieldInitializers();
         return new ObjectInitializerExpression(new ObjectInitializer(type, fieldInitializers),
-            type.SourceRange with { End = lastToken.SourceSpan });
+            type.SourceRange with { End = lastToken?.SourceSpan ?? firstToken.SourceSpan });
     }
 
     private MethodReturnExpression GetMethodReturn()
@@ -1362,13 +1479,26 @@ public sealed class Parser : IDisposable
 
     private MethodCallExpression GetMethodCall(IExpression method)
     {
+        var leftParenthesis = Current;
         var (parameterList, lastToken) = GetCommaSeparatedList(
             TokenType.RightParenthesis,
-            "Method Parameter",
-            () => PopExpression());
+            expectedTokens: [],
+            expectExpression: true,
+            expectType: false,
+            expectPattern: false,
+            () =>
+            {
+                var expression = PopExpression(out var consumedToken);
+                if (!consumedToken)
+                {
+                    MoveNext();
+                }
+
+                return expression;
+            });
 
         return new MethodCallExpression(new MethodCall(method, parameterList),
-            method.SourceRange with { End = lastToken.SourceSpan });
+            method.SourceRange with { End = lastToken?.SourceSpan ?? leftParenthesis.SourceSpan  });
     }
 
     private IfExpressionExpression GetIfExpression()

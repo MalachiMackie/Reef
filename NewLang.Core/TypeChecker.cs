@@ -2079,6 +2079,15 @@ public class TypeChecker
 
         public static InstantiatedClass Tuple(IReadOnlyList<ITypeReference> types)
         {
+            if (types.Count == 0)
+            {
+                throw new InvalidOperationException("Tuple must not be empty");
+            }
+
+            if (types.Count > 10)
+            {
+                throw new InvalidOperationException("Tuple can contain at most 10 items");
+            }
             return ClassSignature.Tuple(types)
                 .Instantiate(types);
         }

@@ -88,22 +88,22 @@ public static class ParserHelpers
             Token.Identifier(name, SourceSpan.Default)));
     }
 
-    public static ProgramClass Class(string name, bool isPublic = false, IReadOnlyList<ClassField>? fields = null)
+    public static ProgramClass Class(string name, bool isPublic = false, IReadOnlyList<ClassField>? fields = null, IReadOnlyList<string>? genericParameters = null)
     {
         return new ProgramClass(
             isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
             Token.Identifier(name, SourceSpan.Default),
-            [],
+            [..genericParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
             [],
             fields ?? []);
     }
     
-    public static ProgramUnion Union(string name, bool isPublic = false, IReadOnlyList<IProgramUnionVariant>? variants = null)
+    public static ProgramUnion Union(string name, bool isPublic = false, IReadOnlyList<IProgramUnionVariant>? variants = null, IReadOnlyList<string>? genericParameters = null)
     {
         return new ProgramUnion(
             isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
             Token.Identifier(name, SourceSpan.Default),
-            [],
+            [..genericParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
             [],
             variants ?? []);
     }

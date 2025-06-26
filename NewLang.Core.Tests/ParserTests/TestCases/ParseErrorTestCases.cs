@@ -410,6 +410,51 @@ public static class ParseErrorTestCases
                     ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier),
                 ]
             ),
+            (
+                "class MyClass<> {}",
+                new LangProgram([], [], [
+                    Class("MyClass")
+                ], []),
+                []
+            ),
+            (
+                "class MyClass<,> {}",
+                new LangProgram([], [], [
+                    Class("MyClass")
+                ], []),
+                [
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier),
+                ]
+            ),
+            (
+                "class MyClass<T,,,T2> {}",
+                new LangProgram([], [], [
+                    Class("MyClass", genericParameters: ["T", "T2"])
+                ], []),
+                [
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier),
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier),
+                ]
+            ),
+            (
+                "union MyUnion<> {}",
+                new LangProgram([], [], [], [Union("MyUnion")]),
+                []
+            ),
+            (
+                "union MyUnion<,> {}",
+                new LangProgram([], [], [], [Union("MyUnion")]),
+                [
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier),
+                ]
+            ),
+            (
+                "union MyUnion<T,,T2> {}",
+                new LangProgram([], [], [], [Union("MyUnion", genericParameters: ["T", "T2"])]),
+                [
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier),
+                ]
+            ),
         ];
 
         var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();
