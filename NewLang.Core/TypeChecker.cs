@@ -1043,7 +1043,7 @@ public class TypeChecker
             expression is null ? new UnknownType() : TypeCheckExpression(expression, genericPlaceholders);
 
         // todo: could implement with an interface? union Result : IFallout?
-        if (ExpectedReturnType is not InstantiatedUnion { Name: "Result" or "Option" } union)
+        if (ExpectedReturnType is not InstantiatedUnion { Name: "result" or "option" } union)
         {
             throw new InvalidOperationException("Fallout operator is only valid for Result and Option return types");
         }
@@ -1487,6 +1487,7 @@ public class TypeChecker
                 InstantiatedClass.String,
             { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True or TokenType.False } => InstantiatedClass
                 .Boolean,
+            // todo: bring union variants into scope
             { AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: "ok"}} => TypeCheckResultVariantKeyword("Ok"),
             { AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: "error"}} =>
                 TypeCheckResultVariantKeyword("Error"),
@@ -1527,10 +1528,7 @@ public class TypeChecker
 
         ITypeReference TypeCheckResultVariantKeyword(string variantName)
         {
-            if (!_types.TryGetValue("Result", out var resultType) || resultType is not UnionSignature unionSignature)
-            {
-                throw new UnreachableException("Result is a built in union");
-            }
+            var unionSignature = UnionSignature.Result;
 
             var okVariant = unionSignature.Variants.FirstOrDefault(x => x.Name == variantName)
                             ?? throw new UnreachableException($"{variantName} is a built in variant of Result");
@@ -1630,33 +1628,6 @@ public class TypeChecker
     {
         var identifierName = typeIdentifier.Identifier.StringValue;
         
-        if (identifierName == "string")
-        {
-            return InstantiatedClass.String;
-        }
-
-        if (identifierName == "int")
-        {
-            return InstantiatedClass.Int;
-        }
-
-        if (identifierName == "bool")
-        {
-            return InstantiatedClass.Boolean;
-        }
-
-        if (identifierName == "result")
-        {
-            if (typeIdentifier.TypeArguments.Count != 2)
-            {
-                throw new InvalidOperationException("Result expects 2 arguments");
-            }
-
-            return InstantiatedUnion.Result(
-                GetTypeReference(typeIdentifier.TypeArguments[0], genericPlaceholders),
-                GetTypeReference(typeIdentifier.TypeArguments[1], genericPlaceholders));
-        }
-
         if (_types.TryGetValue(identifierName, out var nameMatchingType))
         {
             if (nameMatchingType is ClassSignature classSignature)
@@ -2287,7 +2258,7 @@ public class TypeChecker
             var resultSignature = new UnionSignature
             {
                 GenericParameters = genericParameters,
-                Name = "Result",
+                Name = "result",
                 Variants = variants,
                 Functions = []
             };
@@ -2401,13 +2372,13 @@ public class TypeChecker
             { GenericParameters = [], Name = "Unit", Fields = [], StaticFields = [], Functions = [] };
 
         public static ClassSignature String { get; } = new()
-            { GenericParameters = [], Name = "String", Fields = [], StaticFields = [], Functions = [] };
+            { GenericParameters = [], Name = "string", Fields = [], StaticFields = [], Functions = [] };
 
         public static ClassSignature Int { get; } = new()
-            { GenericParameters = [], Name = "Int", Fields = [], StaticFields = [], Functions = [] };
+            { GenericParameters = [], Name = "int", Fields = [], StaticFields = [], Functions = [] };
 
         public static ClassSignature Boolean { get; } = new()
-            { GenericParameters = [], Name = "Boolean", Fields = [], StaticFields = [], Functions = [] };
+            { GenericParameters = [], Name = "bool", Fields = [], StaticFields = [], Functions = [] };
 
         public static ClassSignature Never { get; } = new()
             { GenericParameters = [], Name = "!", Fields = [], StaticFields = [], Functions = [] };

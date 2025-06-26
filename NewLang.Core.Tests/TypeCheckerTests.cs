@@ -141,7 +141,7 @@ public class TypeCheckerTests
 
             var c = OtherFn(b);
 
-            var d: String = c;
+            var d: string = c;
 
             fn OtherFn<T>(param: T): T {
                 return param;
@@ -165,8 +165,8 @@ public class TypeCheckerTests
             """
             var a = SomeFn;
 
-            var b: String = a();
-            var c: String = a();
+            var b: string = a();
+            var c: string = a();
 
             fn SomeFn<T>(): T {
                 return todo!;
@@ -211,7 +211,7 @@ public class TypeCheckerTests
             var c = OtherFn(b);
             var c2 = OtherFn(b2);
 
-            var d: String = c;
+            var d: string = c;
             var d2: int = c2;
 
             fn OtherFn<T>(param: T): T {
@@ -882,7 +882,7 @@ public class TypeCheckerTests
             """
             var a = SomeFn;
 
-            var b: String = a();
+            var b: string = a();
             var c: int = a();
 
             fn SomeFn<T>(): T {
