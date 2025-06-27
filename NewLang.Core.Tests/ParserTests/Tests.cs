@@ -59,7 +59,7 @@ public class Tests(ITestOutputHelper testOutputHelper)
     [Fact]
     public void SingleTest()
     {
-        const string source = "var string = a;";
+        const string source = "union MyUnion<T> {;";
         var result = Parser.Parse(Tokenizer.Tokenize(source));
         result.Should().NotBeNull();
     }

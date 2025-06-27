@@ -29,6 +29,16 @@ public record ParserError
         return new ParserError(receivedToken, expectedTokens, ParserErrorType.ExpectedToken);
     }
     
+    public static ParserError ExpectedTokenOrExpression(Token? receivedToken, params IReadOnlyList<TokenType> expectedTokens)
+    {
+        if (expectedTokens.Count == 0)
+        {
+            throw new InvalidOperationException("Expected at least one token type");
+        }
+        
+        return new ParserError(receivedToken, expectedTokens, ParserErrorType.ExpectedTokenOrExpression);
+    }
+    
     public static ParserError UnexpectedToken(Token receivedToken)
     {
         return new ParserError(receivedToken, ParserErrorType.UnexpectedToken);
@@ -73,6 +83,7 @@ public enum ParserErrorType
     ExpectedExpression,
     ExpectedType,
     UnexpectedToken,
+    ExpectedTokenOrExpression,
     
     Scope_DuplicateModifier,
     

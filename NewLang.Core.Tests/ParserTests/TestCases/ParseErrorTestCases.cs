@@ -176,7 +176,7 @@ public static class ParseErrorTestCases
                     Block()
                 ], [], [], []),
                 [
-                    ParserError.ExpectedToken(null, TokenType.RightBrace)
+                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static)
                 ]
             ),
             (
@@ -504,7 +504,74 @@ public static class ParseErrorTestCases
                 [
                     ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier),
                 ]
-            )
+            ),
+            (
+                "union ",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier),
+                ]
+            ),
+            (
+                "union MyUnion",
+                new LangProgram([], [], [], [
+                    Union("MyUnion")
+                ]),
+                [
+                    ParserError.ExpectedToken(null, TokenType.LeftBrace, TokenType.LeftAngleBracket),
+                ]
+            ),
+            (
+                "union MyUnion<T> {",
+                new LangProgram([], [], [], [
+                    Union("MyUnion", genericParameters: ["T"])
+                ]),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.RightBrace, TokenType.Pub, TokenType.Static, TokenType.Fn),
+                ]
+            ),
+            (
+                "union MyUnion<T> {}",
+                new LangProgram([], [], [], [
+                    Union("MyUnion", genericParameters: ["T"])
+                ]),
+                [
+                ]
+            ),
+            (
+                "union ;",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier),
+                ]
+            ),
+            (
+                "union MyUnion;",
+                new LangProgram([], [], [], [
+                    Union("MyUnion")
+                ]),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.LeftBrace, TokenType.LeftAngleBracket),
+                ]
+            ),
+            (
+                "union MyUnion<T> {;",
+                new LangProgram([], [], [], [
+                    Union("MyUnion", genericParameters: ["T"])
+                ]),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier, TokenType.RightBrace, TokenType.Pub, TokenType.Static, TokenType.Fn),
+                ]
+            ),
+            (
+                "union MyUnion<T>",
+                new LangProgram([], [], [], [
+                    Union("MyUnion", genericParameters: ["T"])
+                ]),
+                [
+                    ParserError.ExpectedToken(null, TokenType.LeftBrace),
+                ]
+            ),
         ];
 
         var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();
