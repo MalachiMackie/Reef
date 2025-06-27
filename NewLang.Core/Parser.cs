@@ -725,19 +725,21 @@ public sealed class Parser : IDisposable
             scope.Variants);
     }
 
-    private ProgramClass GetClassDefinition(AccessModifier? accessModifier)
+    private ProgramClass? GetClassDefinition(AccessModifier? accessModifier)
     {
-        if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } name)
+        if (!ExpectNextIdentifier(out var name))
         {
-            throw new InvalidOperationException("Expected class name");
+            MoveNext();
+            return null;
         }
-
+        
         if (!MoveNext())
         {
-            throw new InvalidOperationException("Expected { or <");
+            _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace, TokenType.LeftAngleBracket));
+            return new ProgramClass(accessModifier, name, [], [], []);
         }
 
-        var typeArguments = new List<StringToken>();
+        IReadOnlyList<StringToken>? typeArguments = null;
 
         if (Current.Type == TokenType.LeftAngleBracket)
         {
@@ -745,14 +747,19 @@ public sealed class Parser : IDisposable
 
             if (!_hasNext)
             {
-                throw new InvalidOperationException("{");
+                _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace));
+                return new ProgramClass(accessModifier, name, typeArguments, [], []);
             }
         }
 
         if (Current.Type != TokenType.LeftBrace)
         {
-            throw new InvalidOperationException("Expected {");
+            _errors.Add(ParserError.ExpectedToken(Current, typeArguments is null ? [TokenType.LeftBrace, TokenType.LeftAngleBracket] : [TokenType.LeftBrace]));
+            MoveNext();
+            return new ProgramClass(accessModifier, name, typeArguments ?? [], [], []);
         }
+
+        typeArguments ??= [];
 
         var scope = GetScope(TokenType.RightBrace, [Scope.ScopeType.Function, Scope.ScopeType.Field]);
 

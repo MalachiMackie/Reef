@@ -572,6 +572,78 @@ public static class ParseErrorTestCases
                     ParserError.ExpectedToken(null, TokenType.LeftBrace),
                 ]
             ),
+            (
+                "union MyUnion<T>;",
+                new LangProgram([], [], [], [
+                    Union("MyUnion", genericParameters: ["T"])
+                ]),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.LeftBrace),
+                ]
+            ),
+            (
+                "class ",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier),
+                ]
+            ),
+            (
+                "class MyClass",
+                new LangProgram([], [], [Class("MyClass")], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.LeftBrace, TokenType.LeftAngleBracket),
+                ]
+            ),
+            (
+                "class MyClass<T> {",
+                new LangProgram([], [], [Class("MyClass", genericParameters: ["T"])], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Pub, TokenType.Static, TokenType.Fn, TokenType.Field, TokenType.Mut),
+                ]
+            ),
+            (
+                "class MyClass<T> {}",
+                new LangProgram([], [], [Class("MyClass", genericParameters: ["T"])], []),
+                [
+                ]
+            ),
+            (
+                "class ;",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier),
+                ]
+            ),
+            (
+                "class MyClass;",
+                new LangProgram([], [], [Class("MyClass")], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.LeftBrace, TokenType.LeftAngleBracket),
+                ]
+            ),
+            (
+                "class MyClass<T> {;",
+                new LangProgram([], [], [Class("MyClass", genericParameters: ["T"])], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default),
+                        TokenType.RightBrace, TokenType.Pub, TokenType.Static, TokenType.Fn, TokenType.Mut, TokenType.Field),
+                ]
+            ),
+            (
+                "class MyClass<T>",
+                new LangProgram([], [], [Class("MyClass", genericParameters: ["T"])], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.LeftBrace),
+                ]
+            ),
+            (
+                "class MyClass<T>;",
+                new LangProgram([], [], [Class("MyClass", genericParameters: ["T"])], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.LeftBrace),
+                ]
+            ),
         ];
 
         var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();
