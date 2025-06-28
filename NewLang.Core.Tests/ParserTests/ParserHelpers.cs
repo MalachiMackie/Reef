@@ -142,4 +142,21 @@ public static class ParserHelpers
     {
         return new StaticMemberAccessExpression(new StaticMemberAccess(type, memberName is null ? null : Token.Identifier(memberName, SourceSpan.Default)));
     }
+
+    public static GenericInstantiationExpression GenericInstantiation(IExpression value, IReadOnlyList<TypeIdentifier>? genericArguments = null)
+    {
+        return new GenericInstantiationExpression(new GenericInstantiation(
+            value,
+            genericArguments ?? []), SourceRange.Default);
+    }
+
+    public static TupleExpression Tuple(IExpression first, params IEnumerable<IExpression> values)
+    {
+        return new TupleExpression([first, ..values], SourceRange.Default);
+    }
+
+    public static ValueAccessorExpression IntLiteral(int value)
+    {
+        return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(value, SourceSpan.Default)));
+    }
 }

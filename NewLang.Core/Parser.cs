@@ -996,9 +996,7 @@ public sealed class Parser : IDisposable
             TokenType.Dot => GetMemberAccess(previousExpression),
             TokenType.DoubleColon => GetStaticMemberAccess(previousExpression),
             TokenType.Todo or TokenType.Identifier => GetVariableAccess(),
-            TokenType.Turbofish => GetGenericInstantiation(previousExpression ??
-                                                           throw new InvalidOperationException(
-                                                               $"Unexpected token {Current}")),
+            TokenType.Turbofish => GetGenericInstantiation(previousExpression),
             TokenType.Matches => GetMatchesExpression(previousExpression ??
                                                       throw new InvalidOperationException(
                                                           $"Unexpected token {Current}")),
@@ -1333,7 +1331,7 @@ public sealed class Parser : IDisposable
 
         if (!MoveNext())
         {
-            LogError(null);
+            LogError(null, expectTerminator: true);
             return ([], null);
         }
 
@@ -1358,20 +1356,20 @@ public sealed class Parser : IDisposable
                 
                 if (!MoveNext())
                 {
-                    LogError(null);
+                    LogError(null, expectTerminator: true);
                     break;
                 }
             }
             
             while (_hasNext && Current.Type == TokenType.Comma)
             {
-                LogError(Current);
+                LogError(Current, expectTerminator: true);
                 MoveNext();
             }
 
             if (!_hasNext)
             {
-                LogError(null);
+                LogError(null, expectTerminator: true);
                 break;
             }
 
@@ -1403,19 +1401,25 @@ public sealed class Parser : IDisposable
 
         return (items, lastToken);
 
-        void LogError(Token? current) 
+        void LogError(Token? current, bool expectTerminator) 
         {
             if (expectedTokens.Count != 0)
             {
-                _errors.Add(ParserError.ExpectedToken(current, [..expectedTokens, terminator]));
+                _errors.Add(expectTerminator
+                    ? ParserError.ExpectedToken(current, [..expectedTokens, terminator])
+                    : ParserError.ExpectedToken(current, [..expectedTokens]));
             }
             else if (expectExpression)
             {
-                _errors.Add(ParserError.ExpectedExpression(current));
+                _errors.Add(expectTerminator
+                    ? ParserError.ExpectedTokenOrExpression(current, terminator)
+                    : ParserError.ExpectedExpression(current));
             }
             else if (expectType)
             {
-                _errors.Add(ParserError.ExpectedType(current));
+                _errors.Add(expectTerminator 
+                    ? ParserError.ExpectedTypeOrToken(current, terminator)
+                    : ParserError.ExpectedType(current));
             }
             else if (expectPattern)
             {
@@ -1424,8 +1428,15 @@ public sealed class Parser : IDisposable
         }
     }
 
-    private GenericInstantiationExpression GetGenericInstantiation(IExpression previousExpression)
+    private GenericInstantiationExpression? GetGenericInstantiation(IExpression? previousExpression)
     {
+        if (previousExpression is null)
+        {
+            _errors.Add(ParserError.ExpectedExpression(Current));
+            MoveNext();
+            return null;
+        }
+
         var firstToken = Current;
         var (typeArguments, lastToken) =
             GetCommaSeparatedList(

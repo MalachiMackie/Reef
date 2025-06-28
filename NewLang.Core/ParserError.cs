@@ -43,6 +43,11 @@ public record ParserError
     {
         return new ParserError(receivedToken, ParserErrorType.ExpectedType);
     }
+    
+    public static ParserError ExpectedTypeOrToken(Token? receivedToken, params IReadOnlyList<TokenType> expectedTokens)
+    {
+        return new ParserError(receivedToken, expectedTokens, ParserErrorType.ExpectedTypeOrToken);
+    }
 
     public static ParserError ExpectedExpression(Token? receivedToken)
     {
@@ -67,6 +72,7 @@ public enum ParserErrorType
     ExpectedToken,
     ExpectedExpression,
     ExpectedType,
+    ExpectedTypeOrToken,
     // UnexpectedToken,
     ExpectedTokenOrExpression,
     
