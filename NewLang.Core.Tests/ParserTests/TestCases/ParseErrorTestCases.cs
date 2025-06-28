@@ -877,6 +877,27 @@ public static class ParseErrorTestCases
                 [
                 ]
             ),
+            (
+                "matches",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedExpression(Token.Matches(SourceSpan.Default))
+                ]
+            ),
+            (
+                "a matches",
+                new LangProgram([Matches(VariableAccessor("a"))], [], [], []),
+                [
+                    ParserError.ExpectedPattern(null)
+                ]
+            ),
+            (
+                "a matches;",
+                new LangProgram([Matches(VariableAccessor("a"))], [], [], []),
+                [
+                    ParserError.ExpectedPattern(Token.Semicolon(SourceSpan.Default))
+                ]
+            ),
         ];
 
         var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();

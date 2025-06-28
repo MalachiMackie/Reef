@@ -130,7 +130,8 @@ public static class RemoveSourceSpanHelpers
             SourceRange.Default);
     }
 
-    private static IPattern RemoveSourceSpan(IPattern pattern)
+    [return: NotNullIfNotNull(nameof(pattern))]
+    private static IPattern? RemoveSourceSpan(IPattern? pattern)
     {
         return pattern switch
         {
@@ -145,7 +146,7 @@ public static class RemoveSourceSpanHelpers
             UnionTupleVariantPattern unionTupleVariantPattern => new UnionTupleVariantPattern(
                 RemoveSourceSpan(unionTupleVariantPattern.Type),
                 RemoveSourceSpan(unionTupleVariantPattern.VariantName),
-                [..unionTupleVariantPattern.TupleParamPatterns.Select(RemoveSourceSpan)],
+                [..unionTupleVariantPattern.TupleParamPatterns.Select(RemoveSourceSpan)!],
                 unionTupleVariantPattern.VariableName is null
                     ? null
                     : RemoveSourceSpan(unionTupleVariantPattern.VariableName), SourceRange.Default),
@@ -170,6 +171,7 @@ public static class RemoveSourceSpanHelpers
                 unionStructVariantPattern.VariableName is null
                     ? null
                     : RemoveSourceSpan(unionStructVariantPattern.VariableName), SourceRange.Default),
+            null => null,
             _ => throw new NotImplementedException($"{pattern}")
         };
     }

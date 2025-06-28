@@ -997,9 +997,7 @@ public sealed class Parser : IDisposable
             TokenType.DoubleColon => GetStaticMemberAccess(previousExpression),
             TokenType.Todo or TokenType.Identifier => GetVariableAccess(),
             TokenType.Turbofish => GetGenericInstantiation(previousExpression),
-            TokenType.Matches => GetMatchesExpression(previousExpression ??
-                                                      throw new InvalidOperationException(
-                                                          $"Unexpected token {Current}")),
+            TokenType.Matches => GetMatchesExpression(previousExpression),
             TokenType.Match => GetMatchExpression(),
             _ when TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(
                 previousExpression, Current, unaryOperatorType.Value),
@@ -1050,7 +1048,9 @@ public sealed class Parser : IDisposable
             expectPattern: true,
             () =>
             {
-                var pattern = GetPattern();
+                var pattern = GetPattern()
+                    ?? throw new InvalidOperationException("Expected pattern");
+
                 if (!_hasNext || Current.Type != TokenType.EqualsArrow)
                 {
                     throw new InvalidOperationException("Expected =>");
@@ -1100,11 +1100,21 @@ public sealed class Parser : IDisposable
         return new TupleExpression(elements, new SourceRange(startToken.SourceSpan, lastToken?.SourceSpan ?? startToken.SourceSpan));
     }
 
-    private MatchesExpression GetMatchesExpression(IExpression previousExpression)
+    private MatchesExpression? GetMatchesExpression(IExpression? previousExpression)
     {
+        var matchesToken = Current;
+        if (previousExpression is null)
+        {
+            _errors.Add(ParserError.ExpectedExpression(Current));
+            MoveNext();
+            return null;
+        }
+        
         if (!MoveNext())
         {
-            throw new InvalidOperationException("Expected pattern");
+            _errors.Add(ParserError.ExpectedPattern(null));
+            return new MatchesExpression(previousExpression, null,
+                previousExpression.SourceRange with { End = matchesToken.SourceSpan });
         }
 
         var pattern = GetPattern();
@@ -1112,7 +1122,7 @@ public sealed class Parser : IDisposable
         return new MatchesExpression(previousExpression, pattern, previousExpression.SourceRange with { });
     }
 
-    private IPattern GetPattern()
+    private IPattern? GetPattern()
     {
         var start = Current.SourceSpan;
         if (Current.Type == TokenType.Underscore)
@@ -1138,7 +1148,9 @@ public sealed class Parser : IDisposable
 
         if (Current.Type != TokenType.Identifier)
         {
-            throw new InvalidOperationException("Expected pattern");
+            _errors.Add(ParserError.ExpectedPattern(Current));
+            MoveNext();
+            return null;
         }
 
         var type = GetTypeIdentifier()

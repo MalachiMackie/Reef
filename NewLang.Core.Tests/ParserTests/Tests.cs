@@ -59,7 +59,7 @@ public class Tests(ITestOutputHelper testOutputHelper)
     [Fact]
     public void SingleTest()
     {
-        const string source = "mut pub static class MyClass {}";
+        const string source = "a matches;";
         var result = Parser.Parse(Tokenizer.Tokenize(source));
         result.Should().NotBeNull();
     }

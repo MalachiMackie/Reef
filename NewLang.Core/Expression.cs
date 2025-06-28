@@ -209,7 +209,7 @@ public record UnionStructVariantInitializerExpression(
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
 }
 
-public record MatchesExpression(IExpression ValueExpression, IPattern Pattern, SourceRange SourceRange) : IExpression
+public record MatchesExpression(IExpression ValueExpression, IPattern? Pattern, SourceRange SourceRange) : IExpression
 {
     /// <summary>
     ///     Collection of declared variables within <see cref="Pattern" />. Initialized during type checking

@@ -63,6 +63,11 @@ public record ParserError
     {
         return new ParserError(receivedToken, ParserErrorType.DuplicateModifier);
     }
+    
+    public static ParserError ExpectedPattern(Token? receivedToken)
+    {
+        return new ParserError(receivedToken, ParserErrorType.ExpectedPattern);
+    }
 }
 
 public enum ParserErrorType
@@ -72,8 +77,8 @@ public enum ParserErrorType
     ExpectedToken,
     ExpectedExpression,
     ExpectedType,
+    ExpectedPattern,
     ExpectedTypeOrToken,
-    // UnexpectedToken,
     ExpectedTokenOrExpression,
     
     DuplicateModifier,

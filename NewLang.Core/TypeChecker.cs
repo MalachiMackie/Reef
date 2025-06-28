@@ -715,8 +715,11 @@ public class TypeChecker
     {
         var valueType = TypeCheckExpression(matchesExpression.ValueExpression, genericPlaceholders);
 
-        matchesExpression.DeclaredVariables =
-            TypeCheckPattern(valueType, matchesExpression.Pattern, genericPlaceholders);
+        if (matchesExpression.Pattern is not null)
+        {
+            matchesExpression.DeclaredVariables =
+                TypeCheckPattern(valueType, matchesExpression.Pattern, genericPlaceholders);
+        }
 
         return InstantiatedClass.Boolean;
     }

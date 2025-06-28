@@ -159,4 +159,9 @@ public static class ParserHelpers
     {
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(value, SourceSpan.Default)));
     }
+
+    public static MatchesExpression Matches(IExpression value)
+    {
+        return new MatchesExpression(value, null, SourceRange.Default);
+    }
 }
