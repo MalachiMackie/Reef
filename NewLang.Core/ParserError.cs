@@ -39,11 +39,6 @@ public record ParserError
         return new ParserError(receivedToken, expectedTokens, ParserErrorType.ExpectedTokenOrExpression);
     }
     
-    public static ParserError UnexpectedToken(Token receivedToken)
-    {
-        return new ParserError(receivedToken, ParserErrorType.UnexpectedToken);
-    }
-    
     public static ParserError ExpectedType(Token? receivedToken)
     {
         return new ParserError(receivedToken, ParserErrorType.ExpectedType);
@@ -54,24 +49,14 @@ public record ParserError
         return new ParserError(receivedToken, ParserErrorType.ExpectedExpression);
     }
 
-    public static ParserError Scope_DuplicateModifier(Token token)
+    public static ParserError UnexpectedModifier(Token receivedToken, params IReadOnlyList<TokenType> allowedModifiers)
     {
-        return new ParserError(token, ParserErrorType.Scope_DuplicateModifier);
+        return new ParserError(receivedToken, allowedModifiers, ParserErrorType.UnexpectedModifier);
     }
     
-    public static ParserError Function_UnexpectedModifier(Token modifier)
+    public static ParserError DuplicateModifier(Token receivedToken)
     {
-        return new ParserError(modifier, ParserErrorType.Function_UnexpectedModifier);
-    }
-    
-    public static ParserError Class_UnexpectedModifier(Token current)
-    {
-        return new ParserError(current, ParserErrorType.Class_UnexpectedModifier);
-    }
-    
-    public static ParserError Union_UnexpectedModifier(Token current)
-    {
-        return new ParserError(current, ParserErrorType.Union_UnexpectedModifier);
+        return new ParserError(receivedToken, ParserErrorType.DuplicateModifier);
     }
 }
 
@@ -82,16 +67,11 @@ public enum ParserErrorType
     ExpectedToken,
     ExpectedExpression,
     ExpectedType,
-    UnexpectedToken,
+    // UnexpectedToken,
     ExpectedTokenOrExpression,
     
-    Scope_DuplicateModifier,
-    
-    Function_UnexpectedModifier,
-    
-    Class_UnexpectedModifier,
-    
-    Union_UnexpectedModifier,
+    DuplicateModifier,
+    UnexpectedModifier,
     
     // ReSharper restore InconsistentNaming
 }

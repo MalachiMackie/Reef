@@ -105,7 +105,7 @@ public record AccessModifier(Token Token)
     }
 }
 
-public record FunctionParameter(TypeIdentifier Type, MutabilityModifier? MutabilityModifier, StringToken Identifier)
+public record FunctionParameter(TypeIdentifier? Type, MutabilityModifier? MutabilityModifier, StringToken Identifier)
 {
     public override string ToString()
     {

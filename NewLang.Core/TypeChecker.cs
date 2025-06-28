@@ -552,7 +552,7 @@ public class TypeChecker
                 throw new InvalidOperationException($"Parameter with {paramName} already defined");
             }
 
-            var type = GetTypeReference(parameter.Type, innerGenericPlaceholders);
+            var type = parameter.Type is null ? new UnknownType() : GetTypeReference(parameter.Type, innerGenericPlaceholders);
 
             parameters.Add(new FunctionArgument(paramName, type, parameter.MutabilityModifier is not null));
         }

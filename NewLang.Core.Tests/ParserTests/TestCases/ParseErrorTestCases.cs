@@ -183,7 +183,7 @@ public static class ParseErrorTestCases
                 ",",
                 new LangProgram([], [], [], []),
                 [
-                    ParserError.UnexpectedToken(Token.Comma(SourceSpan.Default))
+                    ParserError.ExpectedTokenOrExpression(Token.Comma(SourceSpan.Default), TokenType.Pub, TokenType.Static, TokenType.Fn, TokenType.Class, TokenType.Union)
                 ]
             ),
             (
@@ -193,7 +193,7 @@ public static class ParseErrorTestCases
                     VariableAccessor("b")
                 ], [], [], []),
                 [
-                    ParserError.UnexpectedToken(Token.Comma(SourceSpan.Default))
+                    ParserError.ExpectedTokenOrExpression(Token.Comma(SourceSpan.Default), TokenType.Pub, TokenType.Static, TokenType.Fn, TokenType.Class, TokenType.Union)
                 ]
             ),
             (
@@ -229,7 +229,7 @@ public static class ParseErrorTestCases
                     ])
                 ], []),
                 [
-                    ParserError.ExpectedToken(Token.Field(SourceSpan.Default), TokenType.Comma)
+                    ParserError.ExpectedToken(Token.Field(SourceSpan.Default), TokenType.Comma, TokenType.RightBrace)
                 ]
             ),
             (
@@ -241,7 +241,7 @@ public static class ParseErrorTestCases
                     ])
                 ], []),
                 [
-                    ParserError.ExpectedToken(null, TokenType.RightBrace)
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma, TokenType.Pub, TokenType.Static, TokenType.Mut, TokenType.Field, TokenType.Fn),
                 ]
             ),
             (
@@ -250,7 +250,7 @@ public static class ParseErrorTestCases
                     Block([VariableAccessor("a")])
                 ], [], [], []),
                 [
-                    ParserError.ExpectedToken(null, TokenType.RightBrace)
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Semicolon)
                 ]
             ),
             (
@@ -266,63 +266,63 @@ public static class ParseErrorTestCases
                 "mut class MyClass {}",
                 new LangProgram([ ], [], [Class("MyClass")], []),
                 [
-                    ParserError.Class_UnexpectedModifier(Token.Mut(SourceSpan.Default))
+                    ParserError.UnexpectedModifier(Token.Mut(SourceSpan.Default), TokenType.Pub)
                 ]
             ),
             (
                 "mut static class MyClass {}",
                 new LangProgram([], [], [Class("MyClass")], []),
                 [
-                    ParserError.Class_UnexpectedModifier(Token.Static(SourceSpan.Default)),
-                    ParserError.Class_UnexpectedModifier(Token.Mut(SourceSpan.Default)),
+                    ParserError.UnexpectedModifier(Token.Mut(SourceSpan.Default), TokenType.Pub),
+                    ParserError.UnexpectedModifier(Token.Static(SourceSpan.Default), TokenType.Pub),
                 ]
             ),
             (
                 "mut pub static class MyClass {}",
                 new LangProgram([], [], [Class("MyClass", isPublic: true)], []),
                 [
-                    ParserError.Class_UnexpectedModifier(Token.Static(SourceSpan.Default)),
-                    ParserError.Class_UnexpectedModifier(Token.Mut(SourceSpan.Default)),
+                    ParserError.UnexpectedModifier(Token.Mut(SourceSpan.Default), TokenType.Pub),
+                    ParserError.UnexpectedModifier(Token.Static(SourceSpan.Default), TokenType.Pub),
                 ]
             ),
             (
                 "mut union MyUnion {}",
                 new LangProgram([ ], [], [], [Union("MyUnion")]),
                 [
-                    ParserError.Union_UnexpectedModifier(Token.Mut(SourceSpan.Default))
+                    ParserError.UnexpectedModifier(Token.Mut(SourceSpan.Default), TokenType.Pub),
                 ]
             ),
             (
                 "mut static union MyUnion {}",
                 new LangProgram([], [], [], [Union("MyUnion")]),
                 [
-                    ParserError.Union_UnexpectedModifier(Token.Static(SourceSpan.Default)),
-                    ParserError.Union_UnexpectedModifier(Token.Mut(SourceSpan.Default)),
+                    ParserError.UnexpectedModifier(Token.Mut(SourceSpan.Default), TokenType.Pub),
+                    ParserError.UnexpectedModifier(Token.Static(SourceSpan.Default), TokenType.Pub),
                 ]
             ),
             (
                 "mut pub static union MyUnion {}",
                 new LangProgram([], [], [], [Union("MyUnion", isPublic: true)]),
                 [
-                    ParserError.Union_UnexpectedModifier(Token.Static(SourceSpan.Default)),
-                    ParserError.Union_UnexpectedModifier(Token.Mut(SourceSpan.Default)),
+                    ParserError.UnexpectedModifier(Token.Mut(SourceSpan.Default), TokenType.Pub),
+                    ParserError.UnexpectedModifier(Token.Static(SourceSpan.Default), TokenType.Pub),
                 ]
             ),
             (
                 "mut static fn MyFn() {}",
                 new LangProgram([], [Function("MyFn", isStatic: true)], [], []),
                 [
-                    ParserError.Function_UnexpectedModifier(Token.Mut(SourceSpan.Default)),
+                    ParserError.UnexpectedModifier(Token.Mut(SourceSpan.Default), TokenType.Pub, TokenType.Static),
                 ]
             ),
             (
                 "mut mut static static pub pub fn MyFn() {}",
                 new LangProgram([], [Function("MyFn", isStatic: true, isPublic: true)], [], []),
                 [
-                    ParserError.Function_UnexpectedModifier(Token.Mut(SourceSpan.Default)),
-                    ParserError.Scope_DuplicateModifier(Token.Mut(SourceSpan.Default)),
-                    ParserError.Scope_DuplicateModifier(Token.Static(SourceSpan.Default)),
-                    ParserError.Scope_DuplicateModifier(Token.Pub(SourceSpan.Default)),
+                    ParserError.DuplicateModifier(Token.Mut(SourceSpan.Default)),
+                    ParserError.DuplicateModifier(Token.Static(SourceSpan.Default)),
+                    ParserError.DuplicateModifier(Token.Pub(SourceSpan.Default)),
+                    ParserError.UnexpectedModifier(Token.Mut(SourceSpan.Default), TokenType.Pub, TokenType.Static),
                 ]
             ),
             (
@@ -341,7 +341,7 @@ public static class ParseErrorTestCases
                 ], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.Identifier),
-                    ParserError.ExpectedToken(null, TokenType.RightBrace),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Pub, TokenType.Comma, TokenType.Static, TokenType.Mut, TokenType.Fn, TokenType.Field),
                 ]
             ),
             (
@@ -360,7 +360,7 @@ public static class ParseErrorTestCases
                 ], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.Colon),
-                    ParserError.ExpectedToken(null, TokenType.RightBrace),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma, TokenType.Pub, TokenType.Static, TokenType.Fn, TokenType.Field, TokenType.Mut),
                 ]
             ),
             (
@@ -379,7 +379,7 @@ public static class ParseErrorTestCases
                 ], []),
                 [
                     ParserError.ExpectedType(null),
-                    ParserError.ExpectedToken(null, TokenType.RightBrace),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma, TokenType.Pub, TokenType.Static, TokenType.Fn, TokenType.Field, TokenType.Mut),
                 ]
             ),
             (
@@ -398,7 +398,7 @@ public static class ParseErrorTestCases
                 ], []),
                 [
                     ParserError.ExpectedExpression(null),
-                    ParserError.ExpectedToken(null, TokenType.RightBrace),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Pub, TokenType.Comma, TokenType.Static, TokenType.Fn, TokenType.Field, TokenType.Mut),
                 ]
             ),
             (
@@ -423,7 +423,7 @@ public static class ParseErrorTestCases
                     Class("MyClass")
                 ], []),
                 [
-                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier),
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier, TokenType.RightAngleBracket),
                 ]
             ),
             (
@@ -432,8 +432,8 @@ public static class ParseErrorTestCases
                     Class("MyClass", genericParameters: ["T", "T2"])
                 ], []),
                 [
-                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier),
-                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier),
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier, TokenType.RightAngleBracket),
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier, TokenType.RightAngleBracket),
                 ]
             ),
             (
@@ -445,14 +445,14 @@ public static class ParseErrorTestCases
                 "union MyUnion<,> {}",
                 new LangProgram([], [], [], [Union("MyUnion")]),
                 [
-                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier),
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier, TokenType.RightAngleBracket),
                 ]
             ),
             (
                 "union MyUnion<T,,T2> {}",
                 new LangProgram([], [], [], [Union("MyUnion", genericParameters: ["T", "T2"])]),
                 [
-                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier),
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier, TokenType.RightAngleBracket),
                 ]
             ),
             (
@@ -561,6 +561,7 @@ public static class ParseErrorTestCases
                 ]),
                 [
                     ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier, TokenType.RightBrace, TokenType.Pub, TokenType.Static, TokenType.Fn),
+                    ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.RightBrace, TokenType.Pub, TokenType.Static, TokenType.Fn),
                 ]
             ),
             (
@@ -628,6 +629,7 @@ public static class ParseErrorTestCases
                 [
                     ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default),
                         TokenType.RightBrace, TokenType.Pub, TokenType.Static, TokenType.Fn, TokenType.Mut, TokenType.Field),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Pub, TokenType.Static, TokenType.Mut, TokenType.Fn, TokenType.Field)
                 ]
             ),
             (
@@ -643,6 +645,196 @@ public static class ParseErrorTestCases
                 [
                     ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.LeftBrace),
                 ]
+            ),
+            (
+                "fn",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier),
+                ]
+            ),
+            (
+                "fn;",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier),
+                ]
+            ),
+            (
+                "fn MyFn",
+                new LangProgram([], [Function("MyFn")], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.LeftAngleBracket, TokenType.LeftParenthesis),
+                ]
+            ),
+            (
+                "pub static fn MyFn",
+                new LangProgram([], [Function("MyFn", isStatic: true, isPublic: true)], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.LeftAngleBracket, TokenType.LeftParenthesis),
+                ]
+            ),
+            (
+                "fn MyFn;",
+                new LangProgram([], [Function("MyFn")], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.LeftAngleBracket, TokenType.LeftParenthesis),
+                ]
+            ),
+            (
+                "fn MyFn<;",
+                new LangProgram([], [Function("MyFn")], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier, TokenType.RightAngleBracket),
+                ]
+            ),
+            (
+                "fn MyFn<",
+                new LangProgram([], [Function("MyFn")], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.RightAngleBracket),
+                ]
+            ),
+            (
+                "fn MyFn<T>",
+                new LangProgram([], [Function("MyFn", genericParameters: ["T"])], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.LeftParenthesis),
+                ]
+            ),
+            (
+                "fn MyFn(",
+                new LangProgram([], [Function("MyFn")], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.Mut, TokenType.RightParenthesis),
+                ]
+            ),
+            (
+                "fn MyFn(a",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a")])], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Colon),
+                    ParserError.ExpectedToken(null, TokenType.RightParenthesis, TokenType.Comma)
+                ]
+            ),
+            (
+                "fn MyFn(a,",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a")])], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Colon),
+                    ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.Mut, TokenType.RightParenthesis)
+                ]
+            ),
+            (
+                "fn MyFn(a: ",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a")])], [], []),
+                [
+                    ParserError.ExpectedType(null),
+                    ParserError.ExpectedToken(null, TokenType.Comma, TokenType.RightParenthesis)
+                ]
+            ),
+            (
+                "fn MyFn(mut",
+                new LangProgram([], [Function("MyFn", parameters: [])], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier)
+                ]
+            ),
+            (
+                "fn MyFn(mut a",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", isMutable: true)])], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Colon)
+                ]
+            ),
+            (
+                "fn MyFn(a: )",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a")])], [], []),
+                [
+                    ParserError.ExpectedType(Token.RightParenthesis(SourceSpan.Default)),
+                    ParserError.ExpectedToken(null, TokenType.Colon, TokenType.LeftBrace)
+                ]
+            ),
+            (
+                "fn MyFn(a: int",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.RightParenthesis, TokenType.Comma)
+                ]
+            ),
+            (
+                "fn MyFn(a: int;",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.RightParenthesis, TokenType.Comma)
+                ]
+            ),
+            (
+                "fn MyFn(a: int)",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.LeftBrace, TokenType.Colon)
+                ]
+            ),
+            (
+                "fn MyFn(a: int);",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.LeftBrace, TokenType.Colon)
+                ]
+            ),
+            (
+                "fn MyFn(a: int):",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
+                [
+                    ParserError.ExpectedType(null)
+                ]
+            ),
+            (
+                "fn MyFn(a: int):;",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
+                [
+                    ParserError.ExpectedType(Token.Semicolon(SourceSpan.Default))
+                ]
+            ),
+            (
+                "fn MyFn(a: int): int {",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())], returnType: IntType())], [], []),
+                [
+                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace)
+                ]
+            ),
+            (
+                "fn MyFn(a: int): int {*",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())], returnType: IntType())], [], []),
+                [
+                    ParserError.ExpectedTokenOrExpression(Token.Star(SourceSpan.Default), TokenType.RightBrace)
+                ]
+            ),
+            (
+                "fn MyFn(a: int) {",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
+                [
+                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static)
+                ]
+            ),
+            (
+                "fn MyFn(a: int) {*",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.RightBrace),
+                    ParserError.ExpectedExpression(Token.Star(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "fn MyFn(a: int) {}",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
+                []
+            ),
+            (
+                "fn MyFn<>(a: int) {}",
+                new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
+                []
             ),
         ];
 

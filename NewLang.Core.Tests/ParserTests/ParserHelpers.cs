@@ -108,15 +108,29 @@ public static class ParserHelpers
             variants ?? []);
     }
 
-    public static LangFunction Function(string name, bool isPublic = false, bool isStatic = false)
+    public static LangFunction Function(
+        string name,
+        bool isPublic = false,
+        bool isStatic = false,
+        IReadOnlyList<FunctionParameter>? parameters = null,
+        IReadOnlyList<string>? genericParameters = null,
+        TypeIdentifier? returnType = null)
     {
         return new LangFunction(isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
             isStatic ? new StaticModifier(Token.Static(SourceSpan.Default)) : null,
             Token.Identifier(name, SourceSpan.Default),
-            [],
-            [],
-            null,
+            genericParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)).ToArray() ?? [],
+            parameters ?? [],
+            returnType,
             new Block([], []));
+    }
+
+    public static FunctionParameter FunctionParameter(string name, TypeIdentifier? type = null, bool isMutable = false)
+    {
+        return new FunctionParameter(
+            type,
+            isMutable ? new MutabilityModifier(Token.Mut(SourceSpan.Default)) : null,
+            Token.Identifier(name, SourceSpan.Default));
     }
 
     public static MemberAccessExpression MemberAccess(IExpression owner, string? memberName)
