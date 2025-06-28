@@ -744,7 +744,8 @@ public static class ParseErrorTestCases
                 "fn MyFn(mut a",
                 new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", isMutable: true)])], [], []),
                 [
-                    ParserError.ExpectedToken(null, TokenType.Colon)
+                    ParserError.ExpectedToken(null, TokenType.Colon),
+                    ParserError.ExpectedToken(null, TokenType.RightParenthesis, TokenType.Comma)
                 ]
             ),
             (
@@ -801,14 +802,15 @@ public static class ParseErrorTestCases
                 "fn MyFn(a: int): int {",
                 new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())], returnType: IntType())], [], []),
                 [
-                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace)
+                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static),
                 ]
             ),
             (
                 "fn MyFn(a: int): int {*",
                 new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())], returnType: IntType())], [], []),
                 [
-                    ParserError.ExpectedTokenOrExpression(Token.Star(SourceSpan.Default), TokenType.RightBrace)
+                    ParserError.ExpectedExpression(Token.Star(SourceSpan.Default)),
+                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static),
                 ]
             ),
             (
@@ -822,7 +824,7 @@ public static class ParseErrorTestCases
                 "fn MyFn(a: int) {*",
                 new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
                 [
-                    ParserError.ExpectedToken(null, TokenType.RightBrace),
+                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static),
                     ParserError.ExpectedExpression(Token.Star(SourceSpan.Default)),
                 ]
             ),
