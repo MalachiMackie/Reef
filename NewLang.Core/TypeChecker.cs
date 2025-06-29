@@ -662,7 +662,10 @@ public class TypeChecker
                 GetScopedVariable(variable).Instantiated = true;
             }
 
-            var armType = TypeCheckExpression(arm.Expression, genericPlaceholders);
+            var armType = arm.Expression is null
+                ? new UnknownType()
+                : TypeCheckExpression(arm.Expression, genericPlaceholders);
+            
             foundType ??= armType;
 
             ExpectType(foundType, armType, genericPlaceholders);

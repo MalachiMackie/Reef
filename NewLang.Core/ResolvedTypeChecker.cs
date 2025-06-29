@@ -154,7 +154,10 @@ public static class ResolvedTypeChecker
         CheckExpression(matchExpression.Value, expectedGenerics);
         foreach (var arm in matchExpression.Arms)
         {
-            CheckExpression(arm.Expression, expectedGenerics);
+            if (arm.Expression is not null)
+            {
+                CheckExpression(arm.Expression, expectedGenerics);
+            }
         }
     }
 

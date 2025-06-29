@@ -686,7 +686,7 @@ public static class ParseErrorTestCases
                 new LangProgram([], [Function("MyFn")], [], []),
                 [
                     ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier, TokenType.RightAngleBracket),
-                    ParserError.ExpectedToken(null, TokenType.Comma, TokenType.RightAngleBracket)
+                    ParserError.ExpectedToken(null, TokenType.RightAngleBracket)
                 ]
             ),
             (
@@ -739,7 +739,7 @@ public static class ParseErrorTestCases
                 new LangProgram([], [Function("MyFn", parameters: [])], [], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.Identifier),
-                    ParserError.ExpectedToken(null, TokenType.RightParenthesis, TokenType.Comma)
+                    ParserError.ExpectedToken(null, TokenType.RightParenthesis)
                 ]
             ),
             (
@@ -770,7 +770,8 @@ public static class ParseErrorTestCases
                 new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
                 [
                     ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.RightParenthesis, TokenType.Comma),
-                    ParserError.ExpectedToken(null, TokenType.RightParenthesis, TokenType.Identifier, TokenType.Mut)
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier, TokenType.Mut),
+                    ParserError.ExpectedToken(null, TokenType.RightParenthesis)
                 ]
             ),
             (
@@ -1087,7 +1088,7 @@ public static class ParseErrorTestCases
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.RightBrace),
-                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace),
                 ]
             ),
             (
@@ -1196,7 +1197,7 @@ public static class ParseErrorTestCases
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.RightBrace),
-                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace),
                 ]
             ),
             (
@@ -1302,6 +1303,132 @@ public static class ParseErrorTestCases
                     Matches(VariableAccessor("a"), ClassPattern(TypeIdentifier("A")))], [], [], []),
                 [
                     ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)
+                ]
+            ),
+            (
+                "match",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.LeftParenthesis)
+                ]
+            ),
+            (
+                "match (",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedExpression(null)
+                ]
+            ),
+            (
+                "match (a",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.RightParenthesis)
+                ]
+            ),
+            (
+                "match (a)",
+                new LangProgram([Match(VariableAccessor("a"))], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.LeftBrace)
+                ]
+            ),
+            (
+                "match (a) {}",
+                new LangProgram([
+                    Match(VariableAccessor("a"))], [], [], []),
+                []
+            ),
+            (
+                "match (a) {",
+                new LangProgram([
+                    Match(VariableAccessor("a"))], [], [], []),
+                [
+                    ParserError.ExpectedPatternOrToken(null, TokenType.RightBrace)
+                ]
+            ),
+            (
+                "match (a) {;",
+                new LangProgram([
+                    Match(VariableAccessor("a"))], [], [], []),
+                [
+                    ParserError.ExpectedPattern(Token.Semicolon(SourceSpan.Default)),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace),
+                ]
+            ),
+            (
+                """
+                match (a) {
+                    _
+                }
+                """,
+                new LangProgram([
+                    Match(VariableAccessor("a"), [
+                        MatchArm(DiscardPattern())
+                    ])], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.RightBrace(SourceSpan.Default), TokenType.EqualsArrow)
+                ]
+            ),
+            (
+                """
+                match (a) {
+                    _ =>
+                }
+                """,
+                new LangProgram([
+                    Match(VariableAccessor("a"), [
+                        MatchArm(DiscardPattern())
+                    ])], [], [], []),
+                [
+                    ParserError.ExpectedExpression(Token.RightBrace(SourceSpan.Default))
+                ]
+            ),
+            (
+                """
+                match (a) {
+                    _ =>,
+                    _ => {}
+                }
+                """,
+                new LangProgram([
+                    Match(VariableAccessor("a"), [
+                        MatchArm(DiscardPattern()),
+                        MatchArm(DiscardPattern(), Block())
+                    ])], [], [], []),
+                [
+                    ParserError.ExpectedExpression(Token.Comma(SourceSpan.Default))
+                ]
+            ),
+            (
+                """
+                match (a) {
+                    _ => {}
+                    _ => {}
+                }
+                """,
+                new LangProgram([
+                    Match(VariableAccessor("a"), [
+                        MatchArm(DiscardPattern(), Block()),
+                        MatchArm(DiscardPattern(), Block())
+                    ])], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Underscore(SourceSpan.Default), TokenType.Comma, TokenType.RightBrace)
+                ]
+            ),
+            (
+                """
+                match (a) {
+                    _ => {},
+                    _ => {},
+                }
+                """,
+                new LangProgram([
+                    Match(VariableAccessor("a"), [
+                        MatchArm(DiscardPattern(), Block()),
+                        MatchArm(DiscardPattern(), Block())
+                    ])], [], [], []),
+                [
                 ]
             ),
         ];

@@ -165,6 +165,16 @@ public static class ParserHelpers
         return new MatchesExpression(value, pattern, SourceRange.Default);
     }
 
+    public static MatchExpression Match(IExpression value, IReadOnlyList<MatchArm>? arms = null)
+    {
+        return new MatchExpression(value, arms ?? [],  SourceRange.Default);
+    }
+
+    public static MatchArm MatchArm(IPattern pattern, IExpression? expression = null)
+    {
+        return new MatchArm(pattern, expression);
+    }
+
     public static DiscardPattern DiscardPattern() => new (SourceRange.Default);
 
     public static UnionVariantPattern UnionVariantPattern(TypeIdentifier unionType, string? variantName = null, string? variableName = null)

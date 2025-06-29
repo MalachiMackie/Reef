@@ -285,7 +285,7 @@ public record MatchExpression(IExpression Value, IReadOnlyList<MatchArm> Arms, S
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
 }
 
-public record MatchArm(IPattern Pattern, IExpression Expression);
+public record MatchArm(IPattern Pattern, IExpression? Expression);
 
 public record IfExpression(
     IExpression CheckExpression,

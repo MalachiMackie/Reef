@@ -636,6 +636,17 @@ public sealed class Parser : IDisposable
         return true;
     }
     
+    private bool ExpectCurrentToken(TokenType tokenType)
+    {
+        if (!_hasNext || Current.Type != tokenType)
+        {
+            _errors.Add(ParserError.ExpectedToken(_hasNext ? Current : null, tokenType));
+            return false;
+        }
+
+        return true;
+    }
+    
     private bool ExpectNextToken(TokenType tokenType)
     {
         if (!MoveNext() || Current.Type != tokenType)
@@ -895,6 +906,7 @@ public sealed class Parser : IDisposable
                 if (Current is not StringToken { Type: TokenType.Identifier } parameterName)
                 {
                     _errors.Add(ParserError.ExpectedToken(Current, mutabilityModifier is null ? [TokenType.Mut, TokenType.Identifier] : [TokenType.Identifier]));
+                    MoveNext();
                     return null;
                 }
 
@@ -971,7 +983,15 @@ public sealed class Parser : IDisposable
                 expectExpression: false,
                 expectType: true,
                 expectPattern: false,
-                GetTypeIdentifier);
+                () =>
+                {
+                    var genericArgument = GetTypeIdentifier();
+                    if (genericArgument is null)
+                    {
+                        MoveNext();
+                    }
+                    return genericArgument;
+                });
         }
 
         return new TypeIdentifier(typeIdentifier, typeArguments,
@@ -1014,30 +1034,20 @@ public sealed class Parser : IDisposable
         return expression;
     }
 
-    private MatchExpression GetMatchExpression()
+    private MatchExpression? GetMatchExpression()
     {
         var matchToken = Current;
-        if (!MoveNext() || Current.Type != TokenType.LeftParenthesis)
+        if (!ExpectNextToken(TokenType.LeftParenthesis) || !ExpectNextExpression(out var valueExpression) || !ExpectCurrentToken(TokenType.RightParenthesis))
         {
-            throw new InvalidOperationException("Expected (");
+            MoveNext();
+            return null;
         }
 
-        if (!MoveNext())
-        {
-            throw new InvalidOperationException("Expected match expression value");
-        }
+        var rightParenthesis = Current;
 
-        var valueExpression = PopExpression()
-                              ?? throw new InvalidOperationException("Expected match expression value");
-
-        if (!_hasNext || Current.Type != TokenType.RightParenthesis)
+        if (!ExpectNextToken(TokenType.LeftBrace))
         {
-            throw new InvalidOperationException("Expected )");
-        }
-
-        if (!MoveNext() || Current.Type != TokenType.LeftBrace)
-        {
-            throw new InvalidOperationException("Expected {");
+            return new MatchExpression(valueExpression, [], new SourceRange(matchToken.SourceSpan, rightParenthesis.SourceSpan));
         }
 
         var (arms, lastToken) = GetCommaSeparatedList(
@@ -1048,29 +1058,21 @@ public sealed class Parser : IDisposable
             expectPattern: true,
             () =>
             {
-                var pattern = GetPattern()
-                    ?? throw new InvalidOperationException("Expected pattern");
-
-                if (!_hasNext || Current.Type != TokenType.EqualsArrow)
+                var pattern = GetPattern();
+                if (pattern is null)
                 {
-                    throw new InvalidOperationException("Expected =>");
+                    return null;
                 }
 
-                if (!MoveNext())
+                if (!ExpectCurrentToken(TokenType.EqualsArrow))
                 {
-                    throw new InvalidOperationException("Expected match arm expression");
+                    return new MatchArm(pattern, null);
                 }
-
-                var armExpression = PopExpression()
-                                    ?? throw new InvalidOperationException("Expected match arm expression");
+                
+                ExpectNextExpression(out var armExpression);
 
                 return new MatchArm(pattern, armExpression);
             });
-
-        if (arms.Count == 0)
-        {
-            throw new InvalidOperationException("Expected match expression to contain at least one arm");
-        }
 
         return new MatchExpression(valueExpression, arms, new SourceRange(matchToken.SourceSpan, lastToken?.SourceSpan ?? matchToken.SourceSpan));
     }
@@ -1371,8 +1373,7 @@ public sealed class Parser : IDisposable
                 {
                     _errors.Add(ParserError.ExpectedToken(Current, TokenType.Comma, terminator));
                 }
-
-                if (!MoveNext())
+                else if (!MoveNext())
                 {
                     LogError(null, expectTerminator: true);
                     break;
@@ -1405,7 +1406,8 @@ public sealed class Parser : IDisposable
 
             if (!_hasNext)
             {
-                _errors.Add(ParserError.ExpectedToken(null, TokenType.Comma, terminator));
+                IReadOnlyList<TokenType> tokens = next is null ? [terminator] : [TokenType.Comma, terminator];
+                _errors.Add(ParserError.ExpectedToken(null, tokens));
                 break;
             }
         }
@@ -1464,7 +1466,10 @@ public sealed class Parser : IDisposable
                 expectPattern: false,
                 () =>
                 {
-                    ExpectCurrentTypeIdentifier(out var typeIdentifier);
+                    if (!ExpectCurrentTypeIdentifier(out var typeIdentifier))
+                    {
+                        MoveNext();
+                    }
                     return typeIdentifier;
                 });
 

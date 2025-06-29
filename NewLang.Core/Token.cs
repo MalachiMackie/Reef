@@ -87,8 +87,8 @@ public record Token
             TokenType.Matches => "matches",
             TokenType.Match => "match",
             TokenType.Bang => "!",
-            // TokenType.This => "this",
             TokenType.Todo => "todo!",
+            TokenType.EqualsArrow => "=>",
             _ => throw new UnreachableException(Type.ToString())
         };
     }
