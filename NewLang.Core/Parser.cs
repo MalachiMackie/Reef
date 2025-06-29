@@ -596,18 +596,18 @@ public sealed class Parser : IDisposable
         return new UnitStructUnionVariant(variantName);
     }
     
-    private bool ExpectCurrentIdentifier([NotNullWhen(true)] out StringToken? identifier, IReadOnlyList<TokenType> otherExpectedTokens)
+    private bool ExpectCurrentIdentifier([NotNullWhen(true)] out StringToken? identifier, IReadOnlyList<TokenType>? otherExpectedTokens = null)
     {
         if (!_hasNext)
         {
-            _errors.Add(ParserError.ExpectedToken(null, [..otherExpectedTokens, TokenType.Identifier]));
+            _errors.Add(ParserError.ExpectedToken(null, [..otherExpectedTokens ?? [], TokenType.Identifier]));
             identifier = null;
             return false;
         }
         
         if (Current is not StringToken { Type: TokenType.Identifier } identifierToken)
         {
-            _errors.Add(ParserError.ExpectedToken(Current, [..otherExpectedTokens, TokenType.Identifier]));
+            _errors.Add(ParserError.ExpectedToken(Current, [..otherExpectedTokens ?? [], TokenType.Identifier]));
             identifier = null;
             return false;
         }
@@ -1135,9 +1135,9 @@ public sealed class Parser : IDisposable
 
         if (Current.Type == TokenType.Var)
         {
-            if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } variableName)
+            if (!ExpectNextIdentifier(out var variableName))
             {
-                throw new InvalidOperationException("Expected variable name");
+                return null;
             }
 
             var end = Current.SourceSpan;
@@ -1153,25 +1153,23 @@ public sealed class Parser : IDisposable
             return null;
         }
 
-        var type = GetTypeIdentifier()
-                   ?? throw new InvalidOperationException("Expected type");
+        var type = GetTypeIdentifier() ?? throw new UnreachableException();
 
         if (!_hasNext)
         {
-            return new ClassPattern(type, [], false, null, type.SourceRange with { Start = start });
+            return new TypePattern(type, null, type.SourceRange with { Start = start });
         }
 
         StringToken? variantName = null;
 
         if (Current.Type == TokenType.DoubleColon)
         {
-            if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } x)
+            if (!ExpectNextIdentifier(out variantName))
             {
-                throw new InvalidOperationException("Expected union variant name");
+                MoveNext();
+                return new UnionVariantPattern(type, null, null, SourceRange.Default);
             }
-
-            variantName = x;
-
+            
             MoveNext();
         }
 
@@ -1182,17 +1180,23 @@ public sealed class Parser : IDisposable
 
         if (Current.Type == TokenType.Var)
         {
-            if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } variableName)
+            var endToken = Current;
+            ExpectNextIdentifier(out var variableName);
+
+            if (variableName is not null)
             {
-                throw new InvalidOperationException("Expected variable name");
+                endToken = variableName;
             }
 
-            var end = Current.SourceSpan;
-            MoveNext();
+            if (_hasNext)
+            {
+                endToken = Current;
+                MoveNext();
+            }
 
             return variantName is null
-                ? new ClassPattern(type, [], false, variableName, new SourceRange(start, end))
-                : new UnionVariantPattern(type, variantName, variableName, new SourceRange(start, end));
+                ? new TypePattern(type, variableName, new SourceRange(start, endToken.SourceSpan))
+                : new UnionVariantPattern(type, variantName, variableName, new SourceRange(start, endToken.SourceSpan));
         }
 
         if (variantName is not null && Current.Type == TokenType.LeftParenthesis)
@@ -1210,13 +1214,8 @@ public sealed class Parser : IDisposable
 
             if (_hasNext && Current.Type == TokenType.Var)
             {
-                if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } x)
-                {
-                    throw new InvalidOperationException("Expected variable name");
-                }
-
-                variableName = x;
-
+                ExpectNextIdentifier(out variableName);
+                
                 MoveNext();
             }
 
@@ -1238,20 +1237,25 @@ public sealed class Parser : IDisposable
                     if (Current.Type == TokenType.Underscore)
                     {
                         var underscore = Current;
-                        MoveNext();
-                        return new KeyValuePair<StringToken?, IPattern?>(
-                            null,
+                        if (MoveNext() && Current.Type != TokenType.RightBrace)
+                        {
+                            _errors.Add(ParserError.ExpectedToken(Current, TokenType.RightBrace));
+                        }
+                        
+                        // empty identifier as a hack to return out discard
+                        return new FieldPattern(Token.Identifier("", SourceSpan.Default),
                             new DiscardPattern(new SourceRange(underscore.SourceSpan, underscore.SourceSpan)));
                     }
-
-                    if (Current is not StringToken { Type: TokenType.Identifier } fieldName)
+                    
+                    if (!ExpectCurrentIdentifier(out var fieldName))
                     {
-                        throw new InvalidOperationException("Expected field name");
+                        MoveNext();
+                        return null;
                     }
 
                     if (!MoveNext())
                     {
-                        throw new InvalidOperationException("Expected : or ,");
+                        return null;
                     }
 
                     IPattern? pattern = null;
@@ -1260,35 +1264,41 @@ public sealed class Parser : IDisposable
                     {
                         if (!MoveNext())
                         {
-                            throw new InvalidOperationException("Expected pattern");
+                            _errors.Add(ParserError.ExpectedPattern(null));
                         }
-
-                        pattern = GetPattern();
+                        else
+                        {
+                            pattern = GetPattern();
+                            if (pattern is null)
+                            {
+                                MoveNext();
+                            }
+                        }
                     }
 
-                    return KeyValuePair.Create<StringToken?, IPattern?>(fieldName, pattern);
+                    return new FieldPattern(fieldName, pattern);
                 });
 
-            var discards = fieldPatterns.Where(x => x.Key is null && x.Value is DiscardPattern)
+            var discardRemainingFields = fieldPatterns.Any(x => x is { FieldName.StringValue.Length: 0, Pattern: DiscardPattern });
+            
+            var newFieldPatterns = fieldPatterns.Where(x => x.FieldName.StringValue.Length > 0)
                 .ToArray();
+            
+            StringToken? variableName = null;
 
-            switch (discards.Length)
+            if (_hasNext && Current.Type == TokenType.Var)
             {
-                case > 1:
-                    throw new InvalidOperationException("Pattern can only have one field discard");
-                case 1 when fieldPatterns[^1] is not { Key: null, Value: DiscardPattern }:
-                    throw new InvalidOperationException("field discard must be at the end of the pattern");
-                default:
-                    var newFieldPatterns = fieldPatterns.Where(x => x.Key is not null)
-                        .Select(x => KeyValuePair.Create(x.Key!, x.Value))
-                        .ToList();
-
-                    return variantName is not null
-                        ? new UnionStructVariantPattern(type, variantName, newFieldPatterns, discards.Length == 1, null,
-                            new SourceRange(start, fieldsLastToken?.SourceSpan ?? leftBrace.SourceSpan))
-                        : new ClassPattern(type, newFieldPatterns, discards.Length == 1, null,
-                            new SourceRange(start, fieldsLastToken?.SourceSpan ?? leftBrace.SourceSpan));
+                if (ExpectNextIdentifier(out variableName))
+                {
+                    MoveNext();
+                }
             }
+
+            return variantName is not null
+                ? new UnionStructVariantPattern(type, variantName, newFieldPatterns, discardRemainingFields, variableName,
+                    new SourceRange(start, fieldsLastToken?.SourceSpan ?? leftBrace.SourceSpan))
+                : new ClassPattern(type, newFieldPatterns, discardRemainingFields, variableName,
+                    new SourceRange(start, fieldsLastToken?.SourceSpan ?? leftBrace.SourceSpan));
         }
 
         if (variantName is not null)
@@ -1360,12 +1370,8 @@ public sealed class Parser : IDisposable
                 if (Current.Type != TokenType.Comma)
                 {
                     _errors.Add(ParserError.ExpectedToken(Current, TokenType.Comma, terminator));
-                    if (!MoveNext())
-                    {
-                        break;
-                    }
                 }
-                
+
                 if (!MoveNext())
                 {
                     LogError(null, expectTerminator: true);
@@ -1399,10 +1405,7 @@ public sealed class Parser : IDisposable
 
             if (!_hasNext)
             {
-                if (next is not null)
-                {
-                    _errors.Add(ParserError.ExpectedToken(null, TokenType.Comma, terminator));
-                }
+                _errors.Add(ParserError.ExpectedToken(null, TokenType.Comma, terminator));
                 break;
             }
         }
@@ -1435,7 +1438,9 @@ public sealed class Parser : IDisposable
             }
             else if (expectPattern)
             {
-                throw new NotImplementedException();
+                _errors.Add(expectTerminator
+                    ? ParserError.ExpectedPatternOrToken(current, terminator)
+                    : ParserError.ExpectedPattern(current));
             }
         }
     }

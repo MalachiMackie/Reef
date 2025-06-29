@@ -153,8 +153,8 @@ public static class RemoveSourceSpanHelpers
             ClassPattern classPattern => new ClassPattern(RemoveSourceSpan(classPattern.Type),
                 [
                     ..classPattern.FieldPatterns.Select(x =>
-                        KeyValuePair.Create(RemoveSourceSpan(x.Key),
-                            x.Value is not null ? RemoveSourceSpan(x.Value) : null))
+                        new FieldPattern(RemoveSourceSpan(x.FieldName),
+                            RemoveSourceSpan(x.Pattern)))
                 ],
                 classPattern.RemainingFieldsDiscarded,
                 classPattern.VariableName is null ? null : RemoveSourceSpan(classPattern.VariableName),
@@ -164,13 +164,17 @@ public static class RemoveSourceSpanHelpers
                 RemoveSourceSpan(unionStructVariantPattern.VariantName),
                 [
                     ..unionStructVariantPattern.FieldPatterns.Select(x =>
-                        KeyValuePair.Create(RemoveSourceSpan(x.Key),
-                            x.Value is not null ? RemoveSourceSpan(x.Value) : null))
+                        new FieldPattern(RemoveSourceSpan(x.FieldName),
+                            RemoveSourceSpan(x.Pattern)))
                 ],
                 unionStructVariantPattern.RemainingFieldsDiscarded,
                 unionStructVariantPattern.VariableName is null
                     ? null
                     : RemoveSourceSpan(unionStructVariantPattern.VariableName), SourceRange.Default),
+            TypePattern typePattern => new TypePattern(
+                RemoveSourceSpan(typePattern.Type),
+                RemoveSourceSpan(typePattern.VariableName),
+                SourceRange.Default),
             null => null,
             _ => throw new NotImplementedException($"{pattern}")
         };

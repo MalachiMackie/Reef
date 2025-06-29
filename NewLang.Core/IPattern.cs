@@ -7,7 +7,7 @@ public interface IPattern
 
 public record UnionVariantPattern(
     TypeIdentifier Type,
-    StringToken VariantName,
+    StringToken? VariantName,
     StringToken? VariableName,
     SourceRange SourceRange) : IPattern;
 
@@ -21,10 +21,12 @@ public record UnionTupleVariantPattern(
 public record UnionStructVariantPattern(
     TypeIdentifier Type,
     StringToken VariantName,
-    IReadOnlyList<KeyValuePair<StringToken, IPattern?>> FieldPatterns,
+    IReadOnlyList<FieldPattern> FieldPatterns,
     bool RemainingFieldsDiscarded,
     StringToken? VariableName,
     SourceRange SourceRange) : IPattern;
+
+public record FieldPattern(StringToken FieldName, IPattern? Pattern);
 
 public record VariableDeclarationPattern(StringToken VariableName, SourceRange SourceRange) : IPattern;
 
@@ -32,7 +34,9 @@ public record DiscardPattern(SourceRange SourceRange) : IPattern;
 
 public record ClassPattern(
     TypeIdentifier Type,
-    IReadOnlyList<KeyValuePair<StringToken, IPattern?>> FieldPatterns,
+    IReadOnlyList<FieldPattern> FieldPatterns,
     bool RemainingFieldsDiscarded,
     StringToken? VariableName,
     SourceRange SourceRange) : IPattern;
+
+public record TypePattern(TypeIdentifier Type, StringToken? VariableName, SourceRange SourceRange) : IPattern;

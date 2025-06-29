@@ -160,8 +160,78 @@ public static class ParserHelpers
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(value, SourceSpan.Default)));
     }
 
-    public static MatchesExpression Matches(IExpression value)
+    public static MatchesExpression Matches(IExpression value, IPattern? pattern = null)
     {
-        return new MatchesExpression(value, null, SourceRange.Default);
+        return new MatchesExpression(value, pattern, SourceRange.Default);
+    }
+
+    public static DiscardPattern DiscardPattern() => new (SourceRange.Default);
+
+    public static UnionVariantPattern UnionVariantPattern(TypeIdentifier unionType, string? variantName = null, string? variableName = null)
+    {
+        return new UnionVariantPattern(
+            unionType,
+            variantName is null ? null : Token.Identifier(variantName, SourceSpan.Default),
+            variableName is null ? null : Token.Identifier(variableName, SourceSpan.Default),
+            SourceRange.Default);
+    }
+
+    public static UnionTupleVariantPattern UnionTupleVariantPattern(TypeIdentifier unionType, string variantName, IReadOnlyList<IPattern>? patterns = null, string? variableName = null)
+    {
+        return new UnionTupleVariantPattern(unionType,
+            Token.Identifier(variantName, SourceSpan.Default),
+            patterns ?? [],
+            variableName is null ? null : Token.Identifier(variableName, SourceSpan.Default),
+            SourceRange.Default);
+    }
+    
+    public static UnionStructVariantPattern UnionStructVariantPattern(
+        TypeIdentifier unionType,
+        string variantName,
+        IReadOnlyList<(string, IPattern?)>? patterns = null,
+        string? variableName = null,
+        bool fieldsDiscarded = false)
+    {
+        return new UnionStructVariantPattern(
+            unionType,
+            Token.Identifier(variantName, SourceSpan.Default),
+            patterns?.Select(x => new FieldPattern(Token.Identifier(x.Item1, SourceSpan.Default), x.Item2)).ToArray() ?? [],
+            fieldsDiscarded,
+            variableName is null ? null : Token.Identifier(variableName, SourceSpan.Default),
+            SourceRange.Default);
+    }
+
+    public static ClassPattern ClassPattern(
+        TypeIdentifier type,
+        IReadOnlyList<(string, IPattern?)>? patterns = null,
+        string? variableName = null,
+        bool fieldsDiscarded = false)
+    {
+        return new ClassPattern(
+            type,
+            patterns?.Select(x =>
+                new FieldPattern(Token.Identifier(x.Item1, SourceSpan.Default), x.Item2)).ToArray() ?? [],
+            fieldsDiscarded,
+            variableName is null ? null : Token.Identifier(variableName, SourceSpan.Default),
+            SourceRange.Default);
+    }
+
+    public static TypeIdentifier TypeIdentifier(string typeName)
+    {
+        return new TypeIdentifier(Token.Identifier(typeName, SourceSpan.Default), [], SourceRange.Default);
+    }
+    
+    public static TypePattern TypePattern(TypeIdentifier type, string? variableName = null)
+    {
+        return new TypePattern(
+            type,
+            variableName is null ? null : Token.Identifier(variableName, SourceSpan.Default),
+            SourceRange.Default);
+    }
+
+    public static VariableDeclarationPattern VariableDeclarationPattern(string variableName)
+    {
+        return new VariableDeclarationPattern(
+            Token.Identifier(variableName, SourceSpan.Default), SourceRange.Default);
     }
 }

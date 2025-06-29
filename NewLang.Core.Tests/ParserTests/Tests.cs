@@ -59,7 +59,7 @@ public class Tests(ITestOutputHelper testOutputHelper)
     [Fact]
     public void SingleTest()
     {
-        const string source = "a matches;";
+        const string source = "a matches A::C(B::D var d) var c";
         var result = Parser.Parse(Tokenizer.Tokenize(source));
         result.Should().NotBeNull();
     }

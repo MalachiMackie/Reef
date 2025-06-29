@@ -68,6 +68,10 @@ public record ParserError
     {
         return new ParserError(receivedToken, ParserErrorType.ExpectedPattern);
     }
+    public static ParserError ExpectedPatternOrToken(Token? receivedToken, params IReadOnlyList<TokenType> tokens)
+    {
+        return new ParserError(receivedToken, tokens, ParserErrorType.ExpectedPatternOrToken);
+    }
 }
 
 public enum ParserErrorType
@@ -78,6 +82,7 @@ public enum ParserErrorType
     ExpectedExpression,
     ExpectedType,
     ExpectedPattern,
+    ExpectedPatternOrToken,
     ExpectedTypeOrToken,
     ExpectedTokenOrExpression,
     

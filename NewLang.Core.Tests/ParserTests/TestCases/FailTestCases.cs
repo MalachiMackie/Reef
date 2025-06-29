@@ -8,8 +8,6 @@ public static class FailTestCases
         [
             // missing variable declaration value 
             "var a = ",
-            // missing variable declaration equals
-            "var a ",
             // missing variable declaration name
             "var",
             // missing if pieces
@@ -33,7 +31,6 @@ public static class FailTestCases
             "if (a;) {}",
             // body has tail expression but else doesn't
             "a(",
-            "a<string>()",
             "a::<,>()",
             "a::<string string>()",
             "a::<string()",
@@ -53,10 +50,8 @@ public static class FailTestCases
             "-",
             // invalid statement
             "fn MyFn::<string>(){}",
-            "fn MyFn<>(){}",
             "fn MyFn<,>(){}",
             "fn MyFn<A B>(){}",
-            "fn MyFn<string>(){}",
             "fn MyFunction() {",
             "fn MyFunction()",
             "fn a MyFunction() {}",
@@ -70,10 +65,7 @@ public static class FailTestCases
             "fn MyFunction(a: result::<int int>) {}",
             "fn MyFunction(,) {}",
             "fn MyFunction(a: int b: int) {}",
-            // no semicolon
-            "return 1",
             "pub MyClass {}",
-            "class MyClass<> {}",
             "class MyClass<,> {}",
             "class MyClass<T1 T2> {}",
             "pub mut class MyClass {}",

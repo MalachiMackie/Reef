@@ -744,9 +744,12 @@ public class TypeChecker
 
                 ExpectType(patternUnionType, union, genericPlaceholders);
 
-                _ = union.Variants.FirstOrDefault(x => x.Name == variantPattern.VariantName.StringValue)
-                    ?? throw new InvalidOperationException(
-                        $"Variant {variantPattern.VariantName.StringValue} not found on type {union}");
+                if (variantPattern.VariantName is not null)
+                {
+                    _ = union.Variants.FirstOrDefault(x => x.Name == variantPattern.VariantName.StringValue)
+                        ?? throw new InvalidOperationException(
+                            $"Variant {variantPattern.VariantName.StringValue} not found on type {union}");
+                }
 
                 if (variantPattern.VariableName is { StringValue: var variableName })
                 {
@@ -777,7 +780,7 @@ public class TypeChecker
                         throw new InvalidOperationException($"Expected {typeReference} to be a class");
                     }
 
-                    if (classPattern.FieldPatterns.GroupBy(x => x.Key.StringValue).Any(x => x.Count() > 1))
+                    if (classPattern.FieldPatterns.GroupBy(x => x.FieldName.StringValue).Any(x => x.Count() > 1))
                     {
                         throw new InvalidOperationException("Duplicate fields found");
                     }
@@ -848,7 +851,7 @@ public class TypeChecker
                     throw new InvalidOperationException($"Variant {variant.Name} is not a struct variant");
                 }
 
-                if (structVariantPattern.FieldPatterns.GroupBy(x => x.Key.StringValue).Any(x => x.Count() > 1))
+                if (structVariantPattern.FieldPatterns.GroupBy(x => x.FieldName.StringValue).Any(x => x.Count() > 1))
                 {
                     throw new InvalidOperationException("Duplicate fields found");
                 }
@@ -957,6 +960,18 @@ public class TypeChecker
                     typeReference,
                     false,
                     false);
+                if (!TryAddScopedVariable(variableName, variable))
+                {
+                    throw new InvalidOperationException($"Duplicate variable {variableName}");
+                }
+
+                break;
+            }
+            case TypePattern { Type: var typeIdentifier, VariableName.StringValue: var variableName }:
+            {
+                var type = GetTypeReference(typeIdentifier, genericPlaceholders);
+                patternVariables.Add(variableName);
+                var variable = new Variable(variableName, type, Instantiated: false, Mutable: false);
                 if (!TryAddScopedVariable(variableName, variable))
                 {
                     throw new InvalidOperationException($"Duplicate variable {variableName}");

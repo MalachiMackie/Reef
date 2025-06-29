@@ -686,6 +686,7 @@ public static class ParseErrorTestCases
                 new LangProgram([], [Function("MyFn")], [], []),
                 [
                     ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier, TokenType.RightAngleBracket),
+                    ParserError.ExpectedToken(null, TokenType.Comma, TokenType.RightAngleBracket)
                 ]
             ),
             (
@@ -737,7 +738,8 @@ public static class ParseErrorTestCases
                 "fn MyFn(mut",
                 new LangProgram([], [Function("MyFn", parameters: [])], [], []),
                 [
-                    ParserError.ExpectedToken(null, TokenType.Identifier)
+                    ParserError.ExpectedToken(null, TokenType.Identifier),
+                    ParserError.ExpectedToken(null, TokenType.RightParenthesis, TokenType.Comma)
                 ]
             ),
             (
@@ -767,7 +769,8 @@ public static class ParseErrorTestCases
                 "fn MyFn(a: int;",
                 new LangProgram([], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
                 [
-                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.RightParenthesis, TokenType.Comma)
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.RightParenthesis, TokenType.Comma),
+                    ParserError.ExpectedToken(null, TokenType.RightParenthesis, TokenType.Identifier, TokenType.Mut)
                 ]
             ),
             (
@@ -896,6 +899,409 @@ public static class ParseErrorTestCases
                 new LangProgram([Matches(VariableAccessor("a"))], [], [], []),
                 [
                     ParserError.ExpectedPattern(Token.Semicolon(SourceSpan.Default))
+                ]
+            ),
+            (
+                "a matches _",
+                new LangProgram([Matches(VariableAccessor("a"), DiscardPattern())], [], [], []),
+                [
+                ]
+            ),
+            (
+                "a matches A::",
+                new LangProgram([Matches(VariableAccessor("a"), UnionVariantPattern(TypeIdentifier("A")))], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier)
+                ]
+            ),
+            (
+                "a matches A::C",
+                new LangProgram([Matches(VariableAccessor("a"), UnionVariantPattern(TypeIdentifier("A"), "C"))], [], [], []),
+                [
+                ]
+            ),
+            (
+                "a matches A::C var",
+                new LangProgram([Matches(VariableAccessor("a"), UnionVariantPattern(TypeIdentifier("A"), "C"))], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier)
+                ]
+            ),
+            (
+                "a matches A::C var;",
+                new LangProgram([Matches(VariableAccessor("a"), UnionVariantPattern(TypeIdentifier("A"), "C"))], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)
+                ]
+            ),
+            (
+                "a matches A::C var d",
+                new LangProgram([Matches(VariableAccessor("a"), UnionVariantPattern(TypeIdentifier("A"), variantName: "C", variableName: "d"))], [], [], []),
+                []
+            ),
+            (
+                "a matches A::C(",
+                new LangProgram([Matches(VariableAccessor("a"), UnionTupleVariantPattern(TypeIdentifier("A"), "C"))], [], [], []),
+                [
+                    ParserError.ExpectedPatternOrToken(null, TokenType.RightParenthesis)
+                ]
+            ),
+            (
+                "a matches A::C(_",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionTupleVariantPattern(TypeIdentifier("A"), "C", [DiscardPattern()])
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.RightParenthesis, TokenType.Comma)
+                ]
+            ),
+            (
+                "a matches A::C()",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionTupleVariantPattern(TypeIdentifier("A"), "C", [DiscardPattern()])
+                    )], [], [], []),
+                [
+                ]
+            ),
+            (
+                "a matches A::C(B::D var d) var c",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionTupleVariantPattern(TypeIdentifier("A"), "C", [
+                            UnionVariantPattern(TypeIdentifier("B"), "D", variableName: "d")
+                        ], variableName: "d")
+                    )], [], [], []),
+                [
+                ]
+            ),
+            (
+                "a matches A::C() var",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionTupleVariantPattern(TypeIdentifier("A"), "C", [DiscardPattern()])
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier)
+                ]
+            ),
+            (
+                "a matches A::C() var;",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionTupleVariantPattern(TypeIdentifier("A"), "C", [DiscardPattern()])
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)
+                ]
+            ),
+            (
+                "a matches A::C {",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [])
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.Underscore, TokenType.RightBrace)
+                ]
+            ),
+            (
+                "a matches A::C { SomeField:",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null)])
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedPattern(null),
+                    ParserError.ExpectedToken(null, TokenType.Comma, TokenType.RightBrace)
+                ]
+            ),
+            (
+                "a matches A::C { SomeField OtherField }",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null), ("OtherField", null)])
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Identifier("OtherField", SourceSpan.Default), TokenType.Comma, TokenType.RightBrace)
+                ]
+            ),
+            (
+                "a matches A::C { SomeField:;",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null)])
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedPattern(Token.Semicolon(SourceSpan.Default)),
+                    ParserError.ExpectedToken(null, TokenType.Comma, TokenType.RightBrace)
+                ]
+            ),
+            (
+                "a matches A::C {} var",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [])
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier)
+                ]
+            ),
+            (
+                "a matches A::C {} var c",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [], "c")
+                    )], [], [], []),
+                []
+            ),
+            (
+                "a matches A::C {_, SomeField}",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null)], "c", fieldsDiscarded: true)
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.RightBrace)
+                ]
+            ),
+            (
+                "a matches A::C {_, SomeField",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null)], "c", fieldsDiscarded: true)
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.RightBrace),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma),
+                ]
+            ),
+            (
+                "a matches A::C {_}",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [], "c", fieldsDiscarded: true)
+                    )], [], [], []),
+                []
+            ),
+            (
+                "a matches A::C {} var ;",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [])
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)
+                ]
+            ),
+            (
+                "a matches A {",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        ClassPattern(TypeIdentifier("A"), [])
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.Underscore, TokenType.RightBrace)
+                ]
+            ),
+            (
+                "a matches A { SomeField:",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        ClassPattern(TypeIdentifier("A"), [("SomeField", null)])
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedPattern(null),
+                    ParserError.ExpectedToken(null, TokenType.Comma, TokenType.RightBrace)
+                ]
+            ),
+            (
+                "a matches A { SomeField OtherField }",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        ClassPattern(TypeIdentifier("A"), [("SomeField", null), ("OtherField", null)])
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Identifier("OtherField", SourceSpan.Default), TokenType.Comma, TokenType.RightBrace)
+                ]
+            ),
+            (
+                "a matches A { SomeField:;",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        ClassPattern(TypeIdentifier("A"), [("SomeField", null)])
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedPattern(Token.Semicolon(SourceSpan.Default)),
+                    ParserError.ExpectedToken(null, TokenType.Comma, TokenType.RightBrace)
+                ]
+            ),
+            (
+                "a matches A {} var",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        ClassPattern(TypeIdentifier("A"))
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier)
+                ]
+            ),
+            (
+                "a matches A {} var c",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        ClassPattern(TypeIdentifier("A"), variableName: "c")
+                    )], [], [], []),
+                []
+            ),
+            (
+                "a matches A {_, SomeField}",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        ClassPattern(TypeIdentifier("A"), [("SomeField", null)], "c", fieldsDiscarded: true)
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.RightBrace)
+                ]
+            ),
+            (
+                "a matches A {_, SomeField",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        ClassPattern(TypeIdentifier("A"), [("SomeField", null)], "c", fieldsDiscarded: true)
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.RightBrace),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma),
+                ]
+            ),
+            (
+                "a matches A {_}",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        ClassPattern(TypeIdentifier("A"), variableName: "c", fieldsDiscarded: true)
+                    )], [], [], []),
+                []
+            ),
+            (
+                "a matches A {_, _}",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        ClassPattern(TypeIdentifier("A"), variableName: "c", fieldsDiscarded: true)
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.RightBrace),
+                ]
+            ),
+            (
+                "a matches A {} var ;",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        ClassPattern(TypeIdentifier("A"))
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)
+                ]
+            ),
+            (
+                "a matches A",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        TypePattern(TypeIdentifier("A"))
+                    )], [], [], []),
+                [
+                ]
+            ),
+            (
+                "a matches A var",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        TypePattern(TypeIdentifier("A"))
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier)
+                ]
+            ),
+            (
+                "a matches A var;",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        TypePattern(TypeIdentifier("A"))
+                    )], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)
+                ]
+            ),
+            (
+                "a matches A var d",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        TypePattern(TypeIdentifier("A"), "d")
+                    )], [], [], []),
+                []
+            ),
+            (
+                "a matches var d",
+                new LangProgram([
+                    Matches(
+                        VariableAccessor("a"),
+                        VariableDeclarationPattern("d")
+                    )], [], [], []),
+                []
+            ),
+            (
+                "a matches var",
+                new LangProgram([
+                    Matches( VariableAccessor("a") )], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier)
+                ]
+            ),
+            (
+                "a matches var ;",
+                new LangProgram([
+                    Matches( VariableAccessor("a") )], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)
+                ]
+            ),
+            (
+                "a matches A { ; }",
+                new LangProgram([
+                    Matches(VariableAccessor("a"), ClassPattern(TypeIdentifier("A")))], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)
                 ]
             ),
         ];

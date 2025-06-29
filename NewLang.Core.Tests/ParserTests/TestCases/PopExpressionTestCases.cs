@@ -52,7 +52,7 @@ public static class PopExpressionTestCases
                         new ClassPattern(
                             new TypeIdentifier(Token.Identifier("SomeClass", SourceSpan.Default), [],
                                 SourceRange.Default),
-                            [KeyValuePair.Create(Token.Identifier("SomeField", SourceSpan.Default), (IPattern?)null)],
+                            [new FieldPattern(Token.Identifier("SomeField", SourceSpan.Default), null)],
                             false,
                             null, SourceRange.Default),
                         VariableAccessor("b")),
@@ -72,16 +72,16 @@ public static class PopExpressionTestCases
                                 SourceRange.Default),
                             Token.Identifier("B", SourceSpan.Default),
                             [
-                                KeyValuePair.Create(
+                                new FieldPattern(
                                     Token.Identifier("SomeField", SourceSpan.Default),
-                                    (IPattern?)new UnionStructVariantPattern(
+                                    new UnionStructVariantPattern(
                                         new TypeIdentifier(Token.Identifier("OtherUnion", SourceSpan.Default), [],
                                             SourceRange.Default),
                                         Token.Identifier("C", SourceSpan.Default),
                                         [
-                                            KeyValuePair.Create(
+                                            new FieldPattern(
                                                 Token.Identifier("OtherField", SourceSpan.Default),
-                                                (IPattern?)new VariableDeclarationPattern(
+                                                new VariableDeclarationPattern(
                                                     Token.Identifier("d", SourceSpan.Default), SourceRange.Default)
                                             )
                                         ],
@@ -279,7 +279,7 @@ public static class PopExpressionTestCases
                         new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
-                            KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null)
+                            new FieldPattern(Token.Identifier("MyField", SourceSpan.Default), null)
                         ],
                         false,
                         null
@@ -293,7 +293,7 @@ public static class PopExpressionTestCases
                         new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
-                            KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null)
+                            new FieldPattern(Token.Identifier("MyField", SourceSpan.Default), null)
                         ],
                         false,
                         Token.Identifier("a", SourceSpan.Default)
@@ -307,10 +307,10 @@ public static class PopExpressionTestCases
                         new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
-                            KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null),
-                            KeyValuePair.Create(
+                            new FieldPattern(Token.Identifier("MyField", SourceSpan.Default), null),
+                            new FieldPattern(
                                 Token.Identifier("OtherField", SourceSpan.Default),
-                                (IPattern?)new VariableDeclarationPattern(Token.Identifier("f", SourceSpan.Default),
+                                new VariableDeclarationPattern(Token.Identifier("f", SourceSpan.Default),
                                     SourceRange.Default)
                             )
                         ],
@@ -325,7 +325,7 @@ public static class PopExpressionTestCases
                     new ClassPattern(
                         new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         [
-                            KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null)
+                            new FieldPattern(Token.Identifier("MyField", SourceSpan.Default), null)
                         ],
                         false,
                         null
@@ -338,7 +338,7 @@ public static class PopExpressionTestCases
                     new ClassPattern(
                         new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         [
-                            KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null)
+                            new FieldPattern(Token.Identifier("MyField", SourceSpan.Default), null)
                         ],
                         false,
                         Token.Identifier("a", SourceSpan.Default)
@@ -352,7 +352,7 @@ public static class PopExpressionTestCases
                         new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
-                            KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null)
+                            new FieldPattern(Token.Identifier("MyField", SourceSpan.Default), null)
                         ],
                         true,
                         null
@@ -366,9 +366,9 @@ public static class PopExpressionTestCases
                         new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
-                            KeyValuePair.Create(
+                            new FieldPattern(
                                 Token.Identifier("MyField", SourceSpan.Default),
-                                (IPattern?)new UnionVariantPattern(
+                                new UnionVariantPattern(
                                     new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [],
                                         SourceRange.Default),
                                     Token.Identifier("B", SourceSpan.Default),
@@ -386,9 +386,9 @@ public static class PopExpressionTestCases
                         new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [], SourceRange.Default),
                         Token.Identifier("A", SourceSpan.Default),
                         [
-                            KeyValuePair.Create(
+                            new FieldPattern(
                                 Token.Identifier("MyField", SourceSpan.Default),
-                                (IPattern?)new UnionTupleVariantPattern(
+                                new UnionTupleVariantPattern(
                                     new TypeIdentifier(Token.Identifier("MyUnion", SourceSpan.Default), [],
                                         SourceRange.Default),
                                     Token.Identifier("B", SourceSpan.Default),
@@ -409,7 +409,7 @@ public static class PopExpressionTestCases
                     new ClassPattern(
                         new TypeIdentifier(Token.Identifier("MyClass", SourceSpan.Default), [], SourceRange.Default),
                         [
-                            KeyValuePair.Create(Token.Identifier("MyField", SourceSpan.Default), (IPattern?)null)
+                            new FieldPattern(Token.Identifier("MyField", SourceSpan.Default), null)
                         ],
                         true,
                         null
