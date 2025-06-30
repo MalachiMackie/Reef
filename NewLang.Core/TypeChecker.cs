@@ -1028,7 +1028,7 @@ public class TypeChecker
                 throw new InvalidOperationException($"No field named {fieldInitializer.FieldName.StringValue}");
             }
 
-            var valueType = TypeCheckExpression(fieldInitializer.Value, genericPlaceholders);
+            var valueType = fieldInitializer.Value is null ? new UnknownType() : TypeCheckExpression(fieldInitializer.Value, genericPlaceholders);
 
             ExpectType(field.Type, valueType, genericPlaceholders);
         }
@@ -1249,7 +1249,7 @@ public class TypeChecker
                 throw new InvalidOperationException("Cannot access private field");
             }
 
-            var valueType = TypeCheckExpression(fieldInitializer.Value, genericPlaceholders);
+            var valueType = fieldInitializer.Value is null ? new UnknownType() : TypeCheckExpression(fieldInitializer.Value, genericPlaceholders);
 
             ExpectType(field.Type, valueType, genericPlaceholders);
         }

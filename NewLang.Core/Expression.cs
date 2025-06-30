@@ -411,7 +411,7 @@ public record ObjectInitializer(TypeIdentifier Type, IReadOnlyList<FieldInitiali
     }
 }
 
-public record FieldInitializer(StringToken FieldName, IExpression Value);
+public record FieldInitializer(StringToken FieldName, IExpression? Value);
 
 public enum BinaryOperatorType
 {

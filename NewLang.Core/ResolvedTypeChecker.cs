@@ -181,7 +181,10 @@ public static class ResolvedTypeChecker
     {
         foreach (var initializer in unionInitializer.FieldInitializers)
         {
-            CheckExpression(initializer.Value, expectedGenerics);
+            if (initializer.Value is not null)
+            {
+                CheckExpression(initializer.Value, expectedGenerics);
+            }
         }
     }
 
@@ -211,7 +214,10 @@ public static class ResolvedTypeChecker
     {
         foreach (var initializer in objectInitializer.FieldInitializers)
         {
-            CheckExpression(initializer.Value, expectedGenerics);
+            if (initializer.Value is not null)
+            {
+                CheckExpression(initializer.Value, expectedGenerics);
+            }
         }
     }
 

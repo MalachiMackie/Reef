@@ -170,6 +170,28 @@ public static class ParserHelpers
         return new MatchExpression(value, arms ?? [],  SourceRange.Default);
     }
 
+    public static ObjectInitializerExpression ObjectInitializer(TypeIdentifier type, IReadOnlyList<FieldInitializer>? fieldInitializers = null)
+    {
+        return new ObjectInitializerExpression(new ObjectInitializer(type, fieldInitializers ?? []), SourceRange.Default);
+    }
+
+    public static UnionStructVariantInitializerExpression UnionStructVariantInitializer(TypeIdentifier type,
+        string variantName, IReadOnlyList<FieldInitializer>? fieldInitializers = null)
+    {
+        return new UnionStructVariantInitializerExpression(
+            new UnionStructVariantInitializer(
+                type,
+                Token.Identifier(variantName, SourceSpan.Default),
+                fieldInitializers ?? []
+            ),
+            SourceRange.Default);
+    }
+
+    public static FieldInitializer FieldInitializer(string fieldName, IExpression? value = null)
+    {
+        return new FieldInitializer(Token.Identifier(fieldName, SourceSpan.Default), value);
+    }
+
     public static MatchArm MatchArm(IPattern pattern, IExpression? expression = null)
     {
         return new MatchArm(pattern, expression);

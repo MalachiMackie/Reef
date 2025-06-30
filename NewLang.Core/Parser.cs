@@ -1540,40 +1540,48 @@ public sealed class Parser : IDisposable
         return new MemberAccessExpression(new MemberAccess(previousExpression, memberName));
     }
 
-    private IExpression GetInitializer()
+    private IExpression? GetInitializer()
     {
-        if (!MoveNext())
+        var newToken = Current;
+        if (!ExpectNextTypeIdentifier(out var type))
         {
-            throw new InvalidOperationException("Expected type");
+            MoveNext();
+            return null;
         }
-
-        var type = GetTypeIdentifier()
-                   ?? throw new InvalidOperationException("Expected type");
 
         if (!_hasNext)
         {
-            throw new InvalidOperationException("Expected :: or {");
+            _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace, TokenType.DoubleColon));
+            return new ObjectInitializerExpression(new ObjectInitializer(type, []), type.SourceRange with {Start = newToken.SourceSpan});
         }
 
         return Current.Type switch
         {
             TokenType.LeftBrace => GetObjectInitializer(type),
-            TokenType.DoubleColon => GetUnionStructVariantInitializer(type),
-            _ => throw new InvalidOperationException($"Unexpected token {Current}. Expected :: or {{")
+            TokenType.DoubleColon => GetUnionStructVariantInitializer(type, newToken),
+            _ => DefaultCase()
         };
+
+        IExpression? DefaultCase()
+        {
+            _errors.Add(ParserError.ExpectedToken(Current, TokenType.LeftBrace, TokenType.DoubleColon));
+            return null;
+        }
     }
 
-    private UnionStructVariantInitializerExpression GetUnionStructVariantInitializer(
-        TypeIdentifier type)
+    private UnionStructVariantInitializerExpression? GetUnionStructVariantInitializer(
+        TypeIdentifier type, Token newToken)
     {
-        if (!MoveNext() || Current is not StringToken { Type: TokenType.Identifier } variantName)
+        if (!ExpectNextIdentifier(out var variantName))
         {
-            throw new InvalidOperationException("Expected union variant name");
+            return null;
         }
 
-        if (!MoveNext() || Current.Type != TokenType.LeftBrace)
+        if (!ExpectNextToken(TokenType.LeftBrace))
         {
-            throw new InvalidOperationException("Expected {");
+            return new UnionStructVariantInitializerExpression(
+                new UnionStructVariantInitializer(type, variantName, []),
+                new SourceRange(newToken.SourceSpan, variantName.SourceSpan));
         }
 
         var leftBrace = Current;
@@ -1595,23 +1603,17 @@ public sealed class Parser : IDisposable
             expectPattern: false,
             () =>
             {
-                if (Current is not StringToken { Type: TokenType.Identifier } fieldName)
+                if (!ExpectCurrentIdentifier(out var fieldName))
                 {
-                    throw new InvalidOperationException("Expected field name");
+                    return null;
                 }
 
-                if (!MoveNext() || Current.Type != TokenType.Equals)
+                if (!ExpectNextToken(TokenType.Equals))
                 {
-                    throw new InvalidOperationException("Expected =");
+                    return new FieldInitializer(fieldName, null);
                 }
 
-                if (!MoveNext())
-                {
-                    throw new InvalidOperationException("Expected field initializer value expression");
-                }
-
-                var fieldValue = PopExpression()
-                                 ?? throw new InvalidOperationException("Expected field initializer value expression");
+                ExpectNextExpression(out var fieldValue);
 
                 return new FieldInitializer(fieldName, fieldValue);
             });

@@ -1431,6 +1431,156 @@ public static class ParseErrorTestCases
                 [
                 ]
             ),
+            (
+                "new",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedType(null)
+                ]
+            ),
+            (
+                "new A",
+                new LangProgram([ObjectInitializer(TypeIdentifier("A"))], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.LeftBrace, TokenType.DoubleColon)
+                ]
+            ),
+            (
+                "new A {",
+                new LangProgram([ObjectInitializer(TypeIdentifier("A"))], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.RightBrace)
+                ]
+            ),
+            (
+                "new A {}",
+                new LangProgram([ObjectInitializer(TypeIdentifier("A"))], [], [], []),
+                [
+                ]
+            ),
+            (
+                "new A {SomeField",
+                new LangProgram([ObjectInitializer(TypeIdentifier("A"), [FieldInitializer("SomeField")])], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Equals),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma)
+                ]
+            ),
+            (
+                "new A {SomeField=",
+                new LangProgram([ObjectInitializer(TypeIdentifier("A"), [FieldInitializer("SomeField")])], [], [], []),
+                [
+                    ParserError.ExpectedExpression(null),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma)
+                ]
+            ),
+            (
+                "new A {SomeField=a",
+                new LangProgram([ObjectInitializer(TypeIdentifier("A"), [FieldInitializer("SomeField", VariableAccessor("a"))])], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma)
+                ]
+            ),
+            (
+                "new A {SomeField=a}",
+                new LangProgram([ObjectInitializer(TypeIdentifier("A"), [FieldInitializer("SomeField", VariableAccessor("a"))])], [], [], []),
+                []
+            ),
+            (
+                "new A {SomeField=a OtherField=b}",
+                new LangProgram([ObjectInitializer(TypeIdentifier("A"), [
+                    FieldInitializer("SomeField", VariableAccessor("a")),
+                    FieldInitializer("OtherField", VariableAccessor("b")),
+                ])], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Identifier("OtherField", SourceSpan.Default), TokenType.Comma, TokenType.RightBrace)
+                ]
+            ),
+            (
+                "new A {SomeField=a, OtherField=b}",
+                new LangProgram([ObjectInitializer(TypeIdentifier("A"), [
+                    FieldInitializer("SomeField", VariableAccessor("a")),
+                    FieldInitializer("OtherField", VariableAccessor("b")),
+                ])], [], [], []),
+                [
+                ]
+            ),
+            (
+                "new A::",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier)
+                ]
+            ),
+            (
+                "new A::B",
+                new LangProgram([
+                    UnionStructVariantInitializer(TypeIdentifier("A"), "B")
+                ], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.LeftBrace)
+                ]
+            ),
+            (
+                "new A::B {",
+                new LangProgram([UnionStructVariantInitializer(TypeIdentifier("A"), "B")], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.RightBrace)
+                ]
+            ),
+            (
+                "new A::B {}",
+                new LangProgram([UnionStructVariantInitializer(TypeIdentifier("A"), "B")], [], [], []),
+                [
+                ]
+            ),
+            (
+                "new A::B {SomeField",
+                new LangProgram([UnionStructVariantInitializer(TypeIdentifier("A"), "B", [FieldInitializer("SomeField")])], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.Equals),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma)
+                ]
+            ),
+            (
+                "new A::B {SomeField=",
+                new LangProgram([UnionStructVariantInitializer(TypeIdentifier("A"), "B", [FieldInitializer("SomeField")])], [], [], []),
+                [
+                    ParserError.ExpectedExpression(null),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma)
+                ]
+            ),
+            (
+                "new A::B {SomeField=a",
+                new LangProgram([UnionStructVariantInitializer(TypeIdentifier("A"), "B", [FieldInitializer("SomeField", VariableAccessor("a"))])], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma)
+                ]
+            ),
+            (
+                "new A::B {SomeField=a}",
+                new LangProgram([UnionStructVariantInitializer(TypeIdentifier("A"), "B", [FieldInitializer("SomeField", VariableAccessor("a"))])], [], [], []),
+                []
+            ),
+            (
+                "new A::B {SomeField=a OtherField=b}",
+                new LangProgram([UnionStructVariantInitializer(TypeIdentifier("A"), "B", [
+                    FieldInitializer("SomeField", VariableAccessor("a")),
+                    FieldInitializer("OtherField", VariableAccessor("b")),
+                ])], [], [], []),
+                [
+                    ParserError.ExpectedToken(Token.Identifier("OtherField", SourceSpan.Default), TokenType.Comma, TokenType.RightBrace)
+                ]
+            ),
+            (
+                "new A::B {SomeField=a, OtherField=b}",
+                new LangProgram([UnionStructVariantInitializer(TypeIdentifier("A"), "B", [
+                    FieldInitializer("SomeField", VariableAccessor("a")),
+                    FieldInitializer("OtherField", VariableAccessor("b")),
+                ])], [], [], []),
+                [
+                ]
+            ),
         ];
 
         var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();
