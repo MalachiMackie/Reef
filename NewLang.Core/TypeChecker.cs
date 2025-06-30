@@ -1403,7 +1403,10 @@ public class TypeChecker
             GetScopedVariable(variable).Instantiated = true;
         }
 
-        TypeCheckExpression(ifExpression.Body, genericPlaceholders);
+        if (ifExpression.Body is not null)
+        {
+            TypeCheckExpression(ifExpression.Body, genericPlaceholders);
+        }
 
         foreach (var variable in conditionallyInstantiatedVariables)
         {
@@ -1429,7 +1432,10 @@ public class TypeChecker
                 GetScopedVariable(variable).Instantiated = true;
             }
 
-            TypeCheckExpression(elseIf.Body, genericPlaceholders);
+            if (elseIf.Body is not null)
+            {
+                TypeCheckExpression(elseIf.Body, genericPlaceholders);
+            }
 
             foreach (var variable in conditionallyInstantiatedVariables)
             {

@@ -289,7 +289,7 @@ public record MatchArm(IPattern Pattern, IExpression? Expression);
 
 public record IfExpression(
     IExpression CheckExpression,
-    IExpression Body,
+    IExpression? Body,
     IReadOnlyCollection<ElseIf> ElseIfs,
     IExpression? ElseBody)
 {
@@ -368,7 +368,7 @@ public record BinaryOperator(
     }
 }
 
-public record ElseIf(IExpression CheckExpression, IExpression Body)
+public record ElseIf(IExpression CheckExpression, IExpression? Body)
 {
     public override string ToString()
     {

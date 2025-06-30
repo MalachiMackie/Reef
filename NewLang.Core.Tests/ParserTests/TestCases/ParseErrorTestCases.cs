@@ -1581,6 +1581,120 @@ public static class ParseErrorTestCases
                 [
                 ]
             ),
+            (
+                "if",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.LeftParenthesis),
+                ]
+            ),
+            (
+                "if (",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedExpression(null),
+                ]
+            ),
+            (
+                "if ()",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedExpression(Token.RightParenthesis(SourceSpan.Default)),
+                ]
+            ),
+            (
+                "if (a)",
+                new LangProgram([IfExpression(VariableAccessor("a"), null)], [], [], []),
+                [
+                    ParserError.ExpectedExpression(null)
+                ]
+            ),
+            (
+                "if (a) {}",
+                new LangProgram([IfExpression(VariableAccessor("a"), Block())], [], [], []),
+                [
+                ]
+            ),
+            (
+                "if (a) {} else",
+                new LangProgram([IfExpression(VariableAccessor("a"), Block())], [], [], []),
+                [
+                    ParserError.ExpectedTokenOrExpression(null, TokenType.If)
+                ]
+            ),
+            (
+                "if (a) {} else {}",
+                new LangProgram([IfExpression(VariableAccessor("a"), Block(), Block())], [], [], []),
+                [
+                ]
+            ),
+            (
+                "if (a) {} else if",
+                new LangProgram([IfExpression(VariableAccessor("a"), Block())], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.LeftParenthesis)
+                ]
+            ),
+            (
+                "if (a) {} else if (",
+                new LangProgram([IfExpression(VariableAccessor("a"), Block())], [], [], []),
+                [
+                    ParserError.ExpectedExpression(null)
+                ]
+            ),
+            (
+                "if (a) {} else if (b",
+                new LangProgram([IfExpression(VariableAccessor("a"), Block(), elseIfs: [ElseIf(VariableAccessor("b"))])], [], [], []),
+                [
+                    ParserError.ExpectedToken(null, TokenType.RightParenthesis)
+                ]
+            ),
+            (
+                "if (a) {} else if (b)",
+                new LangProgram([IfExpression(VariableAccessor("a"), Block(), elseIfs: [ElseIf(VariableAccessor("b"))])], [], [], []),
+                [
+                    ParserError.ExpectedExpression(null)
+                ]
+            ),
+            (
+                "if (a) {} else if (b) {}",
+                new LangProgram([IfExpression(VariableAccessor("a"), Block(), elseIfs: [ElseIf(VariableAccessor("b"), Block())])], [], [], []),
+                [
+                ]
+            ),
+            (
+                "if (a) {} else if (b) {} else if (c)",
+                new LangProgram([IfExpression(VariableAccessor("a"), Block(), elseIfs: [ElseIf(VariableAccessor("b"), Block()), ElseIf(VariableAccessor("c"), Block())])], [], [], []),
+                [
+                    ParserError.ExpectedExpression(null)
+                ]
+            ),
+            (
+                "if (a) {} else if (b) {} else if (c) {} else {}",
+                new LangProgram([IfExpression(
+                    VariableAccessor("a"),
+                    Block(),
+                    elseBody: Block(),
+                    elseIfs: [
+                        ElseIf(VariableAccessor("b"), Block()),
+                        ElseIf(VariableAccessor("c"), Block())
+                    ])], [], [], []),
+                [
+                ]
+            ),
+            (
+                "if (a) {} else {} else if (b) {}",
+                new LangProgram([IfExpression(
+                    VariableAccessor("a"),
+                    Block(),
+                    elseBody: Block(),
+                    elseIfs: [
+                        ElseIf(VariableAccessor("b"), Block()),
+                    ])], [], [], []),
+                [
+                    ParserError.ExpectedExpression(Token.Else(SourceSpan.Default))
+                ]
+            ),
         ];
 
         var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();

@@ -1694,87 +1694,75 @@ public sealed class Parser : IDisposable
             method.SourceRange with { End = lastToken?.SourceSpan ?? leftParenthesis.SourceSpan  });
     }
 
-    private IfExpressionExpression GetIfExpression()
+    private IfExpressionExpression? GetIfExpression()
     {
         var start = Current.SourceSpan;
-        if (!MoveNext())
+        if (!ExpectNextToken(TokenType.LeftParenthesis))
         {
-            throw new InvalidOperationException("Expected left parenthesis, found nothing");
+            MoveNext();
+            return null;
         }
 
-        if (Current.Type != TokenType.LeftParenthesis)
+        if (!ExpectNextExpression(out var checkExpression))
         {
-            throw new InvalidOperationException($"Expected left parenthesis, found {Current.Type}");
+            MoveNext();
+            return null;
         }
 
-        if (!MoveNext())
+        if (!ExpectCurrentToken(TokenType.RightParenthesis))
         {
-            throw new InvalidOperationException("Expected check expression");
+            return new IfExpressionExpression(new IfExpression(
+                checkExpression, null, [], null), checkExpression.SourceRange with {Start = start});
         }
+        
+        var rightParenthesis = Current;
 
-        var checkExpression = PopExpression()
-                              ?? throw new InvalidOperationException("Expected check expression, found no expression");
-
-        if (!_hasNext || Current.Type != TokenType.RightParenthesis)
+        if (!ExpectNextExpression(out var body))
         {
-            throw new InvalidOperationException("Expected right parenthesis");
+            return new IfExpressionExpression(new IfExpression(
+                checkExpression, null, [], null), new SourceRange(start, rightParenthesis.SourceSpan));
         }
-
-        if (!MoveNext())
-        {
-            throw new InvalidOperationException("Expected if body");
-        }
-
-        var body = PopExpression() ??
-                   throw new InvalidOperationException("Expected if body, found nothing");
 
         var elseIfs = new List<ElseIf>();
         IExpression? elseBody = null;
 
         while (_hasNext && Current.Type == TokenType.Else)
         {
+            if (elseBody is not null)
+            {
+                _errors.Add(ParserError.ExpectedExpression(Current));
+            }
+            
             // pop the "else" token off
             if (!MoveNext())
             {
-                throw new InvalidOperationException("Expected else body or if");
+                _errors.Add(ParserError.ExpectedTokenOrExpression(null, TokenType.If));
+                break;
             }
 
             if (Current.Type == TokenType.If)
             {
-                // pop the "if" token off
-                if (!MoveNext() || Current.Type != TokenType.LeftParenthesis)
+                if (!ExpectNextToken(TokenType.LeftParenthesis)
+                    || !ExpectNextExpression(out var elseIfCheckExpression)
+                    || !ExpectCurrentToken(TokenType.RightParenthesis))
                 {
-                    throw new InvalidOperationException("Expected left Parenthesis");
+                    MoveNext();
+                    break;
                 }
 
-                if (!MoveNext())
-                {
-                    throw new InvalidOperationException("Expected check expression");
-                }
-
-                var elseIfCheckExpression = PopExpression()
-                                            ?? throw new InvalidOperationException("Expected check expression");
-
-                if (!_hasNext || Current.Type != TokenType.RightParenthesis)
-                {
-                    throw new InvalidOperationException("Expected right Parenthesis");
-                }
-
-                if (!MoveNext())
-                {
-                    throw new InvalidOperationException("Expected else if body");
-                }
-
-                var elseIfBody = PopExpression()
-                                 ?? throw new InvalidOperationException("Expected else if body");
+                ExpectNextExpression(out var elseIfBody);
 
                 elseIfs.Add(new ElseIf(elseIfCheckExpression, elseIfBody));
             }
             else
             {
-                elseBody = PopExpression()
-                           ?? throw new InvalidOperationException("Expected else body, got nothing");
-                break;
+                var current = Current;
+                elseBody = PopExpression();
+
+                if (elseBody is null)
+                {
+                    _errors.Add(ParserError.ExpectedExpression(current));
+                }
             }
         }
 
@@ -1784,7 +1772,7 @@ public sealed class Parser : IDisposable
                 elseIfs,
                 elseBody),
             new SourceRange(start,
-                elseBody?.SourceRange.End ?? elseIfs.LastOrDefault()?.Body.SourceRange.End ?? body.SourceRange.End));
+                elseBody?.SourceRange.End ?? elseIfs.LastOrDefault()?.Body?.SourceRange.End ?? body.SourceRange.End));
     }
 
     private BlockExpression GetBlockExpression()

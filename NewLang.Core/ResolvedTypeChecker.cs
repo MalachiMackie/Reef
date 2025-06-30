@@ -239,11 +239,17 @@ public static class ResolvedTypeChecker
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         CheckExpression(ifExpression.CheckExpression, expectedGenerics);
-        CheckExpression(ifExpression.Body, expectedGenerics);
+        if (ifExpression.Body is not null)
+        {
+            CheckExpression(ifExpression.Body, expectedGenerics);
+        }
         foreach (var elseIf in ifExpression.ElseIfs)
         {
             CheckExpression(elseIf.CheckExpression, expectedGenerics);
-            CheckExpression(elseIf.Body, expectedGenerics);
+            if (elseIf.Body is not null)
+            {
+                CheckExpression(elseIf.Body, expectedGenerics);
+            }
         }
 
         if (ifExpression.ElseBody is not null)

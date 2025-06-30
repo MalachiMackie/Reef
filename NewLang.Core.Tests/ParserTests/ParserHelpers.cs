@@ -266,4 +266,18 @@ public static class ParserHelpers
         return new VariableDeclarationPattern(
             Token.Identifier(variableName, SourceSpan.Default), SourceRange.Default);
     }
+
+    public static IfExpressionExpression IfExpression(
+        IExpression checkExpression,
+        IExpression? body,
+        IExpression? elseBody = null,
+        IReadOnlyList<ElseIf>? elseIfs = null)
+    {
+        return new IfExpressionExpression(new IfExpression(checkExpression, body, elseIfs ?? [], elseBody), SourceRange.Default);
+    }
+
+    public static ElseIf ElseIf(IExpression checkExpression, IExpression? elseBody = null)
+    {
+        return new ElseIf(checkExpression, elseBody);
+    }
 }
