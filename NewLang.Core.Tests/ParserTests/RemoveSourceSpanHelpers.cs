@@ -10,6 +10,14 @@ public static class RemoveSourceSpanHelpers
         return [..errors.Select(RemoveSourceSpan)];
     }
 
+    public static TypeCheckerError RemoveSourceSpan(TypeCheckerError error)
+    {
+        return error with
+        {
+            Range = SourceRange.Default
+        };
+    }
+
     private static ParserError RemoveSourceSpan(ParserError error)
     {
         return error with { ReceivedToken = error.ReceivedToken is null ? null : RemoveSourceSpan(error.ReceivedToken) };

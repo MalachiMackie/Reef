@@ -1,4 +1,7 @@
 ﻿using FluentAssertions;
+using NewLang.Core.Tests.ParserTests;
+
+using static NewLang.Core.TypeChecker;
 
 namespace NewLang.Core.Tests;
 
@@ -19,31 +22,24 @@ public class TypeCheckerTests
         IReadOnlyList<TypeCheckerError> expectedErrors)
     {
         var program = Parser.Parse(Tokenizer.Tokenize(source));
-        var errors = TypeChecker.TypeCheck(program.ParsedProgram);
+        var errors = TypeChecker.TypeCheck(program.ParsedProgram).Select(RemoveSourceSpanHelpers.RemoveSourceSpan);
 
-        errors.Should().BeEquivalentTo(expectedErrors);
+        errors.Should().NotBeEmpty().And.BeEquivalentTo(expectedErrors);
     }
 
     [Fact]
     public void SingleTest()
     {
         const string src =
-            """
-            var a = SomeFn();
-            var b = a;
-
-            var c = OtherFn(b);
-
-            var d: string = c;
-
-            fn OtherFn<T>(param: T): T {
-                return param;
-            }
-
-            fn SomeFn<T>(): T {
-                return todo!;
-            }
-            """;
+                """
+                fn MyFn(): result::<int, string> {
+                    if (true) {
+                        return result::<string, int>::Ok("someValue");
+                    }
+                    
+                    return result::<string, int>::Error(1);
+                }
+                """;
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
@@ -1129,7 +1125,7 @@ public class TypeCheckerTests
                 var a = new MyUnion::A { MyField = "" };
                 var b: bool = a matches MyUnion::A { MyField: int };
                 """,
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 """
@@ -1153,7 +1149,7 @@ public class TypeCheckerTests
                 var a = new MyClass { MyField = "" };
                 var b: bool = a matches MyClass { MyField: int };
                 """,
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 """
@@ -1177,7 +1173,7 @@ public class TypeCheckerTests
                 var a = new MyClass { MyField = "", OtherField = true };
                 var b: bool = a matches string;
                 """,
-                []
+                [MismatchedTypes(new TestClassReference("MyClass"), String)]
             },
             {
                 """
@@ -1311,7 +1307,7 @@ public class TypeCheckerTests
                     MyField = 2
                 };
                 """,
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 """
@@ -1350,7 +1346,7 @@ public class TypeCheckerTests
                     MyField = 2
                 };
                 """,
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 """
@@ -1361,7 +1357,7 @@ public class TypeCheckerTests
                     MyField = 2
                 };
                 """,
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 """
@@ -1374,7 +1370,7 @@ public class TypeCheckerTests
                     MyField = 2
                 };
                 """,
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 """
@@ -1383,7 +1379,7 @@ public class TypeCheckerTests
                 }
                 var a = MyUnion::A(1);
                 """,
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 """
@@ -1431,11 +1427,14 @@ public class TypeCheckerTests
                     return result::<string, int>::Error(1);
                 }
                 """,
-                []
+                [
+                    MismatchedTypes(Result(Int, String), Result(String, Int)),
+                    MismatchedTypes(Result(Int, String), Result(String, Int)),
+                ]
             },
             {
                 "var a = result::<string, int>::Ok(1);",
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 """
@@ -1447,7 +1446,7 @@ public class TypeCheckerTests
                 var a = new MyClass::<int>{};
                 a.MyFn::<string>("", 1);
                 """,
-                []
+                [MismatchedTypes(Int, String), MismatchedTypes(String, Int)]
             },
             {
                 """
@@ -1459,7 +1458,7 @@ public class TypeCheckerTests
                 var a = new MyClass::<int>{};
                 a.MyFn::<string>("", "");
                 """,
-                []
+                [MismatchedTypes(Int, String)]
             },
             {
                 """
@@ -1471,15 +1470,15 @@ public class TypeCheckerTests
                 var a = new MyClass::<int>{};
                 a.MyFn::<string>(1, 1);
                 """,
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 "var a: string = 2",
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 "var a: int = \"somestring\"",
-                []
+                [MismatchedTypes(Int, String)]
             },
             {
                 "var b;",
@@ -1487,11 +1486,11 @@ public class TypeCheckerTests
             },
             {
                 "fn MyFn(): int { return \"something\"; }",
-                []
+                [MismatchedTypes(Int, String)]
             },
             {
                 "fn MyFn() { return 1; }",
-                []
+                [MismatchedTypes(Unit, Int)]
             },
             {
                 "fn MyFn() {} fn MyFn() {}",
@@ -1499,11 +1498,11 @@ public class TypeCheckerTests
             },
             {
                 "fn MyFn(): string { return; }",
-                []
+                [MismatchedTypes(String, Unit)]
             },
             {
                 "var a = 2; var b: string = a",
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 "var a: int; var b = a",
@@ -1523,14 +1522,14 @@ public class TypeCheckerTests
             },
             {
                 "fn MyFn(param1: string, param2: int) {} MyFn(3, \"value\");",
-                []
+                [MismatchedTypes(String, Int), MismatchedTypes(Int, String)]
             },
             {
                 "fn MyFn(param1: string, param2: int) {} MyFn();",
                 []
             },
             {
-                "fn MyFn(param1: string, param2: int) {} MyFn(\"value\", 3, 2);",
+                """fn MyFn(param1: string, param2: int) {} MyFn("value", 3, 2);""",
                 []
             },
             {
@@ -1543,7 +1542,7 @@ public class TypeCheckerTests
             },
             {
                 "fn MyFn<T1>(param: T1): int { return param; }",
-                []
+                [MismatchedTypes(Int, new TestGenericTypeReference("T1"))]
             },
             {
                 "fn MyFn(){} fn MyFn(){}",
@@ -1555,27 +1554,27 @@ public class TypeCheckerTests
             },
             {
                 "if (1) {}",
-                []
+                [MismatchedTypes(Boolean, Int)]
             },
             {
                 "if (true) {} else if (1) {}",
-                []
+                [MismatchedTypes(Boolean, Int)]
             },
             {
                 "if (true) {var a: string = 1;}",
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 "if (true) {} else if (true) {var a: string = 1}",
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 "if (true) {} else if (true) {} else {var a: string = 1}",
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 "if (true) {} else if (true) {} else if (true) {var a: string = 1}",
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 "var a: result::<>",
@@ -1604,7 +1603,7 @@ public class TypeCheckerTests
                 }
                 var a = new MyClass { someField = 1 };
                 """,
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 """
@@ -1635,7 +1634,7 @@ public class TypeCheckerTests
             },
             {
                 "class MyClass { static field someField: string = 1, }",
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 """
@@ -1662,104 +1661,104 @@ public class TypeCheckerTests
                     fn MyFn(): int { return ""; }
                 }
                 """,
-                []
+                [MismatchedTypes(Int, String)]
             },
             // binary operators
             // less than
             {
                 "var a = 1 < true;",
-                []
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 "var a = true < 1;",
-                []
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 "var a: int = 1 < 2",
-                []
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 // GreaterThan,
                 "var a = true > 1;",
-                []
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 "var a = 2 > true",
-                []
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 "var a: int = 2 > 2",
-                []
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 // Plus,
                 "var a = true + 1;",
-                []
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 "var a = 2 + true",
-                []
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 "var a: bool = 2 + 2",
-                []
+                [MismatchedTypes(Boolean, Int)]
             },
             {
                 // Minus,
                 "var a = true - 1;",
-                []
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 "var a = 2 - true",
-                []
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 "var a: bool = 2 - 2",
-                []
+                [MismatchedTypes(Boolean, Int)]
             },
             {
                 // Multiply,
                 "var a = true * 1;",
-                []
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 "var a = 2 * true",
-                []
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 "var a: bool = 2 * 2",
-                []
+                [MismatchedTypes(Boolean, Int)]
             },
             {
                 // Divide,
                 "var a = true / 1;",
-                []
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 "var a = 2 / true",
-                []
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 "var a: bool = 2 / 2",
-                []
+                [MismatchedTypes(Boolean, Int)]
             },
             {
                 // EqualityCheck,
                 "var a = true == 1;",
-                []
+                [MismatchedTypes(Boolean, Int)]
             },
             {
                 "var a = 2 == true",
-                []
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 "var a: int = 2 == 2",
-                []
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 // ValueAssignment,
-                "var a = 2; a = true",
-                []
+                "var mut a = 2; a = true",
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 "true = false",
@@ -1771,7 +1770,7 @@ public class TypeCheckerTests
                 class MyClass { static field someField: int = 3, }
                 var a: string = MyClass::someField;
                 """,
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 // StaticMemberAccess
@@ -1780,7 +1779,7 @@ public class TypeCheckerTests
                 var a: MyClass = new MyClass { someField = 3 };
                 var b: string = a.someField;
                 """,
-                []
+                [MismatchedTypes(String, Int)]
             },
         };
     }
@@ -1892,4 +1891,60 @@ public class TypeCheckerTests
 
         var c = new MyUnion::B{ MyField = ""};
         """;
+
+    private static TypeCheckerError MismatchedTypes(ITypeReference expected, ITypeReference actual)
+    {
+        return TypeCheckerError.MismatchedTypes(SourceRange.Default, expected, actual);
+    }
+    
+    private static readonly InstantiatedClass Int = InstantiatedClass.Int;
+    private static readonly InstantiatedClass String = InstantiatedClass.String;
+    private static readonly InstantiatedClass Boolean = InstantiatedClass.Boolean;
+    private static readonly InstantiatedClass Unit = InstantiatedClass.Unit;
+
+    private static InstantiatedUnion Result(ITypeReference value, ITypeReference error)
+    {
+        return new InstantiatedUnion(
+            UnionSignature.Result,
+            [
+                new GenericTypeReference
+                {
+                    GenericName = UnionSignature.Result.GenericParameters[0].GenericName,
+                    OwnerType = UnionSignature.Result,
+                    ResolvedType = value
+                },
+                new GenericTypeReference
+                {
+                    GenericName = UnionSignature.Result.GenericParameters[1].GenericName,
+                    OwnerType = UnionSignature.Result,
+                    ResolvedType = error
+                },
+            ]);
+    }
+
+    private record TestGenericTypeReference(string Name) : ITypeReference, IEquatable<ITypeReference>
+    {
+        public virtual bool Equals(ITypeReference? other)
+        {
+            if (other is not GenericTypeReference genericTypeReference)
+            {
+                return false;
+            }
+
+            return genericTypeReference.GenericName == Name;
+        }
+    }
+
+    private record TestClassReference(string ClassName) : ITypeReference, IEquatable<ITypeReference>
+    {
+        public virtual bool Equals(ITypeReference? other)
+        {
+            if (other is not InstantiatedClass @class)
+            {
+                return false;
+            }
+
+            return @class.Signature.Name == ClassName;
+        }
+    }
 }
