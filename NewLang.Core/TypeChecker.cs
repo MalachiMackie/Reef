@@ -1318,9 +1318,9 @@ public class TypeChecker
                 var rightType = @operator.Right is null
                     ? UnknownType.Instance
                     : TypeCheckExpression(@operator.Right, genericPlaceholders);
-                if (@operator.Left is not null && !IsExpressionAssignable(@operator.Left, genericPlaceholders))
+                if (@operator.Left is not null)
                 {
-                    throw new InvalidOperationException($"{@operator.Left} is not assignable");
+                    ExpectAssignableExpression(@operator.Left, genericPlaceholders);
                 }
 
                 if (@operator.Left is ValueAccessorExpression
@@ -1340,7 +1340,7 @@ public class TypeChecker
         }
     }
 
-    private bool IsExpressionAssignable(IExpression expression, HashSet<GenericTypeReference> genericPlaceholders)
+    private bool ExpectAssignableExpression(IExpression expression, HashSet<GenericTypeReference> genericPlaceholders, bool report = true)
     {
         if (expression is ValueAccessorExpression
             {
@@ -1348,7 +1348,17 @@ public class TypeChecker
             })
         {
             var variable = GetScopedVariable(valueToken.StringValue);
-            return !variable.Instantiated || variable.Mutable;
+            if (variable is { Instantiated: true, Mutable: false })
+            {
+                if (report)
+                {
+                    _errors.Add(TypeCheckerError.NonMutableAssignment(variable.Name,
+                        new SourceRange(valueToken.SourceSpan, valueToken.SourceSpan)));
+                }
+                return false;
+            }
+            
+            return true;
         }
 
         if (expression is MemberAccessExpression memberAccess)
@@ -1360,12 +1370,38 @@ public class TypeChecker
                 return false;
             }
             
-            var isOwnerAssignable = IsExpressionAssignable(owner, genericPlaceholders);
+            var isOwnerAssignable = ExpectAssignableExpression(owner, genericPlaceholders, report: false);
 
-            // todo: this has already been type checked, we just need to reference the type
-            return isOwnerAssignable
-                   && TypeCheckExpression(owner, genericPlaceholders) is InstantiatedClass { Fields: var fields }
-                   && fields.Single(x => x.Name == memberAccess.MemberAccess.MemberName.StringValue).IsMutable;
+            if (owner.ResolvedType is not InstantiatedClass { Fields: var fields })
+            {
+                if (report)
+                    _errors.Add(TypeCheckerError.ExpressionNotAssignable(memberAccess));
+                return false;
+            }
+
+            var field = fields.FirstOrDefault(x => x.Name == memberAccess.MemberAccess.MemberName.StringValue);
+            if (field is null)
+            {
+                if (report)
+                    _errors.Add(TypeCheckerError.ExpressionNotAssignable(memberAccess));
+                return false;
+            }
+
+            if (!field.IsMutable)
+            {
+                if (report)
+                    _errors.Add(TypeCheckerError.NonMutableMemberAssignment(memberAccess));
+                return false;
+            }
+
+            if (!isOwnerAssignable)
+            {
+                if (report)
+                    _errors.Add(TypeCheckerError.NonMutableMemberOwnerAssignment(owner));
+                return false;
+            }
+
+            return true;
         }
 
         if (expression is StaticMemberAccessExpression staticMemberAccess)
@@ -1377,11 +1413,35 @@ public class TypeChecker
                 return false;
             }
 
-            return ownerType is InstantiatedClass { StaticFields: var staticFields }
-                   && staticFields.Single(x => x.Name == staticMemberAccess.StaticMemberAccess.MemberName.StringValue)
-                       .IsMutable;
+            if (ownerType is not InstantiatedClass { StaticFields: var staticFields })
+            {
+                if (report)
+                    _errors.Add(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
+                return false;
+            }
+
+            var staticField = staticFields.FirstOrDefault(x =>
+                x.Name == staticMemberAccess.StaticMemberAccess.MemberName.StringValue);
+            if (staticField is null)
+            {
+                if (report)
+                    _errors.Add(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
+                return false;
+            }
+
+            if (!staticField.IsMutable)
+            {
+                if (report)
+                    _errors.Add(TypeCheckerError.NonMutableMemberAssignment(staticMemberAccess));
+                return false;
+            }
+
+            return true;
         }
 
+        if (report)
+            _errors.Add(TypeCheckerError.ExpressionNotAssignable(expression));
+        
         return false;
     }
 
@@ -1484,9 +1544,9 @@ public class TypeChecker
 
             ExpectExpressionType(expectedParameterType, parameterExpression, genericPlaceholders);
 
-            if (isParameterMutable && !IsExpressionAssignable(parameterExpression, genericPlaceholders))
+            if (isParameterMutable)
             {
-                throw new InvalidOperationException("Function argument is mutable, but provided expression is not");
+                ExpectAssignableExpression(parameterExpression, genericPlaceholders);
             }
         }
 

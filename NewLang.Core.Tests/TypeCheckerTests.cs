@@ -2,6 +2,7 @@
 using NewLang.Core.Tests.ParserTests;
 
 using static NewLang.Core.TypeChecker;
+using static NewLang.Core.Tests.ParserTests.ExpressionHelpers;
 
 namespace NewLang.Core.Tests;
 
@@ -32,14 +33,14 @@ public class TypeCheckerTests
     {
         const string src =
                 """
-                fn MyFn(): result::<int, string> {
-                    if (true) {
-                        return result::<string, int>::Ok("someValue");
-                    }
-                    
-                    return result::<string, int>::Error(1);
+                class MyClass {
+                    field MyField: string
                 }
+
+                // MyField is not accessible
+                var a = new MyClass { MyField = "" };
                 """;
+
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
@@ -779,7 +780,7 @@ public class TypeCheckerTests
                     return todo!;
                 }
                 """,
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 """
@@ -795,7 +796,7 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                []
+                [MismatchedTypes(new TestGenericTypeReference("T2"), new TestGenericTypeReference("T"))]
             },
             {
                 """
@@ -816,7 +817,7 @@ public class TypeCheckerTests
             },
             {
                 "var a: result::<int, string> = error(1);",
-                []
+                [MismatchedTypes(Result(Int, String), Result(Int, Int))]
             },
             {
                 "var a = ok(1);",
@@ -905,7 +906,7 @@ public class TypeCheckerTests
                     MyUnion::B => "" // mismatched arm expression types
                 }
                 """,
-                []
+                [MismatchedTypes(Int, String)]
             },
             {
                 """
@@ -1093,11 +1094,11 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                []
+                [MismatchedTypes(Boolean, Int)]
             },
             {
                 "var a = !1",
-                []
+                [MismatchedTypes(Boolean, Int)]
             },
             {
                 "var b: bool = a matches MissingType;",
@@ -1196,7 +1197,7 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                []
+                [TypeCheckerError.NonMutableAssignment("MyField", SourceRange.Default)]
             },
             {
                 """
@@ -1218,7 +1219,7 @@ public class TypeCheckerTests
                 // second assignment fails because it's not mutable
                 a = ";";
                 """,
-                []
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
             },
             {
                 """
@@ -1233,7 +1234,7 @@ public class TypeCheckerTests
                 // MyField is not mutable
                 a.MyField = "";
                 """,
-                []
+                [TypeCheckerError.NonMutableMemberAssignment(MemberAccess(VariableAccessor("a"), "MyField"))]
             },
             {
                 """
@@ -1243,7 +1244,7 @@ public class TypeCheckerTests
                 // a is not marked as mutable
                 a.MyField = "";
                 """,
-                []
+                [TypeCheckerError.NonMutableMemberOwnerAssignment(VariableAccessor("a"))]
             },
             {
                 """
@@ -1251,7 +1252,7 @@ public class TypeCheckerTests
                 // a is not marked as mutable
                 a = "";
                 """,
-                []
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
             },
             {
                 """
@@ -1262,7 +1263,7 @@ public class TypeCheckerTests
                 // MyField is not marked as mutable
                 MyClass::MyField = "";
                 """,
-                []
+                [TypeCheckerError.NonMutableMemberAssignment(StaticMemberAccess(TypeIdentifier("MyClass"), "MyField"))]
             },
             {
                 """
@@ -1274,7 +1275,7 @@ public class TypeCheckerTests
                     param.MyField = "";
                 }
                 """,
-                []
+                [TypeCheckerError.NonMutableMemberOwnerAssignment(VariableAccessor("param"))]
             },
             {
                 """
@@ -1283,7 +1284,7 @@ public class TypeCheckerTests
                    param = ""; 
                 }
                 """,
-                []
+                [TypeCheckerError.NonMutableAssignment("param", SourceRange.Default)]
             },
             {
                 """
@@ -1294,7 +1295,7 @@ public class TypeCheckerTests
                 // param is mut, but a is not marked as mutable
                 MyFn(a);
                 """,
-                []
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
             },
             {
                 """
@@ -1762,7 +1763,7 @@ public class TypeCheckerTests
             },
             {
                 "true = false",
-                []
+                [TypeCheckerError.ExpressionNotAssignable(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default))))]
             },
             {
                 // MemberAccess,
@@ -1933,6 +1934,11 @@ public class TypeCheckerTests
 
             return genericTypeReference.GenericName == Name;
         }
+
+        public override string ToString()
+        {
+            return $"{Name}=[??]";
+        }
     }
 
     private record TestClassReference(string ClassName) : ITypeReference, IEquatable<ITypeReference>
@@ -1945,6 +1951,11 @@ public class TypeCheckerTests
             }
 
             return @class.Signature.Name == ClassName;
+        }
+
+        public override string ToString()
+        {
+            return ClassName;
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿namespace NewLang.Core.Tests.ParserTests.TestCases;
 
-using static ParserHelpers;
+using static ExpressionHelpers;
 
 public static class PopExpressionTestCases
 {

@@ -1,6 +1,6 @@
 ﻿namespace NewLang.Core.Tests.ParserTests;
 
-public static class ParserHelpers
+public static class ExpressionHelpers
 {
     public static ValueAccessorExpression Literal(int value)
     {
