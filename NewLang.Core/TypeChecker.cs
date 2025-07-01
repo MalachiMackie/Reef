@@ -7,6 +7,7 @@ namespace NewLang.Core;
 public class TypeChecker
 {
     private readonly LangProgram _program;
+    private readonly List<TypeCheckerError> _errors = [];
 
     // todo: generic placeholders in scope?
     private readonly Stack<TypeCheckingScope> _typeCheckingScopes = new();
@@ -25,9 +26,12 @@ public class TypeChecker
     private FunctionSignature? CurrentFunctionSignature => _typeCheckingScopes.Peek().CurrentFunctionSignature;
     private ITypeReference ExpectedReturnType => _typeCheckingScopes.Peek().ExpectedReturnType;
 
-    public static void TypeCheck(LangProgram program)
+    public static IReadOnlyList<TypeCheckerError> TypeCheck(LangProgram program)
     {
-        new TypeChecker(program).TypeCheckInner();
+        var typeChecker = new TypeChecker(program);
+        typeChecker.TypeCheckInner();
+
+        return typeChecker._errors;
     }
 
     private Variable GetScopedVariable(string name)
