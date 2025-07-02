@@ -30,6 +30,146 @@ public record TypeCheckerError
 
     public static TypeCheckerError SymbolNotFound(Token symbol) =>
         new(TypeCheckerErrorType.SymbolNotFound, new SourceRange(symbol.SourceSpan, symbol.SourceSpan), $"Symbol {symbol} not found");
+
+    public static TypeCheckerError UnresolvedInferredType()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError ThisAccessedOutsideOfInstanceMethod()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError MatchNonExhaustive()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError AccessUninitializedVariable()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError IncorrectNumberOfPatternsInTupleVariantUnionPattern()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError UnknownVariant()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError NonUnionTypeUsedInStructVariantUnionPattern()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError MissingFieldsInStructVariantUnionPattern()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError MissingFieldsInClassPattern()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError PrivateFieldUsedInClassPattern()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError PrivateFieldReferenced()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError UnknownUnionStructVariantField()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError UnionStructVariantInitializerNotStructVariant()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError DuplicateVariantName()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError ConflictingTypeName()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError DuplicateFieldInUnionStructVariant()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError UnionTupleVariantNoParameters()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError ConflictingFunctionName()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError IncorrectNumberOfMethodParameters()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError MemberAccessOnGenericExpression()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError StaticMemberAccessOnGenericReference()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError DuplicateGenericArgument()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError IncorrectNumberOfTypeArguments()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError ClassFieldSetMultipleTypesInInitializer()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError UnknownClassField()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError FieldsLeftUnassignedInClassInitializer()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError ConflictingTypeArgument()
+    {
+        throw new NotImplementedException();
+    }
+
+    public static TypeCheckerError TypeArgumentConflictsWithType()
+    {
+        throw new NotImplementedException();
+    }
 }
 
 public enum TypeCheckerErrorType

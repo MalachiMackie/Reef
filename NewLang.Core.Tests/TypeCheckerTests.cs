@@ -52,6 +52,21 @@ public class TypeCheckerTests
         return new TheoryData<string>
         {
             """
+            class MyClass {
+                pub field MyField: string,
+                nfielTypeCheckerError.InOtherField: bool,
+                
+                pub static fn Create(): MyClass {
+                    return new MyClass {
+                        MyField = "",
+                        OtherField = true
+                    };
+                }
+            }
+            var a = MyClass::Create();
+            var b: bool = a matches MyClass { MyField: string };
+            """,
+            """
             var mut a = ok(1);
             a = ok(2);
             a = error("");
@@ -812,7 +827,7 @@ public class TypeCheckerTests
 
                 SomeFn();
                 """,
-                []
+                [TypeCheckerError.UnresolvedInferredType()]
             },
             {
                 "incompatible inferred types",
@@ -831,12 +846,12 @@ public class TypeCheckerTests
             {
                 "missing inferred result type parameter",
                 "var a = ok(1);",
-                []
+                [TypeCheckerError.UnresolvedInferredType()]
             },
             {
                 "this used outside of class instance",
                 "var a = this;",
-                []
+                [TypeCheckerError.ThisAccessedOutsideOfInstanceMethod()]
             },
             {
                 "this used in static class function",
@@ -847,7 +862,7 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                []
+                [TypeCheckerError.ThisAccessedOutsideOfInstanceMethod()]
             },
             {
                 "this used in static union function",
@@ -858,7 +873,7 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                []
+                [TypeCheckerError.ThisAccessedOutsideOfInstanceMethod()]
             },
             {
                 "pattern variable used in wrong match arm",
@@ -875,7 +890,7 @@ public class TypeCheckerTests
                     MyUnion::C { MyField } => b,// b not available in this arm
                 }
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "match expression not exhaustive",
@@ -892,27 +907,29 @@ public class TypeCheckerTests
                     // non exhaustive
                 }
                 """,
-                []
+                [TypeCheckerError.MatchNonExhaustive()]
             },
             {
                 "incompatible pattern type",
                 """
                 var a = "";
                 match (a) {
-                    int => 1 // incompatible pattern
+                    int => 1, // incompatible pattern
+                    _ => 2
                 }
                 """,
-                []
+                [MismatchedTypes(String, Int)]
             },
             {
                 "Unknown type used in pattern",
                 """
                 var a = "";
                 match (a) {
-                    SomeType => 1 // missing type
+                    SomeType => 1, // missing type
+                    _ => 1
                 }
                 """,
-                []
+                [TypeCheckerError.SymbolNotFound(Token.Identifier("SomeType", SourceSpan.Default))]
             },
             {
                 "match arms provide incompatible types",
@@ -935,7 +952,7 @@ public class TypeCheckerTests
 
                 var c: MyUnion = b;
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "matches pattern variable used outside of true if check",
@@ -945,7 +962,7 @@ public class TypeCheckerTests
                 var z = a matches MyUnion::A(_) var b;
                 var c: MyUnion = b;
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "matches pattern variable used outside of true if check",
@@ -955,7 +972,7 @@ public class TypeCheckerTests
                 var z = a matches MyUnion::A(string var b);
                 var c: string = b;
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "matches pattern variable used outside of true if check",
@@ -965,7 +982,7 @@ public class TypeCheckerTests
                 var z = a matches MyUnion::A(string var b);
                 var c: string = b;
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "union struct pattern field used outside of true if check",
@@ -975,7 +992,7 @@ public class TypeCheckerTests
                 var z = a matches MyUnion::A { MyField };
                 var c: string = MyField;
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "matches pattern variable used outside of true if check",
@@ -985,7 +1002,7 @@ public class TypeCheckerTests
                 var z = a matches MyUnion::A { MyField: var b };
                 var c: string = b;
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "matches pattern variable used outside of true if check",
@@ -995,7 +1012,7 @@ public class TypeCheckerTests
                 var z = a matches var b;
                 var c: MyUnion = b;
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "matches pattern variable used outside of true if check",
@@ -1005,7 +1022,7 @@ public class TypeCheckerTests
                 var z = a matches MyUnion var b;
                 var c: MyUnion = b;
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "matches pattern variable used outside of true if check",
@@ -1017,7 +1034,7 @@ public class TypeCheckerTests
                 var d: OtherUnion = b;
                 var e: MyUnion = c;
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "matches pattern variable used in false if check",
@@ -1028,7 +1045,7 @@ public class TypeCheckerTests
                     var c: MyUnion = b;
                 }
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "matches pattern variable used in false if check",
@@ -1039,7 +1056,7 @@ public class TypeCheckerTests
                     var c: MyUnion = b;
                 }
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "matches pattern variable used in false if check",
@@ -1050,7 +1067,7 @@ public class TypeCheckerTests
                     var c: string = b;
                 }
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "matches pattern variable used in false if check",
@@ -1061,7 +1078,7 @@ public class TypeCheckerTests
                     var c: string = b;
                 }
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "matches pattern variable used in false if check",
@@ -1072,7 +1089,7 @@ public class TypeCheckerTests
                     var c: string = MyField;
                 }
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "matches pattern variable used in false if check",
@@ -1083,7 +1100,7 @@ public class TypeCheckerTests
                     var c: string = b;
                 }
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "matches pattern variable used in false if check",
@@ -1094,7 +1111,7 @@ public class TypeCheckerTests
                     var c: MyUnion = b;
                 }
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "matches pattern variable used in false if check",
@@ -1105,7 +1122,7 @@ public class TypeCheckerTests
                     var c: MyUnion = b;
                 }
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "matches pattern variable used in false if check",
@@ -1118,7 +1135,7 @@ public class TypeCheckerTests
                     var e: MyUnion = c;
                 }
                 """,
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "mismatched variable declaration assignment in union method",
@@ -1141,7 +1158,7 @@ public class TypeCheckerTests
             {
                 "missing type in pattern",
                 "var b: bool = a matches MissingType;",
-                []
+                [TypeCheckerError.SymbolNotFound(Token.Identifier("MissingType", SourceSpan.Default))]
             },
             {
                 "incorrect number of patterns in union tuple pattern",
@@ -1150,7 +1167,7 @@ public class TypeCheckerTests
                 var a = MyUnion::B("");
                 var b: bool = a matches MyUnion::B(_, _);
                 """,
-                []
+                [TypeCheckerError.IncorrectNumberOfPatternsInTupleVariantUnionPattern()]
             },
             {
                 "Unknown variant used in matches union variant pattern",
@@ -1159,7 +1176,7 @@ public class TypeCheckerTests
                 var a = MyUnion::B("");
                 var b: bool = a matches MyUnion::C;
                 """,
-                []
+                [TypeCheckerError.UnknownVariant()]
             },
             {
                 "mismatched type used for field in struct variant pattern",
@@ -1177,7 +1194,7 @@ public class TypeCheckerTests
                 var a = new MyUnion::A { MyField = "" };
                 var b: bool = a matches MyUnion { MyField: int };
                 """,
-                []
+                [TypeCheckerError.NonUnionTypeUsedInStructVariantUnionPattern()]
             },
             {
                 "struct union pattern does not list all fields",
@@ -1186,7 +1203,7 @@ public class TypeCheckerTests
                 var a = new MyUnion::A { MyField = "", OtherField = true };
                 var b: bool = a matches MyUnion::A { MyField: _ };
                 """,
-                []
+                [TypeCheckerError.MissingFieldsInStructVariantUnionPattern()]
             },
             {
                 "incompatible field type used in class pattern",
@@ -1204,16 +1221,26 @@ public class TypeCheckerTests
                 var a = new MyClass { MyField = "", OtherField = true };
                 var b: bool = a matches MyClass { MyField: string };
                 """,
-                []
+                [TypeCheckerError.MissingFieldsInClassPattern()]
             },
             {
                 "non public field in class pattern",
                 """
-                class MyClass {pub field MyField: string, field OtherField: bool}
-                var a = new MyClass { MyField = "", OtherField = true };
+                class MyClass {
+                    pub field MyField: string,
+                    field OtherField: bool,
+                    
+                    pub static fn Create(): MyClass {
+                        return new MyClass {
+                            MyField = "",
+                            OtherField = true
+                        };
+                    }
+                }
+                var a = MyClass::Create();
                 var b: bool = a matches MyClass { MyField: string, OtherField: _ };
                 """,
-                []
+                [TypeCheckerError.PrivateFieldUsedInClassPattern()]
             },
             {
                 "mismatched pattern type",
@@ -1234,7 +1261,7 @@ public class TypeCheckerTests
                 // MyField is not accessible
                 var a = new MyClass { MyField = "" };
                 """,
-                []
+                [TypeCheckerError.PrivateFieldReferenced()]
             },
             {
                 "non mutable field assigned in class method",
@@ -1382,7 +1409,7 @@ public class TypeCheckerTests
                     MyField_ = ""
                 };
                 """,
-                []
+                [TypeCheckerError.UnknownUnionStructVariantField()]
             },
             {
                 "Unknown variant name used in union struct initializer",
@@ -1396,7 +1423,7 @@ public class TypeCheckerTests
                     MyField = ""
                 };
                 """,
-                []
+                [TypeCheckerError.UnknownVariant()]
             },
             {
                 "incorrect expression type used in union struct initializer",
@@ -1422,7 +1449,7 @@ public class TypeCheckerTests
                     MyField = 2
                 };
                 """,
-                []
+                [TypeCheckerError.UnionStructVariantInitializerNotStructVariant()]
             },
             {
                 "incorrect expression type used in union struct initializer",
@@ -1456,17 +1483,17 @@ public class TypeCheckerTests
                     A
                 }
                 """,
-                []
+                [TypeCheckerError.DuplicateVariantName()]
             },
             {
                 "duplicate union names",
                 "union MyUnion {} union MyUnion {}",
-                []
+                [TypeCheckerError.ConflictingTypeName()]
             },
             {
                 "union name conflicts with class name",
                 "union MyUnion {} class MyUnion {}",
-                []
+                [TypeCheckerError.ConflictingTypeName()]
             },
             {
                 "duplicate field in union struct variant",
@@ -1478,7 +1505,7 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                []
+                [TypeCheckerError.DuplicateFieldInUnionStructVariant()]
             },
             {
                 "union tuple variant without parameters",
@@ -1487,7 +1514,7 @@ public class TypeCheckerTests
                     A()
                 }
                 """,
-                []
+                [TypeCheckerError.UnionTupleVariantNoParameters()]
             },
             {
                 "incorrect type arguments for return value of same type",
@@ -1562,7 +1589,7 @@ public class TypeCheckerTests
             {
                 "variable declaration without type or assignment never inferred",
                 "var b;",
-                []
+                [TypeCheckerError.UnresolvedInferredType()]
             },
             {
                 "incorrect type in return value",
@@ -1577,7 +1604,7 @@ public class TypeCheckerTests
             {
                 "duplicate function declaration",
                 "fn MyFn() {} fn MyFn() {}",
-                []
+                [TypeCheckerError.ConflictingFunctionName()]
             },
             {
                 "no return value provided when return value expected",
@@ -1592,7 +1619,7 @@ public class TypeCheckerTests
             {
                 "variable used before initialization",
                 "var a: int; var b = a",
-                []
+                [TypeCheckerError.AccessUninitializedVariable()]
             },
             {
                 "function used outside of declaration scope",
@@ -1607,7 +1634,7 @@ public class TypeCheckerTests
             {
                 "object initializer for unknown type",
                 "var a = new MyClass::<int> {someField = true};",
-                []
+                [TypeCheckerError.SymbolNotFound(Token.Identifier("MyClass", SourceSpan.Default))]
             },
             {
                 "incorrect expression types in method call",
@@ -1617,22 +1644,22 @@ public class TypeCheckerTests
             {
                 "missing function arguments",
                 "fn MyFn(param1: string, param2: int) {} MyFn();",
-                []
+                [TypeCheckerError.IncorrectNumberOfMethodParameters()]
             },
             {
                 "too many function arguments",
                 """fn MyFn(param1: string, param2: int) {} MyFn("value", 3, 2);""",
-                []
+                [TypeCheckerError.IncorrectNumberOfMethodParameters()]
             },
             {
                 "member accessed on generic instance variable",
                 "fn MyFn<T1>(param: T1) {var a = param.something;}",
-                []
+                [TypeCheckerError.MemberAccessOnGenericExpression()]
             },
             {
                 "static member accessed on generic type",
                 "fn MyFn<T1>() {var a = T1::something;}",
-                []
+                [TypeCheckerError.StaticMemberAccessOnGenericReference()]
             },
             {
                 "generic variable returned as concrete class",
@@ -1640,14 +1667,9 @@ public class TypeCheckerTests
                 [MismatchedTypes(Int, new TestGenericTypeReference("T1"))]
             },
             {
-                "duplicate function name",
-                "fn MyFn(){} fn MyFn(){}",
-                []
-            },
-            {
                 "duplicate function generic argument",
                 "fn MyFn<T, T>() {}",
-                []
+                [TypeCheckerError.DuplicateGenericArgument()]
             },
             {
                 "incorrect type in if check",
@@ -1682,27 +1704,27 @@ public class TypeCheckerTests
             {
                 "unresolved inferred types",
                 "var a: result::<>",
-                []
+                [TypeCheckerError.UnresolvedInferredType()]
             },
             {
                 "unresolved inferred types",
                 "var a: result::<string>",
-                []
+                [TypeCheckerError.IncorrectNumberOfTypeArguments()]
             },
             {
                 "too many type parameters",
                 "var a: result::<string, string, string>",
-                []
+                [TypeCheckerError.IncorrectNumberOfTypeArguments()]
             },
             {
                 "unresolved function generic type",
                 "fn Fn1<T1>(){} Fn1::<>();",
-                []
+                [TypeCheckerError.UnresolvedInferredType()]
             },
             {
                 "too many function type parameters",
                 "fn Fn1<T1>(){} Fn1::<string, bool>();",
-                []
+                [TypeCheckerError.IncorrectNumberOfTypeArguments()]
             },
             {
                 "incorrect type for class initializer field assignment",
@@ -1722,7 +1744,7 @@ public class TypeCheckerTests
                 }
                 var a = new MyClass { someField = "value", someField = "value" };
                 """,
-                []
+                [TypeCheckerError.ClassFieldSetMultipleTypesInInitializer()]
             },
             {
                 "unknown field assigned in object initializer",
@@ -1732,7 +1754,7 @@ public class TypeCheckerTests
                 }
                 var a = new MyClass { someField = "value", extraField = 1 };
                 """,
-                []
+                [TypeCheckerError.UnknownClassField()]
             },
             {
                 "field not assigned in object initializer",
@@ -1742,7 +1764,7 @@ public class TypeCheckerTests
                 }
                 var a = new MyClass {};
                 """,
-                []
+                [TypeCheckerError.FieldsLeftUnassignedInClassInitializer()]
             },
             {
                 "incorrect expression type in static field initializer",
@@ -1756,12 +1778,12 @@ public class TypeCheckerTests
                     fn MyFn<T>(){}
                 }
                 """,
-                []
+                [TypeCheckerError.ConflictingTypeArgument()]
             },
             {
                 "duplicate generic type in class definition",
                 "class MyClass<T, T>{}",
-                []
+                [TypeCheckerError.DuplicateGenericArgument()]
             },
             {
                 "Generic type conflicts with existing type",
@@ -1769,7 +1791,7 @@ public class TypeCheckerTests
                 class MyClass{}
                 class OtherClass<MyClass>{}
                 """,
-                []
+                [TypeCheckerError.TypeArgumentConflictsWithType()]
             },
             {
                 "Generic type conflicts with existing type",
@@ -1777,7 +1799,7 @@ public class TypeCheckerTests
                 class OtherClass<MyClass>{}
                 class MyClass{}
                 """,
-                []
+                [TypeCheckerError.TypeArgumentConflictsWithType()]
             },
             {
                 "incorrect return type",

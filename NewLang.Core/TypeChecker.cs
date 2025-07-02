@@ -744,12 +744,12 @@ public class TypeChecker
             {
                 var patternUnionType = GetTypeReference(variantPattern.Type, genericPlaceholders);
 
-                if (typeReference is not InstantiatedUnion union)
+                if (patternUnionType is not InstantiatedUnion union)
                 {
-                    throw new InvalidOperationException($"{typeReference} is not a union");
+                    throw new InvalidOperationException($"{patternUnionType} is not a union");
                 }
 
-                ExpectType(patternUnionType, union, genericPlaceholders, variantPattern.SourceRange);
+                ExpectType(typeReference, union, genericPlaceholders, variantPattern.SourceRange);
 
                 if (variantPattern.VariantName is not null)
                 {
