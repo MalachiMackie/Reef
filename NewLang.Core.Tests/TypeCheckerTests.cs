@@ -35,15 +35,11 @@ public class TypeCheckerTests
     public void SingleTest()
     {
         const string src =
-                """
-                class MyClass {
-                    field MyField: string
-                }
-
-                // MyField is not accessible
-                var a = new MyClass { MyField = "" };
-                """;
-
+            """
+            var mut a = ok(1);
+            a = ok(2);
+            a = error("");
+            """;
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
@@ -55,6 +51,11 @@ public class TypeCheckerTests
     {
         return new TheoryData<string>
         {
+            """
+            var mut a = ok(1);
+            a = ok(2);
+            a = error("");
+            """,
             """
             var a = SomeFn;
 
@@ -820,7 +821,7 @@ public class TypeCheckerTests
                 a = ok(true);
                 a = error("");
                 """,
-                []
+                [MismatchedTypes(Result(Int, new TestGenericTypeReference("TError")), Result(Boolean, new TestGenericTypeReference("TError")))]
             },
             {
                 "incompatible inferred result type",
