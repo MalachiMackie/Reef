@@ -1524,6 +1524,11 @@ public class TypeChecker
     {
         var methodType = TypeCheckExpression(methodCall.Method, genericPlaceholders);
 
+        if (methodType is UnknownType)
+        {
+            return UnknownType.Instance;
+        }
+
         if (methodType is not InstantiatedFunction functionType)
         {
             throw new InvalidOperationException($"{methodType} is not callable");
@@ -1592,9 +1597,9 @@ public class TypeChecker
             { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Todo } => InstantiatedClass.Never,
             {
                     AccessType: ValueAccessType.Variable,
-                    Token: StringToken { Type: TokenType.Identifier, StringValue: var variableName }
+                    Token: StringToken { Type: TokenType.Identifier } variableNameToken
                 } =>
-                TypeCheckVariableAccess(variableName, allowUninstantiatedVariables, genericPlaceholders),
+                TypeCheckVariableAccess(variableNameToken, allowUninstantiatedVariables, genericPlaceholders),
             _ => throw new NotImplementedException($"{valueAccessorExpression}")
         };
 
@@ -1657,16 +1662,17 @@ public class TypeChecker
     }
 
     private ITypeReference TypeCheckVariableAccess(
-        string variableName, bool allowUninstantiated, HashSet<GenericTypeReference> genericPlaceholders)
+        StringToken variableName, bool allowUninstantiated, HashSet<GenericTypeReference> genericPlaceholders)
     {
-        if (ScopedFunctions.TryGetValue(variableName, out var function))
+        if (ScopedFunctions.TryGetValue(variableName.StringValue, out var function))
         {
             return InstantiateFunction(function, [..genericPlaceholders]);
         }
 
-        if (!TryGetScopedVariable(variableName, out var value))
+        if (!TryGetScopedVariable(variableName.StringValue, out var value))
         {
-            throw new InvalidOperationException($"No symbol found with name {variableName}");
+            _errors.Add(TypeCheckerError.SymbolNotFound(variableName));
+            return UnknownType.Instance;
         }
 
         if (!allowUninstantiated && !value.Instantiated)

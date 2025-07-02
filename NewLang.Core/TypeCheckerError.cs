@@ -27,6 +27,9 @@ public record TypeCheckerError
     
     public static TypeCheckerError NonMutableMemberOwnerAssignment(IExpression ownerExpression) =>
         new(TypeCheckerErrorType.NonMutableMemberOwnerAssignment, ownerExpression.SourceRange, $"member owner {ownerExpression} is not marked as mutable");
+
+    public static TypeCheckerError SymbolNotFound(Token symbol) =>
+        new(TypeCheckerErrorType.SymbolNotFound, new SourceRange(symbol.SourceSpan, symbol.SourceSpan), $"Symbol {symbol} not found");
 }
 
 public enum TypeCheckerErrorType
@@ -36,4 +39,5 @@ public enum TypeCheckerErrorType
     NonMutableAssignment,
     NonMutableMemberAssignment,
     NonMutableMemberOwnerAssignment,
+    SymbolNotFound
 }

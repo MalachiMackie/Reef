@@ -1,4 +1,5 @@
-﻿using FluentAssertions;
+﻿using System.Diagnostics.CodeAnalysis;
+using FluentAssertions;
 using NewLang.Core.Tests.ParserTests;
 
 using static NewLang.Core.TypeChecker;
@@ -19,7 +20,9 @@ public class TypeCheckerTests
 
     [Theory]
     [MemberData(nameof(FailedExpressionTestCases))]
-    public void Should_FailTypeChecking_When_ExpressionsAreNotValid(string source,
+    public void Should_FailTypeChecking_When_ExpressionsAreNotValid(
+        [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")] string description,
+        string source,
         IReadOnlyList<TypeCheckerError> expectedErrors)
     {
         var program = Parser.Parse(Tokenizer.Tokenize(source));
@@ -765,11 +768,12 @@ public class TypeCheckerTests
         };
     }
 
-    public static TheoryData<string, IReadOnlyList<TypeCheckerError>> FailedExpressionTestCases()
+    public static TheoryData<string, string, IReadOnlyList<TypeCheckerError>> FailedExpressionTestCases()
     {
-        return new TheoryData<string, IReadOnlyList<TypeCheckerError>>
+        return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
             {
+                "type inference from same function variable into two variables",
                 """
                 var a = SomeFn;
 
@@ -783,6 +787,7 @@ public class TypeCheckerTests
                 [MismatchedTypes(String, Int)]
             },
             {
+                "nested function parameter mismatched types return types",
                 """
                 fn SomeFn<T>(param: T) {
                     fn OtherFn<T2>(param2: T2) {
@@ -799,6 +804,7 @@ public class TypeCheckerTests
                 [MismatchedTypes(new TestGenericTypeReference("T2"), new TestGenericTypeReference("T"))]
             },
             {
+                "Unresolved inferred function generic",
                 """
                 fn SomeFn<T>() {
                 }
@@ -808,6 +814,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "incompatible inferred types",
                 """
                 var mut a = ok(1);
                 a = ok(true);
@@ -816,18 +823,22 @@ public class TypeCheckerTests
                 []
             },
             {
+                "incompatible inferred result type",
                 "var a: result::<int, string> = error(1);",
                 [MismatchedTypes(Result(Int, String), Result(Int, Int))]
             },
             {
+                "missing inferred result type parameter",
                 "var a = ok(1);",
                 []
             },
             {
+                "this used outside of class instance",
                 "var a = this;",
                 []
             },
             {
+                "this used in static class function",
                 """
                 class MyClass {
                     static fn SomeFn() {
@@ -838,6 +849,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "this used in static union function",
                 """
                 union MyUnion {
                     static fn SomeFn() {
@@ -848,6 +860,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "pattern variable used in wrong match arm",
                 """
                 union MyUnion {
                     A,
@@ -864,6 +877,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "match expression not exhaustive",
                 """
                 union MyUnion {
                     A,
@@ -880,6 +894,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "incompatible pattern type",
                 """
                 var a = "";
                 match (a) {
@@ -889,6 +904,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "Unknown type used in pattern",
                 """
                 var a = "";
                 match (a) {
@@ -898,6 +914,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "match arms provide incompatible types",
                 """
                 union MyUnion {A, B}
                 var a = MyUnion::A;
@@ -909,6 +926,7 @@ public class TypeCheckerTests
                 [MismatchedTypes(Int, String)]
             },
             {
+                "matches pattern variable used outside of true if check",
                 """
                 union MyUnion { A }
                 var a = MyUnion::A;
@@ -919,6 +937,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "matches pattern variable used outside of true if check",
                 """
                 union MyUnion { A(string) }
                 var a = MyUnion::A("hi");
@@ -928,6 +947,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "matches pattern variable used outside of true if check",
                 """
                 union MyUnion { A(string) }
                 var a = MyUnion::A("hi");
@@ -937,6 +957,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "matches pattern variable used outside of true if check",
                 """
                 union MyUnion { A(string) }
                 var a = MyUnion::A("hi");
@@ -946,6 +967,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "union struct pattern field used outside of true if check",
                 """
                 union MyUnion { A { field MyField: string } }
                 var a = new MyUnion::A { MyField = "" };
@@ -955,6 +977,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "matches pattern variable used outside of true if check",
                 """
                 union MyUnion { A { field MyField: string } }
                 var a = new MyUnion::A { MyField = "" };
@@ -964,6 +987,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "matches pattern variable used outside of true if check",
                 """
                 union MyUnion { A }
                 var a = MyUnion::A;
@@ -973,6 +997,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "matches pattern variable used outside of true if check",
                 """
                 union MyUnion { A }
                 var a = MyUnion::A;
@@ -982,6 +1007,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "matches pattern variable used outside of true if check",
                 """
                 union MyUnion { A }
                 union OtherUnion { B(MyUnion) }
@@ -993,6 +1019,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "matches pattern variable used in false if check",
                 """
                 union MyUnion { A }
                 var a = MyUnion::A;
@@ -1003,6 +1030,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "matches pattern variable used in false if check",
                 """
                 union MyUnion { A(string) }
                 var a = MyUnion::A("hi");
@@ -1013,6 +1041,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "matches pattern variable used in false if check",
                 """
                 union MyUnion { A(string) }
                 var a = MyUnion::A("hi");
@@ -1023,6 +1052,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "matches pattern variable used in false if check",
                 """
                 union MyUnion { A(string) }
                 var a = MyUnion::A("hi");
@@ -1033,6 +1063,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "matches pattern variable used in false if check",
                 """
                 union MyUnion { A { field MyField: string } }
                 var a = new MyUnion::A { MyField = "" };
@@ -1043,6 +1074,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "matches pattern variable used in false if check",
                 """
                 union MyUnion { A { field MyField: string } }
                 var a = new MyUnion::A { MyField = "" };
@@ -1053,6 +1085,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "matches pattern variable used in false if check",
                 """
                 union MyUnion { A }
                 var a = MyUnion::A;
@@ -1063,6 +1096,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "matches pattern variable used in false if check",
                 """
                 union MyUnion { A }
                 var a = MyUnion::A;
@@ -1073,6 +1107,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "matches pattern variable used in false if check",
                 """
                 union MyUnion { A }
                 union OtherUnion { B(MyUnion) }
@@ -1085,6 +1120,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "mismatched variable declaration assignment in union method",
                 """
                 union MyUnion {
                     A,
@@ -1097,14 +1133,17 @@ public class TypeCheckerTests
                 [MismatchedTypes(Boolean, Int)]
             },
             {
+                "incorrect not operator expression type",
                 "var a = !1",
                 [MismatchedTypes(Boolean, Int)]
             },
             {
+                "missing type in pattern",
                 "var b: bool = a matches MissingType;",
                 []
             },
             {
+                "incorrect number of patterns in union tuple pattern",
                 """
                 union MyUnion {A, B(string)}
                 var a = MyUnion::B("");
@@ -1113,6 +1152,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "Unknown variant used in matches union variant pattern",
                 """
                 union MyUnion {A, B(string)}
                 var a = MyUnion::B("");
@@ -1121,6 +1161,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "mismatched type used for field in struct variant pattern",
                 """
                 union MyUnion {A { field MyField: string }}
                 var a = new MyUnion::A { MyField = "" };
@@ -1129,6 +1170,7 @@ public class TypeCheckerTests
                 [MismatchedTypes(String, Int)]
             },
             {
+                "variant name not specified for struct union pattern",
                 """
                 union MyUnion {A { field MyField: string }}
                 var a = new MyUnion::A { MyField = "" };
@@ -1137,6 +1179,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "struct union pattern does not list all fields",
                 """
                 union MyUnion {A { field MyField: string, field OtherField: bool }}
                 var a = new MyUnion::A { MyField = "", OtherField = true };
@@ -1145,6 +1188,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "incompatible field type used in class pattern",
                 """
                 class MyClass {pub field MyField: string}
                 var a = new MyClass { MyField = "" };
@@ -1153,6 +1197,7 @@ public class TypeCheckerTests
                 [MismatchedTypes(String, Int)]
             },
             {
+                "class pattern does not list all fields",
                 """
                 class MyClass {pub field MyField: string, pub field OtherField: bool}
                 var a = new MyClass { MyField = "", OtherField = true };
@@ -1161,6 +1206,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "non public field in class pattern",
                 """
                 class MyClass {pub field MyField: string, field OtherField: bool}
                 var a = new MyClass { MyField = "", OtherField = true };
@@ -1169,6 +1215,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "mismatched pattern type",
                 """
                 class MyClass {pub field MyField: string, pub field OtherField: bool}
                 var a = new MyClass { MyField = "", OtherField = true };
@@ -1177,6 +1224,7 @@ public class TypeCheckerTests
                 [MismatchedTypes(new TestClassReference("MyClass"), String)]
             },
             {
+                "class initializer sets private field",
                 """
                 class MyClass {
                     field MyField: string
@@ -1188,6 +1236,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "non mutable field assigned in class method",
                 """
                 class MyClass {
                     field MyField: string,
@@ -1200,6 +1249,7 @@ public class TypeCheckerTests
                 [TypeCheckerError.NonMutableAssignment("MyField", SourceRange.Default)]
             },
             {
+                "instance field used in static class method",
                 """
                 class MyClass {
                     field MyField: string,
@@ -1209,9 +1259,10 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                []
+                [TypeCheckerError.SymbolNotFound(Token.Identifier("MyField", SourceSpan.Default))]
             },
             {
+                "non mutable variable assigned twice",
                 """
                 var a: string;
                 // initial assignment succeeds
@@ -1222,6 +1273,7 @@ public class TypeCheckerTests
                 [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
             },
             {
+                "non mutable field assigned through member access",
                 """
                 class MyClass {
                     pub field MyField: string
@@ -1237,6 +1289,7 @@ public class TypeCheckerTests
                 [TypeCheckerError.NonMutableMemberAssignment(MemberAccess(VariableAccessor("a"), "MyField"))]
             },
             {
+                "mutable field assigned from non mutable instance variable",
                 """
                 class MyClass { pub mut field MyField: string }
                 var a = new MyClass { MyField = "" };
@@ -1247,6 +1300,7 @@ public class TypeCheckerTests
                 [TypeCheckerError.NonMutableMemberOwnerAssignment(VariableAccessor("a"))]
             },
             {
+                "non mutable variable assigned",
                 """
                 var a = "";
                 // a is not marked as mutable
@@ -1255,9 +1309,10 @@ public class TypeCheckerTests
                 [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
             },
             {
+                "non mutable static field assigned through static member access",
                 """
                 class MyClass {
-                    pub static field MyField: string
+                    pub static field MyField: string = ""
                 };
 
                 // MyField is not marked as mutable
@@ -1266,6 +1321,7 @@ public class TypeCheckerTests
                 [TypeCheckerError.NonMutableMemberAssignment(StaticMemberAccess(TypeIdentifier("MyClass"), "MyField"))]
             },
             {
+                "non mutable param member assigned",
                 """
                 class MyClass {
                     pub mut field MyField: string
@@ -1278,6 +1334,7 @@ public class TypeCheckerTests
                 [TypeCheckerError.NonMutableMemberOwnerAssignment(VariableAccessor("param"))]
             },
             {
+                "not mutable param assigned",
                 """
                 fn MyFn(param: string) {
                    // param is not marked as mutable
@@ -1287,6 +1344,7 @@ public class TypeCheckerTests
                 [TypeCheckerError.NonMutableAssignment("param", SourceRange.Default)]
             },
             {
+                "non mutable variable passed to mutable function parameter",
                 """
                 fn MyFn(mut param: string) {
                 }
@@ -1298,6 +1356,7 @@ public class TypeCheckerTests
                 [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
             },
             {
+                "mismatched type when assigning field to generic field",
                 """
                 union MyUnion<T> {
                     A {
@@ -1311,6 +1370,7 @@ public class TypeCheckerTests
                 [MismatchedTypes(String, Int)]
             },
             {
+                "unknown field assigned in struct union initializer",
                 """
                 union MyUnion {
                     A {
@@ -1324,6 +1384,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "Unknown variant name used in union struct initializer",
                 """
                 union MyUnion {
                     A {
@@ -1337,6 +1398,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "incorrect expression type used in union struct initializer",
                 """
                 union MyUnion {
                     A {
@@ -1350,6 +1412,7 @@ public class TypeCheckerTests
                 [MismatchedTypes(String, Int)]
             },
             {
+                "Union struct initializer used for tuple union variant",
                 """
                 union MyUnion {
                     A(string)
@@ -1358,9 +1421,10 @@ public class TypeCheckerTests
                     MyField = 2
                 };
                 """,
-                [MismatchedTypes(String, Int)]
+                []
             },
             {
+                "incorrect expression type used in union struct initializer",
                 """
                 union MyUnion {
                     A {
@@ -1374,6 +1438,7 @@ public class TypeCheckerTests
                 [MismatchedTypes(String, Int)]
             },
             {
+                "incorrect expression type used in union tuple",
                 """
                 union MyUnion {
                     A(string)
@@ -1383,6 +1448,7 @@ public class TypeCheckerTests
                 [MismatchedTypes(String, Int)]
             },
             {
+                "duplicate union variant name in union declaration",
                 """
                 union MyUnion {
                     A,
@@ -1392,14 +1458,17 @@ public class TypeCheckerTests
                 []
             },
             {
+                "duplicate union names",
                 "union MyUnion {} union MyUnion {}",
                 []
             },
             {
+                "union name conflicts with class name",
                 "union MyUnion {} class MyUnion {}",
                 []
             },
             {
+                "duplicate field in union struct variant",
                 """
                 union MyUnion {
                     A {
@@ -1411,6 +1480,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "union tuple variant without parameters",
                 """
                 union MyUnion {
                     A()
@@ -1419,6 +1489,7 @@ public class TypeCheckerTests
                 []
             },
             {
+                "incorrect type arguments for return value of same type",
                 """
                 fn MyFn(): result::<int, string> {
                     if (true) {
@@ -1434,10 +1505,12 @@ public class TypeCheckerTests
                 ]
             },
             {
+                "incorrect expression type for generic type in union tuple variant",
                 "var a = result::<string, int>::Ok(1);",
                 [MismatchedTypes(String, Int)]
             },
             {
+                "incorrect expression type for generic type in generic class and generic method call",
                 """
                 class MyClass<T> {
                     fn MyFn<T2>(param1: T, param2: T2) {
@@ -1450,6 +1523,7 @@ public class TypeCheckerTests
                 [MismatchedTypes(Int, String), MismatchedTypes(String, Int)]
             },
             {
+                "incorrect type used in generic class and generic method call",
                 """
                 class MyClass<T> {
                     fn MyFn<T2>(param1: T, param2: T2) {
@@ -1462,6 +1536,7 @@ public class TypeCheckerTests
                 [MismatchedTypes(Int, String)]
             },
             {
+                "incorrect expression type used in generic class and generic method",
                 """
                 class MyClass<T> {
                     fn MyFn<T2>(param1: T, param2: T2) {
@@ -1474,170 +1549,207 @@ public class TypeCheckerTests
                 [MismatchedTypes(String, Int)]
             },
             {
+                "incorrect expression type in variable assignment",
                 "var a: string = 2",
                 [MismatchedTypes(String, Int)]
             },
             {
+                "incorrect expression type in variable assignment",
                 "var a: int = \"somestring\"",
                 [MismatchedTypes(Int, String)]
             },
             {
+                "variable declaration without type or assignment never inferred",
                 "var b;",
                 []
             },
             {
+                "incorrect type in return value",
                 "fn MyFn(): int { return \"something\"; }",
                 [MismatchedTypes(Int, String)]
             },
             {
+                "return value for function without return type",
                 "fn MyFn() { return 1; }",
                 [MismatchedTypes(Unit, Int)]
             },
             {
+                "duplicate function declaration",
                 "fn MyFn() {} fn MyFn() {}",
                 []
             },
             {
+                "no return value provided when return value expected",
                 "fn MyFn(): string { return; }",
                 [MismatchedTypes(String, Unit)]
             },
             {
+                "incorrect expression type in variable assignment",
                 "var a = 2; var b: string = a",
                 [MismatchedTypes(String, Int)]
             },
             {
+                "variable used before initialization",
                 "var a: int; var b = a",
                 []
             },
             {
+                "function used outside of declaration scope",
                 "fn MyFn(){fn InnerFn() {}} InnerFn();",
-                []
+                [TypeCheckerError.SymbolNotFound(Token.Identifier("InnerFn", SourceSpan.Default))]
             },
             {
+                "call missing method",
                 "CallMissingMethod();",
-                []
+                [TypeCheckerError.SymbolNotFound(Token.Identifier("CallMissingMethod", SourceSpan.Default))]
             },
             {
+                "object initializer for unknown type",
                 "var a = new MyClass::<int> {someField = true};",
                 []
             },
             {
+                "incorrect expression types in method call",
                 "fn MyFn(param1: string, param2: int) {} MyFn(3, \"value\");",
                 [MismatchedTypes(String, Int), MismatchedTypes(Int, String)]
             },
             {
+                "missing function arguments",
                 "fn MyFn(param1: string, param2: int) {} MyFn();",
                 []
             },
             {
+                "too many function arguments",
                 """fn MyFn(param1: string, param2: int) {} MyFn("value", 3, 2);""",
                 []
             },
             {
-                "fn MyFn<T1>() {var a = T1.something;}",
+                "member accessed on generic instance variable",
+                "fn MyFn<T1>(param: T1) {var a = param.something;}",
                 []
             },
             {
+                "static member accessed on generic type",
                 "fn MyFn<T1>() {var a = T1::something;}",
                 []
             },
             {
+                "generic variable returned as concrete class",
                 "fn MyFn<T1>(param: T1): int { return param; }",
                 [MismatchedTypes(Int, new TestGenericTypeReference("T1"))]
             },
             {
+                "duplicate function name",
                 "fn MyFn(){} fn MyFn(){}",
                 []
             },
             {
+                "duplicate function generic argument",
                 "fn MyFn<T, T>() {}",
                 []
             },
             {
+                "incorrect type in if check",
                 "if (1) {}",
                 [MismatchedTypes(Boolean, Int)]
             },
             {
+                "incorrect type in else if check",
                 "if (true) {} else if (1) {}",
                 [MismatchedTypes(Boolean, Int)]
             },
             {
+                "incorrect type in variable declaration in if body",
                 "if (true) {var a: string = 1;}",
                 [MismatchedTypes(String, Int)]
             },
             {
+                "incorrect type in variable declaration in else if body",
                 "if (true) {} else if (true) {var a: string = 1}",
                 [MismatchedTypes(String, Int)]
             },
             {
+                "incorrect type in variable declaration in else body",
                 "if (true) {} else if (true) {} else {var a: string = 1}",
                 [MismatchedTypes(String, Int)]
             },
             {
+                "incorrect type in second else if body",
                 "if (true) {} else if (true) {} else if (true) {var a: string = 1}",
                 [MismatchedTypes(String, Int)]
             },
             {
+                "unresolved inferred types",
                 "var a: result::<>",
                 []
             },
             {
+                "unresolved inferred types",
                 "var a: result::<string>",
                 []
             },
             {
+                "too many type parameters",
                 "var a: result::<string, string, string>",
                 []
             },
             {
+                "unresolved function generic type",
                 "fn Fn1<T1>(){} Fn1::<>();",
                 []
             },
             {
+                "too many function type parameters",
                 "fn Fn1<T1>(){} Fn1::<string, bool>();",
                 []
             },
             {
+                "incorrect type for class initializer field assignment",
                 """
                 class MyClass {
-                    field someField: string,
+                    pub field someField: string,
                 }
                 var a = new MyClass { someField = 1 };
                 """,
                 [MismatchedTypes(String, Int)]
             },
             {
+                "field assigned twice in object initializer",
                 """
                 class MyClass {
-                    field someField: string,
+                    pub field someField: string,
                 }
                 var a = new MyClass { someField = "value", someField = "value" };
                 """,
                 []
             },
             {
+                "unknown field assigned in object initializer",
                 """
                 class MyClass {
-                    field someField: string,
+                    pub field someField: string,
                 }
                 var a = new MyClass { someField = "value", extraField = 1 };
                 """,
                 []
             },
             {
+                "field not assigned in object initializer",
                 """
                 class MyClass {
-                    field someField: string,
+                    pub field someField: string,
                 }
                 var a = new MyClass {};
                 """,
                 []
             },
             {
+                "incorrect expression type in static field initializer",
                 "class MyClass { static field someField: string = 1, }",
                 [MismatchedTypes(String, Int)]
             },
             {
+                "function generic type conflict with parent class",
                 """
                 class MyClass<T> {
                     fn MyFn<T>(){}
@@ -1646,10 +1758,12 @@ public class TypeCheckerTests
                 []
             },
             {
+                "duplicate generic type in class definition",
                 "class MyClass<T, T>{}",
                 []
             },
             {
+                "Generic type conflicts with existing type",
                 """
                 class MyClass{}
                 class OtherClass<MyClass>{}
@@ -1657,6 +1771,15 @@ public class TypeCheckerTests
                 []
             },
             {
+                "Generic type conflicts with existing type",
+                """
+                class OtherClass<MyClass>{}
+                class MyClass{}
+                """,
+                []
+            },
+            {
+                "incorrect return type",
                 """
                 class MyClass {
                     fn MyFn(): int { return ""; }
@@ -1667,116 +1790,141 @@ public class TypeCheckerTests
             // binary operators
             // less than
             {
+                "incorrect type for less than",
                 "var a = 1 < true;",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "incorrect type for less than",
                 "var a = true < 1;",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "incorrect type for less than variable declaration",
                 "var a: int = 1 < 2",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "incorrect type for greater than",
                 // GreaterThan,
                 "var a = true > 1;",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "incorrect type for greater than",
                 "var a = 2 > true",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "incorrect type for greater than in variable declaration",
                 "var a: int = 2 > 2",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "incorrect type for plus",
                 // Plus,
                 "var a = true + 1;",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "incorrect type for plus",
                 "var a = 2 + true",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "incorrect type for plus in variable declaration",
                 "var a: bool = 2 + 2",
                 [MismatchedTypes(Boolean, Int)]
             },
             {
+                "incorrect type for minus",
                 // Minus,
                 "var a = true - 1;",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "incorrect type for minus",
                 "var a = 2 - true",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "incorrect type for minus in variable declaration",
                 "var a: bool = 2 - 2",
                 [MismatchedTypes(Boolean, Int)]
             },
             {
                 // Multiply,
+                "incorrect type for multiply",
                 "var a = true * 1;",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "incorrect type for multiply",
                 "var a = 2 * true",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "incorrect type for multiply in variable declaration",
                 "var a: bool = 2 * 2",
                 [MismatchedTypes(Boolean, Int)]
             },
             {
+                "incorrect type for divide",
                 // Divide,
                 "var a = true / 1;",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "incorrect type for divide",
                 "var a = 2 / true",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "incorrect type for divide in variable declaration",
                 "var a: bool = 2 / 2",
                 [MismatchedTypes(Boolean, Int)]
             },
             {
+                "incorrect type for equality check",
                 // EqualityCheck,
                 "var a = true == 1;",
                 [MismatchedTypes(Boolean, Int)]
             },
             {
+                "incorrect type for equality check",
                 "var a = 2 == true",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "incorrect type for equality check in variable declaration",
                 "var a: int = 2 == 2",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
                 // ValueAssignment,
+                "incompatible type used for variable assignment",
                 "var mut a = 2; a = true",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "assignment to literal",
                 "true = false",
                 [TypeCheckerError.ExpressionNotAssignable(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default))))]
             },
             {
                 // MemberAccess,
+                "incorrect type in variable declaration",
                 """
-                class MyClass { static field someField: int = 3, }
+                class MyClass { pub static field someField: int = 3, }
                 var a: string = MyClass::someField;
                 """,
                 [MismatchedTypes(String, Int)]
             },
             {
                 // StaticMemberAccess
+                "incorrect type in variable declaration",
                 """
-                class MyClass { field someField: int, }
+                class MyClass { pub field someField: int, }
                 var a: MyClass = new MyClass { someField = 3 };
                 var b: string = a.someField;
                 """,
