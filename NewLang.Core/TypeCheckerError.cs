@@ -33,142 +33,150 @@ public record TypeCheckerError
 
     public static TypeCheckerError UnresolvedInferredType()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.UnresolvedInferredType, SourceRange.Default, "");
     }
 
     public static TypeCheckerError ThisAccessedOutsideOfInstanceMethod()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.ThisAccessedOutsideOfInstanceMethod, SourceRange.Default, "");
     }
 
     public static TypeCheckerError MatchNonExhaustive()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.MatchNonExhaustive, SourceRange.Default, "");
     }
 
     public static TypeCheckerError AccessUninitializedVariable()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.AccessUninitializedVariable, SourceRange.Default, "");
     }
 
     public static TypeCheckerError IncorrectNumberOfPatternsInTupleVariantUnionPattern()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.IncorrectNumberOfPatternsInTupleVariantUnionPattern, SourceRange.Default, "");
     }
 
     public static TypeCheckerError UnknownVariant()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.UnknownVariant, SourceRange.Default, "");
     }
 
     public static TypeCheckerError NonUnionTypeUsedInStructVariantUnionPattern()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.NonUnionTypeUsedInStructVariantUnionPattern, SourceRange.Default, "");
     }
 
     public static TypeCheckerError MissingFieldsInStructVariantUnionPattern()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.MissingFieldsInStructVariantUnionPattern, SourceRange.Default, "");
     }
 
-    public static TypeCheckerError MissingFieldsInClassPattern()
+    public static TypeCheckerError MissingFieldsInClassPattern(IEnumerable<string> fieldNames, TypeIdentifier className)
     {
-        throw new NotImplementedException();
+        return new(
+            TypeCheckerErrorType.MissingFieldsInClassPattern,
+            className.SourceRange,
+            $"missing fields from class pattern {string.Join(",", fieldNames.Select(x => $"'{x}'"))} for class {className}");
     }
 
-    public static TypeCheckerError PrivateFieldUsedInClassPattern()
+    public static TypeCheckerError PrivateFieldReferenced(StringToken fieldNameReference)
     {
-        throw new NotImplementedException();
-    }
-
-    public static TypeCheckerError PrivateFieldReferenced()
-    {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.PrivateFieldReferenced,
+            new SourceRange(fieldNameReference.SourceSpan,
+                fieldNameReference.SourceSpan), $"Cannot access private field {fieldNameReference.StringValue}");
     }
 
     public static TypeCheckerError UnknownUnionStructVariantField()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.UnknownUnionStructVariantField, SourceRange.Default, "");
     }
 
     public static TypeCheckerError UnionStructVariantInitializerNotStructVariant()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.UnionStructVariantInitializerNotStructVariant, SourceRange.Default, "");
     }
 
     public static TypeCheckerError DuplicateVariantName()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.DuplicateVariantName, SourceRange.Default, "");
     }
 
     public static TypeCheckerError ConflictingTypeName()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.ConflictingTypeName, SourceRange.Default, "");
     }
 
-    public static TypeCheckerError DuplicateFieldInUnionStructVariant()
+    public static TypeCheckerError DuplicateFieldInUnionStructVariant(StringToken typeName, StringToken variantName, StringToken fieldName)
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.DuplicateFieldInUnionStructVariant,
+            new SourceRange(fieldName.SourceSpan, fieldName.SourceSpan),
+            $"Duplicate field found in union struct variant. Union Type: {typeName}, Variant: {variantName}, fieldName: {fieldName}");
     }
 
     public static TypeCheckerError UnionTupleVariantNoParameters()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.UnionTupleVariantNoParameters, SourceRange.Default, "");
     }
 
-    public static TypeCheckerError ConflictingFunctionName()
+    public static TypeCheckerError ConflictingFunctionName(StringToken functionName)
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.ConflictingFunctionName,
+            new SourceRange(functionName.SourceSpan, functionName.SourceSpan),
+            $"Function with name {functionName.StringValue} already defined in scope");
     }
 
     public static TypeCheckerError IncorrectNumberOfMethodParameters()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.IncorrectNumberOfMethodParameters, SourceRange.Default, "");
     }
 
     public static TypeCheckerError MemberAccessOnGenericExpression()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.MemberAccessOnGenericExpression, SourceRange.Default, "");
     }
 
     public static TypeCheckerError StaticMemberAccessOnGenericReference()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.StaticMemberAccessOnGenericReference, SourceRange.Default, "");
     }
 
-    public static TypeCheckerError DuplicateGenericArgument()
+    public static TypeCheckerError DuplicateGenericArgument(StringToken argumentIdentifier)
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.DuplicateGenericArgument, new SourceRange(
+            argumentIdentifier.SourceSpan, argumentIdentifier.SourceSpan), $"Generic argument {argumentIdentifier.StringValue} already defined");
     }
 
     public static TypeCheckerError IncorrectNumberOfTypeArguments()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.IncorrectNumberOfTypeArguments, SourceRange.Default, "");
     }
 
     public static TypeCheckerError ClassFieldSetMultipleTypesInInitializer()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.ClassFieldSetMultipleTypesInInitializer, SourceRange.Default, "");
     }
 
     public static TypeCheckerError UnknownClassField()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.UnknownClassField, SourceRange.Default, "");
     }
 
     public static TypeCheckerError FieldsLeftUnassignedInClassInitializer()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.FieldsLeftUnassignedInClassInitializer, SourceRange.Default, "");
     }
 
-    public static TypeCheckerError ConflictingTypeArgument()
+    public static TypeCheckerError ConflictingTypeArgument(StringToken typeArgument)
     {
-        throw new NotImplementedException();
+        return new(
+            TypeCheckerErrorType.ConflictingTypeArgument,
+            new SourceRange(typeArgument.SourceSpan, typeArgument.SourceSpan),
+            $"Conflicting type argument with existing type argument {typeArgument.StringValue} outside of current definition");
     }
 
     public static TypeCheckerError TypeArgumentConflictsWithType()
     {
-        throw new NotImplementedException();
+        return new(TypeCheckerErrorType.TypeArgumentConflictsWithType, SourceRange.Default, "");
     }
 }
 
@@ -179,5 +187,32 @@ public enum TypeCheckerErrorType
     NonMutableAssignment,
     NonMutableMemberAssignment,
     NonMutableMemberOwnerAssignment,
-    SymbolNotFound
+    SymbolNotFound,
+    UnresolvedInferredType,
+    ThisAccessedOutsideOfInstanceMethod,
+    MatchNonExhaustive,
+    AccessUninitializedVariable,
+    IncorrectNumberOfPatternsInTupleVariantUnionPattern,
+    UnknownVariant,
+    NonUnionTypeUsedInStructVariantUnionPattern,
+    MissingFieldsInStructVariantUnionPattern,
+    MissingFieldsInClassPattern,
+    PrivateFieldReferenced,
+    UnknownUnionStructVariantField,
+    UnionStructVariantInitializerNotStructVariant,
+    DuplicateVariantName,
+    ConflictingTypeName,
+    DuplicateFieldInUnionStructVariant,
+    UnionTupleVariantNoParameters,
+    ConflictingFunctionName,
+    IncorrectNumberOfMethodParameters,
+    MemberAccessOnGenericExpression,
+    StaticMemberAccessOnGenericReference,
+    DuplicateGenericArgument,
+    IncorrectNumberOfTypeArguments,
+    ClassFieldSetMultipleTypesInInitializer,
+    UnknownClassField,
+    FieldsLeftUnassignedInClassInitializer,
+    ConflictingTypeArgument,
+    TypeArgumentConflictsWithType,
 }

@@ -35,11 +35,7 @@ public class TypeCheckerTests
     public void SingleTest()
     {
         const string src =
-            """
-            var mut a = ok(1);
-            a = ok(2);
-            a = error("");
-            """;
+            "fn MyFn<T, T, T1, T1>() {}";
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
@@ -54,7 +50,7 @@ public class TypeCheckerTests
             """
             class MyClass {
                 pub field MyField: string,
-                nfielTypeCheckerError.InOtherField: bool,
+                field OtherField: bool,
                 
                 pub static fn Create(): MyClass {
                     return new MyClass {
@@ -1221,7 +1217,7 @@ public class TypeCheckerTests
                 var a = new MyClass { MyField = "", OtherField = true };
                 var b: bool = a matches MyClass { MyField: string };
                 """,
-                [TypeCheckerError.MissingFieldsInClassPattern()]
+                [TypeCheckerError.MissingFieldsInClassPattern(["OtherField"], TypeIdentifier("MyClass"))]
             },
             {
                 "non public field in class pattern",
@@ -1240,7 +1236,7 @@ public class TypeCheckerTests
                 var a = MyClass::Create();
                 var b: bool = a matches MyClass { MyField: string, OtherField: _ };
                 """,
-                [TypeCheckerError.PrivateFieldUsedInClassPattern()]
+                [TypeCheckerError.PrivateFieldReferenced(Token.Identifier("OtherField", SourceSpan.Default))]
             },
             {
                 "mismatched pattern type",
@@ -1261,7 +1257,7 @@ public class TypeCheckerTests
                 // MyField is not accessible
                 var a = new MyClass { MyField = "" };
                 """,
-                [TypeCheckerError.PrivateFieldReferenced()]
+                [TypeCheckerError.PrivateFieldReferenced(Token.Identifier("MyField", SourceSpan.Default))]
             },
             {
                 "non mutable field assigned in class method",
@@ -1505,7 +1501,10 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                [TypeCheckerError.DuplicateFieldInUnionStructVariant()]
+                [TypeCheckerError.DuplicateFieldInUnionStructVariant(
+                    Token.Identifier("MyUnion", SourceSpan.Default),
+                    Token.Identifier("A", SourceSpan.Default),
+                    Token.Identifier("MyField", SourceSpan.Default))]
             },
             {
                 "union tuple variant without parameters",
@@ -1604,7 +1603,7 @@ public class TypeCheckerTests
             {
                 "duplicate function declaration",
                 "fn MyFn() {} fn MyFn() {}",
-                [TypeCheckerError.ConflictingFunctionName()]
+                [TypeCheckerError.ConflictingFunctionName(Token.Identifier("MyFn", SourceSpan.Default))]
             },
             {
                 "no return value provided when return value expected",
@@ -1669,7 +1668,23 @@ public class TypeCheckerTests
             {
                 "duplicate function generic argument",
                 "fn MyFn<T, T>() {}",
-                [TypeCheckerError.DuplicateGenericArgument()]
+                [TypeCheckerError.DuplicateGenericArgument(Token.Identifier("T", SourceSpan.Default))]
+            },
+            {
+                "duplicate function generic argument",
+                "fn MyFn<T, T, T1, T1>() {}",
+                [
+                    TypeCheckerError.DuplicateGenericArgument(Token.Identifier("T", SourceSpan.Default)),
+                    TypeCheckerError.DuplicateGenericArgument(Token.Identifier("T1", SourceSpan.Default)),
+                ]
+            },
+            {
+                "duplicate function generic argument",
+                "fn MyFn<T, T, T>() {}",
+                [
+                    TypeCheckerError.DuplicateGenericArgument(Token.Identifier("T", SourceSpan.Default)),
+                    TypeCheckerError.DuplicateGenericArgument(Token.Identifier("T", SourceSpan.Default)),
+                ]
             },
             {
                 "incorrect type in if check",
@@ -1778,12 +1793,28 @@ public class TypeCheckerTests
                     fn MyFn<T>(){}
                 }
                 """,
-                [TypeCheckerError.ConflictingTypeArgument()]
+                [TypeCheckerError.ConflictingTypeArgument(Token.Identifier("T", SourceSpan.Default))]
             },
             {
                 "duplicate generic type in class definition",
                 "class MyClass<T, T>{}",
-                [TypeCheckerError.DuplicateGenericArgument()]
+                [TypeCheckerError.DuplicateGenericArgument(Token.Identifier("T", SourceSpan.Default))]
+            },
+            {
+                "duplicate generic type in class definition",
+                "class MyClass<T, T, T1, T1>{}",
+                [
+                    TypeCheckerError.DuplicateGenericArgument(Token.Identifier("T", SourceSpan.Default)),
+                    TypeCheckerError.DuplicateGenericArgument(Token.Identifier("T1", SourceSpan.Default)),
+                ]
+            },
+            {
+                "duplicate generic type in class definition",
+                "class MyClass<T, T, T>{}",
+                [
+                    TypeCheckerError.DuplicateGenericArgument(Token.Identifier("T", SourceSpan.Default)),
+                    TypeCheckerError.DuplicateGenericArgument(Token.Identifier("T", SourceSpan.Default)),
+                ]
             },
             {
                 "Generic type conflicts with existing type",

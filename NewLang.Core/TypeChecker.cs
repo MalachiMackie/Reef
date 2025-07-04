@@ -202,9 +202,10 @@ public class TypeChecker
             }
         }
 
-        foreach (var function in _program.Functions)
+        foreach (var functionSignature in ScopedFunctions.Values)
         {
-            TypeCheckFunctionBody(function, ScopedFunctions[function.Name.StringValue], []);
+            var function = _program.Functions.First(x => x.Name.StringValue == functionSignature.Name);
+            TypeCheckFunctionBody(function, functionSignature, []);
         }
 
         foreach (var expression in _program.Expressions)
@@ -275,10 +276,15 @@ public class TypeChecker
                 { GenericName = argument.StringValue, OwnerType = signature }));
 
             @class.Signature = signature;
+            
+            var typeArgumentsLookup = @class.TypeArguments.ToLookup(x => x.StringValue);
 
-            if (@class.TypeArguments.GroupBy(x => x.StringValue).Any(x => x.Count() > 1))
+            foreach (var grouping in typeArgumentsLookup)
             {
-                throw new InvalidOperationException("Duplicate type argument");
+                foreach (var typeArgument in grouping.Skip(1))
+                {
+                    _errors.Add(TypeCheckerError.DuplicateGenericArgument(typeArgument));
+                }
             }
 
             classes.Add((@class, signature, functions, fields, staticFields));
@@ -340,7 +346,7 @@ public class TypeChecker
                     {
                         if (fields.Any(x => x.Name == field.Name.StringValue))
                         {
-                            throw new InvalidOperationException($"Duplicate field {field.Name.StringValue}");
+                            _errors.Add(TypeCheckerError.DuplicateFieldInUnionStructVariant(union.Name, structVariant.Name, field.Name));
                         }
 
                         if (field.AccessModifier is not null)
@@ -423,7 +429,7 @@ public class TypeChecker
             // todo: function overloading
             if (!ScopedFunctions.TryAdd(name, TypeCheckFunctionSignature(fn, [])))
             {
-                throw new InvalidOperationException($"Function with name {name} already defined");
+                _errors.Add(TypeCheckerError.ConflictingFunctionName(fn.Name));
             }
         }
 
@@ -526,23 +532,27 @@ public class TypeChecker
                 { GenericName = x.StringValue, OwnerType = fnSignature })
         ]);
 
-        if (fn.TypeArguments.GroupBy(x => x.StringValue).Any(x => x.Count() > 1))
+        var typeArgumentsLookup = fn.TypeArguments.ToLookup(x => x.StringValue);
+
+        foreach (var grouping in typeArgumentsLookup)
         {
-            throw new InvalidOperationException("Duplicate type parameter");
+            foreach (var (typeArgument, i) in grouping.Select((x, i) => (x, i)))
+            {
+                if (genericPlaceholders.Any(x => x.GenericName == grouping.Key))
+                {
+                    _errors.Add(TypeCheckerError.ConflictingTypeArgument(typeArgument));
+                }
+
+                if (i >= 1)
+                {
+                    _errors.Add(TypeCheckerError.DuplicateGenericArgument(typeArgument));
+                }
+            }
         }
 
         var functionType = InstantiateFunction(fnSignature, [..genericPlaceholders]);
 
-        var innerGenericPlaceholders = new HashSet<GenericTypeReference>(genericPlaceholders);
-        foreach (var typeArgument in functionType.TypeArguments)
-        {
-            if (innerGenericPlaceholders.Any(x => x.GenericName == typeArgument.GenericName))
-            {
-                throw new InvalidOperationException("Type type argument name conflict");
-            }
-
-            innerGenericPlaceholders.Add(typeArgument);
-        }
+        HashSet<GenericTypeReference> innerGenericPlaceholders = [..functionType.TypeArguments, ..genericPlaceholders];
 
         fnSignature.ReturnType = fn.ReturnType is null
             ? InstantiatedClass.Unit
@@ -792,16 +802,15 @@ public class TypeChecker
                         throw new InvalidOperationException("Duplicate fields found");
                     }
 
-                    if (!classPattern.RemainingFieldsDiscarded &&
-                        classPattern.FieldPatterns.Count != classType.Fields.Count)
-                    {
-                        throw new InvalidOperationException("Not all fields are listed");
-                    }
+                    var remainingFields = classType.Fields.Where(x => x.IsPublic)
+                        .Select(x => x.Name)
+                        .ToHashSet();
 
                     foreach (var (fieldName, fieldPattern) in classPattern.FieldPatterns)
                     {
+                        remainingFields.Remove(fieldName.StringValue);
                         var fieldType = GetClassField(classType, fieldName.StringValue);
-
+                        
                         if (fieldPattern is null)
                         {
                             patternVariables.Add(fieldName.StringValue);
@@ -819,6 +828,16 @@ public class TypeChecker
                         {
                             patternVariables.AddRange(TypeCheckPattern(fieldType, fieldPattern, genericPlaceholders));
                         }
+                    }
+
+                    if (classPattern.RemainingFieldsDiscarded)
+                    {
+                        remainingFields.Clear();
+                    }
+
+                    if (remainingFields.Count > 0)
+                    {
+                        _errors.Add(TypeCheckerError.MissingFieldsInClassPattern(remainingFields, classPattern.Type));
                     }
                 }
 
@@ -1250,7 +1269,7 @@ public class TypeChecker
                  || !instantiatedClass.MatchesSignature(currentClassSignature))
                 && !field.IsPublic)
             {
-                throw new InvalidOperationException("Cannot access private field");
+                _errors.Add(TypeCheckerError.PrivateFieldReferenced(fieldInitializer.FieldName));
             }
 
             if (fieldInitializer.Value is not null)
@@ -1315,9 +1334,8 @@ public class TypeChecker
                 var leftType = @operator.Left is null
                     ? UnknownType.Instance
                     : TypeCheckExpression(@operator.Left, genericPlaceholders, true);
-                var rightType = @operator.Right is null
-                    ? UnknownType.Instance
-                    : TypeCheckExpression(@operator.Right, genericPlaceholders);
+                if (@operator.Right is not null)
+                    TypeCheckExpression(@operator.Right, genericPlaceholders);
                 if (@operator.Left is not null)
                 {
                     ExpectAssignableExpression(@operator.Left, genericPlaceholders);
