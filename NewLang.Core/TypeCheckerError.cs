@@ -96,14 +96,19 @@ public record TypeCheckerError
         return new(TypeCheckerErrorType.UnionStructVariantInitializerNotStructVariant, SourceRange.Default, "");
     }
 
-    public static TypeCheckerError DuplicateVariantName()
+    public static TypeCheckerError DuplicateVariantName(StringToken variantName)
     {
-        return new(TypeCheckerErrorType.DuplicateVariantName, SourceRange.Default, "");
+        return new(
+            TypeCheckerErrorType.DuplicateVariantName,
+            new SourceRange(variantName.SourceSpan, variantName.SourceSpan),
+            $"Duplicate variant name {variantName.StringValue}");
     }
 
-    public static TypeCheckerError ConflictingTypeName()
+    public static TypeCheckerError ConflictingTypeName(StringToken name)
     {
-        return new(TypeCheckerErrorType.ConflictingTypeName, SourceRange.Default, "");
+        return new(TypeCheckerErrorType.ConflictingTypeName, new SourceRange(
+            name.SourceSpan,
+            name.SourceSpan), $"Type with name {name.StringValue} already defined in scope");
     }
 
     public static TypeCheckerError DuplicateFieldInUnionStructVariant(StringToken typeName, StringToken variantName, StringToken fieldName)

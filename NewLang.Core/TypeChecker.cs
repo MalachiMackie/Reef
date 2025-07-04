@@ -91,15 +91,10 @@ public class TypeChecker
             null,
             null));
 
-        SetupSignatures();
+        var (classes, unions) = SetupSignatures();
 
-        foreach (var union in _program.Unions)
+        foreach (var (union, unionSignature) in unions)
         {
-            if (_types[union.Name.StringValue] is not UnionSignature unionSignature)
-            {
-                throw new InvalidOperationException($"Expected {union.Name.StringValue} to be a union");
-            }
-
             var unionGenericPlaceholders = unionSignature.GenericParameters.ToHashSet();
 
             using (PushScope(unionSignature))
@@ -113,13 +108,8 @@ public class TypeChecker
             }
         }
 
-        foreach (var @class in _program.Classes)
+        foreach (var (@class, classSignature) in classes)
         {
-            if (_types[@class.Name.StringValue] is not ClassSignature classSignature)
-            {
-                throw new InvalidOperationException($"Expected {@class.Name.StringValue} to be a class");
-            }
-
             var classGenericPlaceholders = classSignature.GenericParameters
                 .ToHashSet();
 
@@ -218,7 +208,7 @@ public class TypeChecker
         ResolvedTypeChecker.CheckAllExpressionsHaveResolvedTypes(_program);
     }
 
-    private void SetupSignatures()
+    private (List<(ProgramClass, ClassSignature)>, List<(ProgramUnion, UnionSignature)>) SetupSignatures()
     {
         var classes =
             new List<(ProgramClass, ClassSignature, List<FunctionSignature>, List<TypeField> fields, List<TypeField>
@@ -253,7 +243,7 @@ public class TypeChecker
 
             if (!_types.TryAdd(unionSignature.Name, unionSignature))
             {
-                throw new InvalidOperationException($"Duplicate type {unionSignature.Name}");
+                _errors.Add(TypeCheckerError.ConflictingTypeName(union.Name));
             }
         }
 
@@ -291,7 +281,7 @@ public class TypeChecker
 
             if (!_types.TryAdd(name, signature))
             {
-                throw new InvalidOperationException($"Class with name {name} already defined");
+                _errors.Add(TypeCheckerError.ConflictingTypeName(@class.Name));
             }
         }
 
@@ -303,6 +293,11 @@ public class TypeChecker
 
             foreach (var function in union.Functions)
             {
+                if (functions.Any(x => x.Name == function.Name.StringValue))
+                {
+                    _errors.Add(TypeCheckerError.ConflictingFunctionName(function.Name));
+                }
+                
                 functions.Add(TypeCheckFunctionSignature(function, unionGenericPlaceholders));
             }
 
@@ -310,7 +305,7 @@ public class TypeChecker
             {
                 if (variants.Any(x => x.Name == variant.Name.StringValue))
                 {
-                    throw new InvalidOperationException("Cannot add multiple variants with the same name");
+                    _errors.Add(TypeCheckerError.DuplicateVariantName(variant.Name));
                 }
 
                 variants.Add(variant switch
@@ -387,7 +382,12 @@ public class TypeChecker
 
             foreach (var fn in @class.Functions)
             {
-                // todo: check function name collisions. also function overloading
+                if (functions.Any(x => x.Name == fn.Name.StringValue))
+                {
+                    _errors.Add(TypeCheckerError.ConflictingFunctionName(fn.Name));
+                }
+                
+                // todo: function overloading
                 functions.Add(TypeCheckFunctionSignature(fn, classGenericPlaceholders));
             }
 
@@ -478,6 +478,11 @@ public class TypeChecker
                 }
             }
         }
+
+        return (
+            classes.Select(x => (x.Item1, x.Item2)).ToList(),
+            unions.Select(x => (x.Item1, x.Item2)).ToList()
+        );
     }
 
 

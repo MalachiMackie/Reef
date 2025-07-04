@@ -1479,17 +1479,44 @@ public class TypeCheckerTests
                     A
                 }
                 """,
-                [TypeCheckerError.DuplicateVariantName()]
+                [TypeCheckerError.DuplicateVariantName(Token.Identifier("A", SourceSpan.Default))]
             },
             {
                 "duplicate union names",
                 "union MyUnion {} union MyUnion {}",
-                [TypeCheckerError.ConflictingTypeName()]
+                [TypeCheckerError.ConflictingTypeName(Token.Identifier("MyUnion", SourceSpan.Default))]
+            },
+            {
+                "duplicate union names with type errors",
+                "union MyUnion {A, A} union MyUnion {B, B}",
+                [
+                    TypeCheckerError.ConflictingTypeName(Token.Identifier("MyUnion", SourceSpan.Default)),
+                    TypeCheckerError.DuplicateVariantName(Token.Identifier("A", SourceSpan.Default)),
+                    TypeCheckerError.DuplicateVariantName(Token.Identifier("B", SourceSpan.Default)),
+                ]
             },
             {
                 "union name conflicts with class name",
                 "union MyUnion {} class MyUnion {}",
-                [TypeCheckerError.ConflictingTypeName()]
+                [TypeCheckerError.ConflictingTypeName(Token.Identifier("MyUnion", SourceSpan.Default))]
+            },
+            {
+                "duplicate class name with inner errors",
+                """
+                class MyClass {
+                    fn MyFn() {},
+                    fn MyFn() {}
+                }
+                class MyClass {
+                    fn OtherFn() {},
+                    fn OtherFn() {}
+                }
+                """,
+                [
+                    TypeCheckerError.ConflictingTypeName(Token.Identifier("MyClass", SourceSpan.Default)),
+                    TypeCheckerError.ConflictingFunctionName(Token.Identifier("MyFn", SourceSpan.Default)),
+                    TypeCheckerError.ConflictingFunctionName(Token.Identifier("OtherFn", SourceSpan.Default)),
+                ]
             },
             {
                 "duplicate field in union struct variant",
@@ -1603,6 +1630,16 @@ public class TypeCheckerTests
             {
                 "duplicate function declaration",
                 "fn MyFn() {} fn MyFn() {}",
+                [TypeCheckerError.ConflictingFunctionName(Token.Identifier("MyFn", SourceSpan.Default))]
+            },
+            {
+                "duplicate function declaration in union",
+                "union MyUnion {fn MyFn() {} fn MyFn() {}}",
+                [TypeCheckerError.ConflictingFunctionName(Token.Identifier("MyFn", SourceSpan.Default))]
+            },
+            {
+                "duplicate function declaration in class",
+                "class MyClass {fn MyFn() {} fn MyFn() {}}",
                 [TypeCheckerError.ConflictingFunctionName(Token.Identifier("MyFn", SourceSpan.Default))]
             },
             {
