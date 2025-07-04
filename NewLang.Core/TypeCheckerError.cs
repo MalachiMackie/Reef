@@ -151,6 +151,14 @@ public record TypeCheckerError
             argumentIdentifier.SourceSpan, argumentIdentifier.SourceSpan), $"Generic argument {argumentIdentifier.StringValue} already defined");
     }
 
+    public static TypeCheckerError DuplicateFunctionArgument(StringToken argumentName, StringToken functionName)
+    {
+        return new(
+            TypeCheckerErrorType.DuplicateFunctionArgument,
+            new SourceRange(argumentName.SourceSpan, argumentName.SourceSpan),
+            $"Duplicate argument {argumentName.StringValue} found in function {functionName.StringValue}");
+    }
+
     public static TypeCheckerError IncorrectNumberOfTypeArguments()
     {
         return new(TypeCheckerErrorType.IncorrectNumberOfTypeArguments, SourceRange.Default, "");
@@ -179,9 +187,12 @@ public record TypeCheckerError
             $"Conflicting type argument with existing type argument {typeArgument.StringValue} outside of current definition");
     }
 
-    public static TypeCheckerError TypeArgumentConflictsWithType()
+    public static TypeCheckerError TypeArgumentConflictsWithType(StringToken typeArgument)
     {
-        return new(TypeCheckerErrorType.TypeArgumentConflictsWithType, SourceRange.Default, "");
+        return new(
+            TypeCheckerErrorType.TypeArgumentConflictsWithType,
+            new SourceRange(typeArgument.SourceSpan, typeArgument.SourceSpan),
+            $"Type Argument {typeArgument} conflicts type existing type");
     }
 }
 
@@ -214,6 +225,7 @@ public enum TypeCheckerErrorType
     MemberAccessOnGenericExpression,
     StaticMemberAccessOnGenericReference,
     DuplicateGenericArgument,
+    DuplicateFunctionArgument,
     IncorrectNumberOfTypeArguments,
     ClassFieldSetMultipleTypesInInitializer,
     UnknownClassField,

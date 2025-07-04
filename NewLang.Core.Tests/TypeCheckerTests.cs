@@ -48,6 +48,19 @@ public class TypeCheckerTests
         return new TheoryData<string>
         {
             """
+            fn MyFn() {
+            }
+            
+            // type arguments can have the same name as Functions
+            class MyClass<MyFn> {}
+            """,
+            """
+            // type arguments can have the same name as Functions
+            class MyClass<MyFn> {
+                fn MyFn() {}
+            }
+            """,
+            """
             class MyClass {
                 pub field MyField: string,
                 field OtherField: bool,
@@ -1643,6 +1656,20 @@ public class TypeCheckerTests
                 [TypeCheckerError.ConflictingFunctionName(Token.Identifier("MyFn", SourceSpan.Default))]
             },
             {
+                "function contains duplicate argument",
+                """
+                fn SomeFn(a: int, a: string) {
+                    // verify first duplicate argument is accepted
+                    var b: int = a;
+                    var c: string = a;
+                }
+                """,
+                [
+                    TypeCheckerError.DuplicateFunctionArgument(Token.Identifier("a", SourceSpan.Default), Token.Identifier("SomeFn", SourceSpan.Default)),
+                    MismatchedTypes(String, Int)
+                ]
+            },
+            {
                 "no return value provided when return value expected",
                 "fn MyFn(): string { return; }",
                 [MismatchedTypes(String, Unit)]
@@ -1859,7 +1886,55 @@ public class TypeCheckerTests
                 class MyClass{}
                 class OtherClass<MyClass>{}
                 """,
-                [TypeCheckerError.TypeArgumentConflictsWithType()]
+                [TypeCheckerError.TypeArgumentConflictsWithType(Token.Identifier("MyClass", SourceSpan.Default))]
+            },
+            {
+                "Generic type conflicts with existing type",
+                """
+                class MyClass{}
+                fn MyFn<MyClass>{}
+                """,
+                [TypeCheckerError.TypeArgumentConflictsWithType(Token.Identifier("MyClass", SourceSpan.Default))]
+            },
+            {
+                "Generic type conflicts with existing type",
+                """
+                class MyClass{}
+                class SomeClass {fn MyFn<MyClass>{}}
+                """,
+                [TypeCheckerError.TypeArgumentConflictsWithType(Token.Identifier("MyClass", SourceSpan.Default))]
+            },
+            {
+                "Generic type conflicts with existing type",
+                """
+                class MyClass{}
+                union SomeUnion {fn MyFn<MyClass>{}}
+                """,
+                [TypeCheckerError.TypeArgumentConflictsWithType(Token.Identifier("MyClass", SourceSpan.Default))]
+            },
+            {
+                "Generic type conflicts with existing type",
+                """
+                class MyClass{}
+                fn SomeFn {fn MyFn<MyClass>{}}
+                """,
+                [TypeCheckerError.TypeArgumentConflictsWithType(Token.Identifier("MyClass", SourceSpan.Default))]
+            },
+            {
+                "Generic type conflicts with existing type",
+                """
+                class MyClass{}
+                union MyUnion<MyClass>{}
+                """,
+                [TypeCheckerError.TypeArgumentConflictsWithType(Token.Identifier("MyClass", SourceSpan.Default))]
+            },
+            {
+                "Generic type conflicts with existing type",
+                """
+                union OtherUnion{}
+                union MyUnion<OtherUnion>{}
+                """,
+                [TypeCheckerError.TypeArgumentConflictsWithType(Token.Identifier("OtherUnion", SourceSpan.Default))]
             },
             {
                 "Generic type conflicts with existing type",
@@ -1867,7 +1942,7 @@ public class TypeCheckerTests
                 class OtherClass<MyClass>{}
                 class MyClass{}
                 """,
-                [TypeCheckerError.TypeArgumentConflictsWithType()]
+                [TypeCheckerError.TypeArgumentConflictsWithType(Token.Identifier("MyClass", SourceSpan.Default))]
             },
             {
                 "incorrect return type",

@@ -433,50 +433,11 @@ public class TypeChecker
             }
         }
 
-        foreach (var typeSignature in _types.Values)
+        foreach (var genericParameter in _program.Classes.SelectMany(x => x.TypeArguments)
+                     .Concat(_program.Unions.SelectMany(x => x.GenericArguments))
+                     .Where(x => _types.ContainsKey(x.StringValue)))
         {
-            if (typeSignature is ClassSignature classSignature)
-            {
-                if (classSignature.GenericParameters.Select(x => x.GenericName).Any(x =>
-                        _types.ContainsKey(x)
-                        || classSignature.Functions.Any(y => y.Name == x)
-                        || _program.Functions.Any(y => y.Name.StringValue == x)))
-                {
-                    throw new InvalidOperationException("Generic name collision");
-                }
-
-                foreach (var fn in classSignature.Functions)
-                {
-                    if (fn.GenericParameters.Select(x => x.GenericName).Any(x =>
-                            _types.ContainsKey(x)
-                            || classSignature.Functions.Any(y => y.Name == x)
-                            || _program.Functions.Any(y => y.Name.StringValue == x)))
-                    {
-                        throw new InvalidOperationException("Generic name collision");
-                    }
-                }
-            }
-            else if (typeSignature is UnionSignature unionSignature)
-            {
-                if (unionSignature.GenericParameters.Select(x => x.GenericName).Any(x =>
-                        _types.ContainsKey(x)
-                        || unionSignature.Functions.Any(y => y.Name == x)
-                        || _program.Functions.Any(y => y.Name.StringValue == x)))
-                {
-                    throw new InvalidOperationException("Generic name collision");
-                }
-
-                foreach (var fn in unionSignature.Functions)
-                {
-                    if (fn.GenericParameters.Select(x => x.GenericName).Any(x =>
-                            _types.ContainsKey(x)
-                            || unionSignature.Functions.Any(y => y.Name == x)
-                            || _program.Functions.Any(y => y.Name.StringValue == x)))
-                    {
-                        throw new InvalidOperationException("Generic name collision");
-                    }
-                }
-            }
+            _errors.Add(TypeCheckerError.TypeArgumentConflictsWithType(genericParameter));
         }
 
         return (
@@ -501,7 +462,7 @@ public class TypeChecker
         }
 
         using var _ = PushScope(null, fnSignature, fnSignature.ReturnType);
-        foreach (var parameter in fnSignature.Arguments)
+        foreach (var parameter in fnSignature.Arguments.Values)
         {
             AddScopedVariable(parameter.Name, new Variable(
                 parameter.Name,
@@ -517,7 +478,7 @@ public class TypeChecker
     private FunctionSignature TypeCheckFunctionSignature(LangFunction fn,
         HashSet<GenericTypeReference> genericPlaceholders)
     {
-        var parameters = new List<FunctionArgument>();
+        var parameters = new OrderedDictionary<string, FunctionArgument>();
 
         var name = fn.Name.StringValue;
         var genericParameters = new List<GenericTypeReference>(fn.TypeArguments.Count);
@@ -532,27 +493,29 @@ public class TypeChecker
 
         fn.Signature = fnSignature;
 
-        genericParameters.AddRange([
-            ..fn.TypeArguments.Select(x => new GenericTypeReference
-                { GenericName = x.StringValue, OwnerType = fnSignature })
-        ]);
-
-        var typeArgumentsLookup = fn.TypeArguments.ToLookup(x => x.StringValue);
-
-        foreach (var grouping in typeArgumentsLookup)
+        var foundTypeArguments = new HashSet<string>();
+        var genericPlaceholdersDictionary = genericPlaceholders.ToDictionary(x => x.GenericName);
+        foreach (var typeArgument in fn.TypeArguments)
         {
-            foreach (var (typeArgument, i) in grouping.Select((x, i) => (x, i)))
+            if (!foundTypeArguments.Add(typeArgument.StringValue))
             {
-                if (genericPlaceholders.Any(x => x.GenericName == grouping.Key))
-                {
-                    _errors.Add(TypeCheckerError.ConflictingTypeArgument(typeArgument));
-                }
-
-                if (i >= 1)
-                {
-                    _errors.Add(TypeCheckerError.DuplicateGenericArgument(typeArgument));
-                }
+                _errors.Add(TypeCheckerError.DuplicateGenericArgument(typeArgument));
             }
+
+            if (genericPlaceholdersDictionary.ContainsKey(typeArgument.StringValue))
+            {
+                _errors.Add(TypeCheckerError.ConflictingTypeArgument(typeArgument));
+            }
+            
+            if (_types.ContainsKey(typeArgument.StringValue))
+            {
+                _errors.Add(TypeCheckerError.TypeArgumentConflictsWithType(typeArgument));
+            }
+            genericParameters.Add(new GenericTypeReference
+            {
+                GenericName = typeArgument.StringValue,
+                OwnerType = fnSignature
+            });
         }
 
         var functionType = InstantiateFunction(fnSignature, [..genericPlaceholders]);
@@ -563,20 +526,19 @@ public class TypeChecker
             ? InstantiatedClass.Unit
             : GetTypeReference(fn.ReturnType, innerGenericPlaceholders);
 
-        foreach (var parameter in fn.Parameters)
+        for (var i = 0; i < fn.Parameters.Count; i++)
         {
+            var parameter = fn.Parameters[i];
             var paramName = parameter.Identifier.StringValue;
-            if (parameters.Any(x => x.Name == paramName))
-            {
-                throw new InvalidOperationException($"Parameter with {paramName} already defined");
-            }
-
             var type = parameter.Type is null ? UnknownType.Instance : GetTypeReference(parameter.Type, innerGenericPlaceholders);
-
-            parameters.Add(new FunctionArgument(paramName, type, parameter.MutabilityModifier is not null));
+            
+            if (!parameters.TryAdd(paramName, new FunctionArgument(paramName, type, parameter.MutabilityModifier is not null)))
+            {
+                _errors.Add(TypeCheckerError.DuplicateFunctionArgument(parameter.Identifier, fn.Name));
+            }
         }
 
-        // todo: check function name collisions. also function overloading
+        // todo: function overloading
         return fnSignature;
     }
 
@@ -1565,7 +1527,7 @@ public class TypeChecker
 
         for (var i = 0; i < functionType.Arguments.Count; i++)
         {
-            var (_, expectedParameterType, isParameterMutable) = functionType.Arguments[i];
+            var (_, expectedParameterType, isParameterMutable) = functionType.Arguments.GetAt(i).Value;
 
             var parameterExpression = methodCall.ParameterList[i];
             TypeCheckExpression(parameterExpression, genericPlaceholders);
@@ -1672,10 +1634,18 @@ public class TypeChecker
     private InstantiatedFunction GetTupleUnionFunction(TupleUnionVariant tupleVariant,
         InstantiatedUnion instantiatedUnion)
     {
+        var arguments = new OrderedDictionary<string, FunctionArgument>();
+        for (var i = 0; i < tupleVariant.TupleMembers.Count; i++)
+        {
+            var name = i.ToString();
+            var member = tupleVariant.TupleMembers[i];
+            arguments.Add(name, new FunctionArgument(name, member, Mutable: false));
+        }
+
         var signature = new FunctionSignature(
             tupleVariant.Name,
             [],
-            [..tupleVariant.TupleMembers.Select((x, i) => new FunctionArgument(i.ToString(), x, false))],
+            arguments,
             true)
         {
             ReturnType = instantiatedUnion
@@ -2204,25 +2174,26 @@ public class TypeChecker
             IReadOnlyList<GenericTypeReference> ownerTypeArguments)
         {
             Signature = signature;
-            TypeArguments = typeArguments;
             // todo: don't think this model is going to work. Need to be able to access multiple layers of generic arguments
-            Arguments =
-            [
-                ..signature.Arguments.Select(x => x with
+            TypeArguments = typeArguments;
+            Arguments = new OrderedDictionary<string, FunctionArgument>();
+            for (var i = 0; i < signature.Arguments.Count; i++)
+            {
+                var argument = signature.Arguments.GetAt(i);
+                Arguments.Add(argument.Key, argument.Value with
+                {
+                    Type = argument.Value.Type switch
                     {
-                        Type = x.Type switch
-                        {
-                            GenericTypeReference genericTypeReference => typeArguments.FirstOrDefault(y =>
-                                                                             y.GenericName == genericTypeReference
-                                                                                 .GenericName)
-                                                                         ?? ownerTypeArguments.First(y =>
-                                                                             y.GenericName == genericTypeReference
-                                                                                 .GenericName),
-                            _ => x.Type
-                        }
+                        GenericTypeReference genericTypeReference => typeArguments.FirstOrDefault(y =>
+                                                                         y.GenericName == genericTypeReference
+                                                                             .GenericName)
+                                                                     ?? ownerTypeArguments.First(y =>
+                                                                         y.GenericName == genericTypeReference
+                                                                             .GenericName),
+                        _ => argument.Value.Type
                     }
-                )
-            ];
+                });
+            }
             ReturnType = signature.ReturnType switch
             {
                 GenericTypeReference genericTypeReference => typeArguments.FirstOrDefault(y =>
@@ -2240,7 +2211,7 @@ public class TypeChecker
         public IReadOnlyList<GenericTypeReference> TypeArguments { get; }
         public ITypeReference ReturnType { get; }
 
-        public IReadOnlyList<FunctionArgument> Arguments { get; }
+        public OrderedDictionary<string, FunctionArgument> Arguments { get; }
     }
 
     public class InstantiatedClass : ITypeReference
@@ -2518,12 +2489,12 @@ public class TypeChecker
     public class FunctionSignature(
         string name,
         IReadOnlyList<GenericTypeReference> genericParameters,
-        IReadOnlyList<FunctionArgument> arguments,
+        OrderedDictionary<string, FunctionArgument> arguments,
         bool isStatic) : ITypeSignature
     {
         public bool IsStatic { get; } = isStatic;
         public IReadOnlyList<GenericTypeReference> GenericParameters { get; } = genericParameters;
-        public IReadOnlyList<FunctionArgument> Arguments { get; } = arguments;
+        public OrderedDictionary<string, FunctionArgument> Arguments { get; } = arguments;
 
         // mutable due to setting up signatures and generic stuff
         public required ITypeReference ReturnType { get; set; }
