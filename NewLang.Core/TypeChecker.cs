@@ -588,10 +588,10 @@ public class TypeChecker
                 binaryOperatorExpression.BinaryOperator, genericPlaceholders),
             ObjectInitializerExpression objectInitializerExpression => TypeCheckObjectInitializer(
                 objectInitializerExpression, genericPlaceholders),
-            MemberAccessExpression memberAccessExpression => TypeCheckMemberAccess(memberAccessExpression.MemberAccess,
+            MemberAccessExpression memberAccessExpression => TypeCheckMemberAccess(memberAccessExpression,
                 genericPlaceholders),
             StaticMemberAccessExpression staticMemberAccessExpression => TypeCheckStaticMemberAccess(
-                staticMemberAccessExpression.StaticMemberAccess, genericPlaceholders),
+                staticMemberAccessExpression, genericPlaceholders),
             GenericInstantiationExpression genericInstantiationExpression => TypeCheckGenericInstantiation(
                 genericInstantiationExpression.GenericInstantiation, genericPlaceholders),
             UnaryOperatorExpression unaryOperatorExpression => TypeCheckUnaryOperator(
@@ -1100,16 +1100,18 @@ public class TypeChecker
     }
 
     private ITypeReference TypeCheckMemberAccess(
-        MemberAccess memberAccess,
+        MemberAccessExpression memberAccessExpression,
         HashSet<GenericTypeReference> genericPlaceholders)
     {
+        var memberAccess = memberAccessExpression.MemberAccess;
         var ownerExpression = memberAccess.Owner;
         var ownerType = TypeCheckExpression(ownerExpression, genericPlaceholders);
 
         if (ownerType is not InstantiatedClass classType)
         {
             // todo: generic argument constraints with interfaces?
-            throw new InvalidOperationException("Can only access members on instantiated types");
+            _errors.Add(TypeCheckerError.MemberAccessOnGenericExpression(memberAccessExpression));
+            return UnknownType.Instance;
         }
 
         if (memberAccess.MemberName is null)
@@ -1150,9 +1152,10 @@ public class TypeChecker
     }
 
     private ITypeReference TypeCheckStaticMemberAccess(
-        StaticMemberAccess staticMemberAccess,
+        StaticMemberAccessExpression staticMemberAccessExpression,
         HashSet<GenericTypeReference> genericPlaceholders)
     {
+        var staticMemberAccess = staticMemberAccessExpression.StaticMemberAccess;
         var type = GetTypeReference(staticMemberAccess.Type, genericPlaceholders);
 
         var memberName = staticMemberAccess.MemberName?.StringValue;
@@ -1197,7 +1200,13 @@ public class TypeChecker
             };
         }
 
-        throw new InvalidOperationException("Cannot access static members");
+        if (type is GenericTypeReference)
+        {
+            _errors.Add(TypeCheckerError.StaticMemberAccessOnGenericReference(staticMemberAccessExpression));
+            return UnknownType.Instance;
+        }
+
+        throw new UnreachableException(type.GetType().ToString());
     }
 
     private ITypeReference TypeCheckObjectInitializer(

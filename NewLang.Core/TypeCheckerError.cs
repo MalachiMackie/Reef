@@ -140,14 +140,24 @@ public record TypeCheckerError
         return new(TypeCheckerErrorType.IncorrectNumberOfMethodParameters, SourceRange.Default, "");
     }
 
-    public static TypeCheckerError MemberAccessOnGenericExpression()
+    public static TypeCheckerError MemberAccessOnGenericExpression(MemberAccessExpression memberAccessExpression)
     {
-        return new(TypeCheckerErrorType.MemberAccessOnGenericExpression, SourceRange.Default, "");
+        return new(
+            TypeCheckerErrorType.MemberAccessOnGenericExpression,
+            memberAccessExpression.MemberAccess.MemberName is {} memberName
+                ? new SourceRange(memberName.SourceSpan, memberName.SourceSpan)
+                : memberAccessExpression.SourceRange,
+            $"Cannot access member on {memberAccessExpression.MemberAccess.Owner} which is a generic type");
     }
 
-    public static TypeCheckerError StaticMemberAccessOnGenericReference()
+    public static TypeCheckerError StaticMemberAccessOnGenericReference(StaticMemberAccessExpression staticMemberAccess)
     {
-        return new(TypeCheckerErrorType.StaticMemberAccessOnGenericReference, SourceRange.Default, "");
+        return new(
+            TypeCheckerErrorType.StaticMemberAccessOnGenericReference,
+            staticMemberAccess.StaticMemberAccess.MemberName is {} memberName
+                ? new SourceRange(memberName.SourceSpan, memberName.SourceSpan)
+                : staticMemberAccess.SourceRange,
+            $"Cannot access static member on {staticMemberAccess.StaticMemberAccess.Type} which is a generic type");
     }
 
     public static TypeCheckerError DuplicateGenericArgument(StringToken argumentIdentifier)

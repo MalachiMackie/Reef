@@ -1819,12 +1819,12 @@ public class TypeCheckerTests
             {
                 "member accessed on generic instance variable",
                 "fn MyFn<T1>(param: T1) {var a = param.something;}",
-                [TypeCheckerError.MemberAccessOnGenericExpression()]
+                [TypeCheckerError.MemberAccessOnGenericExpression(MemberAccess(VariableAccessor("param"), "something"))]
             },
             {
                 "static member accessed on generic type",
                 "fn MyFn<T1>() {var a = T1::something;}",
-                [TypeCheckerError.StaticMemberAccessOnGenericReference()]
+                [TypeCheckerError.StaticMemberAccessOnGenericReference(StaticMemberAccess(TypeIdentifier("T1"), "something"))]
             },
             {
                 "generic variable returned as concrete class",
