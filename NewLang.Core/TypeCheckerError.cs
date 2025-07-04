@@ -164,19 +164,24 @@ public record TypeCheckerError
         return new(TypeCheckerErrorType.IncorrectNumberOfTypeArguments, SourceRange.Default, "");
     }
 
-    public static TypeCheckerError ClassFieldSetMultipleTypesInInitializer()
+    public static TypeCheckerError ClassFieldSetMultipleTypesInInitializer(StringToken fieldName)
     {
-        return new(TypeCheckerErrorType.ClassFieldSetMultipleTypesInInitializer, SourceRange.Default, "");
+        return new(TypeCheckerErrorType.ClassFieldSetMultipleTypesInInitializer,
+            new SourceRange(fieldName.SourceSpan, fieldName.SourceSpan),
+            $"Field {fieldName.StringValue} already assigned");
     }
 
-    public static TypeCheckerError UnknownClassField()
+    public static TypeCheckerError UnknownClassField(StringToken fieldName)
     {
-        return new(TypeCheckerErrorType.UnknownClassField, SourceRange.Default, "");
+        return new(TypeCheckerErrorType.UnknownClassField, new SourceRange(fieldName.SourceSpan, fieldName.SourceSpan), $"Unknown field {fieldName.StringValue}");
     }
 
-    public static TypeCheckerError FieldsLeftUnassignedInClassInitializer()
+    public static TypeCheckerError FieldsLeftUnassignedInClassInitializer(ObjectInitializerExpression objectInitializerExpression, IEnumerable<string> missingFieldNames)
     {
-        return new(TypeCheckerErrorType.FieldsLeftUnassignedInClassInitializer, SourceRange.Default, "");
+        return new(
+            TypeCheckerErrorType.FieldsLeftUnassignedInClassInitializer,
+            objectInitializerExpression.SourceRange,
+            $"Not all fields were initialized {string.Join(",", missingFieldNames.Select(x => $"'{x}'"))}");
     }
 
     public static TypeCheckerError ConflictingTypeArgument(StringToken typeArgument)

@@ -588,7 +588,7 @@ public class TypeChecker
             BinaryOperatorExpression binaryOperatorExpression => TypeCheckBinaryOperatorExpression(
                 binaryOperatorExpression.BinaryOperator, genericPlaceholders),
             ObjectInitializerExpression objectInitializerExpression => TypeCheckObjectInitializer(
-                objectInitializerExpression.ObjectInitializer, genericPlaceholders),
+                objectInitializerExpression, genericPlaceholders),
             MemberAccessExpression memberAccessExpression => TypeCheckMemberAccess(memberAccessExpression.MemberAccess,
                 genericPlaceholders),
             StaticMemberAccessExpression staticMemberAccessExpression => TypeCheckStaticMemberAccess(
@@ -1202,9 +1202,10 @@ public class TypeChecker
     }
 
     private ITypeReference TypeCheckObjectInitializer(
-        ObjectInitializer objectInitializer,
+        ObjectInitializerExpression objectInitializerExpression,
         HashSet<GenericTypeReference> genericPlaceholders)
     {
+        var objectInitializer = objectInitializerExpression.ObjectInitializer;
         var foundType = GetTypeReference(objectInitializer.Type, genericPlaceholders);
         if (foundType is not InstantiatedClass instantiatedClass)
         {
@@ -1212,37 +1213,47 @@ public class TypeChecker
             throw new InvalidOperationException($"Type {foundType} cannot be initialized");
         }
 
-        if (objectInitializer.FieldInitializers.GroupBy(x => x.FieldName.StringValue)
-            .Any(x => x.Count() > 1))
-        {
-            throw new InvalidOperationException("Field can only be initialized once");
-        }
-
-        if (objectInitializer.FieldInitializers.Count != instantiatedClass.Fields.Count)
-        {
-            throw new InvalidOperationException("Not all fields were initialized");
-        }
-
+        var initializedFields = new HashSet<string>();
         var fields = instantiatedClass.Fields.ToDictionary(x => x.Name);
+        var insideClass = CurrentTypeSignature is ClassSignature currentClassSignature
+                          && instantiatedClass.MatchesSignature(currentClassSignature);
+
+        var publicFields = instantiatedClass.Fields
+            .Where(x => x.IsPublic || insideClass)
+            .Select(x => x.Name)
+            .ToHashSet();
 
         foreach (var fieldInitializer in objectInitializer.FieldInitializers)
         {
             if (!fields.TryGetValue(fieldInitializer.FieldName.StringValue, out var field))
             {
-                throw new InvalidOperationException($"No field named {fieldInitializer.FieldName.StringValue}");
+                _errors.Add(TypeCheckerError.UnknownClassField(fieldInitializer.FieldName));
+                continue;
             }
-
-            if ((CurrentTypeSignature is not ClassSignature currentClassSignature
-                 || !instantiatedClass.MatchesSignature(currentClassSignature))
-                && !field.IsPublic)
+            
+            if (!publicFields.Contains(fieldInitializer.FieldName.StringValue))
             {
                 _errors.Add(TypeCheckerError.PrivateFieldReferenced(fieldInitializer.FieldName));
             }
+            // only set field as initialized if it is public
+            else if (!initializedFields.Add(fieldInitializer.FieldName.StringValue))
+            {
+                _errors.Add(TypeCheckerError.ClassFieldSetMultipleTypesInInitializer(fieldInitializer.FieldName));
+            }
 
             if (fieldInitializer.Value is not null)
+            {
                 TypeCheckExpression(fieldInitializer.Value, genericPlaceholders);
+            }
 
             ExpectExpressionType(field.Type, fieldInitializer.Value, genericPlaceholders);
+        }
+        
+        if (initializedFields.Count != publicFields.Count)
+        {
+            _errors.Add(TypeCheckerError.FieldsLeftUnassignedInClassInitializer(
+                objectInitializerExpression,
+                publicFields.Where(x => !initializedFields.Contains(x))));
         }
 
         return foundType;
@@ -2121,10 +2132,20 @@ public class TypeChecker
             return GenericName == other.GenericName && OwnerType.Equals(other.OwnerType);
         }
 
+        private ITypeReference? GetConcreteTypeReference()
+        {
+            return ResolvedType switch
+            {
+                null => null,
+                GenericTypeReference genericTypeReference => genericTypeReference.GetConcreteTypeReference(),
+                _ => ResolvedType
+            };
+        }
+        
         public override string ToString()
         {
             var sb = new StringBuilder($"{GenericName}=[");
-            sb.Append(ResolvedType?.ToString() ?? "??");
+            sb.Append(GetConcreteTypeReference()?.ToString() ?? "??");
             sb.Append(']');
 
             return sb.ToString();

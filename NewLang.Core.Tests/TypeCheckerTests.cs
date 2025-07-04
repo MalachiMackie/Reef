@@ -35,7 +35,11 @@ public class TypeCheckerTests
     public void SingleTest()
     {
         const string src =
-            "fn MyFn<T, T, T1, T1>() {}";
+            """
+            var mut a = ok(1);
+            a = ok(true);
+            a = error("");
+            """;
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
@@ -826,7 +830,7 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                [MismatchedTypes(new TestGenericTypeReference("T2"), new TestGenericTypeReference("T"))]
+                [MismatchedTypes(GenericTypeReference("T2"), GenericTypeReference("T"))]
             },
             {
                 "Unresolved inferred function generic",
@@ -845,7 +849,7 @@ public class TypeCheckerTests
                 a = ok(true);
                 a = error("");
                 """,
-                [MismatchedTypes(Result(Int, new TestGenericTypeReference("TError")), Result(Boolean, new TestGenericTypeReference("TError")))]
+                [MismatchedTypes(Result(Int, GenericTypeReference("TError")), Result(Boolean, GenericTypeReference("TError")))]
             },
             {
                 "incompatible inferred result type",
@@ -1727,7 +1731,7 @@ public class TypeCheckerTests
             {
                 "generic variable returned as concrete class",
                 "fn MyFn<T1>(param: T1): int { return param; }",
-                [MismatchedTypes(Int, new TestGenericTypeReference("T1"))]
+                [MismatchedTypes(Int, GenericTypeReference("T1"))]
             },
             {
                 "duplicate function generic argument",
@@ -1823,7 +1827,7 @@ public class TypeCheckerTests
                 }
                 var a = new MyClass { someField = "value", someField = "value" };
                 """,
-                [TypeCheckerError.ClassFieldSetMultipleTypesInInitializer()]
+                [TypeCheckerError.ClassFieldSetMultipleTypesInInitializer(Token.Identifier("someField", SourceSpan.Default))]
             },
             {
                 "unknown field assigned in object initializer",
@@ -1833,7 +1837,7 @@ public class TypeCheckerTests
                 }
                 var a = new MyClass { someField = "value", extraField = 1 };
                 """,
-                [TypeCheckerError.UnknownClassField()]
+                [TypeCheckerError.UnknownClassField(Token.Identifier("extraField", SourceSpan.Default))]
             },
             {
                 "field not assigned in object initializer",
@@ -1843,7 +1847,9 @@ public class TypeCheckerTests
                 }
                 var a = new MyClass {};
                 """,
-                [TypeCheckerError.FieldsLeftUnassignedInClassInitializer()]
+                [TypeCheckerError.FieldsLeftUnassignedInClassInitializer(new ObjectInitializerExpression(
+                    new ObjectInitializer(TypeIdentifier("MyClass"), []), SourceRange.Default),
+                    ["someField"])]
             },
             {
                 "incorrect expression type in static field initializer",
@@ -2237,27 +2243,9 @@ public class TypeCheckerTests
             ]);
     }
 
-    private record TestGenericTypeReference(string Name) : ITypeReference, IEquatable<ITypeReference>
+    private sealed record TestClassReference(string ClassName) : ITypeReference, IEquatable<ITypeReference>
     {
-        public virtual bool Equals(ITypeReference? other)
-        {
-            if (other is not GenericTypeReference genericTypeReference)
-            {
-                return false;
-            }
-
-            return genericTypeReference.GenericName == Name;
-        }
-
-        public override string ToString()
-        {
-            return $"{Name}=[??]";
-        }
-    }
-
-    private record TestClassReference(string ClassName) : ITypeReference, IEquatable<ITypeReference>
-    {
-        public virtual bool Equals(ITypeReference? other)
+        public bool Equals(ITypeReference? other)
         {
             if (other is not InstantiatedClass @class)
             {
@@ -2271,5 +2259,14 @@ public class TypeCheckerTests
         {
             return ClassName;
         }
+    }
+
+    private static GenericTypeReference GenericTypeReference(string name)
+    {
+        return new GenericTypeReference
+        {
+            GenericName = name,
+            OwnerType = null!
+        };
     }
 }
