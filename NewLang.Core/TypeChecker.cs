@@ -760,7 +760,8 @@ public class TypeChecker
                 {
                     if (patternType is not InstantiatedClass classType)
                     {
-                        throw new InvalidOperationException($"Expected {typeReference} to be a class");
+                        _errors.Add(TypeCheckerError.NonClassUsedInClassPattern(classPattern.Type));
+                        break;
                     }
 
                     if (classPattern.FieldPatterns.GroupBy(x => x.FieldName.StringValue).Any(x => x.Count() > 1))
@@ -775,7 +776,7 @@ public class TypeChecker
                     foreach (var (fieldName, fieldPattern) in classPattern.FieldPatterns)
                     {
                         remainingFields.Remove(fieldName.StringValue);
-                        var fieldType = GetClassField(classType, fieldName.StringValue);
+                        var fieldType = GetClassField(classType, fieldName);
                         
                         if (fieldPattern is null)
                         {
@@ -920,7 +921,7 @@ public class TypeChecker
                     _errors.Add(TypeCheckerError.IncorrectNumberOfPatternsInTupleVariantUnionPattern(
                         unionTupleVariantPattern, tupleUnionVariant.TupleMembers.Count));
                 }
-
+                
                 foreach (var (tupleMemberType, tupleMemberPattern) in tupleUnionVariant.TupleMembers.Zip(
                              unionTupleVariantPattern.TupleParamPatterns))
                 {
@@ -1124,7 +1125,7 @@ public class TypeChecker
             return function;
         }
 
-        return GetClassField(classType, memberAccess.MemberName.StringValue);
+        return GetClassField(classType, memberAccess.MemberName);
     }
 
     private static ITypeReference GetUnionStructVariantField(ClassUnionVariant variant, string fieldName)
@@ -1135,16 +1136,16 @@ public class TypeChecker
         return fieldType;
     }
 
-    private ITypeReference GetClassField(InstantiatedClass classType, string fieldName)
+    private ITypeReference GetClassField(InstantiatedClass classType, StringToken fieldName)
     {
-        var field = classType.Fields.FirstOrDefault(x => x.Name == fieldName)
+        var field = classType.Fields.FirstOrDefault(x => x.Name == fieldName.StringValue)
                     ?? throw new InvalidOperationException($"No field named {fieldName}");
 
         if ((CurrentTypeSignature is not ClassSignature currentClassSignature
              || !classType.MatchesSignature(currentClassSignature))
             && !field.IsPublic)
         {
-            throw new InvalidOperationException($"Cannot access private field {fieldName}");
+            _errors.Add(TypeCheckerError.PrivateFieldReferenced(fieldName));
         }
 
         var fieldType = field.Type;
@@ -1215,9 +1216,20 @@ public class TypeChecker
     {
         var objectInitializer = objectInitializerExpression.ObjectInitializer;
         var foundType = GetTypeReference(objectInitializer.Type, genericPlaceholders);
+
+        if (foundType is UnknownType)
+        {
+            // if we don't know what type this is, type check the field initializers anyway 
+            foreach (var fieldInitializer in objectInitializer.FieldInitializers.Where(x => x.Value is not null))
+            {
+                TypeCheckExpression(fieldInitializer.Value!, genericPlaceholders);
+            }
+            
+            return UnknownType.Instance;
+        }
+        
         if (foundType is not InstantiatedClass instantiatedClass)
         {
-            // todo: more checks
             throw new InvalidOperationException($"Type {foundType} cannot be initialized");
         }
 
@@ -1530,6 +1542,12 @@ public class TypeChecker
 
         if (methodType is UnknownType)
         {
+            // type check parameters even if we don't know what the type is
+            foreach (var parameter in methodCall.ParameterList)
+            {
+                TypeCheckExpression(parameter, genericPlaceholders);
+            }
+            
             return UnknownType.Instance;
         }
 
@@ -1762,14 +1780,13 @@ public class TypeChecker
             }
         }
 
-        var genericTypeReference =
-            genericPlaceholders.FirstOrDefault(x => x.GenericName == identifierName);
-
-        if (genericTypeReference is not null)
+        if (genericPlaceholders.FirstOrDefault(x => x.GenericName == identifierName) is {} genericTypeReference)
         {
             return genericTypeReference;
         }
-        throw new InvalidOperationException($"No type found {typeIdentifier}");
+        
+        _errors.Add(TypeCheckerError.SymbolNotFound(typeIdentifier.Identifier));
+        return UnknownType.Instance;
     }
 
     private void ExpectExpressionType(ITypeReference expected, IExpression? actual,

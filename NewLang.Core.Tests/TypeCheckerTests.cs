@@ -1251,7 +1251,7 @@ public class TypeCheckerTests
             },
             {
                 "missing type in pattern",
-                "var b: bool = a matches MissingType;",
+                "var b: bool = 1 matches MissingType;",
                 [TypeCheckerError.SymbolNotFound(Identifier("MissingType"))]
             },
             {
@@ -1305,7 +1305,7 @@ public class TypeCheckerTests
                 var a = new MyUnion::A { MyField = "" };
                 var b: bool = a matches MyUnion { MyField: int };
                 """,
-                [TypeCheckerError.NonUnionTypeUsedInStructVariantUnionPattern()]
+                [TypeCheckerError.NonClassUsedInClassPattern(TypeIdentifier("MyUnion"))]
             },
             {
                 "struct union pattern does not list all fields",
@@ -1793,13 +1793,24 @@ public class TypeCheckerTests
             },
             {
                 "call missing method",
-                "CallMissingMethod();",
-                [TypeCheckerError.SymbolNotFound(Identifier("CallMissingMethod"))]
+                "CallMissingMethod(b);",
+                [
+                    TypeCheckerError.SymbolNotFound(Identifier("CallMissingMethod")),
+                    TypeCheckerError.SymbolNotFound(Identifier("b")),
+                ]
             },
             {
                 "object initializer for unknown type",
                 "var a = new MyClass::<int> {someField = true};",
                 [TypeCheckerError.SymbolNotFound(Identifier("MyClass"))]
+            },
+            {
+                "object initializer for unknown type",
+                "var a = new MyClass::<int> {someField = b};",
+                [
+                    TypeCheckerError.SymbolNotFound(Identifier("MyClass")),
+                    TypeCheckerError.SymbolNotFound(Identifier("b"))
+                ]
             },
             {
                 "incorrect expression types in method call",

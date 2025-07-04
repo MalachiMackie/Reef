@@ -66,9 +66,12 @@ public record TypeCheckerError
         return new(TypeCheckerErrorType.UnknownVariant, SourceRange.Default, "");
     }
 
-    public static TypeCheckerError NonUnionTypeUsedInStructVariantUnionPattern()
+    public static TypeCheckerError NonClassUsedInClassPattern(TypeIdentifier typeIdentifier)
     {
-        return new(TypeCheckerErrorType.NonUnionTypeUsedInStructVariantUnionPattern, SourceRange.Default, "");
+        return new(
+            TypeCheckerErrorType.NonClassUsedInClassPattern,
+            typeIdentifier.SourceRange,
+            $"{typeIdentifier} cannot be used as a class in a class pattern");
     }
 
     public static TypeCheckerError MissingFieldsInStructVariantUnionPattern()
@@ -230,7 +233,7 @@ public enum TypeCheckerErrorType
     AccessUninitializedVariable,
     IncorrectNumberOfPatternsInTupleVariantUnionPattern,
     UnknownVariant,
-    NonUnionTypeUsedInStructVariantUnionPattern,
+    NonClassUsedInClassPattern,
     MissingFieldsInStructVariantUnionPattern,
     MissingFieldsInClassPattern,
     PrivateFieldReferenced,
