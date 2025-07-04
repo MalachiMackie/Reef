@@ -51,9 +51,12 @@ public record TypeCheckerError
         return new(TypeCheckerErrorType.AccessUninitializedVariable, SourceRange.Default, "");
     }
 
-    public static TypeCheckerError IncorrectNumberOfPatternsInTupleVariantUnionPattern()
+    public static TypeCheckerError IncorrectNumberOfPatternsInTupleVariantUnionPattern(UnionTupleVariantPattern pattern, int expectedNumber)
     {
-        return new(TypeCheckerErrorType.IncorrectNumberOfPatternsInTupleVariantUnionPattern, SourceRange.Default, "");
+        return new(
+            TypeCheckerErrorType.IncorrectNumberOfPatternsInTupleVariantUnionPattern,
+            pattern.SourceRange,
+            $"Expected {expectedNumber} patterns in union tuple variant, but found {pattern.TupleParamPatterns.Count}");
     }
 
     public static TypeCheckerError UnknownVariant()

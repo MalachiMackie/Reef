@@ -1174,13 +1174,30 @@ public class TypeCheckerTests
                 [TypeCheckerError.SymbolNotFound(Token.Identifier("MissingType", SourceSpan.Default))]
             },
             {
-                "incorrect number of patterns in union tuple pattern",
+                "extra patterns in union tuple pattern",
                 """
                 union MyUnion {A, B(string)}
                 var a = MyUnion::B("");
                 var b: bool = a matches MyUnion::B(_, _);
                 """,
-                [TypeCheckerError.IncorrectNumberOfPatternsInTupleVariantUnionPattern()]
+                [TypeCheckerError.IncorrectNumberOfPatternsInTupleVariantUnionPattern(UnionTupleVariantPattern(
+                    TypeIdentifier("MyUnion"),
+                    "B",
+                    [new DiscardPattern(SourceRange.Default), new DiscardPattern(SourceRange.Default)]),
+                    1)]
+            },
+            {
+                "missing patterns in union tuple pattern",
+                """
+                union MyUnion {A, B(string, bool, int)}
+                var a = MyUnion::B("", true, 1);
+                var b: bool = a matches MyUnion::B(_, _);
+                """,
+                [TypeCheckerError.IncorrectNumberOfPatternsInTupleVariantUnionPattern(UnionTupleVariantPattern(
+                        TypeIdentifier("MyUnion"),
+                        "B",
+                        [new DiscardPattern(SourceRange.Default), new DiscardPattern(SourceRange.Default)]),
+                    3)]
             },
             {
                 "Unknown variant used in matches union variant pattern",

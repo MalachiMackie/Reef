@@ -918,8 +918,8 @@ public class TypeChecker
 
                 if (tupleUnionVariant.TupleMembers.Count != unionTupleVariantPattern.TupleParamPatterns.Count)
                 {
-                    throw new InvalidOperationException(
-                        $"Expected {tupleUnionVariant.TupleMembers.Count} tuple members, found {unionTupleVariantPattern.TupleParamPatterns.Count}");
+                    _errors.Add(TypeCheckerError.IncorrectNumberOfPatternsInTupleVariantUnionPattern(
+                        unionTupleVariantPattern, tupleUnionVariant.TupleMembers.Count));
                 }
 
                 foreach (var (tupleMemberType, tupleMemberPattern) in tupleUnionVariant.TupleMembers.Zip(
