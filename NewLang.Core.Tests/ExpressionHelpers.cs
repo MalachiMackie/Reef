@@ -1,4 +1,4 @@
-﻿namespace NewLang.Core.Tests.ParserTests;
+﻿namespace NewLang.Core.Tests;
 
 public static class ExpressionHelpers
 {
@@ -7,6 +7,8 @@ public static class ExpressionHelpers
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
             Token.IntLiteral(value, SourceSpan.Default)));
     }
+
+    public static StringToken Identifier(string identifier) => Token.Identifier(identifier, SourceSpan.Default);
 
     public static ValueAccessorExpression Literal(string value)
     {
@@ -57,12 +59,12 @@ public static class ExpressionHelpers
 
     public static TypeIdentifier IntType()
     {
-        return new TypeIdentifier(Token.Identifier("int", SourceSpan.Default), [], SourceRange.Default);
+        return new TypeIdentifier(Identifier("int"), [], SourceRange.Default);
     }
 
     public static TypeIdentifier StringType()
     {
-        return new TypeIdentifier(Token.Identifier("string", SourceSpan.Default), [], SourceRange.Default);
+        return new TypeIdentifier(Identifier("string"), [], SourceRange.Default);
     }
 
     public static ClassField ClassField(

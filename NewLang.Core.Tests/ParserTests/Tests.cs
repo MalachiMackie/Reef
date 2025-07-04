@@ -2,7 +2,7 @@
 using FluentAssertions;
 using Xunit.Abstractions;
 using static NewLang.Core.Tests.ParserTests.RemoveSourceSpanHelpers;
-using static NewLang.Core.Tests.ParserTests.ExpressionHelpers;
+using static NewLang.Core.Tests.ExpressionHelpers;
 
 #pragma warning disable IDE0060 // Remove unused parameter
 

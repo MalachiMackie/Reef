@@ -526,9 +526,8 @@ public class TypeChecker
             ? InstantiatedClass.Unit
             : GetTypeReference(fn.ReturnType, innerGenericPlaceholders);
 
-        for (var i = 0; i < fn.Parameters.Count; i++)
+        foreach (var parameter in fn.Parameters)
         {
-            var parameter = fn.Parameters[i];
             var paramName = parameter.Identifier.StringValue;
             var type = parameter.Type is null ? UnknownType.Instance : GetTypeReference(parameter.Type, innerGenericPlaceholders);
             
@@ -1681,7 +1680,7 @@ public class TypeChecker
 
         if (!allowUninstantiated && !value.Instantiated)
         {
-            throw new InvalidOperationException($"{value.Name} is not instantiated");
+            _errors.Add(TypeCheckerError.AccessUninitializedVariable(variableName));
         }
 
         return value.Type;

@@ -128,7 +128,7 @@ public static class ParseErrorTestCases
                 ], [], [], []),
                 [
                     ParserError.ExpectedExpression(Token.QuestionMark(SourceSpan.Default)),
-                    ParserError.ExpectedToken(Token.Identifier("a", SourceSpan.Default), TokenType.Semicolon)
+                    ParserError.ExpectedToken(Identifier("a"), TokenType.Semicolon)
                 ]
             ),
             (
@@ -203,7 +203,7 @@ public static class ParseErrorTestCases
                     VariableAccessor("b")
                 ], [], [], []),
                 [
-                    ParserError.ExpectedToken(Token.Identifier("b", SourceSpan.Default), TokenType.Semicolon)
+                    ParserError.ExpectedToken(Identifier("b"), TokenType.Semicolon)
                 ]
             ),
             (
@@ -216,14 +216,14 @@ public static class ParseErrorTestCases
                     VariableAccessor("e")
                 ], [], [], []),
                 [
-                    ParserError.ExpectedToken(Token.Identifier("b", SourceSpan.Default), TokenType.Semicolon),
-                    ParserError.ExpectedToken(Token.Identifier("e", SourceSpan.Default), TokenType.Semicolon),
+                    ParserError.ExpectedToken(Identifier("b"), TokenType.Semicolon),
+                    ParserError.ExpectedToken(Identifier("e"), TokenType.Semicolon),
                 ]
             ),
             (
                 "class MyClass {field MyField: string field OtherField: string}",
                 new LangProgram([], [], [
-                    new ProgramClass(null, Token.Identifier("MyClass", SourceSpan.Default), [], [], [
+                    new ProgramClass(null, Identifier("MyClass"), [], [], [
                         ClassField("MyField", StringType()),
                         ClassField("OtherField", StringType())
                     ])
@@ -235,7 +235,7 @@ public static class ParseErrorTestCases
             (
                 "class MyClass {field MyField: string, field OtherField: string",
                 new LangProgram([], [], [
-                    new ProgramClass(null, Token.Identifier("MyClass", SourceSpan.Default), [], [], [
+                    new ProgramClass(null, Identifier("MyClass"), [], [], [
                         ClassField("MyField", StringType()),
                         ClassField("OtherField", StringType())
                     ])
@@ -1033,7 +1033,7 @@ public static class ParseErrorTestCases
                         UnionStructVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null), ("OtherField", null)])
                     )], [], [], []),
                 [
-                    ParserError.ExpectedToken(Token.Identifier("OtherField", SourceSpan.Default), TokenType.Comma, TokenType.RightBrace)
+                    ParserError.ExpectedToken(Identifier("OtherField"), TokenType.Comma, TokenType.RightBrace)
                 ]
             ),
             (
@@ -1142,7 +1142,7 @@ public static class ParseErrorTestCases
                         ClassPattern(TypeIdentifier("A"), [("SomeField", null), ("OtherField", null)])
                     )], [], [], []),
                 [
-                    ParserError.ExpectedToken(Token.Identifier("OtherField", SourceSpan.Default), TokenType.Comma, TokenType.RightBrace)
+                    ParserError.ExpectedToken(Identifier("OtherField"), TokenType.Comma, TokenType.RightBrace)
                 ]
             ),
             (
@@ -1493,7 +1493,7 @@ public static class ParseErrorTestCases
                     FieldInitializer("OtherField", VariableAccessor("b")),
                 ])], [], [], []),
                 [
-                    ParserError.ExpectedToken(Token.Identifier("OtherField", SourceSpan.Default), TokenType.Comma, TokenType.RightBrace)
+                    ParserError.ExpectedToken(Identifier("OtherField"), TokenType.Comma, TokenType.RightBrace)
                 ]
             ),
             (
@@ -1569,7 +1569,7 @@ public static class ParseErrorTestCases
                     FieldInitializer("OtherField", VariableAccessor("b")),
                 ])], [], [], []),
                 [
-                    ParserError.ExpectedToken(Token.Identifier("OtherField", SourceSpan.Default), TokenType.Comma, TokenType.RightBrace)
+                    ParserError.ExpectedToken(Identifier("OtherField"), TokenType.Comma, TokenType.RightBrace)
                 ]
             ),
             (

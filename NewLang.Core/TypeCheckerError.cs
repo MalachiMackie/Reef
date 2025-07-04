@@ -46,9 +46,11 @@ public record TypeCheckerError
         return new(TypeCheckerErrorType.MatchNonExhaustive, SourceRange.Default, "");
     }
 
-    public static TypeCheckerError AccessUninitializedVariable()
+    public static TypeCheckerError AccessUninitializedVariable(StringToken variableIdentifier)
     {
-        return new(TypeCheckerErrorType.AccessUninitializedVariable, SourceRange.Default, "");
+        return new(TypeCheckerErrorType.AccessUninitializedVariable,
+            new SourceRange(variableIdentifier.SourceSpan, variableIdentifier.SourceSpan),
+            $"Variable {variableIdentifier} may be uninitialized");
     }
 
     public static TypeCheckerError IncorrectNumberOfPatternsInTupleVariantUnionPattern(UnionTupleVariantPattern pattern, int expectedNumber)
