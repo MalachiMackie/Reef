@@ -429,7 +429,7 @@ public static class ParseErrorTestCases
             (
                 "class MyClass<T,,,T2> {}",
                 new LangProgram([], [], [
-                    Class("MyClass", genericParameters: ["T", "T2"])
+                    Class("MyClass", typeParameters: ["T", "T2"])
                 ], []),
                 [
                     ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier, TokenType.RightAngleBracket),
@@ -450,7 +450,7 @@ public static class ParseErrorTestCases
             ),
             (
                 "union MyUnion<T,,T2> {}",
-                new LangProgram([], [], [], [Union("MyUnion", genericParameters: ["T", "T2"])]),
+                new LangProgram([], [], [], [Union("MyUnion", typeParameters: ["T", "T2"])]),
                 [
                     ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.Identifier, TokenType.RightAngleBracket),
                 ]
@@ -524,7 +524,7 @@ public static class ParseErrorTestCases
             (
                 "union MyUnion<T> {",
                 new LangProgram([], [], [], [
-                    Union("MyUnion", genericParameters: ["T"])
+                    Union("MyUnion", typeParameters: ["T"])
                 ]),
                 [
                     ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.RightBrace, TokenType.Pub, TokenType.Static, TokenType.Fn),
@@ -533,7 +533,7 @@ public static class ParseErrorTestCases
             (
                 "union MyUnion<T> {}",
                 new LangProgram([], [], [], [
-                    Union("MyUnion", genericParameters: ["T"])
+                    Union("MyUnion", typeParameters: ["T"])
                 ]),
                 [
                 ]
@@ -557,7 +557,7 @@ public static class ParseErrorTestCases
             (
                 "union MyUnion<T> {;",
                 new LangProgram([], [], [], [
-                    Union("MyUnion", genericParameters: ["T"])
+                    Union("MyUnion", typeParameters: ["T"])
                 ]),
                 [
                     ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier, TokenType.RightBrace, TokenType.Pub, TokenType.Static, TokenType.Fn),
@@ -567,7 +567,7 @@ public static class ParseErrorTestCases
             (
                 "union MyUnion<T>",
                 new LangProgram([], [], [], [
-                    Union("MyUnion", genericParameters: ["T"])
+                    Union("MyUnion", typeParameters: ["T"])
                 ]),
                 [
                     ParserError.ExpectedToken(null, TokenType.LeftBrace),
@@ -576,7 +576,7 @@ public static class ParseErrorTestCases
             (
                 "union MyUnion<T>;",
                 new LangProgram([], [], [], [
-                    Union("MyUnion", genericParameters: ["T"])
+                    Union("MyUnion", typeParameters: ["T"])
                 ]),
                 [
                     ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.LeftBrace),
@@ -598,14 +598,14 @@ public static class ParseErrorTestCases
             ),
             (
                 "class MyClass<T> {",
-                new LangProgram([], [], [Class("MyClass", genericParameters: ["T"])], []),
+                new LangProgram([], [], [Class("MyClass", typeParameters: ["T"])], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Pub, TokenType.Static, TokenType.Fn, TokenType.Field, TokenType.Mut),
                 ]
             ),
             (
                 "class MyClass<T> {}",
-                new LangProgram([], [], [Class("MyClass", genericParameters: ["T"])], []),
+                new LangProgram([], [], [Class("MyClass", typeParameters: ["T"])], []),
                 [
                 ]
             ),
@@ -625,7 +625,7 @@ public static class ParseErrorTestCases
             ),
             (
                 "class MyClass<T> {;",
-                new LangProgram([], [], [Class("MyClass", genericParameters: ["T"])], []),
+                new LangProgram([], [], [Class("MyClass", typeParameters: ["T"])], []),
                 [
                     ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default),
                         TokenType.RightBrace, TokenType.Pub, TokenType.Static, TokenType.Fn, TokenType.Mut, TokenType.Field),
@@ -634,14 +634,14 @@ public static class ParseErrorTestCases
             ),
             (
                 "class MyClass<T>",
-                new LangProgram([], [], [Class("MyClass", genericParameters: ["T"])], []),
+                new LangProgram([], [], [Class("MyClass", typeParameters: ["T"])], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.LeftBrace),
                 ]
             ),
             (
                 "class MyClass<T>;",
-                new LangProgram([], [], [Class("MyClass", genericParameters: ["T"])], []),
+                new LangProgram([], [], [Class("MyClass", typeParameters: ["T"])], []),
                 [
                     ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.LeftBrace),
                 ]
@@ -698,7 +698,7 @@ public static class ParseErrorTestCases
             ),
             (
                 "fn MyFn<T>",
-                new LangProgram([], [Function("MyFn", genericParameters: ["T"])], [], []),
+                new LangProgram([], [Function("MyFn", typeParameters: ["T"])], [], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.LeftParenthesis),
                 ]

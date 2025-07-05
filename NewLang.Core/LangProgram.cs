@@ -52,7 +52,7 @@ public record LangFunction(
     AccessModifier? AccessModifier,
     StaticModifier? StaticModifier,
     StringToken Name,
-    IReadOnlyList<StringToken> TypeArguments,
+    IReadOnlyList<StringToken> TypeParameters,
     IReadOnlyList<FunctionParameter> Parameters,
     TypeIdentifier? ReturnType,
     Block Block)
@@ -68,10 +68,10 @@ public record LangFunction(
         }
 
         sb.Append($"fn {Name}");
-        if (TypeArguments.Count > 0)
+        if (TypeParameters.Count > 0)
         {
             sb.Append('<');
-            sb.AppendJoin(", ", TypeArguments);
+            sb.AppendJoin(", ", TypeParameters);
             sb.Append('>');
         }
 

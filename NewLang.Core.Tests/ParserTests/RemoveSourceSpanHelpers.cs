@@ -29,7 +29,7 @@ public static class RemoveSourceSpanHelpers
             RemoveSourceSpan(function.AccessModifier),
             RemoveSourceSpan(function.StaticModifier),
             RemoveSourceSpan(function.Name),
-            [..function.TypeArguments.Select(RemoveSourceSpan)!],
+            [..function.TypeParameters.Select(RemoveSourceSpan)!],
             [..function.Parameters.Select(RemoveSourceSpan)],
             RemoveSourceSpan(function.ReturnType),
             RemoveSourceSpan(function.Block)
@@ -202,7 +202,7 @@ public static class RemoveSourceSpanHelpers
     {
         return new GenericInstantiation(
             RemoveSourceSpan(genericInstantiation.Value),
-            [..genericInstantiation.GenericArguments.Select(RemoveSourceSpan)!]);
+            [..genericInstantiation.TypeArguments.Select(RemoveSourceSpan)!]);
     }
 
     private static MemberAccess RemoveSourceSpan(MemberAccess memberAccess)
@@ -235,7 +235,7 @@ public static class RemoveSourceSpanHelpers
     {
         return new MethodCall(
             RemoveSourceSpan(methodCall.Method),
-            [..methodCall.ParameterList.Select(RemoveSourceSpan)!]);
+            [..methodCall.ArgumentList.Select(RemoveSourceSpan)!]);
     }
 
     private static IfExpression RemoveSourceSpan(IfExpression ifExpression)
@@ -317,7 +317,7 @@ public static class RemoveSourceSpanHelpers
         return new ProgramUnion(
             RemoveSourceSpan(union.AccessModifier),
             RemoveSourceSpan(union.Name),
-            [..union.GenericArguments.Select(RemoveSourceSpan)!],
+            [..union.TypeParameters.Select(RemoveSourceSpan)!],
             [..union.Functions.Select(RemoveSourceSpan)],
             [..union.Variants.Select(RemoveSourceSpan)]
         );
@@ -346,7 +346,7 @@ public static class RemoveSourceSpanHelpers
         return new ProgramClass(
             RemoveSourceSpan(@class.AccessModifier),
             RemoveSourceSpan(@class.Name),
-            [..@class.TypeArguments.Select(RemoveSourceSpan)!],
+            [..@class.TypeParameters.Select(RemoveSourceSpan)!],
             [..@class.Functions.Select(RemoveSourceSpan)],
             [..@class.Fields.Select(RemoveSourceSpan)]);
     }

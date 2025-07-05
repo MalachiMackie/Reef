@@ -739,7 +739,7 @@ public sealed class Parser : IDisposable
         return new ClassField(accessModifier, staticModifier, mutabilityModifier, name, type, valueExpression);
     }
 
-    private (List<StringToken> items, Token? lastToken) GetGenericParameterList()
+    private (List<StringToken> items, Token? lastToken) GetTypeParameterList()
     {
         return GetCommaSeparatedList(
             TokenType.RightAngleBracket,
@@ -749,10 +749,10 @@ public sealed class Parser : IDisposable
             expectPattern: false,
             () =>
             {
-                ExpectCurrentIdentifier(out var typeArgument, [TokenType.RightAngleBracket]);
+                ExpectCurrentIdentifier(out var typeParameter, [TokenType.RightAngleBracket]);
                 MoveNext();
 
-                return typeArgument;
+                return typeParameter;
             });
     }
 
@@ -770,34 +770,34 @@ public sealed class Parser : IDisposable
             return new ProgramUnion(accessModifier, name, [], [], []);
         }
 
-        IReadOnlyList<StringToken>? typeArguments = null;
+        IReadOnlyList<StringToken>? typeParameters = null;
 
         if (Current.Type == TokenType.LeftAngleBracket)
         {
-            (typeArguments, _) = GetGenericParameterList();
+            (typeParameters, _) = GetTypeParameterList();
 
             if (!_hasNext)
             {
                 _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace));
-                return new ProgramUnion(accessModifier, name, typeArguments, [], []);
+                return new ProgramUnion(accessModifier, name, typeParameters, [], []);
             }
         }
         
         if (Current.Type != TokenType.LeftBrace)
         {
-            _errors.Add(ParserError.ExpectedToken(Current, typeArguments is not null ? [TokenType.LeftBrace] : [TokenType.LeftBrace, TokenType.LeftAngleBracket]));
+            _errors.Add(ParserError.ExpectedToken(Current, typeParameters is not null ? [TokenType.LeftBrace] : [TokenType.LeftBrace, TokenType.LeftAngleBracket]));
             MoveNext();
-            return new ProgramUnion(accessModifier, name, typeArguments ?? [], [], []);
+            return new ProgramUnion(accessModifier, name, typeParameters ?? [], [], []);
         }
 
-        typeArguments ??= [];
+        typeParameters ??= [];
 
         var scope = GetMemberList([MemberType.Function, MemberType.UnionVariant]);
 
         return new ProgramUnion(
             accessModifier,
             name,
-            typeArguments,
+            typeParameters,
             scope.Functions,
             scope.Variants);
     }
@@ -816,31 +816,31 @@ public sealed class Parser : IDisposable
             return new ProgramClass(accessModifier, name, [], [], []);
         }
 
-        IReadOnlyList<StringToken>? typeArguments = null;
+        IReadOnlyList<StringToken>? typeParameters = null;
 
         if (Current.Type == TokenType.LeftAngleBracket)
         {
-            typeArguments = GetGenericParameterList().items;
+            typeParameters = GetTypeParameterList().items;
 
             if (!_hasNext)
             {
                 _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace));
-                return new ProgramClass(accessModifier, name, typeArguments, [], []);
+                return new ProgramClass(accessModifier, name, typeParameters, [], []);
             }
         }
 
         if (Current.Type != TokenType.LeftBrace)
         {
-            _errors.Add(ParserError.ExpectedToken(Current, typeArguments is null ? [TokenType.LeftBrace, TokenType.LeftAngleBracket] : [TokenType.LeftBrace]));
+            _errors.Add(ParserError.ExpectedToken(Current, typeParameters is null ? [TokenType.LeftBrace, TokenType.LeftAngleBracket] : [TokenType.LeftBrace]));
             MoveNext();
-            return new ProgramClass(accessModifier, name, typeArguments ?? [], [], []);
+            return new ProgramClass(accessModifier, name, typeParameters ?? [], [], []);
         }
 
-        typeArguments ??= [];
+        typeParameters ??= [];
 
         var scope = GetMemberList([MemberType.Function, MemberType.Field]);
 
-        return new ProgramClass(accessModifier, name, typeArguments, scope.Functions, scope.Fields);
+        return new ProgramClass(accessModifier, name, typeParameters, scope.Functions, scope.Fields);
     }
 
     private LangFunction? GetFunctionDeclaration(AccessModifier? accessModifier, StaticModifier? staticModifier)
@@ -857,11 +857,11 @@ public sealed class Parser : IDisposable
             return new LangFunction(accessModifier, staticModifier, nameToken, [], [], null, new Block([], []));
         }
 
-        IReadOnlyList<StringToken>? typeArguments = null;
+        IReadOnlyList<StringToken>? typeParameters = null;
 
         if (Current.Type == TokenType.LeftAngleBracket)
         {
-            (typeArguments, var lastToken) = GetGenericParameterList();
+            (typeParameters, var lastToken) = GetTypeParameterList();
 
             if (!_hasNext)
             {
@@ -869,19 +869,19 @@ public sealed class Parser : IDisposable
                 {
                     _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftParenthesis));
                 }
-                return new LangFunction(accessModifier, staticModifier, nameToken, typeArguments, [], null,
+                return new LangFunction(accessModifier, staticModifier, nameToken, typeParameters, [], null,
                     new Block([], []));
             }
         }
 
         if (Current.Type != TokenType.LeftParenthesis)
         {
-            _errors.Add(ParserError.ExpectedToken(Current, typeArguments is null ? [TokenType.LeftParenthesis, TokenType.LeftAngleBracket] : [TokenType.LeftParenthesis]));
+            _errors.Add(ParserError.ExpectedToken(Current, typeParameters is null ? [TokenType.LeftParenthesis, TokenType.LeftAngleBracket] : [TokenType.LeftParenthesis]));
             MoveNext();
-            return new LangFunction(accessModifier, staticModifier, nameToken, typeArguments ?? [], [], null,
+            return new LangFunction(accessModifier, staticModifier, nameToken, typeParameters ?? [], [], null,
                 new Block([], []));
         }
-        typeArguments ??= [];
+        typeParameters ??= [];
 
         var (parameterList, parameterListLastToken) = GetCommaSeparatedList(
             TokenType.RightParenthesis,
@@ -929,7 +929,7 @@ public sealed class Parser : IDisposable
                 _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace, TokenType.Colon));
             }
 
-            return new LangFunction(accessModifier, staticModifier, nameToken, typeArguments, parameterList, null,
+            return new LangFunction(accessModifier, staticModifier, nameToken, typeParameters, parameterList, null,
                 new Block([], []));
         }
 
@@ -938,14 +938,14 @@ public sealed class Parser : IDisposable
             if (!ExpectNextTypeIdentifier(out returnType))
             {
                 MoveNext();
-                return new LangFunction(accessModifier, staticModifier, nameToken, typeArguments, parameterList, null,
+                return new LangFunction(accessModifier, staticModifier, nameToken, typeParameters, parameterList, null,
                     new Block([], []));
             }
             
             if (!_hasNext)
             {
                 _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace));
-                return new LangFunction(accessModifier, staticModifier, nameToken, typeArguments, parameterList, returnType,
+                return new LangFunction(accessModifier, staticModifier, nameToken, typeParameters, parameterList, returnType,
                     new Block([], []));
             }
         }
@@ -954,13 +954,13 @@ public sealed class Parser : IDisposable
         {
             _errors.Add(ParserError.ExpectedToken(Current, returnType is null ? [TokenType.Colon, TokenType.LeftBrace] : [TokenType.LeftBrace]));
             MoveNext();
-            return new LangFunction(accessModifier, staticModifier, nameToken, typeArguments, parameterList, returnType,
+            return new LangFunction(accessModifier, staticModifier, nameToken, typeParameters, parameterList, returnType,
                 new Block([], []));
         }
 
         var scope = GetScope(TokenType.RightBrace, [Scope.ScopeType.Expression, Scope.ScopeType.Function]);
 
-        return new LangFunction(accessModifier, staticModifier, nameToken, typeArguments, parameterList, returnType,
+        return new LangFunction(accessModifier, staticModifier, nameToken, typeParameters, parameterList, returnType,
             new Block(scope.Expressions, scope.Functions));
     }
 
@@ -985,12 +985,12 @@ public sealed class Parser : IDisposable
                 expectPattern: false,
                 () =>
                 {
-                    var genericArgument = GetTypeIdentifier();
-                    if (genericArgument is null)
+                    var typeArgument = GetTypeIdentifier();
+                    if (typeArgument is null)
                     {
                         MoveNext();
                     }
-                    return genericArgument;
+                    return typeArgument;
                 });
         }
 
@@ -1500,7 +1500,7 @@ public sealed class Parser : IDisposable
         IReadOnlyList<TypeIdentifier>? typeArguments = null;
         if (previousExpression is GenericInstantiationExpression genericInstantiationExpression)
         {
-            typeArguments = genericInstantiationExpression.GenericInstantiation.GenericArguments;
+            typeArguments = genericInstantiationExpression.GenericInstantiation.TypeArguments;
             previousExpression = genericInstantiationExpression.GenericInstantiation.Value;
         }
 
@@ -1673,7 +1673,7 @@ public sealed class Parser : IDisposable
     private MethodCallExpression GetMethodCall(IExpression method)
     {
         var leftParenthesis = Current;
-        var (parameterList, lastToken) = GetCommaSeparatedList(
+        var (argumentList, lastToken) = GetCommaSeparatedList(
             TokenType.RightParenthesis,
             expectedTokens: [],
             expectExpression: true,
@@ -1690,7 +1690,7 @@ public sealed class Parser : IDisposable
                 return expression;
             });
 
-        return new MethodCallExpression(new MethodCall(method, parameterList),
+        return new MethodCallExpression(new MethodCall(method, argumentList),
             method.SourceRange with { End = lastToken?.SourceSpan ?? leftParenthesis.SourceSpan  });
     }
 

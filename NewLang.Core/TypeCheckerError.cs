@@ -36,9 +36,9 @@ public record TypeCheckerError
         return new(TypeCheckerErrorType.UnresolvedInferredVariableType, new SourceRange(variableName.SourceSpan, variableName.SourceSpan), $"Could not infer type for '{variableName.StringValue}");
     }
     
-    public static TypeCheckerError UnresolvedInferredGenericType(IExpression expression, string unresolvedGenericArgument)
+    public static TypeCheckerError UnresolvedInferredGenericType(IExpression expression, string unresolvedTypeArgument)
     {
-        return new(TypeCheckerErrorType.UnresolvedInferredGenericType, expression.SourceRange, $"Could not infer generic type arguments {unresolvedGenericArgument}");
+        return new(TypeCheckerErrorType.UnresolvedInferredTypeArgument, expression.SourceRange, $"Could not infer type arguments {unresolvedTypeArgument}");
     }
 
     public static TypeCheckerError ThisAccessedOutsideOfInstanceMethod(StringToken thisToken)
@@ -136,11 +136,6 @@ public record TypeCheckerError
             $"Duplicate field found in union struct variant. Union Type: {typeName}, Variant: {variantName}, fieldName: {fieldName}");
     }
 
-    public static TypeCheckerError UnionTupleVariantNoParameters()
-    {
-        return new(TypeCheckerErrorType.UnionTupleVariantNoParameters, SourceRange.Default, "");
-    }
-
     public static TypeCheckerError ConflictingFunctionName(StringToken functionName)
     {
         return new(TypeCheckerErrorType.ConflictingFunctionName,
@@ -148,12 +143,12 @@ public record TypeCheckerError
             $"Function with name {functionName.StringValue} already defined in scope");
     }
 
-    public static TypeCheckerError IncorrectNumberOfMethodParameters(MethodCallExpression methodCallExpression, int expectedNumberOfMethodParameters)
+    public static TypeCheckerError IncorrectNumberOfMethodArguments(MethodCallExpression methodCallExpression, int expectedNumberOfMethodArguments)
     {
         return new(
-            TypeCheckerErrorType.IncorrectNumberOfMethodParameters,
+            TypeCheckerErrorType.IncorrectNumberOfMethodArguments,
             methodCallExpression.SourceRange,
-            $"Expected {expectedNumberOfMethodParameters} parameters, but found {methodCallExpression.MethodCall.ParameterList.Count}");
+            $"Expected {expectedNumberOfMethodArguments} arguments, but found {methodCallExpression.MethodCall.ArgumentList.Count}");
     }
 
     public static TypeCheckerError MemberAccessOnGenericExpression(MemberAccessExpression memberAccessExpression)
@@ -176,18 +171,18 @@ public record TypeCheckerError
             $"Cannot access static member on {staticMemberAccess.StaticMemberAccess.Type} which is a generic type");
     }
 
-    public static TypeCheckerError DuplicateGenericArgument(StringToken argumentIdentifier)
+    public static TypeCheckerError DuplicateTypeParameter(StringToken parameterIdentifier)
     {
-        return new(TypeCheckerErrorType.DuplicateGenericArgument, new SourceRange(
-            argumentIdentifier.SourceSpan, argumentIdentifier.SourceSpan), $"Generic argument {argumentIdentifier.StringValue} already defined");
+        return new(TypeCheckerErrorType.DuplicateGenericParameter, new SourceRange(
+            parameterIdentifier.SourceSpan, parameterIdentifier.SourceSpan), $"Generic parameter {parameterIdentifier.StringValue} already defined");
     }
 
-    public static TypeCheckerError DuplicateFunctionArgument(StringToken argumentName, StringToken functionName)
+    public static TypeCheckerError DuplicateFunctionParameter(StringToken parameterName, StringToken functionName)
     {
         return new(
-            TypeCheckerErrorType.DuplicateFunctionArgument,
-            new SourceRange(argumentName.SourceSpan, argumentName.SourceSpan),
-            $"Duplicate argument {argumentName.StringValue} found in function {functionName.StringValue}");
+            TypeCheckerErrorType.DuplicateFunctionParameter,
+            new SourceRange(parameterName.SourceSpan, parameterName.SourceSpan),
+            $"Duplicate parameter {parameterName.StringValue} found in function {functionName.StringValue}");
     }
 
     public static TypeCheckerError IncorrectNumberOfTypeArguments(SourceRange sourceRange, int receivedCount, int expectedCount)
@@ -215,20 +210,20 @@ public record TypeCheckerError
             $"Not all fields were initialized {string.Join(", ", missingFieldNames.Select(x => $"'{x}'"))}");
     }
 
-    public static TypeCheckerError ConflictingTypeArgument(StringToken typeArgument)
+    public static TypeCheckerError ConflictingTypeParameter(StringToken typeParameter)
     {
         return new(
-            TypeCheckerErrorType.ConflictingTypeArgument,
-            new SourceRange(typeArgument.SourceSpan, typeArgument.SourceSpan),
-            $"Conflicting type argument with existing type argument {typeArgument.StringValue} outside of current definition");
+            TypeCheckerErrorType.ConflictingTypeParameter,
+            new SourceRange(typeParameter.SourceSpan, typeParameter.SourceSpan),
+            $"Conflicting type parameter with existing type parameter {typeParameter.StringValue} outside of current definition");
     }
 
-    public static TypeCheckerError TypeArgumentConflictsWithType(StringToken typeArgument)
+    public static TypeCheckerError TypeParameterConflictsWithType(StringToken typeParameter)
     {
         return new(
-            TypeCheckerErrorType.TypeArgumentConflictsWithType,
-            new SourceRange(typeArgument.SourceSpan, typeArgument.SourceSpan),
-            $"Type Argument {typeArgument} conflicts type existing type");
+            TypeCheckerErrorType.TypeParameterConflictsWithType,
+            new SourceRange(typeParameter.SourceSpan, typeParameter.SourceSpan),
+            $"Type Parameter {typeParameter} conflicts type existing type");
     }
 }
 
@@ -241,7 +236,7 @@ public enum TypeCheckerErrorType
     NonMutableMemberOwnerAssignment,
     SymbolNotFound,
     UnresolvedInferredVariableType,
-    UnresolvedInferredGenericType,
+    UnresolvedInferredTypeArgument,
     ThisAccessedOutsideOfInstanceMethod,
     MatchNonExhaustive,
     AccessUninitializedVariable,
@@ -257,15 +252,15 @@ public enum TypeCheckerErrorType
     DuplicateFieldInUnionStructVariant,
     UnionTupleVariantNoParameters,
     ConflictingFunctionName,
-    IncorrectNumberOfMethodParameters,
+    IncorrectNumberOfMethodArguments,
     MemberAccessOnGenericExpression,
     StaticMemberAccessOnGenericReference,
-    DuplicateGenericArgument,
-    DuplicateFunctionArgument,
+    DuplicateGenericParameter,
+    DuplicateFunctionParameter,
     IncorrectNumberOfTypeArguments,
     ClassFieldSetMultipleTypesInInitializer,
     UnknownField,
     FieldsLeftUnassignedInClassInitializer,
-    ConflictingTypeArgument,
-    TypeArgumentConflictsWithType,
+    ConflictingTypeParameter,
+    TypeParameterConflictsWithType,
 }

@@ -3,7 +3,7 @@
 public record ProgramUnion(
     AccessModifier? AccessModifier,
     StringToken Name,
-    IReadOnlyList<StringToken> GenericArguments,
+    IReadOnlyList<StringToken> TypeParameters,
     IReadOnlyList<LangFunction> Functions,
     IReadOnlyList<IProgramUnionVariant> Variants)
 {

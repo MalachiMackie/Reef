@@ -162,16 +162,16 @@ public record GenericInstantiationExpression(GenericInstantiation GenericInstant
 
     public override string ToString()
     {
-        return $"{GenericInstantiation.Value}::<{string.Join(", ", GenericInstantiation.GenericArguments)}>";
+        return $"{GenericInstantiation.Value}::<{string.Join(", ", GenericInstantiation.TypeArguments)}>";
     }
 }
 
-public record GenericInstantiation(IExpression Value, IReadOnlyList<TypeIdentifier> GenericArguments)
+public record GenericInstantiation(IExpression Value, IReadOnlyList<TypeIdentifier> TypeArguments)
 {
     public override string ToString()
     {
         var sb = new StringBuilder($"{Value}::<");
-        sb.AppendJoin(", ", GenericArguments);
+        sb.AppendJoin(", ", TypeArguments);
         sb.Append('>');
 
         return sb.ToString();
@@ -383,11 +383,11 @@ public record ElseIf(IExpression CheckExpression, IExpression? Body)
     }
 }
 
-public record MethodCall(IExpression Method, IReadOnlyList<IExpression> ParameterList)
+public record MethodCall(IExpression Method, IReadOnlyList<IExpression> ArgumentList)
 {
     public override string ToString()
     {
-        return $"{Method}({string.Join(", ", ParameterList)})";
+        return $"{Method}({string.Join(", ", ArgumentList)})";
     }
 }
 

@@ -100,22 +100,22 @@ public static class ExpressionHelpers
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral(value, SourceSpan.Default)));
     }
 
-    public static ProgramClass Class(string name, bool isPublic = false, IReadOnlyList<ClassField>? fields = null, IReadOnlyList<string>? genericParameters = null)
+    public static ProgramClass Class(string name, bool isPublic = false, IReadOnlyList<ClassField>? fields = null, IReadOnlyList<string>? typeParameters = null)
     {
         return new ProgramClass(
             isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
             Token.Identifier(name, SourceSpan.Default),
-            [..genericParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
+            [..typeParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
             [],
             fields ?? []);
     }
     
-    public static ProgramUnion Union(string name, bool isPublic = false, IReadOnlyList<IProgramUnionVariant>? variants = null, IReadOnlyList<string>? genericParameters = null)
+    public static ProgramUnion Union(string name, bool isPublic = false, IReadOnlyList<IProgramUnionVariant>? variants = null, IReadOnlyList<string>? typeParameters = null)
     {
         return new ProgramUnion(
             isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
             Token.Identifier(name, SourceSpan.Default),
-            [..genericParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
+            [..typeParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
             [],
             variants ?? []);
     }
@@ -125,13 +125,13 @@ public static class ExpressionHelpers
         bool isPublic = false,
         bool isStatic = false,
         IReadOnlyList<FunctionParameter>? parameters = null,
-        IReadOnlyList<string>? genericParameters = null,
+        IReadOnlyList<string>? typeParameters = null,
         TypeIdentifier? returnType = null)
     {
         return new LangFunction(isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
             isStatic ? new StaticModifier(Token.Static(SourceSpan.Default)) : null,
             Token.Identifier(name, SourceSpan.Default),
-            genericParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)).ToArray() ?? [],
+            typeParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)).ToArray() ?? [],
             parameters ?? [],
             returnType,
             new Block([], []));
@@ -160,11 +160,11 @@ public static class ExpressionHelpers
         return new StaticMemberAccessExpression(new StaticMemberAccess(type, memberName is null ? null : Token.Identifier(memberName, SourceSpan.Default)));
     }
 
-    public static GenericInstantiationExpression GenericInstantiation(IExpression value, IReadOnlyList<TypeIdentifier>? genericArguments = null)
+    public static GenericInstantiationExpression GenericInstantiation(IExpression value, IReadOnlyList<TypeIdentifier>? typeArguments = null)
     {
         return new GenericInstantiationExpression(new GenericInstantiation(
             value,
-            genericArguments ?? []), SourceRange.Default);
+            typeArguments ?? []), SourceRange.Default);
     }
 
     public static TupleExpression Tuple(IExpression first, params IEnumerable<IExpression> values)

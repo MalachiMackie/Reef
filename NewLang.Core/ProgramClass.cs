@@ -5,7 +5,7 @@ namespace NewLang.Core;
 public record ProgramClass(
     AccessModifier? AccessModifier,
     StringToken Name,
-    IReadOnlyList<StringToken> TypeArguments,
+    IReadOnlyList<StringToken> TypeParameters,
     IReadOnlyCollection<LangFunction> Functions,
     IReadOnlyCollection<ClassField> Fields)
 {
@@ -20,10 +20,10 @@ public record ProgramClass(
         }
 
         sb.Append($"class {Name}");
-        if (TypeArguments.Count > 0)
+        if (TypeParameters.Count > 0)
         {
             sb.Append('<');
-            sb.AppendJoin(", ", TypeArguments);
+            sb.AppendJoin(", ", TypeParameters);
             sb.Append('>');
         }
 

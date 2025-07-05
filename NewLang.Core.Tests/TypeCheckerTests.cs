@@ -162,11 +162,11 @@ public class TypeCheckerTests
             fn MyFn() {
             }
 
-            // type arguments can have the same name as Functions
+            // type parameters can have the same name as Functions
             class MyClass<MyFn> {}
             """,
             """
-            // type arguments can have the same name as Functions
+            // type parameters can have the same name as Functions
             class MyClass<MyFn> {
                 fn MyFn() {}
             }
@@ -1819,16 +1819,16 @@ public class TypeCheckerTests
                 [TypeCheckerError.ConflictingFunctionName(Identifier("MyFn"))]
             },
             {
-                "function contains duplicate argument",
+                "function contains duplicate parameter",
                 """
                 fn SomeFn(a: int, a: string) {
-                    // verify first duplicate argument is accepted
+                    // verify first duplicate parameter is accepted
                     var b: int = a;
                     var c: string = a;
                 }
                 """,
                 [
-                    TypeCheckerError.DuplicateFunctionArgument(Identifier("a"), Identifier("SomeFn")),
+                    TypeCheckerError.DuplicateFunctionParameter(Identifier("a"), Identifier("SomeFn")),
                     MismatchedTypes(String, Int)
                 ]
             },
@@ -1881,12 +1881,12 @@ public class TypeCheckerTests
             {
                 "missing function arguments",
                 "fn MyFn(param1: string, param2: int) {} MyFn();",
-                [TypeCheckerError.IncorrectNumberOfMethodParameters(MethodCall(VariableAccessor("MyFn")), 2)]
+                [TypeCheckerError.IncorrectNumberOfMethodArguments(MethodCall(VariableAccessor("MyFn")), 2)]
             },
             {
                 "too many function arguments",
                 """fn MyFn(param1: string, param2: int) {} MyFn("value", 3, 2);""",
-                [TypeCheckerError.IncorrectNumberOfMethodParameters(MethodCall(VariableAccessor("MyFn"), StringLiteral("value"), IntLiteral(3), IntLiteral(2)), 2)]
+                [TypeCheckerError.IncorrectNumberOfMethodArguments(MethodCall(VariableAccessor("MyFn"), StringLiteral("value"), IntLiteral(3), IntLiteral(2)), 2)]
             },
             {
                 "member accessed on generic instance variable",
@@ -1904,24 +1904,24 @@ public class TypeCheckerTests
                 [MismatchedTypes(Int, GenericTypeReference("T1"))]
             },
             {
-                "duplicate function generic argument",
+                "duplicate function generic parameter",
                 "fn MyFn<T, T>() {}",
-                [TypeCheckerError.DuplicateGenericArgument(Identifier("T"))]
+                [TypeCheckerError.DuplicateTypeParameter(Identifier("T"))]
             },
             {
-                "duplicate function generic argument",
+                "duplicate function generic parameter",
                 "fn MyFn<T, T, T1, T1>() {}",
                 [
-                    TypeCheckerError.DuplicateGenericArgument(Identifier("T")),
-                    TypeCheckerError.DuplicateGenericArgument(Identifier("T1")),
+                    TypeCheckerError.DuplicateTypeParameter(Identifier("T")),
+                    TypeCheckerError.DuplicateTypeParameter(Identifier("T1")),
                 ]
             },
             {
-                "duplicate function generic argument",
+                "duplicate function generic parameter",
                 "fn MyFn<T, T, T>() {}",
                 [
-                    TypeCheckerError.DuplicateGenericArgument(Identifier("T")),
-                    TypeCheckerError.DuplicateGenericArgument(Identifier("T")),
+                    TypeCheckerError.DuplicateTypeParameter(Identifier("T")),
+                    TypeCheckerError.DuplicateTypeParameter(Identifier("T")),
                 ]
             },
             {
@@ -1978,27 +1978,27 @@ public class TypeCheckerTests
                         value: MethodCall(VariableAccessor("ok"), IntLiteral(1))), "TError")]
             },
             {
-                "incorrect number of type parameters",
+                "incorrect number of type arguments",
                 "var a: result::<string>",
                 [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default,1, 2)]
             },
             {
-                "incorrect number of type parameters",
+                "incorrect number of type arguments",
                 "union MyUnion{A} var a = MyUnion::<string>::A",
                 [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 0)]
             },
             {
-                "incorrect number of type parameters",
+                "incorrect number of type arguments",
                 "class MyClass{} var a = new MyClass::<string>{}",
                 [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 0)]
             },
             {
-                "incorrect number of type parameters",
+                "incorrect number of type arguments",
                 "class MyClass<T, T2>{} var a = new MyClass::<string>{}",
                 [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 2)]
             },
             {
-                "too many type parameters",
+                "too many type arguments",
                 "var a: result::<string, string, string>",
                 [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 3, 2)]
             },
@@ -2008,7 +2008,7 @@ public class TypeCheckerTests
                 [TypeCheckerError.UnresolvedInferredGenericType(MethodCall(GenericInstantiation(VariableAccessor("Fn1"))), "T1")]
             },
             {
-                "too many function type parameters",
+                "too many function type arguments",
                 "fn Fn1<T1>(){} Fn1::<string, bool>();",
                 [TypeCheckerError.IncorrectNumberOfTypeArguments(
                     SourceRange.Default,
@@ -2016,7 +2016,7 @@ public class TypeCheckerTests
                     1)]
             },
             {
-                "unresolved function type parameters",
+                "unresolved function type argument",
                 "fn Fn1<T1>(){} Fn1();",
                 [TypeCheckerError.UnresolvedInferredGenericType(MethodCall(VariableAccessor("Fn1")), "T1")]
             },
@@ -2074,27 +2074,27 @@ public class TypeCheckerTests
                     fn MyFn<T>(){}
                 }
                 """,
-                [TypeCheckerError.ConflictingTypeArgument(Identifier("T"))]
+                [TypeCheckerError.ConflictingTypeParameter(Identifier("T"))]
             },
             {
                 "duplicate generic type in class definition",
                 "class MyClass<T, T>{}",
-                [TypeCheckerError.DuplicateGenericArgument(Identifier("T"))]
+                [TypeCheckerError.DuplicateTypeParameter(Identifier("T"))]
             },
             {
                 "duplicate generic type in class definition",
                 "class MyClass<T, T, T1, T1>{}",
                 [
-                    TypeCheckerError.DuplicateGenericArgument(Identifier("T")),
-                    TypeCheckerError.DuplicateGenericArgument(Identifier("T1")),
+                    TypeCheckerError.DuplicateTypeParameter(Identifier("T")),
+                    TypeCheckerError.DuplicateTypeParameter(Identifier("T1")),
                 ]
             },
             {
                 "duplicate generic type in class definition",
                 "class MyClass<T, T, T>{}",
                 [
-                    TypeCheckerError.DuplicateGenericArgument(Identifier("T")),
-                    TypeCheckerError.DuplicateGenericArgument(Identifier("T")),
+                    TypeCheckerError.DuplicateTypeParameter(Identifier("T")),
+                    TypeCheckerError.DuplicateTypeParameter(Identifier("T")),
                 ]
             },
             {
@@ -2103,7 +2103,7 @@ public class TypeCheckerTests
                 class MyClass{}
                 class OtherClass<MyClass>{}
                 """,
-                [TypeCheckerError.TypeArgumentConflictsWithType(Identifier("MyClass"))]
+                [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
             },
             {
                 "Generic type conflicts with existing type",
@@ -2111,7 +2111,7 @@ public class TypeCheckerTests
                 class MyClass{}
                 fn MyFn<MyClass>{}
                 """,
-                [TypeCheckerError.TypeArgumentConflictsWithType(Identifier("MyClass"))]
+                [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
             },
             {
                 "Generic type conflicts with existing type",
@@ -2119,7 +2119,7 @@ public class TypeCheckerTests
                 class MyClass{}
                 class SomeClass {fn MyFn<MyClass>{}}
                 """,
-                [TypeCheckerError.TypeArgumentConflictsWithType(Identifier("MyClass"))]
+                [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
             },
             {
                 "Generic type conflicts with existing type",
@@ -2127,7 +2127,7 @@ public class TypeCheckerTests
                 class MyClass{}
                 union SomeUnion {fn MyFn<MyClass>{}}
                 """,
-                [TypeCheckerError.TypeArgumentConflictsWithType(Identifier("MyClass"))]
+                [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
             },
             {
                 "Generic type conflicts with existing type",
@@ -2135,7 +2135,7 @@ public class TypeCheckerTests
                 class MyClass{}
                 fn SomeFn {fn MyFn<MyClass>{}}
                 """,
-                [TypeCheckerError.TypeArgumentConflictsWithType(Identifier("MyClass"))]
+                [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
             },
             {
                 "Generic type conflicts with existing type",
@@ -2143,7 +2143,7 @@ public class TypeCheckerTests
                 class MyClass{}
                 union MyUnion<MyClass>{}
                 """,
-                [TypeCheckerError.TypeArgumentConflictsWithType(Identifier("MyClass"))]
+                [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
             },
             {
                 "Generic type conflicts with existing type",
@@ -2151,7 +2151,7 @@ public class TypeCheckerTests
                 union OtherUnion{}
                 union MyUnion<OtherUnion>{}
                 """,
-                [TypeCheckerError.TypeArgumentConflictsWithType(Identifier("OtherUnion"))]
+                [TypeCheckerError.TypeParameterConflictsWithType(Identifier("OtherUnion"))]
             },
             {
                 "Generic type conflicts with existing type",
@@ -2159,7 +2159,7 @@ public class TypeCheckerTests
                 class OtherClass<MyClass>{}
                 class MyClass{}
                 """,
-                [TypeCheckerError.TypeArgumentConflictsWithType(Identifier("MyClass"))]
+                [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
             },
             {
                 "incorrect return type",
@@ -2441,13 +2441,13 @@ public class TypeCheckerTests
             [
                 new GenericTypeReference
                 {
-                    GenericName = UnionSignature.Result.GenericParameters[0].GenericName,
+                    GenericName = UnionSignature.Result.TypeParameters[0].GenericName,
                     OwnerType = UnionSignature.Result,
                     ResolvedType = value
                 },
                 new GenericTypeReference
                 {
-                    GenericName = UnionSignature.Result.GenericParameters[1].GenericName,
+                    GenericName = UnionSignature.Result.TypeParameters[1].GenericName,
                     OwnerType = UnionSignature.Result,
                     ResolvedType = error
                 },

@@ -45,7 +45,7 @@ public class ResolvedTypeChecker
             throw new Exception("Union Signature was not created");
         }
 
-        var unionGenerics = union.Signature.GenericParameters.ToHashSet();
+        var unionGenerics = union.Signature.TypeParameters.ToHashSet();
         foreach (var function in union.Functions)
         {
             CheckFunction(function, unionGenerics);
@@ -59,7 +59,7 @@ public class ResolvedTypeChecker
             throw new InvalidOperationException("Class signature was not created");
         }
 
-        var classGenerics = programClass.Signature.GenericParameters.ToHashSet();
+        var classGenerics = programClass.Signature.TypeParameters.ToHashSet();
         foreach (var function in programClass.Functions)
         {
             CheckFunction(function, classGenerics);
@@ -81,7 +81,7 @@ public class ResolvedTypeChecker
         }
 
         HashSet<TypeChecker.GenericTypeReference> innerGenerics =
-            [..function.Signature.GenericParameters, ..expectedGenerics];
+            [..function.Signature.TypeParameters, ..expectedGenerics];
         foreach (var blockFunction in function.Block.Functions)
         {
             CheckFunction(blockFunction, innerGenerics);
@@ -286,7 +286,7 @@ public class ResolvedTypeChecker
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         CheckExpression(methodCall.Method, expectedGenerics);
-        foreach (var parameter in methodCall.ParameterList)
+        foreach (var parameter in methodCall.ArgumentList)
         {
             CheckExpression(parameter, expectedGenerics);
         }
