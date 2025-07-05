@@ -3,9 +3,19 @@
 namespace NewLang.Core;
 
 // todo: this should probably be able to be a visitor
-public static class ResolvedTypeChecker
+public class ResolvedTypeChecker
 {
-    public static void CheckAllExpressionsHaveResolvedTypes(LangProgram program)
+    private readonly List<TypeCheckerError> _errors = [];
+
+    public static IReadOnlyList<TypeCheckerError> CheckAllExpressionsHaveResolvedTypes(LangProgram program)
+    {
+        var checker = new ResolvedTypeChecker();
+        checker.InnerCheckAllExpressionsHaveResolvedTypes(program);
+
+        return checker._errors;
+    }
+
+    private void InnerCheckAllExpressionsHaveResolvedTypes(LangProgram program)
     {
         foreach (var function in program.Functions)
         {
@@ -28,7 +38,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckUnion(ProgramUnion union)
+    private void CheckUnion(ProgramUnion union)
     {
         if (union.Signature is null)
         {
@@ -42,7 +52,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckClass(ProgramClass programClass)
+    private void CheckClass(ProgramClass programClass)
     {
         if (programClass.Signature is null)
         {
@@ -63,7 +73,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckFunction(LangFunction function, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckFunction(LangFunction function, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         if (function.Signature is null)
         {
@@ -83,7 +93,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckExpression(IExpression expression,
+    private void CheckExpression(IExpression expression,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         if (expression.ResolvedType is null)
@@ -148,7 +158,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckMatchExpression(MatchExpression matchExpression,
+    private void CheckMatchExpression(MatchExpression matchExpression,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         CheckExpression(matchExpression.Value, expectedGenerics);
@@ -161,7 +171,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckTupleExpression(TupleExpression tupleExpression,
+    private void CheckTupleExpression(TupleExpression tupleExpression,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         foreach (var element in tupleExpression.Values)
@@ -170,13 +180,13 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckMatchesExpression(MatchesExpression matchesExpression,
+    private void CheckMatchesExpression(MatchesExpression matchesExpression,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         CheckExpression(matchesExpression.ValueExpression, expectedGenerics);
     }
 
-    private static void CheckUnionStructInitializer(UnionStructVariantInitializer unionInitializer,
+    private void CheckUnionStructInitializer(UnionStructVariantInitializer unionInitializer,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         foreach (var initializer in unionInitializer.FieldInitializers)
@@ -188,7 +198,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckUnaryOperator(UnaryOperator unaryOperator,
+    private void CheckUnaryOperator(UnaryOperator unaryOperator,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         if (unaryOperator.Operand is not null)
@@ -197,19 +207,19 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckGenericInstantiation(GenericInstantiation genericInstantiation,
+    private void CheckGenericInstantiation(GenericInstantiation genericInstantiation,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         CheckExpression(genericInstantiation.Value, expectedGenerics);
     }
 
-    private static void CheckMemberAccess(MemberAccess memberAccess,
+    private void CheckMemberAccess(MemberAccess memberAccess,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         CheckExpression(memberAccess.Owner, expectedGenerics);
     }
 
-    private static void CheckObjectInitializer(ObjectInitializer objectInitializer,
+    private void CheckObjectInitializer(ObjectInitializer objectInitializer,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         foreach (var initializer in objectInitializer.FieldInitializers)
@@ -221,7 +231,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckBinaryOperatorExpression(BinaryOperator binaryOperator,
+    private void CheckBinaryOperatorExpression(BinaryOperator binaryOperator,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         if (binaryOperator.Left is not null)
@@ -235,7 +245,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckIfExpression(IfExpression ifExpression,
+    private void CheckIfExpression(IfExpression ifExpression,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         CheckExpression(ifExpression.CheckExpression, expectedGenerics);
@@ -258,7 +268,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckBlock(Block blockExpressionBlock,
+    private void CheckBlock(Block blockExpressionBlock,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         foreach (var function in blockExpressionBlock.Functions)
@@ -272,7 +282,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckMethodCall(MethodCall methodCall,
+    private void CheckMethodCall(MethodCall methodCall,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         CheckExpression(methodCall.Method, expectedGenerics);
@@ -282,7 +292,7 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckMethodReturn(MethodReturnExpression methodReturnExpression,
+    private void CheckMethodReturn(MethodReturnExpression methodReturnExpression,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         if (methodReturnExpression.MethodReturn.Expression is not null)
@@ -291,16 +301,29 @@ public static class ResolvedTypeChecker
         }
     }
 
-    private static void CheckVariableDeclaration(VariableDeclarationExpression variableDeclarationExpression,
+    private void CheckVariableDeclaration(VariableDeclarationExpression variableDeclarationExpression,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         if (variableDeclarationExpression.VariableDeclaration.Value is { } value)
         {
             CheckExpression(value, expectedGenerics);
         }
+
+        if (variableDeclarationExpression.VariableDeclaration.Variable is not { } variable)
+        {
+            throw new InvalidOperationException("Expected variable to be created");
+        }
+
+        if (variable.Type is not { } variableType)
+        {
+            _errors.Add(TypeCheckerError.UnresolvedInferredVariableType(variable.Name));
+            return;
+        }
+        
+        CheckTypeReference(variableType, variableDeclarationExpression, expectedGenerics);
     }
 
-    private static void CheckTypeReference(TypeChecker.ITypeReference typeReference, IExpression expression,
+    private void CheckTypeReference(TypeChecker.ITypeReference typeReference, IExpression expression,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         switch (typeReference)
@@ -334,14 +357,17 @@ public static class ResolvedTypeChecker
             }
             case TypeChecker.GenericTypeReference genericTypeReference:
             {
-                if (!expectedGenerics.Contains(genericTypeReference) && genericTypeReference.ResolvedType is null)
+                if (!expectedGenerics.Contains(genericTypeReference)
+                    && genericTypeReference.ResolvedType is null
+                    && _erroredGenerics.Add(genericTypeReference))
                 {
-                    throw new InvalidOperationException(
-                        $"Could not infer type {genericTypeReference} for {expression}");
+                    _errors.Add(TypeCheckerError.UnresolvedInferredGenericType(expression, genericTypeReference.GenericName));
                 }
 
                 break;
             }
         }
     }
+
+    private readonly HashSet<TypeChecker.GenericTypeReference> _erroredGenerics = [];
 }

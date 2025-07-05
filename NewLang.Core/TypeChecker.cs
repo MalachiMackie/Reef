@@ -81,10 +81,7 @@ public class TypeChecker
         return new ScopeDisposable(PopScope);
     }
 
-    private void PopScope()
-    {
-        _typeCheckingScopes.Pop();
-    }
+    private void PopScope() => _typeCheckingScopes.Pop();
 
     private void TypeCheckInner()
     {
@@ -140,7 +137,7 @@ public class TypeChecker
                     ExpectType(valueType, fieldTypeReference, classGenericPlaceholders, field.InitializerValue.SourceRange);
 
                     staticFieldVariables.Add(new Variable(
-                        field.Name.StringValue,
+                        field.Name,
                         fieldTypeReference,
                         // field will be instantiated by the time it is accessed
                         true,
@@ -154,7 +151,7 @@ public class TypeChecker
                     }
 
                     instanceFieldVariables.Add(new Variable(
-                        field.Name.StringValue,
+                        field.Name,
                         fieldTypeReference,
                         // field will be instantiated by the time it is accessed
                         true,
@@ -168,7 +165,7 @@ public class TypeChecker
                 // static functions only have access to static fields
                 foreach (var variable in staticFieldVariables)
                 {
-                    AddScopedVariable(variable.Name, variable);
+                    AddScopedVariable(variable.Name.StringValue, variable);
                 }
 
                 foreach (var function in @class.Functions.Where(x => x.StaticModifier is not null))
@@ -185,7 +182,7 @@ public class TypeChecker
                 // instance functions have access to both instance and static fields
                 foreach (var variable in instanceFieldVariables.Concat(staticFieldVariables))
                 {
-                    AddScopedVariable(variable.Name, variable);
+                    AddScopedVariable(variable.Name.StringValue, variable);
                 }
 
                 foreach (var function in @class.Functions.Where(x => x.StaticModifier is null))
@@ -212,7 +209,7 @@ public class TypeChecker
 
         if (_errors.Count == 0)
         {
-            ResolvedTypeChecker.CheckAllExpressionsHaveResolvedTypes(_program);
+            _errors.AddRange(ResolvedTypeChecker.CheckAllExpressionsHaveResolvedTypes(_program));
         }
     }
 
@@ -466,7 +463,7 @@ public class TypeChecker
         using var _ = PushScope(null, fnSignature, fnSignature.ReturnType);
         foreach (var parameter in fnSignature.Arguments.Values)
         {
-            AddScopedVariable(parameter.Name, new Variable(
+            AddScopedVariable(parameter.Name.StringValue, new Variable(
                 parameter.Name,
                 parameter.Type,
                 true,
@@ -530,10 +527,10 @@ public class TypeChecker
 
         foreach (var parameter in fn.Parameters)
         {
-            var paramName = parameter.Identifier.StringValue;
+            var paramName = parameter.Identifier;
             var type = parameter.Type is null ? UnknownType.Instance : GetTypeReference(parameter.Type, innerGenericPlaceholders);
             
-            if (!parameters.TryAdd(paramName, new FunctionArgument(paramName, type, parameter.MutabilityModifier is not null)))
+            if (!parameters.TryAdd(paramName.StringValue, new FunctionArgument(paramName, type, parameter.MutabilityModifier is not null)))
             {
                 _errors.Add(TypeCheckerError.DuplicateFunctionArgument(parameter.Identifier, fn.Name));
             }
@@ -738,15 +735,15 @@ public class TypeChecker
                     }
                 }
 
-                if (variantPattern.VariableName is { StringValue: var variableName })
+                if (variantPattern.VariableName is {} variableName)
                 {
-                    patternVariables.Add(variableName);
+                    patternVariables.Add(variableName.StringValue);
                     var variable = new Variable(
                         variableName,
                         patternUnionType,
                         false,
                         false);
-                    if (!TryAddScopedVariable(variableName, variable))
+                    if (!TryAddScopedVariable(variableName.StringValue, variable))
                     {
                         throw new InvalidOperationException($"Duplicate variable {variableName}");
                     }
@@ -786,7 +783,7 @@ public class TypeChecker
                         {
                             patternVariables.Add(fieldName.StringValue);
                             var variable = new Variable(
-                                fieldName.StringValue,
+                                fieldName,
                                 fieldType,
                                 false,
                                 false);
@@ -812,15 +809,15 @@ public class TypeChecker
                     }
                 }
 
-                if (classPattern.VariableName is { StringValue: var variableName })
+                if (classPattern.VariableName is {} variableName)
                 {
-                    patternVariables.Add(variableName);
+                    patternVariables.Add(variableName.StringValue);
                     var variable = new Variable(
                         variableName,
                         patternType,
                         false,
                         false);
-                    if (!TryAddScopedVariable(variableName, variable))
+                    if (!TryAddScopedVariable(variableName.StringValue, variable))
                     {
                         throw new InvalidOperationException($"Duplicate variable {variableName}");
                     }
@@ -870,7 +867,7 @@ public class TypeChecker
                         patternVariables.Add(fieldName.StringValue);
 
                         var variable = new Variable(
-                            fieldName.StringValue,
+                            fieldName,
                             fieldType,
                             false,
                             false);
@@ -885,15 +882,15 @@ public class TypeChecker
                     }
                 }
 
-                if (structVariantPattern.VariableName is { StringValue: var variableName })
+                if (structVariantPattern.VariableName is {} variableName)
                 {
-                    patternVariables.Add(variableName);
+                    patternVariables.Add(variableName.StringValue);
                     var variable = new Variable(
                         variableName,
                         patternType,
                         false,
                         false);
-                    if (!TryAddScopedVariable(variableName, variable))
+                    if (!TryAddScopedVariable(variableName.StringValue, variable))
                     {
                         throw new InvalidOperationException($"Duplicate variable {variableName}");
                     }
@@ -935,15 +932,15 @@ public class TypeChecker
                         TypeCheckPattern(tupleMemberType, tupleMemberPattern, genericPlaceholders));
                 }
 
-                if (unionTupleVariantPattern.VariableName is { StringValue: var variableName })
+                if (unionTupleVariantPattern.VariableName is {} variableName)
                 {
-                    patternVariables.Add(variableName);
+                    patternVariables.Add(variableName.StringValue);
                     var variable = new Variable(
                         variableName,
                         patternType,
                         false,
                         false);
-                    if (!TryAddScopedVariable(variableName, variable))
+                    if (!TryAddScopedVariable(variableName.StringValue, variable))
                     {
                         throw new InvalidOperationException($"Duplicate variable {variableName}");
                     }
@@ -951,27 +948,27 @@ public class TypeChecker
 
                 break;
             }
-            case VariableDeclarationPattern { VariableName.StringValue: var variableName }:
+            case VariableDeclarationPattern { VariableName: var variableName }:
             {
-                patternVariables.Add(variableName);
+                patternVariables.Add(variableName.StringValue);
                 var variable = new Variable(
                     variableName,
                     typeReference,
                     false,
                     false);
-                if (!TryAddScopedVariable(variableName, variable))
+                if (!TryAddScopedVariable(variableName.StringValue, variable))
                 {
                     throw new InvalidOperationException($"Duplicate variable {variableName}");
                 }
 
                 break;
             }
-            case TypePattern { Type: var typeIdentifier, VariableName.StringValue: var variableName }:
+            case TypePattern { Type: var typeIdentifier, VariableName: {} variableName }:
             {
                 var type = GetTypeReference(typeIdentifier, genericPlaceholders);
-                patternVariables.Add(variableName);
+                patternVariables.Add(variableName.StringValue);
                 var variable = new Variable(variableName, type, Instantiated: false, Mutable: false);
-                if (!TryAddScopedVariable(variableName, variable))
+                if (!TryAddScopedVariable(variableName.StringValue, variable))
                 {
                     throw new InvalidOperationException($"Duplicate variable {variableName}");
                 }
@@ -1412,7 +1409,7 @@ public class TypeChecker
             {
                 if (report)
                 {
-                    _errors.Add(TypeCheckerError.NonMutableAssignment(variable.Name,
+                    _errors.Add(TypeCheckerError.NonMutableAssignment(variable.Name.StringValue,
                         new SourceRange(valueToken.SourceSpan, valueToken.SourceSpan)));
                 }
                 return false;
@@ -1769,7 +1766,9 @@ public class TypeChecker
         {
             var name = i.ToString();
             var member = tupleVariant.TupleMembers[i];
-            arguments.Add(name, new FunctionArgument(name, member, Mutable: false));
+            // use default source span here because we don't actually have a source span
+            var nameToken = Token.Identifier(name, SourceSpan.Default);
+            arguments.Add(name, new FunctionArgument(nameToken, member, Mutable: false));
         }
 
         var signature = new FunctionSignature(
@@ -1810,19 +1809,20 @@ public class TypeChecker
         VariableDeclarationExpression expression,
         HashSet<GenericTypeReference> genericPlaceholders)
     {
-        var varName = expression.VariableDeclaration.VariableNameToken.StringValue;
-        if (VariableIsDefined(varName))
+        var varName = expression.VariableDeclaration.VariableNameToken;
+        if (VariableIsDefined(varName.StringValue))
         {
             throw new InvalidOperationException(
                 $"Variable with name {varName} already exists");
         }
 
+        Variable? variable = null;
         switch (expression.VariableDeclaration)
         {
             case { Value: null, Type: null, MutabilityModifier: var mutModifier }:
             {
-                AddScopedVariable(varName, new Variable(
-                    varName, null, Instantiated: false, Mutable: mutModifier is not null));
+                variable = new Variable(
+                    varName, null, Instantiated: false, Mutable: mutModifier is not null);
                 break;
             }
             case { Value: { } value, Type: var type, MutabilityModifier: var mutModifier }:
@@ -1835,18 +1835,22 @@ public class TypeChecker
                     ExpectExpressionType(expectedType, value, genericPlaceholders);
                 }
 
-                AddScopedVariable(varName, new Variable(varName, valueType, true, mutModifier is not null));
-
+                variable = new Variable(varName, valueType, true, mutModifier is not null);
                 break;
             }
             case { Value: null, Type: { } type, MutabilityModifier: var mutModifier }:
             {
                 var langType = GetTypeReference(type, genericPlaceholders);
-                AddScopedVariable(varName, new Variable(varName, langType, false, mutModifier is not null));
-
+                variable = new Variable(varName, langType, false, mutModifier is not null);
                 break;
             }
         }
+
+        if (variable is not null)
+        {
+            AddScopedVariable(varName.StringValue, variable);
+        }
+        expression.VariableDeclaration.Variable = variable;
 
         // variable declaration return type is always unit, regardless of the variable type
         return InstantiatedClass.Unit;
@@ -2166,7 +2170,7 @@ public class TypeChecker
         {
             CurrentScopeVariables.Add(name, variable);
         }
-
+        
         public bool ContainsVariable(string name)
         {
             return CurrentScopeVariables.ContainsKey(name) || (ParentScope?.ContainsVariable(name) ?? false);
@@ -2194,7 +2198,7 @@ public class TypeChecker
         }
     }
 
-    private record Variable(string Name, ITypeReference? Type, bool Instantiated, bool Mutable)
+    public record Variable(StringToken Name, ITypeReference? Type, bool Instantiated, bool Mutable)
     {
         public bool Instantiated { get; set; } = Instantiated;
         public ITypeReference? Type { get; set; } = Type;
@@ -2648,7 +2652,7 @@ public class TypeChecker
         public string Name { get; } = name;
     }
 
-    public record FunctionArgument(string Name, ITypeReference Type, bool Mutable);
+    public record FunctionArgument(StringToken Name, ITypeReference Type, bool Mutable);
 
     public class UnionSignature : ITypeSignature
     {

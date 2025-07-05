@@ -35,13 +35,7 @@ public class TypeCheckerTests
     public void SingleTest()
     {
         const string src =
-                """
-                var b;
-                if (true) {
-                    b = "";
-                }
-                var a: string = b;
-                """;
+                "var b;";
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
@@ -946,16 +940,6 @@ public class TypeCheckerTests
                 [MismatchedTypes(GenericTypeReference("T2"), GenericTypeReference("T"))]
             },
             {
-                "Unresolved inferred function generic",
-                """
-                fn SomeFn<T>() {
-                }
-
-                SomeFn();
-                """,
-                [TypeCheckerError.UnresolvedInferredType()]
-            },
-            {
                 "incompatible inferred types",
                 """
                 var mut a = ok(1);
@@ -968,11 +952,6 @@ public class TypeCheckerTests
                 "incompatible inferred result type",
                 "var a: result::<int, string> = error(1);",
                 [MismatchedTypes(Result(Int, String), Result(Int, Int))]
-            },
-            {
-                "missing inferred result type parameter",
-                "var a = ok(1);",
-                [TypeCheckerError.UnresolvedInferredType()]
             },
             {
                 "this used outside of class instance",
@@ -1774,7 +1753,7 @@ public class TypeCheckerTests
             {
                 "variable declaration without type or assignment never inferred",
                 "var b;",
-                [TypeCheckerError.UnresolvedInferredType()]
+                [TypeCheckerError.UnresolvedInferredVariableType(Identifier("b"))]
             },
             {
                 "variable declaration without type or assignment never inferred",
@@ -1978,12 +1957,25 @@ public class TypeCheckerTests
             {
                 "unresolved inferred types",
                 "var a: result::<>",
-                [TypeCheckerError.UnresolvedInferredType()]
+                [
+                    TypeCheckerError.UnresolvedInferredGenericType(VariableDeclaration("a", type: TypeIdentifier("result")), "TValue"),
+                    TypeCheckerError.UnresolvedInferredGenericType(VariableDeclaration("a", type: TypeIdentifier("result")), "TError"),
+                ]
             },
             {
                 "unresolved inferred types",
                 "var a: result",
-                [TypeCheckerError.UnresolvedInferredType()]
+                [
+                    TypeCheckerError.UnresolvedInferredGenericType(VariableDeclaration("a", type: TypeIdentifier("result")), "TValue"),
+                    TypeCheckerError.UnresolvedInferredGenericType(VariableDeclaration("a", type: TypeIdentifier("result")), "TError"),
+                ]
+            },
+            {
+                "unresolved inferred types",
+                "var a = ok(1)",
+                [TypeCheckerError.UnresolvedInferredGenericType(
+                    VariableDeclaration("a",
+                        value: MethodCall(VariableAccessor("ok"), IntLiteral(1))), "TError")]
             },
             {
                 "incorrect number of type parameters",
@@ -2013,7 +2005,7 @@ public class TypeCheckerTests
             {
                 "unresolved function generic type",
                 "fn Fn1<T1>(){} Fn1::<>();",
-                [TypeCheckerError.UnresolvedInferredType()]
+                [TypeCheckerError.UnresolvedInferredGenericType(MethodCall(GenericInstantiation(VariableAccessor("Fn1"))), "T1")]
             },
             {
                 "too many function type parameters",
@@ -2024,14 +2016,9 @@ public class TypeCheckerTests
                     1)]
             },
             {
-                "Unresolved function type parameter",
-                "fn Fn1<T1>(){} Fn1::<>();",
-                [TypeCheckerError.UnresolvedInferredType()]
-            },
-            {
                 "unresolved function type parameters",
                 "fn Fn1<T1>(){} Fn1();",
-                [TypeCheckerError.UnresolvedInferredType()]
+                [TypeCheckerError.UnresolvedInferredGenericType(MethodCall(VariableAccessor("Fn1")), "T1")]
             },
             {
                 "incorrect type for class initializer field assignment",

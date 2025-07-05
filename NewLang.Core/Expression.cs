@@ -253,6 +253,8 @@ public record VariableDeclaration(
     TypeIdentifier? Type,
     IExpression? Value)
 {
+    public TypeChecker.Variable? Variable { get; set; }
+    
     public override string ToString()
     {
         var sb = new StringBuilder("var ");

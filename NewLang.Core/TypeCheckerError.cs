@@ -31,9 +31,14 @@ public record TypeCheckerError
     public static TypeCheckerError SymbolNotFound(Token symbol) =>
         new(TypeCheckerErrorType.SymbolNotFound, new SourceRange(symbol.SourceSpan, symbol.SourceSpan), $"Symbol {symbol} not found");
 
-    public static TypeCheckerError UnresolvedInferredType()
+    public static TypeCheckerError UnresolvedInferredVariableType(StringToken variableName)
     {
-        return new(TypeCheckerErrorType.UnresolvedInferredType, SourceRange.Default, "");
+        return new(TypeCheckerErrorType.UnresolvedInferredVariableType, new SourceRange(variableName.SourceSpan, variableName.SourceSpan), $"Could not infer type for '{variableName.StringValue}");
+    }
+    
+    public static TypeCheckerError UnresolvedInferredGenericType(IExpression expression, string unresolvedGenericArgument)
+    {
+        return new(TypeCheckerErrorType.UnresolvedInferredGenericType, expression.SourceRange, $"Could not infer generic type arguments {unresolvedGenericArgument}");
     }
 
     public static TypeCheckerError ThisAccessedOutsideOfInstanceMethod(StringToken thisToken)
@@ -235,7 +240,8 @@ public enum TypeCheckerErrorType
     NonMutableMemberAssignment,
     NonMutableMemberOwnerAssignment,
     SymbolNotFound,
-    UnresolvedInferredType,
+    UnresolvedInferredVariableType,
+    UnresolvedInferredGenericType,
     ThisAccessedOutsideOfInstanceMethod,
     MatchNonExhaustive,
     AccessUninitializedVariable,

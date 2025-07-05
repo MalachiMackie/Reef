@@ -265,9 +265,9 @@ public static class ExpressionHelpers
             SourceRange.Default);
     }
 
-    public static TypeIdentifier TypeIdentifier(string typeName)
+    public static TypeIdentifier TypeIdentifier(string typeName, IReadOnlyList<TypeIdentifier>? typeArguments = null)
     {
-        return new TypeIdentifier(Token.Identifier(typeName, SourceSpan.Default), [], SourceRange.Default);
+        return new TypeIdentifier(Token.Identifier(typeName, SourceSpan.Default), typeArguments ?? [], SourceRange.Default);
     }
     
     public static TypePattern TypePattern(TypeIdentifier type, string? variableName = null)
