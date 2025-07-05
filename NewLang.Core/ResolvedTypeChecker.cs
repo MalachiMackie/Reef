@@ -141,8 +141,8 @@ public class ResolvedTypeChecker
             case UnaryOperatorExpression unaryOperatorExpression:
                 CheckUnaryOperator(unaryOperatorExpression.UnaryOperator, expectedGenerics);
                 break;
-            case UnionStructVariantInitializerExpression unionStructVariantInitializerExpression:
-                CheckUnionStructInitializer(unionStructVariantInitializerExpression.UnionInitializer, expectedGenerics);
+            case UnionClassVariantInitializerExpression unionClassVariantInitializerExpression:
+                CheckUnionClassVariantInitializer(unionClassVariantInitializerExpression.UnionInitializer, expectedGenerics);
                 break;
             case MatchesExpression matchesExpression:
                 CheckMatchesExpression(matchesExpression, expectedGenerics);
@@ -186,7 +186,7 @@ public class ResolvedTypeChecker
         CheckExpression(matchesExpression.ValueExpression, expectedGenerics);
     }
 
-    private void CheckUnionStructInitializer(UnionStructVariantInitializer unionInitializer,
+    private void CheckUnionClassVariantInitializer(UnionClassVariantInitializer unionInitializer,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         foreach (var initializer in unionInitializer.FieldInitializers)

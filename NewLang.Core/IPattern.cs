@@ -18,7 +18,7 @@ public record UnionTupleVariantPattern(
     StringToken? VariableName,
     SourceRange SourceRange) : IPattern;
 
-public record UnionStructVariantPattern(
+public record UnionClassVariantPattern(
     TypeIdentifier Type,
     StringToken VariantName,
     IReadOnlyList<FieldPattern> FieldPatterns,

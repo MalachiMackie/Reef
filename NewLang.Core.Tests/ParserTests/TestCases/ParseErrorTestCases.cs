@@ -1007,7 +1007,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [])
+                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [])
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.Underscore, TokenType.RightBrace)
@@ -1018,7 +1018,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null)])
+                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null)])
                     )], [], [], []),
                 [
                     ParserError.ExpectedPattern(null),
@@ -1030,7 +1030,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null), ("OtherField", null)])
+                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null), ("OtherField", null)])
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(Identifier("OtherField"), TokenType.Comma, TokenType.RightBrace)
@@ -1041,7 +1041,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null)])
+                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null)])
                     )], [], [], []),
                 [
                     ParserError.ExpectedPattern(Token.Semicolon(SourceSpan.Default)),
@@ -1053,7 +1053,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [])
+                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [])
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.Identifier)
@@ -1064,7 +1064,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [], "c")
+                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [], "c")
                     )], [], [], []),
                 []
             ),
@@ -1073,7 +1073,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null)], "c", fieldsDiscarded: true)
+                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null)], "c", fieldsDiscarded: true)
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.RightBrace)
@@ -1084,7 +1084,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null)], "c", fieldsDiscarded: true)
+                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null)], "c", fieldsDiscarded: true)
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.RightBrace),
@@ -1096,7 +1096,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [], "c", fieldsDiscarded: true)
+                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [], "c", fieldsDiscarded: true)
                     )], [], [], []),
                 []
             ),
@@ -1105,7 +1105,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionStructVariantPattern(TypeIdentifier("A"), "C", [])
+                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [])
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)
@@ -1515,7 +1515,7 @@ public static class ParseErrorTestCases
             (
                 "new A::B",
                 new LangProgram([
-                    UnionStructVariantInitializer(TypeIdentifier("A"), "B")
+                    UnionClassVariantInitializer(TypeIdentifier("A"), "B")
                 ], [], [], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.LeftBrace)
@@ -1523,20 +1523,20 @@ public static class ParseErrorTestCases
             ),
             (
                 "new A::B {",
-                new LangProgram([UnionStructVariantInitializer(TypeIdentifier("A"), "B")], [], [], []),
+                new LangProgram([UnionClassVariantInitializer(TypeIdentifier("A"), "B")], [], [], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.RightBrace)
                 ]
             ),
             (
                 "new A::B {}",
-                new LangProgram([UnionStructVariantInitializer(TypeIdentifier("A"), "B")], [], [], []),
+                new LangProgram([UnionClassVariantInitializer(TypeIdentifier("A"), "B")], [], [], []),
                 [
                 ]
             ),
             (
                 "new A::B {SomeField",
-                new LangProgram([UnionStructVariantInitializer(TypeIdentifier("A"), "B", [FieldInitializer("SomeField")])], [], [], []),
+                new LangProgram([UnionClassVariantInitializer(TypeIdentifier("A"), "B", [FieldInitializer("SomeField")])], [], [], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.Equals),
                     ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma)
@@ -1544,7 +1544,7 @@ public static class ParseErrorTestCases
             ),
             (
                 "new A::B {SomeField=",
-                new LangProgram([UnionStructVariantInitializer(TypeIdentifier("A"), "B", [FieldInitializer("SomeField")])], [], [], []),
+                new LangProgram([UnionClassVariantInitializer(TypeIdentifier("A"), "B", [FieldInitializer("SomeField")])], [], [], []),
                 [
                     ParserError.ExpectedExpression(null),
                     ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma)
@@ -1552,19 +1552,19 @@ public static class ParseErrorTestCases
             ),
             (
                 "new A::B {SomeField=a",
-                new LangProgram([UnionStructVariantInitializer(TypeIdentifier("A"), "B", [FieldInitializer("SomeField", VariableAccessor("a"))])], [], [], []),
+                new LangProgram([UnionClassVariantInitializer(TypeIdentifier("A"), "B", [FieldInitializer("SomeField", VariableAccessor("a"))])], [], [], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma)
                 ]
             ),
             (
                 "new A::B {SomeField=a}",
-                new LangProgram([UnionStructVariantInitializer(TypeIdentifier("A"), "B", [FieldInitializer("SomeField", VariableAccessor("a"))])], [], [], []),
+                new LangProgram([UnionClassVariantInitializer(TypeIdentifier("A"), "B", [FieldInitializer("SomeField", VariableAccessor("a"))])], [], [], []),
                 []
             ),
             (
                 "new A::B {SomeField=a OtherField=b}",
-                new LangProgram([UnionStructVariantInitializer(TypeIdentifier("A"), "B", [
+                new LangProgram([UnionClassVariantInitializer(TypeIdentifier("A"), "B", [
                     FieldInitializer("SomeField", VariableAccessor("a")),
                     FieldInitializer("OtherField", VariableAccessor("b")),
                 ])], [], [], []),
@@ -1574,7 +1574,7 @@ public static class ParseErrorTestCases
             ),
             (
                 "new A::B {SomeField=a, OtherField=b}",
-                new LangProgram([UnionStructVariantInitializer(TypeIdentifier("A"), "B", [
+                new LangProgram([UnionClassVariantInitializer(TypeIdentifier("A"), "B", [
                     FieldInitializer("SomeField", VariableAccessor("a")),
                     FieldInitializer("OtherField", VariableAccessor("b")),
                 ])], [], [], []),

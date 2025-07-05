@@ -43,7 +43,7 @@ public static class ParseTestCases
                             Identifier("a"),
                             null,
                             null,
-                            new UnionStructVariantInitializerExpression(new UnionStructVariantInitializer(
+                            new UnionClassVariantInitializerExpression(new UnionClassVariantInitializer(
                                 new TypeIdentifier(Identifier("MyUnion"),
                                 [
                                     new TypeIdentifier(Identifier("string"), [], SourceRange.Default)
@@ -72,7 +72,7 @@ public static class ParseTestCases
                             [Identifier("T")],
                             [],
                             [
-                                new StructUnionVariant
+                                new ClassUnionVariant
                                 {
                                     Name = Identifier("A"),
                                     Fields =
@@ -107,7 +107,7 @@ public static class ParseTestCases
                             Identifier("a"),
                             null,
                             null,
-                            new UnionStructVariantInitializerExpression(new UnionStructVariantInitializer(
+                            new UnionClassVariantInitializerExpression(new UnionClassVariantInitializer(
                                 new TypeIdentifier(Identifier("MyUnion"), [],
                                     SourceRange.Default),
                                 Identifier("A"),
@@ -134,7 +134,7 @@ public static class ParseTestCases
                             [],
                             [],
                             [
-                                new StructUnionVariant
+                                new ClassUnionVariant
                                 {
                                     Name = Identifier("A"),
                                     Fields =
@@ -247,7 +247,7 @@ public static class ParseTestCases
                             Identifier("MyUnion"),
                             [],
                             [],
-                            [new UnitStructUnionVariant(Identifier("A"))])
+                            [new UnitUnionVariant(Identifier("A"))])
                     ])
             ),
             (
@@ -266,7 +266,7 @@ public static class ParseTestCases
                             Identifier("MyUnion"),
                             [],
                             [],
-                            [new UnitStructUnionVariant(Identifier("A"))])
+                            [new UnitUnionVariant(Identifier("A"))])
                     ])
             ),
             (
@@ -287,7 +287,7 @@ public static class ParseTestCases
                             [],
                             [],
                             [
-                                new UnitStructUnionVariant(Identifier("A")),
+                                new UnitUnionVariant(Identifier("A")),
                                 new TupleUnionVariant(
                                     Identifier("B"),
                                     [
@@ -325,7 +325,7 @@ public static class ParseTestCases
                             [],
                             [],
                             [
-                                new StructUnionVariant
+                                new ClassUnionVariant
                                 {
                                     Name = Identifier("A"),
                                     Fields =

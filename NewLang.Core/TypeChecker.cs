@@ -314,9 +314,9 @@ public class TypeChecker
 
                 variants.Add(variant switch
                 {
-                    UnitStructUnionVariant => new NoMembersUnionVariant { Name = variant.Name.StringValue },
+                    UnitUnionVariant => new NoMembersUnionVariant { Name = variant.Name.StringValue },
                     Core.TupleUnionVariant tupleVariant => TypeCheckTupleVariant(tupleVariant),
-                    StructUnionVariant structUnionVariant => TypeCheckClassVariant(structUnionVariant),
+                    Core.ClassUnionVariant classVariant => TypeCheckUnionClassVariant(classVariant),
                     _ => throw new UnreachableException()
                 });
 
@@ -332,14 +332,14 @@ public class TypeChecker
                     };
                 }
 
-                ClassUnionVariant TypeCheckClassVariant(StructUnionVariant structVariant)
+                ClassUnionVariant TypeCheckUnionClassVariant(Core.ClassUnionVariant classVariant)
                 {
                     var fields = new List<TypeField>();
-                    foreach (var field in structVariant.Fields)
+                    foreach (var field in classVariant.Fields)
                     {
                         if (fields.Any(x => x.Name == field.Name.StringValue))
                         {
-                            _errors.Add(TypeCheckerError.DuplicateFieldInUnionStructVariant(union.Name, structVariant.Name, field.Name));
+                            _errors.Add(TypeCheckerError.DuplicateFieldInUnionClassVariant(union.Name, classVariant.Name, field.Name));
                         }
 
                         if (field.AccessModifier is not null)
@@ -366,7 +366,7 @@ public class TypeChecker
                     return new ClassUnionVariant
                     {
                         Fields = fields,
-                        Name = structVariant.Name.StringValue
+                        Name = classVariant.Name.StringValue
                     };
                 }
             }
@@ -574,9 +574,9 @@ public class TypeChecker
                 genericInstantiationExpression),
             UnaryOperatorExpression unaryOperatorExpression => TypeCheckUnaryOperator(
                 unaryOperatorExpression.UnaryOperator),
-            UnionStructVariantInitializerExpression unionStructVariantInitializerExpression =>
-                TypeCheckUnionStructInitializer(
-                    unionStructVariantInitializerExpression.UnionInitializer),
+            UnionClassVariantInitializerExpression unionClassVariantInitializerExpression =>
+                TypeCheckUnionClassVariantInitializer(
+                    unionClassVariantInitializerExpression.UnionInitializer),
             MatchesExpression matchesExpression => TypeCheckMatchesExpression(
                 matchesExpression),
             TupleExpression tupleExpression => TypeCheckTupleExpression(tupleExpression),
@@ -652,8 +652,8 @@ public class TypeChecker
                 case UnionVariantPattern { VariantName.StringValue: var variantName }:
                     matchedVariants.Add(variantName);
                     break;
-                case UnionStructVariantPattern { VariantName.StringValue: var structVariantName }:
-                    matchedVariants.Add(structVariantName);
+                case UnionClassVariantPattern { VariantName.StringValue: var classVariantName }:
+                    matchedVariants.Add(classVariantName);
                     break;
                 case UnionTupleVariantPattern { VariantName.StringValue: var tupleVariantName }:
                     matchedVariants.Add(tupleVariantName);
@@ -797,9 +797,9 @@ public class TypeChecker
 
                 break;
             }
-            case UnionStructVariantPattern structVariantPattern:
+            case UnionClassVariantPattern classVariantPattern:
             {
-                var patternType = GetTypeReference(structVariantPattern.Type);
+                var patternType = GetTypeReference(classVariantPattern.Type);
 
                 ExpectType(patternType, typeReference, pattern.SourceRange);
 
@@ -808,31 +808,31 @@ public class TypeChecker
                     throw new InvalidOperationException($"{patternType} is not a union");
                 }
 
-                var variant = union.Variants.FirstOrDefault(x => x.Name == structVariantPattern.VariantName.StringValue)
+                var variant = union.Variants.FirstOrDefault(x => x.Name == classVariantPattern.VariantName.StringValue)
                               ?? throw new InvalidOperationException(
-                                  $"No variant found named {structVariantPattern.VariantName.StringValue}");
+                                  $"No variant found named {classVariantPattern.VariantName.StringValue}");
 
-                if (variant is not ClassUnionVariant structVariant)
+                if (variant is not ClassUnionVariant classVariant)
                 {
-                    throw new InvalidOperationException($"Variant {variant.Name} is not a struct variant");
+                    throw new InvalidOperationException($"Variant {variant.Name} is not a class variant");
                 }
 
-                if (structVariantPattern.FieldPatterns.GroupBy(x => x.FieldName.StringValue).Any(x => x.Count() > 1))
+                if (classVariantPattern.FieldPatterns.GroupBy(x => x.FieldName.StringValue).Any(x => x.Count() > 1))
                 {
                     throw new InvalidOperationException("Duplicate fields found");
                 }
 
-                if (!structVariantPattern.RemainingFieldsDiscarded &&
-                    structVariantPattern.FieldPatterns.Count != structVariant.Fields.Count)
+                if (!classVariantPattern.RemainingFieldsDiscarded &&
+                    classVariantPattern.FieldPatterns.Count != classVariant.Fields.Count)
                 {
-                    _errors.Add(TypeCheckerError.MissingFieldsInStructVariantUnionPattern(
-                        structVariantPattern,
-                        structVariant.Fields.Select(x => x.Name).Except(structVariantPattern.FieldPatterns.Select(x => x.FieldName.StringValue))));
+                    _errors.Add(TypeCheckerError.MissingFieldsInUnionClassVariantPattern(
+                        classVariantPattern,
+                        classVariant.Fields.Select(x => x.Name).Except(classVariantPattern.FieldPatterns.Select(x => x.FieldName.StringValue))));
                 }
 
-                foreach (var (fieldName, fieldPattern) in structVariantPattern.FieldPatterns)
+                foreach (var (fieldName, fieldPattern) in classVariantPattern.FieldPatterns)
                 {
-                    var fieldType = GetUnionStructVariantField(structVariant, fieldName.StringValue);
+                    var fieldType = GetUnionClassVariantField(classVariant, fieldName.StringValue);
 
                     if (fieldPattern is null)
                     {
@@ -854,7 +854,7 @@ public class TypeChecker
                     }
                 }
 
-                if (structVariantPattern.VariableName is {} variableName)
+                if (classVariantPattern.VariableName is {} variableName)
                 {
                     patternVariables.Add(variableName.StringValue);
                     var variable = new Variable(
@@ -954,7 +954,7 @@ public class TypeChecker
         return patternVariables;
     }
 
-    private ITypeReference TypeCheckUnionStructInitializer(UnionStructVariantInitializer initializer)
+    private ITypeReference TypeCheckUnionClassVariantInitializer(UnionClassVariantInitializer initializer)
     {
         var type = GetTypeReference(initializer.UnionType);
 
@@ -974,7 +974,7 @@ public class TypeChecker
 
         if (variant is not ClassUnionVariant classVariant)
         {
-            _errors.Add(TypeCheckerError.UnionStructVariantInitializerNotStructVariant(initializer.VariantIdentifier));
+            _errors.Add(TypeCheckerError.UnionClassVariantInitializerNotClassVariant(initializer.VariantIdentifier));
             return instantiatedUnion;
         }
 
@@ -1111,7 +1111,7 @@ public class TypeChecker
             : GetClassField(classType, stringToken);
     }
 
-    private static ITypeReference GetUnionStructVariantField(ClassUnionVariant variant, string fieldName)
+    private static ITypeReference GetUnionClassVariantField(ClassUnionVariant variant, string fieldName)
     {
         var fieldType = variant.Fields.FirstOrDefault(x => x.Name == fieldName)?.Type
                         ?? throw new InvalidOperationException($"No field named {fieldName}");
@@ -1180,7 +1180,7 @@ public class TypeChecker
                     TupleUnionVariant tupleVariant => GetTupleUnionFunction(tupleVariant, instantiatedUnion),
                     NoMembersUnionVariant => type,
                     ClassUnionVariant => throw new InvalidOperationException(
-                        "Cannot create struct union variant without initializer"),
+                        "Cannot create nunion class variant without initializer"),
                     _ => throw new UnreachableException()
                 };
             }
@@ -1843,7 +1843,7 @@ public class TypeChecker
             // these expression types are considered to provide their own types, rather than deferring to inner expressions
             BinaryOperatorExpression or MatchesExpression or MemberAccessExpression or MethodCallExpression
                 or MethodReturnExpression or ObjectInitializerExpression or StaticMemberAccessExpression
-                or TupleExpression or UnaryOperatorExpression or UnionStructVariantInitializerExpression
+                or TupleExpression or UnaryOperatorExpression or UnionClassVariantInitializerExpression
                 or ValueAccessorExpression or VariableDeclarationExpression => ExpectType(actual.ResolvedType!,
                     expected, actual.SourceRange),
             _ => throw new UnreachableException(actual.GetType().ToString())

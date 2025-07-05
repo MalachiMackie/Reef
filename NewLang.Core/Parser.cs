@@ -559,7 +559,7 @@ public sealed class Parser : IDisposable
     {
         if (!MoveNext())
         {
-            return new UnitStructUnionVariant(variantName);
+            return new UnitUnionVariant(variantName);
         }
 
         if (Current.Type == TokenType.LeftParenthesis)
@@ -586,14 +586,14 @@ public sealed class Parser : IDisposable
         {
             var scope = GetMemberList([MemberType.Field]);
 
-            return new StructUnionVariant
+            return new ClassUnionVariant
             {
                 Name = variantName,
                 Fields = scope.Fields
             };
         }
 
-        return new UnitStructUnionVariant(variantName);
+        return new UnitUnionVariant(variantName);
     }
     
     private bool ExpectCurrentIdentifier([NotNullWhen(true)] out StringToken? identifier, IReadOnlyList<TokenType>? otherExpectedTokens = null)
@@ -1297,7 +1297,7 @@ public sealed class Parser : IDisposable
             }
 
             return variantName is not null
-                ? new UnionStructVariantPattern(type, variantName, newFieldPatterns, discardRemainingFields, variableName,
+                ? new UnionClassVariantPattern(type, variantName, newFieldPatterns, discardRemainingFields, variableName,
                     new SourceRange(start, fieldsLastToken?.SourceSpan ?? leftBrace.SourceSpan))
                 : new ClassPattern(type, newFieldPatterns, discardRemainingFields, variableName,
                     new SourceRange(start, fieldsLastToken?.SourceSpan ?? leftBrace.SourceSpan));
@@ -1558,7 +1558,7 @@ public sealed class Parser : IDisposable
         return Current.Type switch
         {
             TokenType.LeftBrace => GetObjectInitializer(type),
-            TokenType.DoubleColon => GetUnionStructVariantInitializer(type, newToken),
+            TokenType.DoubleColon => GetUnionClassVariantInitializer(type, newToken),
             _ => DefaultCase()
         };
 
@@ -1569,7 +1569,7 @@ public sealed class Parser : IDisposable
         }
     }
 
-    private UnionStructVariantInitializerExpression? GetUnionStructVariantInitializer(
+    private UnionClassVariantInitializerExpression? GetUnionClassVariantInitializer(
         TypeIdentifier type, Token newToken)
     {
         if (!ExpectNextIdentifier(out var variantName))
@@ -1579,8 +1579,8 @@ public sealed class Parser : IDisposable
 
         if (!ExpectNextToken(TokenType.LeftBrace))
         {
-            return new UnionStructVariantInitializerExpression(
-                new UnionStructVariantInitializer(type, variantName, []),
+            return new UnionClassVariantInitializerExpression(
+                new UnionClassVariantInitializer(type, variantName, []),
                 new SourceRange(newToken.SourceSpan, variantName.SourceSpan));
         }
 
@@ -1588,8 +1588,8 @@ public sealed class Parser : IDisposable
 
         var (fieldInitializers, lastToken) = GetFieldInitializers();
 
-        return new UnionStructVariantInitializerExpression(
-            new UnionStructVariantInitializer(type, variantName, fieldInitializers),
+        return new UnionClassVariantInitializerExpression(
+            new UnionClassVariantInitializer(type, variantName, fieldInitializers),
             type.SourceRange with { End = lastToken?.SourceSpan ?? leftBrace.SourceSpan });
     }
 

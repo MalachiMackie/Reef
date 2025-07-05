@@ -67,14 +67,14 @@ public static class PopExpressionTestCases
                 """,
                 new MatchExpression(VariableAccessor("a"), [
                     new MatchArm(
-                        new UnionStructVariantPattern(
+                        new UnionClassVariantPattern(
                             new TypeIdentifier(Identifier("SomeUnion"), [],
                                 SourceRange.Default),
                             Identifier("B"),
                             [
                                 new FieldPattern(
                                     Identifier("SomeField"),
-                                    new UnionStructVariantPattern(
+                                    new UnionClassVariantPattern(
                                         new TypeIdentifier(Identifier("OtherUnion"), [],
                                             SourceRange.Default),
                                         Identifier("C"),
@@ -275,7 +275,7 @@ public static class PopExpressionTestCases
                 "a matches MyUnion::A { MyField }",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionStructVariantPattern(
+                    new UnionClassVariantPattern(
                         new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
                         Identifier("A"),
                         [
@@ -289,7 +289,7 @@ public static class PopExpressionTestCases
                 "a matches MyUnion::A { MyField } var a",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionStructVariantPattern(
+                    new UnionClassVariantPattern(
                         new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
                         Identifier("A"),
                         [
@@ -303,7 +303,7 @@ public static class PopExpressionTestCases
                 "a matches MyUnion::A { MyField, OtherField: var f }",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionStructVariantPattern(
+                    new UnionClassVariantPattern(
                         new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
                         Identifier("A"),
                         [
@@ -348,7 +348,7 @@ public static class PopExpressionTestCases
                 "a matches MyUnion::A { MyField, _ }",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionStructVariantPattern(
+                    new UnionClassVariantPattern(
                         new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
                         Identifier("A"),
                         [
@@ -362,7 +362,7 @@ public static class PopExpressionTestCases
                 "a matches MyUnion::A { MyField: MyUnion::B var f }",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionStructVariantPattern(
+                    new UnionClassVariantPattern(
                         new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
                         Identifier("A"),
                         [
@@ -382,7 +382,7 @@ public static class PopExpressionTestCases
                 "a matches MyUnion::A { MyField: MyUnion::B(var c)  }",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionStructVariantPattern(
+                    new UnionClassVariantPattern(
                         new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
                         Identifier("A"),
                         [

@@ -192,11 +192,11 @@ public static class ExpressionHelpers
         return new ObjectInitializerExpression(new ObjectInitializer(type, fieldInitializers ?? []), SourceRange.Default);
     }
 
-    public static UnionStructVariantInitializerExpression UnionStructVariantInitializer(TypeIdentifier type,
+    public static UnionClassVariantInitializerExpression UnionClassVariantInitializer(TypeIdentifier type,
         string variantName, IReadOnlyList<FieldInitializer>? fieldInitializers = null)
     {
-        return new UnionStructVariantInitializerExpression(
-            new UnionStructVariantInitializer(
+        return new UnionClassVariantInitializerExpression(
+            new UnionClassVariantInitializer(
                 type,
                 Token.Identifier(variantName, SourceSpan.Default),
                 fieldInitializers ?? []
@@ -234,14 +234,14 @@ public static class ExpressionHelpers
             SourceRange.Default);
     }
     
-    public static UnionStructVariantPattern UnionStructVariantPattern(
+    public static UnionClassVariantPattern UnionClassVariantPattern(
         TypeIdentifier unionType,
         string variantName,
         IReadOnlyList<(string, IPattern?)>? patterns = null,
         string? variableName = null,
         bool fieldsDiscarded = false)
     {
-        return new UnionStructVariantPattern(
+        return new UnionClassVariantPattern(
             unionType,
             Token.Identifier(variantName, SourceSpan.Default),
             patterns?.Select(x => new FieldPattern(Token.Identifier(x.Item1, SourceSpan.Default), x.Item2)).ToArray() ?? [],

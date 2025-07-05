@@ -18,9 +18,9 @@ public interface IProgramUnionVariant
 public record TupleUnionVariant(StringToken Name, IReadOnlyList<TypeIdentifier> TupleMembers)
     : IProgramUnionVariant;
 
-public record UnitStructUnionVariant(StringToken Name) : IProgramUnionVariant;
+public record UnitUnionVariant(StringToken Name) : IProgramUnionVariant;
 
-public record StructUnionVariant : IProgramUnionVariant
+public record ClassUnionVariant : IProgramUnionVariant
 {
     public required IReadOnlyList<ClassField> Fields { get; init; }
     public required StringToken Name { get; init; }

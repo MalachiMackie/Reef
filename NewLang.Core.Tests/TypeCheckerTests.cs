@@ -1102,7 +1102,7 @@ public class TypeCheckerTests
                 [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
             },
             {
-                "union struct pattern field used outside of true if check",
+                "union class pattern field used outside of true if check",
                 """
                 union MyUnion { A { field MyField: string } }
                 var a = new MyUnion::A { MyField = "" };
@@ -1319,7 +1319,7 @@ public class TypeCheckerTests
                 [TypeCheckerError.UnknownVariant(Identifier("C"), "MyUnion")]
             },
             {
-                "mismatched type used for field in struct variant pattern",
+                "mismatched type used for field in class variant pattern",
                 """
                 union MyUnion {A { field MyField: string }}
                 var a = new MyUnion::A { MyField = "" };
@@ -1328,7 +1328,7 @@ public class TypeCheckerTests
                 [MismatchedTypes(String, Int)]
             },
             {
-                "variant name not specified for struct union pattern",
+                "variant name not specified for class variant pattern",
                 """
                 union MyUnion {A { field MyField: string }}
                 var a = new MyUnion::A { MyField = "" };
@@ -1337,13 +1337,13 @@ public class TypeCheckerTests
                 [TypeCheckerError.NonClassUsedInClassPattern(TypeIdentifier("MyUnion"))]
             },
             {
-                "struct union pattern does not list all fields",
+                "class variant pattern does not list all fields",
                 """
                 union MyUnion {A { field MyField: string, field OtherField: bool }}
                 var a = new MyUnion::A { MyField = "", OtherField = true };
                 var b: bool = a matches MyUnion::A { MyField: _ };
                 """,
-                [TypeCheckerError.MissingFieldsInStructVariantUnionPattern(UnionStructVariantPattern(
+                [TypeCheckerError.MissingFieldsInUnionClassVariantPattern(UnionClassVariantPattern(
                     TypeIdentifier("MyUnion"),
                     "A"),
                     ["OtherField"])]
@@ -1541,7 +1541,7 @@ public class TypeCheckerTests
                 [MismatchedTypes(String, Int)]
             },
             {
-                "unknown field assigned in struct union initializer",
+                "unknown field assigned in class variant initializer",
                 """
                 union MyUnion {
                     A {
@@ -1555,7 +1555,7 @@ public class TypeCheckerTests
                 [TypeCheckerError.UnknownField(Identifier("MyField_"), "union variant MyUnion::A")]
             },
             {
-                "Unknown variant name used in union struct initializer",
+                "Unknown variant name used in union class variant initializer",
                 """
                 union MyUnion {
                     A {
@@ -1569,7 +1569,7 @@ public class TypeCheckerTests
                 [TypeCheckerError.UnknownVariant(Identifier("B"), "MyUnion")]
             },
             {
-                "incorrect expression type used in union struct initializer",
+                "incorrect expression type used in union class variant initializer",
                 """
                 union MyUnion {
                     A {
@@ -1583,7 +1583,7 @@ public class TypeCheckerTests
                 [MismatchedTypes(String, Int)]
             },
             {
-                "Union struct initializer used for tuple union variant",
+                "Union class variant initializer used for tuple union variant",
                 """
                 union MyUnion {
                     A(string)
@@ -1592,10 +1592,10 @@ public class TypeCheckerTests
                     MyField = 2
                 };
                 """,
-                [TypeCheckerError.UnionStructVariantInitializerNotStructVariant(Identifier("A"))]
+                [TypeCheckerError.UnionClassVariantInitializerNotClassVariant(Identifier("A"))]
             },
             {
-                "incorrect expression type used in union struct initializer",
+                "incorrect expression type used in union class variant initializer",
                 """
                 union MyUnion {
                     A {
@@ -1666,7 +1666,7 @@ public class TypeCheckerTests
                 ]
             },
             {
-                "duplicate field in union struct variant",
+                "duplicate field in union class variant",
                 """
                 union MyUnion {
                     A {
@@ -1675,7 +1675,7 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                [TypeCheckerError.DuplicateFieldInUnionStructVariant(
+                [TypeCheckerError.DuplicateFieldInUnionClassVariant(
                     Identifier("MyUnion"),
                     Identifier("A"),
                     Identifier("MyField"))]

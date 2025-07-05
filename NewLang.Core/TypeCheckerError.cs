@@ -84,11 +84,11 @@ public record TypeCheckerError
             $"{typeIdentifier} cannot be used as a class in a class pattern");
     }
 
-    public static TypeCheckerError MissingFieldsInStructVariantUnionPattern(UnionStructVariantPattern pattern, IEnumerable<string> missingFields)
+    public static TypeCheckerError MissingFieldsInUnionClassVariantPattern(UnionClassVariantPattern pattern, IEnumerable<string> missingFields)
     {
-        return new(TypeCheckerErrorType.MissingFieldsInStructVariantUnionPattern,
+        return new(TypeCheckerErrorType.MissingFieldsInUnionClassVariantPattern,
             pattern.SourceRange,
-            $"Not all fields in union struct variant pattern were listed. Missing fields: {string.Join(", ", missingFields)}");
+            $"Not all fields in union class variant pattern were listed. Missing fields: {string.Join(", ", missingFields)}");
     }
 
     public static TypeCheckerError MissingFieldsInClassPattern(IEnumerable<string> fieldNames, TypeIdentifier className)
@@ -106,12 +106,12 @@ public record TypeCheckerError
                 fieldNameReference.SourceSpan), $"Cannot access private field {fieldNameReference.StringValue}");
     }
 
-    public static TypeCheckerError UnionStructVariantInitializerNotStructVariant(StringToken variantNameToken)
+    public static TypeCheckerError UnionClassVariantInitializerNotClassVariant(StringToken variantNameToken)
     {
         return new(
-            TypeCheckerErrorType.UnionStructVariantInitializerNotStructVariant,
+            TypeCheckerErrorType.UnionClassVariantInitializerNotClassVariant,
             new SourceRange(variantNameToken.SourceSpan, variantNameToken.SourceSpan),
-            $"Variant {variantNameToken.StringValue} is not a union struct variant");
+            $"Variant {variantNameToken.StringValue} is not a union class variant");
     }
 
     public static TypeCheckerError DuplicateVariantName(StringToken variantName)
@@ -129,11 +129,11 @@ public record TypeCheckerError
             name.SourceSpan), $"Type with name {name.StringValue} already defined in scope");
     }
 
-    public static TypeCheckerError DuplicateFieldInUnionStructVariant(StringToken typeName, StringToken variantName, StringToken fieldName)
+    public static TypeCheckerError DuplicateFieldInUnionClassVariant(StringToken typeName, StringToken variantName, StringToken fieldName)
     {
-        return new(TypeCheckerErrorType.DuplicateFieldInUnionStructVariant,
+        return new(TypeCheckerErrorType.DuplicateFieldInUnionClassVariant,
             new SourceRange(fieldName.SourceSpan, fieldName.SourceSpan),
-            $"Duplicate field found in union struct variant. Union Type: {typeName}, Variant: {variantName}, fieldName: {fieldName}");
+            $"Duplicate field found in union class variant. Union Type: {typeName}, Variant: {variantName}, fieldName: {fieldName}");
     }
 
     public static TypeCheckerError ConflictingFunctionName(StringToken functionName)
@@ -243,13 +243,13 @@ public enum TypeCheckerErrorType
     IncorrectNumberOfPatternsInTupleVariantUnionPattern,
     UnknownVariant,
     NonClassUsedInClassPattern,
-    MissingFieldsInStructVariantUnionPattern,
+    MissingFieldsInUnionClassVariantPattern,
     MissingFieldsInClassPattern,
     PrivateFieldReferenced,
-    UnionStructVariantInitializerNotStructVariant,
+    UnionClassVariantInitializerNotClassVariant,
     DuplicateVariantName,
     ConflictingTypeName,
-    DuplicateFieldInUnionStructVariant,
+    DuplicateFieldInUnionClassVariant,
     UnionTupleVariantNoParameters,
     ConflictingFunctionName,
     IncorrectNumberOfMethodArguments,

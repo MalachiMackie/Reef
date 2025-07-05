@@ -100,9 +100,9 @@ public static class RemoveSourceSpanHelpers
                 RemoveSourceSpan(staticMemberAccessExpression.StaticMemberAccess)),
             GenericInstantiationExpression genericInstantiationExpression => new GenericInstantiationExpression(
                 RemoveSourceSpan(genericInstantiationExpression.GenericInstantiation), SourceRange.Default),
-            UnionStructVariantInitializerExpression unionStructVariantInitializerExpression => new
-                UnionStructVariantInitializerExpression(
-                    RemoveSourceSpan(unionStructVariantInitializerExpression.UnionInitializer), SourceRange.Default),
+            UnionClassVariantInitializerExpression unionClassVariantInitializerExpression => new
+                UnionClassVariantInitializerExpression(
+                    RemoveSourceSpan(unionClassVariantInitializerExpression.UnionInitializer), SourceRange.Default),
             MatchesExpression matchesExpression => RemoveSourceSpan(matchesExpression),
             TupleExpression tupleExpression => RemoveSourceSpan(tupleExpression),
             MatchExpression matchExpression => RemoveSourceSpan(matchExpression),
@@ -167,18 +167,18 @@ public static class RemoveSourceSpanHelpers
                 classPattern.RemainingFieldsDiscarded,
                 classPattern.VariableName is null ? null : RemoveSourceSpan(classPattern.VariableName),
                 SourceRange.Default),
-            UnionStructVariantPattern unionStructVariantPattern => new UnionStructVariantPattern(
-                RemoveSourceSpan(unionStructVariantPattern.Type),
-                RemoveSourceSpan(unionStructVariantPattern.VariantName),
+            UnionClassVariantPattern unionClassVariantPattern => new UnionClassVariantPattern(
+                RemoveSourceSpan(unionClassVariantPattern.Type),
+                RemoveSourceSpan(unionClassVariantPattern.VariantName),
                 [
-                    ..unionStructVariantPattern.FieldPatterns.Select(x =>
+                    ..unionClassVariantPattern.FieldPatterns.Select(x =>
                         new FieldPattern(RemoveSourceSpan(x.FieldName),
                             RemoveSourceSpan(x.Pattern)))
                 ],
-                unionStructVariantPattern.RemainingFieldsDiscarded,
-                unionStructVariantPattern.VariableName is null
+                unionClassVariantPattern.RemainingFieldsDiscarded,
+                unionClassVariantPattern.VariableName is null
                     ? null
-                    : RemoveSourceSpan(unionStructVariantPattern.VariableName), SourceRange.Default),
+                    : RemoveSourceSpan(unionClassVariantPattern.VariableName), SourceRange.Default),
             TypePattern typePattern => new TypePattern(
                 RemoveSourceSpan(typePattern.Type),
                 RemoveSourceSpan(typePattern.VariableName),
@@ -189,13 +189,13 @@ public static class RemoveSourceSpanHelpers
     }
 
 
-    private static UnionStructVariantInitializer RemoveSourceSpan(
-        UnionStructVariantInitializer unionStructVariantInitializer)
+    private static UnionClassVariantInitializer RemoveSourceSpan(
+        UnionClassVariantInitializer unionClassVariantInitializer)
     {
-        return new UnionStructVariantInitializer(
-            RemoveSourceSpan(unionStructVariantInitializer.UnionType),
-            RemoveSourceSpan(unionStructVariantInitializer.VariantIdentifier),
-            [..unionStructVariantInitializer.FieldInitializers.Select(RemoveSourceSpan)]);
+        return new UnionClassVariantInitializer(
+            RemoveSourceSpan(unionClassVariantInitializer.UnionType),
+            RemoveSourceSpan(unionClassVariantInitializer.VariantIdentifier),
+            [..unionClassVariantInitializer.FieldInitializers.Select(RemoveSourceSpan)]);
     }
 
     private static GenericInstantiation RemoveSourceSpan(GenericInstantiation genericInstantiation)
@@ -327,15 +327,15 @@ public static class RemoveSourceSpanHelpers
     {
         return variant switch
         {
-            UnitStructUnionVariant unitStructVariant => new UnitStructUnionVariant(
-                RemoveSourceSpan(unitStructVariant.Name)),
+            UnitUnionVariant unitUnionVariant => new UnitUnionVariant(
+                RemoveSourceSpan(unitUnionVariant.Name)),
             TupleUnionVariant tupleUnionVariant => new TupleUnionVariant(
                 RemoveSourceSpan(tupleUnionVariant.Name),
                 [..tupleUnionVariant.TupleMembers.Select(RemoveSourceSpan)!]),
-            StructUnionVariant structUnionVariant => new StructUnionVariant
+            ClassUnionVariant classUnionVariant => new ClassUnionVariant
             {
-                Name = RemoveSourceSpan(structUnionVariant.Name),
-                Fields = [..structUnionVariant.Fields.Select(RemoveSourceSpan)]
+                Name = RemoveSourceSpan(classUnionVariant.Name),
+                Fields = [..classUnionVariant.Fields.Select(RemoveSourceSpan)]
             },
             _ => throw new UnreachableException()
         };

@@ -206,11 +206,11 @@ public record MethodReturnExpression(MethodReturn MethodReturn, SourceRange Sour
     }
 }
 
-public record UnionStructVariantInitializerExpression(
-    UnionStructVariantInitializer UnionInitializer,
+public record UnionClassVariantInitializerExpression(
+    UnionClassVariantInitializer UnionInitializer,
     SourceRange SourceRange) : IExpression
 {
-    public ExpressionType ExpressionType => ExpressionType.UnionStructVariantInitializer;
+    public ExpressionType ExpressionType => ExpressionType.UnionClassVariantInitializer;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
 }
 
@@ -225,7 +225,7 @@ public record MatchesExpression(IExpression ValueExpression, IPattern? Pattern, 
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
 }
 
-public record UnionStructVariantInitializer(
+public record UnionClassVariantInitializer(
     TypeIdentifier UnionType,
     StringToken VariantIdentifier,
     IReadOnlyList<FieldInitializer> FieldInitializers)
@@ -460,7 +460,7 @@ public enum ExpressionType
     GenericInstantiation,
     MemberAccess,
     StaticMemberAccess,
-    UnionStructVariantInitializer,
+    UnionClassVariantInitializer,
     Matches,
     Match,
     Tuple
