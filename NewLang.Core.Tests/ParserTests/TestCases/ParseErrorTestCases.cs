@@ -1650,6 +1650,11 @@ public static class ParseErrorTestCases
                 ]
             ),
             (
+                "a matches MyClass;",
+                new LangProgram([Matches(VariableAccessor("a"), TypePattern(TypeIdentifier("MyClass")))], [], [], []),
+                []
+            ),
+            (
                 "if (a) {} else if (b)",
                 new LangProgram([IfExpression(VariableAccessor("a"), Block(), elseIfs: [ElseIf(VariableAccessor("b"))])], [], [], []),
                 [

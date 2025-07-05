@@ -28,14 +28,18 @@ public class TypeCheckerTests
         var program = Parser.Parse(Tokenizer.Tokenize(source));
         var errors = TypeChecker.TypeCheck(program.ParsedProgram).Select(RemoveSourceSpanHelpers.RemoveSourceSpan);
 
-        errors.Should().NotBeEmpty().And.BeEquivalentTo(expectedErrors);
+        errors.Should().BeEquivalentTo(expectedErrors).And.NotBeEmpty();
     }
 
     [Fact]
     public void SingleTest()
     {
         const string src =
-                "var b;";
+            """
+            class MyClass {pub field MyField: string}
+            var a = new MyClass { MyField = "" };
+            var b: bool = a matches MyClass;
+            """;
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
@@ -2312,6 +2316,15 @@ public class TypeCheckerTests
                 var b: string = a.someField;
                 """,
                 [MismatchedTypes(String, Int)]
+            },
+            {
+                "no fields provided in class pattern",
+                """
+                class MyClass { pub field someField: int, }
+                var a: MyClass = new MyClass { someField = 3 };
+                var b = a matches MyClass {};
+                """,
+                [TypeCheckerError.MissingFieldsInClassPattern(["someField"], TypeIdentifier("MyClass"))]
             },
         };
     }

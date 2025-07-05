@@ -1308,7 +1308,7 @@ public sealed class Parser : IDisposable
             return new UnionVariantPattern(type, variantName, null, new SourceRange(start, variantName.SourceSpan));
         }
 
-        return new ClassPattern(type, [], false, null, type.SourceRange);
+        return new TypePattern(type, null, type.SourceRange);
     }
 
     private ValueAccessorExpression GetLiteralExpression()
