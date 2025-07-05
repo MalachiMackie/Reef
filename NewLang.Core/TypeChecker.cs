@@ -852,7 +852,9 @@ public class TypeChecker
                 if (!structVariantPattern.RemainingFieldsDiscarded &&
                     structVariantPattern.FieldPatterns.Count != structVariant.Fields.Count)
                 {
-                    throw new InvalidOperationException("Not all fields are listed");
+                    _errors.Add(TypeCheckerError.MissingFieldsInStructVariantUnionPattern(
+                        structVariantPattern,
+                        structVariant.Fields.Select(x => x.Name).Except(structVariantPattern.FieldPatterns.Select(x => x.FieldName.StringValue))));
                 }
 
                 foreach (var (fieldName, fieldPattern) in structVariantPattern.FieldPatterns)

@@ -74,9 +74,11 @@ public record TypeCheckerError
             $"{typeIdentifier} cannot be used as a class in a class pattern");
     }
 
-    public static TypeCheckerError MissingFieldsInStructVariantUnionPattern()
+    public static TypeCheckerError MissingFieldsInStructVariantUnionPattern(UnionStructVariantPattern pattern, IEnumerable<string> missingFields)
     {
-        return new(TypeCheckerErrorType.MissingFieldsInStructVariantUnionPattern, SourceRange.Default, "");
+        return new(TypeCheckerErrorType.MissingFieldsInStructVariantUnionPattern,
+            pattern.SourceRange,
+            $"Not all fields in union struct variant pattern were listed. Missing fields: {string.Join(", ", missingFields)}");
     }
 
     public static TypeCheckerError MissingFieldsInClassPattern(IEnumerable<string> fieldNames, TypeIdentifier className)
@@ -84,7 +86,7 @@ public record TypeCheckerError
         return new(
             TypeCheckerErrorType.MissingFieldsInClassPattern,
             className.SourceRange,
-            $"missing fields from class pattern {string.Join(",", fieldNames.Select(x => $"'{x}'"))} for class {className}");
+            $"missing fields from class pattern {string.Join(", ", fieldNames.Select(x => $"'{x}'"))} for class {className}");
     }
 
     public static TypeCheckerError PrivateFieldReferenced(StringToken fieldNameReference)
@@ -202,7 +204,7 @@ public record TypeCheckerError
         return new(
             TypeCheckerErrorType.FieldsLeftUnassignedInClassInitializer,
             objectInitializerExpression.SourceRange,
-            $"Not all fields were initialized {string.Join(",", missingFieldNames.Select(x => $"'{x}'"))}");
+            $"Not all fields were initialized {string.Join(", ", missingFieldNames.Select(x => $"'{x}'"))}");
     }
 
     public static TypeCheckerError ConflictingTypeArgument(StringToken typeArgument)

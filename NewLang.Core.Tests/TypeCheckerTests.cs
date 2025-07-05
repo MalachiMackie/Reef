@@ -1314,7 +1314,10 @@ public class TypeCheckerTests
                 var a = new MyUnion::A { MyField = "", OtherField = true };
                 var b: bool = a matches MyUnion::A { MyField: _ };
                 """,
-                [TypeCheckerError.MissingFieldsInStructVariantUnionPattern()]
+                [TypeCheckerError.MissingFieldsInStructVariantUnionPattern(UnionStructVariantPattern(
+                    TypeIdentifier("MyUnion"),
+                    "A"),
+                    ["OtherField"])]
             },
             {
                 "incompatible field type used in class pattern",
