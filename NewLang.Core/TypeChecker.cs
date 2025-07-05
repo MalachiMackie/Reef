@@ -21,7 +21,7 @@ public class TypeChecker
     }
 
     private Dictionary<string, FunctionSignature> ScopedFunctions => _typeCheckingScopes.Peek().Functions;
-    private IReadOnlySet<GenericTypeReference> GenericPlaceholders => _typeCheckingScopes.Peek().GenericPlaceholders;
+    private HashSet<GenericTypeReference> GenericPlaceholders => _typeCheckingScopes.Peek().GenericPlaceholders;
     private ITypeSignature? CurrentTypeSignature => _typeCheckingScopes.Peek().CurrentTypeSignature;
     private FunctionSignature? CurrentFunctionSignature => _typeCheckingScopes.Peek().CurrentFunctionSignature;
     private ITypeReference ExpectedReturnType => _typeCheckingScopes.Peek().ExpectedReturnType;
@@ -64,7 +64,7 @@ public class TypeChecker
         return _typeCheckingScopes.Peek().ContainsVariable(name);
     }
 
-    private IDisposable PushScope(
+    private ScopeDisposable PushScope(
         ITypeSignature? currentTypeSignature = null,
         FunctionSignature? currentFunctionSignature = null,
         ITypeReference? expectedReturnType = null,
@@ -525,7 +525,7 @@ public class TypeChecker
         return fnSignature;
     }
 
-    private ITypeReference TypeCheckBlock(
+    private InstantiatedClass TypeCheckBlock(
         Block block)
     {
         using var _ = PushScope();
@@ -581,7 +581,7 @@ public class TypeChecker
                 matchesExpression),
             TupleExpression tupleExpression => TypeCheckTupleExpression(tupleExpression),
             MatchExpression matchExpression => TypeCheckMatchExpression(matchExpression),
-            _ => throw new NotImplementedException($"{expression.ExpressionType}")
+            _ => throw new UnreachableException($"{expression.ExpressionType}")
         };
 
         expression.ResolvedType = expressionType;
@@ -661,14 +661,12 @@ public class TypeChecker
             }
         }
 
-        // todo: other type patterns and exhaustive checks. string, int, etc
-
         return foundDiscardPattern
                || (type is InstantiatedUnion { Variants: var unionVariants }
                    && !unionVariants.Select(x => x.Name).Except(matchedVariants).Any());
     }
 
-    private ITypeReference TypeCheckMatchesExpression(MatchesExpression matchesExpression)
+    private InstantiatedClass TypeCheckMatchesExpression(MatchesExpression matchesExpression)
     {
         var valueType = TypeCheckExpression(matchesExpression.ValueExpression);
 
@@ -681,7 +679,7 @@ public class TypeChecker
         return InstantiatedClass.Boolean;
     }
 
-    private IReadOnlyList<string> TypeCheckPattern(ITypeReference typeReference, IPattern pattern)
+    private List<string> TypeCheckPattern(ITypeReference typeReference, IPattern pattern)
     {
         var patternVariables = new List<string>();
         switch (pattern)
@@ -950,7 +948,7 @@ public class TypeChecker
                 break;
             }
             default:
-                throw new NotImplementedException(pattern.GetType().Name);
+                throw new UnreachableException(pattern.GetType().Name);
         }
 
         return patternVariables;
@@ -1016,7 +1014,7 @@ public class TypeChecker
         {
             UnaryOperatorType.FallOut => TypeCheckFallout(unaryOperator.Operand),
             UnaryOperatorType.Not => TypeCheckNot(unaryOperator.Operand),
-            _ => throw new NotImplementedException($"{unaryOperator.OperatorType}")
+            _ => throw new UnreachableException($"{unaryOperator.OperatorType}")
         };
     }
 
@@ -1030,7 +1028,7 @@ public class TypeChecker
         return InstantiatedClass.Boolean;
     }
 
-    private ITypeReference TypeCheckFallout(IExpression? expression)
+    private GenericTypeReference TypeCheckFallout(IExpression? expression)
     {
         if (expression is not null)
             TypeCheckExpression(expression);
@@ -1056,7 +1054,7 @@ public class TypeChecker
         throw new UnreachableException();
     }
 
-    private ITypeReference TypeCheckGenericInstantiation(
+    private InstantiatedFunction TypeCheckGenericInstantiation(
         GenericInstantiationExpression genericInstantiationExpression)
     {
         var genericInstantiation = genericInstantiationExpression.GenericInstantiation;
@@ -1067,22 +1065,24 @@ public class TypeChecker
             throw new InvalidOperationException("Expected function");
         }
 
-        if (genericInstantiation.GenericArguments.Count > 0)
+        if (genericInstantiation.GenericArguments.Count <= 0)
         {
-            if (genericInstantiation.GenericArguments.Count != instantiatedFunction.TypeArguments.Count)
-            {
-                _errors.Add(TypeCheckerError.IncorrectNumberOfTypeArguments(
-                    genericInstantiationExpression.SourceRange,
-                    genericInstantiation.GenericArguments.Count,
-                    instantiatedFunction.TypeArguments.Count));
-            }
+            return instantiatedFunction;
+        }
 
-            for (var i = 0; i < Math.Min(instantiatedFunction.TypeArguments.Count, genericInstantiation.GenericArguments.Count); i++)
-            {
-                var typeReference = GetTypeReference(genericInstantiation.GenericArguments[i]);
-                var expectedTypeArgument = instantiatedFunction.TypeArguments[i];
-                ExpectType(typeReference, expectedTypeArgument, genericInstantiation.GenericArguments[i].SourceRange);
-            }
+        if (genericInstantiation.GenericArguments.Count != instantiatedFunction.TypeArguments.Count)
+        {
+            _errors.Add(TypeCheckerError.IncorrectNumberOfTypeArguments(
+                genericInstantiationExpression.SourceRange,
+                genericInstantiation.GenericArguments.Count,
+                instantiatedFunction.TypeArguments.Count));
+        }
+
+        for (var i = 0; i < Math.Min(instantiatedFunction.TypeArguments.Count, genericInstantiation.GenericArguments.Count); i++)
+        {
+            var typeReference = GetTypeReference(genericInstantiation.GenericArguments[i]);
+            var expectedTypeArgument = instantiatedFunction.TypeArguments[i];
+            ExpectType(typeReference, expectedTypeArgument, genericInstantiation.GenericArguments[i].SourceRange);
         }
 
         return instantiatedFunction;
@@ -1091,8 +1091,7 @@ public class TypeChecker
     private ITypeReference TypeCheckMemberAccess(
         MemberAccessExpression memberAccessExpression)
     {
-        var memberAccess = memberAccessExpression.MemberAccess;
-        var ownerExpression = memberAccess.Owner;
+        var (ownerExpression, stringToken) = memberAccessExpression.MemberAccess;
         var ownerType = TypeCheckExpression(ownerExpression);
 
         if (ownerType is not InstantiatedClass classType)
@@ -1102,17 +1101,14 @@ public class TypeChecker
             return UnknownType.Instance;
         }
 
-        if (memberAccess.MemberName is null)
+        if (stringToken is null)
         {
             return UnknownType.Instance;
         }
 
-        if (TryInstantiateClassFunction(classType, memberAccess.MemberName.StringValue, out var function))
-        {
-            return function;
-        }
-
-        return GetClassField(classType, memberAccess.MemberName);
+        return TryInstantiateClassFunction(classType, stringToken.StringValue, out var function)
+            ? function
+            : GetClassField(classType, stringToken);
     }
 
     private static ITypeReference GetUnionStructVariantField(ClassUnionVariant variant, string fieldName)
@@ -1151,49 +1147,49 @@ public class TypeChecker
             return UnknownType.Instance;
         }
         
-        if (type is InstantiatedClass { StaticFields: var staticFields } instantiatedClass)
+        switch (type)
         {
-            var field = staticFields.FirstOrDefault(x => x.Name == memberName);
-            if (field is not null)
+            case InstantiatedClass { StaticFields: var staticFields } instantiatedClass:
             {
-                return field.Type;
-            }
+                var field = staticFields.FirstOrDefault(x => x.Name == memberName);
+                if (field is not null)
+                {
+                    return field.Type;
+                }
 
-            if (TryInstantiateClassFunction(instantiatedClass, memberName, out var function))
-            {
+                if (!TryInstantiateClassFunction(instantiatedClass, memberName, out var function))
+                {
+                    throw new InvalidOperationException($"No member found with name {memberName}");
+                }
+
                 if (!function.IsStatic)
                 {
                     throw new InvalidOperationException($"{memberName} is not static");
                 }
 
                 return function;
+
             }
-
-            throw new InvalidOperationException($"No member found with name {memberName}");
-        }
-
-        if (type is InstantiatedUnion instantiatedUnion)
-        {
-            var variant = instantiatedUnion.Variants.FirstOrDefault(x => x.Name == memberName)
-                          ?? throw new InvalidOperationException($"No union variant with name {memberName}");
-
-            return variant switch
+            case InstantiatedUnion instantiatedUnion:
             {
-                TupleUnionVariant tupleVariant => GetTupleUnionFunction(tupleVariant, instantiatedUnion),
-                NoMembersUnionVariant => type,
-                ClassUnionVariant => throw new InvalidOperationException(
-                    "Cannot create struct union variant without initializer"),
-                _ => throw new UnreachableException()
-            };
-        }
+                var variant = instantiatedUnion.Variants.FirstOrDefault(x => x.Name == memberName)
+                              ?? throw new InvalidOperationException($"No union variant with name {memberName}");
 
-        if (type is GenericTypeReference)
-        {
-            _errors.Add(TypeCheckerError.StaticMemberAccessOnGenericReference(staticMemberAccessExpression));
-            return UnknownType.Instance;
+                return variant switch
+                {
+                    TupleUnionVariant tupleVariant => GetTupleUnionFunction(tupleVariant, instantiatedUnion),
+                    NoMembersUnionVariant => type,
+                    ClassUnionVariant => throw new InvalidOperationException(
+                        "Cannot create struct union variant without initializer"),
+                    _ => throw new UnreachableException()
+                };
+            }
+            case GenericTypeReference:
+                _errors.Add(TypeCheckerError.StaticMemberAccessOnGenericReference(staticMemberAccessExpression));
+                return UnknownType.Instance;
+            default:
+                throw new UnreachableException(type.GetType().ToString());
         }
-
-        throw new UnreachableException(type.GetType().ToString());
     }
 
     private ITypeReference TypeCheckObjectInitializer(
@@ -1339,107 +1335,111 @@ public class TypeChecker
                 return leftType;
             }
             default:
-                throw new ArgumentOutOfRangeException();
+                throw new UnreachableException(@operator.OperatorType.ToString());
         }
     }
 
     private bool ExpectAssignableExpression(IExpression expression, bool report = true)
     {
-        if (expression is ValueAccessorExpression
+        switch (expression)
+        {
+            case ValueAccessorExpression
             {
                 ValueAccessor: { AccessType: ValueAccessType.Variable, Token: StringToken valueToken }
-            })
-        {
-            var variable = GetScopedVariable(valueToken.StringValue);
-            if (variable is { Instantiated: true, Mutable: false })
+            }:
             {
+                var variable = GetScopedVariable(valueToken.StringValue);
+                if (variable is not { Instantiated: true, Mutable: false })
+                {
+                    return true;
+                }
+
                 if (report)
                 {
                     _errors.Add(TypeCheckerError.NonMutableAssignment(variable.Name.StringValue,
                         new SourceRange(valueToken.SourceSpan, valueToken.SourceSpan)));
                 }
                 return false;
+
             }
+            case MemberAccessExpression memberAccess:
+            {
+                var owner = memberAccess.MemberAccess.Owner;
+
+                if (memberAccess.MemberAccess.MemberName is null)
+                {
+                    return false;
+                }
             
-            return true;
-        }
+                var isOwnerAssignable = ExpectAssignableExpression(owner, report: false);
 
-        if (expression is MemberAccessExpression memberAccess)
-        {
-            var owner = memberAccess.MemberAccess.Owner;
+                if (owner.ResolvedType is not InstantiatedClass { Fields: var fields })
+                {
+                    if (report)
+                        _errors.Add(TypeCheckerError.ExpressionNotAssignable(memberAccess));
+                    return false;
+                }
 
-            if (memberAccess.MemberAccess.MemberName is null)
-            {
-                return false;
-            }
-            
-            var isOwnerAssignable = ExpectAssignableExpression(owner, report: false);
+                var field = fields.FirstOrDefault(x => x.Name == memberAccess.MemberAccess.MemberName.StringValue);
+                if (field is null)
+                {
+                    if (report)
+                        _errors.Add(TypeCheckerError.ExpressionNotAssignable(memberAccess));
+                    return false;
+                }
 
-            if (owner.ResolvedType is not InstantiatedClass { Fields: var fields })
-            {
-                if (report)
-                    _errors.Add(TypeCheckerError.ExpressionNotAssignable(memberAccess));
-                return false;
-            }
+                if (!field.IsMutable)
+                {
+                    if (report)
+                        _errors.Add(TypeCheckerError.NonMutableMemberAssignment(memberAccess));
+                    return false;
+                }
 
-            var field = fields.FirstOrDefault(x => x.Name == memberAccess.MemberAccess.MemberName.StringValue);
-            if (field is null)
-            {
-                if (report)
-                    _errors.Add(TypeCheckerError.ExpressionNotAssignable(memberAccess));
-                return false;
-            }
+                if (isOwnerAssignable)
+                {
+                    return true;
+                }
 
-            if (!field.IsMutable)
-            {
-                if (report)
-                    _errors.Add(TypeCheckerError.NonMutableMemberAssignment(memberAccess));
-                return false;
-            }
-
-            if (!isOwnerAssignable)
-            {
                 if (report)
                     _errors.Add(TypeCheckerError.NonMutableMemberOwnerAssignment(owner));
                 return false;
+
             }
-
-            return true;
-        }
-
-        if (expression is StaticMemberAccessExpression staticMemberAccess)
-        {
-            var ownerType = GetTypeReference(staticMemberAccess.StaticMemberAccess.Type);
-
-            if (staticMemberAccess.StaticMemberAccess.MemberName is null)
+            case StaticMemberAccessExpression staticMemberAccess:
             {
-                return false;
-            }
+                var ownerType = GetTypeReference(staticMemberAccess.StaticMemberAccess.Type);
 
-            if (ownerType is not InstantiatedClass { StaticFields: var staticFields })
-            {
-                if (report)
-                    _errors.Add(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
-                return false;
-            }
+                if (staticMemberAccess.StaticMemberAccess.MemberName is null)
+                {
+                    return false;
+                }
 
-            var staticField = staticFields.FirstOrDefault(x =>
-                x.Name == staticMemberAccess.StaticMemberAccess.MemberName.StringValue);
-            if (staticField is null)
-            {
-                if (report)
-                    _errors.Add(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
-                return false;
-            }
+                if (ownerType is not InstantiatedClass { StaticFields: var staticFields })
+                {
+                    if (report)
+                        _errors.Add(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
+                    return false;
+                }
 
-            if (!staticField.IsMutable)
-            {
+                var staticField = staticFields.FirstOrDefault(x =>
+                    x.Name == staticMemberAccess.StaticMemberAccess.MemberName.StringValue);
+                if (staticField is null)
+                {
+                    if (report)
+                        _errors.Add(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
+                    return false;
+                }
+
+                if (staticField.IsMutable)
+                {
+                    return true;
+                }
+
                 if (report)
                     _errors.Add(TypeCheckerError.NonMutableMemberAssignment(staticMemberAccess));
                 return false;
-            }
 
-            return true;
+            }
         }
 
         if (report)
@@ -1612,7 +1612,7 @@ public class TypeChecker
         return functionType.ReturnType;
     }
 
-    private ITypeReference TypeCheckMethodReturn(
+    private InstantiatedClass TypeCheckMethodReturn(
         MethodReturnExpression methodReturnExpression)
     {
         if (methodReturnExpression.MethodReturn.Expression is null)
@@ -1652,18 +1652,12 @@ public class TypeChecker
                     Token: StringToken { Type: TokenType.Identifier } variableNameToken
                 } =>
                 TypeCheckVariableAccess(variableNameToken, allowUninstantiatedVariables),
-            _ => throw new NotImplementedException($"{valueAccessorExpression}")
+            _ => throw new UnreachableException($"{valueAccessorExpression}")
         };
 
         ITypeReference TypeCheckThis(StringToken thisToken)
         {
-            if (CurrentTypeSignature is null)
-            {
-                _errors.Add(TypeCheckerError.ThisAccessedOutsideOfInstanceMethod(thisToken));
-                return UnknownType.Instance;
-            }
-
-            if (CurrentFunctionSignature is null)
+            if (CurrentTypeSignature is null || CurrentFunctionSignature is null)
             {
                 _errors.Add(TypeCheckerError.ThisAccessedOutsideOfInstanceMethod(thisToken));
                 return UnknownType.Instance;
@@ -1747,7 +1741,7 @@ public class TypeChecker
         return value.Type ?? UnknownType.Instance;
     }
 
-    private ITypeReference TypeCheckVariableDeclaration(
+    private InstantiatedClass TypeCheckVariableDeclaration(
         VariableDeclarationExpression expression)
     {
         var varName = expression.VariableDeclaration.VariableNameToken;
@@ -1804,20 +1798,18 @@ public class TypeChecker
         
         if (_types.TryGetValue(identifierName, out var nameMatchingType))
         {
-            if (nameMatchingType is ClassSignature classSignature)
+            switch (nameMatchingType)
             {
-                return InstantiateClass(classSignature, [
-                    ..typeIdentifier.TypeArguments
-                        .Select(x => (GetTypeReference(x), x.SourceRange))
-                ], typeIdentifier.SourceRange);
-            }
-
-            if (nameMatchingType is UnionSignature unionSignature)
-            {
-                return InstantiateUnion(unionSignature, [
-                    ..typeIdentifier.TypeArguments
-                        .Select(x => (GetTypeReference(x), x.SourceRange))
-                ], typeIdentifier.SourceRange);
+                case ClassSignature classSignature:
+                    return InstantiateClass(classSignature, [
+                        ..typeIdentifier.TypeArguments
+                            .Select(x => (GetTypeReference(x), x.SourceRange))
+                    ], typeIdentifier.SourceRange);
+                case UnionSignature unionSignature:
+                    return InstantiateUnion(unionSignature, [
+                        ..typeIdentifier.TypeArguments
+                            .Select(x => (GetTypeReference(x), x.SourceRange))
+                    ], typeIdentifier.SourceRange);
             }
         }
 
@@ -2235,12 +2227,7 @@ public class TypeChecker
                 return true;
             }
 
-            if (obj.GetType() != GetType())
-            {
-                return false;
-            }
-
-            return Equals((GenericTypeReference)obj);
+            return obj.GetType() == GetType() && Equals((GenericTypeReference)obj);
         }
 
         public override int GetHashCode()
@@ -2267,7 +2254,6 @@ public class TypeChecker
             IReadOnlyList<GenericTypeReference> ownerTypeArguments)
         {
             Signature = signature;
-            // todo: don't think this model is going to work. Need to be able to access multiple layers of generic arguments
             TypeArguments = typeArguments;
             Arguments = new OrderedDictionary<string, FunctionArgument>();
             for (var i = 0; i < signature.Arguments.Count; i++)
@@ -2362,10 +2348,6 @@ public class TypeChecker
         public IReadOnlyList<TypeField> Fields { get; }
         public IReadOnlyList<TypeField> StaticFields { get; }
 
-        
-
-        
-
         public bool IsSameSignature(InstantiatedClass other)
         {
             return Signature == other.Signature;
@@ -2374,12 +2356,14 @@ public class TypeChecker
         public override string ToString()
         {
             var sb = new StringBuilder($"{Signature.Name}");
-            if (TypeArguments.Count > 0)
+            if (TypeArguments.Count <= 0)
             {
-                sb.Append('<');
-                sb.AppendJoin(",", TypeArguments.Select(x => x));
-                sb.Append('>');
+                return sb.ToString();
             }
+
+            sb.Append('<');
+            sb.AppendJoin(",", TypeArguments.Select(x => x));
+            sb.Append('>');
 
             return sb.ToString();
         }
@@ -2456,24 +2440,25 @@ public class TypeChecker
         public override string ToString()
         {
             var sb = new StringBuilder($"{Signature.Name}");
-            if (TypeArguments.Count > 0)
+            if (TypeArguments.Count <= 0)
             {
-                sb.Append('<');
-                sb.AppendJoin(",", TypeArguments.Select(x => x));
-                sb.Append('>');
+                return sb.ToString();
             }
+
+            sb.Append('<');
+            sb.AppendJoin(",", TypeArguments.Select(x => x));
+            sb.Append('>');
 
             return sb.ToString();
         }
     }
 
-    // todo: name
     public interface ITypeSignature
     {
         string Name { get; }
     }
 
-    private InstantiatedFunction InstantiateFunction(FunctionSignature signature,
+    private static InstantiatedFunction InstantiateFunction(FunctionSignature signature,
         IReadOnlyList<GenericTypeReference>? ownerTypeArguments)
     {
         ownerTypeArguments ??= [];
@@ -2501,19 +2486,21 @@ public class TypeChecker
             })
         ];
 
-        if (typeReferences.Count > 0)
+        if (typeReferences.Count <= 0)
         {
-            if (typeReferences.Count != signature.GenericParameters.Count)
-            {
-                _errors.Add(TypeCheckerError.IncorrectNumberOfTypeArguments(sourceRange, typeReferences.Count, signature.GenericParameters.Count));
-            }
+            return new InstantiatedUnion(signature, typeArguments);
+        }
 
-            for (var i = 0; i < Math.Min(typeReferences.Count, typeArguments.Length); i++)
-            {
-                var (typeReference, referenceSourceRange) = typeReferences[i];
+        if (typeReferences.Count != signature.GenericParameters.Count)
+        {
+            _errors.Add(TypeCheckerError.IncorrectNumberOfTypeArguments(sourceRange, typeReferences.Count, signature.GenericParameters.Count));
+        }
 
-                ExpectType(typeReference, typeArguments[i], referenceSourceRange);
-            }
+        for (var i = 0; i < Math.Min(typeReferences.Count, typeArguments.Length); i++)
+        {
+            var (typeReference, referenceSourceRange) = typeReferences[i];
+
+            ExpectType(typeReference, typeArguments[i], referenceSourceRange);
         }
 
         return new InstantiatedUnion(signature, typeArguments);
@@ -2534,7 +2521,7 @@ public class TypeChecker
         };
     }
     
-    private bool TryInstantiateClassFunction(InstantiatedClass @class, string functionName,
+    private static bool TryInstantiateClassFunction(InstantiatedClass @class, string functionName,
         [NotNullWhen(true)] out InstantiatedFunction? function)
     {
         var signature = @class.Signature.Functions.FirstOrDefault(x => x.Name == functionName);
@@ -2560,18 +2547,20 @@ public class TypeChecker
             })
         ];
 
-        if (typeReferences.Count > 0)
+        if (typeReferences.Count <= 0)
         {
-            if (typeReferences.Count != signature.GenericParameters.Count)
-            {
-                _errors.Add(TypeCheckerError.IncorrectNumberOfTypeArguments(sourceRange, typeReferences.Count, signature.GenericParameters.Count));
-            }
+            return new InstantiatedClass(signature, typeArguments);
+        }
 
-            for (var i = 0; i < Math.Min(typeReferences.Count, typeArguments.Length); i++)
-            {
-                var (typeReference, referenceSourceRange) = typeReferences[i];
-                ExpectType(typeReference, typeArguments[i], referenceSourceRange);
-            }
+        if (typeReferences.Count != signature.GenericParameters.Count)
+        {
+            _errors.Add(TypeCheckerError.IncorrectNumberOfTypeArguments(sourceRange, typeReferences.Count, signature.GenericParameters.Count));
+        }
+
+        for (var i = 0; i < Math.Min(typeReferences.Count, typeArguments.Length); i++)
+        {
+            var (typeReference, referenceSourceRange) = typeReferences[i];
+            ExpectType(typeReference, typeArguments[i], referenceSourceRange);
         }
 
         return new InstantiatedClass(signature, typeArguments);
@@ -2737,8 +2726,6 @@ public class TypeChecker
 
             return signature;
         }
-        
-        // todo: namespaces
     }
 
     public class TypeField
