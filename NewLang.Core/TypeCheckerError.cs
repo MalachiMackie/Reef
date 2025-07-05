@@ -36,9 +36,11 @@ public record TypeCheckerError
         return new(TypeCheckerErrorType.UnresolvedInferredType, SourceRange.Default, "");
     }
 
-    public static TypeCheckerError ThisAccessedOutsideOfInstanceMethod()
+    public static TypeCheckerError ThisAccessedOutsideOfInstanceMethod(StringToken thisToken)
     {
-        return new(TypeCheckerErrorType.ThisAccessedOutsideOfInstanceMethod, SourceRange.Default, "");
+        return new(TypeCheckerErrorType.ThisAccessedOutsideOfInstanceMethod,
+            new SourceRange(thisToken.SourceSpan, thisToken.SourceSpan),
+            "'this' is only available within instance functions");
     }
 
     public static TypeCheckerError MatchNonExhaustive()

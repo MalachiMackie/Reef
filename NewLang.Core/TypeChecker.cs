@@ -1625,7 +1625,7 @@ public class TypeChecker
             { AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: "ok"}} => TypeCheckResultVariantKeyword("Ok"),
             { AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: "error"}} =>
                 TypeCheckResultVariantKeyword("Error"),
-            { AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: "this" }} => TypeCheckThis(),
+            { AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: "this" } thisToken} => TypeCheckThis(thisToken),
             { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Todo } => InstantiatedClass.Never,
             {
                     AccessType: ValueAccessType.Variable,
@@ -1635,21 +1635,23 @@ public class TypeChecker
             _ => throw new NotImplementedException($"{valueAccessorExpression}")
         };
 
-        ITypeReference TypeCheckThis()
+        ITypeReference TypeCheckThis(StringToken thisToken)
         {
             if (CurrentTypeSignature is null)
             {
-                throw new InvalidOperationException("this is only available in instance functions within a type");
+                _errors.Add(TypeCheckerError.ThisAccessedOutsideOfInstanceMethod(thisToken));
+                return UnknownType.Instance;
             }
 
             if (CurrentFunctionSignature is null)
             {
-                throw new InvalidOperationException("this is not available in static field initializer");
+                _errors.Add(TypeCheckerError.ThisAccessedOutsideOfInstanceMethod(thisToken));
+                return UnknownType.Instance;
             }
 
             if (CurrentFunctionSignature.IsStatic)
             {
-                throw new InvalidOperationException("this is not available in static functions");
+                _errors.Add(TypeCheckerError.ThisAccessedOutsideOfInstanceMethod(thisToken));
             }
 
             return CurrentTypeSignature switch

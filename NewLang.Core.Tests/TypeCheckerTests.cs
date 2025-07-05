@@ -927,7 +927,7 @@ public class TypeCheckerTests
             {
                 "this used outside of class instance",
                 "var a = this;",
-                [TypeCheckerError.ThisAccessedOutsideOfInstanceMethod()]
+                [TypeCheckerError.ThisAccessedOutsideOfInstanceMethod(Identifier("this"))]
             },
             {
                 "this used in static class function",
@@ -938,7 +938,7 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                [TypeCheckerError.ThisAccessedOutsideOfInstanceMethod()]
+                [TypeCheckerError.ThisAccessedOutsideOfInstanceMethod(Identifier("this"))]
             },
             {
                 "this used in static union function",
@@ -949,7 +949,7 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                [TypeCheckerError.ThisAccessedOutsideOfInstanceMethod()]
+                [TypeCheckerError.ThisAccessedOutsideOfInstanceMethod(Identifier("this"))]
             },
             {
                 "pattern variable used in wrong match arm",
