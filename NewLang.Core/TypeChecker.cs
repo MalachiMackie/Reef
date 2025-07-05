@@ -579,7 +579,7 @@ public class TypeChecker
                 allowUninstantiatedVariable, genericPlaceholders),
             MethodReturnExpression methodReturnExpression => TypeCheckMethodReturn(methodReturnExpression,
                 genericPlaceholders),
-            MethodCallExpression methodCallExpression => TypeCheckMethodCall(methodCallExpression.MethodCall,
+            MethodCallExpression methodCallExpression => TypeCheckMethodCall(methodCallExpression,
                 genericPlaceholders),
             BlockExpression blockExpression => TypeCheckBlock(blockExpression.Block, genericPlaceholders),
             IfExpressionExpression ifExpressionExpression => TypeCheckIfExpression(ifExpressionExpression.IfExpression,
@@ -1535,9 +1535,10 @@ public class TypeChecker
     }
 
     private ITypeReference TypeCheckMethodCall(
-        MethodCall methodCall,
+        MethodCallExpression methodCallExpression,
         HashSet<GenericTypeReference> genericPlaceholders)
     {
+        var methodCall = methodCallExpression.MethodCall;
         var methodType = TypeCheckExpression(methodCall.Method, genericPlaceholders);
 
         if (methodType is UnknownType)
@@ -1558,8 +1559,15 @@ public class TypeChecker
 
         if (methodCall.ParameterList.Count != functionType.Arguments.Count)
         {
-            throw new InvalidOperationException(
-                $"Expected {functionType.Arguments.Count} parameters, got {methodCall.ParameterList.Count}");
+            _errors.Add(TypeCheckerError.IncorrectNumberOfMethodParameters(
+                methodCallExpression, functionType.Arguments.Count));
+
+            foreach (var parameter in methodCall.ParameterList)
+            {
+                TypeCheckExpression(parameter, genericPlaceholders);
+            }
+
+            return functionType.ReturnType;
         }
 
         for (var i = 0; i < functionType.Arguments.Count; i++)
@@ -1644,8 +1652,8 @@ public class TypeChecker
 
             return CurrentTypeSignature switch
             {
-                UnionSignature unionSignature => InstantiateUnion(unionSignature, null),
-                ClassSignature classSignature => InstantiateClass(classSignature, null),
+                UnionSignature unionSignature => InstantiateUnion(unionSignature, []),
+                ClassSignature classSignature => InstantiateClass(classSignature, []),
                 _ => throw new UnreachableException($"Unknown signature type {CurrentTypeSignature.GetType()}")
             };
         }
@@ -2442,7 +2450,7 @@ public class TypeChecker
         return new InstantiatedFunction(signature, typeArguments, ownerTypeArguments);
     }
 
-    private InstantiatedUnion InstantiateUnion(UnionSignature signature, IReadOnlyList<(ITypeReference, SourceRange)>? typeReferences)
+    private InstantiatedUnion InstantiateUnion(UnionSignature signature, IReadOnlyList<(ITypeReference, SourceRange)> typeReferences)
     {
         // when instantiating, create new generic type references so they can be resolved
         GenericTypeReference[] typeArguments =
@@ -2454,7 +2462,7 @@ public class TypeChecker
             })
         ];
 
-        if (typeReferences is not null)
+        if (typeReferences.Count > 0)
         {
             if (typeReferences.Count != signature.GenericParameters.Count)
             {
@@ -2475,7 +2483,7 @@ public class TypeChecker
     
     private InstantiatedUnion InstantiateResult()
     {
-        return InstantiateUnion(UnionSignature.Result, null);
+        return InstantiateUnion(UnionSignature.Result, []);
     }
     
     private InstantiatedClass InstantiateTuple(IReadOnlyList<(ITypeReference, SourceRange)> types)
@@ -2503,7 +2511,7 @@ public class TypeChecker
         return true;
     }
 
-    private InstantiatedClass InstantiateClass(ClassSignature signature, IReadOnlyList<(ITypeReference, SourceRange)>? typeReferences)
+    private InstantiatedClass InstantiateClass(ClassSignature signature, IReadOnlyList<(ITypeReference, SourceRange)> typeReferences)
     {
         GenericTypeReference[] typeArguments =
         [
@@ -2514,7 +2522,7 @@ public class TypeChecker
             })
         ];
 
-        if (typeReferences is not null)
+        if (typeReferences.Count > 0)
         {
             if (typeReferences.Count != signature.GenericParameters.Count)
             {

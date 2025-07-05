@@ -90,6 +90,11 @@ public static class ExpressionHelpers
             Token.Identifier(name, SourceSpan.Default)));
     }
 
+    public static ValueAccessorExpression StringLiteral(string value)
+    {
+        return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral(value, SourceSpan.Default)));
+    }
+
     public static ProgramClass Class(string name, bool isPublic = false, IReadOnlyList<ClassField>? fields = null, IReadOnlyList<string>? genericParameters = null)
     {
         return new ProgramClass(
@@ -138,6 +143,11 @@ public static class ExpressionHelpers
     public static MemberAccessExpression MemberAccess(IExpression owner, string? memberName)
     {
         return new MemberAccessExpression(new MemberAccess(owner, memberName is null ? null : Token.Identifier(memberName, SourceSpan.Default)));
+    }
+
+    public static MethodCallExpression MethodCall(IExpression method, params IReadOnlyList<IExpression> arguments)
+    {
+        return new MethodCallExpression(new MethodCall(method, arguments), SourceRange.Default);
     }
     
     public static StaticMemberAccessExpression StaticMemberAccess(TypeIdentifier type, string? memberName)

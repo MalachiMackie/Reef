@@ -138,9 +138,12 @@ public record TypeCheckerError
             $"Function with name {functionName.StringValue} already defined in scope");
     }
 
-    public static TypeCheckerError IncorrectNumberOfMethodParameters()
+    public static TypeCheckerError IncorrectNumberOfMethodParameters(MethodCallExpression methodCallExpression, int expectedNumberOfMethodParameters)
     {
-        return new(TypeCheckerErrorType.IncorrectNumberOfMethodParameters, SourceRange.Default, "");
+        return new(
+            TypeCheckerErrorType.IncorrectNumberOfMethodParameters,
+            methodCallExpression.SourceRange,
+            $"Expected {expectedNumberOfMethodParameters} parameters, but found {methodCallExpression.MethodCall.ParameterList.Count}");
     }
 
     public static TypeCheckerError MemberAccessOnGenericExpression(MemberAccessExpression memberAccessExpression)

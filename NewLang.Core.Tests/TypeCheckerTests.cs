@@ -1820,12 +1820,12 @@ public class TypeCheckerTests
             {
                 "missing function arguments",
                 "fn MyFn(param1: string, param2: int) {} MyFn();",
-                [TypeCheckerError.IncorrectNumberOfMethodParameters()]
+                [TypeCheckerError.IncorrectNumberOfMethodParameters(MethodCall(VariableAccessor("MyFn")), 2)]
             },
             {
                 "too many function arguments",
                 """fn MyFn(param1: string, param2: int) {} MyFn("value", 3, 2);""",
-                [TypeCheckerError.IncorrectNumberOfMethodParameters()]
+                [TypeCheckerError.IncorrectNumberOfMethodParameters(MethodCall(VariableAccessor("MyFn"), StringLiteral("value"), IntLiteral(3), IntLiteral(2)), 2)]
             },
             {
                 "member accessed on generic instance variable",
