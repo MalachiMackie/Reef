@@ -52,6 +52,11 @@ public class TypeCheckerTests
         return new TheoryData<string>
         {
             """
+            fn SomeFn<T>(param: T){}
+            
+            SomeFn::<>("");
+            """,
+            """
             union MyUnion { A(string) }
             var a = MyUnion::A("hi");
             var z = a matches MyUnion::A(string var b);
@@ -1902,14 +1907,29 @@ public class TypeCheckerTests
                 [TypeCheckerError.UnresolvedInferredType()]
             },
             {
-                "unresolved inferred types",
+                "incorrect number of type parameters",
                 "var a: result::<string>",
-                [TypeCheckerError.IncorrectNumberOfTypeArguments()]
+                [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default,1, 2)]
+            },
+            {
+                "incorrect number of type parameters",
+                "union MyUnion{A} var a = MyUnion::<string>::A",
+                [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 0)]
+            },
+            {
+                "incorrect number of type parameters",
+                "class MyClass{} var a = new MyClass::<string>{}",
+                [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 0)]
+            },
+            {
+                "incorrect number of type parameters",
+                "class MyClass<T, T2>{} var a = new MyClass::<string>{}",
+                [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 2)]
             },
             {
                 "too many type parameters",
                 "var a: result::<string, string, string>",
-                [TypeCheckerError.IncorrectNumberOfTypeArguments()]
+                [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 3, 2)]
             },
             {
                 "unresolved function generic type",
@@ -1919,7 +1939,20 @@ public class TypeCheckerTests
             {
                 "too many function type parameters",
                 "fn Fn1<T1>(){} Fn1::<string, bool>();",
-                [TypeCheckerError.IncorrectNumberOfTypeArguments()]
+                [TypeCheckerError.IncorrectNumberOfTypeArguments(
+                    SourceRange.Default,
+                    2,
+                    1)]
+            },
+            {
+                "Unresolved function type parameter",
+                "fn Fn1<T1>(){} Fn1::<>();",
+                [TypeCheckerError.UnresolvedInferredType()]
+            },
+            {
+                "unresolved function type parameters",
+                "fn Fn1<T1>(){} Fn1();",
+                [TypeCheckerError.UnresolvedInferredType()]
             },
             {
                 "incorrect type for class initializer field assignment",

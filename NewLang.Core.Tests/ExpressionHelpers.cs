@@ -66,6 +66,11 @@ public static class ExpressionHelpers
     {
         return new TypeIdentifier(Identifier("string"), [], SourceRange.Default);
     }
+    
+    public static TypeIdentifier BooleanType()
+    {
+        return new TypeIdentifier(Identifier("bool"), [], SourceRange.Default);
+    }
 
     public static ClassField ClassField(
         string name,

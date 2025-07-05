@@ -184,9 +184,9 @@ public record TypeCheckerError
             $"Duplicate argument {argumentName.StringValue} found in function {functionName.StringValue}");
     }
 
-    public static TypeCheckerError IncorrectNumberOfTypeArguments()
+    public static TypeCheckerError IncorrectNumberOfTypeArguments(SourceRange sourceRange, int receivedCount, int expectedCount)
     {
-        return new(TypeCheckerErrorType.IncorrectNumberOfTypeArguments, SourceRange.Default, "");
+        return new(TypeCheckerErrorType.IncorrectNumberOfTypeArguments, sourceRange, $"Expected {expectedCount} type arguments, but found {receivedCount}");
     }
 
     public static TypeCheckerError ClassFieldSetMultipleTypesInInitializer(StringToken fieldName)

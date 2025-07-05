@@ -593,7 +593,7 @@ public class TypeChecker
             StaticMemberAccessExpression staticMemberAccessExpression => TypeCheckStaticMemberAccess(
                 staticMemberAccessExpression, genericPlaceholders),
             GenericInstantiationExpression genericInstantiationExpression => TypeCheckGenericInstantiation(
-                genericInstantiationExpression.GenericInstantiation, genericPlaceholders),
+                genericInstantiationExpression, genericPlaceholders),
             UnaryOperatorExpression unaryOperatorExpression => TypeCheckUnaryOperator(
                 unaryOperatorExpression.UnaryOperator,
                 genericPlaceholders),
@@ -622,7 +622,7 @@ public class TypeChecker
 
         var types = tuple.Values.Select(value => (TypeCheckExpression(value, genericPlaceholders), value.SourceRange)).ToArray();
 
-        return InstantiateTuple(types);
+        return InstantiateTuple(types, tuple.SourceRange);
     }
 
     private ITypeReference TypeCheckMatchExpression(MatchExpression matchExpression,
@@ -1076,9 +1076,11 @@ public class TypeChecker
         throw new UnreachableException();
     }
 
-    private ITypeReference TypeCheckGenericInstantiation(GenericInstantiation genericInstantiation,
+    private ITypeReference TypeCheckGenericInstantiation(
+        GenericInstantiationExpression genericInstantiationExpression,
         HashSet<GenericTypeReference> genericPlaceholders)
     {
+        var genericInstantiation = genericInstantiationExpression.GenericInstantiation;
         var valueType = TypeCheckExpression(genericInstantiation.Value, genericPlaceholders);
 
         if (valueType is not InstantiatedFunction instantiatedFunction)
@@ -1086,17 +1088,22 @@ public class TypeChecker
             throw new InvalidOperationException("Expected function");
         }
 
-        if (genericInstantiation.GenericArguments.Count != instantiatedFunction.TypeArguments.Count)
+        if (genericInstantiation.GenericArguments.Count > 0)
         {
-            throw new InvalidOperationException(
-                $"Expected {instantiatedFunction.TypeArguments.Count} type arguments but found {genericInstantiation.GenericArguments.Count}");
-        }
+            if (genericInstantiation.GenericArguments.Count != instantiatedFunction.TypeArguments.Count)
+            {
+                _errors.Add(TypeCheckerError.IncorrectNumberOfTypeArguments(
+                    genericInstantiationExpression.SourceRange,
+                    genericInstantiation.GenericArguments.Count,
+                    instantiatedFunction.TypeArguments.Count));
+            }
 
-        for (var i = 0; i < instantiatedFunction.TypeArguments.Count; i++)
-        {
-            var typeReference = GetTypeReference(genericInstantiation.GenericArguments[i], genericPlaceholders);
-            var expectedTypeArgument = instantiatedFunction.TypeArguments[i];
-            ExpectType(typeReference, expectedTypeArgument, genericPlaceholders, genericInstantiation.GenericArguments[i].SourceRange);
+            for (var i = 0; i < Math.Min(instantiatedFunction.TypeArguments.Count, genericInstantiation.GenericArguments.Count); i++)
+            {
+                var typeReference = GetTypeReference(genericInstantiation.GenericArguments[i], genericPlaceholders);
+                var expectedTypeArgument = instantiatedFunction.TypeArguments[i];
+                ExpectType(typeReference, expectedTypeArgument, genericPlaceholders, genericInstantiation.GenericArguments[i].SourceRange);
+            }
         }
 
         return instantiatedFunction;
@@ -1656,8 +1663,8 @@ public class TypeChecker
 
             return CurrentTypeSignature switch
             {
-                UnionSignature unionSignature => InstantiateUnion(unionSignature, []),
-                ClassSignature classSignature => InstantiateClass(classSignature, []),
+                UnionSignature unionSignature => InstantiateUnion(unionSignature, [], new SourceRange(thisToken.SourceSpan, thisToken.SourceSpan)),
+                ClassSignature classSignature => InstantiateClass(classSignature, [], new SourceRange(thisToken.SourceSpan, thisToken.SourceSpan)),
                 _ => throw new UnreachableException($"Unknown signature type {CurrentTypeSignature.GetType()}")
             };
         }
@@ -1674,7 +1681,7 @@ public class TypeChecker
                 throw new UnreachableException($"{variantName} is a tuple variant");
             }
 
-            var instantiatedUnion = InstantiateResult();
+            var instantiatedUnion = InstantiateResult(valueAccessorExpression.SourceRange);
 
             return GetTupleUnionFunction(tupleVariant, instantiatedUnion);
         }
@@ -1780,7 +1787,7 @@ public class TypeChecker
                 return InstantiateClass(classSignature, [
                     ..typeIdentifier.TypeArguments
                         .Select(x => (GetTypeReference(x, genericPlaceholders), x.SourceRange))
-                ]);
+                ], typeIdentifier.SourceRange);
             }
 
             if (nameMatchingType is UnionSignature unionSignature)
@@ -1788,7 +1795,7 @@ public class TypeChecker
                 return InstantiateUnion(unionSignature, [
                     ..typeIdentifier.TypeArguments
                         .Select(x => (GetTypeReference(x, genericPlaceholders), x.SourceRange))
-                ]);
+                ], typeIdentifier.SourceRange);
             }
         }
 
@@ -2454,7 +2461,7 @@ public class TypeChecker
         return new InstantiatedFunction(signature, typeArguments, ownerTypeArguments);
     }
 
-    private InstantiatedUnion InstantiateUnion(UnionSignature signature, IReadOnlyList<(ITypeReference, SourceRange)> typeReferences)
+    private InstantiatedUnion InstantiateUnion(UnionSignature signature, IReadOnlyList<(ITypeReference, SourceRange)> typeReferences, SourceRange sourceRange)
     {
         // when instantiating, create new generic type references so they can be resolved
         GenericTypeReference[] typeArguments =
@@ -2470,33 +2477,32 @@ public class TypeChecker
         {
             if (typeReferences.Count != signature.GenericParameters.Count)
             {
-                throw new InvalidOperationException(
-                    $"Expected {signature.GenericParameters.Count} type parameters, but found {typeReferences.Count}");
+                _errors.Add(TypeCheckerError.IncorrectNumberOfTypeArguments(sourceRange, typeReferences.Count, signature.GenericParameters.Count));
             }
 
-            for (var i = 0; i < typeReferences.Count; i++)
+            for (var i = 0; i < Math.Min(typeReferences.Count, typeArguments.Length); i++)
             {
-                var (typeReference, sourceRange) = typeReferences[i];
+                var (typeReference, referenceSourceRange) = typeReferences[i];
 
-                ExpectType(typeReference, typeArguments[i], [], sourceRange);
+                ExpectType(typeReference, typeArguments[i], [], referenceSourceRange);
             }
         }
 
         return new InstantiatedUnion(signature, typeArguments);
     }
     
-    private InstantiatedUnion InstantiateResult()
+    private InstantiatedUnion InstantiateResult(SourceRange sourceRange)
     {
-        return InstantiateUnion(UnionSignature.Result, []);
+        return InstantiateUnion(UnionSignature.Result, [], sourceRange);
     }
     
-    private InstantiatedClass InstantiateTuple(IReadOnlyList<(ITypeReference, SourceRange)> types)
+    private InstantiatedClass InstantiateTuple(IReadOnlyList<(ITypeReference, SourceRange)> types, SourceRange sourceRange)
     {
         return types.Count switch
         {
             0 => throw new InvalidOperationException("Tuple must not be empty"),
             > 10 => throw new InvalidOperationException("Tuple can contain at most 10 items"),
-            _ => InstantiateClass(ClassSignature.Tuple([..types.Select(x => x.Item1)]), types)
+            _ => InstantiateClass(ClassSignature.Tuple([..types.Select(x => x.Item1)]), types, sourceRange)
         };
     }
     
@@ -2515,7 +2521,7 @@ public class TypeChecker
         return true;
     }
 
-    private InstantiatedClass InstantiateClass(ClassSignature signature, IReadOnlyList<(ITypeReference, SourceRange)> typeReferences)
+    private InstantiatedClass InstantiateClass(ClassSignature signature, IReadOnlyList<(ITypeReference, SourceRange)> typeReferences, SourceRange sourceRange)
     {
         GenericTypeReference[] typeArguments =
         [
@@ -2530,14 +2536,13 @@ public class TypeChecker
         {
             if (typeReferences.Count != signature.GenericParameters.Count)
             {
-                throw new InvalidOperationException(
-                    $"Expected {signature.GenericParameters.Count} type parameters, but found {typeReferences.Count}");
+                _errors.Add(TypeCheckerError.IncorrectNumberOfTypeArguments(sourceRange, typeReferences.Count, signature.GenericParameters.Count));
             }
 
-            for (var i = 0; i < typeReferences.Count; i++)
+            for (var i = 0; i < Math.Min(typeReferences.Count, typeArguments.Length); i++)
             {
-                var (typeReference, sourceRange) = typeReferences[i];
-                ExpectType(typeReference, typeArguments[i], [], sourceRange);
+                var (typeReference, referenceSourceRange) = typeReferences[i];
+                ExpectType(typeReference, typeArguments[i], [], referenceSourceRange);
             }
         }
 
