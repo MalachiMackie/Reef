@@ -35,11 +35,13 @@ public class TypeCheckerTests
     public void SingleTest()
     {
         const string src =
-            """
-            var mut a = ok(1);
-            a = ok(true);
-            a = error("");
-            """;
+                """
+                var b;
+                if (true) {
+                    b = "";
+                }
+                var a: string = b;
+                """;
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
@@ -51,6 +53,49 @@ public class TypeCheckerTests
     {
         return new TheoryData<string>
         {
+            """
+            var a;
+            if (true) {
+                a = "";
+            }
+            else if (true) {
+                a = "";
+            }
+            else {
+                a = "";
+            }
+            var b = a;
+            """,
+            """
+            var a;
+            if (true) {
+                a = "";
+            }
+            else {
+                a = "";
+            }
+            var b: string;
+            """,
+            """
+            var a;
+            a = "";
+            """,
+            """
+            union MyEnum {
+                A()
+            }
+
+            var a = MyEnum::A();
+            """,
+            """
+            union MyUnion {
+                A()
+            }  
+            
+            var a = MyUnion::A();
+            if (a matches MyUnion::A() var b) {
+            }
+            """,
             """
             fn SomeFn<T>(param: T){}
             
@@ -1292,7 +1337,7 @@ public class TypeCheckerTests
                 var a = MyUnion::B("");
                 var b: bool = a matches MyUnion::C;
                 """,
-                [TypeCheckerError.UnknownVariant()]
+                [TypeCheckerError.UnknownVariant(Identifier("C"), "MyUnion")]
             },
             {
                 "mismatched type used for field in struct variant pattern",
@@ -1528,7 +1573,7 @@ public class TypeCheckerTests
                     MyField_ = ""
                 };
                 """,
-                [TypeCheckerError.UnknownUnionStructVariantField()]
+                [TypeCheckerError.UnknownField(Identifier("MyField_"), "union variant MyUnion::A")]
             },
             {
                 "Unknown variant name used in union struct initializer",
@@ -1542,7 +1587,7 @@ public class TypeCheckerTests
                     MyField = ""
                 };
                 """,
-                [TypeCheckerError.UnknownVariant()]
+                [TypeCheckerError.UnknownVariant(Identifier("B"), "MyUnion")]
             },
             {
                 "incorrect expression type used in union struct initializer",
@@ -1568,7 +1613,7 @@ public class TypeCheckerTests
                     MyField = 2
                 };
                 """,
-                [TypeCheckerError.UnionStructVariantInitializerNotStructVariant()]
+                [TypeCheckerError.UnionStructVariantInitializerNotStructVariant(Identifier("A"))]
             },
             {
                 "incorrect expression type used in union struct initializer",
@@ -1657,15 +1702,6 @@ public class TypeCheckerTests
                     Identifier("MyField"))]
             },
             {
-                "union tuple variant without parameters",
-                """
-                union MyUnion {
-                    A()
-                }
-                """,
-                [TypeCheckerError.UnionTupleVariantNoParameters()]
-            },
-            {
                 "incorrect type arguments for return value of same type",
                 """
                 fn MyFn(): result::<int, string> {
@@ -1739,6 +1775,44 @@ public class TypeCheckerTests
                 "variable declaration without type or assignment never inferred",
                 "var b;",
                 [TypeCheckerError.UnresolvedInferredType()]
+            },
+            {
+                "variable declaration without type or assignment never inferred",
+                """
+                var a;
+                if (true) {
+                    a = "";
+                }
+                else if (true) {
+                    a = "";
+                }
+                var b = a;
+                """,
+                [TypeCheckerError.AccessUninitializedVariable(Identifier("a"))]
+            },
+            {
+                "variable declaration without type or assignment never inferred",
+                """
+                var b;
+                if (true) {
+                    b = "";
+                }
+                var a: string = b;
+                """,
+                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+            },
+            {
+                "variable declaration without type or assignment never inferred",
+                """
+                var b;
+                if (true) {
+                    b = "";
+                }
+                else {
+                    var c = b;
+                }
+                """,
+                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
             },
             {
                 "incorrect type in return value",
@@ -1907,6 +1981,11 @@ public class TypeCheckerTests
                 [TypeCheckerError.UnresolvedInferredType()]
             },
             {
+                "unresolved inferred types",
+                "var a: result",
+                [TypeCheckerError.UnresolvedInferredType()]
+            },
+            {
                 "incorrect number of type parameters",
                 "var a: result::<string>",
                 [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default,1, 2)]
@@ -1982,7 +2061,7 @@ public class TypeCheckerTests
                 }
                 var a = new MyClass { someField = "value", extraField = 1 };
                 """,
-                [TypeCheckerError.UnknownClassField(Identifier("extraField"))]
+                [TypeCheckerError.UnknownField(Identifier("extraField"), "class MyClass")]
             },
             {
                 "field not assigned in object initializer",

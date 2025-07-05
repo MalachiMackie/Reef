@@ -39,6 +39,11 @@ public class TypeChecker
         return _typeCheckingScopes.Peek().GetVariable(name);
     }
 
+    private IEnumerable<Variable> GetScopedVariables()
+    {
+        return _typeCheckingScopes.Peek().GetVariables();
+    }
+
     private bool TryGetScopedVariable(string name, [NotNullWhen(true)] out Variable? variable)
     {
         return _typeCheckingScopes.Peek().TryGetVariable(name, out variable);
@@ -205,7 +210,10 @@ public class TypeChecker
 
         PopScope();
 
-        ResolvedTypeChecker.CheckAllExpressionsHaveResolvedTypes(_program);
+        if (_errors.Count == 0)
+        {
+            ResolvedTypeChecker.CheckAllExpressionsHaveResolvedTypes(_program);
+        }
     }
 
     private (List<(ProgramClass, ClassSignature)>, List<(ProgramUnion, UnionSignature)>) SetupSignatures()
@@ -320,12 +328,6 @@ public class TypeChecker
 
                 TupleUnionVariant TypeCheckTupleVariant(Core.TupleUnionVariant tupleVariant)
                 {
-                    if (tupleVariant.TupleMembers.Count == 0)
-                    {
-                        throw new InvalidOperationException(
-                            "union Tuple variants must have at least one parameter. Use a unit variant instead");
-                    }
-
                     return new TupleUnionVariant
                     {
                         Name = variant.Name.StringValue,
@@ -729,9 +731,11 @@ public class TypeChecker
 
                 if (variantPattern.VariantName is not null)
                 {
-                    _ = union.Variants.FirstOrDefault(x => x.Name == variantPattern.VariantName.StringValue)
-                        ?? throw new InvalidOperationException(
-                            $"Variant {variantPattern.VariantName.StringValue} not found on type {union}");
+                    if (union.Variants.All(x => x.Name != variantPattern.VariantName.StringValue))
+                    {
+                        _errors.Add(TypeCheckerError.UnknownVariant(variantPattern.VariantName, union.Name));
+                        break;
+                    }
                 }
 
                 if (variantPattern.VariableName is { StringValue: var variableName })
@@ -992,12 +996,18 @@ public class TypeChecker
         }
 
         var variant =
-            instantiatedUnion.Variants.FirstOrDefault(x => x.Name == initializer.VariantIdentifier.StringValue)
-            ?? throw new InvalidOperationException($"No union variant found name {initializer.VariantIdentifier}");
+            instantiatedUnion.Variants.FirstOrDefault(x => x.Name == initializer.VariantIdentifier.StringValue);
+
+        if (variant is null)
+        {
+            _errors.Add(TypeCheckerError.UnknownVariant(initializer.VariantIdentifier, initializer.UnionType.Identifier.StringValue));
+            return instantiatedUnion;
+        }
 
         if (variant is not ClassUnionVariant classVariant)
         {
-            throw new InvalidOperationException($"{variant.Name} is not a union struct variant");
+            _errors.Add(TypeCheckerError.UnionStructVariantInitializerNotStructVariant(initializer.VariantIdentifier));
+            return instantiatedUnion;
         }
 
         if (initializer.FieldInitializers.GroupBy(x => x.FieldName.StringValue)
@@ -1015,13 +1025,14 @@ public class TypeChecker
 
         foreach (var fieldInitializer in initializer.FieldInitializers)
         {
-            if (!fields.TryGetValue(fieldInitializer.FieldName.StringValue, out var field))
-            {
-                throw new InvalidOperationException($"No field named {fieldInitializer.FieldName.StringValue}");
-            }
-
             if (fieldInitializer.Value is not null)
                 TypeCheckExpression(fieldInitializer.Value, genericPlaceholders);
+            
+            if (!fields.TryGetValue(fieldInitializer.FieldName.StringValue, out var field))
+            {
+                _errors.Add(TypeCheckerError.UnknownField(fieldInitializer.FieldName, $"union variant {initializer.UnionType.Identifier.StringValue}::{initializer.VariantIdentifier.StringValue}"));
+                continue;
+            }
 
             ExpectExpressionType(field.Type, fieldInitializer.Value, genericPlaceholders);
         }
@@ -1254,9 +1265,14 @@ public class TypeChecker
 
         foreach (var fieldInitializer in objectInitializer.FieldInitializers)
         {
+            if (fieldInitializer.Value is not null)
+            {
+                TypeCheckExpression(fieldInitializer.Value, genericPlaceholders);
+            }
+            
             if (!fields.TryGetValue(fieldInitializer.FieldName.StringValue, out var field))
             {
-                _errors.Add(TypeCheckerError.UnknownClassField(fieldInitializer.FieldName));
+                _errors.Add(TypeCheckerError.UnknownField(fieldInitializer.FieldName, $"class {objectInitializer.Type.Identifier.StringValue}"));
                 continue;
             }
             
@@ -1268,11 +1284,6 @@ public class TypeChecker
             else if (!initializedFields.Add(fieldInitializer.FieldName.StringValue))
             {
                 _errors.Add(TypeCheckerError.ClassFieldSetMultipleTypesInInitializer(fieldInitializer.FieldName));
-            }
-
-            if (fieldInitializer.Value is not null)
-            {
-                TypeCheckExpression(fieldInitializer.Value, genericPlaceholders);
             }
 
             ExpectExpressionType(field.Type, fieldInitializer.Value, genericPlaceholders);
@@ -1338,11 +1349,34 @@ public class TypeChecker
             }
             case BinaryOperatorType.ValueAssignment:
             {
+
+                // if (@operator.Left is ValueAccessorExpression
+                //     {
+                //         ValueAccessor: { AccessType: ValueAccessType.Variable, Token: StringToken variableName }
+                //     })
+                // {
+                //     if (!TryGetScopedVariable(variableName.StringValue, out var variable))
+                //     {
+                //         _errors.Add(TypeCheckerError.SymbolNotFound(variableName));
+                //         break;
+                //     }
+                //
+                //     if (variable is { Instantiated: true, Mutable: false })
+                //     {
+                //         _errors.Add(TypeCheckerError.NonMutableAssignment(variableName.StringValue, new SourceRange(variableName.SourceSpan, variableName.SourceSpan)));
+                //         break;
+                //     }
+                //     
+                //     break;
+                // }
+                
                 var leftType = @operator.Left is null
                     ? UnknownType.Instance
                     : TypeCheckExpression(@operator.Left, genericPlaceholders, true);
-                if (@operator.Right is not null)
-                    TypeCheckExpression(@operator.Right, genericPlaceholders);
+                var rightType = @operator.Right is null
+                    ? UnknownType.Instance
+                    : TypeCheckExpression(@operator.Right, genericPlaceholders);
+                
                 if (@operator.Left is not null)
                 {
                     ExpectAssignableExpression(@operator.Left, genericPlaceholders);
@@ -1354,6 +1388,7 @@ public class TypeChecker
                     } && GetScopedVariable(variableName.StringValue) is { Instantiated: false } variable)
                 {
                     variable.Instantiated = true;
+                    variable.Type ??= rightType;
                 }
 
                 ExpectExpressionType(leftType, @operator.Right, genericPlaceholders);
@@ -1470,6 +1505,13 @@ public class TypeChecker
         return false;
     }
 
+    private sealed class VariableIfInstantiation
+    {
+        public bool InstantiatedInBody { get; set; }
+        public bool InstantiatedInElse { get; set; }
+        public bool InstantiatedInEachElseIf { get; set; } = true;
+    }
+
     private ITypeReference TypeCheckIfExpression(IfExpression ifExpression,
         HashSet<GenericTypeReference> genericPlaceholders)
     {
@@ -1481,14 +1523,17 @@ public class TypeChecker
 
         ExpectExpressionType(InstantiatedClass.Boolean, ifExpression.CheckExpression, genericPlaceholders);
 
-        IReadOnlyList<string> conditionallyInstantiatedVariables = [];
+        IReadOnlyList<string> matchVariableDeclarations = [];
 
         if (ifExpression.CheckExpression is MatchesExpression { DeclaredVariables: var declaredVariables })
         {
-            conditionallyInstantiatedVariables = declaredVariables;
+            matchVariableDeclarations = declaredVariables;
         }
 
-        foreach (var variable in conditionallyInstantiatedVariables)
+        var uninstantiatedVariables = GetScopedVariables().Where(x => !x.Instantiated)
+            .ToDictionary(x => x, _ => new VariableIfInstantiation());
+
+        foreach (var variable in matchVariableDeclarations)
         {
             GetScopedVariable(variable).Instantiated = true;
         }
@@ -1497,27 +1542,34 @@ public class TypeChecker
         {
             TypeCheckExpression(ifExpression.Body, genericPlaceholders);
         }
+        
+        foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
+        {
+            variableInstantiation.InstantiatedInBody = variable.Instantiated;
+            variable.Instantiated = false;
+        }
 
-        foreach (var variable in conditionallyInstantiatedVariables)
+        foreach (var variable in matchVariableDeclarations)
         {
             GetScopedVariable(variable).Instantiated = false;
         }
 
         foreach (var elseIf in ifExpression.ElseIfs)
         {
+            
             using var __ = PushScope();
             TypeCheckExpression(elseIf.CheckExpression, genericPlaceholders);
             
             ExpectExpressionType(InstantiatedClass.Boolean, elseIf.CheckExpression, genericPlaceholders);
 
-            conditionallyInstantiatedVariables = elseIf.CheckExpression is MatchesExpression
+            matchVariableDeclarations = elseIf.CheckExpression is MatchesExpression
             {
                 DeclaredVariables: var elseIfDeclaredVariables
             }
                 ? elseIfDeclaredVariables
                 : [];
 
-            foreach (var variable in conditionallyInstantiatedVariables)
+            foreach (var variable in matchVariableDeclarations)
             {
                 GetScopedVariable(variable).Instantiated = true;
             }
@@ -1526,8 +1578,14 @@ public class TypeChecker
             {
                 TypeCheckExpression(elseIf.Body, genericPlaceholders);
             }
+            
+            foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
+            {
+                variableInstantiation.InstantiatedInEachElseIf &= variable.Instantiated;
+                variable.Instantiated = false;
+            }
 
-            foreach (var variable in conditionallyInstantiatedVariables)
+            foreach (var variable in matchVariableDeclarations)
             {
                 GetScopedVariable(variable).Instantiated = false;
             }
@@ -1537,6 +1595,22 @@ public class TypeChecker
         {
             using var __ = PushScope();
             TypeCheckExpression(ifExpression.ElseBody, genericPlaceholders);
+            
+            foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
+            {
+                variableInstantiation.InstantiatedInElse = variable.Instantiated;
+                variable.Instantiated = false;
+            }
+        }
+        
+        foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
+        {
+            // if variable was instantiated in each branch, then it is instantiated
+            variable.Instantiated = ifExpression.Body is not null && variableInstantiation.InstantiatedInBody
+                                                                  && ifExpression.ElseBody is not null &&
+                                                                      variableInstantiation.InstantiatedInElse
+                                                                  && (ifExpression.ElseIfs.Count == 0 ||
+                                                                      variableInstantiation.InstantiatedInEachElseIf);
         }
 
         // todo: tail expression
@@ -1729,7 +1803,7 @@ public class TypeChecker
             _errors.Add(TypeCheckerError.AccessUninitializedVariable(variableName));
         }
 
-        return value.Type;
+        return value.Type ?? UnknownType.Instance;
     }
 
     private ITypeReference TypeCheckVariableDeclaration(
@@ -1745,8 +1819,12 @@ public class TypeChecker
 
         switch (expression.VariableDeclaration)
         {
-            case { Value: null, Type: null }:
-                throw new InvalidOperationException("Variable declaration must have a type specifier or a value");
+            case { Value: null, Type: null, MutabilityModifier: var mutModifier }:
+            {
+                AddScopedVariable(varName, new Variable(
+                    varName, null, Instantiated: false, Mutable: mutModifier is not null));
+                break;
+            }
             case { Value: { } value, Type: var type, MutabilityModifier: var mutModifier }:
             {
                 var valueType = TypeCheckExpression(value, genericPlaceholders);
@@ -2093,6 +2171,11 @@ public class TypeChecker
         {
             return CurrentScopeVariables.ContainsKey(name) || (ParentScope?.ContainsVariable(name) ?? false);
         }
+
+        public IEnumerable<Variable> GetVariables()
+        {
+            return [..CurrentScopeVariables.Values, ..ParentScope?.GetVariables() ?? []];
+        }
     }
 
     private class ScopeDisposable(Action onDispose) : IDisposable
@@ -2111,9 +2194,10 @@ public class TypeChecker
         }
     }
 
-    private record Variable(string Name, ITypeReference Type, bool Instantiated, bool Mutable)
+    private record Variable(string Name, ITypeReference? Type, bool Instantiated, bool Mutable)
     {
         public bool Instantiated { get; set; } = Instantiated;
+        public ITypeReference? Type { get; set; } = Type;
     }
 
     public interface ITypeReference;

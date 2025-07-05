@@ -159,6 +159,11 @@ public record GenericInstantiationExpression(GenericInstantiation GenericInstant
 {
     public ExpressionType ExpressionType => ExpressionType.GenericInstantiation;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
+
+    public override string ToString()
+    {
+        return $"{GenericInstantiation.Value}::<{string.Join(", ", GenericInstantiation.GenericArguments)}>";
+    }
 }
 
 public record GenericInstantiation(IExpression Value, IReadOnlyList<TypeIdentifier> GenericArguments)

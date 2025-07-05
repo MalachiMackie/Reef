@@ -63,9 +63,12 @@ public record TypeCheckerError
             $"Expected {expectedNumber} patterns in union tuple variant, but found {pattern.TupleParamPatterns.Count}");
     }
 
-    public static TypeCheckerError UnknownVariant()
+    public static TypeCheckerError UnknownVariant(StringToken variantIdentifier, string unionName)
     {
-        return new(TypeCheckerErrorType.UnknownVariant, SourceRange.Default, "");
+        return new(
+            TypeCheckerErrorType.UnknownVariant,
+            new SourceRange(variantIdentifier.SourceSpan, variantIdentifier.SourceSpan),
+            $"Unknown variant {variantIdentifier} on union {unionName}");
     }
 
     public static TypeCheckerError NonClassUsedInClassPattern(TypeIdentifier typeIdentifier)
@@ -98,14 +101,12 @@ public record TypeCheckerError
                 fieldNameReference.SourceSpan), $"Cannot access private field {fieldNameReference.StringValue}");
     }
 
-    public static TypeCheckerError UnknownUnionStructVariantField()
+    public static TypeCheckerError UnionStructVariantInitializerNotStructVariant(StringToken variantNameToken)
     {
-        return new(TypeCheckerErrorType.UnknownUnionStructVariantField, SourceRange.Default, "");
-    }
-
-    public static TypeCheckerError UnionStructVariantInitializerNotStructVariant()
-    {
-        return new(TypeCheckerErrorType.UnionStructVariantInitializerNotStructVariant, SourceRange.Default, "");
+        return new(
+            TypeCheckerErrorType.UnionStructVariantInitializerNotStructVariant,
+            new SourceRange(variantNameToken.SourceSpan, variantNameToken.SourceSpan),
+            $"Variant {variantNameToken.StringValue} is not a union struct variant");
     }
 
     public static TypeCheckerError DuplicateVariantName(StringToken variantName)
@@ -196,9 +197,9 @@ public record TypeCheckerError
             $"Field {fieldName.StringValue} already assigned");
     }
 
-    public static TypeCheckerError UnknownClassField(StringToken fieldName)
+    public static TypeCheckerError UnknownField(StringToken fieldName, string ownerName)
     {
-        return new(TypeCheckerErrorType.UnknownClassField, new SourceRange(fieldName.SourceSpan, fieldName.SourceSpan), $"Unknown field {fieldName.StringValue}");
+        return new(TypeCheckerErrorType.UnknownField, new SourceRange(fieldName.SourceSpan, fieldName.SourceSpan), $"Unknown field {fieldName.StringValue} on {ownerName}");
     }
 
     public static TypeCheckerError FieldsLeftUnassignedInClassInitializer(ObjectInitializerExpression objectInitializerExpression, IEnumerable<string> missingFieldNames)
@@ -244,7 +245,6 @@ public enum TypeCheckerErrorType
     MissingFieldsInStructVariantUnionPattern,
     MissingFieldsInClassPattern,
     PrivateFieldReferenced,
-    UnknownUnionStructVariantField,
     UnionStructVariantInitializerNotStructVariant,
     DuplicateVariantName,
     ConflictingTypeName,
@@ -258,7 +258,7 @@ public enum TypeCheckerErrorType
     DuplicateFunctionArgument,
     IncorrectNumberOfTypeArguments,
     ClassFieldSetMultipleTypesInInitializer,
-    UnknownClassField,
+    UnknownField,
     FieldsLeftUnassignedInClassInitializer,
     ConflictingTypeArgument,
     TypeArgumentConflictsWithType,
