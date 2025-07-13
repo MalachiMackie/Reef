@@ -360,7 +360,10 @@ public sealed class Parser : IDisposable
             {
                 if (!consumedToken)
                 {
-                    logError(Current);
+                    if (Current.Type != TokenType.Semicolon)
+                    {
+                        logError(Current);
+                    }
                     MoveNext();
                 }
                 

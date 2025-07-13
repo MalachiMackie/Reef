@@ -59,7 +59,7 @@ public class Tests(ITestOutputHelper testOutputHelper)
     [Fact]
     public void SingleTest()
     {
-        const string source = "a::<string()";
+        const string source = "class MyClass{};";
         var result = Parser.Parse(Tokenizer.Tokenize(source));
         result.Should().NotBeNull();
     }
