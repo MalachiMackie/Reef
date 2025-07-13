@@ -251,7 +251,6 @@ public enum TypeCheckerErrorType
     DuplicateVariantName,
     ConflictingTypeName,
     DuplicateFieldInUnionClassVariant,
-    UnionTupleVariantNoParameters,
     ConflictingFunctionName,
     IncorrectNumberOfMethodArguments,
     MemberAccessOnGenericExpression,

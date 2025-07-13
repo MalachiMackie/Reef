@@ -1188,6 +1188,18 @@ public class TypeCheckerTests
                 [MismatchedTypes(String, Int)]
             },
             {
+                "Static local function cannot access local variables",
+                """
+                pub static fn SomeFn() {
+                    var a = "";
+                    static fn InnerFn(): string {
+                        return a;
+                    }
+                }
+                """,
+                [TypeCheckerError.SymbolNotFound(Identifier("a"))]
+            },
+            {
                 "nested function parameter mismatched types return types",
                 """
                 fn SomeFn<T>(param: T) {
