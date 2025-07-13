@@ -1,7 +1,4 @@
-﻿using System.ComponentModel;
-using System.Runtime.InteropServices.ComTypes;
-
-namespace Reef.Core.PatternAnalysis;
+﻿namespace Reef.Core.PatternAnalysis;
 
 public interface IConstructor
 {
@@ -114,7 +111,7 @@ public interface IConstructor
             case ClassConstructor:
             {
                 var concreteType = typeReference.ConcreteType();
-                if (concreteType is TypeChecker.InstantiatedClass { Signature: var signature })
+                if (concreteType.Item1 is TypeChecker.InstantiatedClass { Signature: var signature })
                 {
                     return (uint)signature.Fields.Count;
                 }
@@ -124,7 +121,7 @@ public interface IConstructor
             case VariantConstructor { VariantIndex: var variantIndex }:
             {
                 var concreteType = typeReference.ConcreteType();
-                if (concreteType is not TypeChecker.InstantiatedUnion { Signature: var unionSignature })
+                if (concreteType.Item1 is not TypeChecker.InstantiatedUnion { Signature: var unionSignature })
                 {
                     throw new InvalidOperationException("Expected type to be union");
                 }
@@ -174,7 +171,7 @@ public interface IConstructor
     }
 }
 
-public record ClassConstructor() : IConstructor;
+public record ClassConstructor : IConstructor;
 public record VariantConstructor(uint VariantIndex) : IConstructor;
 public record BooleanConstructor(bool Value) : IConstructor;
 public record StringLiteralConstructor(string Value) : IConstructor;

@@ -102,11 +102,9 @@ public class TypeChecker
         {
             using var _ = PushScope(unionSignature, genericPlaceholders: unionSignature.TypeParameters);
             
-            foreach (var function in union.Functions)
+            foreach (var function in unionSignature.Functions)
             {
-                var fnSignature = unionSignature.Functions.First(x => x.Name == function.Name.StringValue);
-
-                TypeCheckFunctionBody(function, fnSignature);
+                TypeCheckFunctionBody(function);
             }
         }
 
@@ -167,11 +165,9 @@ public class TypeChecker
                     AddScopedVariable(variable.Name.StringValue, variable);
                 }
 
-                foreach (var function in @class.Functions.Where(x => x.StaticModifier is not null))
+                foreach (var function in classSignature.Functions.Where(x => x.IsStatic))
                 {
-                    var fnSignature = classSignature.Functions.First(x => x.Name == function.Name.StringValue);
-
-                    TypeCheckFunctionBody(function, fnSignature);
+                    TypeCheckFunctionBody(function);
                 }
             }
 
@@ -184,19 +180,16 @@ public class TypeChecker
                     AddScopedVariable(variable.Name.StringValue, variable);
                 }
 
-                foreach (var function in @class.Functions.Where(x => x.StaticModifier is null))
+                foreach (var function in classSignature.Functions.Where(x => !x.IsStatic))
                 {
-                    var fnSignature = classSignature.Functions.First(x => x.Name == function.Name.StringValue);
-
-                    TypeCheckFunctionBody(function, fnSignature);
+                    TypeCheckFunctionBody(function);
                 }
             }
         }
 
         foreach (var functionSignature in ScopedFunctions.Values)
         {
-            var function = _program.Functions.First(x => x.Name.StringValue == functionSignature.Name);
-            TypeCheckFunctionBody(function, functionSignature);
+            TypeCheckFunctionBody(functionSignature);
         }
 
         foreach (var expression in _program.Expressions)
@@ -443,8 +436,7 @@ public class TypeChecker
     }
 
 
-    private void TypeCheckFunctionBody(LangFunction function,
-        FunctionSignature fnSignature)
+    private void TypeCheckFunctionBody(FunctionSignature fnSignature)
     {
         var functionType = InstantiateFunction(fnSignature, [..GenericPlaceholders]);
 
@@ -457,13 +449,28 @@ public class TypeChecker
                 true,
                 parameter.Mutable));
         }
+        
+        foreach (var fn in fnSignature.LocalFunctions)
+        {
+            ScopedFunctions[fn.Name] = fn;
+        }
 
-        TypeCheckBlock(function.Block);
+        foreach (var fn in fnSignature.LocalFunctions)
+        {
+            TypeCheckFunctionBody(fn);
+        }
+
+        foreach (var expression in fnSignature.Expressions)
+        {
+            TypeCheckExpression(expression);
+        }
     }
 
     private FunctionSignature TypeCheckFunctionSignature(LangFunction fn)
     {
         var parameters = new OrderedDictionary<string, FunctionParameter>();
+
+        List<FunctionSignature> localFunctions = [];
 
         var name = fn.Name.StringValue;
         var typeParameters = new List<GenericTypeReference>(fn.TypeParameters.Count);
@@ -471,7 +478,9 @@ public class TypeChecker
             name,
             typeParameters,
             parameters,
-            fn.StaticModifier is not null)
+            fn.StaticModifier is not null,
+            fn.Block.Expressions,
+            localFunctions)
         {
             ReturnType = null!
         };
@@ -520,6 +529,8 @@ public class TypeChecker
                 _errors.Add(TypeCheckerError.DuplicateFunctionParameter(parameter.Identifier, fn.Name));
             }
         }
+        
+        localFunctions.AddRange(fn.Block.Functions.Select(TypeCheckFunctionSignature));
 
         // todo: function overloading
         return fnSignature;
@@ -532,12 +543,12 @@ public class TypeChecker
 
         foreach (var fn in block.Functions)
         {
-            ScopedFunctions[fn.Name.StringValue] = TypeCheckFunctionSignature(fn);
+            ScopedFunctions[fn.Name.StringValue] = fn.Signature ?? TypeCheckFunctionSignature(fn);
         }
 
         foreach (var fn in block.Functions)
         {
-            TypeCheckFunctionBody(fn, ScopedFunctions[fn.Name.StringValue]);
+            TypeCheckFunctionBody(ScopedFunctions[fn.Name.StringValue]);
         }
 
         foreach (var expression in block.Expressions)
@@ -1692,7 +1703,9 @@ public class TypeChecker
             tupleVariant.Name,
             [],
             parameters,
-            true)
+            true,
+            [],
+            [])
         {
             ReturnType = instantiatedUnion
         };
@@ -2119,15 +2132,17 @@ public class TypeChecker
 
     public interface ITypeReference
     {
-        ITypeReference ConcreteType()
+        (ITypeReference, Guid) ConcreteType()
         {
-            if (this is GenericTypeReference genericTypeReference)
-            {
-                return genericTypeReference.ResolvedType?.ConcreteType()
-                       ?? throw new InvalidOperationException("no resolved type");
-            }
 
-            return this;
+            return this switch
+            {
+                GenericTypeReference genericTypeReference => genericTypeReference.ResolvedType?.ConcreteType()
+                    ?? throw new InvalidOperationException("No resolved type"),
+                InstantiatedClass instantiatedClass => (instantiatedClass, instantiatedClass.Signature.Id),
+                InstantiatedUnion instantiatedUnion => (instantiatedUnion, instantiatedUnion.Signature.Id),
+                _ => throw new UnreachableException()
+            };
         }
     }
 
@@ -2430,6 +2445,8 @@ public class TypeChecker
     public interface ITypeSignature
     {
         string Name { get; }
+        
+        Guid Id { get; }
     }
 
     private static InstantiatedFunction InstantiateFunction(FunctionSignature signature,
@@ -2544,8 +2561,11 @@ public class TypeChecker
         string name,
         IReadOnlyList<GenericTypeReference> typeParameters,
         OrderedDictionary<string, FunctionParameter> parameters,
-        bool isStatic) : ITypeSignature
+        bool isStatic,
+        IReadOnlyList<IExpression> expressions,
+        IReadOnlyList<FunctionSignature> localFunctions) : ITypeSignature
     {
+        public Guid Id { get; } = Guid.NewGuid();
         public bool IsStatic { get; } = isStatic;
         public IReadOnlyList<GenericTypeReference> TypeParameters { get; } = typeParameters;
         public OrderedDictionary<string, FunctionParameter> Parameters { get; } = parameters;
@@ -2553,6 +2573,9 @@ public class TypeChecker
         // mutable due to setting up signatures and generic stuff
         public required ITypeReference ReturnType { get; set; }
         public string Name { get; } = name;
+
+        public IReadOnlyList<IExpression> Expressions { get; set; } = expressions;
+        public IReadOnlyList<FunctionSignature> LocalFunctions { get; set; } = localFunctions;
     }
 
     public record FunctionParameter(StringToken Name, ITypeReference Type, bool Mutable);
@@ -2560,7 +2583,7 @@ public class TypeChecker
     public class UnionSignature : ITypeSignature
     {
         public static readonly IReadOnlyList<ITypeSignature> BuiltInTypes;
-
+        
         static UnionSignature()
         {
             var variants = new TupleUnionVariant[2];
@@ -2600,6 +2623,7 @@ public class TypeChecker
         }
 
         public static UnionSignature Result { get; }
+        public Guid Id { get; } = Guid.NewGuid();
         public required IReadOnlyList<GenericTypeReference> TypeParameters { get; init; }
         public required IReadOnlyList<IUnionVariant> Variants { get; init; }
         public required IReadOnlyList<FunctionSignature> Functions { get; init; }
@@ -2632,7 +2656,7 @@ public class TypeChecker
 
     public class ClassSignature : ITypeSignature
     {
-        private static readonly Dictionary<int, string> TupleFieldNames = new()
+        public static readonly Dictionary<int, string> TupleFieldNames = new()
         {
             { 0, "First" },
             { 1, "Second" },
@@ -2668,6 +2692,7 @@ public class TypeChecker
         public required IReadOnlyList<TypeField> StaticFields { get; init; }
         public required IReadOnlyList<FunctionSignature> Functions { get; init; }
         public required string Name { get; init; }
+        public Guid Id { get; } = Guid.NewGuid();
 
         public static ClassSignature Tuple(IReadOnlyList<ITypeReference> elements)
         {

@@ -37,13 +37,18 @@ public class TypeCheckerTests
     public void SingleTest()
     {
         const string src =
+            
             """
-            union MyUnion {A, B}
-            class MyClass { pub field MyField: MyUnion } 
-
-            var a = new MyClass { MyField = MyUnion::A };
-            match (a) {
-                MyClass { MyField: MyUnion } => 1,
+            fn SomeFn<T>(param: T) {
+                fn OtherFn<T2>(param2: T2) {
+                    fn ThirdFn<T3>(param3: T3): T2 {
+                        var a: T = param;
+                        var b: T2 = param2;
+                        var c: T3 = param3;
+                        
+                        return a;
+                    }
+                }
             }
             """;
 
