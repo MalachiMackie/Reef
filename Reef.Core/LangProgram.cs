@@ -29,6 +29,8 @@ public record LangProgram(
 
         return sb.ToString();
     }
+
+    public List<TypeChecker.Variable> TopLevelLocalVariables { get; } = [];
 }
 
 // todo: is this an ok name?

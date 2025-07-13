@@ -46,11 +46,15 @@ public class TypeChecker
 
     private bool TryGetScopedVariable(string name, [NotNullWhen(true)] out Variable? variable)
     {
+        CurrentFunctionSignature?.AccessedOuterVariables.Add(name);
         return _typeCheckingScopes.Peek().TryGetVariable(name, out variable);
     }
 
     private bool TryAddScopedVariable(string name, Variable variable)
     {
+        var localVariables = CurrentFunctionSignature?.LocalVariables ?? _program.TopLevelLocalVariables;
+        localVariables.Add(variable);
+
         return _typeCheckingScopes.Peek().TryAddVariable(name, variable);
     }
 
@@ -2573,9 +2577,10 @@ public class TypeChecker
         // mutable due to setting up signatures and generic stuff
         public required ITypeReference ReturnType { get; set; }
         public string Name { get; } = name;
-
-        public IReadOnlyList<IExpression> Expressions { get; set; } = expressions;
-        public IReadOnlyList<FunctionSignature> LocalFunctions { get; set; } = localFunctions;
+        public IReadOnlyList<IExpression> Expressions { get; } = expressions;
+        public IReadOnlyList<FunctionSignature> LocalFunctions { get; } = localFunctions;
+        public List<Variable> LocalVariables { get; } = [];
+        public List<string> AccessedOuterVariables { get; } = [];
     }
 
     public record FunctionParameter(StringToken Name, ITypeReference Type, bool Mutable);
