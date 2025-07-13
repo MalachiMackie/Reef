@@ -97,13 +97,13 @@ public record StoreLocal(InstructionAddress Address, uint LocalIndex) : IInstruc
 /// Creates an object of the specified type and pushes the resulting reference onto the evaluation stack
 /// </summary>
 /// <param name="Address"></param>
-public record CreateObject(InstructionAddress Address, ReefType ReefType) : IInstruction;
+public record CreateObject(InstructionAddress Address, ConcreteReefTypeReference ReefType) : IInstruction;
 
 /// <summary>
 /// Loads a reference to the specified type into the evaluation stack
 /// </summary>
 /// <param name="Address"></param>
-public record LoadType(InstructionAddress Address, ReefType ReefType) : IInstruction;
+public record LoadType(InstructionAddress Address, IReefTypeReference ReefType) : IInstruction;
 
 /// <summary>
 /// Pops two values off the evaluation stack, storing the top most value
