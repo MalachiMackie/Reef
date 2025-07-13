@@ -48,9 +48,10 @@ public record TypeCheckerError
             "'this' is only available within instance functions");
     }
 
-    public static TypeCheckerError MatchNonExhaustive()
+    // todo: this needs heaps better error reporting
+    public static TypeCheckerError MatchNonExhaustive(SourceRange sourceRange)
     {
-        return new(TypeCheckerErrorType.MatchNonExhaustive, SourceRange.Default, "");
+        return new(TypeCheckerErrorType.MatchNonExhaustive, sourceRange, "Match expression is not exhaustive");
     }
 
     public static TypeCheckerError AccessUninitializedVariable(StringToken variableIdentifier)

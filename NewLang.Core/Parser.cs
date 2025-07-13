@@ -281,14 +281,6 @@ public sealed class Parser : IDisposable
                 break;
             }
 
-            var allowableNextTokens = new List<TokenType>();
-            if (allowedScopeTypes.Contains(Scope.ScopeType.Function))
-                allowableNextTokens.Add(TokenType.Fn);
-            if (allowedScopeTypes.Contains(Scope.ScopeType.TypeDefinition))
-            {
-                allowableNextTokens.AddRange(TokenType.Class, TokenType.Union);
-            }
-
             var (accessModifier, mutabilityModifier, staticModifier) = GetModifiers();
 
             if (!_hasNext)
@@ -1257,7 +1249,7 @@ public sealed class Parser : IDisposable
 
                     if (!MoveNext())
                     {
-                        return null;
+                        return new FieldPattern(fieldName, new VariableDeclarationPattern(fieldName, new SourceRange(fieldName.SourceSpan, fieldName.SourceSpan)));
                     }
 
                     IPattern? pattern = null;
@@ -1276,6 +1268,11 @@ public sealed class Parser : IDisposable
                                 MoveNext();
                             }
                         }
+                    }
+                    else
+                    {
+                        pattern = new VariableDeclarationPattern(fieldName,
+                            new SourceRange(fieldName.SourceSpan, fieldName.SourceSpan));
                     }
 
                     return new FieldPattern(fieldName, pattern);

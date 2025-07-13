@@ -1,21 +1,22 @@
 ﻿using System.Diagnostics;
+using NewLang.Core.PatternAnalysis;
 
 namespace NewLang.Core;
 
 // todo: this should probably be able to be a visitor
-public class ResolvedTypeChecker
+public class TypeTwoTypeChecker
 {
     private readonly List<TypeCheckerError> _errors = [];
 
-    public static IReadOnlyList<TypeCheckerError> CheckAllExpressionsHaveResolvedTypes(LangProgram program)
+    public static IReadOnlyList<TypeCheckerError> TypeTwoTypeCheck(LangProgram program)
     {
-        var checker = new ResolvedTypeChecker();
-        checker.InnerCheckAllExpressionsHaveResolvedTypes(program);
+        var checker = new TypeTwoTypeChecker();
+        checker.InnerTypeTwoTypeCheck(program);
 
         return checker._errors;
     }
 
-    private void InnerCheckAllExpressionsHaveResolvedTypes(LangProgram program)
+    private void InnerTypeTwoTypeCheck(LangProgram program)
     {
         foreach (var function in program.Functions)
         {
@@ -101,7 +102,7 @@ public class ResolvedTypeChecker
             throw new UnreachableException("Every expression should be type checked");
         }
 
-        CheckTypeReference(expression.ResolvedType, expression, expectedGenerics);
+        CheckTypeReferenceIsResolved(expression.ResolvedType, expression, expectedGenerics);
 
         switch (expression)
         {
@@ -168,6 +169,29 @@ public class ResolvedTypeChecker
             {
                 CheckExpression(arm.Expression, expectedGenerics);
             }
+        }
+
+        var usefulnessReport = MatchUsefulnessAnalyzer.ComputeMatchUsefulness(
+            matchExpression.Arms,
+            matchExpression.Value.ResolvedType ?? throw new InvalidOperationException("expected resolved type"),
+            PlaceValidity.ValidOnly,
+            // random guess
+            complexityLimit: 15);
+
+        foreach (var (arm, usefulness) in usefulnessReport.ArmUsefulness)
+        {
+            if (usefulness is Useful { OrPatternRedundancies: { Count: > 0 } redundantSubPatterns })
+            {
+                foreach (var (pattern, explanation) in redundantSubPatterns)
+                {
+                    // warn
+                }
+            }
+        }
+
+        if (usefulnessReport.NonExhaustivenessWitnesses.Count > 0)
+        {
+            _errors.Add(TypeCheckerError.MatchNonExhaustive(matchExpression.SourceRange));
         }
     }
 
@@ -320,10 +344,10 @@ public class ResolvedTypeChecker
             return;
         }
         
-        CheckTypeReference(variableType, variableDeclarationExpression, expectedGenerics);
+        CheckTypeReferenceIsResolved(variableType, variableDeclarationExpression, expectedGenerics);
     }
 
-    private void CheckTypeReference(TypeChecker.ITypeReference typeReference, IExpression expression,
+    private void CheckTypeReferenceIsResolved(TypeChecker.ITypeReference typeReference, IExpression expression,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
         switch (typeReference)
@@ -332,7 +356,7 @@ public class ResolvedTypeChecker
             {
                 foreach (var argument in classTypeArguments)
                 {
-                    CheckTypeReference(argument, expression, expectedGenerics);
+                    CheckTypeReferenceIsResolved(argument, expression, expectedGenerics);
                 }
 
                 break;
@@ -341,7 +365,7 @@ public class ResolvedTypeChecker
             {
                 foreach (var argument in unionTypeArguments)
                 {
-                    CheckTypeReference(argument, expression, expectedGenerics);
+                    CheckTypeReferenceIsResolved(argument, expression, expectedGenerics);
                 }
 
                 break;
@@ -350,7 +374,7 @@ public class ResolvedTypeChecker
             {
                 foreach (var argument in functionTypeArguments)
                 {
-                    CheckTypeReference(argument, expression, expectedGenerics);
+                    CheckTypeReferenceIsResolved(argument, expression, expectedGenerics);
                 }
 
                 break;

@@ -14,6 +14,7 @@ public class TypeCheckerTests
     public void Should_SuccessfullyTypeCheckExpressions(string source)
     {
         var program = Parser.Parse(Tokenizer.Tokenize(source));
+        program.Errors.Should().BeEmpty();
         var errors = TypeChecker.TypeCheck(program.ParsedProgram);
         errors.Should().BeEmpty();
     }
@@ -26,6 +27,7 @@ public class TypeCheckerTests
         IReadOnlyList<TypeCheckerError> expectedErrors)
     {
         var program = Parser.Parse(Tokenizer.Tokenize(source));
+        program.Errors.Should().BeEmpty();
         var errors = TypeChecker.TypeCheck(program.ParsedProgram).Select(RemoveSourceSpanHelpers.RemoveSourceSpan);
 
         errors.Should().BeEquivalentTo(expectedErrors).And.NotBeEmpty();
@@ -36,9 +38,13 @@ public class TypeCheckerTests
     {
         const string src =
             """
-            class MyClass {pub field MyField: string}
-            var a = new MyClass { MyField = "" };
-            var b: bool = a matches MyClass;
+            union MyUnion {A, B}
+            class MyClass { pub field MyField: MyUnion } 
+
+            var a = new MyClass { MyField = MyUnion::A };
+            match (a) {
+                MyClass { MyField: MyUnion } => 1,
+            }
             """;
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
@@ -51,6 +57,196 @@ public class TypeCheckerTests
     {
         return new TheoryData<string>
         {
+            """
+            union MyUnion {A, B}
+            class MyClass { pub field MyField: MyUnion } 
+
+            var a = new MyClass { MyField = MyUnion::A };
+            match (a) {
+                MyClass { MyField: MyUnion } => 1,
+            }
+            """,
+            """
+            union OtherUnion {A, B}
+            union MyUnion {
+                A(OtherUnion)
+            }
+            var a = MyUnion::A(OtherUnion::A);
+            match (a) {
+                MyUnion::A(OtherUnion::A) => 1,
+                MyUnion::A(OtherUnion::B) => 1,
+            }
+            """,
+            """
+            union OtherUnion {A, B}
+            union MyUnion {
+                A(OtherUnion)
+            }
+            var a = MyUnion::A(OtherUnion::A);
+            match (a) {
+                MyUnion::A(OtherUnion::A) => 1,
+                MyUnion::A(var b) => 1,
+            }
+            """,
+            """
+            union OtherUnion {A, B}
+            union MyUnion {
+                A(OtherUnion)
+            }
+            var a = MyUnion::A(OtherUnion::A);
+            match (a) {
+                MyUnion::A(OtherUnion::A) => 1,
+                MyUnion::A(var b) => 1,
+            }
+            """,
+            """
+            union OtherUnion {A, B}
+            union MyUnion {
+                A(OtherUnion)
+            }
+            var a = MyUnion::A(OtherUnion::A);
+            match (a) {
+                MyUnion::A(OtherUnion::A) => 1,
+                MyUnion::A(_) => 1,
+            }
+            """,
+            """
+            union MyUnion {
+                A(string)
+            }
+            var a = MyUnion::A("");
+            match (a) {
+                MyUnion::A(string) => 1,
+            }
+            """,
+            """
+            class MyClass {
+                pub field MyField: string,
+                pub field OtherField: int
+            }
+            var a = new MyClass { MyField = "", OtherField = 2 };
+            match (a) {
+                MyClass => 1
+            }
+            """,
+            """
+            class MyClass {
+                pub field MyField: string,
+                pub field OtherField: int
+            }
+            var a = new MyClass { MyField = "", OtherField = 2 };
+            match (a) {
+                MyClass {_} => 1
+            }
+            """,
+            """
+            class MyClass {
+                pub field MyField: string,
+                pub field OtherField: int
+            }
+            var a = new MyClass { MyField = "", OtherField = 2 };
+            match (a) {
+                MyClass {MyField: _, OtherField: _} => 1
+            }
+            """,
+            """
+            class MyClass {
+                pub field MyField: string,
+                pub field OtherField: int
+            }
+            var a = new MyClass { MyField = "", OtherField = 2 };
+            match (a) {
+                MyClass {MyField: _, _} => 1
+            }
+            """,
+            """
+            class MyClass {
+                pub field MyField: string,
+                pub field OtherField: int
+            }
+            var a = new MyClass { MyField = "", OtherField = 2 };
+            match (a) {
+                MyClass {MyField: string, OtherField: int} => 1
+            }
+            """,
+            """
+            class MyClass {
+                pub field MyField: string,
+            }
+            var a = new MyClass { MyField = "" };
+            match (a) {
+                MyClass { MyField: string } => 1
+            }
+            """,
+            """
+            // double field match fully exhausted
+            union OtherUnion {A, B}
+            class MyClass {
+                pub field MyField: OtherUnion,
+                pub field OtherField: OtherUnion
+            }
+            var a = new MyClass { MyField = OtherUnion::A, OtherField = OtherUnion::B };
+            match (a) {
+                MyClass { MyField: OtherUnion::A, OtherField: OtherUnion::A } => 1,
+                MyClass { MyField: OtherUnion::B, OtherField: OtherUnion::A } => 1,
+                MyClass { MyField: OtherUnion::A, OtherField: OtherUnion::B } => 1,
+                MyClass { MyField: OtherUnion::B, OtherField: OtherUnion::B } => 1,
+            }
+            """,
+            """
+            union OtherUnion {A, B}
+            class MyClass {
+                pub field MyField: OtherUnion,
+                pub field OtherField: OtherUnion
+            }
+            var a = new MyClass { MyField = OtherUnion::A, OtherField = OtherUnion::B };
+            match (a) {
+                MyClass { MyField: OtherUnion::A, OtherField: _} => 1,
+                MyClass { MyField: OtherUnion::B, OtherField: OtherUnion::A } => 1,
+                MyClass { MyField: OtherUnion::B, OtherField: OtherUnion::B } => 1,
+            }
+            """,
+            """
+            union OtherUnion {A, B}
+            class MyClass {
+                pub field MyField: OtherUnion,
+                pub field OtherField: OtherUnion
+            }
+            var a = new MyClass { MyField = OtherUnion::A, OtherField = OtherUnion::B };
+            match (a) {
+                MyClass { MyField: OtherUnion::A, OtherField: _ } => 1,
+                MyClass { MyField: OtherUnion::B, OtherField: _ } => 1,
+            }
+            """,
+            """
+            union ThirdUnion { A, B }
+            union OtherUnion {
+                A { field MyField: ThirdUnion },
+                B
+            }
+            union MyUnion {
+                A { field MyField: OtherUnion },
+                B
+            }
+            var a = new MyUnion::A { MyField = OtherUnion::B };
+            match (a) {
+                MyUnion::A { MyField: OtherUnion::A { MyField: ThirdUnion::A } } => 1,
+                MyUnion::A { MyField: OtherUnion::A { MyField: ThirdUnion::B } } => 1,
+                MyUnion::A { MyField: OtherUnion::B } => 1,
+                MyUnion::B => 1,
+            }
+            """,
+            """
+            // single field match fully exhaustive
+            union MyUnion {A, B}
+            class MyClass { pub field MyField: MyUnion } 
+            
+            var a = new MyClass { MyField = MyUnion::A };
+            match (a) {
+                MyClass { MyField: MyUnion::A } => 1,
+                MyClass { MyField: MyUnion::B } => 1,
+            }
+            """,
             """
             var a;
             if (true) {
@@ -477,7 +673,7 @@ public class TypeCheckerTests
             """
             class MyClass {
                 pub static mut field MyField: string = ""
-            };
+            }
 
             MyClass::MyField = "";
             """,
@@ -913,6 +1109,71 @@ public class TypeCheckerTests
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
             {
+                "Single field class exhaustive fail",
+                """
+                union MyUnion {A, B}
+                class MyClass { pub field MyField: MyUnion } 
+
+                var a = new MyClass { MyField = MyUnion::A };
+                match (a) {
+                    MyClass { MyField: MyUnion::A } => 1,
+                }
+                """,
+                [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)]
+            },
+            {
+                "double field class not all combinations of union variants are matched",
+                """
+                union OtherUnion {A, B}
+                class MyClass {
+                    pub field MyField: OtherUnion,
+                    pub field OtherField: OtherUnion
+                }
+                var a = new MyClass { MyField = OtherUnion::A, OtherField = OtherUnion::B };
+                match (a) {
+                    MyClass { MyField: OtherUnion::A, OtherField: OtherUnion::A } => 1,
+                    MyClass { MyField: OtherUnion::B, OtherField: OtherUnion::A } => 1,
+                    MyClass { MyField: OtherUnion::A, OtherField: OtherUnion::B } => 1,
+                }
+                """,
+                [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)]
+            },
+            {
+                "Deeply nested non exhaustive match",
+                """
+                union ThirdUnion { A, B }
+                union OtherUnion {
+                    A { field MyField: ThirdUnion },
+                    B
+                }
+                union MyUnion {
+                    A { field MyField: OtherUnion },
+                    B
+                }
+                var a = new MyUnion::A { MyField = OtherUnion::B };
+                match (a) {
+                    MyUnion::A { MyField: OtherUnion::A { MyField: ThirdUnion::B } } => 1,
+                    MyUnion::A { MyField: OtherUnion::B } => 1,
+                    MyUnion::B => 1,
+                }
+                """,
+                [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)]
+            },
+            {
+                "tuple pattern match not exhaustive",
+                """
+                union OtherUnion {A, B}
+                union MyUnion {
+                    A(OtherUnion)
+                }
+                var a = MyUnion::A(OtherUnion::A);
+                match (a) {
+                    MyUnion::A(OtherUnion::A) => 1,
+                }
+                """,
+                [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)]
+            },
+            {
                 "type inference from same function variable into two variables",
                 """
                 var a = SomeFn;
@@ -1016,7 +1277,7 @@ public class TypeCheckerTests
                     // non exhaustive
                 }
                 """,
-                [TypeCheckerError.MatchNonExhaustive()]
+                [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)]
             },
             {
                 "match expression not exhaustive",
@@ -1028,7 +1289,7 @@ public class TypeCheckerTests
                     MyClass { MyField: MyUnion::A } => 1
                 }
                 """,
-                [TypeCheckerError.MatchNonExhaustive()]
+                [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)]
             },
             {
                 "incompatible pattern type",
@@ -1488,7 +1749,7 @@ public class TypeCheckerTests
                 """
                 class MyClass {
                     pub static field MyField: string = ""
-                };
+                }
 
                 // MyField is not marked as mutable
                 MyClass::MyField = "";
@@ -2113,7 +2374,7 @@ public class TypeCheckerTests
                 "Generic type conflicts with existing type",
                 """
                 class MyClass{}
-                fn MyFn<MyClass>{}
+                fn MyFn<MyClass>(){}
                 """,
                 [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
             },
@@ -2121,7 +2382,7 @@ public class TypeCheckerTests
                 "Generic type conflicts with existing type",
                 """
                 class MyClass{}
-                class SomeClass {fn MyFn<MyClass>{}}
+                class SomeClass {fn MyFn<MyClass>(){}}
                 """,
                 [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
             },
@@ -2129,7 +2390,7 @@ public class TypeCheckerTests
                 "Generic type conflicts with existing type",
                 """
                 class MyClass{}
-                union SomeUnion {fn MyFn<MyClass>{}}
+                union SomeUnion {fn MyFn<MyClass>(){}}
                 """,
                 [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
             },
@@ -2137,7 +2398,7 @@ public class TypeCheckerTests
                 "Generic type conflicts with existing type",
                 """
                 class MyClass{}
-                fn SomeFn {fn MyFn<MyClass>{}}
+                fn SomeFn() {fn MyFn<MyClass>(){}}
                 """,
                 [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
             },

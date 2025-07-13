@@ -1088,8 +1088,15 @@ public static class ParseErrorTestCases
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.RightBrace),
-                    ParserError.ExpectedToken(null, TokenType.RightBrace),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma),
                 ]
+            ),
+            (
+                "class MyClass{};",
+                new LangProgram([], [], [
+                    Class("MyClass")
+                ], []),
+                []
             ),
             (
                 "a matches A::C {_}",
@@ -1197,7 +1204,7 @@ public static class ParseErrorTestCases
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.RightBrace),
-                    ParserError.ExpectedToken(null, TokenType.RightBrace),
+                    ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma),
                 ]
             ),
             (

@@ -208,7 +208,7 @@ public class TypeChecker
 
         if (_errors.Count == 0)
         {
-            _errors.AddRange(ResolvedTypeChecker.CheckAllExpressionsHaveResolvedTypes(_program));
+            _errors.AddRange(TypeTwoTypeChecker.TypeTwoTypeCheck(_program));
         }
     }
 
@@ -314,7 +314,7 @@ public class TypeChecker
 
                 variants.Add(variant switch
                 {
-                    UnitUnionVariant => new NoMembersUnionVariant { Name = variant.Name.StringValue },
+                    Core.UnitUnionVariant => new UnitUnionVariant { Name = variant.Name.StringValue },
                     Core.TupleUnionVariant tupleVariant => TypeCheckTupleVariant(tupleVariant),
                     Core.ClassUnionVariant classVariant => TypeCheckUnionClassVariant(classVariant),
                     _ => throw new UnreachableException()
@@ -631,41 +631,7 @@ public class TypeChecker
             }
         }
 
-        if (!IsMatchExhaustive(matchExpression.Arms, valueType))
-        {
-            throw new InvalidOperationException("match expression is not exhaustive");
-        }
-
         return foundType ?? throw new UnreachableException("Parser checked match expression has at least one arm");
-    }
-
-    private static bool IsMatchExhaustive(IReadOnlyList<MatchArm> matchArms, ITypeReference type)
-    {
-        var matchedVariants = new List<string>();
-
-        foreach (var armPattern in matchArms.Select(x => x.Pattern))
-        {
-            if (armPattern is DiscardPattern)
-            {
-                return true;
-            }
-            
-            switch (armPattern)
-            {
-                case UnionVariantPattern { VariantName.StringValue: var variantName }:
-                    matchedVariants.Add(variantName);
-                    break;
-                case UnionClassVariantPattern { VariantName.StringValue: var classVariantName }:
-                    matchedVariants.Add(classVariantName);
-                    break;
-                case UnionTupleVariantPattern { VariantName.StringValue: var tupleVariantName }:
-                    matchedVariants.Add(tupleVariantName);
-                    break;
-            }
-        }
-
-        return type is InstantiatedUnion { Variants: var unionVariants }
-                   && !unionVariants.Select(x => x.Name).Except(matchedVariants).Any();
     }
 
     private InstantiatedClass TypeCheckMatchesExpression(MatchesExpression matchesExpression)
@@ -692,6 +658,7 @@ public class TypeChecker
             case UnionVariantPattern variantPattern:
             {
                 var patternUnionType = GetTypeReference(variantPattern.Type);
+                variantPattern.TypeReference = patternUnionType;
 
                 if (patternUnionType is not InstantiatedUnion union)
                 {
@@ -728,6 +695,7 @@ public class TypeChecker
             case ClassPattern classPattern:
             {
                 var patternType = GetTypeReference(classPattern.Type);
+                classPattern.TypeReference = patternType;
 
                 if (patternType is UnknownType)
                 {
@@ -804,6 +772,7 @@ public class TypeChecker
             case UnionClassVariantPattern classVariantPattern:
             {
                 var patternType = GetTypeReference(classVariantPattern.Type);
+                classVariantPattern.TypeReference = patternType;
 
                 ExpectType(patternType, valueTypeReference, pattern.SourceRange);
 
@@ -877,6 +846,7 @@ public class TypeChecker
             case UnionTupleVariantPattern unionTupleVariantPattern:
             {
                 var patternType = GetTypeReference(unionTupleVariantPattern.Type);
+                unionTupleVariantPattern.TypeReference = patternType;
 
                 ExpectType(patternType, valueTypeReference, pattern.SourceRange);
 
@@ -939,9 +909,11 @@ public class TypeChecker
 
                 break;
             }
-            case TypePattern { Type: var typeIdentifier, VariableName: var variableName }:
+            case TypePattern { Type: var typeIdentifier, VariableName: var variableName } typePattern:
             {
                 var type = GetTypeReference(typeIdentifier);
+                typePattern.TypeReference = type;
+                
                 ExpectType(type, valueTypeReference, pattern.SourceRange);
                 
                 if (variableName is not null)
@@ -1187,9 +1159,9 @@ public class TypeChecker
                 return variant switch
                 {
                     TupleUnionVariant tupleVariant => GetTupleUnionFunction(tupleVariant, instantiatedUnion),
-                    NoMembersUnionVariant => type,
+                    UnitUnionVariant => type,
                     ClassUnionVariant => throw new InvalidOperationException(
-                        "Cannot create nunion class variant without initializer"),
+                        "Cannot create union class variant without initializer"),
                     _ => throw new UnreachableException()
                 };
             }
@@ -2145,7 +2117,19 @@ public class TypeChecker
         public ITypeReference? Type { get; set; } = Type;
     }
 
-    public interface ITypeReference;
+    public interface ITypeReference
+    {
+        ITypeReference ConcreteType()
+        {
+            if (this is GenericTypeReference genericTypeReference)
+            {
+                return genericTypeReference.ResolvedType?.ConcreteType()
+                       ?? throw new InvalidOperationException("no resolved type");
+            }
+
+            return this;
+        }
+    }
 
     public class UnknownType : ITypeReference
     {
@@ -2311,33 +2295,21 @@ public class TypeChecker
 
             Fields =
             [
-                ..signature.Fields.Select(x => new TypeField
+                ..signature.Fields.Select(x => x with { Type = x.Type switch
                 {
-                    Name = x.Name,
-                    IsMutable = x.IsMutable,
-                    IsPublic = x.IsPublic,
-                    Type = x.Type switch
-                    {
-                        GenericTypeReference genericTypeReference => typeArguments.First(y =>
-                            y.GenericName == genericTypeReference.GenericName),
-                        var type => type
-                    }
-                })
+                    GenericTypeReference genericTypeReference => typeArguments.First(y =>
+                        y.GenericName == genericTypeReference.GenericName),
+                    var type => type
+                } })
             ];
             StaticFields =
             [
-                ..signature.StaticFields.Select(x => new TypeField
+                ..signature.StaticFields.Select(x => x with { Type = x.Type switch
                 {
-                    Name = x.Name,
-                    IsMutable = x.IsMutable,
-                    IsPublic = x.IsPublic,
-                    Type = x.Type switch
-                    {
-                        GenericTypeReference genericTypeReference => typeArguments.First(y =>
-                            y.GenericName == genericTypeReference.GenericName),
-                        var type => type
-                    }
-                })
+                    GenericTypeReference genericTypeReference => typeArguments.First(y =>
+                        y.GenericName == genericTypeReference.GenericName),
+                    var type => type
+                } })
             ];
         }
 
@@ -2411,18 +2383,12 @@ public class TypeChecker
                         Name = classVariant.Name,
                         Fields =
                         [
-                            ..classVariant.Fields.Select(y => new TypeField
+                            ..classVariant.Fields.Select(y => y with { Type = y.Type switch
                             {
-                                Name = y.Name,
-                                IsMutable = y.IsMutable,
-                                IsPublic = y.IsPublic,
-                                Type = y.Type switch
-                                {
-                                    GenericTypeReference genericTypeReference => typeArguments.First(z =>
-                                        z.GenericName == genericTypeReference.GenericName),
-                                    _ => y.Type
-                                }
-                            })
+                                GenericTypeReference genericTypeReference => typeArguments.First(z =>
+                                    z.GenericName == genericTypeReference.GenericName),
+                                _ => y.Type
+                            } })
                         ]
                     },
                     _ => x
@@ -2430,7 +2396,7 @@ public class TypeChecker
             ];
         }
 
-        private UnionSignature Signature { get; }
+        public UnionSignature Signature { get; }
 
         public IReadOnlyList<IUnionVariant> Variants { get; }
 
@@ -2647,19 +2613,19 @@ public class TypeChecker
     }
 
     // todo: better names
-    private class TupleUnionVariant : IUnionVariant
+    public class TupleUnionVariant : IUnionVariant
     {
         public required IReadOnlyList<ITypeReference> TupleMembers { get; init; }
         public required string Name { get; init; }
     }
 
-    private class ClassUnionVariant : IUnionVariant
+    public class ClassUnionVariant : IUnionVariant
     {
         public required IReadOnlyList<TypeField> Fields { get; init; }
         public required string Name { get; init; }
     }
 
-    private class NoMembersUnionVariant : IUnionVariant
+    public class UnitUnionVariant : IUnionVariant
     {
         public required string Name { get; init; }
     }
@@ -2736,7 +2702,7 @@ public class TypeChecker
         }
     }
 
-    public class TypeField
+    public record TypeField
     {
         public required ITypeReference Type { get; init; }
         public required string Name { get; init; }
