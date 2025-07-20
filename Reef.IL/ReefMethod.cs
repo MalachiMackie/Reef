@@ -2,6 +2,8 @@
 
 public class ReefMethod
 {
+    public required string DisplayName { get; set; }
+    public required bool IsStatic { get; set; }
     public required IReadOnlyList<IInstruction> Instructions { get; set; }
     public required IReadOnlyList<Parameter> Parameters { get; set; }
     public required IReadOnlyList<Local> Locals { get; set; }

@@ -12,4 +12,8 @@
         <PackageReference Include="JetBrains.Annotations" Version="2024.3.0"/>
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Reef.IL\Reef.IL.csproj" />
+    </ItemGroup>
+
 </Project>

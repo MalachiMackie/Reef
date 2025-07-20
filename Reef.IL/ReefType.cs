@@ -14,6 +14,7 @@ public interface IReefTypeReference;
 
 public class ConcreteReefTypeReference : IReefTypeReference
 {
+    public required string Name { get; set; }
     public required Guid DefinitionId { get; set; }
     public required IReadOnlyList<IReefTypeReference> TypeArguments { get; set; }
 }
