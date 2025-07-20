@@ -485,13 +485,25 @@ public class TypeChecker
             typeParameters,
             parameters,
             fn.StaticModifier is not null,
+            fn.MutabilityModifier is not null,
             fn.Block.Expressions,
             localFunctions)
         {
             ReturnType = null!
         };
 
+        if (CurrentFunctionSignature is { IsMutable: false } && fnSignature.IsMutable)
+        {
+            _errors.Add(TypeCheckerError.MutableFunctionWithinNonMutableFunction(new SourceRange(fn.Name.SourceSpan, fn.Name.SourceSpan)));
+        }
+
         fn.Signature = fnSignature;
+
+        if (fnSignature is { IsStatic: true, IsMutable: true })
+        {
+            var mutModifierSourceSpan = fn.MutabilityModifier!.Modifier.SourceSpan;
+            _errors.Add(TypeCheckerError.StaticFunctionMarkedAsMutable(name, new SourceRange(mutModifierSourceSpan, mutModifierSourceSpan)));
+        }
 
         var foundTypeParameters = new HashSet<string>();
         var genericPlaceholdersDictionary = GenericPlaceholders.ToDictionary(x => x.GenericName);
@@ -519,7 +531,7 @@ public class TypeChecker
         }
 
         var functionType = InstantiateFunction(fnSignature, [..GenericPlaceholders]);
-        using var _ = PushScope(genericPlaceholders: functionType.TypeArguments);
+        using var _ = PushScope(genericPlaceholders: functionType.TypeArguments, currentFunctionSignature: fnSignature);
 
         fnSignature.ReturnType = fn.ReturnType is null
             ? InstantiatedClass.Unit
@@ -581,7 +593,7 @@ public class TypeChecker
             BlockExpression blockExpression => TypeCheckBlock(blockExpression.Block),
             IfExpressionExpression ifExpressionExpression => TypeCheckIfExpression(ifExpressionExpression.IfExpression),
             BinaryOperatorExpression binaryOperatorExpression => TypeCheckBinaryOperatorExpression(
-                binaryOperatorExpression.BinaryOperator),
+                binaryOperatorExpression),
             ObjectInitializerExpression objectInitializerExpression => TypeCheckObjectInitializer(
                 objectInitializerExpression),
             MemberAccessExpression memberAccessExpression => TypeCheckMemberAccess(memberAccessExpression),
@@ -1111,9 +1123,17 @@ public class TypeChecker
             return UnknownType.Instance;
         }
 
-        return TryInstantiateClassFunction(classType, stringToken.StringValue, out var function)
-            ? function
-            : GetClassField(classType, stringToken);
+        if (!TryInstantiateClassFunction(classType, stringToken.StringValue, out var function))
+        {
+            return GetClassField(classType, stringToken);
+        }
+
+        if (function.IsMutable)
+        {
+            ExpectAssignableExpression(ownerExpression);
+        }
+
+        return function;
     }
 
     private static ITypeReference GetUnionClassVariantField(ClassUnionVariant variant, string fieldName)
@@ -1266,8 +1286,9 @@ public class TypeChecker
     }
 
     private ITypeReference TypeCheckBinaryOperatorExpression(
-        BinaryOperator @operator)
+        BinaryOperatorExpression binaryOperatorExpression)
     {
+        var @operator = binaryOperatorExpression.BinaryOperator;
         switch (@operator.OperatorType)
         {
             case BinaryOperatorType.LessThan:
@@ -1329,12 +1350,24 @@ public class TypeChecker
                 if (@operator.Left is ValueAccessorExpression
                     {
                         ValueAccessor: { AccessType: ValueAccessType.Variable, Token: StringToken variableName }
-                    } && GetScopedVariable(variableName.StringValue) is LocalVariable { Instantiated: false } variable)
+                    })
                 {
-                    variable.Instantiated = true;
-                    variable.Type ??= rightType;
-                }
+                    var variable = GetScopedVariable(variableName.StringValue);
 
+                    if (variable is LocalVariable { Instantiated: false } localVariable)
+                    {
+                        localVariable.Instantiated = true;
+                        localVariable.Type ??= rightType;
+                    }
+
+                    if (variable is FieldVariable && CurrentFunctionSignature is not {IsMutable: true})
+                    {
+                        _errors.Add(TypeCheckerError.MutatingInstanceInNonMutableFunction(
+                            CurrentFunctionSignature!.Name,
+                            binaryOperatorExpression.SourceRange));
+                    }
+                }
+                
                 ExpectExpressionType(leftType, @operator.Right);
 
                 return leftType;
@@ -1723,7 +1756,8 @@ public class TypeChecker
             tupleVariant.Name,
             [],
             parameters,
-            true,
+            isStatic: true,
+            isMutable: false,
             [],
             [])
         {
@@ -2339,6 +2373,7 @@ public class TypeChecker
         private FunctionSignature Signature { get; }
 
         public bool IsStatic => Signature.IsStatic;
+        public bool IsMutable => Signature.IsMutable;
 
         public IReadOnlyList<GenericTypeReference> TypeArguments { get; }
         public ITypeReference ReturnType { get; }
@@ -2607,11 +2642,13 @@ public class TypeChecker
         IReadOnlyList<GenericTypeReference> typeParameters,
         OrderedDictionary<string, FunctionParameter> parameters,
         bool isStatic,
+        bool isMutable,
         IReadOnlyList<IExpression> expressions,
         IReadOnlyList<FunctionSignature> localFunctions) : ITypeSignature
     {
         public Guid Id { get; } = Guid.NewGuid();
         public bool IsStatic { get; } = isStatic;
+        public bool IsMutable { get; } = isMutable;
         public IReadOnlyList<GenericTypeReference> TypeParameters { get; } = typeParameters;
         public OrderedDictionary<string, FunctionParameter> Parameters { get; } = parameters;
 

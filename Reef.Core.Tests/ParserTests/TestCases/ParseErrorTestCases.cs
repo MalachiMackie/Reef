@@ -310,19 +310,16 @@ public static class ParseErrorTestCases
             ),
             (
                 "mut static fn MyFn() {}",
-                new LangProgram([], [Function("MyFn", isStatic: true)], [], []),
-                [
-                    ParserError.UnexpectedModifier(Token.Mut(SourceSpan.Default), TokenType.Pub, TokenType.Static),
-                ]
+                new LangProgram([], [Function("MyFn", isStatic: true, isMutable: true)], [], []),
+                []
             ),
             (
                 "mut mut static static pub pub fn MyFn() {}",
-                new LangProgram([], [Function("MyFn", isStatic: true, isPublic: true)], [], []),
+                new LangProgram([], [Function("MyFn", isStatic: true, isPublic: true, isMutable: true)], [], []),
                 [
                     ParserError.DuplicateModifier(Token.Mut(SourceSpan.Default)),
                     ParserError.DuplicateModifier(Token.Static(SourceSpan.Default)),
                     ParserError.DuplicateModifier(Token.Pub(SourceSpan.Default)),
-                    ParserError.UnexpectedModifier(Token.Mut(SourceSpan.Default), TokenType.Pub, TokenType.Static),
                 ]
             ),
             (

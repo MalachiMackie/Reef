@@ -35,6 +35,7 @@ public class ILCompile
                 [],
                 [],
                 isStatic: true,
+                isMutable: false,
                 program.Expressions,
                 program.Functions.Select(x => x.Signature!).Where(x => !x.IsStatic).ToArray()
             )

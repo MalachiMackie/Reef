@@ -124,12 +124,20 @@ public static class ExpressionHelpers
         string name,
         bool isPublic = false,
         bool isStatic = false,
+        bool isMutable = false,
         IReadOnlyList<FunctionParameter>? parameters = null,
         IReadOnlyList<string>? typeParameters = null,
         TypeIdentifier? returnType = null)
     {
-        return new LangFunction(isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
-            isStatic ? new StaticModifier(Token.Static(SourceSpan.Default)) : null,
+        return new LangFunction(isPublic
+                ? new AccessModifier(Token.Pub(SourceSpan.Default))
+                : null,
+            isStatic
+                ? new StaticModifier(Token.Static(SourceSpan.Default))
+                : null,
+            isMutable
+                ? new MutabilityModifier(Token.Mut(SourceSpan.Default))
+                : null,
             Token.Identifier(name, SourceSpan.Default),
             typeParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)).ToArray() ?? [],
             parameters ?? [],

@@ -294,10 +294,7 @@ public sealed class Parser : IDisposable
             
             if (allowedScopeTypes.Contains(Scope.ScopeType.Function) && Current.Type == TokenType.Fn)
             {
-                if (mutabilityModifier is not null)
-                    _errors.Add(ParserError.UnexpectedModifier(mutabilityModifier.Modifier, TokenType.Pub, TokenType.Static));
-                
-                var functionDeclaration = GetFunctionDeclaration(accessModifier, staticModifier);
+                var functionDeclaration = GetFunctionDeclaration(accessModifier, staticModifier, mutabilityModifier);
                 if (functionDeclaration is not null)
                     functions.Add(functionDeclaration);
                 continue;
@@ -520,10 +517,7 @@ public sealed class Parser : IDisposable
         
         if (Current.Type == TokenType.Fn)
         {
-            if (mutabilityModifier is not null)
-                _errors.Add(ParserError.UnexpectedModifier(mutabilityModifier.Modifier, TokenType.Static, TokenType.Pub));
-            
-            var function = GetFunctionDeclaration(accessModifier, staticModifier);
+            var function = GetFunctionDeclaration(accessModifier, staticModifier, mutabilityModifier);
             return (function, null, null);
         }
 
@@ -838,7 +832,7 @@ public sealed class Parser : IDisposable
         return new ProgramClass(accessModifier, name, typeParameters, scope.Functions, scope.Fields);
     }
 
-    private LangFunction? GetFunctionDeclaration(AccessModifier? accessModifier, StaticModifier? staticModifier)
+    private LangFunction? GetFunctionDeclaration(AccessModifier? accessModifier, StaticModifier? staticModifier, MutabilityModifier? mutabilityModifier)
     {
         if (!ExpectNextIdentifier(out var nameToken))
         {
@@ -849,7 +843,7 @@ public sealed class Parser : IDisposable
         if (!MoveNext())
         {
             _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftAngleBracket, TokenType.LeftParenthesis));
-            return new LangFunction(accessModifier, staticModifier, nameToken, [], [], null, new Block([], []));
+            return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, [], [], null, new Block([], []));
         }
 
         IReadOnlyList<StringToken>? typeParameters = null;
@@ -864,7 +858,7 @@ public sealed class Parser : IDisposable
                 {
                     _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftParenthesis));
                 }
-                return new LangFunction(accessModifier, staticModifier, nameToken, typeParameters, [], null,
+                return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, [], null,
                     new Block([], []));
             }
         }
@@ -873,7 +867,7 @@ public sealed class Parser : IDisposable
         {
             _errors.Add(ParserError.ExpectedToken(Current, typeParameters is null ? [TokenType.LeftParenthesis, TokenType.LeftAngleBracket] : [TokenType.LeftParenthesis]));
             MoveNext();
-            return new LangFunction(accessModifier, staticModifier, nameToken, typeParameters ?? [], [], null,
+            return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters ?? [], [], null,
                 new Block([], []));
         }
         typeParameters ??= [];
@@ -886,11 +880,11 @@ public sealed class Parser : IDisposable
             expectPattern: false,
             () =>
             {
-                MutabilityModifier? mutabilityModifier = null;
+                MutabilityModifier? parameterMutabilityModifier = null;
 
                 if (Current.Type == TokenType.Mut)
                 {
-                    mutabilityModifier = new MutabilityModifier(Current);
+                    parameterMutabilityModifier = new MutabilityModifier(Current);
                     if (!MoveNext())
                     {
                         _errors.Add(ParserError.ExpectedToken(null, TokenType.Identifier));
@@ -900,19 +894,19 @@ public sealed class Parser : IDisposable
 
                 if (Current is not StringToken { Type: TokenType.Identifier } parameterName)
                 {
-                    _errors.Add(ParserError.ExpectedToken(Current, mutabilityModifier is null ? [TokenType.Mut, TokenType.Identifier] : [TokenType.Identifier]));
+                    _errors.Add(ParserError.ExpectedToken(Current, parameterMutabilityModifier is null ? [TokenType.Mut, TokenType.Identifier] : [TokenType.Identifier]));
                     MoveNext();
                     return null;
                 }
 
                 if (!ExpectNextToken(TokenType.Colon))
                 {
-                    return new FunctionParameter(null, mutabilityModifier, parameterName);
+                    return new FunctionParameter(null, parameterMutabilityModifier, parameterName);
                 }
 
                 ExpectNextTypeIdentifier(out var parameterType);
                 
-                return new FunctionParameter(parameterType, mutabilityModifier, parameterName);
+                return new FunctionParameter(parameterType, parameterMutabilityModifier, parameterName);
             });
 
         TypeIdentifier? returnType = null;
@@ -924,7 +918,7 @@ public sealed class Parser : IDisposable
                 _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace, TokenType.Colon));
             }
 
-            return new LangFunction(accessModifier, staticModifier, nameToken, typeParameters, parameterList, null,
+            return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
                 new Block([], []));
         }
 
@@ -933,14 +927,14 @@ public sealed class Parser : IDisposable
             if (!ExpectNextTypeIdentifier(out returnType))
             {
                 MoveNext();
-                return new LangFunction(accessModifier, staticModifier, nameToken, typeParameters, parameterList, null,
+                return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
                     new Block([], []));
             }
             
             if (!_hasNext)
             {
                 _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace));
-                return new LangFunction(accessModifier, staticModifier, nameToken, typeParameters, parameterList, returnType,
+                return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
                     new Block([], []));
             }
         }
@@ -949,13 +943,13 @@ public sealed class Parser : IDisposable
         {
             _errors.Add(ParserError.ExpectedToken(Current, returnType is null ? [TokenType.Colon, TokenType.LeftBrace] : [TokenType.LeftBrace]));
             MoveNext();
-            return new LangFunction(accessModifier, staticModifier, nameToken, typeParameters, parameterList, returnType,
+            return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
                 new Block([], []));
         }
 
         var scope = GetScope(TokenType.RightBrace, [Scope.ScopeType.Expression, Scope.ScopeType.Function]);
 
-        return new LangFunction(accessModifier, staticModifier, nameToken, typeParameters, parameterList, returnType,
+        return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
             new Block(scope.Expressions, scope.Functions));
     }
 

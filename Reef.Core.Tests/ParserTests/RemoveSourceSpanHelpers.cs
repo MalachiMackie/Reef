@@ -28,6 +28,7 @@ public static class RemoveSourceSpanHelpers
         return new LangFunction(
             RemoveSourceSpan(function.AccessModifier),
             RemoveSourceSpan(function.StaticModifier),
+            RemoveSourceSpan(function.MutabilityModifier),
             RemoveSourceSpan(function.Name),
             [..function.TypeParameters.Select(RemoveSourceSpan)!],
             [..function.Parameters.Select(RemoveSourceSpan)],

@@ -53,6 +53,7 @@ public record TypeIdentifier(StringToken Identifier, IReadOnlyList<TypeIdentifie
 public record LangFunction(
     AccessModifier? AccessModifier,
     StaticModifier? StaticModifier,
+    MutabilityModifier? MutabilityModifier,
     StringToken Name,
     IReadOnlyList<StringToken> TypeParameters,
     IReadOnlyList<FunctionParameter> Parameters,

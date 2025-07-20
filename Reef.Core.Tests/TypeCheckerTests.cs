@@ -37,20 +37,18 @@ public class TypeCheckerTests
     public void SingleTest()
     {
         const string src =
-            
             """
-            fn SomeFn<T>(param: T) {
-                fn OtherFn<T2>(param2: T2) {
-                    fn ThirdFn<T3>(param3: T3): T2 {
-                        var a: T = param;
-                        var b: T2 = param2;
-                        var c: T3 = param3;
-                        
-                        return a;
+            class MyClass {
+                mut field MyField: string,
+                
+                fn MyFn() {
+                    mut fn InnerFn() {
+                        MyField = "";
                     }
                 }
             }
             """;
+
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
@@ -628,8 +626,19 @@ public class TypeCheckerTests
             class MyClass {
                 mut field MyField: string,
                 
-                fn MyFn() {
+                mut fn MyFn() {
                     MyField = "";
+                }
+            }
+            """,
+            """
+            class MyClass {
+                mut field MyField: string,
+                
+                mut fn MyFn() {
+                    mut fn InnerFn() {
+                        MyField = "";
+                    }
                 }
             }
             """,
@@ -1113,6 +1122,76 @@ public class TypeCheckerTests
     {
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
+            {
+                "mutating instance field from non mutable inner function",
+                """
+                class MyClass {
+                    mut field MyField: string,
+                    
+                    mut fn MyFn() {
+                        fn InnerFn() {
+                            MyField = "";
+                        }
+                    }
+                }
+                """,
+                [TypeCheckerError.MutatingInstanceInNonMutableFunction("InnerFn", SourceRange.Default)]
+            },
+            {
+                "creating mutable inner function from non mutable parent function",
+                """
+                class MyClass {
+                    mut field MyField: string,
+                    
+                    fn MyFn() {
+                        mut fn InnerFn() {
+                            MyField = "";
+                        }
+                    }
+                }
+                """,
+                [TypeCheckerError.MutableFunctionWithinNonMutableFunction(SourceRange.Default)]
+            },
+            {
+                "static method marked as mutable",
+                """
+                class MyClass {
+                    pub static mut fn SomeFn() {}
+                }
+                """,
+                [TypeCheckerError.StaticFunctionMarkedAsMutable("SomeFn", SourceRange.Default)]
+            },
+            {
+                "Calling mut instance function with non mut variable",
+                """
+                class MyClass {
+                    pub mut field SomeField: string,
+                    
+                    pub mut fn DoSomething() {
+                        SomeField = "";
+                    }
+                }
+                var a = new MyClass { SomeField = "" };
+                a.DoSomething();
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "Mutating from non mutable instance function",
+                """
+                class MyClass {
+                    pub mut field SomeField: string,
+                    
+                    pub fn DoSomething() {
+                        SomeField = "";
+                    }
+                }
+                
+                var a = new MyClass { SomeField = "" };
+                a.DoSomething();
+                """,
+                [TypeCheckerError.MutatingInstanceInNonMutableFunction("DoSomething", SourceRange.Default)]
+            },
             {
                 "Single field class exhaustive fail",
                 """
@@ -1694,7 +1773,7 @@ public class TypeCheckerTests
                 class MyClass {
                     field MyField: string,
                     
-                    fn MyFn() {
+                    mut fn MyFn() {
                         MyField = "";
                     }
                 }

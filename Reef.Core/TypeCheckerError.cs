@@ -21,6 +21,9 @@ public record TypeCheckerError
     
     public static TypeCheckerError NonMutableAssignment(string variableName, SourceRange sourceRange) =>
         new(TypeCheckerErrorType.NonMutableAssignment, sourceRange, $"Variable {variableName} is not marked as mutable");
+
+    public static TypeCheckerError MutatingInstanceInNonMutableFunction(string functionName, SourceRange assignmentSourceRange) =>
+        new(TypeCheckerErrorType.MutatingInstanceInNonMutableFunction, assignmentSourceRange, $"Function {functionName} is not marked as mutable");
     
     public static TypeCheckerError NonMutableMemberAssignment(IExpression memberAccess) =>
         new(TypeCheckerErrorType.NonMutableMemberAssignment, memberAccess.SourceRange, $"member {memberAccess} is not marked as mutable");
@@ -226,6 +229,19 @@ public record TypeCheckerError
             new SourceRange(typeParameter.SourceSpan, typeParameter.SourceSpan),
             $"Type Parameter {typeParameter} conflicts type existing type");
     }
+
+    public static TypeCheckerError StaticFunctionMarkedAsMutable(string functionName, SourceRange sourceRange)
+    {
+        return new(TypeCheckerErrorType.StaticFunctionMarkedAsMutable, sourceRange, $"Function {functionName} cannot be both static and mutable");
+    }
+
+    public static TypeCheckerError MutableFunctionWithinNonMutableFunction(SourceRange sourceRange)
+    {
+        return new TypeCheckerError(
+            TypeCheckerErrorType.CannotCreateMutableFunctionWithinNonMutableFunction,
+            sourceRange,
+            "Cannot create mutable function within a non mutable function");
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -263,4 +279,7 @@ public enum TypeCheckerErrorType
     FieldsLeftUnassignedInClassInitializer,
     ConflictingTypeParameter,
     TypeParameterConflictsWithType,
+    MutatingInstanceInNonMutableFunction,
+    StaticFunctionMarkedAsMutable,
+    CannotCreateMutableFunctionWithinNonMutableFunction
 }
