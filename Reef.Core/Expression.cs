@@ -18,6 +18,8 @@ public record ValueAccessorExpression(ValueAccessor ValueAccessor) : IExpression
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public SourceRange SourceRange => new(ValueAccessor.Token.SourceSpan, ValueAccessor.Token.SourceSpan);
+    
+    public TypeChecker.IVariable? ReferencedVariable { get; set; }
 
     public override string ToString()
     {
@@ -219,7 +221,7 @@ public record MatchesExpression(IExpression ValueExpression, IPattern? Pattern, 
     /// <summary>
     ///     Collection of declared variables within <see cref="Pattern" />. Initialized during type checking
     /// </summary>
-    public IReadOnlyList<string> DeclaredVariables { get; set; } = [];
+    public IReadOnlyList<TypeChecker.LocalVariable> DeclaredVariables { get; set; } = [];
 
     public ExpressionType ExpressionType => ExpressionType.Matches;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
@@ -253,7 +255,7 @@ public record VariableDeclaration(
     TypeIdentifier? Type,
     IExpression? Value)
 {
-    public TypeChecker.Variable? Variable { get; set; }
+    public TypeChecker.IVariable? Variable { get; set; }
     
     public override string ToString()
     {

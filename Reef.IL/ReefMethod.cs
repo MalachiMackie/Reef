@@ -3,10 +3,10 @@
 public class ReefMethod
 {
     public required IReadOnlyList<IInstruction> Instructions { get; set; }
-    public required IReadOnlyList<IReefTypeReference> Parameters { get; set; }
+    public required IReadOnlyList<Parameter> Parameters { get; set; }
     public required IReadOnlyList<Local> Locals { get; set; }
     public required IReefTypeReference ReturnType { get; set; }
-    public required IReadOnlyList<IReefTypeReference> TypeParameters { get; set; }
+    public required IReadOnlyList<string> TypeParameters { get; set; }
 
     public class Local
     {
