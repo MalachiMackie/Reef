@@ -960,7 +960,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionTupleVariantPattern(TypeIdentifier("A"), "C", [DiscardPattern()])
+                        UnionTupleVariantPattern(TypeIdentifier("A"), "C", [])
                     )], [], [], []),
                 [
                 ]
@@ -972,7 +972,7 @@ public static class ParseErrorTestCases
                         VariableAccessor("a"),
                         UnionTupleVariantPattern(TypeIdentifier("A"), "C", [
                             UnionVariantPattern(TypeIdentifier("B"), "D", variableName: "d")
-                        ], variableName: "d")
+                        ], variableName: "c")
                     )], [], [], []),
                 [
                 ]
@@ -982,7 +982,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionTupleVariantPattern(TypeIdentifier("A"), "C", [DiscardPattern()])
+                        UnionTupleVariantPattern(TypeIdentifier("A"), "C", [])
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.Identifier)
@@ -993,7 +993,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionTupleVariantPattern(TypeIdentifier("A"), "C", [DiscardPattern()])
+                        UnionTupleVariantPattern(TypeIdentifier("A"), "C", [])
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)
@@ -1027,7 +1027,13 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null), ("OtherField", null)])
+                        UnionClassVariantPattern(
+                            TypeIdentifier("A"),
+                            "C",
+                            [
+                                ("SomeField", VariableDeclarationPattern("SomeField")),
+                                ("OtherField", VariableDeclarationPattern("OtherField"))
+                            ])
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(Identifier("OtherField"), TokenType.Comma, TokenType.RightBrace)
@@ -1070,7 +1076,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null)], "c", fieldsDiscarded: true)
+                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [("SomeField", VariableDeclarationPattern("SomeField"))], fieldsDiscarded: true)
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.RightBrace)
@@ -1081,7 +1087,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [("SomeField", null)], "c", fieldsDiscarded: true)
+                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [("SomeField", VariableDeclarationPattern("SomeField"))], fieldsDiscarded: true)
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.RightBrace),
@@ -1100,7 +1106,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [], "c", fieldsDiscarded: true)
+                        UnionClassVariantPattern(TypeIdentifier("A"), "C", [], fieldsDiscarded: true)
                     )], [], [], []),
                 []
             ),
@@ -1143,7 +1149,9 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        ClassPattern(TypeIdentifier("A"), [("SomeField", null), ("OtherField", null)])
+                        ClassPattern(TypeIdentifier("A"), [
+                            ("SomeField", VariableDeclarationPattern("SomeField")),
+                            ("OtherField", VariableDeclarationPattern("OtherField"))])
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(Identifier("OtherField"), TokenType.Comma, TokenType.RightBrace)
@@ -1186,7 +1194,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        ClassPattern(TypeIdentifier("A"), [("SomeField", null)], "c", fieldsDiscarded: true)
+                        ClassPattern(TypeIdentifier("A"), [("SomeField", VariableDeclarationPattern("SomeField"))], fieldsDiscarded: true)
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.RightBrace)
@@ -1197,7 +1205,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        ClassPattern(TypeIdentifier("A"), [("SomeField", null)], "c", fieldsDiscarded: true)
+                        ClassPattern(TypeIdentifier("A"), [("SomeField", VariableDeclarationPattern("SomeField"))], fieldsDiscarded: true)
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.RightBrace),
@@ -1209,7 +1217,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        ClassPattern(TypeIdentifier("A"), variableName: "c", fieldsDiscarded: true)
+                        ClassPattern(TypeIdentifier("A"), fieldsDiscarded: true)
                     )], [], [], []),
                 []
             ),
@@ -1218,7 +1226,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches(
                         VariableAccessor("a"),
-                        ClassPattern(TypeIdentifier("A"), variableName: "c", fieldsDiscarded: true)
+                        ClassPattern(TypeIdentifier("A"), fieldsDiscarded: true)
                     )], [], [], []),
                 [
                     ParserError.ExpectedToken(Token.Comma(SourceSpan.Default), TokenType.RightBrace),
@@ -1648,7 +1656,11 @@ public static class ParseErrorTestCases
             ),
             (
                 "if (a) {} else if (b",
-                new LangProgram([IfExpression(VariableAccessor("a"), Block(), elseIfs: [ElseIf(VariableAccessor("b"))])], [], [], []),
+                new LangProgram([
+                    IfExpression(
+                        VariableAccessor("a"),
+                        Block(),
+                        elseIfs: [])], [], [], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.RightParenthesis)
                 ]
@@ -1673,7 +1685,14 @@ public static class ParseErrorTestCases
             ),
             (
                 "if (a) {} else if (b) {} else if (c)",
-                new LangProgram([IfExpression(VariableAccessor("a"), Block(), elseIfs: [ElseIf(VariableAccessor("b"), Block()), ElseIf(VariableAccessor("c"), Block())])], [], [], []),
+                new LangProgram([
+                    IfExpression(
+                        VariableAccessor("a"),
+                        Block(),
+                        elseIfs: [
+                            ElseIf(VariableAccessor("b"), Block()),
+                            ElseIf(VariableAccessor("c"))
+                        ])], [], [], []),
                 [
                     ParserError.ExpectedExpression(null)
                 ]
@@ -1693,15 +1712,15 @@ public static class ParseErrorTestCases
             ),
             (
                 "if (a) {} else {} else if (b) {}",
-                new LangProgram([IfExpression(
-                    VariableAccessor("a"),
-                    Block(),
-                    elseBody: Block(),
-                    elseIfs: [
-                        ElseIf(VariableAccessor("b"), Block()),
-                    ])], [], [], []),
+                new LangProgram([
+                    IfExpression(
+                        VariableAccessor("a"),
+                        Block(),
+                        elseBody: Block()),
+                    IfExpression(VariableAccessor("b"), Block())
+                ], [], [], []),
                 [
-                    ParserError.ExpectedExpression(Token.Else(SourceSpan.Default))
+                    ParserError.ExpectedTokenOrExpression(Token.Else(SourceSpan.Default), TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union)
                 ]
             ),
         ];

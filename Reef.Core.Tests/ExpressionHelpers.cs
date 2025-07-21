@@ -34,7 +34,7 @@ public static class ExpressionHelpers
     public static UnaryOperatorExpression Not(IExpression? value)
     {
         return new UnaryOperatorExpression(new UnaryOperator(UnaryOperatorType.Not, value,
-            Token.QuestionMark(SourceSpan.Default)));
+            Token.Bang(SourceSpan.Default)));
     }
 
     public static BlockExpression Block(IReadOnlyList<IExpression>? expressions = null)

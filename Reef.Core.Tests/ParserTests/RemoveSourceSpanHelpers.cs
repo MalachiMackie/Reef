@@ -144,7 +144,7 @@ public static class RemoveSourceSpanHelpers
     {
         return pattern switch
         {
-            DiscardPattern discardPattern => discardPattern,
+            DiscardPattern discardPattern => new DiscardPattern(SourceRange.Default),
             VariableDeclarationPattern variablePattern => new VariableDeclarationPattern(
                 RemoveSourceSpan(variablePattern.VariableName), SourceRange.Default),
             UnionVariantPattern unionVariantPattern => new UnionVariantPattern(

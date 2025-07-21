@@ -1757,6 +1757,8 @@ public sealed class Parser : IDisposable
                 {
                     _errors.Add(ParserError.ExpectedExpression(current));
                 }
+
+                break;
             }
         }
 
@@ -1960,8 +1962,8 @@ public sealed class Parser : IDisposable
     {
         return operatorType switch
         {
-            UnaryOperatorType.FallOut => 9,
-            UnaryOperatorType.Not => 10,
+            UnaryOperatorType.FallOut => 10,
+            UnaryOperatorType.Not => 9,
             _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType,
                 typeof(UnaryOperatorType))
         };

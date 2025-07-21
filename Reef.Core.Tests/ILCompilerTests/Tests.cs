@@ -1,4 +1,5 @@
 ﻿using FluentAssertions;
+using FluentAssertions.Equivalency;
 using Reef.IL;
 
 namespace Reef.Core.Tests.ILCompilerTests;
@@ -18,9 +19,43 @@ public class Tests
         var module = ILCompile.CompileToIL(program.ParsedProgram);
         module.Should().BeEquivalentTo(
             expectedModule,
-            opts => opts.For(x => x.Types)
-                .Exclude(x => x.Id),
+            ConfigureEquivalencyCheck,
             description);
+    }
+
+    [Fact]
+    public void SingleTest()
+    {
+        const string source = "union MyUnion { fn SomeFn(){}}";
+        var tokens = Tokenizer.Tokenize(source);
+        var program = Parser.Parse(tokens);
+        program.Errors.Should().BeEmpty();
+        var typeCheckErrors = TypeChecker.TypeCheck(program.ParsedProgram);
+        typeCheckErrors.Should().BeEmpty();
+
+        var module = ILCompile.CompileToIL(program.ParsedProgram);
+
+        module.Should().NotBeNull();
+
+        var expected = Module(types:
+        [
+            Union("MyUnion", methods:
+            [
+                Method("SomeFn",
+                    isStatic: false,
+                    parameters:
+                    [
+                        Parameter("this", ConcreteTypeReference("MyUnion"))
+                    ])
+            ])
+        ]);
+        module.Should().BeEquivalentTo(expected, ConfigureEquivalencyCheck);
+    }
+
+    private static EquivalencyOptions<ReefModule> ConfigureEquivalencyCheck(EquivalencyOptions<ReefModule> options)
+    {
+        return options
+            .Excluding(memberInfo => memberInfo.Type == typeof(Guid));
     }
 
     public static TheoryData<string, string, ReefModule> TestCases()
@@ -91,7 +126,71 @@ public class Tests
                         ],
                         returnType: GenericTypeReference("T2"))
                 ])
-            }
+            },
+            {
+                "generic class",
+                "class MyClass<T>{}",
+                Module(types: [
+                    Class("MyClass", typeParameters: ["T"])
+                ])
+            },
+            {
+                "generic union",
+                "union MyUnion<T>{}",
+                Module(types: [
+                    Union("MyUnion", typeParameters: ["T"])
+                ])
+            },
+            {
+                "static method inside generic class",
+                "class MyClass<T> { static fn SomeFn(param: T): T{ return param;} }",
+                Module(types: [
+                    Class("MyClass", typeParameters: ["T"], methods: [
+                        Method("SomeFn",
+                            isStatic: true,
+                            parameters: [Parameter("param", GenericTypeReference("T"))],
+                            returnType: GenericTypeReference("T"))
+                    ])
+                ])
+            },
+            {
+                "static method inside generic union",
+                "union MyUnion<T> { static fn SomeFn(param: T): T{ return param;} }",
+                Module(types: [
+                    Union("MyUnion", typeParameters: ["T"], methods: [
+                        Method("SomeFn",
+                            isStatic: true,
+                            parameters: [Parameter("param", GenericTypeReference("T"))],
+                            returnType: GenericTypeReference("T"))
+                    ])
+                ])
+            },
+            {
+                "instance method inside class",
+                "class MyClass { fn SomeFn(){}}",
+                Module(types: [
+                    Class("MyClass", methods: [
+                        Method("SomeFn",
+                            isStatic: false,
+                            parameters: [
+                                Parameter("this", ConcreteTypeReference("MyClass"))
+                            ])
+                    ])
+                ])
+            },
+            {
+                "instance method inside union",
+                "union MyUnion { fn SomeFn(){}}",
+                Module(types: [
+                    Union("MyUnion", methods: [
+                        Method("SomeFn",
+                            isStatic: false,
+                            parameters: [
+                                Parameter("this", ConcreteTypeReference("MyUnion"))
+                            ])
+                    ])
+                ])
+            },
         };
     }
 
@@ -154,7 +253,8 @@ public class Tests
     private static ReefTypeDefinition Union(
         string name,
         IReadOnlyList<ReefVariant>? variants = null,
-        IReadOnlyList<ReefMethod>? methods = null)
+        IReadOnlyList<ReefMethod>? methods = null,
+        IReadOnlyList<string>? typeParameters = null)
     {
         return new ReefTypeDefinition
         {
@@ -162,12 +262,12 @@ public class Tests
             Methods = methods ?? [],
             Id = Guid.Empty,
             IsValueType = false,
-            TypeParameters = [],
+            TypeParameters = typeParameters ?? [],
             Variants = variants ?? []
         };
     }
 
-    private static ReefTypeDefinition Class(string name, IReadOnlyList<ReefMethod>? methods = null)
+    private static ReefTypeDefinition Class(string name, IReadOnlyList<ReefMethod>? methods = null, IReadOnlyList<string>? typeParameters = null)
     {
         return new ReefTypeDefinition
         {
@@ -175,7 +275,7 @@ public class Tests
             Id = Guid.Empty,
             Methods = methods ?? [],
             IsValueType = false,
-            TypeParameters = [],
+            TypeParameters = typeParameters ?? [],
             Variants = [Variant("!ClassVariant")]
         };
     }

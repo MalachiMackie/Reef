@@ -27,7 +27,7 @@ public static class ParseTestCases
                         new ValueAccessorExpression(new ValueAccessor(
                             ValueAccessType.Literal,
                             Token.IntLiteral(3, SourceSpan.Default))),
-                        Token.Plus(SourceSpan.Default)))), SourceRange.Default)
+                        Token.Star(SourceSpan.Default)))), SourceRange.Default)
             ], [], [], [])),
             (
                 """
@@ -49,18 +49,7 @@ public static class ParseTestCases
                                     new TypeIdentifier(Identifier("string"), [], SourceRange.Default)
                                 ], SourceRange.Default),
                                 Identifier("A"),
-                                [
-                                    new FieldInitializer(
-                                        Identifier("MyField"),
-                                        new ValueAccessorExpression(new ValueAccessor(
-                                            ValueAccessType.Literal, Token.StringLiteral("value", SourceSpan.Default)))
-                                    ),
-                                    new FieldInitializer(
-                                        Identifier("Field2"),
-                                        new ValueAccessorExpression(new ValueAccessor(
-                                            ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default)))
-                                    )
-                                ]), SourceRange.Default)
+                                []), SourceRange.Default)
                         ), SourceRange.Default)
                     ],
                     [],
@@ -76,16 +65,7 @@ public static class ParseTestCases
                                 {
                                     Name = Identifier("A"),
                                     Fields =
-                                    [
-                                        new ClassField(null,
-                                            null,
-                                            null,
-                                            Identifier("MyField"),
-                                            new TypeIdentifier(Identifier("string"), [],
-                                                SourceRange.Default),
-                                            null
-                                        )
-                                    ]
+                                    []
                                 }
                             ])
                     ])
@@ -146,7 +126,13 @@ public static class ParseTestCases
                                             new TypeIdentifier(Identifier("string"), [],
                                                 SourceRange.Default),
                                             null
-                                        )
+                                        ),
+                                        new ClassField(null,
+                                            null,
+                                            null,
+                                            Identifier("Field2"),
+                                            IntType(),
+                                            null)
                                     ]
                                 }
                             ])
