@@ -31,7 +31,7 @@ public class ILCompile
         if (program.Expressions.Count > 0)
         {
             mainMethod = CompileMethod(new TypeChecker.FunctionSignature(
-                "!Main",
+                Token.Identifier("!Main", SourceSpan.Default),
                 [],
                 [],
                 isStatic: true,
@@ -123,7 +123,7 @@ public class ILCompile
 
     private static IEnumerable<IInstruction> CompileExpression(IExpression expression)
     {
-        throw new NotImplementedException();
+        return [];
     }
 
     private ReefTypeDefinition CompileUnion(TypeChecker.UnionSignature union)

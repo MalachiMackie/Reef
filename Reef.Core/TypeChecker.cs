@@ -51,7 +51,10 @@ public class TypeChecker
             return false;
         }
 
-        if (CurrentFunctionSignature is not null && !CurrentFunctionSignature.AccessedOuterVariables.Contains(variable))
+        if (CurrentFunctionSignature is not null
+            && (variable is not FunctionParameterVariable {ContainingFunction: var parameterOwner}
+                || parameterOwner != CurrentFunctionSignature)
+            && !CurrentFunctionSignature.AccessedOuterVariables.Contains(variable))
         {
             CurrentFunctionSignature.AccessedOuterVariables.Add(variable);
         }
@@ -466,9 +469,20 @@ public class TypeChecker
             TypeCheckFunctionBody(fn);
         }
 
+        var expressionsDiverge = false;
         foreach (var expression in fnSignature.Expressions)
         {
             TypeCheckExpression(expression);
+            expressionsDiverge |= expression.Diverges;
+        }
+
+        if (!expressionsDiverge && !Equals(fnSignature.ReturnType, InstantiatedClass.Unit))
+        {
+            // todo: figure out source range
+            _errors.Add(TypeCheckerError.MismatchedTypes(
+                new SourceRange(fnSignature.NameToken.SourceSpan, fnSignature.NameToken.SourceSpan),
+                fnSignature.ReturnType,
+                InstantiatedClass.Unit));
         }
     }
 
@@ -481,7 +495,7 @@ public class TypeChecker
         var name = fn.Name.StringValue;
         var typeParameters = new List<GenericTypeReference>(fn.TypeParameters.Count);
         var fnSignature = new FunctionSignature(
-            name,
+            fn.Name,
             typeParameters,
             parameters,
             fn.StaticModifier is not null,
@@ -1202,7 +1216,7 @@ public class TypeChecker
 
                 return variant switch
                 {
-                    TupleUnionVariant tupleVariant => GetTupleUnionFunction(tupleVariant, instantiatedUnion),
+                    TupleUnionVariant tupleVariant => GetUnionTupleVariantFunction(tupleVariant, instantiatedUnion),
                     UnitUnionVariant => type,
                     ClassUnionVariant => throw new InvalidOperationException(
                         "Cannot create union class variant without initializer"),
@@ -1735,11 +1749,11 @@ public class TypeChecker
 
             var instantiatedUnion = InstantiateResult(valueAccessorExpression.SourceRange);
 
-            return GetTupleUnionFunction(tupleVariant, instantiatedUnion);
+            return GetUnionTupleVariantFunction(tupleVariant, instantiatedUnion);
         }
     }
 
-    private static InstantiatedFunction GetTupleUnionFunction(TupleUnionVariant tupleVariant,
+    private static InstantiatedFunction GetUnionTupleVariantFunction(TupleUnionVariant tupleVariant,
         InstantiatedUnion instantiatedUnion)
     {
         var parameters = new OrderedDictionary<string, FunctionParameter>();
@@ -1753,7 +1767,7 @@ public class TypeChecker
         }
 
         var signature = new FunctionSignature(
-            tupleVariant.Name,
+            Token.Identifier(tupleVariant.Name, SourceSpan.Default),
             [],
             parameters,
             isStatic: true,
@@ -2638,7 +2652,7 @@ public class TypeChecker
     }
     
     public class FunctionSignature(
-        string name,
+        StringToken nameToken,
         IReadOnlyList<GenericTypeReference> typeParameters,
         OrderedDictionary<string, FunctionParameter> parameters,
         bool isStatic,
@@ -2654,7 +2668,8 @@ public class TypeChecker
 
         // mutable due to setting up signatures and generic stuff
         public required ITypeReference ReturnType { get; set; }
-        public string Name { get; } = name;
+        public StringToken NameToken { get; } = nameToken;
+        public string Name { get; } = nameToken.StringValue;
         public IReadOnlyList<IExpression> Expressions { get; } = expressions;
         public IReadOnlyList<FunctionSignature> LocalFunctions { get; } = localFunctions;
         public List<IVariable> LocalVariables { get; init; } = [];

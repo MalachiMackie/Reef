@@ -54,25 +54,91 @@ public class Tests
                     Union("MyUnion", methods: [Method("SomeFn", isStatic: true)])
                 ])
             },
+            {
+                "method with parameters",
+                "static fn SomeFn(a: int, b: string){}",
+                Module(methods: [
+                    Method("SomeFn", isStatic: true, parameters: [
+                        Parameter("a", ConcreteTypeReference("int")),
+                        Parameter("b", ConcreteTypeReference("string")),
+                    ])
+                ])
+            },
+            {
+                "method with return type",
+                "static fn SomeFn(): int {return 1;}",
+                Module(methods: [
+                    Method("SomeFn", isStatic: true, returnType: ConcreteTypeReference("int"))
+                ])
+            },
+            {
+                "generic method",
+                "static fn SomeFn<T>() {}",
+                Module(methods: [
+                    Method("SomeFn", isStatic: true, typeParameters: ["T"])
+                ])
+            },
+            {
+                "generic method with type parameter as parameter and return type",
+                "static fn SomeFn<T1, T2>(a: T1, b: T2): T2 {return b;}",
+                Module(methods: [
+                    Method("SomeFn",
+                        isStatic: true,
+                        typeParameters: ["T1", "T2"],
+                        parameters: [
+                            Parameter("a", GenericTypeReference("T1")),
+                            Parameter("b", GenericTypeReference("T2")),
+                        ],
+                        returnType: GenericTypeReference("T2"))
+                ])
+            }
         };
     }
 
-    private static ReefMethod Method(string name, bool isStatic = false)
+    private static IReefTypeReference GenericTypeReference(string typeParameterName)
+    {
+        return new GenericReefTypeReference
+        {
+            TypeParameterName = typeParameterName,
+            DefinitionId = Guid.Empty
+        };
+    }
+    
+    private static IReefTypeReference ConcreteTypeReference(string name)
+    {
+        return new ConcreteReefTypeReference
+        {
+            Name = name,
+            DefinitionId = Guid.Empty,
+            TypeArguments = []
+        };
+    }
+
+    private static ReefMethod.Parameter Parameter(string name, IReefTypeReference typeReference)
+    {
+        return new ReefMethod.Parameter
+        {
+            DisplayName = name,
+            Type = typeReference
+        };
+    }
+
+    private static ReefMethod Method(
+        string name,
+        bool isStatic = false,
+        IReadOnlyList<ReefMethod.Parameter>? parameters = null,
+        IReefTypeReference? returnType = null,
+        IReadOnlyList<string>? typeParameters = null)
     {
         return new ReefMethod
         {
             DisplayName = name,
             IsStatic = isStatic,
-            TypeParameters = [],
+            TypeParameters = typeParameters ?? [],
             Instructions = [],
             Locals = [],
-            Parameters = [],
-            ReturnType = new ConcreteReefTypeReference
-            {
-                Name = "Unit",
-                DefinitionId = Guid.Empty,
-                TypeArguments = []
-            }
+            Parameters = parameters ?? [],
+            ReturnType = returnType ?? ConcreteTypeReference("Unit")
         };
     }
 

@@ -61,6 +61,35 @@ public class TypeCheckerTests
         return new TheoryData<string>
         {
             """
+            union SomeUnion {A, B, C}
+            static fn SomeFn(): int {
+                var a = SomeUnion::A;
+                match (a) {
+                    SomeUnion::A => return 1,
+                    SomeUnion::B => return 2,
+                    _ => return 3
+                }
+            }
+            """,
+            """
+            static fn SomeFn(): int {
+                if (true) {
+                    match (true) {
+                        _ => return 3,
+                    }
+                }
+                else {
+                    if (true) {
+                        return 1;
+                    } else if (true) {
+                        return 2;
+                    } else {
+                        return 3;
+                    }
+                }
+            }
+            """,
+            """
             union MyUnion {A, B}
             class MyClass { pub field MyField: MyUnion } 
 
@@ -778,6 +807,7 @@ public class TypeCheckerTests
             """
             fn MyFn(): result::<string, int> {
                 var a: string = OtherFn()?;
+                return ok(a);
             }
 
             fn OtherFn(): result::<string, int> {
@@ -1122,6 +1152,95 @@ public class TypeCheckerTests
     {
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
+            {
+                "deeply nested if branch doesn't return",
+                """
+                static fn SomeFn(): int {
+                    if (true) {
+                        match (true) {
+                            _ => return 3,
+                        }
+                    }
+                    else {
+                        if (true) {
+                            return 1;
+                        } else if (true) {
+                        } else {
+                            return 3;
+                        }
+                    }
+                }
+                """,
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Int, Unit)]
+            },
+            {
+                "static method doesn't return value",
+                "static fn SomeFn(): int {}",
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Int, Unit)]
+            },
+            {
+                "static class method doesn't return value",
+                "class MyClass { static fn SomeFn(): int {}}",
+                [MismatchedTypes(Int, Unit)]
+            },
+            {
+                "static union method doesn't return value",
+                "union MyUnion { static fn SomeFn(): int {}}",
+                [MismatchedTypes(Int, Unit)]
+            },
+            {
+                "method doesn't return from all if branches",
+                """
+                static fn SomeFn(): int {
+                    if (true) {
+                        return 1;
+                    }
+                }
+                """,
+                [MismatchedTypes(Int, Unit)]
+            },
+            {
+                "method doesn't return from all if branches",
+                """
+                static fn SomeFn(): int {
+                    if (true) {
+                        return 1;
+                    } else if (true) {
+                        return 1;
+                    }
+                }
+                """,
+                [MismatchedTypes(Int, Unit)]
+            },
+            {
+                "method doesn't return from all if branches",
+                """
+                static fn SomeFn(): int {
+                    if (true) {
+                    }
+                    else {
+                        return 1;
+                    }
+                }
+                """,
+                [MismatchedTypes(Int, Unit)]
+            },
+            {
+                "method doesn't return from all if branches",
+                """
+                static fn SomeFn(): int {
+                    if (true) {
+                        return 1;
+                    }
+                    else if (true) {
+                    }
+                    else {
+                        return 1;
+                    }
+                }
+                """,
+                [MismatchedTypes(Int, Unit)]
+            },
             {
                 "mutating instance field from non mutable inner function",
                 """
