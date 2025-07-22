@@ -123,15 +123,13 @@ public record LoadField(InstructionAddress Address, uint FieldIndex) : IInstruct
 /// Pops the top value off the evaluation stack and stores it in the specified static field
 /// </summary>
 /// <param name="Address"></param>
-public record StoreStaticField(InstructionAddress Address, IReefTypeReference ReefType, string StaticFieldName) : IInstruction;
+public record StoreStaticField(InstructionAddress Address, IReefTypeReference ReefType, uint StaticFieldIndex) : IInstruction;
 
 /// <summary>
 /// Loads the specified static field and pushes it onto the evaluation stack
 /// </summary>
 /// <param name="Address"></param>
-/// <param name="ReefType"></param>
-/// <param name="StaticFieldName"></param>
-public record LoadStaticField(InstructionAddress Address, IReefTypeReference ReefType, string StaticFieldName)
+public record LoadStaticField(InstructionAddress Address, IReefTypeReference ReefType, uint StaticFieldIndex)
     : IInstruction;
 
 /// <summary>

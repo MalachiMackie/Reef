@@ -28,7 +28,8 @@ public class GenericReefTypeReference : IReefTypeReference
 public class ReefVariant
 {
     public required string DisplayName { get; set; }
-    public required IReadOnlyList<ReefField> Fields { get; set; }
+    public required IReadOnlyList<ReefField> InstanceFields { get; set; }
+    public required IReadOnlyList<ReefField> StaticFields { get; set; }
 }
 
 public class ReefField
@@ -36,4 +37,6 @@ public class ReefField
     public required string DisplayName { get; set; }
     public required IReefTypeReference Type { get; set; }
     public required bool IsStatic { get; set; }
+    public required bool IsPublic { get; set; }
+    public required IReadOnlyList<IInstruction> StaticInitializerInstructions { get; set; }
 }

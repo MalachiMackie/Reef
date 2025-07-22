@@ -191,6 +191,50 @@ public class Tests
                     ])
                 ])
             },
+            {
+                "class fields",
+                "class MyClass { pub field MyField: string, static field OtherField: int = 1}",
+                Module(types: [
+                    Class("MyClass", 
+                        instanceFields: [
+                            Field("MyField", ConcreteTypeReference("string"), isPublic: true),
+                        ],
+                        staticFields: [
+                            Field("OtherField", ConcreteTypeReference("int"), isStatic: true)
+                        ])
+                ])
+            },
+            {
+                "union variant fields",
+                "union MyUnion { A, B(string, int), C { field MyField: bool } }",
+                Module(types: [
+                    Union("MyUnion",
+                        variants: [
+                            Variant("A"),
+                            Variant("B",
+                                instanceFields: [
+                                    Field("First", ConcreteTypeReference("string"), isPublic: true),
+                                    Field("Second", ConcreteTypeReference("int"), isPublic: true),
+                                ]),
+                            Variant("C",
+                                instanceFields: [
+                                    Field("MyField", ConcreteTypeReference("bool"), isPublic: true)
+                                ])
+                        ])
+                ])
+            }
+        };
+    }
+
+    private static ReefField Field(string name, IReefTypeReference type, bool isStatic = false, bool isPublic = false)
+    {
+        return new ReefField
+        {
+            IsStatic = isStatic,
+            IsPublic = isPublic,
+            Type = type,
+            DisplayName = name,
+            StaticInitializerInstructions = []
         };
     }
 
@@ -241,12 +285,15 @@ public class Tests
         };
     }
 
-    private static ReefVariant Variant(string name)
+    private static ReefVariant Variant(string name,
+        IReadOnlyList<ReefField>? instanceFields = null,
+        IReadOnlyList<ReefField>? staticFields = null)
     {
         return new ReefVariant
         {
             DisplayName = name,
-            Fields = []
+            InstanceFields = instanceFields ?? [],
+            StaticFields = staticFields ?? []
         };
     }
 
@@ -267,7 +314,12 @@ public class Tests
         };
     }
 
-    private static ReefTypeDefinition Class(string name, IReadOnlyList<ReefMethod>? methods = null, IReadOnlyList<string>? typeParameters = null)
+    private static ReefTypeDefinition Class(
+        string name,
+        IReadOnlyList<ReefMethod>? methods = null,
+        IReadOnlyList<string>? typeParameters = null,
+        IReadOnlyList<ReefField>? instanceFields = null,
+        IReadOnlyList<ReefField>? staticFields = null)
     {
         return new ReefTypeDefinition
         {
@@ -276,7 +328,7 @@ public class Tests
             Methods = methods ?? [],
             IsValueType = false,
             TypeParameters = typeParameters ?? [],
-            Variants = [Variant("!ClassVariant")]
+            Variants = [Variant("!ClassVariant", instanceFields: instanceFields, staticFields: staticFields)]
         };
     }
 

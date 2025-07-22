@@ -88,11 +88,14 @@ public class ILCompile
                 Variants = [new ReefVariant
                 {
                     DisplayName = "ClosureVariant",
-                    Fields = function.AccessedOuterVariables.Select((x, i) => new ReefField
+                    StaticFields = [],
+                    InstanceFields = function.AccessedOuterVariables.Select((x, i) => new ReefField
                     {
                         DisplayName = $"Field_{i}",
                         IsStatic = false,
-                        Type = GetTypeReference(x.Type ?? throw new InvalidOperationException("Expected variable to have type"))
+                        Type = GetTypeReference(x.Type ?? throw new InvalidOperationException("Expected variable to have type")),
+                        IsPublic = true,
+                        StaticInitializerInstructions = []
                     }).ToArray()
                 }]
             };
@@ -139,27 +142,34 @@ public class ILCompile
                 TypeChecker.ClassUnionVariant classUnionVariant => new ReefVariant
                 {
                     DisplayName = x.Name,
-                    Fields = classUnionVariant.Fields.Select(y => new ReefField
+                    StaticFields = [],
+                    InstanceFields = classUnionVariant.Fields.Select(y => new ReefField
                     {
                         DisplayName = y.Name,
                         IsStatic = false,
-                        Type = GetTypeReference(y.Type)
+                        IsPublic = true,
+                        Type = GetTypeReference(y.Type),
+                        StaticInitializerInstructions = []
                     }).ToArray()
                 },
                 TypeChecker.TupleUnionVariant tupleUnionVariant => new ReefVariant
                 {
                     DisplayName = x.Name,
-                    Fields = tupleUnionVariant.TupleMembers.Select((y, i) => new ReefField
+                    StaticFields = [],
+                    InstanceFields = tupleUnionVariant.TupleMembers.Select((y, i) => new ReefField
                     {
                         DisplayName = TypeChecker.ClassSignature.TupleFieldNames[i],
                         IsStatic = false,
+                        IsPublic = true,
+                        StaticInitializerInstructions = [],
                         Type = GetTypeReference(y)
                     }).ToArray()
                 },
                 TypeChecker.UnitUnionVariant => new ReefVariant
                 {
                     DisplayName = x.Name,
-                    Fields = []
+                    StaticFields = [],
+                    InstanceFields = [],
                 },
                 _ => throw new ArgumentOutOfRangeException(nameof(x))
             }).ToArray(),
@@ -182,18 +192,22 @@ public class ILCompile
             Variants = [new ReefVariant
             {
                 DisplayName = "!ClassVariant",
-                Fields = @class.Fields.Select(x => new ReefField
+                InstanceFields = @class.Fields.Select(x => new ReefField
                     {
                         IsStatic = false,
+                        IsPublic = x.IsPublic,
+                        StaticInitializerInstructions = [],
+                        DisplayName = x.Name,
+                        Type = GetTypeReference(x.Type)
+                    }).ToArray(),
+                StaticFields = @class.StaticFields.Select(x => new ReefField
+                    {
+                        IsStatic = true,
+                        IsPublic = x.IsPublic,
+                        StaticInitializerInstructions = [],
                         DisplayName = x.Name,
                         Type = GetTypeReference(x.Type)
                     })
-                    .Concat(@class.StaticFields.Select(x => new ReefField
-                    {
-                        IsStatic = true,
-                        DisplayName = x.Name,
-                        Type = GetTypeReference(x.Type)
-                    }))
                     .ToArray()
             }],
             TypeParameters = @class.TypeParameters.Select(x => x.GenericName).ToArray(),
