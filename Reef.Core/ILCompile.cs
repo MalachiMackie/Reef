@@ -221,7 +221,7 @@ public class ILCompile
                     {
                         IsStatic = true,
                         IsPublic = x.IsPublic,
-                        StaticInitializerInstructions = [],
+                        StaticInitializerInstructions = x.StaticInitializer is null ? [] : CompileExpression(x.StaticInitializer).ToArray(),
                         DisplayName = x.Name,
                         Type = GetTypeReference(x.Type)
                     })

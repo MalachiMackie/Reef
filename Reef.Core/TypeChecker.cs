@@ -364,6 +364,7 @@ public class TypeChecker
                             Name = field.Name.StringValue,
                             Type = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type),
                             IsMutable = field.MutabilityModifier is { Modifier.Type: TokenType.Mut },
+                            StaticInitializer = null,
                             IsPublic = true
                         };
                         fields.Add(typeField);
@@ -400,7 +401,8 @@ public class TypeChecker
                     Name = field.Name.StringValue,
                     Type = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type),
                     IsMutable = field.MutabilityModifier is { Modifier.Type: TokenType.Mut },
-                    IsPublic = field.AccessModifier is { Token.Type: TokenType.Pub }
+                    IsPublic = field.AccessModifier is { Token.Type: TokenType.Pub },
+                    StaticInitializer = field.InitializerValue
                 };
 
                 if (field.StaticModifier is not null)
@@ -2809,7 +2811,8 @@ public class TypeChecker
                             ? name
                             : throw new InvalidOperationException("Tuple can only contain at most 10 elements"),
                         Type = type,
-                        IsPublic = true
+                        IsPublic = true,
+                        StaticInitializer = null,
                     })
                 ],
                 Functions = [],
@@ -2831,5 +2834,6 @@ public class TypeChecker
         public required string Name { get; init; }
         public required bool IsPublic { get; init; }
         public required bool IsMutable { get; init; }
+        public required IExpression? StaticInitializer { get; init; } 
     }
 }
