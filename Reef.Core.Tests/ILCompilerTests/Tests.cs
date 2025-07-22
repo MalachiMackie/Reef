@@ -222,6 +222,30 @@ public class Tests
                                 ])
                         ])
                 ])
+            },
+            {
+                "fn closure",
+                """
+                static fn SomeFn(param: int) {
+                    fn InnerFn(): int {
+                        return param;
+                    }
+                }
+                """,
+                Module(
+                    types: [
+                        Class("InnerFn!Closure", variantName: "ClosureVariant", instanceFields: [
+                            Field("Field_0", ConcreteTypeReference("int"), isPublic: true)
+                        ])
+                    ],
+                    methods: [
+                        Method("SomeFn", isStatic: true, parameters: [
+                            Parameter("param", ConcreteTypeReference("int"))
+                        ]),
+                        Method("InnerFn", isStatic: false, parameters: [
+                            Parameter("ClosureParameter", ConcreteTypeReference("InnerFn!Closure"))
+                        ], returnType: ConcreteTypeReference("int"))
+                    ])
             }
         };
     }
@@ -316,6 +340,7 @@ public class Tests
 
     private static ReefTypeDefinition Class(
         string name,
+        string? variantName = null,
         IReadOnlyList<ReefMethod>? methods = null,
         IReadOnlyList<string>? typeParameters = null,
         IReadOnlyList<ReefField>? instanceFields = null,
@@ -328,7 +353,7 @@ public class Tests
             Methods = methods ?? [],
             IsValueType = false,
             TypeParameters = typeParameters ?? [],
-            Variants = [Variant("!ClassVariant", instanceFields: instanceFields, staticFields: staticFields)]
+            Variants = [Variant(variantName ?? "!ClassVariant", instanceFields: instanceFields, staticFields: staticFields)]
         };
     }
 

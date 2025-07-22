@@ -12,6 +12,7 @@ public class ILCompile
     }
 
     private readonly List<ReefTypeDefinition> _types = [];
+    private readonly List<ReefMethod> _methods = [];
     
     private ReefModule CompileToILInner(LangProgram program)
     {
@@ -22,9 +23,8 @@ public class ILCompile
                 CompileClass(x.Signature ?? throw new InvalidOperationException("Expected signature to be set")))));
 
         // add static methods directly to module
-        var methods = program.Functions.Where(x => x.Signature!.IsStatic)
-            .Select(x => CompileMethod(x.Signature!, ownerType: null))
-            .ToArray();
+        _methods.AddRange(program.Functions.Where(x => x.Signature!.IsStatic)
+            .Select(x => CompileMethod(x.Signature!, ownerType: null)));
         
         ReefMethod? mainMethod = null;
         
@@ -43,12 +43,14 @@ public class ILCompile
                 ReturnType = TypeChecker.InstantiatedClass.Unit,
                 LocalVariables = [..program.TopLevelLocalVariables],
             }, ownerType: null);
+            
+            _methods.Add(mainMethod);
         }
 
         return new ReefModule
         {
             MainMethod = mainMethod,
-            Methods = methods,
+            Methods = _methods,
             Types = _types
         };
     }
@@ -57,6 +59,11 @@ public class ILCompile
         TypeChecker.FunctionSignature function,
         ReefTypeDefinition? ownerType)
     {
+        foreach (var innerMethod in function.LocalFunctions)
+        {
+            _methods.Add(CompileMethod(innerMethod, ownerType: null));
+        }
+        
         var parameters = new List<ReefMethod.Parameter>();
         if (!function.IsStatic && ownerType is not null)
         {
@@ -101,6 +108,16 @@ public class ILCompile
             };
             // todo: possible to have more than one closure within a method
             _types.Add(closureType);
+            parameters.Add(new ReefMethod.Parameter
+            {
+                Type = new ConcreteReefTypeReference
+                {
+                    DefinitionId = closureType.Id,
+                    TypeArguments = [],
+                    Name = closureType.DisplayName
+                },
+                DisplayName = "ClosureParameter",
+            });
         }
         parameters.AddRange(function.Parameters.Select(x => new ReefMethod.Parameter
         {

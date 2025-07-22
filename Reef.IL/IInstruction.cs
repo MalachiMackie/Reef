@@ -110,26 +110,26 @@ public record LoadType(InstructionAddress Address, IReefTypeReference ReefType) 
 /// into the specified field of the bottom most value reference
 /// </summary>
 /// <param name="Address"></param>
-public record StoreField(InstructionAddress Address, uint FieldIndex) : IInstruction;
+public record StoreField(InstructionAddress Address, uint VariantIndex, uint FieldIndex) : IInstruction;
 
 /// <summary>
 /// Pops the top value off of the evaluation stack and loads the field of the reference onto the evaluation stack
 /// </summary>
 /// <param name="Address"></param>
 /// <param name="FieldIndex"></param>
-public record LoadField(InstructionAddress Address, uint FieldIndex) : IInstruction;
+public record LoadField(InstructionAddress Address, uint VariantIndex, uint FieldIndex) : IInstruction;
 
 /// <summary>
 /// Pops the top value off the evaluation stack and stores it in the specified static field
 /// </summary>
 /// <param name="Address"></param>
-public record StoreStaticField(InstructionAddress Address, IReefTypeReference ReefType, uint StaticFieldIndex) : IInstruction;
+public record StoreStaticField(InstructionAddress Address, IReefTypeReference ReefType, uint VariantIndex, uint StaticFieldIndex) : IInstruction;
 
 /// <summary>
 /// Loads the specified static field and pushes it onto the evaluation stack
 /// </summary>
 /// <param name="Address"></param>
-public record LoadStaticField(InstructionAddress Address, IReefTypeReference ReefType, uint StaticFieldIndex)
+public record LoadStaticField(InstructionAddress Address, IReefTypeReference ReefType, uint VariantIndex, uint StaticFieldIndex)
     : IInstruction;
 
 /// <summary>
