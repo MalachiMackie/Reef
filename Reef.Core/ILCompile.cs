@@ -141,10 +141,7 @@ public class ILCompile
         };
     }
 
-    private static IEnumerable<IInstruction> CompileExpression(IExpression expression)
-    {
-        return [];
-    }
+    
 
     private ReefTypeDefinition CompileUnion(TypeChecker.UnionSignature union)
     {
@@ -262,4 +259,132 @@ public class ILCompile
         };
     }
     
+    private static IEnumerable<IInstruction> CompileExpression(IExpression expression)
+    {
+        return expression switch
+        {
+            BinaryOperatorExpression binaryOperatorExpression => CompileBinaryOperatorExpression(binaryOperatorExpression),
+            BlockExpression blockExpression => CompileBlockExpression(blockExpression),
+            IfExpressionExpression ifExpressionExpression => CompileIfExpression(ifExpressionExpression),
+            MatchesExpression matchesExpression => CompileMatchesExpression(matchesExpression),
+            MatchExpression matchExpression => CompileMatchExpression(matchExpression),
+            MemberAccessExpression memberAccessExpression => CompileMemberAccessExpression(memberAccessExpression),
+            MethodCallExpression methodCallExpression => CompileMethodCallExpression(methodCallExpression),
+            MethodReturnExpression methodReturnExpression => CompileMethodReturnExpression(methodReturnExpression),
+            ObjectInitializerExpression objectInitializerExpression => CompileObjectInitializerExpression(objectInitializerExpression),
+            StaticMemberAccessExpression staticMemberAccessExpression => CompileStaticMemberAccessExpression(staticMemberAccessExpression),
+            TupleExpression tupleExpression => CompileTupleExpression(tupleExpression),
+            UnaryOperatorExpression unaryOperatorExpression => CompileUnaryOperatorExpression(unaryOperatorExpression),
+            UnionClassVariantInitializerExpression unionClassVariantInitializerExpression => CompileUnionClassVariantInitializerExpression(unionClassVariantInitializerExpression),
+            ValueAccessorExpression valueAccessorExpression => CompileValueAccessorExpression(valueAccessorExpression),
+            VariableDeclarationExpression variableDeclarationExpression => CompileVariableDeclarationExpression(variableDeclarationExpression),
+            GenericInstantiationExpression => [],
+            _ => throw new ArgumentOutOfRangeException(nameof(expression))
+        };
+    }
+    
+    private static IEnumerable<IInstruction> CompileBinaryOperatorExpression(
+        BinaryOperatorExpression binaryOperatorExpression)
+    {
+        return [];
+    }
+    
+    private static IEnumerable<IInstruction> CompileBlockExpression(
+        BlockExpression blockExpression)
+    {
+        
+        return [];
+    }
+    
+    private static IEnumerable<IInstruction> CompileIfExpression(
+        IfExpressionExpression ifExpression)
+    {
+        
+        return [];
+    }
+    
+    private static IEnumerable<IInstruction> CompileMatchesExpression(
+        MatchesExpression matchesExpression)
+    {
+        
+        return [];
+    }
+    
+    private static IEnumerable<IInstruction> CompileMatchExpression(
+        MatchExpression matchExpression)
+    {
+        
+        return [];
+    }
+    
+    private static IEnumerable<IInstruction> CompileMemberAccessExpression(
+        MemberAccessExpression memberAccessExpression)
+    {
+        
+        return [];
+    }
+    
+    private static IEnumerable<IInstruction> CompileMethodCallExpression(
+        MethodCallExpression methodCallExpression)
+    {
+        
+        return [];
+    }
+    
+    private static IEnumerable<IInstruction> CompileMethodReturnExpression(
+        MethodReturnExpression methodReturnExpression)
+    {
+        
+        return [];
+    }
+    
+    private static IEnumerable<IInstruction> CompileObjectInitializerExpression(
+        ObjectInitializerExpression objectInitializerExpression)
+    {
+        
+        return [];
+    }
+    
+    private static IEnumerable<IInstruction> CompileStaticMemberAccessExpression(
+        StaticMemberAccessExpression staticMemberAccessExpression)
+    {
+        
+        return [];
+    }
+    
+    private static IEnumerable<IInstruction> CompileTupleExpression(
+        TupleExpression tupleExpression)
+    {
+        
+        return [];
+    }
+    
+    private static IEnumerable<IInstruction> CompileUnaryOperatorExpression(
+        UnaryOperatorExpression unaryOperatorExpression)
+    {
+        
+        return [];
+    }
+    
+    private static IEnumerable<IInstruction> CompileUnionClassVariantInitializerExpression(
+        UnionClassVariantInitializerExpression unionClassVariantInitializerExpression)
+    {
+        
+        return [];
+    }
+
+
+    private static IEnumerable<IInstruction> CompileValueAccessorExpression(
+        ValueAccessorExpression valueAccessorExpression)
+    {
+        return [];
+        
+    }
+
+    private static IEnumerable<IInstruction> CompileVariableDeclarationExpression(
+        VariableDeclarationExpression variableDeclarationExpression)
+    {
+        return [];
+        
+    }
 }
