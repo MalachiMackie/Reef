@@ -301,7 +301,7 @@ public class Tests
                 ])
             },
             {
-                "two variable declarations without initializer",
+                "two variable declarations without initializers",
                 "var a: int;var b: string",
                 Module(methods: [
                     Method("!Main",
@@ -329,7 +329,7 @@ public class Tests
                 ])
             },
             {
-                "variable declaration with value initializer",
+                "two variable declarations with value initializers",
                 "var a = 1;var b = \"hello\"",
                 Module(methods: [
                     Method("!Main",
@@ -343,6 +343,40 @@ public class Tests
                         locals: [
                             new ReefMethod.Local {Type = ConcreteTypeReference("int"), DisplayName = "a"},
                             new ReefMethod.Local {Type = ConcreteTypeReference("string"), DisplayName = "b"},
+                        ])
+                ])
+            },
+            {
+                "less than",
+                "var a = 1 < 2",
+                Module(methods: [
+                    Method("!Main",
+                        isStatic: true,
+                        instructions: [
+                            new LoadIntConstant(new InstructionAddress(0), 1),
+                            new LoadIntConstant(new InstructionAddress(1), 2),
+                            new CompareIntLessThan(new InstructionAddress(2)),
+                            new StoreLocal(new InstructionAddress(3), 0),
+                        ],
+                        locals: [
+                            new ReefMethod.Local {Type = ConcreteTypeReference("bool"), DisplayName = "a"},
+                        ])
+                ])
+            },
+            {
+                "greater than",
+                "var a = 1 > 2",
+                Module(methods: [
+                    Method("!Main",
+                        isStatic: true,
+                        instructions: [
+                            new LoadIntConstant(new InstructionAddress(0), 1),
+                            new LoadIntConstant(new InstructionAddress(1), 2),
+                            new CompareIntGreaterThan(new InstructionAddress(2)),
+                            new StoreLocal(new InstructionAddress(3), 0),
+                        ],
+                        locals: [
+                            new ReefMethod.Local {Type = ConcreteTypeReference("bool"), DisplayName = "a"},
                         ])
                 ])
             },

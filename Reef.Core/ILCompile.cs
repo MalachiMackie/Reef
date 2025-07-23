@@ -292,10 +292,64 @@ public class ILCompile
         };
     }
     
-    private static IEnumerable<IInstruction> CompileBinaryOperatorExpression(
+    private IEnumerable<IInstruction> CompileBinaryOperatorExpression(
         BinaryOperatorExpression binaryOperatorExpression)
     {
-        return [];
+        switch (binaryOperatorExpression.BinaryOperator.OperatorType)
+        {
+            case BinaryOperatorType.LessThan:
+            {
+                foreach (var instruction in
+                         CompileExpression(binaryOperatorExpression.BinaryOperator.Left ??
+                                           throw new InvalidOperationException("Expected valid left expression")))
+                {
+                    yield return instruction;
+                }
+
+                foreach (var instruction in CompileExpression(binaryOperatorExpression.BinaryOperator.Right ??
+                                                              throw new InvalidOperationException(
+                                                                  "Expected valid right expression")))
+                {
+                    yield return instruction;
+                }
+
+                yield return new CompareIntLessThan(NextAddress());
+                break;
+            }
+            case BinaryOperatorType.GreaterThan:
+            {
+                foreach (var instruction in
+                         CompileExpression(binaryOperatorExpression.BinaryOperator.Left ??
+                                           throw new InvalidOperationException("Expected valid left expression")))
+                {
+                    yield return instruction;
+                }
+
+                foreach (var instruction in CompileExpression(binaryOperatorExpression.BinaryOperator.Right ??
+                                                              throw new InvalidOperationException(
+                                                                  "Expected valid right expression")))
+                {
+                    yield return instruction;
+                }
+
+                yield return new CompareIntGreaterThan(NextAddress());
+                break;
+            }
+            case BinaryOperatorType.Plus:
+                break;
+            case BinaryOperatorType.Minus:
+                break;
+            case BinaryOperatorType.Multiply:
+                break;
+            case BinaryOperatorType.Divide:
+                break;
+            case BinaryOperatorType.EqualityCheck:
+                break;
+            case BinaryOperatorType.ValueAssignment:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
     }
     
     private static IEnumerable<IInstruction> CompileBlockExpression(
