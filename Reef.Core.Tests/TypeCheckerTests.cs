@@ -1144,6 +1144,15 @@ public class TypeCheckerTests
                 var e: MyUnion = c;
             }
             """,
+            """
+            var a: int;
+            fn SomeFn() {
+                var b = a;
+            }
+            a = 1;
+            // SomeFn can be called safely now because a has been initiailized
+            SomeFn();
+            """,
             Mvp
         };
     }
@@ -2802,22 +2811,34 @@ public class TypeCheckerTests
                 """,
                 [TypeCheckerError.MissingFieldsInClassPattern(["someField"], TypeIdentifier("MyClass"))]
             },
+            {
+                "calling closure when variable is uninitialized",
+                """
+                var a: int;
+                fn SomeFn() {
+                    var b = a;
+                }
+                SomeFn();
+                a = 1;
+                """,
+                [TypeCheckerError.AccessUninitializedVariable(Identifier("a"))]
+            }
         };
     }
 
     private const string Mvp =
         """
-        pub fn DoSomething(a: int): result::<int, string> {
-            var mut b: int = 2;
+        pub fn DoSomething(inner_a: int): result::<int, string> {
+            var mut inner_b: int = 2;
             
-            if (a > b) {
-                return ok(a);
+            if (inner_a > inner_b) {
+                return ok(inner_a);
             }
-            else if (a == b) {
-                return result::<int, string>::Ok(b);
+            else if (inner_a == inner_b) {
+                return result::<int, string>::Ok(inner_b);
             }
 
-            b = 3;
+            inner_b = 3;
 
             var thing = new Class2 {
                 A = "thing"
@@ -2839,11 +2860,11 @@ public class TypeCheckerTests
         fn PrivateFn<T>() {
         }
 
-        pub fn SomethingElse(a: int): result::<int, string> {
-            var b = DoSomething(a)?;
-            var mut c = 2;
+        pub fn SomethingElse(inner_a: int): result::<int, string> {
+            var inner_b = DoSomething(a)?;
+            var mut inner_d = 2;
             
-            return result::<int, string>::Ok(b);
+            return result::<int, string>::Ok(inner_b);
         }
 
         pub class MyClass {
@@ -2901,7 +2922,7 @@ public class TypeCheckerTests
             else if (param matches MyUnion::B { MyField }) {
             }
             
-            var a = match (param) {
+            var inner_a = match (param) {
                 MyUnion::A => 1,
                 MyUnion::B { MyField } => 2,
                 MyUnion::C(var value) => 3

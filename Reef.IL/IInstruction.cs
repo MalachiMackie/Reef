@@ -63,7 +63,7 @@ public record LoadArgument(InstructionAddress Address, uint ArgumentIndex) : IIn
 /// Pops the top of the evaluation stack and discards it
 /// </summary>
 /// <param name="Address"></param>
-public record DropStack(InstructionAddress Address) : IInstruction;
+public record Drop(InstructionAddress Address) : IInstruction;
 
 /// <summary>
 /// Unconditionally branch to the specified Instruction
@@ -151,3 +151,9 @@ public record LoadIntConstant(InstructionAddress Address, int Value) : IInstruct
 /// <param name="Address"></param>
 /// <param name="Value"></param>
 public record LoadBoolConstant(InstructionAddress Address, bool Value) : IInstruction;
+
+/// <summary>
+/// Loads a unit onto the evaluation stack
+/// </summary>
+/// <param name="Address"></param>
+public record LoadUnitConstant(InstructionAddress Address) : IInstruction;

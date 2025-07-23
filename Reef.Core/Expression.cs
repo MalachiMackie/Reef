@@ -10,6 +10,7 @@ public interface IExpression
 
     SourceRange SourceRange { get; }
     bool Diverges { get; }
+    bool ValueUseful { get; set; }
 }
 
 public record ValueAccessorExpression(ValueAccessor ValueAccessor) : IExpression
@@ -23,6 +24,8 @@ public record ValueAccessorExpression(ValueAccessor ValueAccessor) : IExpression
     public TypeChecker.IVariable? ReferencedVariable { get; set; }
 
     public bool Diverges => false;
+    public bool ValueUseful { get; set; }
+    
 
     public override string ToString()
     {
@@ -36,6 +39,7 @@ public record MemberAccessExpression(MemberAccess MemberAccess) : IExpression
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
     public SourceRange SourceRange => MemberAccess.Owner.SourceRange with { End = MemberAccess.MemberName?.SourceSpan ?? MemberAccess.Owner.SourceRange.End };
     public bool Diverges { get; } = MemberAccess.Owner.Diverges;
+    public bool ValueUseful { get; set; }
 
     public override string ToString()
     {
@@ -54,6 +58,7 @@ public record StaticMemberAccessExpression(StaticMemberAccess StaticMemberAccess
     };
 
     public bool Diverges => false;
+    public bool ValueUseful { get; set; }
 
     public override string ToString()
     {
@@ -82,6 +87,7 @@ public record UnaryOperatorExpression(UnaryOperator UnaryOperator) : IExpression
     public ExpressionType ExpressionType => ExpressionType.UnaryOperator;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
     public bool Diverges { get; } = UnaryOperator.Operand?.Diverges ?? false;
+    public bool ValueUseful { get; set; }
 
     public SourceRange SourceRange
     {
@@ -123,6 +129,7 @@ public record BinaryOperatorExpression(BinaryOperator BinaryOperator) : IExpress
     }
     
     public bool Diverges { get; } = (BinaryOperator.Left?.Diverges ?? false) || (BinaryOperator.Right?.Diverges ?? false);
+    public bool ValueUseful { get; set; }
 
     public override string ToString()
     {
@@ -137,6 +144,7 @@ public record VariableDeclarationExpression(VariableDeclaration VariableDeclarat
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
     
     public bool Diverges { get; } = VariableDeclaration.Value?.Diverges ?? false;
+    public bool ValueUseful { get; set; }
 
     public override string ToString()
     {
@@ -154,6 +162,7 @@ public record IfExpressionExpression(IfExpression IfExpression, SourceRange Sour
     public bool Diverges { get; } =
         IfExpression is { Body.Diverges: true, ElseBody.Diverges: true }
         && IfExpression.ElseIfs.All(x => x.Body is { Diverges: true });
+    public bool ValueUseful { get; set; }
 
     public override string ToString()
     {
@@ -167,6 +176,7 @@ public record BlockExpression(Block Block, SourceRange SourceRange) : IExpressio
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public bool Diverges { get; } = Block.Expressions.Any(x => x.Diverges);
+    public bool ValueUseful { get; set; }
 
     public override string ToString()
     {
@@ -181,6 +191,7 @@ public record GenericInstantiationExpression(GenericInstantiation GenericInstant
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public bool Diverges { get; } = GenericInstantiation.Value.Diverges;
+    public bool ValueUseful { get; set; }
 
     public override string ToString()
     {
@@ -205,6 +216,7 @@ public record TupleExpression(IReadOnlyList<IExpression> Values, SourceRange Sou
     public ExpressionType ExpressionType => ExpressionType.Tuple;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
     public bool Diverges { get; } = Values.Any(x => x.Diverges);
+    public bool ValueUseful { get; set; }
 }
 
 public record MethodCallExpression(MethodCall MethodCall, SourceRange SourceRange) : IExpression
@@ -212,6 +224,7 @@ public record MethodCallExpression(MethodCall MethodCall, SourceRange SourceRang
     public ExpressionType ExpressionType => ExpressionType.MethodCall;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
     public bool Diverges { get; } = MethodCall.Method.Diverges;
+    public bool ValueUseful { get; set; }
 
     public override string ToString()
     {
@@ -224,6 +237,7 @@ public record MethodReturnExpression(MethodReturn MethodReturn, SourceRange Sour
     public ExpressionType ExpressionType => ExpressionType.MethodReturn;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
     public bool Diverges => true;
+    public bool ValueUseful { get; set; }
 
     public override string ToString()
     {
@@ -238,6 +252,7 @@ public record UnionClassVariantInitializerExpression(
     public ExpressionType ExpressionType => ExpressionType.UnionClassVariantInitializer;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
     public bool Diverges { get; } = UnionInitializer.FieldInitializers.Any(x => x.Value is { Diverges: true });
+    public bool ValueUseful { get; set; }
 }
 
 public record MatchesExpression(IExpression ValueExpression, IPattern? Pattern, SourceRange SourceRange) : IExpression
@@ -251,6 +266,7 @@ public record MatchesExpression(IExpression ValueExpression, IPattern? Pattern, 
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public bool Diverges { get; } = ValueExpression.Diverges;
+    public bool ValueUseful { get; set; }
 }
 
 public record UnionClassVariantInitializer(
@@ -269,6 +285,7 @@ public record ObjectInitializerExpression(ObjectInitializer ObjectInitializer, S
     public ExpressionType ExpressionType => ExpressionType.ObjectInitializer;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
     public bool Diverges { get; } = ObjectInitializer.FieldInitializers.Any(x => x.Value is { Diverges: true });
+    public bool ValueUseful { get; set; }
 
     public override string ToString()
     {
@@ -320,6 +337,7 @@ public record MatchExpression(IExpression Value, IReadOnlyList<MatchArm> Arms, S
     public ExpressionType ExpressionType => ExpressionType.Match;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
     public bool Diverges { get; } = Value.Diverges || Arms.All(x => x.Expression is { Diverges: true });
+    public bool ValueUseful { get; set; }
 }
 
 public record MatchArm(IPattern Pattern, IExpression? Expression);

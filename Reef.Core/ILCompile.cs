@@ -13,12 +13,20 @@ public class ILCompile
 
     private readonly List<ReefTypeDefinition> _types = [];
     private readonly List<ReefMethod> _methods = [];
+    private readonly Stack<Scope> _scopeStack = [];
+    private List<IInstruction> Instructions => _scopeStack.Peek().Instructions;
 
-    private InstructionAddress? _currentAddress;
+    private class Scope
+    {
+        public List<IInstruction> Instructions { get; } = [];
+        public required IReadOnlyList<TypeChecker.IVariable> AccessedOuterVariables { get; init; }
+        public required IReefTypeReference? CurrentType { get; init; }
+    }
+
     private InstructionAddress NextAddress()
     {
-        _currentAddress = new InstructionAddress(_currentAddress?.Index + 1 ?? 0);
-        return _currentAddress;
+        var nextAddress = Instructions.LastOrDefault()?.Address.Index + 1 ?? 0;
+        return new InstructionAddress(nextAddress);
     }
     
     private ReefModule CompileToILInner(LangProgram program)
@@ -77,16 +85,7 @@ public class ILCompile
             parameters.Add(new ReefMethod.Parameter
             {
                 DisplayName = "this",
-                Type = new ConcreteReefTypeReference
-                {
-                    Name = ownerType.DisplayName,
-                    DefinitionId = ownerType.Id,
-                    TypeArguments = ownerType.TypeParameters.Select(x => new GenericReefTypeReference
-                    {
-                        DefinitionId = ownerType.Id,
-                        TypeParameterName = x
-                    }).ToArray()
-                }
+                Type = DefinitionAsTypeReference(ownerType)
             });
         }
 
@@ -137,6 +136,26 @@ public class ILCompile
             Type = GetTypeReference(x.Type ?? throw new InvalidOperationException("Expected type")),
             DisplayName = x.Name.StringValue
         }).ToArray();
+
+        _scopeStack.Push(new Scope
+        {
+            AccessedOuterVariables = function.AccessedOuterVariables,
+            CurrentType = ownerType is null ? null : DefinitionAsTypeReference(ownerType)
+        });
+
+        foreach (var expression in function.Expressions)
+        {
+            CompileExpression(expression);
+        }
+
+        if (function.Expressions.Count == 0 || !function.Expressions[^1].Diverges)
+        {
+            // the last expression does not diverge, so we must be in a 'void' function. Need to push a unit onto the stack
+            Instructions.Add(new LoadUnitConstant(NextAddress()));
+            Instructions.Add(new Return(NextAddress()));
+        }
+
+        var scope = _scopeStack.Pop();
         
         return new ReefMethod
         {
@@ -144,7 +163,7 @@ public class ILCompile
             Parameters = parameters,
             TypeParameters = function.TypeParameters.Select(x => x.GenericName).ToArray(),
             ReturnType = GetTypeReference(function.ReturnType),
-            Instructions = function.Expressions.SelectMany(CompileExpression).ToArray(),
+            Instructions = scope.Instructions,
             Locals = locals,
             IsStatic = function.IsStatic
         };
@@ -207,6 +226,9 @@ public class ILCompile
     private ReefTypeDefinition CompileClass(TypeChecker.ClassSignature @class)
     {
         var methods = new List<ReefMethod>();
+        var staticFields = new List<ReefField>();
+        
+        
         var definition = new ReefTypeDefinition
         {
             Id = @class.Id,
@@ -223,19 +245,38 @@ public class ILCompile
                         DisplayName = x.Name,
                         Type = GetTypeReference(x.Type)
                     }).ToArray(),
-                StaticFields = @class.StaticFields.Select(x => new ReefField
-                    {
-                        IsStatic = true,
-                        IsPublic = x.IsPublic,
-                        StaticInitializerInstructions = x.StaticInitializer is null ? [] : CompileExpression(x.StaticInitializer).ToArray(),
-                        DisplayName = x.Name,
-                        Type = GetTypeReference(x.Type)
-                    })
-                    .ToArray()
+                StaticFields = staticFields
             }],
             TypeParameters = @class.TypeParameters.Select(x => x.GenericName).ToArray(),
             Methods = methods,
         };
+        
+        foreach (var field in @class.StaticFields)
+        {
+            var staticInitializerInstructions = new List<IInstruction>();
+            if (field.StaticInitializer is not null)
+            {
+                _scopeStack.Push(new Scope
+                {
+                    AccessedOuterVariables = [],
+                    CurrentType = DefinitionAsTypeReference(definition)
+                });
+                CompileExpression(field.StaticInitializer);
+                var scope = _scopeStack.Pop();
+
+                staticInitializerInstructions = scope.Instructions;
+            }
+            
+            staticFields.Add(new ReefField
+            {
+                IsStatic = true,
+                IsPublic = field.IsPublic,
+                StaticInitializerInstructions = staticInitializerInstructions,
+                DisplayName = field.Name,
+                Type = GetTypeReference(field.Type)
+            });
+        }
+        
         methods.AddRange(@class.Functions.Select(x => CompileMethod(x, definition)));
 
         return definition;
@@ -268,71 +309,96 @@ public class ILCompile
         };
     }
     
-    private IEnumerable<IInstruction> CompileExpression(IExpression expression)
+    private void CompileExpression(IExpression expression)
     {
-        return expression switch
+        switch (expression)
         {
-            BinaryOperatorExpression binaryOperatorExpression => CompileBinaryOperatorExpression(binaryOperatorExpression),
-            BlockExpression blockExpression => CompileBlockExpression(blockExpression),
-            IfExpressionExpression ifExpressionExpression => CompileIfExpression(ifExpressionExpression),
-            MatchesExpression matchesExpression => CompileMatchesExpression(matchesExpression),
-            MatchExpression matchExpression => CompileMatchExpression(matchExpression),
-            MemberAccessExpression memberAccessExpression => CompileMemberAccessExpression(memberAccessExpression),
-            MethodCallExpression methodCallExpression => CompileMethodCallExpression(methodCallExpression),
-            MethodReturnExpression methodReturnExpression => CompileMethodReturnExpression(methodReturnExpression),
-            ObjectInitializerExpression objectInitializerExpression => CompileObjectInitializerExpression(objectInitializerExpression),
-            StaticMemberAccessExpression staticMemberAccessExpression => CompileStaticMemberAccessExpression(staticMemberAccessExpression),
-            TupleExpression tupleExpression => CompileTupleExpression(tupleExpression),
-            UnaryOperatorExpression unaryOperatorExpression => CompileUnaryOperatorExpression(unaryOperatorExpression),
-            UnionClassVariantInitializerExpression unionClassVariantInitializerExpression => CompileUnionClassVariantInitializerExpression(unionClassVariantInitializerExpression),
-            ValueAccessorExpression valueAccessorExpression => CompileValueAccessorExpression(valueAccessorExpression),
-            VariableDeclarationExpression variableDeclarationExpression => CompileVariableDeclarationExpression(variableDeclarationExpression),
-            GenericInstantiationExpression => [],
-            _ => throw new ArgumentOutOfRangeException(nameof(expression))
-        };
+            case BinaryOperatorExpression binaryOperatorExpression:
+                CompileBinaryOperatorExpression(binaryOperatorExpression);
+                break;
+            case BlockExpression blockExpression:
+                CompileBlockExpression(blockExpression);
+                break;
+            case IfExpressionExpression ifExpressionExpression:
+                CompileIfExpression(ifExpressionExpression);
+                break;
+            case MatchesExpression matchesExpression:
+                CompileMatchesExpression(matchesExpression);
+                break;
+            case MatchExpression matchExpression:
+                CompileMatchExpression(matchExpression);
+                break;
+            case MemberAccessExpression memberAccessExpression:
+                CompileMemberAccessExpression(memberAccessExpression);
+                break;
+            case MethodCallExpression methodCallExpression:
+                CompileMethodCallExpression(methodCallExpression);
+                break;
+            case MethodReturnExpression methodReturnExpression:
+                CompileMethodReturnExpression(methodReturnExpression);
+                break;
+            case ObjectInitializerExpression objectInitializerExpression:
+                CompileObjectInitializerExpression(objectInitializerExpression);
+                break;
+            case StaticMemberAccessExpression staticMemberAccessExpression:
+                CompileStaticMemberAccessExpression(staticMemberAccessExpression);
+                break;
+            case TupleExpression tupleExpression:
+                CompileTupleExpression(tupleExpression);
+                break;
+            case UnaryOperatorExpression unaryOperatorExpression:
+                CompileUnaryOperatorExpression(unaryOperatorExpression);
+                break;
+            case UnionClassVariantInitializerExpression unionClassVariantInitializerExpression:
+                CompileUnionClassVariantInitializerExpression(unionClassVariantInitializerExpression);
+                break;
+            case ValueAccessorExpression valueAccessorExpression:
+                CompileValueAccessorExpression(valueAccessorExpression);
+                break;
+            case VariableDeclarationExpression variableDeclarationExpression:
+                CompileVariableDeclarationExpression(variableDeclarationExpression);
+                break;
+            case GenericInstantiationExpression:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(expression));
+        }
+
+        if (!expression.ValueUseful)
+        {
+            Instructions.Add(new Drop(NextAddress()));
+        }
     }
     
-    private IEnumerable<IInstruction> CompileBinaryOperatorExpression(
+    private void CompileBinaryOperatorExpression(
         BinaryOperatorExpression binaryOperatorExpression)
     {
         switch (binaryOperatorExpression.BinaryOperator.OperatorType)
         {
             case BinaryOperatorType.LessThan:
             {
-                foreach (var instruction in
-                         CompileExpression(binaryOperatorExpression.BinaryOperator.Left ??
-                                           throw new InvalidOperationException("Expected valid left expression")))
-                {
-                    yield return instruction;
-                }
+                CompileExpression(
+                    binaryOperatorExpression.BinaryOperator.Left ??
+                                  throw new InvalidOperationException("Expected valid left expression"));
 
-                foreach (var instruction in CompileExpression(binaryOperatorExpression.BinaryOperator.Right ??
-                                                              throw new InvalidOperationException(
-                                                                  "Expected valid right expression")))
-                {
-                    yield return instruction;
-                }
-
-                yield return new CompareIntLessThan(NextAddress());
+                CompileExpression(
+                    binaryOperatorExpression.BinaryOperator.Right ??
+                                  throw new InvalidOperationException("Expected valid right expression"));
+                
+                Instructions.Add(new CompareIntLessThan(NextAddress()));
                 break;
             }
             case BinaryOperatorType.GreaterThan:
             {
-                foreach (var instruction in
-                         CompileExpression(binaryOperatorExpression.BinaryOperator.Left ??
-                                           throw new InvalidOperationException("Expected valid left expression")))
-                {
-                    yield return instruction;
-                }
+                CompileExpression(
+                    binaryOperatorExpression.BinaryOperator.Left ??
+                                  throw new InvalidOperationException("Expected valid left expression"));
 
-                foreach (var instruction in CompileExpression(binaryOperatorExpression.BinaryOperator.Right ??
-                                                              throw new InvalidOperationException(
-                                                                  "Expected valid right expression")))
-                {
-                    yield return instruction;
-                }
+                CompileExpression(
+                    binaryOperatorExpression.BinaryOperator.Right ??
+                                  throw new InvalidOperationException("Expected valid right expression"));
 
-                yield return new CompareIntGreaterThan(NextAddress());
+                Instructions.Add(new CompareIntGreaterThan(NextAddress()));
                 break;
             }
             case BinaryOperatorType.Plus:
@@ -352,122 +418,212 @@ public class ILCompile
         }
     }
     
-    private static IEnumerable<IInstruction> CompileBlockExpression(
+    private static void CompileBlockExpression(
         BlockExpression blockExpression)
     {
-        
-        return [];
     }
     
-    private static IEnumerable<IInstruction> CompileIfExpression(
+    private static void CompileIfExpression(
         IfExpressionExpression ifExpression)
     {
-        
-        return [];
     }
     
-    private static IEnumerable<IInstruction> CompileMatchesExpression(
+    private static void CompileMatchesExpression(
         MatchesExpression matchesExpression)
     {
-        
-        return [];
     }
     
-    private static IEnumerable<IInstruction> CompileMatchExpression(
+    private static void CompileMatchExpression(
         MatchExpression matchExpression)
     {
-        
-        return [];
     }
     
-    private static IEnumerable<IInstruction> CompileMemberAccessExpression(
+    private static void CompileMemberAccessExpression(
         MemberAccessExpression memberAccessExpression)
     {
-        
-        return [];
     }
     
-    private static IEnumerable<IInstruction> CompileMethodCallExpression(
+    private static void CompileMethodCallExpression(
         MethodCallExpression methodCallExpression)
     {
-        
-        return [];
     }
     
-    private static IEnumerable<IInstruction> CompileMethodReturnExpression(
+    private void CompileMethodReturnExpression(
         MethodReturnExpression methodReturnExpression)
     {
-        
-        return [];
+        if (methodReturnExpression.MethodReturn.Expression is not null)
+        {
+            CompileExpression(methodReturnExpression.MethodReturn.Expression);
+        }
+        Instructions.Add(new Return(NextAddress()));
     }
     
-    private static IEnumerable<IInstruction> CompileObjectInitializerExpression(
+    private static void CompileObjectInitializerExpression(
         ObjectInitializerExpression objectInitializerExpression)
     {
-        
-        return [];
     }
     
-    private static IEnumerable<IInstruction> CompileStaticMemberAccessExpression(
+    private static void CompileStaticMemberAccessExpression(
         StaticMemberAccessExpression staticMemberAccessExpression)
     {
-        
-        return [];
     }
     
-    private static IEnumerable<IInstruction> CompileTupleExpression(
+    private static void CompileTupleExpression(
         TupleExpression tupleExpression)
     {
-        
-        return [];
     }
     
-    private static IEnumerable<IInstruction> CompileUnaryOperatorExpression(
+    private static void CompileUnaryOperatorExpression(
         UnaryOperatorExpression unaryOperatorExpression)
     {
-        
-        return [];
     }
     
-    private static IEnumerable<IInstruction> CompileUnionClassVariantInitializerExpression(
+    private static void CompileUnionClassVariantInitializerExpression(
         UnionClassVariantInitializerExpression unionClassVariantInitializerExpression)
     {
-        
-        return [];
     }
 
-
-    private IEnumerable<IInstruction> CompileValueAccessorExpression(
+    private void CompileValueAccessorExpression(
         ValueAccessorExpression valueAccessorExpression)
     {
-        return valueAccessorExpression.ValueAccessor switch
+        switch (valueAccessorExpression.ValueAccessor)
         {
-            {AccessType: ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue}} => [new LoadIntConstant(NextAddress(), intValue)],
-            {AccessType: ValueAccessType.Literal, Token: StringToken { Type: TokenType.StringLiteral, StringValue: var stringValue}} => [new LoadStringConstant(NextAddress(), stringValue)],
-            {AccessType: ValueAccessType.Literal, Token.Type: TokenType.True} => [new LoadBoolConstant(NextAddress(), true)],
-            {AccessType: ValueAccessType.Literal, Token.Type: TokenType.False} => [new LoadBoolConstant(NextAddress(), false)],
-            _ => []
-        };
+            case
+            {
+                AccessType: ValueAccessType.Literal,
+                Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue }
+            }:
+            {
+                Instructions.Add(new LoadIntConstant(NextAddress(), intValue));
+                break;
+            }
+            case
+            {
+                AccessType: ValueAccessType.Literal,
+                Token: StringToken { Type: TokenType.StringLiteral, StringValue: var stringValue }
+            }:
+            {
+                Instructions.Add(new LoadStringConstant(NextAddress(), stringValue));
+                break;
+            }
+            case { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True }:
+            {
+                Instructions.Add(new LoadBoolConstant(NextAddress(), true));
+                break;
+            }
+            case { AccessType: ValueAccessType.Literal, Token.Type: TokenType.False }:
+            {
+                Instructions.Add(new LoadBoolConstant(NextAddress(), false));
+                break;
+            }
+            case
+            {
+                AccessType: ValueAccessType.Variable,
+                Token: StringToken { Type: TokenType.Identifier, StringValue: "this" }
+            }:
+            {
+                // this is always the first argument
+                Instructions.Add(new LoadArgument(NextAddress(), ArgumentIndex: 0));
+                break;
+            }
+            case { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Identifier }:
+            {
+                var referencedVariable = valueAccessorExpression.ReferencedVariable ??
+                                         throw new InvalidOperationException(
+                                             "Expected referenced variable");
+
+                var scope = _scopeStack.Peek();
+                var isOuter = scope.AccessedOuterVariables.Contains(referencedVariable);
+
+                switch (referencedVariable)
+                {
+                    case TypeChecker.FieldVariable fieldVariable when isOuter:
+                        break;
+                    case TypeChecker.FieldVariable fieldVariable:
+                    {
+                        if (fieldVariable.IsStaticField)
+                        {
+                            Instructions.Add(new LoadStaticField(
+                                NextAddress(),
+                                scope.CurrentType ?? throw new InvalidOperationException("Expected current type to be set when referencing static fields via variable"),
+                                VariantIndex: 0,
+                                StaticFieldIndex: fieldVariable.FieldIndex
+                            ));
+                        }
+                        else
+                        {
+                            Instructions.Add(new LoadArgument(NextAddress(), 0));
+                            Instructions.Add(new LoadField(
+                                NextAddress(),
+                                VariantIndex: 0, // Accessing fields via named variables can only be done for classes
+                                FieldIndex: fieldVariable.FieldIndex));
+                        }
+                        
+                        break;
+                    }
+                    case TypeChecker.FunctionParameterVariable functionParameterVariable when isOuter:
+                        break;
+                    case TypeChecker.FunctionParameterVariable functionParameterVariable:
+                    {
+                        var parameterIndex = functionParameterVariable.ParameterIndex;
+                        var fn = functionParameterVariable.ContainingFunction;
+                        if (!fn.IsStatic
+                            || fn.AccessedOuterVariables.Count > 0)
+                        {
+                            // for instance functions or closures, parameters need to be bumped by 1 because of either the closure object or `this`
+                            parameterIndex++;
+                        }
+                        
+                        Instructions.Add(new LoadArgument(NextAddress(), parameterIndex));
+                        break;
+                    }
+                    case TypeChecker.LocalVariable localVariable when isOuter:
+                        break;
+                    case TypeChecker.LocalVariable localVariable:
+                    {
+                        Instructions.Add(new LoadLocal(NextAddress(), localVariable.VariableIndex ?? throw new InvalidOperationException("Expected variable index")));
+                        break;
+                    }
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(referencedVariable));
+                }
+                
+                break;
+            }
+        }
     }
 
-    private IEnumerable<IInstruction> CompileVariableDeclarationExpression(
+    private void CompileVariableDeclarationExpression(
         VariableDeclarationExpression variableDeclarationExpression)
     {
         if (variableDeclarationExpression.VariableDeclaration.Variable is not TypeChecker.LocalVariable localVariable)
         {
             throw new InvalidOperationException("LocalVariable should be set");
         }
-        
-        if (variableDeclarationExpression.VariableDeclaration.Value is not null)
-        {
-            foreach (var instruction in CompileExpression(variableDeclarationExpression.VariableDeclaration.Value))
-            {
-                yield return instruction;
-            }
-            
-            var index = localVariable.VariableIndex ?? throw new InvalidOperationException("Expected variable index to be set");
 
-            yield return new StoreLocal(NextAddress(), index);
+        if (variableDeclarationExpression.VariableDeclaration.Value is null)
+        {
+            return;
         }
+
+        CompileExpression(variableDeclarationExpression.VariableDeclaration.Value);
+            
+        var index = localVariable.VariableIndex ?? throw new InvalidOperationException("Expected variable index to be set");
+
+        Instructions.Add(new StoreLocal(NextAddress(), index));
+    }
+
+    private IReefTypeReference DefinitionAsTypeReference(ReefTypeDefinition definition)
+    {
+        return new ConcreteReefTypeReference
+        {
+            DefinitionId = definition.Id,
+            Name = definition.DisplayName,
+            TypeArguments = definition.TypeParameters.Select(x => new GenericReefTypeReference
+            {
+                DefinitionId = definition.Id,
+                TypeParameterName = x
+            }).ToArray()
+        };
     }
 }

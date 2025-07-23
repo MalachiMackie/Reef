@@ -54,6 +54,8 @@ public class TypeChecker
         if (CurrentFunctionSignature is not null
             && (variable is not FunctionParameterVariable {ContainingFunction: var parameterOwner}
                 || parameterOwner != CurrentFunctionSignature)
+            && (variable is not FieldVariable {ContainingSignature: var fieldOwner}
+                || fieldOwner != CurrentTypeSignature)
             && !CurrentFunctionSignature.AccessedOuterVariables.Contains(variable))
         {
             CurrentFunctionSignature.AccessedOuterVariables.Add(variable);
@@ -141,6 +143,8 @@ public class TypeChecker
             var instanceFieldVariables = new List<IVariable>();
             var staticFieldVariables = new List<IVariable>();
 
+            var staticFieldIndex = 0u;
+            var instanceFieldIndex = 0u;
             foreach (var field in @class.Fields)
             {
                 var isStatic = field.StaticModifier is not null;
@@ -156,6 +160,7 @@ public class TypeChecker
                     }
 
                     var valueType = TypeCheckExpression(field.InitializerValue);
+                    field.InitializerValue.ValueUseful = true;
 
                     ExpectType(valueType, fieldTypeReference, field.InitializerValue.SourceRange);
 
@@ -163,7 +168,9 @@ public class TypeChecker
                         classSignature,
                         field.Name,
                         fieldTypeReference,
-                        field.MutabilityModifier is not null));
+                        field.MutabilityModifier is not null,
+                        IsStaticField: true,
+                        staticFieldIndex++));
                 }
                 else
                 {
@@ -176,7 +183,9 @@ public class TypeChecker
                         classSignature,
                         field.Name,
                         fieldTypeReference,
-                        field.MutabilityModifier is not null));
+                        field.MutabilityModifier is not null,
+                        IsStaticField: false,
+                        instanceFieldIndex++));
                 }
             }
 
@@ -210,15 +219,15 @@ public class TypeChecker
                 }
             }
         }
+        
+        foreach (var expression in _program.Expressions)
+        {
+            TypeCheckExpression(expression);
+        }
 
         foreach (var functionSignature in ScopedFunctions.Values)
         {
             TypeCheckFunctionBody(functionSignature);
-        }
-
-        foreach (var expression in _program.Expressions)
-        {
-            TypeCheckExpression(expression);
         }
 
         PopScope();
@@ -467,9 +476,16 @@ public class TypeChecker
         var functionType = InstantiateFunction(fnSignature, [..GenericPlaceholders]);
 
         using var _ = PushScope(null, fnSignature, fnSignature.ReturnType, genericPlaceholders: functionType.TypeArguments);
-        foreach (var parameter in fnSignature.Parameters.Values)
+        foreach (var (index, parameter) in fnSignature.Parameters.Values.Index())
         {
-            AddScopedVariable(parameter.Name.StringValue, new FunctionParameterVariable(fnSignature, parameter.Name, parameter.Type, parameter.Mutable));
+            AddScopedVariable(
+                parameter.Name.StringValue,
+                new FunctionParameterVariable(
+                    fnSignature,
+                    parameter.Name,
+                    parameter.Type,
+                    parameter.Mutable,
+                    (uint)index));
         }
         
         foreach (var fn in fnSignature.LocalFunctions)
@@ -647,6 +663,11 @@ public class TypeChecker
 
     private ITypeReference TypeCheckTupleExpression(TupleExpression tuple)
     {
+        foreach (var value in tuple.Values)
+        {
+            value.ValueUseful = true;
+        }
+        
         if (tuple.Values.Count == 1)
         {
             return TypeCheckExpression(tuple.Values[0]);
@@ -659,6 +680,7 @@ public class TypeChecker
 
     private ITypeReference TypeCheckMatchExpression(MatchExpression matchExpression)
     {
+        matchExpression.Value.ValueUseful = true;
         var valueType = TypeCheckExpression(matchExpression.Value);
 
         ITypeReference? foundType = null;
@@ -671,6 +693,11 @@ public class TypeChecker
             foreach (var variable in patternVariables)
             {
                 variable.Instantiated = true;
+            }
+
+            if (arm.Expression is not null)
+            {
+                arm.Expression.ValueUseful = true;
             }
 
             var armType = arm.Expression is null
@@ -692,6 +719,7 @@ public class TypeChecker
 
     private InstantiatedClass TypeCheckMatchesExpression(MatchesExpression matchesExpression)
     {
+        matchesExpression.ValueUseful = true;
         var valueType = TypeCheckExpression(matchesExpression.ValueExpression);
 
         if (matchesExpression.Pattern is not null)
@@ -1038,7 +1066,10 @@ public class TypeChecker
         foreach (var fieldInitializer in initializer.FieldInitializers)
         {
             if (fieldInitializer.Value is not null)
+            {
+                fieldInitializer.Value.ValueUseful = true;
                 TypeCheckExpression(fieldInitializer.Value);
+            }
             
             if (!fields.TryGetValue(fieldInitializer.FieldName.StringValue, out var field))
             {
@@ -1065,7 +1096,10 @@ public class TypeChecker
     private InstantiatedClass TypeCheckNot(IExpression? expression)
     {
         if (expression is not null)
+        {
+            expression.ValueUseful = true;   
             TypeCheckExpression(expression);
+        }
 
         ExpectExpressionType(InstantiatedClass.Boolean, expression);
 
@@ -1075,7 +1109,10 @@ public class TypeChecker
     private GenericTypeReference TypeCheckFallout(IExpression? expression)
     {
         if (expression is not null)
+        {
+            expression.ValueUseful = true;   
             TypeCheckExpression(expression);
+        }
 
         // todo: could implement with an interface? union Result : IFallout?
         if (ExpectedReturnType is not InstantiatedUnion { Name: "result" or "option" } union)
@@ -1102,6 +1139,7 @@ public class TypeChecker
         GenericInstantiationExpression genericInstantiationExpression)
     {
         var genericInstantiation = genericInstantiationExpression.GenericInstantiation;
+        genericInstantiation.Value.ValueUseful = true;
         var valueType = TypeCheckExpression(genericInstantiation.Value);
 
         if (valueType is not InstantiatedFunction instantiatedFunction)
@@ -1136,6 +1174,7 @@ public class TypeChecker
         MemberAccessExpression memberAccessExpression)
     {
         var (ownerExpression, stringToken) = memberAccessExpression.MemberAccess;
+        ownerExpression.ValueUseful = true;
         var ownerType = TypeCheckExpression(ownerExpression);
 
         if (ownerType is not InstantiatedClass classType)
@@ -1280,6 +1319,7 @@ public class TypeChecker
         {
             if (fieldInitializer.Value is not null)
             {
+                fieldInitializer.Value.ValueUseful = true;
                 TypeCheckExpression(fieldInitializer.Value);
             }
             
@@ -1316,6 +1356,11 @@ public class TypeChecker
         BinaryOperatorExpression binaryOperatorExpression)
     {
         var @operator = binaryOperatorExpression.BinaryOperator;
+        if (@operator.Left is not null)
+            @operator.Left.ValueUseful = true;
+        if (@operator.Right is not null)
+            @operator.Right.ValueUseful = true;
+        
         switch (@operator.OperatorType)
         {
             case BinaryOperatorType.LessThan:
@@ -1362,18 +1407,18 @@ public class TypeChecker
             }
             case BinaryOperatorType.ValueAssignment:
             {
-                var leftType = @operator.Left is null
-                    ? UnknownType.Instance
-                    : TypeCheckExpression(@operator.Left, true);
+                ITypeReference leftType = UnknownType.Instance;
+                if (@operator.Left is not null)
+                {
+                    leftType = TypeCheckExpression(@operator.Left, allowUninstantiatedVariable: true);
+                    // we don't actually want the result of this value
+                    @operator.Left.ValueUseful = false;
+                    ExpectAssignableExpression(@operator.Left);
+                }
                 var rightType = @operator.Right is null
                     ? UnknownType.Instance
                     : TypeCheckExpression(@operator.Right);
                 
-                if (@operator.Left is not null)
-                {
-                    ExpectAssignableExpression(@operator.Left);
-                }
-
                 if (@operator.Left is ValueAccessorExpression
                     {
                         ValueAccessor: { AccessType: ValueAccessType.Variable, Token: StringToken variableName }
@@ -1528,7 +1573,8 @@ public class TypeChecker
         // scope around the entire if expression. Variables declared in the check expression (e.g. with matches) will be
         // conditionally available in the body
         using var _ = PushScope();
-        
+
+        ifExpression.CheckExpression.ValueUseful = true;
         TypeCheckExpression(ifExpression.CheckExpression);
 
         ExpectExpressionType(InstantiatedClass.Boolean, ifExpression.CheckExpression);
@@ -1552,6 +1598,7 @@ public class TypeChecker
 
         if (ifExpression.Body is not null)
         {
+            ifExpression.Body.ValueUseful = true;
             TypeCheckExpression(ifExpression.Body);
         }
         
@@ -1568,8 +1615,8 @@ public class TypeChecker
 
         foreach (var elseIf in ifExpression.ElseIfs)
         {
-            
             using var __ = PushScope();
+            elseIf.CheckExpression.ValueUseful = true;
             TypeCheckExpression(elseIf.CheckExpression);
             
             ExpectExpressionType(InstantiatedClass.Boolean, elseIf.CheckExpression);
@@ -1588,6 +1635,7 @@ public class TypeChecker
 
             if (elseIf.Body is not null)
             {
+                elseIf.Body.ValueUseful = true;
                 TypeCheckExpression(elseIf.Body);
             }
             
@@ -1606,6 +1654,7 @@ public class TypeChecker
         if (ifExpression.ElseBody is not null)
         {
             using var __ = PushScope();
+            ifExpression.ElseBody.ValueUseful = true;
             TypeCheckExpression(ifExpression.ElseBody);
             
             foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
@@ -1633,6 +1682,7 @@ public class TypeChecker
         MethodCallExpression methodCallExpression)
     {
         var methodCall = methodCallExpression.MethodCall;
+        methodCall.Method.ValueUseful = true;
         var methodType = TypeCheckExpression(methodCall.Method);
 
         if (methodType is UnknownType)
@@ -1669,6 +1719,7 @@ public class TypeChecker
             var (_, expectedParameterType, isParameterMutable) = functionType.Parameters.GetAt(i).Value;
 
             var argumentExpression = methodCall.ArgumentList[i];
+            argumentExpression.ValueUseful = true;
             TypeCheckExpression(argumentExpression);
 
             ExpectExpressionType(expectedParameterType, argumentExpression);
@@ -1685,6 +1736,7 @@ public class TypeChecker
     private InstantiatedClass TypeCheckMethodReturn(
         MethodReturnExpression methodReturnExpression)
     {
+        methodReturnExpression.ValueUseful = true;
         if (methodReturnExpression.MethodReturn.Expression is null)
         {
             // no inner expression to check the type of, but we know the type is unit
@@ -1693,6 +1745,7 @@ public class TypeChecker
         }
         else
         {
+            methodReturnExpression.MethodReturn.Expression.ValueUseful = true;
             TypeCheckExpression(methodReturnExpression.MethodReturn.Expression);
             ExpectExpressionType(ExpectedReturnType, methodReturnExpression.MethodReturn.Expression);
         }
@@ -1812,7 +1865,9 @@ public class TypeChecker
 
         expression.ReferencedVariable = valueVariable;
 
-        if (!allowUninstantiated && valueVariable is LocalVariable { Instantiated: false })
+        if (!allowUninstantiated && valueVariable is LocalVariable { Instantiated: false, ContainingFunction: var containingFunction }
+            // if we're accessing an outer variable, then we can assume it's been assigned                     
+            && containingFunction == CurrentFunctionSignature)
         {
             _errors.Add(TypeCheckerError.AccessUninitializedVariable(variableName));
         }
@@ -1823,6 +1878,7 @@ public class TypeChecker
     private InstantiatedClass TypeCheckVariableDeclaration(
         VariableDeclarationExpression expression)
     {
+        expression.ValueUseful = true;
         var varName = expression.VariableDeclaration.VariableNameToken;
         if (VariableIsDefined(varName.StringValue))
         {
@@ -1843,6 +1899,7 @@ public class TypeChecker
             case { Value: { } value, Type: var type, MutabilityModifier: var mutModifier }:
             {
                 var valueType = TypeCheckExpression(value);
+                value.ValueUseful = true;
                 if (type is not null)
                 {
                     var expectedType = GetTypeReference(type);
@@ -2224,17 +2281,21 @@ public class TypeChecker
         public uint? VariableIndex { get; set; }
     }
 
-    public record FieldVariable(ITypeSignature ContainingSignature, StringToken Name, ITypeReference Type, bool Mutable) : IVariable
-    {
-    }
+    public record FieldVariable(
+        ITypeSignature ContainingSignature,
+        StringToken Name,
+        ITypeReference Type,
+        bool Mutable,
+        bool IsStaticField,
+        uint FieldIndex) : IVariable;
 
     public record FunctionParameterVariable(
         FunctionSignature ContainingFunction,
         StringToken Name,
         ITypeReference Type,
-        bool Mutable) : IVariable
+        bool Mutable,
+        uint ParameterIndex) : IVariable
     {
-        
     }
 
     public interface ITypeReference
