@@ -138,3 +138,16 @@ public record LoadStaticField(InstructionAddress Address, IReefTypeReference Ree
 /// <param name="Address"></param>
 /// <param name="Value"></param>
 public record LoadStringConstant(InstructionAddress Address, string Value) : IInstruction;
+
+/// <summary>
+/// Loads a constant int onto the evaluation stack
+/// </summary>
+/// <param name="Address"></param>
+public record LoadIntConstant(InstructionAddress Address, int Value) : IInstruction;
+
+/// <summary>
+/// Loads a constant bool onto the evaluation stack
+/// </summary>
+/// <param name="Address"></param>
+/// <param name="Value"></param>
+public record LoadBoolConstant(InstructionAddress Address, bool Value) : IInstruction;

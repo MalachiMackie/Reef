@@ -26,7 +26,7 @@ public class Tests
     [Fact]
     public void SingleTest()
     {
-        const string source = "union MyUnion { fn SomeFn(){}}";
+        const string source = "var a: int;var b: string";
         var tokens = Tokenizer.Tokenize(source);
         var program = Parser.Parse(tokens);
         program.Errors.Should().BeEmpty();
@@ -37,17 +37,14 @@ public class Tests
 
         module.Should().NotBeNull();
 
-        var expected = Module(types:
-        [
-            Union("MyUnion", methods:
-            [
-                Method("SomeFn",
-                    isStatic: false,
-                    parameters:
-                    [
-                        Parameter("this", ConcreteTypeReference("MyUnion"))
-                    ])
-            ])
+        var expected = Module(methods: [
+            Method("!Main",
+                isStatic: true,
+                instructions: [],
+                locals: [
+                    new ReefMethod.Local {Type = ConcreteTypeReference("int"), DisplayName = "a"},
+                    new ReefMethod.Local {Type = ConcreteTypeReference("string"), DisplayName = "b"},
+                ])
         ]);
         module.Should().BeEquivalentTo(expected, ConfigureEquivalencyCheck);
     }
@@ -200,7 +197,7 @@ public class Tests
                             Field("MyField", ConcreteTypeReference("string"), isPublic: true),
                         ],
                         staticFields: [
-                            Field("OtherField", ConcreteTypeReference("int"), isStatic: true)
+                            Field("OtherField", ConcreteTypeReference("int"), isStatic: true, staticInitializer: [new LoadIntConstant(new InstructionAddress(0), 1)])
                         ])
                 ])
             },
@@ -246,11 +243,113 @@ public class Tests
                             Parameter("ClosureParameter", ConcreteTypeReference("InnerFn!Closure"))
                         ], returnType: ConcreteTypeReference("int"))
                     ])
-            }
+            },
+            {
+                "top level statements - push int",
+                "1",
+                Module(methods: [
+                    Method("!Main",
+                        isStatic: true,
+                        instructions: [
+                            new LoadIntConstant(new InstructionAddress(0), 1)
+                        ])
+                ])
+            },
+            {
+                "top level statements - push constant string",
+                "\"someString\"",
+                Module(methods: [
+                    Method("!Main",
+                        isStatic: true,
+                        instructions: [
+                            new LoadStringConstant(new InstructionAddress(0), "someString")
+                        ])
+                ])
+            },
+            {
+                "top level statements - push constant bool true",
+                "true",
+                Module(methods: [
+                    Method("!Main",
+                        isStatic: true,
+                        instructions: [
+                            new LoadBoolConstant(new InstructionAddress(0), true)
+                        ])
+                ])
+            },
+            {
+                "top level statements - push constant bool false",
+                "false",
+                Module(methods: [
+                    Method("!Main",
+                        isStatic: true,
+                        instructions: [
+                            new LoadBoolConstant(new InstructionAddress(0), false)
+                        ])
+                ])
+            },
+            {
+                "variable declaration without initializer",
+                "var a: int",
+                Module(methods: [
+                    Method("!Main",
+                        isStatic: true,
+                        instructions: [],
+                        locals: [
+                            new ReefMethod.Local {Type = ConcreteTypeReference("int"), DisplayName = "a"}
+                        ])
+                ])
+            },
+            {
+                "two variable declarations without initializer",
+                "var a: int;var b: string",
+                Module(methods: [
+                    Method("!Main",
+                        isStatic: true,
+                        instructions: [],
+                        locals: [
+                            new ReefMethod.Local {Type = ConcreteTypeReference("int"), DisplayName = "a"},
+                            new ReefMethod.Local {Type = ConcreteTypeReference("string"), DisplayName = "b"},
+                        ])
+                ])
+            },
+            {
+                "variable declaration with value initializer",
+                "var a = 1",
+                Module(methods: [
+                    Method("!Main",
+                        isStatic: true,
+                        instructions: [
+                            new LoadIntConstant(new InstructionAddress(0), 1),
+                            new StoreLocal(new InstructionAddress(1), 0)
+                        ],
+                        locals: [
+                            new ReefMethod.Local {Type = ConcreteTypeReference("int"), DisplayName = "a"},
+                        ])
+                ])
+            },
+            {
+                "variable declaration with value initializer",
+                "var a = 1;var b = \"hello\"",
+                Module(methods: [
+                    Method("!Main",
+                        isStatic: true,
+                        instructions: [
+                            new LoadIntConstant(new InstructionAddress(0), 1),
+                            new StoreLocal(new InstructionAddress(1), 0),
+                            new LoadStringConstant(new InstructionAddress(2), "hello"),
+                            new StoreLocal(new InstructionAddress(3), 1),
+                        ],
+                        locals: [
+                            new ReefMethod.Local {Type = ConcreteTypeReference("int"), DisplayName = "a"},
+                            new ReefMethod.Local {Type = ConcreteTypeReference("string"), DisplayName = "b"},
+                        ])
+                ])
+            },
         };
     }
 
-    private static ReefField Field(string name, IReefTypeReference type, bool isStatic = false, bool isPublic = false)
+    private static ReefField Field(string name, IReefTypeReference type, bool isStatic = false, bool isPublic = false, IReadOnlyList<IInstruction>? staticInitializer = null)
     {
         return new ReefField
         {
@@ -258,7 +357,7 @@ public class Tests
             IsPublic = isPublic,
             Type = type,
             DisplayName = name,
-            StaticInitializerInstructions = []
+            StaticInitializerInstructions = staticInitializer ?? []
         };
     }
 
@@ -295,15 +394,17 @@ public class Tests
         bool isStatic = false,
         IReadOnlyList<ReefMethod.Parameter>? parameters = null,
         IReefTypeReference? returnType = null,
-        IReadOnlyList<string>? typeParameters = null)
+        IReadOnlyList<string>? typeParameters = null,
+        IReadOnlyList<IInstruction>? instructions = null,
+        IReadOnlyList<ReefMethod.Local>? locals = null)
     {
         return new ReefMethod
         {
             DisplayName = name,
             IsStatic = isStatic,
             TypeParameters = typeParameters ?? [],
-            Instructions = [],
-            Locals = [],
+            Instructions = instructions ?? [],
+            Locals = locals ?? [],
             Parameters = parameters ?? [],
             ReturnType = returnType ?? ConcreteTypeReference("Unit")
         };
@@ -361,7 +462,7 @@ public class Tests
     {
         return new ReefModule
         {
-            MainMethod = null,
+            MainMethod = methods?.FirstOrDefault(x => x.DisplayName == "!Main"),
             Methods = methods ?? [],
             Types = types ?? []
         };

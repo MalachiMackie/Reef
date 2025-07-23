@@ -63,14 +63,25 @@ public class TypeChecker
 
     private bool TryAddScopedVariable(string name, IVariable variable)
     {
-        var localVariables = CurrentFunctionSignature?.LocalVariables ?? _program.TopLevelLocalVariables;
-        localVariables.Add(variable);
+        if (variable is LocalVariable localVariable)
+        {
+            var localVariables = CurrentFunctionSignature?.LocalVariables ?? _program.TopLevelLocalVariables;
+            localVariable.VariableIndex = (uint)localVariables.Count;
+            localVariables.Add(localVariable);
+        }
 
         return _typeCheckingScopes.Peek().TryAddVariable(name, variable);
     }
 
     private void AddScopedVariable(string name, IVariable variable)
     {
+        if (variable is LocalVariable localVariable)
+        {
+            var localVariables = CurrentFunctionSignature?.LocalVariables ?? _program.TopLevelLocalVariables;
+            localVariable.VariableIndex = (uint)localVariables.Count;
+            localVariables.Add(localVariable);
+        }
+        
         _typeCheckingScopes.Peek().AddVariable(name, variable);
     }
 
@@ -1819,7 +1830,7 @@ public class TypeChecker
                 $"Variable with name {varName} already exists");
         }
 
-        IVariable? variable = null;
+        LocalVariable? variable = null;
         switch (expression.VariableDeclaration)
         {
             case { Value: null, Type: null, MutabilityModifier: var mutModifier }:
@@ -2210,6 +2221,7 @@ public class TypeChecker
     {
         public bool Instantiated { get; set; } = Instantiated;
         public ITypeReference? Type { get; set; } = Type;
+        public uint? VariableIndex { get; set; }
     }
 
     public record FieldVariable(ITypeSignature ContainingSignature, StringToken Name, ITypeReference Type, bool Mutable) : IVariable
@@ -2674,7 +2686,7 @@ public class TypeChecker
         public string Name { get; } = nameToken.StringValue;
         public IReadOnlyList<IExpression> Expressions { get; } = expressions;
         public IReadOnlyList<FunctionSignature> LocalFunctions { get; } = localFunctions;
-        public List<IVariable> LocalVariables { get; init; } = [];
+        public List<LocalVariable> LocalVariables { get; init; } = [];
         public List<IVariable> AccessedOuterVariables { get; } = [];
     }
 

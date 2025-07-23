@@ -30,7 +30,7 @@ public record LangProgram(
         return sb.ToString();
     }
 
-    public List<TypeChecker.IVariable> TopLevelLocalVariables { get; } = [];
+    public List<TypeChecker.LocalVariable> TopLevelLocalVariables { get; } = [];
 }
 
 // todo: is this an ok name?

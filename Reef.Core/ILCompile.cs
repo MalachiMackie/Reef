@@ -13,6 +13,13 @@ public class ILCompile
 
     private readonly List<ReefTypeDefinition> _types = [];
     private readonly List<ReefMethod> _methods = [];
+
+    private InstructionAddress? _currentAddress;
+    private InstructionAddress NextAddress()
+    {
+        _currentAddress = new InstructionAddress(_currentAddress?.Index + 1 ?? 0);
+        return _currentAddress;
+    }
     
     private ReefModule CompileToILInner(LangProgram program)
     {
@@ -124,6 +131,12 @@ public class ILCompile
             DisplayName = x.Key,
             Type = GetTypeReference(x.Value.Type)
         }));
+
+        var locals = function.LocalVariables.Select(x => new ReefMethod.Local
+        {
+            Type = GetTypeReference(x.Type ?? throw new InvalidOperationException("Expected type")),
+            DisplayName = x.Name.StringValue
+        }).ToArray();
         
         return new ReefMethod
         {
@@ -132,11 +145,7 @@ public class ILCompile
             TypeParameters = function.TypeParameters.Select(x => x.GenericName).ToArray(),
             ReturnType = GetTypeReference(function.ReturnType),
             Instructions = function.Expressions.SelectMany(CompileExpression).ToArray(),
-            Locals = function.LocalVariables.Select(x => new ReefMethod.Local
-            {
-                Type = GetTypeReference(x.Type ?? throw new InvalidOperationException("Expected type")),
-                DisplayName = x.Name.StringValue
-            }).ToArray(),
+            Locals = locals,
             IsStatic = function.IsStatic
         };
     }
@@ -259,7 +268,7 @@ public class ILCompile
         };
     }
     
-    private static IEnumerable<IInstruction> CompileExpression(IExpression expression)
+    private IEnumerable<IInstruction> CompileExpression(IExpression expression)
     {
         return expression switch
         {
@@ -374,17 +383,37 @@ public class ILCompile
     }
 
 
-    private static IEnumerable<IInstruction> CompileValueAccessorExpression(
+    private IEnumerable<IInstruction> CompileValueAccessorExpression(
         ValueAccessorExpression valueAccessorExpression)
     {
-        return [];
-        
+        return valueAccessorExpression.ValueAccessor switch
+        {
+            {AccessType: ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue}} => [new LoadIntConstant(NextAddress(), intValue)],
+            {AccessType: ValueAccessType.Literal, Token: StringToken { Type: TokenType.StringLiteral, StringValue: var stringValue}} => [new LoadStringConstant(NextAddress(), stringValue)],
+            {AccessType: ValueAccessType.Literal, Token.Type: TokenType.True} => [new LoadBoolConstant(NextAddress(), true)],
+            {AccessType: ValueAccessType.Literal, Token.Type: TokenType.False} => [new LoadBoolConstant(NextAddress(), false)],
+            _ => []
+        };
     }
 
-    private static IEnumerable<IInstruction> CompileVariableDeclarationExpression(
+    private IEnumerable<IInstruction> CompileVariableDeclarationExpression(
         VariableDeclarationExpression variableDeclarationExpression)
     {
-        return [];
+        if (variableDeclarationExpression.VariableDeclaration.Variable is not TypeChecker.LocalVariable localVariable)
+        {
+            throw new InvalidOperationException("LocalVariable should be set");
+        }
         
+        if (variableDeclarationExpression.VariableDeclaration.Value is not null)
+        {
+            foreach (var instruction in CompileExpression(variableDeclarationExpression.VariableDeclaration.Value))
+            {
+                yield return instruction;
+            }
+            
+            var index = localVariable.VariableIndex ?? throw new InvalidOperationException("Expected variable index to be set");
+
+            yield return new StoreLocal(NextAddress(), index);
+        }
     }
 }

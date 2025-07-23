@@ -1,6 +1,3 @@
 ﻿namespace Reef.IL;
 
-public class InstructionAddress
-{
-    
-}
+public record InstructionAddress(uint Index);
