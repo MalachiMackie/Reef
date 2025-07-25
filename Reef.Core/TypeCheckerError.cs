@@ -64,6 +64,14 @@ public record TypeCheckerError
             $"Variable {variableIdentifier} may be uninitialized");
     }
 
+    public static TypeCheckerError AccessingClosureWhichReferencesUninitializedVariables(StringToken functionName, IEnumerable<StringToken> uninitializedVariables)
+    {
+        return new TypeCheckerError(
+            TypeCheckerErrorType.AccessingClosureWhichReferencesUninitializedVariables,
+            new SourceRange(functionName.SourceSpan, functionName.SourceSpan),
+            $"{functionName.StringValue} accessed uninitialized variables: {string.Join(", ", uninitializedVariables.Select(x => x.StringValue))}");
+    }
+
     public static TypeCheckerError IncorrectNumberOfPatternsInTupleVariantUnionPattern(UnionTupleVariantPattern pattern, int expectedNumber)
     {
         return new(
@@ -281,5 +289,6 @@ public enum TypeCheckerErrorType
     TypeParameterConflictsWithType,
     MutatingInstanceInNonMutableFunction,
     StaticFunctionMarkedAsMutable,
-    CannotCreateMutableFunctionWithinNonMutableFunction
+    CannotCreateMutableFunctionWithinNonMutableFunction,
+    AccessingClosureWhichReferencesUninitializedVariables
 }

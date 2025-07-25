@@ -56,6 +56,8 @@ public class TypeChecker
                 || parameterOwner != CurrentFunctionSignature)
             && (variable is not FieldVariable {ContainingSignature: var fieldOwner}
                 || fieldOwner != CurrentTypeSignature)
+            && (variable is not LocalVariable {ContainingFunction: var localOwner}
+                || localOwner != CurrentFunctionSignature)
             && !CurrentFunctionSignature.AccessedOuterVariables.Contains(variable))
         {
             CurrentFunctionSignature.AccessedOuterVariables.Add(variable);
@@ -1561,7 +1563,7 @@ public class TypeChecker
         return false;
     }
 
-    private sealed class VariableIfInstantiation
+    public sealed class VariableIfInstantiation
     {
         public bool InstantiatedInBody { get; set; }
         public bool InstantiatedInElse { get; set; }
@@ -2463,7 +2465,7 @@ public class TypeChecker
 
         public bool IsStatic => Signature.IsStatic;
         public bool IsMutable => Signature.IsMutable;
-
+        public IReadOnlyList<IVariable> AccessedOuterVariables => Signature.AccessedOuterVariables;
         public IReadOnlyList<GenericTypeReference> TypeArguments { get; }
         public ITypeReference ReturnType { get; }
 

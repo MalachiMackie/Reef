@@ -38,17 +38,16 @@ public class TypeCheckerTests
     {
         const string src =
             """
+            fn OuterFn() {
+               var a = new MyClass{}; 
+               a.MyFn();
+            }
             class MyClass {
-                mut field MyField: string,
-                
                 fn MyFn() {
-                    mut fn InnerFn() {
-                        MyField = "";
-                    }
+                    OuterFn();
                 }
             }
             """;
-
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
@@ -1150,8 +1149,17 @@ public class TypeCheckerTests
                 var b = a;
             }
             a = 1;
-            // SomeFn can be called safely now because a has been initiailized
+            // SomeFn can be called safely now because a has been initialized
             SomeFn();
+            """,
+            """
+            var a: int;
+            fn SomeFn() {
+                var b = a;
+            }
+            a = 1;
+            // SomeFn can safely be accessed because a has been initialized
+            var c = SomeFn;
             """,
             Mvp
         };
@@ -2821,7 +2829,19 @@ public class TypeCheckerTests
                 SomeFn();
                 a = 1;
                 """,
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("a"))]
+                [TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("SomeFn"), [Identifier("a")])]
+            },
+            {
+                "assigning closure to variable when variable is uninitialized",
+                """
+                var a: int;
+                fn SomeFn() {
+                    var b = a;
+                }
+                var c = SomeFn;
+                a = 1;
+                """,
+                [TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("SomeFn"), [Identifier("a")])]
             }
         };
     }

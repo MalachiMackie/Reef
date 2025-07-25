@@ -7,6 +7,7 @@ namespace Reef.Core;
 public class TypeTwoTypeChecker
 {
     private readonly List<TypeCheckerError> _errors = [];
+    private readonly Stack<Dictionary<TypeChecker.LocalVariable, bool>> _localVariables = [];
 
     public static IReadOnlyList<TypeCheckerError> TypeTwoTypeCheck(LangProgram program)
     {
@@ -32,6 +33,8 @@ public class TypeTwoTypeChecker
         {
             CheckClass(programClass);
         }
+
+        _localVariables.Push(program.TopLevelLocalVariables.ToDictionary(x => x, _ => false));
 
         foreach (var expression in program.Expressions)
         {
@@ -81,6 +84,8 @@ public class TypeTwoTypeChecker
             throw new InvalidOperationException("Function signature was not created");
         }
 
+        _localVariables.Push(function.Signature.LocalVariables.ToDictionary(x => x, _ => false));
+
         HashSet<TypeChecker.GenericTypeReference> innerGenerics =
             [..function.Signature.TypeParameters, ..expectedGenerics];
         foreach (var blockFunction in function.Block.Functions)
@@ -109,9 +114,11 @@ public class TypeTwoTypeChecker
             case VariableDeclarationExpression variableDeclarationExpression:
                 CheckVariableDeclaration(variableDeclarationExpression, expectedGenerics);
                 break;
-            case ValueAccessorExpression:
-                // nothing to check
+            case ValueAccessorExpression valueAccessorExpression:
+            {
+                CheckValueAccessor(valueAccessorExpression);
                 break;
+            }
             case MethodReturnExpression methodReturnExpression:
                 CheckMethodReturn(methodReturnExpression, expectedGenerics);
                 break;
@@ -156,6 +163,24 @@ public class TypeTwoTypeChecker
                 break;
             default:
                 throw new NotImplementedException($"{expression.ExpressionType}");
+        }
+    }
+
+    private void CheckValueAccessor(ValueAccessorExpression valueAccessorExpression)
+    {
+        if (valueAccessorExpression.ValueAccessor.Token is StringToken nameToken
+            && valueAccessorExpression.ResolvedType is TypeChecker.InstantiatedFunction function)
+        {
+            var uninitializedAccessedVariables = function.AccessedOuterVariables
+                .OfType<TypeChecker.LocalVariable>()
+                .Where(x => !_localVariables.Peek()[x])
+                .Select(x => x.Name)
+                .ToArray();
+            
+            if (uninitializedAccessedVariables.Length > 0)
+            {
+                _errors.Add(TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(nameToken, uninitializedAccessedVariables));
+            }
         }
     }
 
@@ -267,16 +292,36 @@ public class TypeTwoTypeChecker
         {
             CheckExpression(binaryOperator.Right, expectedGenerics);
         }
+
+        if (binaryOperator is
+            {
+                OperatorType: BinaryOperatorType.ValueAssignment,
+                Left: ValueAccessorExpression{ReferencedVariable: TypeChecker.LocalVariable localVariable }
+            })
+        {
+            _localVariables.Peek()[localVariable] = true;
+        }
     }
 
     private void CheckIfExpression(IfExpression ifExpression,
         HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
     {
+        var uninitializedLocalVariables = _localVariables.Peek().Where(x => !x.Value)
+            .Select(x => x.Key)
+            .ToDictionary(x => x, x => new TypeChecker.VariableIfInstantiation());
+        
         CheckExpression(ifExpression.CheckExpression, expectedGenerics);
         if (ifExpression.Body is not null)
         {
             CheckExpression(ifExpression.Body, expectedGenerics);
         }
+
+        foreach (var (variable, variableIfInstantiation) in uninitializedLocalVariables)
+        {
+            variableIfInstantiation.InstantiatedInBody = _localVariables.Peek()[variable];
+            _localVariables.Peek()[variable] = false;
+        }
+        
         foreach (var elseIf in ifExpression.ElseIfs)
         {
             CheckExpression(elseIf.CheckExpression, expectedGenerics);
@@ -284,11 +329,33 @@ public class TypeTwoTypeChecker
             {
                 CheckExpression(elseIf.Body, expectedGenerics);
             }
+            
+            foreach (var (variable, variableInstantiation) in uninitializedLocalVariables)
+            {
+                variableInstantiation.InstantiatedInEachElseIf &= _localVariables.Peek()[variable];
+                _localVariables.Peek()[variable] = false;
+            }
         }
 
         if (ifExpression.ElseBody is not null)
         {
             CheckExpression(ifExpression.ElseBody, expectedGenerics);
+            
+            foreach (var (variable, variableInstantiation) in uninitializedLocalVariables)
+            {
+                variableInstantiation.InstantiatedInEachElseIf &= _localVariables.Peek()[variable];
+                _localVariables.Peek()[variable] = false;
+            }
+        }
+        
+        foreach (var (variable, variableInstantiation) in uninitializedLocalVariables)
+        {
+            _localVariables.Peek()[variable] = ifExpression.Body is not null && variableInstantiation.InstantiatedInBody
+                                                                             && ifExpression.ElseBody is not null &&
+                                                                             variableInstantiation.InstantiatedInElse
+                                                                             && (ifExpression.ElseIfs.Count == 0 ||
+                                                                                 variableInstantiation
+                                                                                     .InstantiatedInEachElseIf);
         }
     }
 
@@ -330,6 +397,10 @@ public class TypeTwoTypeChecker
     {
         if (variableDeclarationExpression.VariableDeclaration.Value is { } value)
         {
+            if (variableDeclarationExpression.VariableDeclaration.Variable is TypeChecker.LocalVariable localVariable)
+            {
+                _localVariables.Peek()[localVariable] = true;
+            }
             CheckExpression(value, expectedGenerics);
         }
 
