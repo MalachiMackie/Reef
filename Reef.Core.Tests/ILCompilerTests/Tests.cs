@@ -26,14 +26,45 @@ public class Tests
     [Fact]
     public void SingleTest()
     {
-        const string source = "var a: int;";
+        const string source = """
+                              var a: int;
+                              fn SomeMethod(param: string) {
+                                  var b = param;
+                                  var c = a;
+                              }
+                              """;
         var expected = Module(
+            types:
+            [
+                Class("SomeMethod!Closure", variantName: "ClosureVariant", instanceFields:
+                [
+                    Field("Field_0", ConcreteTypeReference("int"), isPublic: true),
+                ])
+            ],
             methods:
             [
                 Method("!Main",
                     locals: [new ReefMethod.Local() { DisplayName = "a", Type = ConcreteTypeReference("int") }],
                     isStatic: true,
                     instructions: [LoadUnit(0), Return(1)]),
+                Method("SomeMethod", parameters:
+                    [
+                        Parameter("ClosureParameter", ConcreteTypeReference("SomeMethod!Closure")),
+                        Parameter("param", ConcreteTypeReference("string"))
+                    ], locals:
+                    [
+                        new ReefMethod.Local { DisplayName = "b", Type = ConcreteTypeReference("string") },
+                        new ReefMethod.Local { DisplayName = "c", Type = ConcreteTypeReference("int") },
+                    ], instructions:
+                    [
+                        new LoadArgument(Addr(0), 1),
+                        new StoreLocal(Addr(1), 0),
+                        new LoadArgument(Addr(2), 0),
+                        new LoadField(Addr(3), VariantIndex: 0, FieldIndex: 0),
+                        new StoreLocal(Addr(4), LocalIndex: 1),
+                        LoadUnit(5),
+                        Return(6)
+                    ])
             ]);
         
         var tokens = Tokenizer.Tokenize(source);
@@ -766,6 +797,47 @@ public class Tests
                                 new StoreLocal(Addr(4), LocalIndex: 1),
                                 LoadUnit(5),
                                 Return(6)
+                            ])
+                    ])
+            },
+            {
+                "access outer parameter in closure",
+                """
+                static fn OuterFn(outerParam: string) {
+                    fn SomeMethod() {
+                        var a = outerParam;
+                    }
+                }
+                """,
+                Module(
+                    types:
+                    [
+                        Class("SomeMethod!Closure", variantName: "ClosureVariant", instanceFields:
+                        [
+                            Field("Field_0", ConcreteTypeReference("string"), isPublic: true),
+                        ])
+                    ],
+                    methods:
+                    [
+                        Method("OuterFn",
+                            isStatic: true,
+                            parameters: [
+                                Parameter("outerParam", ConcreteTypeReference("string"))
+                            ],
+                            instructions: [LoadUnit(0), Return(1)]),
+                        Method("SomeMethod", parameters:
+                            [
+                                Parameter("ClosureParameter", ConcreteTypeReference("SomeMethod!Closure")),
+                            ], locals:
+                            [
+                                new ReefMethod.Local { DisplayName = "a", Type = ConcreteTypeReference("string") },
+                            ], instructions:
+                            [
+                                new LoadArgument(Addr(0), 0),
+                                new LoadField(Addr(1), 0, 0),
+                                new StoreLocal(Addr(2), 0),
+                                LoadUnit(3),
+                                Return(4)
                             ])
                     ])
             }

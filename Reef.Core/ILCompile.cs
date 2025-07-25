@@ -533,12 +533,18 @@ public class ILCompile
                                              "Expected referenced variable");
 
                 var scope = _scopeStack.Peek();
-                var isOuter = scope.AccessedOuterVariables.Contains(referencedVariable);
+                var (accessedOuterVariableIndex, accessedOuterVariable) = scope.AccessedOuterVariables.Index()
+                    .FirstOrDefault(x => x.Item == referencedVariable);
+                
+                if (accessedOuterVariable is not null)
+                {
+                    Instructions.Add(new LoadArgument(NextAddress(), 0));
+                    Instructions.Add(new LoadField(NextAddress(), VariantIndex: 0, FieldIndex: (uint)accessedOuterVariableIndex));
+                    break;
+                }
 
                 switch (referencedVariable)
                 {
-                    case TypeChecker.FieldVariable fieldVariable when isOuter:
-                        break;
                     case TypeChecker.FieldVariable fieldVariable:
                     {
                         if (fieldVariable.IsStaticField)
@@ -561,8 +567,6 @@ public class ILCompile
                         
                         break;
                     }
-                    case TypeChecker.FunctionParameterVariable functionParameterVariable when isOuter:
-                        break;
                     case TypeChecker.FunctionParameterVariable functionParameterVariable:
                     {
                         var parameterIndex = functionParameterVariable.ParameterIndex;
@@ -577,8 +581,6 @@ public class ILCompile
                         Instructions.Add(new LoadArgument(NextAddress(), parameterIndex));
                         break;
                     }
-                    case TypeChecker.LocalVariable localVariable when isOuter:
-                        break;
                     case TypeChecker.LocalVariable localVariable:
                     {
                         Instructions.Add(new LoadLocal(NextAddress(), localVariable.VariableIndex ?? throw new InvalidOperationException("Expected variable index")));
