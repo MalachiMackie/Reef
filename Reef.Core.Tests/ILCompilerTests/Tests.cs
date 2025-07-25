@@ -311,7 +311,7 @@ public class Tests
                 """
                 static fn SomeFn(param: int, param2: string) {
                     fn InnerFn(): int {
-                        param2;
+                        var a = param2;
                         return param;
                     }
                 }
@@ -338,14 +338,18 @@ public class Tests
                             [
                                 Parameter("ClosureParameter", ConcreteTypeReference("InnerFn!Closure"))
                             ],
+                            locals: [
+                                new ReefMethod.Local{DisplayName = "a", Type = ConcreteTypeReference("string")}
+                            ],
                             returnType: ConcreteTypeReference("int"),
                             instructions:
                             [
                                 new LoadArgument(new InstructionAddress(0), 0),
-                                new LoadField(new InstructionAddress(1), VariantIndex: 0, FieldIndex: 1),
-                                new LoadArgument(new InstructionAddress(2), 0),
-                                new LoadField(new InstructionAddress(3), VariantIndex: 0, FieldIndex: 0),
-                                new Return(new InstructionAddress(4))
+                                new LoadField(new InstructionAddress(1), VariantIndex: 0, FieldIndex: 0),
+                                new StoreLocal(Addr(2), 0),
+                                new LoadArgument(new InstructionAddress(3), 0),
+                                new LoadField(new InstructionAddress(4), VariantIndex: 0, FieldIndex: 1),
+                                new Return(new InstructionAddress(5))
                             ])
                     ])
             },
