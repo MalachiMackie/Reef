@@ -27,53 +27,61 @@ public class Tests
     public void SingleTest()
     {
         const string source = """
-                class MyClass {
-                    pub fn SomeFn(a: int, b: string){}
-                }
-                var a = new MyClass {};
-                a.SomeFn(1, ""); 
-                """;
+                              var a = "";
+                              SomeFn();
+
+                              fn SomeFn() {
+                                  var b = a;
+                              }
+                              """;
         var expected = Module(
             types:
             [
-                Class(
-                    "MyClass",
-                    methods:
+                Class("SomeFn!Closure",
+                    variantName: "ClosureVariant",
+                    instanceFields:
                     [
-                        Method("SomeFn",
-                            parameters:
-                            [
-                                Parameter("this", ConcreteTypeReference("MyClass")),
-                                Parameter("a", ConcreteTypeReference("int")),
-                                Parameter("b", ConcreteTypeReference("string")),
-                            ],
-                            instructions:
-                            [
-                                LoadUnit(0),
-                                Return(1)
-                            ])
+                        Field("Field_0", ConcreteTypeReference("string"), isPublic: true),
                     ])
             ],
             methods:
             [
+                Method("SomeFn",
+                    parameters:
+                    [
+                        Parameter("ClosureParameter", ConcreteTypeReference("SomeFn!Closure")),
+                    ],
+                    locals:
+                    [
+                        Local("b", ConcreteTypeReference("string"))
+                    ],
+                    instructions:
+                    [
+                        new LoadArgument(Addr(0), 0),
+                        new LoadField(Addr(1), 0, 0),
+                        new StoreLocal(Addr(2), 0),
+                        LoadUnit(3),
+                        Return(4)
+                    ]),
                 Method("!Main",
                     isStatic: true,
                     locals:
                     [
-                        Local("a", ConcreteTypeReference("MyClass"))
+                        Local("a", ConcreteTypeReference("string"))
                     ],
                     instructions:
                     [
-                        new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
+                        new LoadStringConstant(Addr(0), ""),
                         new StoreLocal(Addr(1), 0),
-                        new LoadLocal(Addr(2), 0),
-                        new LoadIntConstant(Addr(3), 1),
-                        new LoadStringConstant(Addr(4), ""),
-                        new LoadTypeFunction(Addr(5), ConcreteTypeReference("MyClass"), 0),
-                        new Call(Addr(6)),
-                        Drop(7),
-                        LoadUnit(8),
-                        Return(9)
+                        new CreateObject(Addr(2), ConcreteTypeReference("SomeFn!Closure")),
+                        new CopyStack(Addr(3)),
+                        new LoadLocal(Addr(4), 0),
+                        new StoreField(Addr(5), 0, 0),
+                        new LoadGlobalFunction(Addr(6), FunctionReference("SomeFn")),
+                        new Call(Addr(7)),
+                        Drop(8),
+                        LoadUnit(9),
+                        Return(10)
                     ])
             ]);
         
@@ -975,8 +983,61 @@ public class Tests
                                 new StoreLocal(Addr(1), 0),
                                 new CreateObject(Addr(2), ConcreteTypeReference("SomeFn!Closure")),
                                 new CopyStack(Addr(3)),
-                                new StoreField(Addr(4), 0, 0),
-                                new LoadGlobalFunction(Addr(5), FunctionReference("SomeFn")),
+                                new LoadLocal(Addr(4), 0),
+                                new StoreField(Addr(5), 0, 0),
+                                new LoadGlobalFunction(Addr(6), FunctionReference("SomeFn")),
+                                new Call(Addr(7)),
+                                Drop(8),
+                                LoadUnit(9),
+                                Return(10)
+                            ])
+                    ])
+            },
+            {
+                "call closure that references parameter",
+                """
+                static fn Outer(a: string) {
+                    fn SomeFn() {
+                        var b = a;
+                    }
+                    SomeFn();
+                }
+                """,
+                Module(
+                    types: [
+                        Class("SomeFn!Closure",
+                            variantName: "ClosureVariant",
+                            instanceFields: [
+                                Field("Field_0", ConcreteTypeReference("string"), isPublic: true),
+                            ])
+                    ],
+                    methods: [
+                        Method("SomeFn",
+                            parameters: [
+                                Parameter("ClosureParameter", ConcreteTypeReference("SomeFn!Closure")),
+                            ],
+                            locals: [
+                                Local("b", ConcreteTypeReference("string"))
+                            ],
+                            instructions: [
+                                new LoadArgument(Addr(0), 0),
+                                new LoadField(Addr(1), 0, 0),
+                                new StoreLocal(Addr(2), 0),
+                                LoadUnit(3),
+                                Return(4)
+                            ]),
+                        Method("Outer",
+                            isStatic: true,
+                            parameters: [
+                                Parameter("a", ConcreteTypeReference("string"))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("SomeFn!Closure")),
+                                new CopyStack(Addr(1)),
+                                new LoadArgument(Addr(2), 0),
+                                new StoreField(Addr(3), 0, 0),
+                                new LoadGlobalFunction(Addr(4), FunctionReference("SomeFn")),
+                                new Call(Addr(5)),
                                 Drop(6),
                                 LoadUnit(7),
                                 Return(8)
@@ -1027,14 +1088,126 @@ public class Tests
                                 new StoreLocal(Addr(1), 0),
                                 new CreateObject(Addr(2), ConcreteTypeReference("SomeFn!Closure")),
                                 new CopyStack(Addr(3)),
-                                new StoreField(Addr(4), 0, 0),
-                                new LoadIntConstant(Addr(5), 1),
-                                new LoadGlobalFunction(Addr(6), FunctionReference("SomeFn")),
-                                new Call(Addr(7)),
-                                Drop(8),
-                                LoadUnit(9),
-                                Return(10)
+                                new LoadLocal(Addr(4), 0),
+                                new StoreField(Addr(5), 0, 0),
+                                new LoadIntConstant(Addr(6), 1),
+                                new LoadGlobalFunction(Addr(7), FunctionReference("SomeFn")),
+                                new Call(Addr(8)),
+                                Drop(9),
+                                LoadUnit(10),
+                                Return(11)
                             ])
+                    ])
+            },
+            {
+                "closure references two functions out",
+                """
+                static fn First(a: string) {
+                    fn Second() {
+                        fn Third() {
+                            var c = 1;
+                            fn Fourth() {
+                                var b = a;
+                                var d = c;
+                            }
+                            
+                            Fourth();
+                        }
+                        Third();
+                    }
+                    Second();
+                }
+                """,
+                Module(
+                    types: [
+                        Class("Fourth!Closure",
+                            variantName: "ClosureVariant",
+                            instanceFields: [
+                                Field("Field_0", ConcreteTypeReference("string"), isPublic: true),
+                                Field("Field_1", ConcreteTypeReference("int"), isPublic: true)
+                            ]),
+                        Class("Third!Closure",
+                            variantName: "ClosureVariant",
+                            instanceFields: [
+                                Field("Field_0", ConcreteTypeReference("string"), isPublic: true)
+                            ]),
+                        Class("Second!Closure",
+                            variantName: "ClosureVariant",
+                            instanceFields: [
+                                Field("Field_0", ConcreteTypeReference("string"), isPublic: true)
+                            ]),
+                    ],
+                    methods: [
+                        Method("First", 
+                            parameters: [
+                                Parameter("a", ConcreteTypeReference("string"))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("Second!Closure")),
+                                new CopyStack(Addr(1)),
+                                new LoadArgument(Addr(2), 0),
+                                new StoreField(Addr(3), 0, 0),
+                                new LoadGlobalFunction(Addr(4), FunctionReference("Second")),
+                                new Call(Addr(5)),
+                                LoadUnit(6),
+                                Return(7)
+                            ]),
+                        Method("Second",
+                            parameters: [
+                                Parameter("ClosureParameter", ConcreteTypeReference("Second!Closure"))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("Third!Closure")),
+                                new CopyStack(Addr(1)),
+                                new LoadArgument(Addr(2), 0),
+                                new LoadField(Addr(3), 0, 0),
+                                new StoreField(Addr(4), 0, 0),
+                                new LoadGlobalFunction(Addr(5), FunctionReference("Third")),
+                                new Call(Addr(6)),
+                                LoadUnit(7),
+                                Return(8)
+                            ]),
+                        Method("Third",
+                            locals: [
+                                Local("c", ConcreteTypeReference("int"))
+                            ],
+                            parameters: [
+                                Parameter("ClosureParameter", ConcreteTypeReference("Third!Closure"))
+                            ],
+                            instructions: [
+                                new LoadIntConstant(Addr(0), 1),
+                                new StoreLocal(Addr(1), 0),
+                                new CreateObject(Addr(2), ConcreteTypeReference("Fourth!Closure")),
+                                new CopyStack(Addr(3)),
+                                new LoadArgument(Addr(4), 0),
+                                new LoadField(Addr(5), 0, 0),
+                                new StoreField(Addr(6), 0, 0),
+                                new CopyStack(Addr(7)),
+                                new LoadLocal(Addr(8), 0),
+                                new StoreField(Addr(9), 0, 1),
+                                new LoadGlobalFunction(Addr(10), FunctionReference("Fourth")),
+                                new Call(Addr(11)),
+                                LoadUnit(12),
+                                Return(13)
+                            ]),
+                        Method("Fourth",
+                            locals: [
+                                Local("b", ConcreteTypeReference("string")),
+                                Local("d", ConcreteTypeReference("int")),
+                            ],
+                            parameters: [
+                                Parameter("ClosureParameter", ConcreteTypeReference("Fourth!Closure"))
+                            ],
+                            instructions: [
+                                new LoadArgument(Addr(0), 0),
+                                new LoadField(Addr(1), 0, 0),
+                                new StoreLocal(Addr(2), 0),
+                                new LoadArgument(Addr(3), 0),
+                                new LoadField(Addr(4), 0, 1),
+                                new StoreLocal(Addr(5), 1),
+                                LoadUnit(6),
+                                Return(7)
+                            ]),
                     ])
             },
             {

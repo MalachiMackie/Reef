@@ -70,7 +70,7 @@ public class TypeChecker
         if (variable is LocalVariable localVariable)
         {
             var localVariables = CurrentFunctionSignature?.LocalVariables ?? _program.TopLevelLocalVariables;
-            localVariable.VariableIndex = (uint)localVariables.Count;
+            localVariable.LocalIndex = (uint)localVariables.Count;
             localVariables.Add(localVariable);
         }
 
@@ -82,7 +82,7 @@ public class TypeChecker
         if (variable is LocalVariable localVariable)
         {
             var localVariables = CurrentFunctionSignature?.LocalVariables ?? _program.TopLevelLocalVariables;
-            localVariable.VariableIndex = (uint)localVariables.Count;
+            localVariable.LocalIndex = (uint)localVariables.Count;
             localVariables.Add(localVariable);
         }
         
@@ -2318,7 +2318,7 @@ public class TypeChecker
     {
         public bool Instantiated { get; set; } = Instantiated;
         public ITypeReference? Type { get; set; } = Type;
-        public uint? VariableIndex { get; set; }
+        public uint? LocalIndex { get; set; }
     }
 
     public record FieldVariable(
@@ -2511,6 +2511,7 @@ public class TypeChecker
         public OrderedDictionary<string, FunctionParameter> Parameters { get; }
         public string Name => Signature.Name;
         public uint? FunctionIndex => Signature.FunctionIndex;
+        public Guid? ClosureTypeId => Signature.ClosureTypeId;
     }
 
     public class InstantiatedClass : ITypeReference
@@ -2781,6 +2782,7 @@ public class TypeChecker
     {
         public Guid Id { get; } = Guid.NewGuid();
         public uint? FunctionIndex { get; } = functionIndex;
+        public Guid? ClosureTypeId { get; set; }
         public bool IsStatic { get; } = isStatic;
         public bool IsMutable { get; } = isMutable;
         public IReadOnlyList<GenericTypeReference> TypeParameters { get; } = typeParameters;

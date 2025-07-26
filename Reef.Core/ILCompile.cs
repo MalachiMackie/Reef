@@ -116,6 +116,7 @@ public class ILCompile
                     }).ToArray()
                 }]
             };
+            function.ClosureTypeId = closureType.Id;
             // todo: possible to have more than one closure within a method
             _types.Add(closureType);
             parameters.Add(new ReefMethod.Parameter
@@ -617,6 +618,45 @@ public class ILCompile
     {
         if (instantiatedFunction.OwnerType is null)
         {
+            if (instantiatedFunction.AccessedOuterVariables.Count > 0)
+            {
+                var closureTypeId = instantiatedFunction.ClosureTypeId ??
+                                    throw new InvalidOperationException("Expected closure type id");
+                var type = _types.First(x => x.Id == closureTypeId);
+                Instructions.Add(new CreateObject(NextAddress(), new ConcreteReefTypeReference
+                {
+                    DefinitionId = type.Id,
+                    Name = type.DisplayName,
+                    TypeArguments = []
+                }));
+
+                foreach (var (index, outerVariable) in instantiatedFunction.AccessedOuterVariables.Index())
+                {
+                    Instructions.Add(new CopyStack(NextAddress()));
+                    
+                    // load value
+                    switch (outerVariable)
+                    {
+                        case TypeChecker.FieldVariable:
+                            throw new InvalidOperationException("Unexpected field variable");
+                        case TypeChecker.FunctionParameterVariable functionParameterVariable:
+                        {
+                            Instructions.Add(new LoadArgument(NextAddress(), functionParameterVariable.ParameterIndex));
+                            break;
+                        }
+                        case TypeChecker.LocalVariable localVariable:
+                        {
+                            Instructions.Add(new LoadLocal(NextAddress(), localVariable.LocalIndex ?? throw new InvalidOperationException("Expected local index")));
+                            break;
+                        }
+                        default:
+                            throw new ArgumentOutOfRangeException(nameof(outerVariable));
+                    }
+                    
+                    Instructions.Add(new StoreField(NextAddress(), 0, (uint)index));
+                }
+            }
+            
             Instructions.Add(new LoadGlobalFunction(NextAddress(), new FunctionReference
             {
                 Name = instantiatedFunction.Name,
@@ -689,7 +729,7 @@ public class ILCompile
             }
             case TypeChecker.LocalVariable localVariable:
             {
-                Instructions.Add(new LoadLocal(NextAddress(), localVariable.VariableIndex ?? throw new InvalidOperationException("Expected variable index")));
+                Instructions.Add(new LoadLocal(NextAddress(), localVariable.LocalIndex ?? throw new InvalidOperationException("Expected variable index")));
                 break;
             }
             default:
@@ -712,7 +752,7 @@ public class ILCompile
 
         CompileExpression(variableDeclarationExpression.VariableDeclaration.Value);
             
-        var index = localVariable.VariableIndex ?? throw new InvalidOperationException("Expected variable index to be set");
+        var index = localVariable.LocalIndex ?? throw new InvalidOperationException("Expected variable index to be set");
 
         Instructions.Add(new StoreLocal(NextAddress(), index));
     }
