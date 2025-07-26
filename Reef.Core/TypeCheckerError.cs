@@ -72,6 +72,14 @@ public record TypeCheckerError
             $"{functionName.StringValue} accessed uninitialized variables: {string.Join(", ", uninitializedVariables.Select(x => x.StringValue))}");
     }
 
+    public static TypeCheckerError StaticLocalFunctionAccessesOuterVariable(StringToken variableAccess)
+    {
+        return new TypeCheckerError(
+            TypeCheckerErrorType.StaticLocalFunctionAccessesOuterVariable,
+            new SourceRange(variableAccess.SourceSpan, variableAccess.SourceSpan),
+            $"Cannot access outer variable {variableAccess.StringValue} from static local function");
+    }
+
     public static TypeCheckerError IncorrectNumberOfPatternsInTupleVariantUnionPattern(UnionTupleVariantPattern pattern, int expectedNumber)
     {
         return new(
@@ -290,5 +298,6 @@ public enum TypeCheckerErrorType
     MutatingInstanceInNonMutableFunction,
     StaticFunctionMarkedAsMutable,
     CannotCreateMutableFunctionWithinNonMutableFunction,
-    AccessingClosureWhichReferencesUninitializedVariables
+    AccessingClosureWhichReferencesUninitializedVariables,
+    StaticLocalFunctionAccessesOuterVariable
 }

@@ -38,14 +38,20 @@ public class TypeCheckerTests
     {
         const string src =
             """
-            fn OuterFn() {
-               var a = new MyClass{}; 
-               a.MyFn();
-            }
-            class MyClass {
-                fn MyFn() {
-                    OuterFn();
+            static fn First(a: string) {
+                fn Second() {
+                    fn Third() {
+                        var c = 1;
+                        fn Fourth() {
+                            var b = a;
+                            var d = c;
+                        }
+                        
+                        Fourth();
+                    }
+                    Third();
                 }
+                Second();
             }
             """;
 
@@ -59,6 +65,23 @@ public class TypeCheckerTests
     {
         return new TheoryData<string>
         {
+            """
+            static fn First(a: string) {
+                fn Second() {
+                    fn Third() {
+                        var c = 1;
+                        fn Fourth() {
+                            var b = a;
+                            var d = c;
+                        }
+                        
+                        Fourth();
+                    }
+                    Third();
+                }
+                Second();
+            }
+            """,
             """
             union SomeUnion {A, B, C}
             static fn SomeFn(): int {
@@ -1417,7 +1440,7 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                [TypeCheckerError.SymbolNotFound(Identifier("a"))]
+                [TypeCheckerError.StaticLocalFunctionAccessesOuterVariable(Identifier("a"))]
             },
             {
                 "nested function parameter mismatched types return types",

@@ -44,13 +44,13 @@ public class TypeChecker
         return _typeCheckingScopes.Peek().GetVariables();
     }
 
-    private bool TryGetScopedVariable(string name, [NotNullWhen(true)] out IVariable? variable)
+    private bool TryGetScopedVariable(StringToken name, [NotNullWhen(true)] out IVariable? variable)
     {
-        if (!_typeCheckingScopes.Peek().TryGetVariable(name, out variable))
+        if (!_typeCheckingScopes.Peek().TryGetVariable(name.StringValue, out variable))
         {
             return false;
         }
-
+        
         if (CurrentFunctionSignature is not null
             && (variable is not FunctionParameterVariable {ContainingFunction: var parameterOwner}
                 || parameterOwner != CurrentFunctionSignature)
@@ -60,7 +60,14 @@ public class TypeChecker
                 || localOwner != CurrentFunctionSignature)
             && !CurrentFunctionSignature.AccessedOuterVariables.Contains(variable))
         {
-            CurrentFunctionSignature.AccessedOuterVariables.Add(variable);
+            if (CurrentFunctionSignature.IsStatic)
+            {
+                _errors.Add(TypeCheckerError.StaticLocalFunctionAccessesOuterVariable(name));
+            }
+            else
+            {
+                CurrentFunctionSignature.AccessedOuterVariables.Add(variable);
+            }
         }
         return true;
     }
@@ -510,12 +517,7 @@ public class TypeChecker
         {
             ScopedFunctions[fn.Name] = fn;
         }
-
-        foreach (var fn in fnSignature.LocalFunctions)
-        {
-            TypeCheckFunctionBody(fn);
-        }
-
+        
         var expressionsDiverge = false;
         foreach (var expression in fnSignature.Expressions)
         {
@@ -530,6 +532,11 @@ public class TypeChecker
                 new SourceRange(fnSignature.NameToken.SourceSpan, fnSignature.NameToken.SourceSpan),
                 fnSignature.ReturnType,
                 InstantiatedClass.Unit));
+        }
+        
+        foreach (var fn in fnSignature.LocalFunctions)
+        {
+            TypeCheckFunctionBody(fn);
         }
     }
 
@@ -1896,8 +1903,8 @@ public class TypeChecker
         {
             return InstantiateFunction(function, [..GenericPlaceholders]);
         }
-
-        if (!TryGetScopedVariable(variableName.StringValue, out var valueVariable))
+        
+        if (!TryGetScopedVariable(variableName, out var valueVariable))
         {
             _errors.Add(TypeCheckerError.SymbolNotFound(variableName));
             return UnknownType.Instance;
