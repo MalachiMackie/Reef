@@ -27,43 +27,53 @@ public class Tests
     public void SingleTest()
     {
         const string source = """
-                              var a: int;
-                              fn SomeMethod(param: string) {
-                                  var b = param;
-                                  var c = a;
-                              }
-                              """;
+                class MyClass {
+                    pub fn SomeFn(a: int, b: string){}
+                }
+                var a = new MyClass {};
+                a.SomeFn(1, ""); 
+                """;
         var expected = Module(
             types:
             [
-                Class("SomeMethod!Closure", variantName: "ClosureVariant", instanceFields:
-                [
-                    Field("Field_0", ConcreteTypeReference("int"), isPublic: true),
-                ])
+                Class(
+                    "MyClass",
+                    methods:
+                    [
+                        Method("SomeFn",
+                            parameters:
+                            [
+                                Parameter("this", ConcreteTypeReference("MyClass")),
+                                Parameter("a", ConcreteTypeReference("int")),
+                                Parameter("b", ConcreteTypeReference("string")),
+                            ],
+                            instructions:
+                            [
+                                LoadUnit(0),
+                                Return(1)
+                            ])
+                    ])
             ],
             methods:
             [
                 Method("!Main",
-                    locals: [new ReefMethod.Local() { DisplayName = "a", Type = ConcreteTypeReference("int") }],
                     isStatic: true,
-                    instructions: [LoadUnit(0), Return(1)]),
-                Method("SomeMethod", parameters:
+                    locals:
                     [
-                        Parameter("ClosureParameter", ConcreteTypeReference("SomeMethod!Closure")),
-                        Parameter("param", ConcreteTypeReference("string"))
-                    ], locals:
+                        Local("a", ConcreteTypeReference("MyClass"))
+                    ],
+                    instructions:
                     [
-                        new ReefMethod.Local { DisplayName = "b", Type = ConcreteTypeReference("string") },
-                        new ReefMethod.Local { DisplayName = "c", Type = ConcreteTypeReference("int") },
-                    ], instructions:
-                    [
-                        new LoadArgument(Addr(0), 1),
+                        new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
                         new StoreLocal(Addr(1), 0),
-                        new LoadArgument(Addr(2), 0),
-                        new LoadField(Addr(3), VariantIndex: 0, FieldIndex: 0),
-                        new StoreLocal(Addr(4), LocalIndex: 1),
-                        LoadUnit(5),
-                        Return(6)
+                        new LoadLocal(Addr(2), 0),
+                        new LoadIntConstant(Addr(3), 1),
+                        new LoadStringConstant(Addr(4), ""),
+                        new LoadTypeFunction(Addr(5), ConcreteTypeReference("MyClass"), 0),
+                        new Call(Addr(6)),
+                        Drop(7),
+                        LoadUnit(8),
+                        Return(9)
                     ])
             ]);
         
@@ -844,9 +854,385 @@ public class Tests
                                 Return(4)
                             ])
                     ])
+            },
+            {
+                "create object without fields",
+                """
+                class MyClass{}
+                var a = new MyClass{};
+                """,
+                Module(
+                    types: [
+                        Class("MyClass")
+                    ],
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference("MyClass"))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
+                                new StoreLocal(Addr(1), 0),
+                                LoadUnit(2),
+                                Return(3)
+                            ])
+                    ])
+            },
+            {
+                "create object with fields",
+                """
+                class MyClass{ pub field Field1: int, pub field Field2: string}
+                var a = new MyClass{Field2 = "", Field1 = 2};
+                """,
+                Module(
+                    types: [
+                        Class("MyClass", instanceFields: [
+                            Field("Field1", ConcreteTypeReference("int"), isPublic: true),
+                            Field("Field2", ConcreteTypeReference("string"), isPublic: true),
+                        ])
+                    ],
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference("MyClass"))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
+                                new CopyStack(Addr(1)),
+                                new LoadStringConstant(Addr(2), ""),
+                                new StoreField(Addr(3), 0, 1),
+                                new CopyStack(Addr(4)),
+                                new LoadIntConstant(Addr(5), 2),
+                                new StoreField(Addr(6), 0, 0),
+                                new StoreLocal(Addr(7), 0),
+                                LoadUnit(8),
+                                Return(9)
+                            ])
+                    ])
+            },
+            {
+                "call global method",
+                """
+                static fn FirstFn(){}
+                FirstFn();
+                """,
+                Module(
+                    methods: [
+                        Method("FirstFn", isStatic: true, instructions: [LoadUnit(0), Return(1)]),
+                        Method("!Main", isStatic: true, instructions: [
+                            new LoadGlobalFunction(Addr(0), FunctionReference("FirstFn")),
+                            new Call(Addr(1)),
+                            Drop(2),
+                            LoadUnit(3),
+                            Return(4)
+                        ])
+                    ]
+                )
+                
+            },
+            {
+                "call closure",
+                """
+                var a = "";
+                SomeFn();
+                
+                fn SomeFn() {
+                    var b = a;
+                }
+                """,
+                Module(
+                    types: [
+                        Class("SomeFn!Closure",
+                            variantName: "ClosureVariant",
+                            instanceFields: [
+                                Field("Field_0", ConcreteTypeReference("string"), isPublic: true),
+                            ])
+                    ],
+                    methods: [
+                        Method("SomeFn",
+                            parameters: [
+                                Parameter("ClosureParameter", ConcreteTypeReference("SomeFn!Closure")),
+                            ],
+                            locals: [
+                                Local("b", ConcreteTypeReference("string"))
+                            ],
+                            instructions: [
+                                new LoadArgument(Addr(0), 0),
+                                new LoadField(Addr(1), 0, 0),
+                                new StoreLocal(Addr(2), 0),
+                                LoadUnit(3),
+                                Return(4)
+                            ]),
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference("string"))
+                            ],
+                            instructions: [
+                                new LoadStringConstant(Addr(0), ""),
+                                new StoreLocal(Addr(1), 0),
+                                new CreateObject(Addr(2), ConcreteTypeReference("SomeFn!Closure")),
+                                new CopyStack(Addr(3)),
+                                new StoreField(Addr(4), 0, 0),
+                                new LoadGlobalFunction(Addr(5), FunctionReference("SomeFn")),
+                                Drop(6),
+                                LoadUnit(7),
+                                Return(8)
+                            ])
+                    ])
+            },
+            {
+                "call closure with parameter",
+                """
+                var a = "";
+                SomeFn(1);
+                
+                fn SomeFn(c: int) {
+                    var b = a;
+                }
+                """,
+                Module(
+                    types: [
+                        Class("SomeFn!Closure",
+                            variantName: "ClosureVariant",
+                            instanceFields: [
+                                Field("Field_0", ConcreteTypeReference("string"), isPublic: true),
+                            ])
+                    ],
+                    methods: [
+                        Method("SomeFn",
+                            parameters: [
+                                Parameter("ClosureParameter", ConcreteTypeReference("SomeFn!Closure")),
+                                Parameter("c", ConcreteTypeReference("int"))
+                            ],
+                            locals: [
+                                Local("b", ConcreteTypeReference("string"))
+                            ],
+                            instructions: [
+                                new LoadArgument(Addr(0), 0),
+                                new LoadField(Addr(1), 0, 0),
+                                new StoreLocal(Addr(2), 0),
+                                LoadUnit(3),
+                                Return(4)
+                            ]),
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference("string"))
+                            ],
+                            instructions: [
+                                new LoadStringConstant(Addr(0), ""),
+                                new StoreLocal(Addr(1), 0),
+                                new CreateObject(Addr(2), ConcreteTypeReference("SomeFn!Closure")),
+                                new CopyStack(Addr(3)),
+                                new StoreField(Addr(4), 0, 0),
+                                new LoadIntConstant(Addr(5), 1),
+                                new LoadGlobalFunction(Addr(6), FunctionReference("SomeFn")),
+                                new Call(Addr(7)),
+                                Drop(8),
+                                LoadUnit(9),
+                                Return(10)
+                            ])
+                    ])
+            },
+            {
+                "call instance method",
+                """
+                class MyClass {
+                    pub fn SomeFn(){}
+                }
+                var a = new MyClass {};
+                a.SomeFn(); 
+                """,
+                Module(
+                    types: [
+                        Class(
+                            "MyClass",
+                            methods: [
+                                Method("SomeFn",
+                                    parameters: [
+                                        Parameter("this", ConcreteTypeReference("MyClass"))
+                                    ],
+                                    instructions: [
+                                        LoadUnit(0),
+                                        Return(1)
+                                    ])
+                            ])
+                    ],
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference("MyClass"))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
+                                new StoreLocal(Addr(1), 0),
+                                new LoadLocal(Addr(2), 0),
+                                new LoadTypeFunction(Addr(3), ConcreteTypeReference("MyClass"), 0),
+                                new Call(Addr(4)),
+                                Drop(5),
+                                LoadUnit(6),
+                                Return(7)
+                            ])
+                    ])
+            },
+            {
+                "call instance method with parameters",
+                """
+                class MyClass {
+                    pub fn SomeFn(a: int, b: string){}
+                }
+                var a = new MyClass {};
+                a.SomeFn(1, ""); 
+                """,
+                Module(
+                    types: [
+                        Class(
+                            "MyClass",
+                            methods: [
+                                Method("SomeFn",
+                                    parameters: [
+                                        Parameter("this", ConcreteTypeReference("MyClass")),
+                                        Parameter("a", ConcreteTypeReference("int")),
+                                        Parameter("b", ConcreteTypeReference("string")),
+                                    ],
+                                    instructions: [
+                                        LoadUnit(0),
+                                        Return(1)
+                                    ])
+                            ])
+                    ],
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference("MyClass"))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
+                                new StoreLocal(Addr(1), 0),
+                                new LoadLocal(Addr(2), 0),
+                                new LoadIntConstant(Addr(3), 1),
+                                new LoadStringConstant(Addr(4), ""),
+                                new LoadTypeFunction(Addr(5), ConcreteTypeReference("MyClass"), 0),
+                                new Call(Addr(6)),
+                                Drop(7),
+                                LoadUnit(8),
+                                Return(9)
+                            ])
+                    ])
+            },
+            {
+                "call static class method",
+                """
+                class MyClass {
+                    pub static fn MyFn(a: int) {
+                    }
+                }
+                MyClass::MyFn(1);
+                """,
+                Module(
+                    types: [
+                        Class("MyClass",
+                            methods: [
+                                Method("MyFn",
+                                    isStatic: true,
+                                    parameters: [Parameter("a", ConcreteTypeReference("int"))],
+                                    instructions: [LoadUnit(0), Return(1)])
+                            ])
+                    ],
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            instructions: [
+                                new LoadIntConstant(Addr(0), 1),
+                                new LoadTypeFunction(Addr(1), ConcreteTypeReference("MyClass"), 0),
+                                new Call(Addr(2)),
+                                Drop(3),
+                                LoadUnit(4),
+                                Return(5)
+                            ])
+                    ])
+            },
+            {
+                "get static field",
+                """
+                class MyClass { pub static field A: int = 1 }
+                var a = MyClass::A;
+                """,
+                Module(
+                    types: [
+                        Class("MyClass", staticFields: [
+                            Field("A",
+                                isStatic: true,
+                                isPublic: true,
+                                type: ConcreteTypeReference("int"),
+                                staticInitializer: [new LoadIntConstant(Addr(0), 1)])
+                        ])
+                    ],
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference("int"))
+                            ],
+                            instructions: [
+                                new LoadStaticField(Addr(0), ConcreteTypeReference("MyClass"), VariantIndex: 0, FieldIndex: 0),
+                                new StoreLocal(Addr(1), 0),
+                                LoadUnit(2),
+                                Return(3)
+                            ])
+                    ])
+            },
+            {
+                "get instance field",
+                """
+                class MyClass { pub field MyField: int }
+                var a = new MyClass { MyField = 1 };
+                var b = a.MyField;
+                """,
+                Module(
+                    types: [
+                        Class("MyClass", instanceFields: [Field("MyField", isPublic: true, type: ConcreteTypeReference("int"))])
+                    ],
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference("MyClass")),
+                                Local("b", ConcreteTypeReference("int")),
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
+                                new CopyStack(Addr(1)),
+                                new LoadIntConstant(Addr(2), 1),
+                                new StoreField(Addr(3), 0, 0),
+                                new StoreLocal(Addr(4), 0),
+                                new LoadLocal(Addr(5), 0),
+                                new LoadField(Addr(6), 0, 0),
+                                new StoreLocal(Addr(7), 1),
+                                LoadUnit(8),
+                                Return(9)
+                            ])
+                    ])
             }
         };
     }
+
+    private static ReefMethod.Local Local(string name, IReefTypeReference type)
+    {
+        return new ReefMethod.Local { DisplayName = name, Type = type };
+    }
+    
+    private static FunctionReference FunctionReference(string name) => new()
+    {
+        Name = name,
+        TypeArguments = [],
+        DefinitionId = Guid.Empty
+    };
 
     private static ReefField Field(string name, IReefTypeReference type, bool isStatic = false, bool isPublic = false, IReadOnlyList<IInstruction>? staticInitializer = null)
     {
@@ -869,7 +1255,7 @@ public class Tests
         };
     }
     
-    private static IReefTypeReference ConcreteTypeReference(string name)
+    private static ConcreteReefTypeReference ConcreteTypeReference(string name)
     {
         return new ConcreteReefTypeReference
         {

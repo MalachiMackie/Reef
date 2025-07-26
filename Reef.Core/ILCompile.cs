@@ -39,7 +39,7 @@ public class ILCompile
 
         // add static methods directly to module
         _methods.AddRange(program.Functions.Where(x => x.Signature!.IsStatic)
-            .Select(x => CompileMethod(x.Signature!, ownerType: null)));
+            .Select(x => CompileMethod(x.Signature!)));
         
         ReefMethod? mainMethod = null;
         
@@ -52,12 +52,14 @@ public class ILCompile
                 isStatic: true,
                 isMutable: false,
                 program.Expressions,
-                program.Functions.Select(x => x.Signature!).Where(x => !x.IsStatic).ToArray()
+                program.Functions.Select(x => x.Signature!).Where(x => !x.IsStatic).ToArray(),
+                functionIndex: null
             )
             {
                 ReturnType = TypeChecker.InstantiatedClass.Unit,
                 LocalVariables = [..program.TopLevelLocalVariables],
-            }, ownerType: null);
+                OwnerType = null,
+            });
             
             _methods.Add(mainMethod);
         }
@@ -71,21 +73,23 @@ public class ILCompile
     }
 
     private ReefMethod CompileMethod(
-        TypeChecker.FunctionSignature function,
-        ReefTypeDefinition? ownerType)
+        TypeChecker.FunctionSignature function)
     {
         foreach (var innerMethod in function.LocalFunctions)
         {
-            _methods.Add(CompileMethod(innerMethod, ownerType: null));
+            _methods.Add(CompileMethod(innerMethod));
         }
         
         var parameters = new List<ReefMethod.Parameter>();
-        if (!function.IsStatic && ownerType is not null)
+        var ownerTypeReference = function.OwnerType is null
+            ? null
+            : SignatureAsTypeReference(function.OwnerType);
+        if (!function.IsStatic && ownerTypeReference is not null)
         {
             parameters.Add(new ReefMethod.Parameter
             {
                 DisplayName = "this",
-                Type = DefinitionAsTypeReference(ownerType)
+                Type = ownerTypeReference
             });
         }
 
@@ -140,7 +144,7 @@ public class ILCompile
         _scopeStack.Push(new Scope
         {
             AccessedOuterVariables = function.AccessedOuterVariables,
-            CurrentType = ownerType is null ? null : DefinitionAsTypeReference(ownerType)
+            CurrentType = ownerTypeReference
         });
 
         foreach (var expression in function.Expressions)
@@ -218,7 +222,7 @@ public class ILCompile
             TypeParameters = union.TypeParameters.Select(x => x.GenericName).ToArray(),
             Methods = methods
         };
-        methods.AddRange(union.Functions.Select(x => CompileMethod(x, definition)));
+        methods.AddRange(union.Functions.Select(CompileMethod));
 
         return definition;
     }
@@ -227,7 +231,6 @@ public class ILCompile
     {
         var methods = new List<ReefMethod>();
         var staticFields = new List<ReefField>();
-        
         
         var definition = new ReefTypeDefinition
         {
@@ -259,7 +262,7 @@ public class ILCompile
                 _scopeStack.Push(new Scope
                 {
                     AccessedOuterVariables = [],
-                    CurrentType = DefinitionAsTypeReference(definition)
+                    CurrentType = SignatureAsTypeReference(@class)
                 });
                 CompileExpression(field.StaticInitializer);
                 var scope = _scopeStack.Pop();
@@ -277,7 +280,7 @@ public class ILCompile
             });
         }
         
-        methods.AddRange(@class.Functions.Select(x => CompileMethod(x, definition)));
+        methods.AddRange(@class.Functions.Select(CompileMethod));
 
         return definition;
     }
@@ -438,14 +441,53 @@ public class ILCompile
     {
     }
     
-    private static void CompileMemberAccessExpression(
+    private void CompileMemberAccessExpression(
         MemberAccessExpression memberAccessExpression)
     {
+        var memberIndex = memberAccessExpression.MemberAccess.ItemIndex
+            ?? throw new InvalidOperationException("Expected member item index");
+        var memberType = memberAccessExpression.MemberAccess.MemberType
+            ?? throw new InvalidOperationException("Expected member type");
+        var ownerType = memberAccessExpression.MemberAccess.OwnerType
+                        ?? throw new InvalidOperationException("Expected member access owner type");
+        var ownerReference = GetTypeReference(ownerType) as ConcreteReefTypeReference
+                             ?? throw new InvalidOperationException(
+                                 "Expected member access owner type to be concrete type");
+
+        CompileExpression(memberAccessExpression.MemberAccess.Owner);
+            
+        if (memberType == MemberType.Function)
+        {
+            Instructions.Add(new LoadTypeFunction(NextAddress(), ownerReference, memberIndex));
+        }
+        else if (memberType == MemberType.Field)
+        {
+            Instructions.Add(new LoadField(NextAddress(), 0, memberIndex));
+        }
     }
     
-    private static void CompileMethodCallExpression(
+    private void CompileMethodCallExpression(
         MethodCallExpression methodCallExpression)
     {
+        CompileExpression(methodCallExpression.MethodCall.Method);
+
+        // move instruction to load function to after the argument list loading instructions
+        var loadFunctionInstruction = Instructions[^1];
+        Instructions.RemoveAt(Instructions.Count - 1);
+        
+        foreach (var argument in methodCallExpression.MethodCall.ArgumentList)
+        {
+            CompileExpression(argument);
+        }
+        
+        Instructions.Add(loadFunctionInstruction switch
+        {
+            LoadGlobalFunction loadGlobalFunction => loadGlobalFunction with {Address = NextAddress()},
+            LoadTypeFunction loadTypeFunction => loadTypeFunction with {Address = NextAddress()},
+            _ => throw new InvalidOperationException("Expected instruction to be function load instruction")
+        });
+        
+        Instructions.Add(new Call(NextAddress()));
     }
     
     private void CompileMethodReturnExpression(
@@ -458,14 +500,51 @@ public class ILCompile
         Instructions.Add(new Return(NextAddress()));
     }
     
-    private static void CompileObjectInitializerExpression(
+    private void CompileObjectInitializerExpression(
         ObjectInitializerExpression objectInitializerExpression)
     {
+        var type = GetTypeReference(objectInitializerExpression.ResolvedType ?? throw new InvalidOperationException("Expected object initializer type"));
+        if (type is not ConcreteReefTypeReference concreteTypeReference)
+        {
+            throw new InvalidOperationException("Expected object initializer type to be concrete");
+        }
+        Instructions.Add(new CreateObject(NextAddress(), concreteTypeReference));
+
+        foreach (var initializer in objectInitializerExpression.ObjectInitializer.FieldInitializers)
+        {
+            if (initializer.TypeField is null)
+            {
+                throw new InvalidOperationException("Expected FieldInitializer fieldVariable to be set");
+            }
+            Instructions.Add(new CopyStack(NextAddress()));
+            CompileExpression(initializer.Value ?? throw new InvalidOperationException("Expected Value to be set"));
+            Instructions.Add(new StoreField(NextAddress(), 0, initializer.TypeField.FieldIndex));
+        }
     }
     
-    private static void CompileStaticMemberAccessExpression(
+    private void CompileStaticMemberAccessExpression(
         StaticMemberAccessExpression staticMemberAccessExpression)
     {
+        var ownerType = staticMemberAccessExpression.OwnerType
+                        ?? throw new InvalidOperationException("Expected static member access ownerType");
+
+        var ownerReference = GetTypeReference(ownerType) as ConcreteReefTypeReference
+            ?? throw new InvalidOperationException("Expected owner type to be concrete type");
+        
+        var itemIndex = staticMemberAccessExpression.StaticMemberAccess.ItemIndex
+            ?? throw new InvalidOperationException("Expected ItemIndex to be set");
+
+        var memberType = staticMemberAccessExpression.StaticMemberAccess.MemberType
+                         ?? throw new InvalidOperationException("Expected MemberType to be set");
+        
+        if (memberType == MemberType.Function)
+        {
+            Instructions.Add(new LoadTypeFunction(NextAddress(), ownerReference, itemIndex));
+        }
+        else if (memberType == MemberType.Field)
+        {
+            Instructions.Add(new LoadStaticField(NextAddress(), ownerReference, VariantIndex: 0, itemIndex));
+        }
     }
     
     private static void CompileTupleExpression(
@@ -528,70 +607,93 @@ public class ILCompile
             }
             case { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Identifier }:
             {
-                var referencedVariable = valueAccessorExpression.ReferencedVariable ??
-                                         throw new InvalidOperationException(
-                                             "Expected referenced variable");
+                CompileIdentifierValueAccessor(valueAccessorExpression);
+                break;
+            }
+        }
+    }
 
-                var scope = _scopeStack.Peek();
-                var (accessedOuterVariableIndex, accessedOuterVariable) = scope.AccessedOuterVariables.Index()
-                    .FirstOrDefault(x => x.Item == referencedVariable);
-                
-                if (accessedOuterVariable is not null)
+    private void CompileFunctionReference(TypeChecker.InstantiatedFunction instantiatedFunction)
+    {
+        if (instantiatedFunction.OwnerType is null)
+        {
+            Instructions.Add(new LoadGlobalFunction(NextAddress(), new FunctionReference
+            {
+                Name = instantiatedFunction.Name,
+                TypeArguments = instantiatedFunction.TypeArguments.Select(GetTypeReference).ToArray(),
+                DefinitionId = instantiatedFunction.FunctionId
+            }));
+        }
+    }
+
+    private void CompileIdentifierValueAccessor(ValueAccessorExpression valueAccessorExpression)
+    {
+        if (valueAccessorExpression.ResolvedType is TypeChecker.InstantiatedFunction instantiatedFunction)
+        {
+            CompileFunctionReference(instantiatedFunction);
+            return;
+        }
+        
+        var referencedVariable = valueAccessorExpression.ReferencedVariable ??
+                                 throw new InvalidOperationException(
+                                     "Expected referenced variable");
+
+        var scope = _scopeStack.Peek();
+        var (accessedOuterVariableIndex, accessedOuterVariable) = scope.AccessedOuterVariables.Index()
+            .FirstOrDefault(x => x.Item == referencedVariable);
+        
+        if (accessedOuterVariable is not null)
+        {
+            Instructions.Add(new LoadArgument(NextAddress(), 0));
+            Instructions.Add(new LoadField(NextAddress(), VariantIndex: 0, FieldIndex: (uint)accessedOuterVariableIndex));
+            return;
+        }
+
+        switch (referencedVariable)
+        {
+            case TypeChecker.FieldVariable fieldVariable:
+            {
+                if (fieldVariable.IsStaticField)
+                {
+                    Instructions.Add(new LoadStaticField(
+                        NextAddress(),
+                        scope.CurrentType ?? throw new InvalidOperationException("Expected current type to be set when referencing static fields via variable"),
+                        VariantIndex: 0,
+                        FieldIndex: fieldVariable.FieldIndex
+                    ));
+                }
+                else
                 {
                     Instructions.Add(new LoadArgument(NextAddress(), 0));
-                    Instructions.Add(new LoadField(NextAddress(), VariantIndex: 0, FieldIndex: (uint)accessedOuterVariableIndex));
-                    break;
-                }
-
-                switch (referencedVariable)
-                {
-                    case TypeChecker.FieldVariable fieldVariable:
-                    {
-                        if (fieldVariable.IsStaticField)
-                        {
-                            Instructions.Add(new LoadStaticField(
-                                NextAddress(),
-                                scope.CurrentType ?? throw new InvalidOperationException("Expected current type to be set when referencing static fields via variable"),
-                                VariantIndex: 0,
-                                StaticFieldIndex: fieldVariable.FieldIndex
-                            ));
-                        }
-                        else
-                        {
-                            Instructions.Add(new LoadArgument(NextAddress(), 0));
-                            Instructions.Add(new LoadField(
-                                NextAddress(),
-                                VariantIndex: 0, // Accessing fields via named variables can only be done for classes
-                                FieldIndex: fieldVariable.FieldIndex));
-                        }
-                        
-                        break;
-                    }
-                    case TypeChecker.FunctionParameterVariable functionParameterVariable:
-                    {
-                        var parameterIndex = functionParameterVariable.ParameterIndex;
-                        var fn = functionParameterVariable.ContainingFunction;
-                        if (!fn.IsStatic
-                            || fn.AccessedOuterVariables.Count > 0)
-                        {
-                            // for instance functions or closures, parameters need to be bumped by 1 because of either the closure object or `this`
-                            parameterIndex++;
-                        }
-                        
-                        Instructions.Add(new LoadArgument(NextAddress(), parameterIndex));
-                        break;
-                    }
-                    case TypeChecker.LocalVariable localVariable:
-                    {
-                        Instructions.Add(new LoadLocal(NextAddress(), localVariable.VariableIndex ?? throw new InvalidOperationException("Expected variable index")));
-                        break;
-                    }
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(referencedVariable));
+                    Instructions.Add(new LoadField(
+                        NextAddress(),
+                        VariantIndex: 0, // Accessing fields via named variables can only be done for classes
+                        FieldIndex: fieldVariable.FieldIndex));
                 }
                 
                 break;
             }
+            case TypeChecker.FunctionParameterVariable functionParameterVariable:
+            {
+                var parameterIndex = functionParameterVariable.ParameterIndex;
+                var fn = functionParameterVariable.ContainingFunction;
+                if (!fn.IsStatic
+                    || fn.AccessedOuterVariables.Count > 0)
+                {
+                    // for instance functions or closures, parameters need to be bumped by 1 because of either the closure object or `this`
+                    parameterIndex++;
+                }
+                
+                Instructions.Add(new LoadArgument(NextAddress(), parameterIndex));
+                break;
+            }
+            case TypeChecker.LocalVariable localVariable:
+            {
+                Instructions.Add(new LoadLocal(NextAddress(), localVariable.VariableIndex ?? throw new InvalidOperationException("Expected variable index")));
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(referencedVariable));
         }
     }
 
@@ -615,17 +717,19 @@ public class ILCompile
         Instructions.Add(new StoreLocal(NextAddress(), index));
     }
 
-    private IReefTypeReference DefinitionAsTypeReference(ReefTypeDefinition definition)
+    private ConcreteReefTypeReference SignatureAsTypeReference(TypeChecker.ITypeSignature definition)
     {
+        var typeParameters = definition switch
+        {
+            TypeChecker.ClassSignature classSignature => classSignature.TypeParameters,
+            TypeChecker.UnionSignature unionSignature => unionSignature.TypeParameters,
+            _ => []
+        };
         return new ConcreteReefTypeReference
         {
             DefinitionId = definition.Id,
-            Name = definition.DisplayName,
-            TypeArguments = definition.TypeParameters.Select(x => new GenericReefTypeReference
-            {
-                DefinitionId = definition.Id,
-                TypeParameterName = x
-            }).ToArray()
+            Name = definition.Name,
+            TypeArguments = typeParameters.Select(GetTypeReference).ToArray()
         };
     }
 }

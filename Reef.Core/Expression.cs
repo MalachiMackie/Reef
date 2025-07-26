@@ -51,6 +51,7 @@ public record StaticMemberAccessExpression(StaticMemberAccess StaticMemberAccess
 {
     public ExpressionType ExpressionType => ExpressionType.StaticMemberAccess;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
+    public TypeChecker.ITypeReference? OwnerType { get; set; }
 
     public SourceRange SourceRange => StaticMemberAccess.Type.SourceRange with
     {
@@ -72,14 +73,27 @@ public record MemberAccess(IExpression Owner, StringToken? MemberName)
     {
         return $"{Owner}.{MemberName}";
     }
+
+    public uint? ItemIndex { get; set; }
+    public MemberType? MemberType { get; set; }
+    public TypeChecker.ITypeReference? OwnerType { get; set; }
 }
 
 public record StaticMemberAccess(TypeIdentifier Type, StringToken? MemberName)
 {
+    public uint? ItemIndex { get; set; }
+    public MemberType? MemberType { get; set; }
+    
     public override string ToString()
     {
         return $"{Type}::{MemberName}";
     }
+}
+
+public enum MemberType
+{
+    Field,
+    Function
 }
 
 public record UnaryOperatorExpression(UnaryOperator UnaryOperator) : IExpression
@@ -466,7 +480,10 @@ public record ObjectInitializer(TypeIdentifier Type, IReadOnlyList<FieldInitiali
     }
 }
 
-public record FieldInitializer(StringToken FieldName, IExpression? Value);
+public record FieldInitializer(StringToken FieldName, IExpression? Value)
+{
+    public TypeChecker.TypeField? TypeField { get; set; }
+}
 
 public enum BinaryOperatorType
 {

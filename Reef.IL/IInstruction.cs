@@ -79,12 +79,26 @@ public record Branch(InstructionAddress Address, InstructionAddress BranchTo) : 
 public record Return(InstructionAddress Address) : IInstruction;
 
 /// <summary>
-/// Calls the specified method, providing arguments on the evaluation stack. Last argument is
-/// on the top of the stack. If the method is an instance method, a reference to the instance is passed
+/// Pops the top method off the evaluation stack and calls it, providing arguments on the evaluation stack. Last argument is
+/// on the top of the stack after the method. If the method is an instance method, a reference to the instance is passed
 /// as the first argument
 /// </summary>
 /// <param name="Address"></param>
-public record Call(InstructionAddress Address, ReefMethod Method) : IInstruction;
+public record Call(InstructionAddress Address) : IInstruction;
+
+/// <summary>
+/// Loads a reference to the specified global function onto the evaluation stack
+/// </summary>
+/// <param name="Address"></param>
+/// <param name="FunctionReference"></param>
+public record LoadGlobalFunction(InstructionAddress Address, FunctionReference FunctionReference) : IInstruction;
+
+/// <summary>
+/// Loads a reference to the specified type function onto the evaluation stack
+/// </summary>
+/// <param name="Address"></param>
+/// <param name="FunctionIndex"></param>
+public record LoadTypeFunction(InstructionAddress Address, ConcreteReefTypeReference ReefType, uint FunctionIndex) : IInstruction;
 
 /// <summary>
 /// Pops the top of the evaluation stack and stores it in the specified local index
@@ -129,7 +143,7 @@ public record StoreStaticField(InstructionAddress Address, IReefTypeReference Re
 /// Loads the specified static field and pushes it onto the evaluation stack
 /// </summary>
 /// <param name="Address"></param>
-public record LoadStaticField(InstructionAddress Address, IReefTypeReference ReefType, uint VariantIndex, uint StaticFieldIndex)
+public record LoadStaticField(InstructionAddress Address, IReefTypeReference ReefType, uint VariantIndex, uint FieldIndex)
     : IInstruction;
 
 /// <summary>

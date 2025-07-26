@@ -10,6 +10,13 @@ public class ReefTypeDefinition
     public required IReadOnlyList<string> TypeParameters { get; set; }
 }
 
+public class FunctionReference
+{
+    public required string Name { get; set; }
+    public required Guid DefinitionId { get; set; }
+    public required IReadOnlyList<IReefTypeReference> TypeArguments { get; set; }
+}
+
 public interface IReefTypeReference;
 
 public class ConcreteReefTypeReference : IReefTypeReference
