@@ -236,7 +236,7 @@ public class ILCompile
                     _scopeStack.Push(new Scope
                     {
                         AccessedOuterVariables = [],
-                        CurrentFunction = tupleUnionVariant.CreateFn,
+                        CurrentFunction = null,
                         CurrentType = unionType,
                     });
                     
@@ -539,6 +539,10 @@ public class ILCompile
         if (methodCallExpression.MethodCall.ArgumentList.Count > 0)
         {
             // move instruction to load function to after the argument list loading instructions
+            if (Instructions.Count == 0)
+            {
+                throw new InvalidOperationException("Expected a function load instruction");
+            }
             var loadFunctionInstruction = Instructions[^1];
             Instructions.RemoveAt(Instructions.Count - 1);
             
@@ -636,7 +640,12 @@ public class ILCompile
             }
             case TypeChecker.TupleUnionVariant tupleUnionVariant:
             {
-                // Instructions.Add(new LoadTypeFunction(NextAddress(), unionReference));
+                Instructions.Add(new LoadTypeFunction(
+                    NextAddress(),
+                    unionReference,
+                    // tuple variant create functions are placed after all declared functions, and we need to skip any previous tuple union variants
+                    (uint)(unionType.Signature.Functions.Count
+                        + unionType.Signature.Variants.Take((int)variantIndex).Count(x => x is TypeChecker.TupleUnionVariant))));
                 break;
             }
             case TypeChecker.UnitUnionVariant:

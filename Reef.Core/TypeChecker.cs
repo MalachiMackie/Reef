@@ -2845,7 +2845,6 @@ public class TypeChecker
     {
         public required IReadOnlyList<ITypeReference> TupleMembers { get; init; }
         public required string Name { get; init; }
-        public FunctionSignature? CreateFn { get; }
     }
 
     public class ClassUnionVariant : IUnionVariant
