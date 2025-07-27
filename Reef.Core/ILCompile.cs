@@ -655,11 +655,11 @@ public class ILCompile
         var variant = unionType.Variants[(int)variantIndex];
         switch (variant)
         {
-            case TypeChecker.ClassUnionVariant classUnionVariant:
+            case TypeChecker.ClassUnionVariant:
             {
                 throw new InvalidOperationException("Should not be able to reference class variant");
             }
-            case TypeChecker.TupleUnionVariant tupleUnionVariant:
+            case TypeChecker.TupleUnionVariant:
             {
                 Instructions.Add(new LoadTypeFunction(
                     NextAddress(),
@@ -788,7 +788,7 @@ public class ILCompile
                         Instructions.Add(new LoadArgument(NextAddress(), functionParameterVariable.ParameterIndex));
                         break;
                     }
-                    case TypeChecker.FunctionParameterVariable functionParameterVariable:
+                    case TypeChecker.FunctionParameterVariable:
                     {
                         var indexInCurrentFunction = currentFunction.AccessedOuterVariables.Index().First(x => x.Item == outerVariable).Index;
                             
@@ -919,7 +919,7 @@ public class ILCompile
         Instructions.Add(new StoreLocal(NextAddress(), index));
     }
 
-    private ConcreteReefTypeReference SignatureAsTypeReference(TypeChecker.ITypeSignature definition)
+    private static ConcreteReefTypeReference SignatureAsTypeReference(TypeChecker.ITypeSignature definition)
     {
         var typeParameters = definition switch
         {
