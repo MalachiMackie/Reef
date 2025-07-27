@@ -51,8 +51,34 @@ public class Tests
     [Fact]
     public void SingleTest()
     {
-        const string source = "";
-        var expected = Module();
+        const string source = """
+                static fn SomeFn() {
+                    { 
+                        fn InnerFn() {
+                        }
+                        
+                        InnerFn();
+                    }
+                }
+                """;
+        var expected = Module(
+            methods:
+            [
+                Method(
+                    "InnerFn",
+                    isStatic: false,
+                    instructions: [LoadUnit(0), Return(1)]),
+                Method("SomeFn",
+                    isStatic: true,
+                    instructions:
+                    [
+                        new LoadGlobalFunction(Addr(0), FunctionReference("InnerFn")),
+                        new Call(Addr(1)),
+                        Drop(2),
+                        LoadUnit(3),
+                        Return(4)
+                    ])
+            ]);
 
         var tokens = Tokenizer.Tokenize(source);
         var program = Parser.Parse(tokens);

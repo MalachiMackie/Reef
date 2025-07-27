@@ -434,7 +434,14 @@ public class ILCompile
 
         if (!expression.ValueUseful)
         {
-            Instructions.Add(new Drop(NextAddress()));
+            if (Instructions[^1] is LoadUnitConstant loadUnit)
+            {
+                Instructions.Remove(loadUnit);
+            }
+            else
+            {
+                Instructions.Add(new Drop(NextAddress()));
+            }
         }
     }
     
@@ -486,9 +493,23 @@ public class ILCompile
         }
     }
     
-    private static void CompileBlockExpression(
+    private void CompileBlockExpression(
         BlockExpression blockExpression)
     {
+        foreach (var method in blockExpression.Block.Functions)
+        {
+            _methods.Add(CompileMethod(method.Signature ?? throw new InvalidOperationException("Expected function to have signature set")));
+        }
+
+        foreach (var expression in blockExpression.Block.Expressions)
+        {
+            CompileExpression(expression);
+        }
+
+        if (!blockExpression.Diverges)
+        {
+            Instructions.Add(new LoadUnitConstant(NextAddress()));
+        }
     }
     
     private static void CompileIfExpression(

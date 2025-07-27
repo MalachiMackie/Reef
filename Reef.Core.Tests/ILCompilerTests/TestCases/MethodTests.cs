@@ -103,6 +103,35 @@ public static class MethodTests
                                 Return(8)
                             ])
                     ])
+            },
+            {
+                "functions in inner block",
+                """
+                static fn SomeFn() {
+                    { 
+                        fn InnerFn() {
+                        }
+                        
+                        InnerFn();
+                    }
+                }
+                """,
+                Module(
+                    methods: [
+                        Method(
+                            "InnerFn",
+                            isStatic: false,
+                            instructions: [LoadUnit(0), Return(1)]),
+                        Method("SomeFn",
+                            isStatic: true,
+                            instructions: [
+                                new LoadGlobalFunction(Addr(0), FunctionReference("InnerFn")),
+                                new Call(Addr(1)),
+                                Drop(2),
+                                LoadUnit(3),
+                                Return(4)
+                            ])
+                    ])
             }
         };
     }
