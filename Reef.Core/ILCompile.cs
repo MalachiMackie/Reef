@@ -21,6 +21,7 @@ public class ILCompile
         public List<IInstruction> Instructions { get; } = [];
         public required IReadOnlyList<TypeChecker.IVariable> AccessedOuterVariables { get; init; }
         public required IReefTypeReference? CurrentType { get; init; }
+        public required TypeChecker.FunctionSignature? CurrentFunction { get; init; }
     }
 
     private InstructionAddress NextAddress()
@@ -145,7 +146,8 @@ public class ILCompile
         _scopeStack.Push(new Scope
         {
             AccessedOuterVariables = function.AccessedOuterVariables,
-            CurrentType = ownerTypeReference
+            CurrentType = ownerTypeReference,
+            CurrentFunction = function
         });
 
         foreach (var expression in function.Expressions)
@@ -263,7 +265,8 @@ public class ILCompile
                 _scopeStack.Push(new Scope
                 {
                     AccessedOuterVariables = [],
-                    CurrentType = SignatureAsTypeReference(@class)
+                    CurrentType = SignatureAsTypeReference(@class),
+                    CurrentFunction = null
                 });
                 CompileExpression(field.StaticInitializer);
                 var scope = _scopeStack.Pop();
@@ -633,20 +636,44 @@ public class ILCompile
                 foreach (var (index, outerVariable) in instantiatedFunction.AccessedOuterVariables.Index())
                 {
                     Instructions.Add(new CopyStack(NextAddress()));
+
+                    var currentFunction = _scopeStack.Peek().CurrentFunction
+                                          ?? throw new InvalidOperationException(
+                                              "Expected to be in a function when referencing outer variables");
                     
                     // load value
                     switch (outerVariable)
                     {
                         case TypeChecker.FieldVariable:
                             throw new InvalidOperationException("Unexpected field variable");
-                        case TypeChecker.FunctionParameterVariable functionParameterVariable:
+                        case TypeChecker.FunctionParameterVariable functionParameterVariable
+                            when currentFunction == functionParameterVariable.ContainingFunction:
                         {
                             Instructions.Add(new LoadArgument(NextAddress(), functionParameterVariable.ParameterIndex));
                             break;
                         }
-                        case TypeChecker.LocalVariable localVariable:
+                        case TypeChecker.FunctionParameterVariable functionParameterVariable:
+                        {
+                            var indexInCurrentFunction = currentFunction.AccessedOuterVariables.Index().First(x => x.Item == outerVariable).Index;
+                            
+                            // we're referencing a parameter that is not our own parameter, so it will be in the closure capture
+                            Instructions.Add(new LoadArgument(NextAddress(), 0));
+                            Instructions.Add(new LoadField(NextAddress(), 0, (uint)indexInCurrentFunction));
+                            break;
+                        }
+                        case TypeChecker.LocalVariable localVariable
+                            when currentFunction == localVariable.ContainingFunction
+                                || currentFunction.Name == "!Main" && localVariable.ContainingFunction is null:
                         {
                             Instructions.Add(new LoadLocal(NextAddress(), localVariable.LocalIndex ?? throw new InvalidOperationException("Expected local index")));
+                            break;
+                        }
+                        case TypeChecker.LocalVariable:
+                        {
+                            var indexInCurrentFunction = currentFunction.AccessedOuterVariables.Index().First(x => x.Item == outerVariable).Index;
+                            // we're referencing a local that is not our own local, so it will be in the closure capture
+                            Instructions.Add(new LoadArgument(NextAddress(), 0));
+                            Instructions.Add(new LoadField(NextAddress(), 0, (uint)indexInCurrentFunction));
                             break;
                         }
                         default:

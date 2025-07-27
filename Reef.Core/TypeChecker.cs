@@ -534,9 +534,19 @@ public class TypeChecker
                 InstantiatedClass.Unit));
         }
         
-        foreach (var fn in fnSignature.LocalFunctions)
+        foreach (var localFn in fnSignature.LocalFunctions)
         {
-            TypeCheckFunctionBody(fn);
+            TypeCheckFunctionBody(localFn);
+            fnSignature.AccessedOuterVariables.AddRange(
+                localFn.AccessedOuterVariables.Where(accessedOuterVariable =>
+                    !fnSignature.AccessedOuterVariables.Contains(accessedOuterVariable)
+                    && accessedOuterVariable switch
+                    {
+                        FieldVariable => throw new InvalidOperationException("Field variable is not captured in a scope"),
+                        FunctionParameterVariable functionParameterVariable => functionParameterVariable.ContainingFunction != fnSignature,
+                        LocalVariable localVariable => localVariable.ContainingFunction != fnSignature,
+                        _ => throw new ArgumentOutOfRangeException(nameof(accessedOuterVariable))
+                    }));
         }
     }
 
