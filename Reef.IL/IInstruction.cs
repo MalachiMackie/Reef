@@ -137,7 +137,7 @@ public record LoadField(InstructionAddress Address, uint VariantIndex, uint Fiel
 /// Pops the top value off the evaluation stack and stores it in the specified static field
 /// </summary>
 /// <param name="Address"></param>
-public record StoreStaticField(InstructionAddress Address, IReefTypeReference ReefType, uint VariantIndex, uint StaticFieldIndex) : IInstruction;
+public record StoreStaticField(InstructionAddress Address, IReefTypeReference ReefType, uint StaticFieldIndex) : IInstruction;
 
 /// <summary>
 /// Loads the specified static field and pushes it onto the evaluation stack

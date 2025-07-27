@@ -318,6 +318,84 @@ public static class SimpleExpressions
                             ])
                     ])
             },
+            {
+                "local assignment",
+                """
+                var a;
+                a = 1;
+                """,
+                Module(
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [Local("a", ConcreteTypeReference("int"))],
+                            instructions: [
+                                new LoadIntConstant(Addr(0), 1),
+                                new StoreLocal(Addr(1), 0),
+                                LoadUnit(2),
+                                Return(3)
+                            ])
+                    ])
+            },
+            {
+                "field assignment",
+                """
+                class MyClass{pub mut field MyField: int}
+                var mut a = new MyClass{MyField = 1};
+                a.MyField = 2;
+                """,
+                Module(
+                    types: [
+                        Class("MyClass",
+                            fields: [Field("MyField", isPublic: true, type: ConcreteTypeReference("int"))])
+                    ],
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [Local("a", ConcreteTypeReference("MyClass"))],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
+                                new CopyStack(Addr(1)),
+                                new LoadIntConstant(Addr(2), 1),
+                                new StoreField(Addr(3), 0, 0),
+                                new StoreLocal(Addr(4), 0),
+                                new LoadLocal(Addr(5), 0),
+                                new LoadIntConstant(Addr(6), 2),
+                                new StoreField(Addr(7), 0, 0),
+                                LoadUnit(8),
+                                Return(9)
+                            ])
+                    ])
+            },
+            {
+                "static field assignment",
+                """
+                class MyClass{pub static mut field MyField: int = 1}
+                MyClass::MyField = 2;
+                """,
+                Module(
+                    types: [
+                        Class("MyClass",
+                            fields: [
+                                Field(
+                                    "MyField",
+                                    isPublic: true,
+                                    isStatic: true,
+                                    type: ConcreteTypeReference("int"),
+                                    staticInitializer: [new LoadIntConstant(Addr(0), 1)])
+                            ])
+                    ],
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            instructions: [
+                                new LoadIntConstant(Addr(0), 2),
+                                new StoreStaticField(Addr(1), ConcreteTypeReference("MyClass"), 0),
+                                LoadUnit(2),
+                                Return(3)
+                            ])
+                    ])
+            },
         };
     }
 }

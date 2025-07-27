@@ -448,9 +448,61 @@ public class ILCompile
     private void CompileBinaryOperatorExpression(
         BinaryOperatorExpression binaryOperatorExpression)
     {
-
+        var right = binaryOperatorExpression.BinaryOperator.Right 
+                    ?? throw new InvalidOperationException("Expected right operand");
         if (binaryOperatorExpression.BinaryOperator.OperatorType == BinaryOperatorType.ValueAssignment)
         {
+            switch (binaryOperatorExpression.BinaryOperator.Left)
+            {
+                case StaticMemberAccessExpression staticMemberAccessExpression:
+                {
+                    CompileExpression(right);
+                    
+                    var ownerType = staticMemberAccessExpression.OwnerType
+                                    ?? throw new InvalidOperationException("Expected static member access owner");
+
+                    Instructions.Add(new StoreStaticField(
+                        NextAddress(),
+                        GetTypeReference(ownerType),
+                        staticMemberAccessExpression.StaticMemberAccess.ItemIndex
+                            ?? throw new InvalidOperationException("Expected static member access item index")));
+                    break;
+                }
+                case MemberAccessExpression memberAccessExpression:
+                {
+                    // load the owner
+                    CompileExpression(memberAccessExpression.MemberAccess.Owner);
+                    
+                    // load the value
+                    CompileExpression(right);
+                    
+                    // variant index 0 because it's never valid to assign to a union field
+                    Instructions.Add(new StoreField(
+                        NextAddress(),
+                        0,
+                        memberAccessExpression.MemberAccess.ItemIndex
+                            ?? throw new InvalidOperationException("Expected member access item index")));
+                    
+                    break;
+                }
+                case ValueAccessorExpression {ValueAccessor: {AccessType: ValueAccessType.Variable, Token.Type: TokenType.Identifier}} valueAccessorExpression:
+                {
+                    CompileExpression(right);
+
+                    if (valueAccessorExpression.ReferencedVariable is not TypeChecker.LocalVariable localVariable)
+                    {
+                        throw new InvalidOperationException("Expected local variable");
+                    }
+                    
+                    Instructions.Add(new StoreLocal(
+                        NextAddress(),
+                        localVariable.LocalIndex ?? throw new InvalidOperationException("Expected local index")));
+                    break;
+                }
+                default:
+                    throw new InvalidOperationException("Unexpected operator type");
+            }
+
             return;
         }
         
