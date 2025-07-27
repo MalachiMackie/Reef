@@ -14,7 +14,13 @@ public static class ModuleStructure
             { "empty union", "union MyUnion{}", Module([Union("MyUnion")]) },
             {
                 "union with unit variants", "union MyUnion{A, B}", Module([
-                    Union("MyUnion", [Variant("A"), Variant("B")])
+                    Union("MyUnion", [
+                        Variant("A", fields: [
+                            Field("_variantIdentifier", ConcreteTypeReference("int"), isPublic: true),
+                        ]),
+                        Variant("B", fields: [
+                            Field("_variantIdentifier", ConcreteTypeReference("int"), isPublic: true),
+                        ])])
                 ])
             },
             {
@@ -192,12 +198,9 @@ public static class ModuleStructure
                 Module(types:
                 [
                     Class("MyClass",
-                        instanceFields:
+                        fields:
                         [
                             Field("MyField", ConcreteTypeReference("string"), isPublic: true),
-                        ],
-                        staticFields:
-                        [
                             Field("OtherField", ConcreteTypeReference("int"), isStatic: true,
                                 staticInitializer: [new LoadIntConstant(new InstructionAddress(0), 1)])
                         ])
@@ -211,17 +214,44 @@ public static class ModuleStructure
                     Union("MyUnion",
                         variants:
                         [
-                            Variant("A"),
+                            Variant("A", fields: [
+                                Field("_variantIdentifier", ConcreteTypeReference("int"), isPublic: true),
+                            ]),
                             Variant("B",
-                                instanceFields:
+                                fields:
                                 [
+                                    Field("_variantIdentifier", ConcreteTypeReference("int"), isPublic: true),
                                     Field("First", ConcreteTypeReference("string"), isPublic: true),
                                     Field("Second", ConcreteTypeReference("int"), isPublic: true),
                                 ]),
                             Variant("C",
-                                instanceFields:
+                                fields:
                                 [
+                                    Field("_variantIdentifier", ConcreteTypeReference("int"), isPublic: true),
                                     Field("MyField", ConcreteTypeReference("bool"), isPublic: true)
+                                ])
+                        ],
+                        methods: [
+                            Method(
+                                "MyUnion_B_Create",
+                                isStatic: true,
+                                parameters: [
+                                    Parameter("First", ConcreteTypeReference("string")),
+                                    Parameter("Second", ConcreteTypeReference("int")),
+                                ],
+                                returnType: ConcreteTypeReference("MyUnion"),
+                                instructions: [
+                                    new CreateObject(Addr(0), ConcreteTypeReference("MyUnion")),
+                                    new CopyStack(Addr(1)),
+                                    new LoadIntConstant(Addr(2), 1),
+                                    new StoreField(Addr(3), 1, 0),
+                                    new CopyStack(Addr(4)),
+                                    new LoadArgument(Addr(5), 0),
+                                    new StoreField(Addr(6), 1, 1),
+                                    new CopyStack(Addr(7)),
+                                    new LoadArgument(Addr(8), 1),
+                                    new StoreField(Addr(9), 1, 2),
+                                    new Return(Addr(10))
                                 ])
                         ])
                 ])

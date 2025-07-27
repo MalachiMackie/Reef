@@ -106,8 +106,7 @@ public class ILCompile
                 Variants = [new ReefVariant
                 {
                     DisplayName = "ClosureVariant",
-                    StaticFields = [],
-                    InstanceFields = function.AccessedOuterVariables.Select((x, i) => new ReefField
+                    Fields = function.AccessedOuterVariables.Select((x, i) => new ReefField
                     {
                         DisplayName = $"Field_{i}",
                         IsStatic = false,
@@ -180,52 +179,122 @@ public class ILCompile
 
     private ReefTypeDefinition CompileUnion(TypeChecker.UnionSignature union)
     {
-        var methods = new List<ReefMethod>();
+        var unionType = SignatureAsTypeReference(union);
+        List<ReefMethod> methods = [..union.Functions.Select(CompileMethod)];
+        
+        var variants = new List<ReefVariant>(union.Variants.Count);
+
+        var variantIdentifierField = new ReefField
+        {
+            DisplayName = "_variantIdentifier",
+            IsStatic = false,
+            IsPublic = true,
+            StaticInitializerInstructions = [],
+            Type = GetTypeReference(TypeChecker.InstantiatedClass.Int)
+        };
+        
+        foreach (var (variantIndex, variant) in union.Variants.Index())
+        {
+            ReefVariant? reefVariant;
+            switch (variant)
+            {
+                case TypeChecker.ClassUnionVariant classUnionVariant:
+                {
+                    reefVariant = new ReefVariant
+                    {
+                        DisplayName = variant.Name,
+                        Fields = classUnionVariant.Fields.Select(y => new ReefField
+                            {
+                                DisplayName = y.Name,
+                                IsStatic = false,
+                                IsPublic = true,
+                                Type = GetTypeReference(y.Type),
+                                StaticInitializerInstructions = []
+                            })
+                            .Prepend(variantIdentifierField)
+                            .ToArray()
+                    };
+                    break;
+                }
+                case TypeChecker.TupleUnionVariant tupleUnionVariant:
+                {
+                    reefVariant = new ReefVariant
+                    {
+                        DisplayName = variant.Name,
+                        Fields = tupleUnionVariant.TupleMembers.Select((y, i) => new ReefField
+                            {
+                                DisplayName = TypeChecker.ClassSignature.TupleFieldNames[i],
+                                IsStatic = false,
+                                IsPublic = true,
+                                StaticInitializerInstructions = [],
+                                Type = GetTypeReference(y)
+                            })
+                            .Prepend(variantIdentifierField)
+                            .ToArray()
+                    };
+                    
+                    _scopeStack.Push(new Scope
+                    {
+                        AccessedOuterVariables = [],
+                        CurrentFunction = tupleUnionVariant.CreateFn,
+                        CurrentType = unionType,
+                    });
+                    
+                    Instructions.Add(new CreateObject(NextAddress(), unionType));
+                    Instructions.Add(new CopyStack(NextAddress()));
+                    Instructions.Add(new LoadIntConstant(NextAddress(), variantIndex));
+                    Instructions.Add(new StoreField(NextAddress(), (uint)variantIndex, 0));
+
+                    var parameters = new List<ReefMethod.Parameter>();
+                    foreach (var (memberIndex, member) in tupleUnionVariant.TupleMembers.Index())
+                    {
+                        Instructions.Add(new CopyStack(NextAddress()));
+                        Instructions.Add(new LoadArgument(NextAddress(), (uint)memberIndex));
+                        Instructions.Add(new StoreField(NextAddress(), (uint)variantIndex, (uint)memberIndex + 1));
+                        var memberType = GetTypeReference(member);
+                        parameters.Add(new ReefMethod.Parameter
+                        {
+                            DisplayName = TypeChecker.ClassSignature.TupleFieldNames[memberIndex],
+                            Type = memberType,
+                        });
+                    }
+                    
+                    Instructions.Add(new Return(NextAddress()));
+
+                    var createFnInstructions = _scopeStack.Pop().Instructions;
+                    
+                    methods.Add(new ReefMethod
+                    {
+                        DisplayName = $"{union.Name}_{variant.Name}_Create",
+                        IsStatic = true,
+                        TypeParameters = [],
+                        Locals = [],
+                        Parameters = parameters,
+                        ReturnType = unionType,
+                        Instructions = createFnInstructions
+                    });
+                    break;
+                }
+                case TypeChecker.UnitUnionVariant:
+                {
+                    reefVariant = new ReefVariant { DisplayName = variant.Name, Fields = [variantIdentifierField]};
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(variant));
+            }
+            
+            variants.Add(reefVariant);
+        }
         var definition = new ReefTypeDefinition
         {
             Id = union.Id,
             DisplayName = union.Name,
             IsValueType = false,
-            Variants = union.Variants.Select(x => x switch
-            {
-                TypeChecker.ClassUnionVariant classUnionVariant => new ReefVariant
-                {
-                    DisplayName = x.Name,
-                    StaticFields = [],
-                    InstanceFields = classUnionVariant.Fields.Select(y => new ReefField
-                    {
-                        DisplayName = y.Name,
-                        IsStatic = false,
-                        IsPublic = true,
-                        Type = GetTypeReference(y.Type),
-                        StaticInitializerInstructions = []
-                    }).ToArray()
-                },
-                TypeChecker.TupleUnionVariant tupleUnionVariant => new ReefVariant
-                {
-                    DisplayName = x.Name,
-                    StaticFields = [],
-                    InstanceFields = tupleUnionVariant.TupleMembers.Select((y, i) => new ReefField
-                    {
-                        DisplayName = TypeChecker.ClassSignature.TupleFieldNames[i],
-                        IsStatic = false,
-                        IsPublic = true,
-                        StaticInitializerInstructions = [],
-                        Type = GetTypeReference(y)
-                    }).ToArray()
-                },
-                TypeChecker.UnitUnionVariant => new ReefVariant
-                {
-                    DisplayName = x.Name,
-                    StaticFields = [],
-                    InstanceFields = [],
-                },
-                _ => throw new ArgumentOutOfRangeException(nameof(x))
-            }).ToArray(),
+            Variants = variants,
             TypeParameters = union.TypeParameters.Select(x => x.GenericName).ToArray(),
             Methods = methods
         };
-        methods.AddRange(union.Functions.Select(CompileMethod));
 
         return definition;
     }
@@ -233,31 +302,9 @@ public class ILCompile
     private ReefTypeDefinition CompileClass(TypeChecker.ClassSignature @class)
     {
         var methods = new List<ReefMethod>();
-        var staticFields = new List<ReefField>();
+        var fields = new List<ReefField>();
         
-        var definition = new ReefTypeDefinition
-        {
-            Id = @class.Id,
-            DisplayName = @class.Name,
-            IsValueType = false,
-            Variants = [new ReefVariant
-            {
-                DisplayName = "!ClassVariant",
-                InstanceFields = @class.Fields.Select(x => new ReefField
-                    {
-                        IsStatic = false,
-                        IsPublic = x.IsPublic,
-                        StaticInitializerInstructions = [],
-                        DisplayName = x.Name,
-                        Type = GetTypeReference(x.Type)
-                    }).ToArray(),
-                StaticFields = staticFields
-            }],
-            TypeParameters = @class.TypeParameters.Select(x => x.GenericName).ToArray(),
-            Methods = methods,
-        };
-        
-        foreach (var field in @class.StaticFields)
+        foreach (var field in @class.Fields)
         {
             var staticInitializerInstructions = new List<IInstruction>();
             if (field.StaticInitializer is not null)
@@ -274,15 +321,29 @@ public class ILCompile
                 staticInitializerInstructions = scope.Instructions;
             }
             
-            staticFields.Add(new ReefField
+            fields.Add(new ReefField
             {
-                IsStatic = true,
+                IsStatic = field.IsStatic,
                 IsPublic = field.IsPublic,
                 StaticInitializerInstructions = staticInitializerInstructions,
                 DisplayName = field.Name,
                 Type = GetTypeReference(field.Type)
             });
         }
+        
+        var definition = new ReefTypeDefinition
+        {
+            Id = @class.Id,
+            DisplayName = @class.Name,
+            IsValueType = false,
+            Variants = [new ReefVariant
+            {
+                DisplayName = "!ClassVariant",
+                Fields = fields,
+            }],
+            TypeParameters = @class.TypeParameters.Select(x => x.GenericName).ToArray(),
+            Methods = methods,
+        };
         
         methods.AddRange(@class.Functions.Select(CompileMethod));
 
@@ -475,21 +536,24 @@ public class ILCompile
     {
         CompileExpression(methodCallExpression.MethodCall.Method);
 
-        // move instruction to load function to after the argument list loading instructions
-        var loadFunctionInstruction = Instructions[^1];
-        Instructions.RemoveAt(Instructions.Count - 1);
-        
-        foreach (var argument in methodCallExpression.MethodCall.ArgumentList)
+        if (methodCallExpression.MethodCall.ArgumentList.Count > 0)
         {
-            CompileExpression(argument);
+            // move instruction to load function to after the argument list loading instructions
+            var loadFunctionInstruction = Instructions[^1];
+            Instructions.RemoveAt(Instructions.Count - 1);
+            
+            foreach (var argument in methodCallExpression.MethodCall.ArgumentList)
+            {
+                CompileExpression(argument);
+            }
+            
+            Instructions.Add(loadFunctionInstruction switch
+            {
+                LoadGlobalFunction loadGlobalFunction => loadGlobalFunction with {Address = NextAddress()},
+                LoadTypeFunction loadTypeFunction => loadTypeFunction with {Address = NextAddress()},
+                _ => throw new InvalidOperationException("Expected instruction to be function load instruction")
+            });
         }
-        
-        Instructions.Add(loadFunctionInstruction switch
-        {
-            LoadGlobalFunction loadGlobalFunction => loadGlobalFunction with {Address = NextAddress()},
-            LoadTypeFunction loadTypeFunction => loadTypeFunction with {Address = NextAddress()},
-            _ => throw new InvalidOperationException("Expected instruction to be function load instruction")
-        });
         
         Instructions.Add(new Call(NextAddress()));
     }
@@ -548,6 +612,45 @@ public class ILCompile
         else if (memberType == MemberType.Field)
         {
             Instructions.Add(new LoadStaticField(NextAddress(), ownerReference, VariantIndex: 0, itemIndex));
+        }
+        else if (memberType == MemberType.Variant)
+        {
+            CompileStaticMemberAccessVariantReference(
+                itemIndex,
+                ownerType as TypeChecker.InstantiatedUnion ?? throw new InvalidOperationException("Expected type to be union"),
+                ownerReference);
+        }
+    }
+
+    private void CompileStaticMemberAccessVariantReference(
+        uint variantIndex,
+        TypeChecker.InstantiatedUnion unionType,
+        ConcreteReefTypeReference unionReference)
+    {
+        var variant = unionType.Variants[(int)variantIndex];
+        switch (variant)
+        {
+            case TypeChecker.ClassUnionVariant classUnionVariant:
+            {
+                throw new InvalidOperationException("Should not be able to reference class variant");
+            }
+            case TypeChecker.TupleUnionVariant tupleUnionVariant:
+            {
+                // Instructions.Add(new LoadTypeFunction(NextAddress(), unionReference));
+                break;
+            }
+            case TypeChecker.UnitUnionVariant:
+            {
+                // create variant object
+                Instructions.Add(new CreateObject(NextAddress(), unionReference));
+                Instructions.Add(new CopyStack(NextAddress()));
+                // store variant identifier
+                Instructions.Add(new LoadIntConstant(NextAddress(), (int)variantIndex));
+                Instructions.Add(new StoreField(NextAddress(), variantIndex, 0));
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(variant));
         }
     }
     
@@ -619,78 +722,80 @@ public class ILCompile
 
     private void CompileFunctionReference(TypeChecker.InstantiatedFunction instantiatedFunction)
     {
-        if (instantiatedFunction.OwnerType is null)
+        if (instantiatedFunction.OwnerType is not null)
         {
-            if (instantiatedFunction.AccessedOuterVariables.Count > 0)
-            {
-                var closureTypeId = instantiatedFunction.ClosureTypeId ??
-                                    throw new InvalidOperationException("Expected closure type id");
-                var type = _types.First(x => x.Id == closureTypeId);
-                Instructions.Add(new CreateObject(NextAddress(), new ConcreteReefTypeReference
-                {
-                    DefinitionId = type.Id,
-                    Name = type.DisplayName,
-                    TypeArguments = []
-                }));
-
-                foreach (var (index, outerVariable) in instantiatedFunction.AccessedOuterVariables.Index())
-                {
-                    Instructions.Add(new CopyStack(NextAddress()));
-
-                    var currentFunction = _scopeStack.Peek().CurrentFunction
-                                          ?? throw new InvalidOperationException(
-                                              "Expected to be in a function when referencing outer variables");
-                    
-                    // load value
-                    switch (outerVariable)
-                    {
-                        case TypeChecker.FieldVariable:
-                            throw new InvalidOperationException("Unexpected field variable");
-                        case TypeChecker.FunctionParameterVariable functionParameterVariable
-                            when currentFunction == functionParameterVariable.ContainingFunction:
-                        {
-                            Instructions.Add(new LoadArgument(NextAddress(), functionParameterVariable.ParameterIndex));
-                            break;
-                        }
-                        case TypeChecker.FunctionParameterVariable functionParameterVariable:
-                        {
-                            var indexInCurrentFunction = currentFunction.AccessedOuterVariables.Index().First(x => x.Item == outerVariable).Index;
-                            
-                            // we're referencing a parameter that is not our own parameter, so it will be in the closure capture
-                            Instructions.Add(new LoadArgument(NextAddress(), 0));
-                            Instructions.Add(new LoadField(NextAddress(), 0, (uint)indexInCurrentFunction));
-                            break;
-                        }
-                        case TypeChecker.LocalVariable localVariable
-                            when currentFunction == localVariable.ContainingFunction
-                                || currentFunction.Name == "!Main" && localVariable.ContainingFunction is null:
-                        {
-                            Instructions.Add(new LoadLocal(NextAddress(), localVariable.LocalIndex ?? throw new InvalidOperationException("Expected local index")));
-                            break;
-                        }
-                        case TypeChecker.LocalVariable:
-                        {
-                            var indexInCurrentFunction = currentFunction.AccessedOuterVariables.Index().First(x => x.Item == outerVariable).Index;
-                            // we're referencing a local that is not our own local, so it will be in the closure capture
-                            Instructions.Add(new LoadArgument(NextAddress(), 0));
-                            Instructions.Add(new LoadField(NextAddress(), 0, (uint)indexInCurrentFunction));
-                            break;
-                        }
-                        default:
-                            throw new ArgumentOutOfRangeException(nameof(outerVariable));
-                    }
-                    
-                    Instructions.Add(new StoreField(NextAddress(), 0, (uint)index));
-                }
-            }
-            
-            Instructions.Add(new LoadGlobalFunction(NextAddress(), new FunctionReference
-            {
-                Name = instantiatedFunction.Name,
-                TypeArguments = instantiatedFunction.TypeArguments.Select(GetTypeReference).ToArray(),
-                DefinitionId = instantiatedFunction.FunctionId
-            }));
+            return;
         }
+
+        if (instantiatedFunction.AccessedOuterVariables.Count > 0)
+        {
+            var closureTypeId = instantiatedFunction.ClosureTypeId ??
+                                throw new InvalidOperationException("Expected closure type id");
+            var type = _types.First(x => x.Id == closureTypeId);
+            Instructions.Add(new CreateObject(NextAddress(), new ConcreteReefTypeReference
+            {
+                DefinitionId = type.Id,
+                Name = type.DisplayName,
+                TypeArguments = []
+            }));
+
+            foreach (var (index, outerVariable) in instantiatedFunction.AccessedOuterVariables.Index())
+            {
+                Instructions.Add(new CopyStack(NextAddress()));
+
+                var currentFunction = _scopeStack.Peek().CurrentFunction
+                                      ?? throw new InvalidOperationException(
+                                          "Expected to be in a function when referencing outer variables");
+                    
+                // load value
+                switch (outerVariable)
+                {
+                    case TypeChecker.FieldVariable:
+                        throw new InvalidOperationException("Unexpected field variable");
+                    case TypeChecker.FunctionParameterVariable functionParameterVariable
+                        when currentFunction == functionParameterVariable.ContainingFunction:
+                    {
+                        Instructions.Add(new LoadArgument(NextAddress(), functionParameterVariable.ParameterIndex));
+                        break;
+                    }
+                    case TypeChecker.FunctionParameterVariable functionParameterVariable:
+                    {
+                        var indexInCurrentFunction = currentFunction.AccessedOuterVariables.Index().First(x => x.Item == outerVariable).Index;
+                            
+                        // we're referencing a parameter that is not our own parameter, so it will be in the closure capture
+                        Instructions.Add(new LoadArgument(NextAddress(), 0));
+                        Instructions.Add(new LoadField(NextAddress(), 0, (uint)indexInCurrentFunction));
+                        break;
+                    }
+                    case TypeChecker.LocalVariable localVariable
+                        when currentFunction == localVariable.ContainingFunction
+                             || currentFunction.Name == "!Main" && localVariable.ContainingFunction is null:
+                    {
+                        Instructions.Add(new LoadLocal(NextAddress(), localVariable.LocalIndex ?? throw new InvalidOperationException("Expected local index")));
+                        break;
+                    }
+                    case TypeChecker.LocalVariable:
+                    {
+                        var indexInCurrentFunction = currentFunction.AccessedOuterVariables.Index().First(x => x.Item == outerVariable).Index;
+                        // we're referencing a local that is not our own local, so it will be in the closure capture
+                        Instructions.Add(new LoadArgument(NextAddress(), 0));
+                        Instructions.Add(new LoadField(NextAddress(), 0, (uint)indexInCurrentFunction));
+                        break;
+                    }
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(outerVariable));
+                }
+                    
+                Instructions.Add(new StoreField(NextAddress(), 0, (uint)index));
+            }
+        }
+            
+        Instructions.Add(new LoadGlobalFunction(NextAddress(), new FunctionReference
+        {
+            Name = instantiatedFunction.Name,
+            TypeArguments = instantiatedFunction.TypeArguments.Select(GetTypeReference).ToArray(),
+            DefinitionId = instantiatedFunction.FunctionId
+        }));
     }
 
     private void CompileIdentifierValueAccessor(ValueAccessorExpression valueAccessorExpression)

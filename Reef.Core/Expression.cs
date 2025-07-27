@@ -93,7 +93,8 @@ public record StaticMemberAccess(TypeIdentifier Type, StringToken? MemberName)
 public enum MemberType
 {
     Field,
-    Function
+    Function,
+    Variant
 }
 
 public record UnaryOperatorExpression(UnaryOperator UnaryOperator) : IExpression

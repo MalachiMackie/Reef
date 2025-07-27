@@ -22,7 +22,7 @@ public static class ClosureTests
                 Module(
                     types:
                     [
-                        Class("InnerFn!Closure", variantName: "ClosureVariant", instanceFields:
+                        Class("InnerFn!Closure", variantName: "ClosureVariant", fields:
                         [
                             Field("Field_0", ConcreteTypeReference("string"), isPublic: true),
                             Field("Field_1", ConcreteTypeReference("int"), isPublic: true),
@@ -69,7 +69,7 @@ public static class ClosureTests
                 Module(
                     types:
                     [
-                        Class("SomeMethod!Closure", variantName: "ClosureVariant", instanceFields:
+                        Class("SomeMethod!Closure", variantName: "ClosureVariant", fields:
                         [
                             Field("Field_0", ConcreteTypeReference("int"), isPublic: true),
                         ])
@@ -112,7 +112,7 @@ public static class ClosureTests
                 Module(
                     types:
                     [
-                        Class("SomeMethod!Closure", variantName: "ClosureVariant", instanceFields:
+                        Class("SomeMethod!Closure", variantName: "ClosureVariant", fields:
                         [
                             Field("Field_0", ConcreteTypeReference("string"), isPublic: true),
                         ])
@@ -157,7 +157,7 @@ public static class ClosureTests
                     [
                         Class("SomeFn!Closure",
                             variantName: "ClosureVariant",
-                            instanceFields:
+                            fields:
                             [
                                 Field("Field_0", ConcreteTypeReference("string"), isPublic: true),
                             ])
@@ -218,7 +218,7 @@ public static class ClosureTests
                     [
                         Class("SomeFn!Closure",
                             variantName: "ClosureVariant",
-                            instanceFields:
+                            fields:
                             [
                                 Field("Field_0", ConcreteTypeReference("string"), isPublic: true),
                             ])
@@ -277,7 +277,7 @@ public static class ClosureTests
                     [
                         Class("SomeFn!Closure",
                             variantName: "ClosureVariant",
-                            instanceFields:
+                            fields:
                             [
                                 Field("Field_0", ConcreteTypeReference("string"), isPublic: true),
                             ])
@@ -349,20 +349,20 @@ public static class ClosureTests
                     [
                         Class("Fourth!Closure",
                             variantName: "ClosureVariant",
-                            instanceFields:
+                            fields:
                             [
                                 Field("Field_0", ConcreteTypeReference("string"), isPublic: true),
                                 Field("Field_1", ConcreteTypeReference("int"), isPublic: true)
                             ]),
                         Class("Third!Closure",
                             variantName: "ClosureVariant",
-                            instanceFields:
+                            fields:
                             [
                                 Field("Field_0", ConcreteTypeReference("string"), isPublic: true)
                             ]),
                         Class("Second!Closure",
                             variantName: "ClosureVariant",
-                            instanceFields:
+                            fields:
                             [
                                 Field("Field_0", ConcreteTypeReference("string"), isPublic: true)
                             ]),

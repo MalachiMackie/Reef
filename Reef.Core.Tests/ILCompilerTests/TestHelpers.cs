@@ -79,14 +79,12 @@ public static class TestHelpers
     }
 
     public static ReefVariant Variant(string name,
-        IReadOnlyList<ReefField>? instanceFields = null,
-        IReadOnlyList<ReefField>? staticFields = null)
+        IReadOnlyList<ReefField>? fields = null)
     {
         return new ReefVariant
         {
             DisplayName = name,
-            InstanceFields = instanceFields ?? [],
-            StaticFields = staticFields ?? []
+            Fields = fields ?? []
         };
     }
 
@@ -112,8 +110,7 @@ public static class TestHelpers
         string? variantName = null,
         IReadOnlyList<ReefMethod>? methods = null,
         IReadOnlyList<string>? typeParameters = null,
-        IReadOnlyList<ReefField>? instanceFields = null,
-        IReadOnlyList<ReefField>? staticFields = null)
+        IReadOnlyList<ReefField>? fields = null)
     {
         return new ReefTypeDefinition
         {
@@ -124,7 +121,7 @@ public static class TestHelpers
             TypeParameters = typeParameters ?? [],
             Variants =
             [
-                Variant(variantName ?? "!ClassVariant", instanceFields: instanceFields, staticFields: staticFields)
+                Variant(variantName ?? "!ClassVariant", fields: fields)
             ]
         };
     }

@@ -35,8 +35,7 @@ public class GenericReefTypeReference : IReefTypeReference
 public class ReefVariant
 {
     public required string DisplayName { get; set; }
-    public required IReadOnlyList<ReefField> InstanceFields { get; set; }
-    public required IReadOnlyList<ReefField> StaticFields { get; set; }
+    public required IReadOnlyList<ReefField> Fields { get; set; }
 }
 
 public class ReefField

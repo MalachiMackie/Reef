@@ -66,6 +66,10 @@ public class TypeCheckerTests
         return new TheoryData<string>
         {
             """
+            class MyClass { pub field Ignore: int, pub field InstanceField: string, pub static field StaticField: int = 2 }
+            var a = new MyClass {Ignore = 1, InstanceField = ""};
+            """,
+            """
             static fn First(a: string) {
                 fn Second() {
                     fn Third() {

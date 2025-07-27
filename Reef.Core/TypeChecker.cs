@@ -152,9 +152,7 @@ public class TypeChecker
             var instanceFieldVariables = new List<IVariable>();
             var staticFieldVariables = new List<IVariable>();
 
-            var staticFieldIndex = 0u;
-            var instanceFieldIndex = 0u;
-            foreach (var field in @class.Fields)
+            foreach (var (fieldIndex, field) in @class.Fields.Index())
             {
                 var isStatic = field.StaticModifier is not null;
 
@@ -179,7 +177,7 @@ public class TypeChecker
                         fieldTypeReference,
                         field.MutabilityModifier is not null,
                         IsStaticField: true,
-                        staticFieldIndex++));
+                        (uint)fieldIndex));
                 }
                 else
                 {
@@ -194,7 +192,7 @@ public class TypeChecker
                         fieldTypeReference,
                         field.MutabilityModifier is not null,
                         IsStaticField: false,
-                        instanceFieldIndex++));
+                        (uint)fieldIndex));
                 }
             }
 
@@ -250,8 +248,7 @@ public class TypeChecker
     private (List<(ProgramClass, ClassSignature)>, List<(ProgramUnion, UnionSignature)>) SetupSignatures()
     {
         var classes =
-            new List<(ProgramClass, ClassSignature, List<FunctionSignature>, List<TypeField> fields, List<TypeField>
-                staticFields)>();
+            new List<(ProgramClass, ClassSignature, List<FunctionSignature>, List<TypeField> fields)>();
         var unions = new List<(ProgramUnion, UnionSignature, List<FunctionSignature>, List<IUnionVariant>)>();
 
         // setup union and class signatures before setting up their functions/fields etc. so that functions and fields can reference other types
@@ -290,8 +287,7 @@ public class TypeChecker
         {
             var name = @class.Name.StringValue;
             var functions = new List<FunctionSignature>(@class.Functions.Count);
-            var fields = new List<TypeField>(@class.Fields.Count(x => x.StaticModifier is null));
-            var staticFields = new List<TypeField>(@class.Fields.Count(x => x.StaticModifier is not null));
+            var fields = new List<TypeField>(@class.Fields.Count);
             var typeParameters = new List<GenericTypeReference>(@class.TypeParameters.Count);
             var signature = new ClassSignature
             {
@@ -299,7 +295,6 @@ public class TypeChecker
                 TypeParameters = typeParameters,
                 Functions = functions,
                 Fields = fields,
-                StaticFields = staticFields
             };
             typeParameters.AddRange(@class.TypeParameters.Select(typeParameter => new GenericTypeReference
                 { GenericName = typeParameter.StringValue, OwnerType = signature }));
@@ -316,7 +311,7 @@ public class TypeChecker
                 }
             }
 
-            classes.Add((@class, signature, functions, fields, staticFields));
+            classes.Add((@class, signature, functions, fields));
 
             if (!_types.TryAdd(name, signature))
             {
@@ -330,21 +325,14 @@ public class TypeChecker
                 unionSignature,
                 genericPlaceholders: unionSignature.TypeParameters);
 
-            var instanceFunctionIndex = 0u;
-            var staticFunctionIndex = 0u;
-
-            foreach (var function in union.Functions)
+            foreach (var (index, function) in union.Functions.Index())
             {
                 if (functions.Any(x => x.Name == function.Name.StringValue))
                 {
                     _errors.Add(TypeCheckerError.ConflictingFunctionName(function.Name));
                 }
 
-                var index = function.StaticModifier is not null
-                    ? staticFunctionIndex++
-                    : instanceFunctionIndex++;
-                
-                functions.Add(TypeCheckFunctionSignature(function, index));
+                functions.Add(TypeCheckFunctionSignature(function, (uint)index));
             }
 
             foreach (var variant in union.Variants)
@@ -400,6 +388,7 @@ public class TypeChecker
                             Name = field.Name.StringValue,
                             Type = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type),
                             IsMutable = field.MutabilityModifier is { Modifier.Type: TokenType.Mut },
+                            IsStatic = false,
                             StaticInitializer = null,
                             IsPublic = true,
                             FieldIndex = (uint)index
@@ -416,26 +405,19 @@ public class TypeChecker
             }
         }
 
-        foreach (var (@class, classSignature, functions, fields, staticFields) in classes)
+        foreach (var (@class, classSignature, functions, fields) in classes)
         {
             using var _ = PushScope(classSignature, genericPlaceholders: classSignature.TypeParameters);
 
-            var staticFunctionIndex = 0u;
-            var instanceFunctionIndex = 0u;
-
-            foreach (var fn in @class.Functions)
+            foreach (var (index, fn) in @class.Functions.Index())
             {
                 if (functions.Any(x => x.Name == fn.Name.StringValue))
                 {
                     _errors.Add(TypeCheckerError.ConflictingFunctionName(fn.Name));
                 }
 
-                var index = fn.StaticModifier is not null
-                    ? staticFunctionIndex++
-                    : instanceFunctionIndex++;
-                
                 // todo: function overloading
-                functions.Add(TypeCheckFunctionSignature(fn, index));
+                functions.Add(TypeCheckFunctionSignature(fn, (uint)index));
             }
 
             foreach (var (index, field) in @class.Fields.Index())
@@ -446,28 +428,16 @@ public class TypeChecker
                     Type = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type),
                     IsMutable = field.MutabilityModifier is { Modifier.Type: TokenType.Mut },
                     IsPublic = field.AccessModifier is { Token.Type: TokenType.Pub },
+                    IsStatic = field.StaticModifier is { Token.Type: TokenType.Static },
                     StaticInitializer = field.InitializerValue,
                     FieldIndex = (uint)index
                 };
 
-                if (field.StaticModifier is not null)
+                if (fields.Any(y => y.Name == typeField.Name))
                 {
-                    if (staticFields.Any(y => y.Name == typeField.Name))
-                    {
-                        throw new InvalidOperationException($"Static field with name {field.Name} already defined");
-                    }
-
-                    staticFields.Add(typeField);
+                    throw new InvalidOperationException($"Field with name {field.Name} already defined");
                 }
-                else
-                {
-                    if (fields.Any(y => y.Name == typeField.Name))
-                    {
-                        throw new InvalidOperationException($"Field with name {field.Name} already defined");
-                    }
-
-                    fields.Add(typeField);
-                }
+                fields.Add(typeField);
             }
         }
 
@@ -1288,9 +1258,9 @@ public class TypeChecker
         
         switch (type)
         {
-            case InstantiatedClass { StaticFields: var staticFields } instantiatedClass:
+            case InstantiatedClass { Fields: var fields } instantiatedClass:
             {
-                var field = staticFields.FirstOrDefault(x => x.Name == memberName);
+                var field = fields.FirstOrDefault(x => x.Name == memberName && x.IsStatic);
                 if (field is not null)
                 {
                     staticMemberAccess.MemberType = MemberType.Field;
@@ -1316,8 +1286,14 @@ public class TypeChecker
             }
             case InstantiatedUnion instantiatedUnion:
             {
-                var variant = instantiatedUnion.Variants.FirstOrDefault(x => x.Name == memberName)
-                              ?? throw new InvalidOperationException($"No union variant with name {memberName}");
+                var (variantIndex, variant) = instantiatedUnion.Variants.Index().FirstOrDefault(x => x.Item.Name == memberName);
+                if (variant is null)
+                {
+                    throw new InvalidOperationException($"No union variant with name {memberName}");
+                }
+
+                staticMemberAccess.MemberType = MemberType.Variant;
+                staticMemberAccess.ItemIndex = (uint)variantIndex;
 
                 return variant switch
                 {
@@ -1363,8 +1339,8 @@ public class TypeChecker
         var insideClass = CurrentTypeSignature is ClassSignature currentClassSignature
                           && instantiatedClass.MatchesSignature(currentClassSignature);
 
-        var publicFields = instantiatedClass.Fields
-            .Where(x => x.IsPublic || insideClass)
+        var publicInstanceFields = instantiatedClass.Fields
+            .Where(x => !x.IsStatic && (x.IsPublic || insideClass))
             .Select(x => x.Name)
             .ToHashSet();
 
@@ -1384,7 +1360,7 @@ public class TypeChecker
 
             fieldInitializer.TypeField = field;
             
-            if (!publicFields.Contains(fieldInitializer.FieldName.StringValue))
+            if (!publicInstanceFields.Contains(fieldInitializer.FieldName.StringValue))
             {
                 _errors.Add(TypeCheckerError.PrivateFieldReferenced(fieldInitializer.FieldName));
             }
@@ -1397,11 +1373,11 @@ public class TypeChecker
             ExpectExpressionType(field.Type, fieldInitializer.Value);
         }
         
-        if (initializedFields.Count != publicFields.Count)
+        if (initializedFields.Count != publicInstanceFields.Count)
         {
             _errors.Add(TypeCheckerError.FieldsLeftUnassignedInClassInitializer(
                 objectInitializerExpression,
-                publicFields.Where(x => !initializedFields.Contains(x))));
+                publicInstanceFields.Where(x => !initializedFields.Contains(x))));
         }
 
         return foundType;
@@ -1582,15 +1558,15 @@ public class TypeChecker
                     return false;
                 }
 
-                if (ownerType is not InstantiatedClass { StaticFields: var staticFields })
+                if (ownerType is not InstantiatedClass { Fields: var fields })
                 {
                     if (report)
                         _errors.Add(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
                     return false;
                 }
 
-                var staticField = staticFields.FirstOrDefault(x =>
-                    x.Name == staticMemberAccess.StaticMemberAccess.MemberName.StringValue);
+                var staticField = fields.FirstOrDefault(x =>
+                    x.Name == staticMemberAccess.StaticMemberAccess.MemberName.StringValue && x.IsStatic);
                 if (staticField is null)
                 {
                     if (report)
@@ -2547,15 +2523,6 @@ public class TypeChecker
                     var type => type
                 } })
             ];
-            StaticFields =
-            [
-                ..signature.StaticFields.Select(x => x with { Type = x.Type switch
-                {
-                    GenericTypeReference genericTypeReference => typeArguments.First(y =>
-                        y.GenericName == genericTypeReference.GenericName),
-                    var type => type
-                } })
-            ];
         }
 
         public static InstantiatedClass String { get; } = new (ClassSignature.String, []);
@@ -2571,7 +2538,6 @@ public class TypeChecker
         public ClassSignature Signature { get; }
 
         public IReadOnlyList<TypeField> Fields { get; }
-        public IReadOnlyList<TypeField> StaticFields { get; }
 
         public bool IsSameSignature(InstantiatedClass other)
         {
@@ -2879,6 +2845,7 @@ public class TypeChecker
     {
         public required IReadOnlyList<ITypeReference> TupleMembers { get; init; }
         public required string Name { get; init; }
+        public FunctionSignature? CreateFn { get; }
     }
 
     public class ClassUnionVariant : IUnionVariant
@@ -2909,25 +2876,24 @@ public class TypeChecker
         };
 
         public static ClassSignature Unit { get; } = new()
-            { TypeParameters = [], Name = "Unit", Fields = [], StaticFields = [], Functions = [] };
+            { TypeParameters = [], Name = "Unit", Fields = [], Functions = [] };
 
         public static ClassSignature String { get; } = new()
-            { TypeParameters = [], Name = "string", Fields = [], StaticFields = [], Functions = [] };
+            { TypeParameters = [], Name = "string", Fields = [], Functions = [] };
 
         public static ClassSignature Int { get; } = new()
-            { TypeParameters = [], Name = "int", Fields = [], StaticFields = [], Functions = [] };
+            { TypeParameters = [], Name = "int", Fields = [], Functions = [] };
 
         public static ClassSignature Boolean { get; } = new()
-            { TypeParameters = [], Name = "bool", Fields = [], StaticFields = [], Functions = [] };
+            { TypeParameters = [], Name = "bool", Fields = [], Functions = [] };
 
         public static ClassSignature Never { get; } = new()
-            { TypeParameters = [], Name = "!", Fields = [], StaticFields = [], Functions = [] };
+            { TypeParameters = [], Name = "!", Fields = [], Functions = [] };
 
         public static IEnumerable<ITypeSignature> BuiltInTypes { get; } = [Unit, String, Int, Never, Boolean];
 
         public required IReadOnlyList<GenericTypeReference> TypeParameters { get; init; }
         public required IReadOnlyList<TypeField> Fields { get; init; }
-        public required IReadOnlyList<TypeField> StaticFields { get; init; }
         public required IReadOnlyList<FunctionSignature> Functions { get; init; }
         public required string Name { get; init; }
         public Guid Id { get; } = Guid.NewGuid();
@@ -2948,14 +2914,14 @@ public class TypeChecker
                         Name = TupleFieldNames.TryGetValue(i, out var name)
                             ? name
                             : throw new InvalidOperationException("Tuple can only contain at most 10 elements"),
+                        IsStatic = false,
                         Type = type,
                         IsPublic = true,
                         StaticInitializer = null,
                         FieldIndex = (uint)i
                     })
                 ],
-                Functions = [],
-                StaticFields = []
+                Functions = []
             };
             typeParameters.AddRange(Enumerable.Range(0, elements.Count).Select(x => new GenericTypeReference
             {
@@ -2971,6 +2937,7 @@ public class TypeChecker
     {
         public required ITypeReference Type { get; init; }
         public required string Name { get; init; }
+        public required bool IsStatic { get; init; }
         public required bool IsPublic { get; init; }
         public required bool IsMutable { get; init; }
         public required IExpression? StaticInitializer { get; init; } 

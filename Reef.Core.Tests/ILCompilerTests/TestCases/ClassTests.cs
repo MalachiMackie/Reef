@@ -58,7 +58,7 @@ public static class ClassTests
                     types:
                     [
                         Class("MyClass",
-                            instanceFields:
+                            fields:
                             [
                                 Field("SomeField", ConcreteTypeReference("string"))
                             ],
@@ -101,7 +101,7 @@ public static class ClassTests
                     types:
                     [
                         Class("MyClass",
-                            staticFields:
+                            fields:
                             [
                                 Field("SomeField", ConcreteTypeReference("string"), isStatic: true,
                                     staticInitializer: [new LoadStringConstant(new InstructionAddress(0), "")])
@@ -203,7 +203,7 @@ public static class ClassTests
                 Module(
                     types:
                     [
-                        Class("MyClass", instanceFields:
+                        Class("MyClass", fields:
                         [
                             Field("Field1", ConcreteTypeReference("int"), isPublic: true),
                             Field("Field2", ConcreteTypeReference("string"), isPublic: true),
@@ -379,7 +379,7 @@ public static class ClassTests
                 Module(
                     types:
                     [
-                        Class("MyClass", staticFields:
+                        Class("MyClass", fields:
                         [
                             Field("A",
                                 isStatic: true,
@@ -417,7 +417,7 @@ public static class ClassTests
                     types:
                     [
                         Class("MyClass",
-                            instanceFields: [Field("MyField", isPublic: true, type: ConcreteTypeReference("int"))])
+                            fields: [Field("MyField", isPublic: true, type: ConcreteTypeReference("int"))])
                     ],
                     methods:
                     [
@@ -440,6 +440,54 @@ public static class ClassTests
                                 new StoreLocal(Addr(7), 1),
                                 LoadUnit(8),
                                 Return(9)
+                            ])
+                    ])
+            },
+            {
+                "get instance and static field",
+                """
+                class MyClass { pub field Ignore: int, pub field InstanceField: string, pub static field StaticField: int = 2 }
+                var a = new MyClass { Ignore = 1, InstanceField = "" };
+                var b = a.InstanceField;
+                var c = MyClass::StaticField;
+                """,
+                Module(
+                    types:
+                    [
+                        Class("MyClass",
+                            fields: [
+                                Field("Ignore", isPublic: true, type: ConcreteTypeReference("int")),
+                                Field("InstanceField", isPublic: true, type: ConcreteTypeReference("string")),
+                                Field("StaticField", isPublic: true, isStatic: true, type: ConcreteTypeReference("int"), staticInitializer: [new LoadIntConstant(Addr(0), 2)])
+                            ])
+                    ],
+                    methods:
+                    [
+                        Method("!Main",
+                            isStatic: true,
+                            locals:
+                            [
+                                Local("a", ConcreteTypeReference("MyClass")),
+                                Local("b", ConcreteTypeReference("string")),
+                                Local("c", ConcreteTypeReference("int")),
+                            ],
+                            instructions:
+                            [
+                                new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
+                                new CopyStack(Addr(1)),
+                                new LoadIntConstant(Addr(2), 1),
+                                new StoreField(Addr(3), 0, 0),
+                                new CopyStack(Addr(4)),
+                                new LoadStringConstant(Addr(5), ""),
+                                new StoreField(Addr(6), 0, 1),
+                                new StoreLocal(Addr(7), 0),
+                                new LoadLocal(Addr(8), 0),
+                                new LoadField(Addr(9), 0, 1),
+                                new StoreLocal(Addr(10), 1),
+                                new LoadStaticField(Addr(11), ConcreteTypeReference("MyClass"), 0, 2),
+                                new StoreLocal(Addr(12), 2),
+                                LoadUnit(13),
+                                Return(14)
                             ])
                     ])
             }
