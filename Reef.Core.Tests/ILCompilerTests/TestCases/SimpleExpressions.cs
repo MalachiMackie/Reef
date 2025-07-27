@@ -228,6 +228,96 @@ public static class SimpleExpressions
                             ]),
                     ])
             },
+            {
+                "plus",
+                "var a = 1 + 2",
+                Module(
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [Local("a", ConcreteTypeReference("int"))],
+                            instructions: [
+                                new LoadIntConstant(Addr(0), 1),
+                                new LoadIntConstant(Addr(1), 2),
+                                new IntPlus(Addr(2)),
+                                new StoreLocal(Addr(3), 0),
+                                LoadUnit(4),
+                                Return(5)
+                            ])
+                    ])
+            },
+            {
+                "minus",
+                "var a = 1 - 2",
+                Module(
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [Local("a", ConcreteTypeReference("int"))],
+                            instructions: [
+                                new LoadIntConstant(Addr(0), 1),
+                                new LoadIntConstant(Addr(1), 2),
+                                new IntMinus(Addr(2)),
+                                new StoreLocal(Addr(3), 0),
+                                LoadUnit(4),
+                                Return(5)
+                            ])
+                    ])
+            },
+            {
+                "multiply",
+                "var a = 1 * 2",
+                Module(
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [Local("a", ConcreteTypeReference("int"))],
+                            instructions: [
+                                new LoadIntConstant(Addr(0), 1),
+                                new LoadIntConstant(Addr(1), 2),
+                                new IntMultiply(Addr(2)),
+                                new StoreLocal(Addr(3), 0),
+                                LoadUnit(4),
+                                Return(5)
+                            ])
+                    ])
+            },
+            {
+                "divide",
+                "var a = 1 / 2",
+                Module(
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [Local("a", ConcreteTypeReference("int"))],
+                            instructions: [
+                                new LoadIntConstant(Addr(0), 1),
+                                new LoadIntConstant(Addr(1), 2),
+                                new IntDivide(Addr(2)),
+                                new StoreLocal(Addr(3), 0),
+                                LoadUnit(4),
+                                Return(5)
+                            ])
+                    ])
+            },
+            {
+                "equals",
+                "var a = 1 == 2",
+                Module(
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [Local("a", ConcreteTypeReference("bool"))],
+                            instructions: [
+                                new LoadIntConstant(Addr(0), 1),
+                                new LoadIntConstant(Addr(1), 2),
+                                new CompareIntEqual(Addr(2)),
+                                new StoreLocal(Addr(3), 0),
+                                LoadUnit(4),
+                                Return(5)
+                            ])
+                    ])
+            },
         };
     }
 }

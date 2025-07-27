@@ -171,3 +171,27 @@ public record LoadBoolConstant(InstructionAddress Address, bool Value) : IInstru
 /// </summary>
 /// <param name="Address"></param>
 public record LoadUnitConstant(InstructionAddress Address) : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the sum back on the evaluation stack
+/// </summary>
+/// <param name="Address"></param>
+public record IntPlus(InstructionAddress Address) : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts back the difference on the evaluation stack
+/// </summary>
+/// <param name="Address"></param>
+public record IntMinus(InstructionAddress Address) : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts back the product on the evaluation stack
+/// </summary>
+/// <param name="Address"></param>
+public record IntMultiply(InstructionAddress Address) : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and divides the first by the second, putting the result on the stack
+/// </summary>
+/// <param name="Address"></param>
+public record IntDivide(InstructionAddress Address) : IInstruction;

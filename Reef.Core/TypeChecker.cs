@@ -1423,16 +1423,15 @@ public class TypeChecker
             }
             case BinaryOperatorType.EqualityCheck:
             {
-                var leftType = @operator.Left is null
-                    ? UnknownType.Instance
-                    : TypeCheckExpression(@operator.Left);
-                var rightType = @operator.Right is null
-                    ? UnknownType.Instance
-                    : TypeCheckExpression(@operator.Right);
-                
                 // todo: use interface. left and right implements IEquals<T>
-                
-                ExpectType(rightType, leftType, new SourceRange(@operator.OperatorToken.SourceSpan, @operator.OperatorToken.SourceSpan));
+                if (@operator.Left is not null)
+                {
+                    ExpectType(TypeCheckExpression(@operator.Left), InstantiatedClass.Int, @operator.Left.SourceRange);
+                }
+                if (@operator.Right is not null)
+                {
+                    ExpectType(TypeCheckExpression(@operator.Right), InstantiatedClass.Int, @operator.Right.SourceRange);
+                }
 
                 return InstantiatedClass.Boolean;
             }

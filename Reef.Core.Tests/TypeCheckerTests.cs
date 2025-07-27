@@ -2795,7 +2795,7 @@ public class TypeCheckerTests
                 "incorrect type for equality check",
                 // EqualityCheck,
                 "var a = true == 1;",
-                [MismatchedTypes(Boolean, Int)]
+                [MismatchedTypes(Int, Boolean)]
             },
             {
                 "incorrect type for equality check",

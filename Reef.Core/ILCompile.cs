@@ -448,49 +448,32 @@ public class ILCompile
     private void CompileBinaryOperatorExpression(
         BinaryOperatorExpression binaryOperatorExpression)
     {
-        switch (binaryOperatorExpression.BinaryOperator.OperatorType)
+
+        if (binaryOperatorExpression.BinaryOperator.OperatorType == BinaryOperatorType.ValueAssignment)
         {
-            case BinaryOperatorType.LessThan:
-            {
-                CompileExpression(
-                    binaryOperatorExpression.BinaryOperator.Left ??
-                                  throw new InvalidOperationException("Expected valid left expression"));
-
-                CompileExpression(
-                    binaryOperatorExpression.BinaryOperator.Right ??
-                                  throw new InvalidOperationException("Expected valid right expression"));
-                
-                Instructions.Add(new CompareIntLessThan(NextAddress()));
-                break;
-            }
-            case BinaryOperatorType.GreaterThan:
-            {
-                CompileExpression(
-                    binaryOperatorExpression.BinaryOperator.Left ??
-                                  throw new InvalidOperationException("Expected valid left expression"));
-
-                CompileExpression(
-                    binaryOperatorExpression.BinaryOperator.Right ??
-                                  throw new InvalidOperationException("Expected valid right expression"));
-
-                Instructions.Add(new CompareIntGreaterThan(NextAddress()));
-                break;
-            }
-            case BinaryOperatorType.Plus:
-                break;
-            case BinaryOperatorType.Minus:
-                break;
-            case BinaryOperatorType.Multiply:
-                break;
-            case BinaryOperatorType.Divide:
-                break;
-            case BinaryOperatorType.EqualityCheck:
-                break;
-            case BinaryOperatorType.ValueAssignment:
-                break;
-            default:
-                throw new ArgumentOutOfRangeException();
+            return;
         }
+        
+        CompileExpression(
+            binaryOperatorExpression.BinaryOperator.Left ??
+            throw new InvalidOperationException("Expected valid left expression"));
+
+        CompileExpression(
+            binaryOperatorExpression.BinaryOperator.Right ??
+            throw new InvalidOperationException("Expected valid right expression"));
+
+        IInstruction instruction = binaryOperatorExpression.BinaryOperator.OperatorType switch
+        {
+            BinaryOperatorType.LessThan => new CompareIntLessThan(NextAddress()),
+            BinaryOperatorType.GreaterThan => new CompareIntGreaterThan(NextAddress()),
+            BinaryOperatorType.Plus => new IntPlus(NextAddress()),
+            BinaryOperatorType.Minus => new IntMinus(NextAddress()),
+            BinaryOperatorType.Multiply => new IntMultiply(NextAddress()),
+            BinaryOperatorType.Divide => new IntDivide(NextAddress()),
+            BinaryOperatorType.EqualityCheck => new CompareIntEqual(NextAddress()),
+            _ => throw new ArgumentOutOfRangeException()
+        };
+        Instructions.Add(instruction);
     }
     
     private void CompileBlockExpression(
