@@ -38,13 +38,13 @@ public static class TestHelpers
         };
     }
 
-    public static ConcreteReefTypeReference ConcreteTypeReference(string name)
+    public static ConcreteReefTypeReference ConcreteTypeReference(string name, IReadOnlyList<IReefTypeReference>? typeArguments = null)
     {
         return new ConcreteReefTypeReference
         {
             Name = name,
             DefinitionId = Guid.Empty,
-            TypeArguments = []
+            TypeArguments = typeArguments ?? []
         };
     }
 

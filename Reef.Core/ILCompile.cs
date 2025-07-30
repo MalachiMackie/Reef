@@ -462,13 +462,13 @@ public class ILCompile
             {
                 Name = instantiatedClass.Signature.Name,
                 DefinitionId = instantiatedClass.Signature.Id,
-                TypeArguments = instantiatedClass.TypeArguments.Select(GetTypeReference).ToArray()
+                TypeArguments = [..instantiatedClass.TypeArguments.Select(GetTypeReference)]
             },
             TypeChecker.InstantiatedUnion instantiatedUnion => new ConcreteReefTypeReference
             {
                 Name = instantiatedUnion.Signature.Name,
                 DefinitionId = instantiatedUnion.Signature.Id,
-                TypeArguments = instantiatedUnion.TypeArguments.Select(GetTypeReference).ToArray()
+                TypeArguments = [..instantiatedUnion.TypeArguments.Select(GetTypeReference)]
             },
             _ => throw new InvalidOperationException("Unexpected type reference")
         };
@@ -906,9 +906,30 @@ public class ILCompile
         }
     }
     
-    private static void CompileTupleExpression(
+    private void CompileTupleExpression(
         TupleExpression tupleExpression)
     {
+        if (tupleExpression.Values.Count == 1)
+        {
+            CompileExpression(tupleExpression.Values[0]);
+            return;
+        }
+
+        var typeReference = GetTypeReference(tupleExpression.ResolvedType
+                         ?? throw new InvalidOperationException("Expected type"));
+
+        if (typeReference is not ConcreteReefTypeReference concreteTypeReference)
+        {
+            throw new InvalidOperationException("Expected type to be concrete");
+        }
+        
+        Instructions.Add(new CreateObject(NextAddress(), concreteTypeReference));
+        foreach (var (index, member) in tupleExpression.Values.Index())
+        {
+            Instructions.Add(new CopyStack(NextAddress()));
+            CompileExpression(member);
+            Instructions.Add(new StoreField(NextAddress(), 0, (uint)index));
+        }
     }
     
     private static void CompileUnaryOperatorExpression(

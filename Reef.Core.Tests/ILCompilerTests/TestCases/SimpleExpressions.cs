@@ -396,6 +396,54 @@ public static class SimpleExpressions
                             ])
                     ])
             },
+            {
+                "single element tuple",
+                "var a = (1);",
+                Module(
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a",  ConcreteTypeReference("int")),
+                            ],
+                            instructions: [
+                                new LoadIntConstant(Addr(0), 1),
+                                new StoreLocal(Addr(1), 0),
+                                LoadUnit(2),
+                                Return(3)
+                            ])
+                    ])
+            },
+            {
+                "tuple with multiple elements",
+                "var a = (1, true)",
+                Module(
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference("Tuple`2", typeArguments: [
+                                    ConcreteTypeReference("int"),
+                                    ConcreteTypeReference("bool")
+                                ]))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("Tuple`2", typeArguments: [
+                                    ConcreteTypeReference("int"),
+                                    ConcreteTypeReference("bool")
+                                ])),
+                                new CopyStack(Addr(1)),
+                                new LoadIntConstant(Addr(2), 1),
+                                new StoreField(Addr(3), 0, 0),
+                                new CopyStack(Addr(4)),
+                                new LoadBoolConstant(Addr(5), true),
+                                new StoreField(Addr(6), 0, 1),
+                                new StoreLocal(Addr(7), 0),
+                                LoadUnit(8),
+                                Return(9)
+                            ])
+                    ])
+            }
         };
     }
 }
