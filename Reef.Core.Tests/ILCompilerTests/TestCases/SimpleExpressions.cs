@@ -443,6 +443,25 @@ public static class SimpleExpressions
                                 Return(9)
                             ])
                     ])
+            },
+            {
+                "bool not",
+                "var a = !true;",
+                Module(
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference("bool"))
+                            ],
+                            instructions: [
+                                new LoadBoolConstant(Addr(0), true),
+                                new BoolNot(Addr(1)),
+                                new StoreLocal(Addr(2), 0),
+                                LoadUnit(3),
+                                Return(4)
+                            ])
+                    ])
             }
         };
     }

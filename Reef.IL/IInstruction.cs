@@ -195,3 +195,9 @@ public record IntMultiply(InstructionAddress Address) : IInstruction;
 /// </summary>
 /// <param name="Address"></param>
 public record IntDivide(InstructionAddress Address) : IInstruction;
+
+/// <summary>
+/// Pulls the top boolean off the stack and inverts it, putting the result back on the stack
+/// </summary>
+/// <param name="Address"></param>
+public record BoolNot(InstructionAddress Address) : IInstruction;

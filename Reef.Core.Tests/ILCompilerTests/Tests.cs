@@ -25,6 +25,9 @@ public class Tests
     
     public static TheoryData<string, string, ReefModule> MethodTestCases() =>
         MethodTests.TestCases();
+    
+    public static TheoryData<string, string, ReefModule> ControlFlowTestCases() =>
+        ControlFlow.TestCases();
 
     [Theory]
     [MemberData(nameof(ModuleStructureTestCases))]
@@ -33,6 +36,7 @@ public class Tests
     [MemberData(nameof(ClassTestCases))]
     [MemberData(nameof(UnionTestCases))]
     [MemberData(nameof(MethodTestCases))]
+    [MemberData(nameof(ControlFlowTestCases))]
     public void CompileToIL_Should_GenerateCorrectIL(string description, string source, ReefModule expectedModule)
     {
         var tokens = Tokenizer.Tokenize(source);
@@ -52,58 +56,56 @@ public class Tests
     public void SingleTest()
     {
         const string source = """
-                var mut a = 1;
-                fn InnerFn() {
-                    var b = a;
-                    a = 2;
-                }
-                """;
+                              static fn SomeFn(): result::<int, string> {
+                                  var a = ok(1)?;
+                                  return ok(1);
+                              }
+                              """;
         var expected = Module(
-            types:
-            [
-                Class("!Main_Locals",
-                    fields:
-                    [
-                        Field("Field_0", ConcreteTypeReference("int"), isPublic: true)
-                    ])
-            ],
             methods:
             [
-                Method("InnerFn",
-                    locals:
-                    [
-                        Local("b", ConcreteTypeReference("int"))
-                    ],
-                    parameters:
-                    [
-                        Parameter("ClosureParameter_0", ConcreteTypeReference("!Main_Locals"))
-                    ],
-                    instructions:
-                    [
-                        new LoadArgument(Addr(0), 0),
-                        new LoadField(Addr(1), 0, 0),
-                        new StoreLocal(Addr(2), 0),
-                        new LoadIntConstant(Addr(3), 2),
-                        new LoadArgument(Addr(4), 0),
-                        new StoreField(Addr(5), 0, 0),
-                        LoadUnit(6),
-                        Return(7)
-                    ]),
-                Method("!Main",
+                Method("SomeFn",
+                    returnType: ConcreteTypeReference(
+                        "result",
+                        typeArguments:
+                        [
+                            ConcreteTypeReference("int"),
+                            ConcreteTypeReference("string")
+                        ]),
                     isStatic: true,
                     locals:
                     [
-                        Local("locals", ConcreteTypeReference("!Main_Locals")),
+                        Local("a", ConcreteTypeReference("int"))
                     ],
                     instructions:
                     [
-                        new CreateObject(Addr(0), ConcreteTypeReference("!Main_Locals")),
-                        new StoreLocal(Addr(1), 0),
-                        new LoadIntConstant(Addr(2), 1),
-                        new LoadLocal(Addr(3), 0),
-                        new StoreField(Addr(4), 0, 0),
-                        LoadUnit(5),
-                        Return(6)
+                        new LoadIntConstant(Addr(0), 1),
+                        new LoadTypeFunction(Addr(1), ConcreteTypeReference(
+                            "result",
+                            typeArguments:
+                            [
+                                ConcreteTypeReference("int"),
+                                ConcreteTypeReference("string")
+                            ]), 0),
+                        new Call(Addr(2)),
+                        new CopyStack(Addr(3)),
+                        new LoadField(Addr(4), 0, 0),
+                        new LoadIntConstant(Addr(5), 1),
+                        new CompareIntEqual(Addr(6)),
+                        new BranchIfFalse(Addr(7), Addr(9)),
+                        new Return(Addr(8)),
+                        new LoadField(Addr(9), 0, 1),
+                        new StoreLocal(Addr(10), 0),
+                        new LoadIntConstant(Addr(11), 1),
+                        new LoadTypeFunction(Addr(12), ConcreteTypeReference(
+                            "result",
+                            typeArguments:
+                            [
+                                ConcreteTypeReference("int"),
+                                ConcreteTypeReference("string")
+                            ]), 0),
+                        new Call(Addr(13)),
+                        Return(14)
                     ])
             ]);
 

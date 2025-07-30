@@ -932,9 +932,42 @@ public class ILCompile
         }
     }
     
-    private static void CompileUnaryOperatorExpression(
+    private void CompileUnaryOperatorExpression(
         UnaryOperatorExpression unaryOperatorExpression)
     {
+        var operand = unaryOperatorExpression.UnaryOperator.Operand
+                                   ?? throw new InvalidOperationException("Expected value");
+        switch (unaryOperatorExpression.UnaryOperator.OperatorType)
+        {
+            case UnaryOperatorType.FallOut:
+                CompileFallout(operand);
+                break;
+            case UnaryOperatorType.Not:
+            {
+                CompileExpression(operand);
+                Instructions.Add(new BoolNot(NextAddress()));
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+    }
+
+    private void CompileFallout(IExpression expression)
+    {
+        CompileExpression(expression);
+        Instructions.Add(new CopyStack(NextAddress()));
+        // load variant identifier
+        Instructions.Add(new LoadField(NextAddress(), 0, 0));
+        Instructions.Add(new LoadIntConstant(NextAddress(), 1));
+        Instructions.Add(new CompareIntEqual(NextAddress()));
+        var branchAddress = NextAddress();
+        var returnAddress = new InstructionAddress(Index: branchAddress.Index + 1);
+        var afterAddress = new InstructionAddress(returnAddress.Index + 1);
+        Instructions.Add(new BranchIfFalse(branchAddress, afterAddress));
+        Instructions.Add(new Return(returnAddress));
+        // extract out the value of the successful variant
+        Instructions.Add(new LoadField(afterAddress, 0, 1));
     }
     
     private void CompileUnionClassVariantInitializerExpression(
@@ -1017,6 +1050,10 @@ public class ILCompile
     {
         if (instantiatedFunction.OwnerType is not null)
         {
+            Instructions.Add(new LoadTypeFunction(
+                NextAddress(),
+                GetTypeReference(instantiatedFunction.OwnerType) as ConcreteReefTypeReference ?? throw new InvalidOperationException("Expected concrete type reference"),
+                instantiatedFunction.FunctionIndex ?? throw new InvalidOperationException("Expected function index")));
             return;
         }
 

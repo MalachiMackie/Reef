@@ -467,7 +467,14 @@ public class TypeChecker
 
     private void TypeCheckFunctionBody(FunctionSignature fnSignature)
     {
-        var functionType = InstantiateFunction(fnSignature, [..GenericPlaceholders]);
+        ITypeReference? ownerType = CurrentTypeSignature switch
+        {
+            null => null,
+            ClassSignature classSignature => InstantiateClass(classSignature, [], SourceRange.Default),
+            UnionSignature unionSignature => InstantiateUnion(unionSignature, [], SourceRange.Default),
+            _ => throw new ArgumentOutOfRangeException(nameof(CurrentTypeSignature))
+        };
+        var functionType = InstantiateFunction(fnSignature, ownerType, GenericPlaceholders);
 
         using var _ = PushScope(null, fnSignature, fnSignature.ReturnType, genericPlaceholders: functionType.TypeArguments);
         foreach (var parameter in fnSignature.Parameters.Values)
@@ -573,8 +580,16 @@ public class TypeChecker
                 OwnerType = fnSignature
             });
         }
+        
+        ITypeReference? ownerType = CurrentTypeSignature switch
+        {
+            null => null,
+            ClassSignature classSignature => InstantiateClass(classSignature, [], SourceRange.Default),
+            UnionSignature unionSignature => InstantiateUnion(unionSignature, [], SourceRange.Default),
+            _ => throw new ArgumentOutOfRangeException(nameof(CurrentTypeSignature))
+        };
 
-        var functionType = InstantiateFunction(fnSignature, [..GenericPlaceholders]);
+        var functionType = InstantiateFunction(fnSignature, ownerType, GenericPlaceholders);
         using var _ = PushScope(genericPlaceholders: functionType.TypeArguments, currentFunctionSignature: fnSignature);
 
         fnSignature.ReturnType = fn.ReturnType is null
@@ -1853,6 +1868,9 @@ public class TypeChecker
         InstantiatedUnion instantiatedUnion)
     {
         var parameters = new OrderedDictionary<string, FunctionParameter>();
+        var tupleVariantIndex = instantiatedUnion.Variants.OfType<TupleUnionVariant>()
+            .Index()
+            .First(x => x.Item.Name == tupleVariant.Name).Index;
         
         var signature = new FunctionSignature(
             Token.Identifier(tupleVariant.Name, SourceSpan.Default),
@@ -1862,7 +1880,7 @@ public class TypeChecker
             isMutable: false,
             [],
             [],
-            functionIndex: null)
+            functionIndex: (uint)instantiatedUnion.Signature.Functions.Count + (uint)tupleVariantIndex)
         {
             ReturnType = instantiatedUnion,
             OwnerType = instantiatedUnion.Signature
@@ -1877,7 +1895,7 @@ public class TypeChecker
             parameters.Add(name, new FunctionParameter(signature, nameToken, member, Mutable: false, (uint)i));
         }
 
-        return InstantiateFunction(signature, instantiatedUnion.TypeArguments);
+        return InstantiateFunction(signature, instantiatedUnion, instantiatedUnion.TypeArguments);
     }
 
     private ITypeReference TypeCheckVariableAccess(
@@ -1887,7 +1905,7 @@ public class TypeChecker
     {
         if (ScopedFunctions.TryGetValue(variableName.StringValue, out var function))
         {
-            return InstantiateFunction(function, [..GenericPlaceholders]);
+            return InstantiateFunction(function, null, GenericPlaceholders);
         }
         
         if (!TryGetScopedVariable(variableName, out var valueVariable))
@@ -2453,13 +2471,16 @@ public class TypeChecker
     public class InstantiatedFunction : ITypeReference
     {
         public InstantiatedFunction(
+            ITypeReference? ownerType,
             FunctionSignature signature,
             IReadOnlyList<GenericTypeReference> typeArguments,
-            IReadOnlyList<GenericTypeReference> ownerTypeParameters)
+            IReadOnlyCollection<GenericTypeReference> inScopeTypeParameters)
         {
+            OwnerType = ownerType;
             Signature = signature;
             TypeArguments = typeArguments;
             Parameters = new OrderedDictionary<string, FunctionParameter>();
+
             for (var i = 0; i < signature.Parameters.Count; i++)
             {
                 var parameter = signature.Parameters.GetAt(i);
@@ -2470,7 +2491,7 @@ public class TypeChecker
                         GenericTypeReference genericTypeReference => typeArguments.FirstOrDefault(y =>
                                                                          y.GenericName == genericTypeReference
                                                                              .GenericName)
-                                                                     ?? ownerTypeParameters.First(y =>
+                                                                     ?? inScopeTypeParameters.First(y =>
                                                                          y.GenericName == genericTypeReference
                                                                              .GenericName),
                         _ => parameter.Value.Type
@@ -2481,7 +2502,7 @@ public class TypeChecker
             {
                 GenericTypeReference genericTypeReference => typeArguments.FirstOrDefault(y =>
                                                                  y.GenericName == genericTypeReference.GenericName)
-                                                             ?? ownerTypeParameters.First(y =>
+                                                             ?? inScopeTypeParameters.First(y =>
                                                                  y.GenericName == genericTypeReference.GenericName),
                 _ => signature.ReturnType
             };
@@ -2492,7 +2513,7 @@ public class TypeChecker
         public bool IsStatic => Signature.IsStatic;
         public bool IsMutable => Signature.IsMutable;
         public IReadOnlyList<IVariable> AccessedOuterVariables => Signature.AccessedOuterVariables;
-        public ITypeSignature? OwnerType => Signature.OwnerType;
+        public ITypeReference? OwnerType { get; }
         public IReadOnlyList<GenericTypeReference> TypeArguments { get; }
         public ITypeReference ReturnType { get; }
         public Guid FunctionId => Signature.Id;
@@ -2644,9 +2665,9 @@ public class TypeChecker
     }
 
     private static InstantiatedFunction InstantiateFunction(FunctionSignature signature,
-        IReadOnlyList<GenericTypeReference>? ownerTypeArguments)
+        ITypeReference? ownerType,
+        IReadOnlyCollection<GenericTypeReference> inScopeTypeParameters)
     {
-        ownerTypeArguments ??= [];
         GenericTypeReference[] typeArguments =
         [
             ..signature.TypeParameters.Select(x => new GenericTypeReference
@@ -2656,7 +2677,7 @@ public class TypeChecker
             })
         ];
         
-        return new InstantiatedFunction(signature, typeArguments, ownerTypeArguments);
+        return new InstantiatedFunction(ownerType, signature, typeArguments, inScopeTypeParameters);
     }
 
     private InstantiatedUnion InstantiateUnion(UnionSignature signature, IReadOnlyList<(ITypeReference, SourceRange)> typeArguments, SourceRange sourceRange)
@@ -2706,7 +2727,9 @@ public class TypeChecker
         };
     }
     
-    private static bool TryInstantiateClassFunction(InstantiatedClass @class, string functionName,
+    private static bool TryInstantiateClassFunction(
+        InstantiatedClass @class,
+        string functionName,
         [NotNullWhen(true)] out InstantiatedFunction? function)
     {
         var signature = @class.Signature.Functions.FirstOrDefault(x => x.Name == functionName);
@@ -2717,7 +2740,7 @@ public class TypeChecker
             return false;
         }
 
-        function = InstantiateFunction(signature, @class.TypeArguments);
+        function = InstantiateFunction(signature, @class, @class.TypeArguments);
         return true;
     }
 
