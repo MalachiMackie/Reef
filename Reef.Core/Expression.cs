@@ -293,6 +293,8 @@ public record UnionClassVariantInitializer(
     {
         return $"{UnionType}::{VariantIdentifier} {{\r\n\t{string.Join("\r\n\t,", FieldInitializers)}\r\n}}";
     }
+    
+    public uint? VariantIndex { get; set; }
 }
 
 public record ObjectInitializerExpression(ObjectInitializer ObjectInitializer, SourceRange SourceRange) : IExpression

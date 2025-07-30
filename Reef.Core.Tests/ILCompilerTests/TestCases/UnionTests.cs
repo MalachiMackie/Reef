@@ -175,6 +175,58 @@ public static class UnionTests
                                 Return(6)
                             ])
                     ])
+            },
+            {
+                "union class initializer",
+                """
+                union MyUnion {
+                    A,
+                    B { field Field1: int, field Field2: string }
+                }
+                var a = new MyUnion::B {
+                    Field1 = 1,
+                    Field2 = ""
+                };
+                """,
+                Module(
+                    types: [
+                        Union("MyUnion",
+                            [
+                                Variant("A",
+                                    fields: [
+                                        Field("_variantIdentifier", ConcreteTypeReference("int"), isPublic: true),
+                                    ]),
+                                Variant(
+                                    "B",
+                                    fields: [
+                                        Field("_variantIdentifier", ConcreteTypeReference("int"), isPublic: true),
+                                        Field("Field1", isPublic: true, type: ConcreteTypeReference("int")),
+                                        Field("Field2", isPublic: true, type: ConcreteTypeReference("string"))
+                                    ])
+                            ])
+                    ],
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference("MyUnion"))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("MyUnion")),
+                                new CopyStack(Addr(1)),
+                                new LoadIntConstant(Addr(2), 1),
+                                new StoreField(Addr(3), 1, 0),
+                                new CopyStack(Addr(4)),
+                                new LoadIntConstant(Addr(5), 1),
+                                new StoreField(Addr(6), 1, 1),
+                                new CopyStack(Addr(7)),
+                                new LoadStringConstant(Addr(8), ""),
+                                new StoreField(Addr(9), 1, 2),
+                                new StoreLocal(Addr(10), 0),
+                                LoadUnit(11),
+                                Return(12)
+                            ])
+                    ])
             }
         };
     }

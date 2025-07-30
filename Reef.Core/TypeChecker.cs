@@ -1036,8 +1036,8 @@ public class TypeChecker
             throw new InvalidOperationException($"{type} is not a union");
         }
 
-        var variant =
-            instantiatedUnion.Variants.FirstOrDefault(x => x.Name == initializer.VariantIdentifier.StringValue);
+        var (variantIndex, variant) =
+            instantiatedUnion.Variants.Index().FirstOrDefault(x => x.Item.Name == initializer.VariantIdentifier.StringValue);
 
         if (variant is null)
         {
@@ -1050,6 +1050,8 @@ public class TypeChecker
             _errors.Add(TypeCheckerError.UnionClassVariantInitializerNotClassVariant(initializer.VariantIdentifier));
             return instantiatedUnion;
         }
+
+        initializer.VariantIndex = (uint)variantIndex;
 
         if (initializer.FieldInitializers.GroupBy(x => x.FieldName.StringValue)
             .Any(x => x.Count() > 1))
@@ -1079,6 +1081,8 @@ public class TypeChecker
             }
 
             ExpectExpressionType(field.Type, fieldInitializer.Value);
+            
+            fieldInitializer.TypeField = field;
         }
 
         return type;

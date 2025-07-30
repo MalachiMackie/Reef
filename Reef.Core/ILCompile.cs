@@ -916,9 +916,29 @@ public class ILCompile
     {
     }
     
-    private static void CompileUnionClassVariantInitializerExpression(
+    private void CompileUnionClassVariantInitializerExpression(
         UnionClassVariantInitializerExpression unionClassVariantInitializerExpression)
     {
+        var unionType = GetTypeReference(unionClassVariantInitializerExpression.ResolvedType
+            ?? throw new InvalidOperationException("Expected type to be set"));
+        if (unionType is not ConcreteReefTypeReference concreteTypeReference)
+        {
+            throw new InvalidOperationException("Expected union type to be concrete type reference");
+        }
+        Instructions.Add(new CreateObject(NextAddress(), concreteTypeReference));
+        Instructions.Add(new CopyStack(NextAddress()));
+        var variantIndex = unionClassVariantInitializerExpression.UnionInitializer.VariantIndex
+                            ?? throw new InvalidOperationException("Expected variant index");
+        Instructions.Add(new LoadIntConstant(NextAddress(), (int)variantIndex));
+        Instructions.Add(new StoreField(NextAddress(), variantIndex, 0));
+        foreach (var fieldInitializer in unionClassVariantInitializerExpression.UnionInitializer.FieldInitializers)
+        {
+            Instructions.Add(new CopyStack(NextAddress()));
+            CompileExpression(fieldInitializer.Value ?? throw new InvalidOperationException("Expected Value to be set"));
+            var fieldIndex = fieldInitializer.TypeField?.FieldIndex
+                ?? throw new InvalidOperationException("Expected FieldIndex to be set");
+            Instructions.Add(new StoreField(NextAddress(), variantIndex, fieldIndex + 1));
+        }
     }
 
     private void CompileValueAccessorExpression(
