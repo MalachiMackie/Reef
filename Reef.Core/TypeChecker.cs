@@ -52,7 +52,7 @@ public class TypeChecker
         }
         
         if (CurrentFunctionSignature is not null
-            && (variable is not FunctionParameterVariable {ContainingFunction: var parameterOwner}
+            && (variable is not FunctionParameter {ContainingFunction: var parameterOwner}
                 || parameterOwner != CurrentFunctionSignature)
             && (variable is not FieldVariable {ContainingSignature: var fieldOwner}
                 || fieldOwner != CurrentTypeSignature)
@@ -67,6 +67,7 @@ public class TypeChecker
             else
             {
                 CurrentFunctionSignature.AccessedOuterVariables.Add(variable);
+                variable.ReferencedInClosure = true;
             }
         }
         return true;
@@ -77,7 +78,6 @@ public class TypeChecker
         if (variable is LocalVariable localVariable)
         {
             var localVariables = CurrentFunctionSignature?.LocalVariables ?? _program.TopLevelLocalVariables;
-            localVariable.LocalIndex = (uint)localVariables.Count;
             localVariables.Add(localVariable);
         }
 
@@ -89,7 +89,6 @@ public class TypeChecker
         if (variable is LocalVariable localVariable)
         {
             var localVariables = CurrentFunctionSignature?.LocalVariables ?? _program.TopLevelLocalVariables;
-            localVariable.LocalIndex = (uint)localVariables.Count;
             localVariables.Add(localVariable);
         }
         
@@ -135,7 +134,7 @@ public class TypeChecker
 
         var (classes, unions) = SetupSignatures();
 
-        foreach (var (union, unionSignature) in unions)
+        foreach (var unionSignature in unions)
         {
             using var _ = PushScope(unionSignature, genericPlaceholders: unionSignature.TypeParameters);
             
@@ -245,7 +244,7 @@ public class TypeChecker
         }
     }
 
-    private (List<(ProgramClass, ClassSignature)>, List<(ProgramUnion, UnionSignature)>) SetupSignatures()
+    private (List<(ProgramClass, ClassSignature)>, List<UnionSignature>) SetupSignatures()
     {
         var classes =
             new List<(ProgramClass, ClassSignature, List<FunctionSignature>, List<TypeField> fields)>();
@@ -461,7 +460,7 @@ public class TypeChecker
 
         return (
             classes.Select(x => (x.Item1, x.Item2)).ToList(),
-            unions.Select(x => (x.Item1, x.Item2)).ToList()
+            unions.Select(x => x.Item2).ToList()
         );
     }
 
@@ -471,16 +470,11 @@ public class TypeChecker
         var functionType = InstantiateFunction(fnSignature, [..GenericPlaceholders]);
 
         using var _ = PushScope(null, fnSignature, fnSignature.ReturnType, genericPlaceholders: functionType.TypeArguments);
-        foreach (var (index, parameter) in fnSignature.Parameters.Values.Index())
+        foreach (var parameter in fnSignature.Parameters.Values)
         {
             AddScopedVariable(
                 parameter.Name.StringValue,
-                new FunctionParameterVariable(
-                    fnSignature,
-                    parameter.Name,
-                    parameter.Type,
-                    parameter.Mutable,
-                    (uint)index));
+                parameter);
         }
         
         foreach (var fn in fnSignature.LocalFunctions)
@@ -513,7 +507,7 @@ public class TypeChecker
                     && accessedOuterVariable switch
                     {
                         FieldVariable => throw new InvalidOperationException("Field variable is not captured in a scope"),
-                        FunctionParameterVariable functionParameterVariable => functionParameterVariable.ContainingFunction != fnSignature,
+                        FunctionParameter functionParameterVariable => functionParameterVariable.ContainingFunction != fnSignature,
                         LocalVariable localVariable => localVariable.ContainingFunction != fnSignature,
                         _ => throw new ArgumentOutOfRangeException(nameof(accessedOuterVariable))
                     }));
@@ -587,12 +581,12 @@ public class TypeChecker
             ? InstantiatedClass.Unit
             : GetTypeReference(fn.ReturnType);
 
-        foreach (var parameter in fn.Parameters)
+        foreach (var (index, parameter) in fn.Parameters.Index())
         {
             var paramName = parameter.Identifier;
             var type = parameter.Type is null ? UnknownType.Instance : GetTypeReference(parameter.Type);
             
-            if (!parameters.TryAdd(paramName.StringValue, new FunctionParameter(paramName, type, parameter.MutabilityModifier is not null)))
+            if (!parameters.TryAdd(paramName.StringValue, new FunctionParameter(fnSignature, paramName, type, parameter.MutabilityModifier is not null, (uint)index)))
             {
                 _errors.Add(TypeCheckerError.DuplicateFunctionParameter(parameter.Identifier, fn.Name));
             }
@@ -1494,7 +1488,7 @@ public class TypeChecker
                 if (variable is LocalVariable { Instantiated: false }
                     or LocalVariable { Mutable: true }
                     or FieldVariable { Mutable: true }
-                    or FunctionParameterVariable { Mutable: true})
+                    or FunctionParameter { Mutable: true})
                 {
                     return true;
                 }
@@ -1748,7 +1742,7 @@ public class TypeChecker
 
         for (var i = 0; i < functionType.Parameters.Count; i++)
         {
-            var (_, expectedParameterType, isParameterMutable) = functionType.Parameters.GetAt(i).Value;
+            var (_, _, expectedParameterType, isParameterMutable, _) = functionType.Parameters.GetAt(i).Value;
 
             var argumentExpression = methodCall.ArgumentList[i];
             argumentExpression.ValueUseful = true;
@@ -1855,15 +1849,7 @@ public class TypeChecker
         InstantiatedUnion instantiatedUnion)
     {
         var parameters = new OrderedDictionary<string, FunctionParameter>();
-        for (var i = 0; i < tupleVariant.TupleMembers.Count; i++)
-        {
-            var name = i.ToString();
-            var member = tupleVariant.TupleMembers[i];
-            // use default source span here because we don't actually have a source span
-            var nameToken = Token.Identifier(name, SourceSpan.Default);
-            parameters.Add(name, new FunctionParameter(nameToken, member, Mutable: false));
-        }
-
+        
         var signature = new FunctionSignature(
             Token.Identifier(tupleVariant.Name, SourceSpan.Default),
             [],
@@ -1877,6 +1863,15 @@ public class TypeChecker
             ReturnType = instantiatedUnion,
             OwnerType = instantiatedUnion.Signature
         };
+        
+        for (var i = 0; i < tupleVariant.TupleMembers.Count; i++)
+        {
+            var name = i.ToString();
+            var member = tupleVariant.TupleMembers[i];
+            // use default source span here because we don't actually have a source span
+            var nameToken = Token.Identifier(name, SourceSpan.Default);
+            parameters.Add(name, new FunctionParameter(signature, nameToken, member, Mutable: false, (uint)i));
+        }
 
         return InstantiateFunction(signature, instantiatedUnion.TypeArguments);
     }
@@ -2306,13 +2301,14 @@ public class TypeChecker
         StringToken Name { get; }
         
         ITypeReference? Type { get; }
+        bool ReferencedInClosure { get; set; }
     }
 
     public record LocalVariable(FunctionSignature? ContainingFunction, StringToken Name, ITypeReference? Type, bool Instantiated, bool Mutable) : IVariable
     {
         public bool Instantiated { get; set; } = Instantiated;
         public ITypeReference? Type { get; set; } = Type;
-        public uint? LocalIndex { get; set; }
+        public bool ReferencedInClosure { get; set; }
     }
 
     public record FieldVariable(
@@ -2321,15 +2317,9 @@ public class TypeChecker
         ITypeReference Type,
         bool Mutable,
         bool IsStaticField,
-        uint FieldIndex) : IVariable;
-
-    public record FunctionParameterVariable(
-        FunctionSignature ContainingFunction,
-        StringToken Name,
-        ITypeReference Type,
-        bool Mutable,
-        uint ParameterIndex) : IVariable
+        uint FieldIndex) : IVariable
     {
+        public bool ReferencedInClosure { get; set; }
     }
 
     public interface ITypeReference
@@ -2505,7 +2495,10 @@ public class TypeChecker
         public OrderedDictionary<string, FunctionParameter> Parameters { get; }
         public string Name => Signature.Name;
         public uint? FunctionIndex => Signature.FunctionIndex;
-        public Guid? ClosureTypeId => Signature.ClosureTypeId;
+        public Guid? LocalsTypeId => Signature.LocalsTypeId;
+
+        public List<(Guid parameterTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureParameters =>
+            Signature.ClosureParameters;
     }
 
     public class InstantiatedClass : ITypeReference
@@ -2766,15 +2759,18 @@ public class TypeChecker
     {
         public Guid Id { get; } = Guid.NewGuid();
         public uint? FunctionIndex { get; } = functionIndex;
-        public Guid? ClosureTypeId { get; set; }
+        public Guid? LocalsTypeId { get; set; }
+        public List<(Guid parameterTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureParameters { get; set; } = [];
+        public IReadOnlyList<IVariable> LocalsTypeFields { get; set; } = [];
         public bool IsStatic { get; } = isStatic;
+        public bool IsGlobal => OwnerType is null;
         public bool IsMutable { get; } = isMutable;
         public IReadOnlyList<GenericTypeReference> TypeParameters { get; } = typeParameters;
         public OrderedDictionary<string, FunctionParameter> Parameters { get; } = parameters;
 
         // mutable due to setting up signatures and generic stuff
         public required ITypeReference ReturnType { get; set; }
-        public required ITypeSignature? OwnerType { get; set; }
+        public required ITypeSignature? OwnerType { get; init; }
         public StringToken NameToken { get; } = nameToken;
         public string Name { get; } = nameToken.StringValue;
         public IReadOnlyList<IExpression> Expressions { get; } = expressions;
@@ -2783,7 +2779,15 @@ public class TypeChecker
         public List<IVariable> AccessedOuterVariables { get; } = [];
     }
 
-    public record FunctionParameter(StringToken Name, ITypeReference Type, bool Mutable);
+    public record FunctionParameter(
+        FunctionSignature ContainingFunction,
+        StringToken Name,
+        ITypeReference Type,
+        bool Mutable,
+        uint ParameterIndex) : IVariable
+    {
+        public bool ReferencedInClosure { get; set; }
+    }
 
     public class UnionSignature : ITypeSignature
     {

@@ -52,31 +52,58 @@ public class Tests
     public void SingleTest()
     {
         const string source = """
-                static fn SomeFn() {
-                    { 
-                        fn InnerFn() {
-                        }
-                        
-                        InnerFn();
-                    }
+                var mut a = 1;
+                fn InnerFn() {
+                    var b = a;
+                    a = 2;
                 }
                 """;
         var expected = Module(
+            types:
+            [
+                Class("!Main_Locals",
+                    fields:
+                    [
+                        Field("Field_0", ConcreteTypeReference("int"), isPublic: true)
+                    ])
+            ],
             methods:
             [
-                Method(
-                    "InnerFn",
-                    isStatic: false,
-                    instructions: [LoadUnit(0), Return(1)]),
-                Method("SomeFn",
-                    isStatic: true,
+                Method("InnerFn",
+                    locals:
+                    [
+                        Local("b", ConcreteTypeReference("int"))
+                    ],
+                    parameters:
+                    [
+                        Parameter("ClosureParameter_0", ConcreteTypeReference("!Main_Locals"))
+                    ],
                     instructions:
                     [
-                        new LoadGlobalFunction(Addr(0), FunctionReference("InnerFn")),
-                        new Call(Addr(1)),
-                        Drop(2),
-                        LoadUnit(3),
-                        Return(4)
+                        new LoadArgument(Addr(0), 0),
+                        new LoadField(Addr(1), 0, 0),
+                        new StoreLocal(Addr(2), 0),
+                        new LoadIntConstant(Addr(3), 2),
+                        new LoadArgument(Addr(4), 0),
+                        new StoreField(Addr(5), 0, 0),
+                        LoadUnit(6),
+                        Return(7)
+                    ]),
+                Method("!Main",
+                    isStatic: true,
+                    locals:
+                    [
+                        Local("locals", ConcreteTypeReference("!Main_Locals")),
+                    ],
+                    instructions:
+                    [
+                        new CreateObject(Addr(0), ConcreteTypeReference("!Main_Locals")),
+                        new StoreLocal(Addr(1), 0),
+                        new LoadIntConstant(Addr(2), 1),
+                        new LoadLocal(Addr(3), 0),
+                        new StoreField(Addr(4), 0, 0),
+                        LoadUnit(5),
+                        Return(6)
                     ])
             ]);
 
