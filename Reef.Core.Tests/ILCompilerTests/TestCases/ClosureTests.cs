@@ -791,6 +791,18 @@ public static class ClosureTests
                                 Return(6)
                             ])
                     ])
+            },
+            {
+                "assign closure to variable",
+                """
+                var a = 1;
+                fn Inner() {
+                    var b = a;
+                }
+                var c = Inner;
+                c();
+                """,
+                Module()
             }
         };
     }

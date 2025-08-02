@@ -66,6 +66,23 @@ public class TypeCheckerTests
         return new TheoryData<string>
         {
             """
+            static fn Outer() {
+                var mut a = "";
+                fn InnerFn() {
+                    a = "";
+                }
+                InnerFn();
+            }
+            """,
+            """
+            class MyClass {
+                pub mut fn DoSomething() {}
+            }
+            var mut a = new MyClass{};
+            var b = a.DoSomething;
+            b();
+            """,
+            """
             class MyClass { pub field Ignore: int, pub field InstanceField: string, pub static field StaticField: int = 2 }
             var a = new MyClass {Ignore = 1, InstanceField = ""};
             """,
@@ -1197,6 +1214,14 @@ public class TypeCheckerTests
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
             {
+                "global function marked as mutable",
+                """
+                static mut fn MyFn() {
+                }
+                """,
+                [TypeCheckerError.GlobalFunctionMarkedAsMutable("MyFn", SourceRange.Default)]
+            },
+            {
                 "deeply nested if branch doesn't return",
                 """
                 static fn SomeFn(): int {
@@ -1336,6 +1361,17 @@ public class TypeCheckerTests
                 }
                 var a = new MyClass { SomeField = "" };
                 a.DoSomething();
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "Assigning mut instance reference with non mut variable",
+                """
+                class MyClass {
+                    pub mut fn DoSomething() {}
+                }
+                var a = new MyClass{};
+                var b = a.DoSomething;
                 """,
                 [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
             },

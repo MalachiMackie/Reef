@@ -132,6 +132,29 @@ public static class MethodTests
                                 Return(4)
                             ])
                     ])
+            },
+            {
+                "assign function to variable",
+                """
+                fn SomeFn(param: int) {
+                }
+                var a = SomeFn;
+                a(1);
+                """,
+                Module()
+            },
+            {
+                "assign instance function to variable",
+                """
+                class MyClass {
+                    pub fn MyFn() {
+                    }
+                }
+                var a = new MyClass{};
+                var b = a.MyFn;
+                b();
+                """,
+                Module()
             }
         };
     }
