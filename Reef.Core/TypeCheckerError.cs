@@ -258,6 +258,14 @@ public record TypeCheckerError
             sourceRange,
             "Cannot create mutable function within a non mutable function");
     }
+
+    public static TypeCheckerError GlobalFunctionMarkedAsMutable(StringToken functionName)
+    {
+        return new TypeCheckerError(
+            TypeCheckerErrorType.GlobalFunctionMarkedAsMutable,
+            new SourceRange(functionName.SourceSpan, functionName.SourceSpan),
+            $"Global function {functionName} cannot be mutable");
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -299,5 +307,6 @@ public enum TypeCheckerErrorType
     StaticFunctionMarkedAsMutable,
     CannotCreateMutableFunctionWithinNonMutableFunction,
     AccessingClosureWhichReferencesUninitializedVariables,
-    StaticLocalFunctionAccessesOuterVariable
+    StaticLocalFunctionAccessesOuterVariable,
+    GlobalFunctionMarkedAsMutable
 }

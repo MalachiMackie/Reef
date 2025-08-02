@@ -25,6 +25,9 @@ public static class ClosureTests
                         Class("SomeFn_Locals", fields: [
                             Field("Field_0", ConcreteTypeReference("int"), isPublic: true),
                             Field("Field_1", ConcreteTypeReference("string"), isPublic: true)
+                        ]),
+                        Class("InnerFn_Closure", fields: [
+                            Field("Field_0", ConcreteTypeReference("SomeFn_Locals"), isPublic: true)
                         ])
                     ],
                     methods:
@@ -33,7 +36,7 @@ public static class ClosureTests
                             isStatic: false,
                             parameters:
                             [
-                                Parameter("ClosureParameter_0", ConcreteTypeReference("SomeFn_Locals"))
+                                Parameter("closureParameter", ConcreteTypeReference("InnerFn_Closure"))
                             ],
                             locals:
                             [
@@ -43,11 +46,13 @@ public static class ClosureTests
                             instructions:
                             [
                                 new LoadArgument(Addr(0), 0),
-                                new LoadField(Addr(1), VariantIndex: 0, FieldIndex: 1),
-                                new StoreLocal(Addr(2), 0),
-                                new LoadArgument(Addr(3), 0),
-                                new LoadField(Addr(4), VariantIndex: 0, FieldIndex: 0),
-                                Return(5)
+                                new LoadField(Addr(1), 0, 0),
+                                new LoadField(Addr(2), VariantIndex: 0, FieldIndex: 1),
+                                new StoreLocal(Addr(3), 0),
+                                new LoadArgument(Addr(4), 0),
+                                new LoadField(Addr(5), 0, 0),
+                                new LoadField(Addr(6), VariantIndex: 0, FieldIndex: 0),
+                                Return(7)
                             ]),
                         Method("SomeFn", isStatic: true, parameters:
                         [
@@ -71,6 +76,9 @@ public static class ClosureTests
                         Class("!Main_Locals", fields:
                         [
                             Field("Field_0", ConcreteTypeReference("int"), isPublic: true),
+                        ]),
+                        Class("SomeMethod_Closure", fields: [
+                            Field("Field_0", ConcreteTypeReference("!Main_Locals"), isPublic: true)
                         ])
                     ],
                     methods:
@@ -78,7 +86,7 @@ public static class ClosureTests
                         
                         Method("SomeMethod", parameters:
                             [
-                                Parameter("ClosureParameter_0", ConcreteTypeReference("!Main_Locals")),
+                                Parameter("closureParameter", ConcreteTypeReference("SomeMethod_Closure")),
                                 Parameter("param", ConcreteTypeReference("string"))
                             ], locals:
                             [
@@ -89,10 +97,11 @@ public static class ClosureTests
                                 new LoadArgument(Addr(0), 1),
                                 new StoreLocal(Addr(1), 0),
                                 new LoadArgument(Addr(2), 0),
-                                new LoadField(Addr(3), VariantIndex: 0, FieldIndex: 0),
-                                new StoreLocal(Addr(4), LocalIndex: 1),
-                                LoadUnit(5),
-                                Return(6)
+                                new LoadField(Addr(3), 0, 0),
+                                new LoadField(Addr(4), VariantIndex: 0, FieldIndex: 0),
+                                new StoreLocal(Addr(5), LocalIndex: 1),
+                                LoadUnit(6),
+                                Return(7)
                             ]),
                         Method("!Main",
                             locals: [new ReefMethod.Local() { DisplayName = "locals", Type = ConcreteTypeReference("!Main_Locals") }],
@@ -120,13 +129,16 @@ public static class ClosureTests
                         Class("OuterFn_Locals", fields:
                         [
                             Field("Field_0", ConcreteTypeReference("string"), isPublic: true),
+                        ]),
+                        Class("SomeMethod_Closure", fields: [
+                            Field("Field_0", ConcreteTypeReference("OuterFn_Locals"), isPublic: true)
                         ])
                     ],
                     methods:
                     [
                         Method("SomeMethod", parameters:
                             [
-                                Parameter("ClosureParameter_0", ConcreteTypeReference("OuterFn_Locals")),
+                                Parameter("closureParameter", ConcreteTypeReference("SomeMethod_Closure")),
                             ], locals:
                             [
                                 new ReefMethod.Local { DisplayName = "a", Type = ConcreteTypeReference("string") },
@@ -134,9 +146,10 @@ public static class ClosureTests
                             [
                                 new LoadArgument(Addr(0), 0),
                                 new LoadField(Addr(1), 0, 0),
-                                new StoreLocal(Addr(2), 0),
-                                LoadUnit(3),
-                                Return(4)
+                                new LoadField(Addr(2), 0, 0),
+                                new StoreLocal(Addr(3), 0),
+                                LoadUnit(4),
+                                Return(5)
                             ]),
                         Method("OuterFn",
                             isStatic: true,
@@ -164,6 +177,10 @@ public static class ClosureTests
                             fields:
                             [
                                 Field("Field_0", ConcreteTypeReference("string"), isPublic: true),
+                            ]),
+                        Class("SomeFn_Closure",
+                            fields: [
+                                Field("Field_0", ConcreteTypeReference("!Main_Locals"), isPublic: true)
                             ])
                     ],
                     methods:
@@ -171,7 +188,7 @@ public static class ClosureTests
                         Method("SomeFn",
                             parameters:
                             [
-                                Parameter("ClosureParameter_0", ConcreteTypeReference("!Main_Locals")),
+                                Parameter("closureParameter", ConcreteTypeReference("SomeFn_Closure")),
                             ],
                             locals:
                             [
@@ -181,9 +198,10 @@ public static class ClosureTests
                             [
                                 new LoadArgument(Addr(0), 0),
                                 new LoadField(Addr(1), 0, 0),
-                                new StoreLocal(Addr(2), 0),
-                                LoadUnit(3),
-                                Return(4)
+                                new LoadField(Addr(2), 0, 0),
+                                new StoreLocal(Addr(3), 0),
+                                LoadUnit(4),
+                                Return(5)
                             ]),
                         Method("!Main",
                             isStatic: true,
@@ -198,12 +216,15 @@ public static class ClosureTests
                                 new LoadStringConstant(Addr(2), ""),
                                 new LoadLocal(Addr(3), 0),
                                 new StoreField(Addr(4), 0, 0),
-                                new LoadLocal(Addr(5), 0),
-                                new LoadGlobalFunction(Addr(6), FunctionReference("SomeFn")),
-                                new Call(Addr(7)),
-                                Drop(8),
-                                LoadUnit(9),
-                                Return(10)
+                                new CreateObject(Addr(5), ConcreteTypeReference("SomeFn_Closure")),
+                                new CopyStack(Addr(6)),
+                                new LoadLocal(Addr(7), 0),
+                                new StoreField(Addr(8), 0, 0),
+                                new LoadGlobalFunction(Addr(9), FunctionDefinitionReference("SomeFn")),
+                                new Call(Addr(10)),
+                                Drop(11),
+                                LoadUnit(12),
+                                Return(13)
                             ])
                     ])
             },
@@ -224,6 +245,10 @@ public static class ClosureTests
                             fields:
                             [
                                 Field("Field_0", ConcreteTypeReference("string"), isPublic: true),
+                            ]),
+                        Class("SomeFn_Closure",
+                            fields: [
+                                Field("Field_0", ConcreteTypeReference("Outer_Locals"), isPublic: true)
                             ])
                     ],
                     methods:
@@ -231,7 +256,7 @@ public static class ClosureTests
                         Method("SomeFn",
                             parameters:
                             [
-                                Parameter("ClosureParameter_0", ConcreteTypeReference("Outer_Locals")),
+                                Parameter("closureParameter", ConcreteTypeReference("SomeFn_Closure")),
                             ],
                             locals:
                             [
@@ -241,9 +266,10 @@ public static class ClosureTests
                             [
                                 new LoadArgument(Addr(0), 0),
                                 new LoadField(Addr(1), 0, 0),
-                                new StoreLocal(Addr(2), 0),
-                                LoadUnit(3),
-                                Return(4)
+                                new LoadField(Addr(2), 0, 0),
+                                new StoreLocal(Addr(3), 0),
+                                LoadUnit(4),
+                                Return(5)
                             ]),
                         Method("Outer",
                             isStatic: true,
@@ -261,12 +287,15 @@ public static class ClosureTests
                                 new LoadArgument(Addr(2), 0),
                                 new LoadLocal(Addr(3), 0),
                                 new StoreField(Addr(4), 0, 0),
-                                new LoadLocal(Addr(5), 0),
-                                new LoadGlobalFunction(Addr(6), FunctionReference("SomeFn")),
-                                new Call(Addr(7)),
-                                Drop(8),
-                                LoadUnit(9),
-                                Return(10)
+                                new CreateObject(Addr(5), ConcreteTypeReference("SomeFn_Closure")),
+                                new CopyStack(Addr(6)),
+                                new LoadLocal(Addr(7), 0),
+                                new StoreField(Addr(8), 0, 0),
+                                new LoadGlobalFunction(Addr(9), FunctionDefinitionReference("SomeFn")),
+                                new Call(Addr(10)),
+                                Drop(11),
+                                LoadUnit(12),
+                                Return(13)
                             ])
                     ])
             },
@@ -287,6 +316,10 @@ public static class ClosureTests
                             fields:
                             [
                                 Field("Field_0", ConcreteTypeReference("string"), isPublic: true),
+                            ]),
+                        Class("SomeFn_Closure",
+                            fields: [
+                                Field("Field_0", ConcreteTypeReference("!Main_Locals"), isPublic: true)
                             ])
                     ],
                     methods:
@@ -294,7 +327,7 @@ public static class ClosureTests
                         Method("SomeFn",
                             parameters:
                             [
-                                Parameter("ClosureParameter_0", ConcreteTypeReference("!Main_Locals")),
+                                Parameter("closureParameter", ConcreteTypeReference("SomeFn_Closure")),
                                 Parameter("c", ConcreteTypeReference("int"))
                             ],
                             locals:
@@ -305,9 +338,10 @@ public static class ClosureTests
                             [
                                 new LoadArgument(Addr(0), 0),
                                 new LoadField(Addr(1), 0, 0),
-                                new StoreLocal(Addr(2), 0),
-                                LoadUnit(3),
-                                Return(4)
+                                new LoadField(Addr(2), 0, 0),
+                                new StoreLocal(Addr(3), 0),
+                                LoadUnit(4),
+                                Return(5)
                             ]),
                         Method("!Main",
                             isStatic: true,
@@ -322,13 +356,16 @@ public static class ClosureTests
                                 new LoadStringConstant(Addr(2), ""),
                                 new LoadLocal(Addr(3), 0),
                                 new StoreField(Addr(4), 0, 0),
-                                new LoadLocal(Addr(5), 0),
-                                new LoadIntConstant(Addr(6), 1),
-                                new LoadGlobalFunction(Addr(7), FunctionReference("SomeFn")),
-                                new Call(Addr(8)),
-                                Drop(9),
-                                LoadUnit(10),
-                                Return(11)
+                                new CreateObject(Addr(5), ConcreteTypeReference("SomeFn_Closure")),
+                                new CopyStack(Addr(6)),
+                                new LoadLocal(Addr(7), 0),
+                                new StoreField(Addr(8), 0, 0),
+                                new LoadIntConstant(Addr(9), 1),
+                                new LoadGlobalFunction(Addr(10), FunctionDefinitionReference("SomeFn")),
+                                new Call(Addr(11)),
+                                Drop(12),
+                                LoadUnit(13),
+                                Return(14)
                             ])
                     ])
             },
@@ -351,94 +388,137 @@ public static class ClosureTests
                     Second();
                 }
                 """,
-                Module(
-                    types:
-                    [
-                        Class("Third_Locals",
-                            fields: [
-                                Field("Field_0", ConcreteTypeReference("int"), isPublic: true)
-                            ]),
-                        Class("First_Locals",
-                            fields: [
-                                Field("Field_0", ConcreteTypeReference("string"), isPublic: true)
-                            ])
-                    ],
-                    methods:
-                    [
-                        Method("Fourth",
-                            parameters: [
-                                Parameter("ClosureParameter_0", ConcreteTypeReference("First_Locals")),
-                                Parameter("ClosureParameter_1", ConcreteTypeReference("Third_Locals"))
-                            ],
-                            locals: [
-                                Local("b", ConcreteTypeReference("string")),
-                                Local("d", ConcreteTypeReference("int"))
-                            ],
-                            instructions: [
-                                new LoadArgument(Addr(0), 0),
-                                new LoadField(Addr(1), 0, 0),
-                                new StoreLocal(Addr(2), 0),
-                                new LoadArgument(Addr(3), 1),
-                                new LoadField(Addr(4), 0, 0),
-                                new StoreLocal(Addr(5), 1),
-                                LoadUnit(6),
-                                Return(7)
-                            ]),
-                        Method("Third",
-                            parameters: [
-                                Parameter("ClosureParameter_0", ConcreteTypeReference("First_Locals"))
-                            ],
-                            locals: [
-                                Local("locals", ConcreteTypeReference("Third_Locals"))
-                            ],
-                            instructions: [
-                                new CreateObject(Addr(0), ConcreteTypeReference("Third_Locals")),
-                                new StoreLocal(Addr(1), 0),
-                                new LoadIntConstant(Addr(2), 1),
-                                new LoadLocal(Addr(3), 0),
-                                new StoreField(Addr(4), 0, 0),
-                                new LoadArgument(Addr(5), 0),
-                                new LoadLocal(Addr(6), 0),
-                                new LoadGlobalFunction(Addr(7), FunctionReference("Fourth")),
-                                new Call(Addr(8)),
-                                Drop(9),
-                                LoadUnit(10),
-                                Return(11)
-                            ]),
-                        Method("Second",
-                            parameters: [
-                                Parameter("ClosureParameter_0", ConcreteTypeReference("First_Locals"))
-                            ],
-                            instructions: [
-                                new LoadArgument(Addr(0), 0),
-                                new LoadGlobalFunction(Addr(1), FunctionReference("Third")),
-                                new Call(Addr(2)),
-                                Drop(3),
-                                LoadUnit(4),
-                                Return(5)
-                            ]),
-                        Method("First",
-                            isStatic: true,
-                            parameters: [
-                                Parameter("a", ConcreteTypeReference("string"))
-                            ],
-                            locals: [
-                                Local("locals", ConcreteTypeReference("First_Locals"))
-                            ],
-                            instructions: [
-                                new CreateObject(Addr(0), ConcreteTypeReference("First_Locals")),
-                                new StoreLocal(Addr(1), 0),
-                                new LoadArgument(Addr(2), 0),
-                                new LoadLocal(Addr(3), 0),
-                                new StoreField(Addr(4), 0, 0),
-                                new LoadLocal(Addr(5), 0),
-                                new LoadGlobalFunction(Addr(6), FunctionReference("Second")),
-                                new Call(Addr(7)),
-                                Drop(8),
-                                LoadUnit(9),
-                                Return(10)
-                            ])
-                    ])
+            Module(
+                types:
+                [
+                    Class("Fourth_Closure",
+                        fields:
+                        [
+                            Field("Field_0", ConcreteTypeReference("First_Locals"), isPublic: true),
+                            Field("Field_1", ConcreteTypeReference("Third_Locals"), isPublic: true)
+                        ]),
+                    Class("Third_Locals",
+                        fields:
+                        [
+                            Field("Field_0", ConcreteTypeReference("int"), isPublic: true)
+                        ]),
+                    Class("Third_Closure",
+                        fields:
+                        [
+                            Field("Field_0", ConcreteTypeReference("First_Locals"), isPublic: true)
+                        ]),
+                    Class("Second_Closure",
+                        fields:
+                        [
+                            Field("Field_0", ConcreteTypeReference("First_Locals"), isPublic: true)
+                        ]),
+                    Class("First_Locals",
+                        fields:
+                        [
+                            Field("Field_0", ConcreteTypeReference("string"), isPublic: true)
+                        ]),
+                ],
+                methods:
+                [
+                    Method("Fourth",
+                        parameters:
+                        [
+                            Parameter("closureParameter", ConcreteTypeReference("Fourth_Closure")),
+                        ],
+                        locals:
+                        [
+                            Local("b", ConcreteTypeReference("string")),
+                            Local("d", ConcreteTypeReference("int"))
+                        ],
+                        instructions:
+                        [
+                            new LoadArgument(Addr(0), 0),
+                            new LoadField(Addr(1), 0, 0),
+                            new LoadField(Addr(2), 0, 0),
+                            new StoreLocal(Addr(3), 0),
+                            new LoadArgument(Addr(4), 0),
+                            new LoadField(Addr(5), 0, 1),
+                            new LoadField(Addr(6), 0, 0),
+                            new StoreLocal(Addr(7), 1),
+                            LoadUnit(8),
+                            Return(9)
+                        ]),
+                    Method("Third",
+                        parameters:
+                        [
+                            Parameter("closureParameter", ConcreteTypeReference("Third_Closure"))
+                        ],
+                        locals:
+                        [
+                            Local("locals", ConcreteTypeReference("Third_Locals"))
+                        ],
+                        instructions:
+                        [
+                            new CreateObject(Addr(0), ConcreteTypeReference("Third_Locals")),
+                            new StoreLocal(Addr(1), 0),
+                            new LoadIntConstant(Addr(2), 1),
+                            new LoadLocal(Addr(3), 0),
+                            new StoreField(Addr(4), 0, 0),
+                            new CreateObject(Addr(5), ConcreteTypeReference("Fourth_Closure")),
+                            new CopyStack(Addr(6)),
+                            new LoadArgument(Addr(7), 0),
+                            new LoadField(Addr(8), 0, 0),
+                            new StoreField(Addr(9), 0, 0),
+                            new CopyStack(Addr(10)),
+                            new LoadLocal(Addr(11), 0),
+                            new StoreField(Addr(12), 0, 1),
+                            new LoadGlobalFunction(Addr(13), FunctionDefinitionReference("Fourth")),
+                            new Call(Addr(14)),
+                            Drop(15),
+                            LoadUnit(16),
+                            Return(17)
+                        ]),
+                    Method("Second",
+                        parameters:
+                        [
+                            Parameter("closureParameter", ConcreteTypeReference("Second_Closure"))
+                        ],
+                        instructions:
+                        [
+                            new CreateObject(Addr(0), ConcreteTypeReference("Third_Closure")),
+                            new CopyStack(Addr(1)),
+                            new LoadArgument(Addr(2), 0),
+                            new LoadField(Addr(3), 0, 0),
+                            new StoreField(Addr(4), 0, 0),
+                            new LoadGlobalFunction(Addr(5), FunctionDefinitionReference("Third")),
+                            new Call(Addr(6)),
+                            Drop(7),
+                            LoadUnit(8),
+                            Return(9)
+                        ]),
+                    Method("First",
+                        isStatic: true,
+                        parameters:
+                        [
+                            Parameter("a", ConcreteTypeReference("string"))
+                        ],
+                        locals:
+                        [
+                            Local("locals", ConcreteTypeReference("First_Locals"))
+                        ],
+                        instructions:
+                        [
+                            new CreateObject(Addr(0), ConcreteTypeReference("First_Locals")),
+                            new StoreLocal(Addr(1), 0),
+                            new LoadArgument(Addr(2), 0),
+                            new LoadLocal(Addr(3), 0),
+                            new StoreField(Addr(4), 0, 0),
+                            new CreateObject(Addr(5), ConcreteTypeReference("Second_Closure")),
+                            new CopyStack(Addr(6)),
+                            new LoadLocal(Addr(7), 0),
+                            new StoreField(Addr(8), 0, 0),
+                            new LoadGlobalFunction(Addr(9), FunctionDefinitionReference("Second")),
+                            new Call(Addr(10)),
+                            Drop(11),
+                            LoadUnit(12),
+                            Return(13)
+                        ])
+                ])
             },
             {
                 "accessing variable in and out of closure",
@@ -454,11 +534,14 @@ public static class ClosureTests
                     Class("!Main_Locals",
                         fields: [
                             Field("Field_0", ConcreteTypeReference("int"), isPublic: true)
-                        ])
+                        ]),
+                    Class("InnerFn_Closure", fields: [
+                        Field("Field_0", ConcreteTypeReference("!Main_Locals"), isPublic: true)
+                    ])
                 ], methods: [
                     Method("InnerFn",
                         parameters: [
-                            Parameter("ClosureParameter_0", ConcreteTypeReference("!Main_Locals"))
+                            Parameter("closureParameter", ConcreteTypeReference("InnerFn_Closure"))
                         ],
                         locals: [
                             Local("b", ConcreteTypeReference("int"))
@@ -466,9 +549,10 @@ public static class ClosureTests
                         instructions: [
                             new LoadArgument(Addr(0), 0),
                             new LoadField(Addr(1), 0, 0),
-                            new StoreLocal(Addr(2), 0),
-                            LoadUnit(3),
-                            Return(4)
+                            new LoadField(Addr(2), 0, 0),
+                            new StoreLocal(Addr(3), 0),
+                            LoadUnit(4),
+                            Return(5)
                         ]),
                     Method("!Main",
                         isStatic: true,
@@ -485,12 +569,15 @@ public static class ClosureTests
                             new LoadLocal(Addr(5), 0),
                             new LoadField(Addr(6), 0, 0),
                             new StoreLocal(Addr(7), 1),
-                            new LoadLocal(Addr(8), 0),
-                            new LoadGlobalFunction(Addr(9), FunctionReference("InnerFn")),
-                            new Call(Addr(10)),
-                            Drop(11),
-                            LoadUnit(12),
-                            Return(13)
+                            new CreateObject(Addr(8), ConcreteTypeReference("InnerFn_Closure")),
+                            new CopyStack(Addr(9)),
+                            new LoadLocal(Addr(10), 0),
+                            new StoreField(Addr(11), 0, 0),
+                            new LoadGlobalFunction(Addr(12), FunctionDefinitionReference("InnerFn")),
+                            new Call(Addr(13)),
+                            Drop(14),
+                            LoadUnit(15),
+                            Return(16)
                         ])
                 ])
             },
@@ -512,17 +599,24 @@ public static class ClosureTests
                     var e = b;
                 }
                 """,
-                Module(types: [
-                    Class("!Main_Locals",
-                        fields: [
-                            Field("Field_0", ConcreteTypeReference("int"), isPublic: true),
-                            Field("Field_1", ConcreteTypeReference("int"), isPublic: true),
+                Module(
+                    types: [
+                        Class("!Main_Locals",
+                            fields: [
+                                Field("Field_0", ConcreteTypeReference("int"), isPublic: true),
+                                Field("Field_1", ConcreteTypeReference("int"), isPublic: true),
+                            ]),
+                        Class("InnerFn1_Closure", fields: [
+                            Field("Field_0", ConcreteTypeReference("!Main_Locals"), isPublic: true)
+                        ]),
+                        Class("InnerFn2_Closure", fields: [
+                            Field("Field_0", ConcreteTypeReference("!Main_Locals"), isPublic: true)
                         ])
                     ],
                     methods: [
                         Method("InnerFn1",
                             parameters: [
-                                Parameter("ClosureParameter_0", ConcreteTypeReference("!Main_Locals"))
+                                Parameter("closureParameter", ConcreteTypeReference("InnerFn1_Closure"))
                             ],
                             locals: [
                                 Local("d", ConcreteTypeReference("int"))
@@ -530,23 +624,25 @@ public static class ClosureTests
                             instructions: [
                                 new LoadArgument(Addr(0), 0),
                                 new LoadField(Addr(1), 0, 0),
-                                new StoreLocal(Addr(2), 0),
-                                LoadUnit(3),
-                                Return(4)
+                                new LoadField(Addr(2), 0, 0),
+                                new StoreLocal(Addr(3), 0),
+                                LoadUnit(4),
+                                Return(5)
                             ]),
                         Method("InnerFn2",
                             parameters: [
-                                Parameter("ClosureParameter_0", ConcreteTypeReference("!Main_Locals"))
+                                Parameter("closureParameter", ConcreteTypeReference("InnerFn2_Closure"))
                             ],
                             locals: [
                                 Local("e", ConcreteTypeReference("int"))
                             ],
                             instructions: [
                                 new LoadArgument(Addr(0), 0),
-                                new LoadField(Addr(1), 0, 1),
-                                new StoreLocal(Addr(2), 0),
-                                LoadUnit(3),
-                                Return(4)
+                                new LoadField(Addr(1), 0, 0),
+                                new LoadField(Addr(2), 0, 1),
+                                new StoreLocal(Addr(3), 0),
+                                LoadUnit(4),
+                                Return(5)
                             ]),
                         Method("!Main",
                             isStatic: true,
@@ -565,20 +661,29 @@ public static class ClosureTests
                                 new StoreField(Addr(7), 0, 1),
                                 new LoadIntConstant(Addr(8), 3),
                                 new StoreLocal(Addr(9), 1),
-                                new LoadLocal(Addr(10), 0),
-                                new LoadGlobalFunction(Addr(11), FunctionReference("InnerFn1")),
-                                new Call(Addr(12)),
-                                Drop(13),
-                                new LoadLocal(Addr(14), 0),
-                                new LoadGlobalFunction(Addr(15), FunctionReference("InnerFn1")),
-                                new Call(Addr(16)),
-                                Drop(17),
-                                new LoadLocal(Addr(18), 0),
-                                new LoadGlobalFunction(Addr(19), FunctionReference("InnerFn2")),
-                                new Call(Addr(20)),
-                                Drop(21),
-                                LoadUnit(22),
-                                Return(23)
+                                new CreateObject(Addr(10), ConcreteTypeReference("InnerFn1_Closure")),
+                                new CopyStack(Addr(11)),
+                                new LoadLocal(Addr(12), 0),
+                                new StoreField(Addr(13), 0, 0),
+                                new LoadGlobalFunction(Addr(14), FunctionDefinitionReference("InnerFn1")),
+                                new Call(Addr(15)),
+                                Drop(16),
+                                new CreateObject(Addr(17), ConcreteTypeReference("InnerFn1_Closure")),
+                                new CopyStack(Addr(18)),
+                                new LoadLocal(Addr(19), 0),
+                                new StoreField(Addr(20), 0, 0),
+                                new LoadGlobalFunction(Addr(21), FunctionDefinitionReference("InnerFn1")),
+                                new Call(Addr(22)),
+                                Drop(23),
+                                new CreateObject(Addr(24), ConcreteTypeReference("InnerFn2_Closure")),
+                                new CopyStack(Addr(25)),
+                                new LoadLocal(Addr(26), 0),
+                                new StoreField(Addr(27), 0, 0),
+                                new LoadGlobalFunction(Addr(28), FunctionDefinitionReference("InnerFn2")),
+                                new Call(Addr(29)),
+                                Drop(30),
+                                LoadUnit(31),
+                                Return(32)
                             ])
                     ])
             },
@@ -599,6 +704,10 @@ public static class ClosureTests
                         Class("SomeFn_Locals",
                             fields: [
                                 Field("Field_0", ConcreteTypeReference("int"), isPublic: true)
+                            ]),
+                        Class("InnerFn_Closure",
+                            fields: [
+                                Field("Field_0", ConcreteTypeReference("SomeFn_Locals"), isPublic: true)
                             ])
                     ],
                     methods: [
@@ -607,14 +716,15 @@ public static class ClosureTests
                                 Local("b", ConcreteTypeReference("int"))
                             ],
                             parameters: [
-                                Parameter("ClosureParameter_0", ConcreteTypeReference("SomeFn_Locals"))
+                                Parameter("closureParameter", ConcreteTypeReference("InnerFn_Closure"))
                             ],
                             instructions: [
                                 new LoadArgument(Addr(0), 0),
                                 new LoadField(Addr(1), 0, 0),
-                                new StoreLocal(Addr(2), 0),
-                                LoadUnit(3),
-                                Return(4)
+                                new LoadField(Addr(2), 0, 0),
+                                new StoreLocal(Addr(3), 0),
+                                LoadUnit(4),
+                                Return(5)
                             ]),
                         Method("SomeFn",
                             isStatic: true,
@@ -634,15 +744,18 @@ public static class ClosureTests
                                 new StoreField(Addr(4), 0, 0),
                                 new LoadIntConstant(Addr(5), 2),
                                 new StoreLocal(Addr(6), 1),
-                                new LoadLocal(Addr(7), 0),
-                                new LoadGlobalFunction(Addr(8), FunctionReference("InnerFn")),
-                                new Call(Addr(9)),
-                                Drop(10),
-                                new LoadLocal(Addr(11), 0),
-                                new LoadField(Addr(12), 0, 0),
-                                new StoreLocal(Addr(13), 2),
-                                LoadUnit(14),
-                                Return(15)
+                                new CreateObject(Addr(7), ConcreteTypeReference("InnerFn_Closure")),
+                                new CopyStack(Addr(8)),
+                                new LoadLocal(Addr(9), 0),
+                                new StoreField(Addr(10), 0, 0),
+                                new LoadGlobalFunction(Addr(11), FunctionDefinitionReference("InnerFn")),
+                                new Call(Addr(12)),
+                                Drop(13),
+                                new LoadLocal(Addr(14), 0),
+                                new LoadField(Addr(15), 0, 0),
+                                new StoreLocal(Addr(16), 2),
+                                LoadUnit(17),
+                                Return(18)
                             ])
                     ])
             },
@@ -672,13 +785,21 @@ public static class ClosureTests
                         Class("Inner1_Locals",
                             fields: [
                                 Field("Field_0", isPublic: true, type: ConcreteTypeReference("int"))
+                            ]),
+                        Class("Inner1_Closure",
+                            fields: [
+                                Field("Field_0", ConcreteTypeReference("Outer_Locals"), isPublic: true)
+                            ]),
+                        Class("Inner2_Closure",
+                            fields: [
+                                Field("Field_0", ConcreteTypeReference("Outer_Locals"), isPublic: true),
+                                Field("Field_1", ConcreteTypeReference("Inner1_Locals"), isPublic: true),
                             ])
                     ],
                     methods: [
                         Method("Inner2",
                             parameters: [
-                                Parameter("ClosureParameter_0", ConcreteTypeReference("Outer_Locals")),
-                                Parameter("ClosureParameter_1", ConcreteTypeReference("Inner1_Locals")),
+                                Parameter("closureParameter", ConcreteTypeReference("Inner2_Closure")),
                             ],
                             locals: [
                                 Local("aa", ConcreteTypeReference("int")),
@@ -687,16 +808,18 @@ public static class ClosureTests
                             instructions: [
                                 new LoadArgument(Addr(0), 0),
                                 new LoadField(Addr(1), 0, 0),
-                                new StoreLocal(Addr(2), 0),
-                                new LoadArgument(Addr(3), 1),
-                                new LoadField(Addr(4), 0, 0),
-                                new StoreLocal(Addr(5), 1),
-                                LoadUnit(6),
-                                Return(7)
+                                new LoadField(Addr(2), 0, 0),
+                                new StoreLocal(Addr(3), 0),
+                                new LoadArgument(Addr(4), 0),
+                                new LoadField(Addr(5), 0, 1),
+                                new LoadField(Addr(6), 0, 0),
+                                new StoreLocal(Addr(7), 1),
+                                LoadUnit(8),
+                                Return(9)
                             ]),
                         Method("Inner1",
                             parameters: [
-                                Parameter("ClosureParameter_0", ConcreteTypeReference("Outer_Locals")),
+                                Parameter("closureParameter", ConcreteTypeReference("Inner1_Closure")),
                             ],
                             locals: [
                                 Local("locals", ConcreteTypeReference("Inner1_Locals"))
@@ -707,13 +830,19 @@ public static class ClosureTests
                                 new LoadIntConstant(Addr(2), 2),
                                 new LoadLocal(Addr(3), 0),
                                 new StoreField(Addr(4), 0, 0),
-                                new LoadArgument(Addr(5), 0),
-                                new LoadLocal(Addr(6), 0),
-                                new LoadGlobalFunction(Addr(7), FunctionReference("Inner2")),
-                                new Call(Addr(8)),
-                                Drop(9),
-                                LoadUnit(10),
-                                Return(11)
+                                new CreateObject(Addr(5), ConcreteTypeReference("Inner2_Closure")),
+                                new CopyStack(Addr(6)),
+                                new LoadArgument(Addr(7), 0),
+                                new LoadField(Addr(8), 0, 0),
+                                new StoreField(Addr(9), 0, 0),
+                                new CopyStack(Addr(10)),
+                                new LoadLocal(Addr(11), 0),
+                                new StoreField(Addr(12), 0, 1),
+                                new LoadGlobalFunction(Addr(13), FunctionDefinitionReference("Inner2")),
+                                new Call(Addr(14)),
+                                Drop(15),
+                                LoadUnit(16),
+                                Return(17)
                             ]),
                         Method("Outer",
                             isStatic: true,
@@ -733,12 +862,15 @@ public static class ClosureTests
                                 new LoadLocal(Addr(5), 0),
                                 new LoadField(Addr(6), 0, 0),
                                 new StoreLocal(Addr(7), 1),
-                                new LoadLocal(Addr(8), 0),
-                                new LoadGlobalFunction(Addr(9), FunctionReference("Inner1")),
-                                new Call(Addr(10)),
-                                Drop(11),
-                                LoadUnit(12),
-                                Return(13)
+                                new CreateObject(Addr(8), ConcreteTypeReference("Inner1_Closure")),
+                                new CopyStack(Addr(9)),
+                                new LoadLocal(Addr(10), 0),
+                                new StoreField(Addr(11), 0, 0),
+                                new LoadGlobalFunction(Addr(12), FunctionDefinitionReference("Inner1")),
+                                new Call(Addr(13)),
+                                Drop(14),
+                                LoadUnit(15),
+                                Return(16)
                             ])
                     ])
             },
@@ -756,6 +888,10 @@ public static class ClosureTests
                         Class("!Main_Locals",
                             fields: [
                                 Field("Field_0", ConcreteTypeReference("int"), isPublic: true)
+                            ]),
+                        Class("InnerFn_Closure",
+                            fields: [
+                                Field("Field_0", ConcreteTypeReference("!Main_Locals"), isPublic: true)
                             ])
                     ],
                     methods: [
@@ -764,17 +900,19 @@ public static class ClosureTests
                                 Local("b", ConcreteTypeReference("int"))
                             ],
                             parameters: [
-                                Parameter("ClosureParameter_0", ConcreteTypeReference("!Main_Locals"))
+                                Parameter("closureParameter", ConcreteTypeReference("InnerFn_Closure"))
                             ],
                             instructions: [
                                 new LoadArgument(Addr(0), 0),
                                 new LoadField(Addr(1), 0, 0),
-                                new StoreLocal(Addr(2), 0),
-                                new LoadIntConstant(Addr(3), 2),
-                                new LoadArgument(Addr(4), 0),
-                                new StoreField(Addr(5), 0, 0),
-                                LoadUnit(6),
-                                Return(7)
+                                new LoadField(Addr(2), 0, 0),
+                                new StoreLocal(Addr(3), 0),
+                                new LoadIntConstant(Addr(4), 2),
+                                new LoadArgument(Addr(5), 0),
+                                new LoadField(Addr(6), 0, 0),
+                                new StoreField(Addr(7), 0, 0),
+                                LoadUnit(8),
+                                Return(9)
                             ]),
                         Method("!Main",
                             isStatic: true,

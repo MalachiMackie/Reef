@@ -55,7 +55,7 @@ public static class MethodTests
                         Method("FirstFn", isStatic: true, instructions: [LoadUnit(0), Return(1)]),
                         Method("!Main", isStatic: true, instructions:
                         [
-                            new LoadGlobalFunction(Addr(0), FunctionReference("FirstFn")),
+                            new LoadGlobalFunction(Addr(0), FunctionDefinitionReference("FirstFn")),
                             new Call(Addr(1)),
                             Drop(2),
                             LoadUnit(3),
@@ -125,7 +125,7 @@ public static class MethodTests
                         Method("SomeFn",
                             isStatic: true,
                             instructions: [
-                                new LoadGlobalFunction(Addr(0), FunctionReference("InnerFn")),
+                                new LoadGlobalFunction(Addr(0), FunctionDefinitionReference("InnerFn")),
                                 new Call(Addr(1)),
                                 Drop(2),
                                 LoadUnit(3),
@@ -134,7 +134,7 @@ public static class MethodTests
                     ])
             },
             {
-                "assign function to variable",
+                "assign global function to variable",
                 """
                 fn SomeFn(param: int) {
                 }
@@ -155,6 +155,39 @@ public static class MethodTests
                 b();
                 """,
                 Module()
+            },
+            {
+                "assign static type function to variable",
+                """
+                class MyClass { 
+                    pub static fn MyFn() {}
+                }
+                var a = MyClass::MyFn;
+                a();
+                """,
+                Module(
+                    types: [
+                        Class("MyClass", methods: [
+                            Method("MyFn",
+                                isStatic: true,
+                                instructions: [
+                                    LoadUnit(0),
+                                    Return(1)
+                                ])
+                        ])
+                    ],
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", FunctionReference())
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")])),
+                                new LoadTypeFunction(Addr(1), ConcreteTypeReference("MyClass"), 0),
+                                new StoreField(Addr(2), 0, 0)
+                            ])
+                    ])
             }
         };
     }

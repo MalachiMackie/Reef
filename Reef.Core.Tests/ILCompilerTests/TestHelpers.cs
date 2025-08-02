@@ -9,11 +9,18 @@ public static class TestHelpers
         return new ReefMethod.Local { DisplayName = name, Type = type };
     }
 
-    public static FunctionReference FunctionReference(string name) => new()
+    public static FunctionDefinitionReference FunctionDefinitionReference(string name) => new()
     {
         Name = name,
         TypeArguments = [],
         DefinitionId = Guid.Empty
+    };
+
+    public static FunctionReference FunctionReference(IReadOnlyList<IReefTypeReference>? parameters = null,
+        IReefTypeReference? returnType = null) => new()
+    {
+        Parameters = parameters ?? [],
+        ReturnType = returnType ?? ConcreteTypeReference("Unit")
     };
 
     public static ReefField Field(string name, IReefTypeReference type, bool isStatic = false, bool isPublic = false,

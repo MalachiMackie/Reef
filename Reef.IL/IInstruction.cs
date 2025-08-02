@@ -90,8 +90,8 @@ public record Call(InstructionAddress Address) : IInstruction;
 /// Loads a reference to the specified global function onto the evaluation stack
 /// </summary>
 /// <param name="Address"></param>
-/// <param name="FunctionReference"></param>
-public record LoadGlobalFunction(InstructionAddress Address, FunctionReference FunctionReference) : IInstruction;
+/// <param name="FunctionDefinitionReference"></param>
+public record LoadGlobalFunction(InstructionAddress Address, FunctionDefinitionReference FunctionDefinitionReference) : IInstruction;
 
 /// <summary>
 /// Loads a reference to the specified type function onto the evaluation stack

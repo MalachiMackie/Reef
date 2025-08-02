@@ -56,56 +56,151 @@ public class Tests
     public void SingleTest()
     {
         const string source = """
-                              static fn SomeFn(): result::<int, string> {
-                                  var a = ok(1)?;
-                                  return ok(1);
-                              }
-                              """;
+                static fn First(a: string) {
+                    fn Second() {
+                        fn Third() {
+                            var c = 1;
+                            fn Fourth() {
+                                var b = a;
+                                var d = c;
+                            }
+                            
+                            Fourth();
+                        }
+                        Third();
+                    }
+                    Second();
+                }
+                """;
         var expected = Module(
+            types:
+            [
+                Class("Fourth_Closure",
+                    fields:
+                    [
+                        Field("Field_0", ConcreteTypeReference("First_Locals"), isPublic: true),
+                        Field("Field_1", ConcreteTypeReference("Third_Locals"), isPublic: true)
+                    ]),
+                Class("Third_Locals",
+                    fields:
+                    [
+                        Field("Field_0", ConcreteTypeReference("int"), isPublic: true)
+                    ]),
+                Class("Third_Closure",
+                    fields:
+                    [
+                        Field("Field_0", ConcreteTypeReference("First_Locals"), isPublic: true)
+                    ]),
+                Class("Second_Closure",
+                    fields:
+                    [
+                        Field("Field_0", ConcreteTypeReference("First_Locals"), isPublic: true)
+                    ]),
+                Class("First_Locals",
+                    fields:
+                    [
+                        Field("Field_0", ConcreteTypeReference("string"), isPublic: true)
+                    ]),
+            ],
             methods:
             [
-                Method("SomeFn",
-                    returnType: ConcreteTypeReference(
-                        "result",
-                        typeArguments:
-                        [
-                            ConcreteTypeReference("int"),
-                            ConcreteTypeReference("string")
-                        ]),
-                    isStatic: true,
+                Method("Fourth",
+                    parameters:
+                    [
+                        Parameter("closureParameter", ConcreteTypeReference("Fourth_Closure")),
+                    ],
                     locals:
                     [
-                        Local("a", ConcreteTypeReference("int"))
+                        Local("b", ConcreteTypeReference("string")),
+                        Local("d", ConcreteTypeReference("int"))
                     ],
                     instructions:
                     [
-                        new LoadIntConstant(Addr(0), 1),
-                        new LoadTypeFunction(Addr(1), ConcreteTypeReference(
-                            "result",
-                            typeArguments:
-                            [
-                                ConcreteTypeReference("int"),
-                                ConcreteTypeReference("string")
-                            ]), 0),
-                        new Call(Addr(2)),
-                        new CopyStack(Addr(3)),
-                        new LoadField(Addr(4), 0, 0),
-                        new LoadIntConstant(Addr(5), 1),
-                        new CompareIntEqual(Addr(6)),
-                        new BranchIfFalse(Addr(7), Addr(9)),
-                        new Return(Addr(8)),
-                        new LoadField(Addr(9), 0, 1),
-                        new StoreLocal(Addr(10), 0),
-                        new LoadIntConstant(Addr(11), 1),
-                        new LoadTypeFunction(Addr(12), ConcreteTypeReference(
-                            "result",
-                            typeArguments:
-                            [
-                                ConcreteTypeReference("int"),
-                                ConcreteTypeReference("string")
-                            ]), 0),
-                        new Call(Addr(13)),
-                        Return(14)
+                        new LoadArgument(Addr(0), 0),
+                        new LoadField(Addr(1), 0, 0),
+                        new LoadField(Addr(2), 0, 0),
+                        new StoreLocal(Addr(3), 0),
+                        new LoadArgument(Addr(4), 0),
+                        new LoadField(Addr(5), 0, 1),
+                        new LoadField(Addr(6), 0, 0),
+                        new StoreLocal(Addr(7), 1),
+                        LoadUnit(8),
+                        Return(9)
+                    ]),
+                Method("Third",
+                    parameters:
+                    [
+                        Parameter("closureParameter", ConcreteTypeReference("Third_Closure"))
+                    ],
+                    locals:
+                    [
+                        Local("locals", ConcreteTypeReference("Third_Locals"))
+                    ],
+                    instructions:
+                    [
+                        new CreateObject(Addr(0), ConcreteTypeReference("Third_Locals")),
+                        new StoreLocal(Addr(1), 0),
+                        new LoadIntConstant(Addr(2), 1),
+                        new LoadLocal(Addr(3), 0),
+                        new StoreField(Addr(4), 0, 0),
+                        new CreateObject(Addr(5), ConcreteTypeReference("Fourth_Closure")),
+                        new CopyStack(Addr(6)),
+                        new LoadArgument(Addr(7), 0),
+                        new LoadField(Addr(8), 0, 0),
+                        new StoreField(Addr(9), 0, 0),
+                        new CopyStack(Addr(10)),
+                        new LoadLocal(Addr(11), 0),
+                        new StoreField(Addr(12), 0, 1),
+                        new LoadGlobalFunction(Addr(13), FunctionDefinitionReference("Fourth")),
+                        new Call(Addr(14)),
+                        Drop(15),
+                        LoadUnit(16),
+                        Return(17)
+                    ]),
+                Method("Second",
+                    parameters:
+                    [
+                        Parameter("closureParameter", ConcreteTypeReference("Second_Closure"))
+                    ],
+                    instructions:
+                    [
+                        new CreateObject(Addr(0), ConcreteTypeReference("Third_Closure")),
+                        new CopyStack(Addr(1)),
+                        new LoadArgument(Addr(2), 0),
+                        new LoadField(Addr(3), 0, 0),
+                        new StoreField(Addr(4), 0, 0),
+                        new LoadGlobalFunction(Addr(5), FunctionDefinitionReference("Third")),
+                        new Call(Addr(6)),
+                        Drop(7),
+                        LoadUnit(8),
+                        Return(9)
+                    ]),
+                Method("First",
+                    isStatic: true,
+                    parameters:
+                    [
+                        Parameter("a", ConcreteTypeReference("string"))
+                    ],
+                    locals:
+                    [
+                        Local("locals", ConcreteTypeReference("First_Locals"))
+                    ],
+                    instructions:
+                    [
+                        new CreateObject(Addr(0), ConcreteTypeReference("First_Locals")),
+                        new StoreLocal(Addr(1), 0),
+                        new LoadArgument(Addr(2), 0),
+                        new LoadLocal(Addr(3), 0),
+                        new StoreField(Addr(4), 0, 0),
+                        new CreateObject(Addr(5), ConcreteTypeReference("Second_Closure")),
+                        new CopyStack(Addr(6)),
+                        new LoadLocal(Addr(7), 0),
+                        new StoreField(Addr(8), 0, 0),
+                        new LoadGlobalFunction(Addr(9), FunctionDefinitionReference("Second")),
+                        new Call(Addr(10)),
+                        Drop(11),
+                        LoadUnit(12),
+                        Return(13)
                     ])
             ]);
 

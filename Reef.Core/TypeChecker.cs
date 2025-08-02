@@ -331,7 +331,7 @@ public class TypeChecker
                     _errors.Add(TypeCheckerError.ConflictingFunctionName(function.Name));
                 }
 
-                functions.Add(TypeCheckFunctionSignature(function, (uint)index));
+                functions.Add(TypeCheckFunctionSignature(function, (uint)index, unionSignature));
             }
 
             foreach (var variant in union.Variants)
@@ -416,7 +416,7 @@ public class TypeChecker
                 }
 
                 // todo: function overloading
-                functions.Add(TypeCheckFunctionSignature(fn, (uint)index));
+                functions.Add(TypeCheckFunctionSignature(fn, (uint)index, classSignature));
             }
 
             foreach (var (index, field) in @class.Fields.Index())
@@ -445,7 +445,7 @@ public class TypeChecker
             var name = fn.Name.StringValue;
 
             // todo: function overloading
-            if (!ScopedFunctions.TryAdd(name, TypeCheckFunctionSignature(fn, functionIndex: null)))
+            if (!ScopedFunctions.TryAdd(name, TypeCheckFunctionSignature(fn, functionIndex: null, ownerType: null)))
             {
                 _errors.Add(TypeCheckerError.ConflictingFunctionName(fn.Name));
             }
@@ -521,7 +521,7 @@ public class TypeChecker
         }
     }
 
-    private FunctionSignature TypeCheckFunctionSignature(LangFunction fn, uint? functionIndex)
+    private FunctionSignature TypeCheckFunctionSignature(LangFunction fn, uint? functionIndex, ITypeSignature? ownerType)
     {
         var parameters = new OrderedDictionary<string, FunctionParameter>();
 
@@ -540,8 +540,13 @@ public class TypeChecker
             functionIndex)
         {
             ReturnType = null!,
-            OwnerType = CurrentTypeSignature
+            OwnerType = ownerType
         };
+
+        if (CurrentTypeSignature is null && fnSignature.IsMutable)
+        {
+            _errors.Add(TypeCheckerError.GlobalFunctionMarkedAsMutable(fn.Name));
+        }
 
         if (CurrentFunctionSignature is { IsMutable: false } && fnSignature.IsMutable)
         {
@@ -581,7 +586,7 @@ public class TypeChecker
             });
         }
         
-        ITypeReference? ownerType = CurrentTypeSignature switch
+        ITypeReference? ownerTypeReference = CurrentTypeSignature switch
         {
             null => null,
             ClassSignature classSignature => InstantiateClass(classSignature, [], SourceRange.Default),
@@ -589,7 +594,7 @@ public class TypeChecker
             _ => throw new ArgumentOutOfRangeException(nameof(CurrentTypeSignature))
         };
 
-        var functionType = InstantiateFunction(fnSignature, ownerType, GenericPlaceholders);
+        var functionType = InstantiateFunction(fnSignature, ownerTypeReference, GenericPlaceholders);
         using var _ = PushScope(genericPlaceholders: functionType.TypeArguments, currentFunctionSignature: fnSignature);
 
         fnSignature.ReturnType = fn.ReturnType is null
@@ -607,7 +612,7 @@ public class TypeChecker
             }
         }
         
-        localFunctions.AddRange(fn.Block.Functions.Select(x => TypeCheckFunctionSignature(x, functionIndex: null)));
+        localFunctions.AddRange(fn.Block.Functions.Select(x => TypeCheckFunctionSignature(x, functionIndex: null, ownerType: null)));
 
         // todo: function overloading
         return fnSignature;
@@ -620,7 +625,7 @@ public class TypeChecker
 
         foreach (var fn in block.Functions)
         {
-            ScopedFunctions[fn.Name.StringValue] = fn.Signature ?? TypeCheckFunctionSignature(fn, functionIndex: null);
+            ScopedFunctions[fn.Name.StringValue] = fn.Signature ?? TypeCheckFunctionSignature(fn, functionIndex: null, ownerType: null);
         }
 
         foreach (var fn in block.Functions)
@@ -2521,9 +2526,9 @@ public class TypeChecker
         public string Name => Signature.Name;
         public uint? FunctionIndex => Signature.FunctionIndex;
         public Guid? LocalsTypeId => Signature.LocalsTypeId;
-
-        public List<(Guid parameterTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureParameters =>
-            Signature.ClosureParameters;
+        public Guid? ClosureTypeId => Signature.ClosureTypeId;
+        public List<(Guid fieldTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureTypeFields =>
+            Signature.ClosureTypeFields;
     }
 
     public class InstantiatedClass : ITypeReference
@@ -2787,7 +2792,8 @@ public class TypeChecker
         public Guid Id { get; } = Guid.NewGuid();
         public uint? FunctionIndex { get; } = functionIndex;
         public Guid? LocalsTypeId { get; set; }
-        public List<(Guid parameterTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureParameters { get; set; } = [];
+        public Guid? ClosureTypeId { get; set; }
+        public List<(Guid fieldTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureTypeFields { get; set; } = [];
         public IReadOnlyList<IVariable> LocalsTypeFields { get; set; } = [];
         public bool IsStatic { get; } = isStatic;
         public bool IsGlobal => OwnerType is null;

@@ -1216,10 +1216,10 @@ public class TypeCheckerTests
             {
                 "global function marked as mutable",
                 """
-                static mut fn MyFn() {
+                mut fn MyFn() {
                 }
                 """,
-                [TypeCheckerError.GlobalFunctionMarkedAsMutable("MyFn", SourceRange.Default)]
+                [TypeCheckerError.GlobalFunctionMarkedAsMutable(Identifier("MyFn"))]
             },
             {
                 "deeply nested if branch doesn't return",
