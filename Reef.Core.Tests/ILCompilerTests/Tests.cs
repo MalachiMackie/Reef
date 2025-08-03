@@ -56,59 +56,76 @@ public class Tests
     public void SingleTest()
     {
         const string source = """
-                              class MyClass {
-                                  pub fn MyFn() {
-                                  }
+                              fn MyFn() {}
+                              var a = MyFn;
+                              fn OtherFn() {
+                                  a();
                               }
-                              var a = new MyClass{};
-                              var b = a.MyFn;
-                              b();
+                              OtherFn();
                               """;
         var expected = Module(
             types:
             [
-                Class("MyClass",
-                    methods:
+                Class("!Main_Locals", fields:
+                [
+                    Field("Field_0", ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]),
+                        isPublic: true),
+                ]),
+                Class("OtherFn_Closure",
+                    fields:
                     [
-                        Method("MyFn",
-                            parameters: [
-                                Parameter("this", ConcreteTypeReference("MyClass"))
-                            ],
-                            instructions:
-                            [
-                                LoadUnit(0),
-                                Return(1)
-                            ])
+                        Field("Field_0", ConcreteTypeReference("!Main_Locals"), isPublic: true)
                     ])
             ],
             methods:
             [
+                Method("MyFn", instructions:
+                [
+                    LoadUnit(0),
+                    Return(1)
+                ]),
+                Method("OtherFn",
+                    parameters:
+                    [
+                        Parameter("closureParameter", ConcreteTypeReference("OtherFn_Closure")),
+                    ],
+                    instructions:
+                    [
+                        new LoadArgument(Addr(0), 0),
+                        new LoadField(Addr(1), 0, 0),
+                        new LoadField(Addr(2), 0, 0),
+                        new LoadTypeFunction(Addr(3),
+                            ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]), 0),
+                        new Call(Addr(4)),
+                        Drop(5),
+                        LoadUnit(6),
+                        Return(7)
+                    ]),
                 Method("!Main",
                     isStatic: true,
                     locals:
                     [
-                        Local("a", ConcreteTypeReference("MyClass")),
-                        Local("b", ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]))
+                        Local("locals", ConcreteTypeReference("!Main_Locals"))
                     ],
                     instructions:
                     [
-                        new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
+                        new CreateObject(Addr(0), ConcreteTypeReference("!Main_Locals")),
                         new StoreLocal(Addr(1), 0),
-                        new CreateObject(Addr(2), ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")])),
-                        new CopyStack(Addr(3)),
-                        new LoadTypeFunction(Addr(4), ConcreteTypeReference("MyClass"), 0),
-                        new StoreField(Addr(5), 0, 0),
-                        new CopyStack(Addr(6)),
-                        new LoadLocal(Addr(7), 0),
-                        new StoreField(Addr(8), 0, 1),
-                        new StoreLocal(Addr(9), 1),
-                        new LoadLocal(Addr(10), 1),
-                        new LoadTypeFunction(Addr(11),
-                            ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]), 0),
-                        new Call(Addr(12)),
-                        Drop(13),
-                        LoadUnit(14),
-                        Return(15)
+                        new LoadLocal(Addr(2), 0),
+                        new CreateObject(Addr(3), ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")])),
+                        new CopyStack(Addr(4)),
+                        new LoadGlobalFunction(Addr(5), FunctionDefinitionReference("MyFn")),
+                        new StoreField(Addr(6), 0, 0),
+                        new StoreField(Addr(7), 0, 0),
+                        new CreateObject(Addr(8), ConcreteTypeReference("OtherFn_Closure")),
+                        new CopyStack(Addr(9)),
+                        new LoadLocal(Addr(10), 0),
+                        new StoreField(Addr(11), 0, 0),
+                        new LoadGlobalFunction(Addr(12), FunctionDefinitionReference("OtherFn")),
+                        new Call(Addr(13)),
+                        Drop(14),
+                        LoadUnit(15),
+                        Return(16)
                     ])
             ]);
 

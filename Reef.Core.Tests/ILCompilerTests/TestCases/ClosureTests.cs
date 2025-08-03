@@ -998,6 +998,209 @@ public static class ClosureTests
                                 Return(21)
                             ])
                     ])
+            },
+            {
+                "call function variable from closure",
+                """
+                fn MyFn() {}
+                var a = MyFn;
+                fn OtherFn() {
+                    a();
+                }
+                OtherFn();
+                """,
+                Module(
+                    types: [
+                        Class("!Main_Locals", fields: [
+                            Field("Field_0", ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]), isPublic: true),
+                        ]),
+                        Class("OtherFn_Closure",
+                            fields: [
+                                Field("Field_0", ConcreteTypeReference("!Main_Locals"), isPublic: true)
+                            ])
+                    ],
+                    methods: [
+                        Method("MyFn", instructions: [
+                            LoadUnit(0),
+                            Return(1)
+                        ]),
+                        Method("OtherFn",
+                            parameters: [
+                                Parameter("closureParameter", ConcreteTypeReference("OtherFn_Closure")),
+                            ],
+                            instructions: [
+                                new LoadArgument(Addr(0), 0),
+                                new LoadField(Addr(1), 0, 0),
+                                new LoadField(Addr(2), 0, 0),
+                                new LoadTypeFunction(Addr(3), ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]), 0),
+                                new Call(Addr(4)),
+                                Drop(5),
+                                LoadUnit(6),
+                                Return(7)
+                            ]),
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("locals", ConcreteTypeReference("!Main_Locals"))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("!Main_Locals")),
+                                new StoreLocal(Addr(1), 0),
+                                new LoadLocal(Addr(2), 0),
+                                new CreateObject(Addr(3), ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")])),
+                                new CopyStack(Addr(4)),
+                                new LoadGlobalFunction(Addr(5), FunctionDefinitionReference("MyFn")),
+                                new StoreField(Addr(6), 0, 0),
+                                new StoreField(Addr(7), 0, 0),
+                                new CreateObject(Addr(8), ConcreteTypeReference("OtherFn_Closure")),
+                                new CopyStack(Addr(9)),
+                                new LoadLocal(Addr(10), 0),
+                                new StoreField(Addr(11), 0, 0),
+                                new LoadGlobalFunction(Addr(12), FunctionDefinitionReference("OtherFn")),
+                                new Call(Addr(13)),
+                                Drop(14),
+                                LoadUnit(15),
+                                Return(16)
+                            ])
+                    ])
+            },
+            {
+                "reference function variable from closure",
+                """
+                fn MyFn() {}
+                var a = MyFn;
+                fn OtherFn() {
+                    var b = a;
+                }
+                OtherFn();
+                """,
+                Module(
+                    types: [
+                        Class("!Main_Locals", fields: [
+                            Field("Field_0", ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]), isPublic: true),
+                        ]),
+                        Class("OtherFn_Closure",
+                            fields: [
+                                Field("Field_0", ConcreteTypeReference("!Main_Locals"), isPublic: true)
+                            ])
+                    ],
+                    methods: [
+                        Method("MyFn", instructions: [
+                            LoadUnit(0),
+                            Return(1)
+                        ]),
+                        Method("OtherFn",
+                            locals: [
+                                Local("b", ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]))
+                            ],
+                            parameters: [
+                                Parameter("closureParameter", ConcreteTypeReference("OtherFn_Closure")),
+                            ],
+                            instructions: [
+                                new LoadArgument(Addr(0), 0),
+                                new LoadField(Addr(1), 0, 0),
+                                new LoadField(Addr(2), 0, 0),
+                                new StoreLocal(Addr(3), 0),
+                                LoadUnit(4),
+                                Return(5)
+                            ]),
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("locals", ConcreteTypeReference("!Main_Locals"))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("!Main_Locals")),
+                                new StoreLocal(Addr(1), 0),
+                                new LoadLocal(Addr(2), 0),
+                                new CreateObject(Addr(3), ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")])),
+                                new CopyStack(Addr(4)),
+                                new LoadGlobalFunction(Addr(5), FunctionDefinitionReference("MyFn")),
+                                new StoreField(Addr(6), 0, 0),
+                                new StoreField(Addr(7), 0, 0),
+                                new CreateObject(Addr(8), ConcreteTypeReference("OtherFn_Closure")),
+                                new CopyStack(Addr(9)),
+                                new LoadLocal(Addr(10), 0),
+                                new StoreField(Addr(11), 0, 0),
+                                new LoadGlobalFunction(Addr(12), FunctionDefinitionReference("OtherFn")),
+                                new Call(Addr(13)),
+                                Drop(14),
+                                LoadUnit(15),
+                                Return(16)
+                            ])
+                    ])
+            },
+            {
+                "reference function variable from closure and call from locals",
+                """
+                fn MyFn() {}
+                var a = MyFn;
+                fn OtherFn() {
+                    var b = a;
+                }
+                OtherFn();
+                a();
+                """,
+                Module(
+                    types: [
+                        Class("!Main_Locals", fields: [
+                            Field("Field_0", ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]), isPublic: true),
+                        ]),
+                        Class("OtherFn_Closure",
+                            fields: [
+                                Field("Field_0", ConcreteTypeReference("!Main_Locals"), isPublic: true)
+                            ])
+                    ],
+                    methods: [
+                        Method("MyFn", instructions: [
+                            LoadUnit(0),
+                            Return(1)
+                        ]),
+                        Method("OtherFn",
+                            locals: [
+                                Local("b", ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]))
+                            ],
+                            parameters: [
+                                Parameter("closureParameter", ConcreteTypeReference("OtherFn_Closure")),
+                            ],
+                            instructions: [
+                                new LoadArgument(Addr(0), 0),
+                                new LoadField(Addr(1), 0, 0),
+                                new LoadField(Addr(2), 0, 0),
+                                new StoreLocal(Addr(3), 0),
+                                LoadUnit(4),
+                                Return(5)
+                            ]),
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("locals", ConcreteTypeReference("!Main_Locals"))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("!Main_Locals")),
+                                new StoreLocal(Addr(1), 0),
+                                new LoadLocal(Addr(2), 0),
+                                new CreateObject(Addr(3), ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")])),
+                                new CopyStack(Addr(4)),
+                                new LoadGlobalFunction(Addr(5), FunctionDefinitionReference("MyFn")),
+                                new StoreField(Addr(6), 0, 0),
+                                new StoreField(Addr(7), 0, 0),
+                                new CreateObject(Addr(8), ConcreteTypeReference("OtherFn_Closure")),
+                                new CopyStack(Addr(9)),
+                                new LoadLocal(Addr(10), 0),
+                                new StoreField(Addr(11), 0, 0),
+                                new LoadGlobalFunction(Addr(12), FunctionDefinitionReference("OtherFn")),
+                                new Call(Addr(13)),
+                                Drop(14),
+                                new LoadLocal(Addr(15), 0),
+                                new LoadField(Addr(16), 0, 0),
+                                new LoadTypeFunction(Addr(17), ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]), 0),
+                                new Call(Addr(18)),
+                                Drop(19),
+                                LoadUnit(20),
+                                Return(21)
+                            ])
+                    ])
             }
         };
     }

@@ -1291,80 +1291,81 @@ public class ILCompile
                 Instructions.Add(new LoadLocal(NextAddress(), 0));
                 var fieldIndex = currentFunction.LocalsTypeFields.Index().First(x => x.Item == referencedVariable).Index;
                 Instructions.Add(new LoadField(NextAddress(), 0, (uint)fieldIndex));
-                
-                return;
             }
-
-            var foundClosureTypeFieldIndex = 0u;
-            var referencedLocalsFieldIndex = 0u;
-            var found = false;
-            foreach (var (closureTypeFieldIndex, (_, fields)) in currentFunction.ClosureTypeFields.Index())
+            else
             {
-                foreach (var (field, localsFieldIndex) in fields)
+                var foundClosureTypeFieldIndex = 0u;
+                var referencedLocalsFieldIndex = 0u;
+                var found = false;
+                foreach (var (closureTypeFieldIndex, (_, fields)) in currentFunction.ClosureTypeFields.Index())
                 {
-                    if (field == referencedVariable)
+                    foreach (var (field, localsFieldIndex) in fields)
                     {
-                        found = true;
-                        foundClosureTypeFieldIndex = (uint)closureTypeFieldIndex;
-                        referencedLocalsFieldIndex = localsFieldIndex;
-                        break;
+                        if (field == referencedVariable)
+                        {
+                            found = true;
+                            foundClosureTypeFieldIndex = (uint)closureTypeFieldIndex;
+                            referencedLocalsFieldIndex = localsFieldIndex;
+                            break;
+                        }
                     }
                 }
-            }
 
-            if (!found)
-            {
-                throw new InvalidOperationException("Could not find referenced variable in owning function");
+                if (!found)
+                {
+                    throw new InvalidOperationException("Could not find referenced variable in owning function");
+                }
+                    
+                Instructions.Add(new LoadArgument(NextAddress(), 0));
+                Instructions.Add(new LoadField(NextAddress(), VariantIndex: 0, FieldIndex: foundClosureTypeFieldIndex));
+                Instructions.Add(new LoadField(NextAddress(), VariantIndex: 0, FieldIndex: referencedLocalsFieldIndex));
             }
-                
-            Instructions.Add(new LoadArgument(NextAddress(), 0));
-            Instructions.Add(new LoadField(NextAddress(), VariantIndex: 0, FieldIndex: foundClosureTypeFieldIndex));
-            Instructions.Add(new LoadField(NextAddress(), VariantIndex: 0, FieldIndex: referencedLocalsFieldIndex));
-            return;
         }
-
-        switch (referencedVariable)
+        else
         {
-            case TypeChecker.FieldVariable fieldVariable:
+            switch (referencedVariable)
             {
-                if (fieldVariable.IsStaticField)
+                case TypeChecker.FieldVariable fieldVariable:
                 {
-                    Instructions.Add(new LoadStaticField(
-                        NextAddress(),
-                        scope.CurrentType ?? throw new InvalidOperationException("Expected current type to be set when referencing static fields via variable"),
-                        VariantIndex: 0,
-                        FieldIndex: fieldVariable.FieldIndex
-                    ));
+                    if (fieldVariable.IsStaticField)
+                    {
+                        Instructions.Add(new LoadStaticField(
+                            NextAddress(),
+                            scope.CurrentType ?? throw new InvalidOperationException("Expected current type to be set when referencing static fields via variable"),
+                            VariantIndex: 0,
+                            FieldIndex: fieldVariable.FieldIndex
+                        ));
+                    }
+                    else
+                    {
+                        Instructions.Add(new LoadArgument(NextAddress(), 0));
+                        Instructions.Add(new LoadField(
+                            NextAddress(),
+                            VariantIndex: 0, // Accessing fields via named variables can only be done for classes
+                            FieldIndex: fieldVariable.FieldIndex));
+                    }
+                    
+                    break;
                 }
-                else
+                case TypeChecker.FunctionParameter(var fn, _, _, _, var parameterIndex):
                 {
-                    Instructions.Add(new LoadArgument(NextAddress(), 0));
-                    Instructions.Add(new LoadField(
-                        NextAddress(),
-                        VariantIndex: 0, // Accessing fields via named variables can only be done for classes
-                        FieldIndex: fieldVariable.FieldIndex));
+                    var adjustedParameterIndex = parameterIndex
+                                         // increment parameter index by one to allow for the `this` parameter
+                                         + (fn.IsGlobal || fn.IsStatic ? 0 : 1)
+                                         // increment parameter index by one to allow for the closure parameter
+                                         + (fn.ClosureTypeId.HasValue ? 1 : 0);
+                    
+                    Instructions.Add(new LoadArgument(NextAddress(), (uint)adjustedParameterIndex));
+                    break;
                 }
-                
-                break;
+                case TypeChecker.LocalVariable localVariable:
+                {
+                    Instructions.Add(new LoadLocal(NextAddress(), GetLocalIndex(localVariable)));
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(referencedVariable));
             }
-            case TypeChecker.FunctionParameter(var fn, _, _, _, var parameterIndex):
-            {
-                var adjustedParameterIndex = parameterIndex
-                                     // increment parameter index by one to allow for the `this` parameter
-                                     + (fn.IsGlobal || fn.IsStatic ? 0 : 1)
-                                     // increment parameter index by one to allow for the closure parameter
-                                     + (fn.ClosureTypeId.HasValue ? 1 : 0);
-                
-                Instructions.Add(new LoadArgument(NextAddress(), (uint)adjustedParameterIndex));
-                break;
-            }
-            case TypeChecker.LocalVariable localVariable:
-            {
-                Instructions.Add(new LoadLocal(NextAddress(), GetLocalIndex(localVariable)));
-                break;
-            }
-            default:
-                throw new ArgumentOutOfRangeException(nameof(referencedVariable));
         }
 
         if (calling && valueAccessorExpression.ResolvedType is TypeChecker.InstantiatedFunction x)
