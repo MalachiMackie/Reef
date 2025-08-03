@@ -266,6 +266,15 @@ public record TypeCheckerError
             new SourceRange(functionName.SourceSpan, functionName.SourceSpan),
             $"Global function {functionName} cannot be mutable");
     }
+
+    public static TypeCheckerError AccessInstanceMemberInStaticContext(StringToken memberName)
+    {
+        return new TypeCheckerError(
+            TypeCheckerErrorType.AccessInstanceMemberInStaticContext,
+            new SourceRange(memberName.SourceSpan, memberName.SourceSpan),
+            $"Cannot access instance member {memberName.StringValue} in static context"
+        );
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -308,5 +317,6 @@ public enum TypeCheckerErrorType
     CannotCreateMutableFunctionWithinNonMutableFunction,
     AccessingClosureWhichReferencesUninitializedVariables,
     StaticLocalFunctionAccessesOuterVariable,
-    GlobalFunctionMarkedAsMutable
+    GlobalFunctionMarkedAsMutable,
+    AccessInstanceMemberInStaticContext
 }

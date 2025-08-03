@@ -1132,16 +1132,22 @@ public class ILCompile
             return;
         }
 
+        var currentFunction = _scopeStack.Peek().CurrentFunction;
+
         if (instanceOwnerExpression is not null)
         {
             CompileExpression(instanceOwnerExpression);
         }
-        
-        if (instantiatedFunction.ClosureTypeId.HasValue)
+        else if (instantiatedFunction.ClosureTypeId.HasValue)
         {
             CreateClosureObject(
                 instantiatedFunction.ClosureTypeId.Value,
                 instantiatedFunction.ClosureTypeFields.Select(x => x.fieldTypeId));
+        }
+        else if (instantiatedFunction is { IsStatic: false, OwnerSignature: {} ownerSignature }
+                 && currentFunction?.OwnerType == ownerSignature)
+        {
+            Instructions.Add(new LoadArgument(NextAddress(), 0));
         }
         
         LoadFunctionPointer(instantiatedFunction);
@@ -1234,6 +1240,8 @@ public class ILCompile
         
         // store the function pointer into field 0
         Instructions.Add(new StoreField(NextAddress(), 0, 0));
+
+        var currentFunction = _scopeStack.Peek().CurrentFunction;
         
         if (instantiatedFunction.ClosureTypeId.HasValue)
         {
@@ -1253,6 +1261,13 @@ public class ILCompile
             CompileExpression(instanceOwnerExpression);
             
             // store `this` into field 1
+            Instructions.Add(new StoreField(NextAddress(), 0, 1));
+        }
+        else if (instantiatedFunction is { IsStatic: false, OwnerSignature: {} ownerSignature} &&
+                 currentFunction?.OwnerType == ownerSignature)
+        {
+            Instructions.Add(new CopyStack(NextAddress()));
+            Instructions.Add(new LoadArgument(NextAddress(), 0));
             Instructions.Add(new StoreField(NextAddress(), 0, 1));
         }
     }

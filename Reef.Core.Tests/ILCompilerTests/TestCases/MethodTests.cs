@@ -335,6 +335,113 @@ public static class MethodTests
                                 Return(12)
                             ])
                     ])
+            },
+            {
+                "assign instance function to variable from within method",
+                """
+                class MyClass {
+                    fn MyFn() {
+                        var a = MyFn;
+                    }
+                }
+                """,
+                Module(
+                    types: [
+                        Class("MyClass",
+                            methods: [
+                                Method("MyFn",
+                                    parameters: [
+                                        Parameter("this", ConcreteTypeReference("MyClass"))
+                                    ],
+                                    locals: [
+                                        Local("a", ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]))
+                                    ],
+                                    instructions: [
+                                        new CreateObject(Addr(0), ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")])),
+                                        new CopyStack(Addr(1)),
+                                        new LoadTypeFunction(Addr(2), ConcreteTypeReference("MyClass"), 0),
+                                        new StoreField(Addr(3), 0, 0),
+                                        new CopyStack(Addr(4)),
+                                        new LoadArgument(Addr(5), 0),
+                                        new StoreField(Addr(6), 0, 1),
+                                        new StoreLocal(Addr(7), 0),
+                                        LoadUnit(8),
+                                        Return(9)
+                                    ])
+                            ])
+                    ])
+            },
+            {
+                "call instance function from within instance function",
+                """
+                class MyClass {
+                    fn MyFn() {
+                        MyFn();
+                    }
+                }
+                """,
+                Module(
+                    types: [
+                        Class("MyClass",
+                            methods: [
+                                Method("MyFn",
+                                    parameters: [
+                                        Parameter("this", ConcreteTypeReference("MyClass"))
+                                    ],
+                                    instructions: [
+                                        new LoadArgument(Addr(0), 0),
+                                        new LoadTypeFunction(Addr(1), ConcreteTypeReference("MyClass"), 0),
+                                        new Call(Addr(2)),
+                                        Drop(3),
+                                        LoadUnit(4),
+                                        Return(5)
+                                    ])
+                            ])
+                    ])
+            },
+            {
+                "assign instance function to variable from within same instance but different method",
+                """
+                class MyClass {
+                    fn MyFn() {}
+                    fn OtherFn() {
+                        var a = MyFn;
+                    }
+                }
+                """,
+                Module(
+                    types: [
+                        Class("MyClass",
+                            methods: [
+                                Method("MyFn",
+                                    parameters: [
+                                        Parameter("this", ConcreteTypeReference("MyClass"))
+                                    ],
+                                    instructions: [
+                                        LoadUnit(0),
+                                        Return(1)
+                                    ]),
+                                Method("OtherFn",
+                                    parameters: [
+                                        Parameter("this", ConcreteTypeReference("MyClass"))
+                                    ],
+                                    locals: [
+                                        Local("a", ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]))
+                                    ],
+                                    instructions: [
+                                        new CreateObject(Addr(0), ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")])),
+                                        new CopyStack(Addr(1)),
+                                        new LoadTypeFunction(Addr(2), ConcreteTypeReference("MyClass"), 0),
+                                        new StoreField(Addr(3), 0, 0),
+                                        new CopyStack(Addr(4)),
+                                        new LoadArgument(Addr(5), 0),
+                                        new StoreField(Addr(6), 0, 1),
+                                        new StoreLocal(Addr(7), 0),
+                                        LoadUnit(8),
+                                        Return(9)
+                                    ])
+                            ])
+                    ])
             }
         };
     }

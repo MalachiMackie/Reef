@@ -66,6 +66,21 @@ public class TypeCheckerTests
         return new TheoryData<string>
         {
             """
+            class MyClass {
+                fn MyFn() {
+                    MyFn();
+                }
+            }
+            """,
+            """
+            class MyClass {
+                fn OtherFn() {}
+                fn MyFn() {
+                    OtherFn();
+                }
+            }
+            """,
+            """
             static fn Outer() {
                 var mut a = "";
                 fn InnerFn() {
@@ -1213,6 +1228,32 @@ public class TypeCheckerTests
     {
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
+            {
+                "access instance method in static method - class",
+                """
+                class MyClass {
+                    static fn StaticFn() {
+                        InstanceFn();
+                    } 
+                    
+                    fn InstanceFn() {}
+                }
+                """,
+                [TypeCheckerError.AccessInstanceMemberInStaticContext(Identifier("InstanceFn"))]
+            },
+            {
+                "access instance method in static method - union",
+                """
+                union MyUnion {
+                    static fn StaticFn() {
+                        InstanceFn();
+                    } 
+                    
+                    fn InstanceFn() {}
+                }
+                """,
+                [TypeCheckerError.AccessInstanceMemberInStaticContext(Identifier("InstanceFn"))]
+            },
             {
                 "global function marked as mutable",
                 """

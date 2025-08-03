@@ -1918,6 +1918,34 @@ public class TypeChecker
         {
             return InstantiateFunction(function, null, GenericPlaceholders);
         }
+
+        if (CurrentTypeSignature is UnionSignature union)
+        {
+            var unionFunction = union.Functions.FirstOrDefault(x => x.Name == variableName.StringValue);
+            if (unionFunction is not null)
+            {
+                if (!unionFunction.IsStatic && CurrentFunctionSignature is not { IsStatic: false })
+                {
+                    _errors.Add(TypeCheckerError.AccessInstanceMemberInStaticContext(variableName));
+                }
+
+                return InstantiateFunction(unionFunction, ownerType: InstantiateUnion(union, [], SourceRange.Default), GenericPlaceholders);
+            }
+        }
+        else if (CurrentTypeSignature is ClassSignature @class)
+        {
+            var classFunction = @class.Functions.FirstOrDefault(x => x.Name == variableName.StringValue);
+            if (classFunction is not null)
+            {
+                if (!classFunction.IsStatic && CurrentFunctionSignature is not { IsStatic: false })
+                {
+                    _errors.Add(TypeCheckerError.AccessInstanceMemberInStaticContext(variableName));
+                }
+
+                return InstantiateFunction(classFunction, ownerType: InstantiateClass(@class, [], SourceRange.Default),
+                    GenericPlaceholders);
+            }
+        }
         
         if (!TryGetScopedVariable(variableName, out var valueVariable))
         {
@@ -2525,6 +2553,7 @@ public class TypeChecker
         public bool IsMutable => Signature.IsMutable;
         public IReadOnlyList<IVariable> AccessedOuterVariables => Signature.AccessedOuterVariables;
         public ITypeReference? OwnerType { get; }
+        public ITypeSignature? OwnerSignature => Signature.OwnerType;
         public IReadOnlyList<GenericTypeReference> TypeArguments { get; }
         public ITypeReference ReturnType { get; }
         public Guid FunctionId => Signature.Id;
