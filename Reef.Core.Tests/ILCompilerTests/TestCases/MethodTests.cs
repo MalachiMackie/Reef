@@ -141,7 +141,41 @@ public static class MethodTests
                 var a = SomeFn;
                 a(1);
                 """,
-                Module()
+                Module(
+                    methods: [
+                        Method("SomeFn",
+                            parameters: [
+                                Parameter("param", ConcreteTypeReference("int"))
+                            ],
+                            instructions: [
+                                LoadUnit(0),
+                                Return(1)
+                            ]),
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference("Function`2", 
+                                    [ConcreteTypeReference("int"), ConcreteTypeReference("Unit")]))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference(
+                                    "Function`2",
+                                    [ConcreteTypeReference("int"), ConcreteTypeReference("Unit")])),
+                                new CopyStack(Addr(1)),
+                                new LoadGlobalFunction(Addr(2), FunctionDefinitionReference("SomeFn")),
+                                new StoreField(Addr(3), 0, 0),
+                                new StoreLocal(Addr(4), 0),
+                                new LoadLocal(Addr(5), 0),
+                                new LoadIntConstant(Addr(6), 1),
+                                new LoadTypeFunction(Addr(7), ConcreteTypeReference(
+                                    "Function`2",
+                                    [ConcreteTypeReference("int"), ConcreteTypeReference("Unit")]), 0),
+                                new Call(Addr(8)),
+                                Drop(9),
+                                LoadUnit(10),
+                                Return(11)
+                            ])
+                    ])
             },
             {
                 "assign instance function to variable",
@@ -154,7 +188,46 @@ public static class MethodTests
                 var b = a.MyFn;
                 b();
                 """,
-                Module()
+                Module(
+                    types: [
+                        Class("MyClass",
+                            methods: [
+                                Method("MyFn",
+                                    parameters: [
+                                        Parameter("this", ConcreteTypeReference("MyClass"))
+                                    ],
+                                    instructions: [
+                                        LoadUnit(0),
+                                        Return(1)
+                                    ])
+                            ])
+                    ],
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference("MyClass")),
+                                Local("b", ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
+                                new StoreLocal(Addr(1), 0),
+                                new CreateObject(Addr(2), ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")])),
+                                new CopyStack(Addr(3)),
+                                new LoadTypeFunction(Addr(4), ConcreteTypeReference("MyClass"), 0),
+                                new StoreField(Addr(5), 0, 0),
+                                new CopyStack(Addr(6)),
+                                new LoadLocal(Addr(7), 0),
+                                new StoreField(Addr(8), 0, 1),
+                                new StoreLocal(Addr(9), 1),
+                                new LoadLocal(Addr(10), 1),
+                                new LoadTypeFunction(Addr(11), ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]), 0),
+                                new Call(Addr(12)),
+                                Drop(13),
+                                LoadUnit(14),
+                                Return(15)
+                            ])
+                    ])
             },
             {
                 "assign static type function to variable",
@@ -180,12 +253,86 @@ public static class MethodTests
                         Method("!Main",
                             isStatic: true,
                             locals: [
-                                Local("a", FunctionReference())
+                                Local("a", ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]))
                             ],
                             instructions: [
                                 new CreateObject(Addr(0), ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")])),
-                                new LoadTypeFunction(Addr(1), ConcreteTypeReference("MyClass"), 0),
-                                new StoreField(Addr(2), 0, 0)
+                                new CopyStack(Addr(1)),
+                                new LoadTypeFunction(Addr(2), ConcreteTypeReference("MyClass"), 0),
+                                new StoreField(Addr(3), 0, 0),
+                                new StoreLocal(Addr(4), 0),
+                                new LoadLocal(Addr(5), 0),
+                                new LoadTypeFunction(Addr(6), ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]), 0),
+                                new Call(Addr(7)),
+                                Drop(8),
+                                LoadUnit(9),
+                                Return(10)
+                            ])
+                    ])
+            },
+            {
+                "assign static type function with parameters and return type to variable",
+                """
+                class MyClass { 
+                    pub static fn MyFn(a: string, b: int): bool { return true; }
+                }
+                var a = MyClass::MyFn;
+                a("", 1);
+                """,
+                Module(
+                    types: [
+                        Class("MyClass", methods: [
+                            Method("MyFn",
+                                isStatic: true,
+                                parameters: [
+                                    Parameter("a", ConcreteTypeReference("string")),
+                                    Parameter("b", ConcreteTypeReference("int"))
+                                ],
+                                returnType: ConcreteTypeReference("bool"),
+                                instructions: [
+                                    new LoadBoolConstant(Addr(0), true),
+                                    Return(1)
+                                ])
+                        ])
+                    ],
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference(
+                                    "Function`3",
+                                    [
+                                        ConcreteTypeReference("string"),
+                                        ConcreteTypeReference("int"),
+                                        ConcreteTypeReference("bool")
+                                    ]))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference(
+                                    "Function`3",
+                                    [
+                                        ConcreteTypeReference("string"),
+                                        ConcreteTypeReference("int"),
+                                        ConcreteTypeReference("bool")
+                                    ])),
+                                new CopyStack(Addr(1)),
+                                new LoadTypeFunction(Addr(2), ConcreteTypeReference("MyClass"), 0),
+                                new StoreField(Addr(3), 0, 0),
+                                new StoreLocal(Addr(4), 0),
+                                new LoadLocal(Addr(5), 0),
+                                new LoadStringConstant(Addr(6), ""),
+                                new LoadIntConstant(Addr(7), 1),
+                                new LoadTypeFunction(Addr(8), ConcreteTypeReference(
+                                    "Function`3",
+                                    [
+                                        ConcreteTypeReference("string"),
+                                        ConcreteTypeReference("int"),
+                                        ConcreteTypeReference("bool")
+                                    ]), 0),
+                                new Call(Addr(9)),
+                                Drop(10),
+                                LoadUnit(11),
+                                Return(12)
                             ])
                     ])
             }

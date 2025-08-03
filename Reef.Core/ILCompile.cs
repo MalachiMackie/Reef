@@ -277,8 +277,8 @@ public class ILCompile
             Instructions.Add(new StoreLocal(NextAddress(), 0));
             foreach (var (_, _, argumentIndex, fieldIndex) in localsFields.Where(x => x.parameterIndex.HasValue))
             {
-                Instructions.Add(new LoadArgument(NextAddress(), argumentIndex!.Value));
                 Instructions.Add(new LoadLocal(NextAddress(), 0));
+                Instructions.Add(new LoadArgument(NextAddress(), argumentIndex!.Value));
                 Instructions.Add(new StoreField(NextAddress(), VariantIndex: 0, FieldIndex: fieldIndex));
             }
         }
@@ -503,15 +503,33 @@ public class ILCompile
                 DefinitionId = instantiatedUnion.Signature.Id,
                 TypeArguments = [..instantiatedUnion.TypeArguments.Select(GetTypeReference)]
             },
-            TypeChecker.InstantiatedFunction instantiatedFunction => new FunctionReference
-            {
-                Parameters = instantiatedFunction.Parameters
-                    .Select(x => GetTypeReference(x.Value.Type))
-                    .ToArray(),
-                ReturnType = GetTypeReference(instantiatedFunction.ReturnType)
-            },
+            TypeChecker.InstantiatedFunction instantiatedFunction => FunctionCase(instantiatedFunction),
             _ => throw new InvalidOperationException("Unexpected type reference")
         };
+
+        ConcreteReefTypeReference FunctionCase(TypeChecker.InstantiatedFunction instantiatedFunction)
+        {
+            var signature = TypeChecker.ClassSignature.Function(instantiatedFunction);
+
+            var typeArguments = instantiatedFunction.Parameters
+                .Select(x => x.Value.Type)
+                .Append(instantiatedFunction.ReturnType)
+                .ToArray();
+
+            var resolvedTypeArguments = signature.TypeParameters.Select((x, i) => new TypeChecker.GenericTypeReference()
+            {
+                GenericName = x.GenericName,
+                OwnerType = x.OwnerType,
+                ResolvedType = typeArguments[i]
+            });
+
+            return new ConcreteReefTypeReference
+            {
+                DefinitionId = signature.Id,
+                Name = signature.Name,
+                TypeArguments = resolvedTypeArguments.Select(GetTypeReference).ToArray()
+            };
+        }
     }
     
     private void CompileExpression(IExpression expression, bool calling = false)
@@ -534,7 +552,7 @@ public class ILCompile
                 CompileMatchExpression(matchExpression);
                 break;
             case MemberAccessExpression memberAccessExpression:
-                CompileMemberAccessExpression(memberAccessExpression);
+                CompileMemberAccessExpression(memberAccessExpression, calling);
                 break;
             case MethodCallExpression methodCallExpression:
                 CompileMethodCallExpression(methodCallExpression);
@@ -546,7 +564,7 @@ public class ILCompile
                 CompileObjectInitializerExpression(objectInitializerExpression);
                 break;
             case StaticMemberAccessExpression staticMemberAccessExpression:
-                CompileStaticMemberAccessExpression(staticMemberAccessExpression);
+                CompileStaticMemberAccessExpression(staticMemberAccessExpression, calling);
                 break;
             case TupleExpression tupleExpression:
                 CompileTupleExpression(tupleExpression);
@@ -630,14 +648,12 @@ public class ILCompile
                 }
                 case ValueAccessorExpression {ValueAccessor: {AccessType: ValueAccessType.Variable, Token.Type: TokenType.Identifier}} valueAccessorExpression:
                 {
-                    CompileExpression(right);
-
                     if (valueAccessorExpression.ReferencedVariable is not TypeChecker.LocalVariable localVariable)
                     {
                         throw new InvalidOperationException("Expected local variable");
                     }
                     
-                    AssignToLocal(localVariable);
+                    AssignToLocal(localVariable, right);
                     break;
                 }
                 default:
@@ -696,10 +712,11 @@ public class ILCompile
         return localIndex;
     }
 
-    private void AssignToLocal(TypeChecker.LocalVariable localVariable)
+    private void AssignToLocal(TypeChecker.LocalVariable localVariable, IExpression expression)
     {
         if (!localVariable.ReferencedInClosure)
         {
+            CompileExpression(expression);
             Instructions.Add(new StoreLocal(NextAddress(), GetLocalIndex(localVariable)));
             return;
         }
@@ -731,6 +748,7 @@ public class ILCompile
             }
 
             Instructions.Add(new LoadLocal(NextAddress(), 0));
+            CompileExpression(expression);
             Instructions.Add(new StoreField(NextAddress(), 0, foundFieldIndex));
             return;
         }
@@ -761,6 +779,7 @@ public class ILCompile
         Instructions.Add(new LoadArgument(NextAddress(), 0));
         // load closure object field
         Instructions.Add(new LoadField(NextAddress(), 0, closureArgumentIndex));
+        CompileExpression(expression);
         // store into closure object field
         Instructions.Add(new StoreField(NextAddress(), VariantIndex: 0, FieldIndex: closureFieldIndex));
     }
@@ -800,27 +819,29 @@ public class ILCompile
     }
     
     private void CompileMemberAccessExpression(
-        MemberAccessExpression memberAccessExpression)
+        MemberAccessExpression memberAccessExpression, bool calling)
     {
         var memberIndex = memberAccessExpression.MemberAccess.ItemIndex
             ?? throw new InvalidOperationException("Expected member item index");
         var memberType = memberAccessExpression.MemberAccess.MemberType
             ?? throw new InvalidOperationException("Expected member type");
-        var ownerType = memberAccessExpression.MemberAccess.OwnerType
-                        ?? throw new InvalidOperationException("Expected member access owner type");
-        var ownerReference = GetTypeReference(ownerType) as ConcreteReefTypeReference
-                             ?? throw new InvalidOperationException(
-                                 "Expected member access owner type to be concrete type");
-
-        CompileExpression(memberAccessExpression.MemberAccess.Owner);
             
         if (memberType == MemberType.Function)
         {
-            Instructions.Add(new LoadTypeFunction(NextAddress(), ownerReference, memberIndex));
+            if (memberAccessExpression.ResolvedType is not TypeChecker.InstantiatedFunction instantiatedFunction)
+            {
+                throw new InvalidOperationException("Expected instantiated function");
+            }
+            CompileFunctionReference(instantiatedFunction, calling, instanceOwnerExpression: memberAccessExpression.MemberAccess.Owner);
         }
         else if (memberType == MemberType.Field)
         {
+            CompileExpression(memberAccessExpression.MemberAccess.Owner);
             Instructions.Add(new LoadField(NextAddress(), 0, memberIndex));
+        }
+        else
+        {
+            throw new InvalidOperationException("Unexpected member type");
         }
     }
     
@@ -888,7 +909,7 @@ public class ILCompile
     }
     
     private void CompileStaticMemberAccessExpression(
-        StaticMemberAccessExpression staticMemberAccessExpression)
+        StaticMemberAccessExpression staticMemberAccessExpression, bool calling)
     {
         var ownerType = staticMemberAccessExpression.OwnerType
                         ?? throw new InvalidOperationException("Expected static member access ownerType");
@@ -904,7 +925,11 @@ public class ILCompile
         
         if (memberType == MemberType.Function)
         {
-            Instructions.Add(new LoadTypeFunction(NextAddress(), ownerReference, itemIndex));
+            if (staticMemberAccessExpression.ResolvedType is not TypeChecker.InstantiatedFunction instantiatedFunction)
+            {
+                throw new InvalidOperationException("Expected instantiated function");
+            }
+            CompileFunctionReference(instantiatedFunction, calling, instanceOwnerExpression: null);
         }
         else if (memberType == MemberType.Field)
         {
@@ -1096,83 +1121,147 @@ public class ILCompile
         }
     }
 
-    private void CompileFunctionReference(TypeChecker.InstantiatedFunction instantiatedFunction, bool calling)
+    private void CompileFunctionReference(
+        TypeChecker.InstantiatedFunction instantiatedFunction,
+        bool calling,
+        IExpression? instanceOwnerExpression)
     {
-        if (calling)
+        if (!calling)
         {
-            if (instantiatedFunction.OwnerType is not null)
+            CreateFunctionObject(instantiatedFunction, instanceOwnerExpression);
+            return;
+        }
+
+        if (instanceOwnerExpression is not null)
+        {
+            CompileExpression(instanceOwnerExpression);
+        }
+        
+        if (instantiatedFunction.ClosureTypeId.HasValue)
+        {
+            CreateClosureObject(
+                instantiatedFunction.ClosureTypeId.Value,
+                instantiatedFunction.ClosureTypeFields.Select(x => x.fieldTypeId));
+        }
+        
+        LoadFunctionPointer(instantiatedFunction);
+    }
+
+    private void CreateClosureObject(Guid closureTypeId, IEnumerable<Guid> closureTypeFieldTypeIds)
+    {
+        var closureType = _types.First(x => x.Id == closureTypeId);
+        Instructions.Add(new CreateObject(NextAddress(), new ConcreteReefTypeReference
+        {
+            Name = closureType.DisplayName,
+            DefinitionId = closureType.Id,
+            TypeArguments = []
+        }));
+        
+        var currentFunction = _scopeStack.Peek().CurrentFunction
+                              ?? throw new InvalidOperationException(
+                                  "Expected to be in a function when referencing outer variables");
+
+        foreach (var (fieldIndex, parameterTypeId) in closureTypeFieldTypeIds.Index())
+        {
+            Instructions.Add(new CopyStack(NextAddress()));
+            if (parameterTypeId == currentFunction.LocalsTypeId)
             {
-                Instructions.Add(new LoadTypeFunction(
-                    NextAddress(),
-                    GetTypeReference(instantiatedFunction.OwnerType) as ConcreteReefTypeReference ??
-                    throw new InvalidOperationException("Expected concrete type reference"),
-                    instantiatedFunction.FunctionIndex ??
-                    throw new InvalidOperationException("Expected function index")));
-                return;
+                // load the current functions locals type
+                Instructions.Add(new LoadLocal(NextAddress(), 0));
             }
-
-            if (instantiatedFunction.ClosureTypeId.HasValue)
+            else if (currentFunction.ClosureTypeId.HasValue)
             {
-                var closureType = _types.First(x => x.Id == instantiatedFunction.ClosureTypeId.Value);
-                Instructions.Add(new CreateObject(NextAddress(), new ConcreteReefTypeReference
+                // parameter must be locals for a function further up, so grab it out of our closureParameter
+                Instructions.Add(new LoadArgument(NextAddress(), 0));
+                foreach (var (i, (currentFunctionParameterTypeId, _)) in currentFunction.ClosureTypeFields.Index())
                 {
-                    Name = closureType.DisplayName,
-                    DefinitionId = closureType.Id,
-                    TypeArguments = []
-                }));
-                
-                var currentFunction = _scopeStack.Peek().CurrentFunction
-                                      ?? throw new InvalidOperationException(
-                                          "Expected to be in a function when referencing outer variables");
-
-                foreach (var (fieldIndex, (parameterTypeId, _)) in instantiatedFunction.ClosureTypeFields.Index())
-                {
-                    Instructions.Add(new CopyStack(NextAddress()));
-                    if (parameterTypeId == currentFunction.LocalsTypeId)
+                    if (currentFunctionParameterTypeId == parameterTypeId)
                     {
-                        // load the current functions locals type
-                        Instructions.Add(new LoadLocal(NextAddress(), 0));
+                        // load the expected closure parameter from the current function so it can be passed on
+                        Instructions.Add(new LoadField(NextAddress(), 0, (uint)i));
+                        break;
                     }
-                    else if (currentFunction.ClosureTypeId.HasValue)
-                    {
-                        // parameter must be locals for a function further up, so grab it out of our closureParameter
-                        Instructions.Add(new LoadArgument(NextAddress(), 0));
-                        foreach (var (i, (currentFunctionParameterTypeId, _)) in currentFunction.ClosureTypeFields.Index())
-                        {
-                            if (currentFunctionParameterTypeId == parameterTypeId)
-                            {
-                                // load the expected closure parameter from the current function so it can be passed on
-                                Instructions.Add(new LoadField(NextAddress(), 0, (uint)i));
-                                break;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Expected to have closure parameter");
-                    }
-                    Instructions.Add(new StoreField(NextAddress(), 0, (uint)fieldIndex));
                 }
             }
+            else
+            {
+                throw new InvalidOperationException("Expected to have closure parameter");
+            }
+            Instructions.Add(new StoreField(NextAddress(), 0, (uint)fieldIndex));
+        }       
+    }
 
+    private void LoadFunctionPointer(TypeChecker.InstantiatedFunction instantiatedFunction)
+    {
+        if (instantiatedFunction.OwnerType is not null)
+        {
+            Instructions.Add(new LoadTypeFunction(
+                NextAddress(),
+                GetTypeReference(instantiatedFunction.OwnerType) as ConcreteReefTypeReference ??
+                throw new InvalidOperationException("Expected concrete type reference"),
+                instantiatedFunction.FunctionIndex ??
+                throw new InvalidOperationException("Expected function index")));
+        }
+        else
+        {
             Instructions.Add(new LoadGlobalFunction(NextAddress(), new FunctionDefinitionReference
             {
                 Name = instantiatedFunction.Name,
                 TypeArguments = instantiatedFunction.TypeArguments.Select(GetTypeReference).ToArray(),
                 DefinitionId = instantiatedFunction.FunctionId
             }));
-            
-            return;
-        }
+        }   
+    }
 
-        throw new NotImplementedException();
+    private void CreateFunctionObject(TypeChecker.InstantiatedFunction instantiatedFunction, IExpression? instanceOwnerExpression)
+    {
+        var signature = TypeChecker.ClassSignature.Function(instantiatedFunction);
+
+        var functionType = new ConcreteReefTypeReference
+        {
+            DefinitionId = signature.Id,
+            Name = signature.Name,
+            TypeArguments = instantiatedFunction.Parameters.Select(x => x.Value.Type)
+                .Append(instantiatedFunction.ReturnType)
+                .Select(GetTypeReference)
+                .ToArray()
+        };
+        
+        Instructions.Add(new CreateObject(NextAddress(), functionType));
+        Instructions.Add(new CopyStack(NextAddress()));
+        
+        LoadFunctionPointer(instantiatedFunction);
+        
+        // store the function pointer into field 0
+        Instructions.Add(new StoreField(NextAddress(), 0, 0));
+        
+        if (instantiatedFunction.ClosureTypeId.HasValue)
+        {
+            Instructions.Add(new CopyStack(NextAddress()));
+            
+            CreateClosureObject(
+                instantiatedFunction.ClosureTypeId.Value,
+                instantiatedFunction.ClosureTypeFields.Select(x => x.fieldTypeId));
+            
+            // store the closure object into field 1
+            Instructions.Add(new StoreField(NextAddress(), 0, 1));
+        }
+        else if (instanceOwnerExpression is not null && !instantiatedFunction.IsStatic)
+        {
+            Instructions.Add(new CopyStack(NextAddress()));
+            
+            CompileExpression(instanceOwnerExpression);
+            
+            // store `this` into field 1
+            Instructions.Add(new StoreField(NextAddress(), 0, 1));
+        }
     }
 
     private void CompileIdentifierValueAccessor(ValueAccessorExpression valueAccessorExpression, bool calling)
     {
-        if (valueAccessorExpression.ResolvedType is TypeChecker.InstantiatedFunction instantiatedFunction)
+        if (valueAccessorExpression is { ResolvedType: TypeChecker.InstantiatedFunction instantiatedFunction, ReferencedVariable: null })
         {
-            CompileFunctionReference(instantiatedFunction, calling);
+            CompileFunctionReference(instantiatedFunction, calling, instanceOwnerExpression: null);
             return;
         }
         
@@ -1277,8 +1366,23 @@ public class ILCompile
             default:
                 throw new ArgumentOutOfRangeException(nameof(referencedVariable));
         }
-    }
 
+        if (calling && valueAccessorExpression.ResolvedType is TypeChecker.InstantiatedFunction x)
+        {
+            var function = TypeChecker.ClassSignature.Function(x);
+            Instructions.Add(new LoadTypeFunction(NextAddress(), new ConcreteReefTypeReference
+            {
+                DefinitionId = function.Id,
+                Name = function.Name,
+                TypeArguments = x.Parameters
+                    .Select(y => y.Value.Type)
+                    .Append(x.ReturnType)
+                    .Select(GetTypeReference)
+                    .ToArray()
+            }, FunctionIndex: 0));
+        }
+    }
+    
     private void CompileVariableDeclarationExpression(
         VariableDeclarationExpression variableDeclarationExpression)
     {
@@ -1292,9 +1396,7 @@ public class ILCompile
             return;
         }
 
-        CompileExpression(variableDeclarationExpression.VariableDeclaration.Value);
-        
-        AssignToLocal(localVariable);
+        AssignToLocal(localVariable, variableDeclarationExpression.VariableDeclaration.Value);
     }
 
     private static ConcreteReefTypeReference SignatureAsTypeReference(TypeChecker.ITypeSignature definition)

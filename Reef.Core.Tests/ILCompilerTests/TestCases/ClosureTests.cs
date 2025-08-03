@@ -213,8 +213,8 @@ public static class ClosureTests
                             [
                                 new CreateObject(Addr(0), ConcreteTypeReference("!Main_Locals")),
                                 new StoreLocal(Addr(1), 0),
-                                new LoadStringConstant(Addr(2), ""),
-                                new LoadLocal(Addr(3), 0),
+                                new LoadLocal(Addr(2), 0),
+                                new LoadStringConstant(Addr(3), ""),
                                 new StoreField(Addr(4), 0, 0),
                                 new CreateObject(Addr(5), ConcreteTypeReference("SomeFn_Closure")),
                                 new CopyStack(Addr(6)),
@@ -284,8 +284,8 @@ public static class ClosureTests
                             [
                                 new CreateObject(Addr(0), ConcreteTypeReference("Outer_Locals")),
                                 new StoreLocal(Addr(1), 0),
-                                new LoadArgument(Addr(2), 0),
-                                new LoadLocal(Addr(3), 0),
+                                new LoadLocal(Addr(2), 0),
+                                new LoadArgument(Addr(3), 0),
                                 new StoreField(Addr(4), 0, 0),
                                 new CreateObject(Addr(5), ConcreteTypeReference("SomeFn_Closure")),
                                 new CopyStack(Addr(6)),
@@ -353,8 +353,8 @@ public static class ClosureTests
                             [
                                 new CreateObject(Addr(0), ConcreteTypeReference("!Main_Locals")),
                                 new StoreLocal(Addr(1), 0),
-                                new LoadStringConstant(Addr(2), ""),
-                                new LoadLocal(Addr(3), 0),
+                                new LoadLocal(Addr(2), 0),
+                                new LoadStringConstant(Addr(3), ""),
                                 new StoreField(Addr(4), 0, 0),
                                 new CreateObject(Addr(5), ConcreteTypeReference("SomeFn_Closure")),
                                 new CopyStack(Addr(6)),
@@ -456,8 +456,8 @@ public static class ClosureTests
                         [
                             new CreateObject(Addr(0), ConcreteTypeReference("Third_Locals")),
                             new StoreLocal(Addr(1), 0),
-                            new LoadIntConstant(Addr(2), 1),
-                            new LoadLocal(Addr(3), 0),
+                            new LoadLocal(Addr(2), 0),
+                            new LoadIntConstant(Addr(3), 1),
                             new StoreField(Addr(4), 0, 0),
                             new CreateObject(Addr(5), ConcreteTypeReference("Fourth_Closure")),
                             new CopyStack(Addr(6)),
@@ -505,8 +505,8 @@ public static class ClosureTests
                         [
                             new CreateObject(Addr(0), ConcreteTypeReference("First_Locals")),
                             new StoreLocal(Addr(1), 0),
-                            new LoadArgument(Addr(2), 0),
-                            new LoadLocal(Addr(3), 0),
+                            new LoadLocal(Addr(2), 0),
+                            new LoadArgument(Addr(3), 0),
                             new StoreField(Addr(4), 0, 0),
                             new CreateObject(Addr(5), ConcreteTypeReference("Second_Closure")),
                             new CopyStack(Addr(6)),
@@ -563,8 +563,8 @@ public static class ClosureTests
                         instructions: [
                             new CreateObject(Addr(0), ConcreteTypeReference("!Main_Locals")),
                             new StoreLocal(Addr(1), 0),
-                            new LoadIntConstant(Addr(2), 1),
-                            new LoadLocal(Addr(3), 0),
+                            new LoadLocal(Addr(2), 0),
+                            new LoadIntConstant(Addr(3), 1),
                             new StoreField(Addr(4), 0, 0),
                             new LoadLocal(Addr(5), 0),
                             new LoadField(Addr(6), 0, 0),
@@ -653,11 +653,11 @@ public static class ClosureTests
                             instructions: [
                                 new CreateObject(Addr(0), ConcreteTypeReference("!Main_Locals")),
                                 new StoreLocal(Addr(1), 0),
-                                new LoadIntConstant(Addr(2), 1),
-                                new LoadLocal(Addr(3), 0),
+                                new LoadLocal(Addr(2), 0),
+                                new LoadIntConstant(Addr(3), 1),
                                 new StoreField(Addr(4), 0, 0),
-                                new LoadIntConstant(Addr(5), 2),
-                                new LoadLocal(Addr(6), 0),
+                                new LoadLocal(Addr(5), 0),
+                                new LoadIntConstant(Addr(6), 2),
                                 new StoreField(Addr(7), 0, 1),
                                 new LoadIntConstant(Addr(8), 3),
                                 new StoreLocal(Addr(9), 1),
@@ -739,8 +739,8 @@ public static class ClosureTests
                             instructions: [
                                 new CreateObject(Addr(0), ConcreteTypeReference("SomeFn_Locals")),
                                 new StoreLocal(Addr(1), 0),
-                                new LoadArgument(Addr(2), 0),
-                                new LoadLocal(Addr(3), 0),
+                                new LoadLocal(Addr(2), 0),
+                                new LoadArgument(Addr(3), 0),
                                 new StoreField(Addr(4), 0, 0),
                                 new LoadIntConstant(Addr(5), 2),
                                 new StoreLocal(Addr(6), 1),
@@ -827,8 +827,8 @@ public static class ClosureTests
                             instructions: [
                                 new CreateObject(Addr(0), ConcreteTypeReference("Inner1_Locals")),
                                 new StoreLocal(Addr(1), 0),
-                                new LoadIntConstant(Addr(2), 2),
-                                new LoadLocal(Addr(3), 0),
+                                new LoadLocal(Addr(2), 0),
+                                new LoadIntConstant(Addr(3), 2),
                                 new StoreField(Addr(4), 0, 0),
                                 new CreateObject(Addr(5), ConcreteTypeReference("Inner2_Closure")),
                                 new CopyStack(Addr(6)),
@@ -856,8 +856,8 @@ public static class ClosureTests
                             instructions: [
                                 new CreateObject(Addr(0), ConcreteTypeReference("Outer_Locals")),
                                 new StoreLocal(Addr(1), 0),
-                                new LoadArgument(Addr(2), 0),
-                                new LoadLocal(Addr(3), 0),
+                                new LoadLocal(Addr(2), 0),
+                                new LoadArgument(Addr(3), 0),
                                 new StoreField(Addr(4), 0, 0),
                                 new LoadLocal(Addr(5), 0),
                                 new LoadField(Addr(6), 0, 0),
@@ -907,9 +907,9 @@ public static class ClosureTests
                                 new LoadField(Addr(1), 0, 0),
                                 new LoadField(Addr(2), 0, 0),
                                 new StoreLocal(Addr(3), 0),
-                                new LoadIntConstant(Addr(4), 2),
-                                new LoadArgument(Addr(5), 0),
-                                new LoadField(Addr(6), 0, 0),
+                                new LoadArgument(Addr(4), 0),
+                                new LoadField(Addr(5), 0, 0),
+                                new LoadIntConstant(Addr(6), 2),
                                 new StoreField(Addr(7), 0, 0),
                                 LoadUnit(8),
                                 Return(9)
@@ -922,8 +922,8 @@ public static class ClosureTests
                             instructions: [
                                 new CreateObject(Addr(0), ConcreteTypeReference("!Main_Locals")),
                                 new StoreLocal(Addr(1), 0),
-                                new LoadIntConstant(Addr(2), 1),
-                                new LoadLocal(Addr(3), 0),
+                                new LoadLocal(Addr(2), 0),
+                                new LoadIntConstant(Addr(3), 1),
                                 new StoreField(Addr(4), 0, 0),
                                 LoadUnit(5),
                                 Return(6)
@@ -940,7 +940,64 @@ public static class ClosureTests
                 var c = Inner;
                 c();
                 """,
-                Module()
+                Module(
+                    types: [
+                        Class("!Main_Locals",
+                            fields: [
+                                Field("Field_0", ConcreteTypeReference("int"), isPublic: true)
+                            ]),
+                        Class("Inner_Closure",
+                            fields: [
+                                Field("Field_0", ConcreteTypeReference("!Main_Locals"), isPublic: true)
+                            ]),
+                    ],
+                    methods: [
+                        Method("Inner",
+                            parameters: [
+                                Parameter("closureParameter", ConcreteTypeReference("Inner_Closure"))
+                            ],
+                            locals: [
+                                Local("b", ConcreteTypeReference("int"))
+                            ],
+                            instructions: [
+                                new LoadArgument(Addr(0), 0),
+                                new LoadField(Addr(1), 0, 0),
+                                new LoadField(Addr(2), 0, 0),
+                                new StoreLocal(Addr(3), 0),
+                                LoadUnit(4),
+                                Return(5)
+                            ]),
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("locals", ConcreteTypeReference("!Main_Locals")),
+                                Local("c", ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("!Main_Locals")),
+                                new StoreLocal(Addr(1), 0),
+                                new LoadLocal(Addr(2), 0),
+                                new LoadIntConstant(Addr(3), 1),
+                                new StoreField(Addr(4), 0, 0),
+                                new CreateObject(Addr(5), ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")])),
+                                new CopyStack(Addr(6)),
+                                new LoadGlobalFunction(Addr(7), FunctionDefinitionReference("Inner")),
+                                new StoreField(Addr(8), 0, 0),
+                                new CopyStack(Addr(9)),
+                                new CreateObject(Addr(10), ConcreteTypeReference("Inner_Closure")),
+                                new CopyStack(Addr(11)),
+                                new LoadLocal(Addr(12), 0),
+                                new StoreField(Addr(13), 0, 0),
+                                new StoreField(Addr(14), 0, 1),
+                                new StoreLocal(Addr(15), 1),
+                                new LoadLocal(Addr(16), 1),
+                                new LoadTypeFunction(Addr(17), ConcreteTypeReference("Function`1", [ConcreteTypeReference("Unit")]), 0),
+                                new Call(Addr(18)),
+                                Drop(19),
+                                LoadUnit(20),
+                                Return(21)
+                            ])
+                    ])
             }
         };
     }

@@ -19,12 +19,6 @@ public class FunctionDefinitionReference
 
 public interface IReefTypeReference;
 
-public class FunctionReference : IReefTypeReference
-{
-    public required IReefTypeReference ReturnType { get; init; }
-    public required IReadOnlyList<IReefTypeReference> Parameters { get; init; }
-}
-
 public class ConcreteReefTypeReference : IReefTypeReference
 {
     public required string Name { get; set; }

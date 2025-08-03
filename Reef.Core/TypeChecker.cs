@@ -50,13 +50,13 @@ public class TypeChecker
         {
             return false;
         }
-        
+
         if (CurrentFunctionSignature is not null
-            && (variable is not FunctionParameter {ContainingFunction: var parameterOwner}
+            && (variable is not FunctionParameter { ContainingFunction: var parameterOwner }
                 || parameterOwner != CurrentFunctionSignature)
-            && (variable is not FieldVariable {ContainingSignature: var fieldOwner}
+            && (variable is not FieldVariable { ContainingSignature: var fieldOwner }
                 || fieldOwner != CurrentTypeSignature)
-            && (variable is not LocalVariable {ContainingFunction: var localOwner}
+            && (variable is not LocalVariable { ContainingFunction: var localOwner }
                 || localOwner != CurrentFunctionSignature)
             && !CurrentFunctionSignature.AccessedOuterVariables.Contains(variable))
         {
@@ -70,6 +70,7 @@ public class TypeChecker
                 variable.ReferencedInClosure = true;
             }
         }
+
         return true;
     }
 
@@ -91,7 +92,7 @@ public class TypeChecker
             var localVariables = CurrentFunctionSignature?.LocalVariables ?? _program.TopLevelLocalVariables;
             localVariables.Add(localVariable);
         }
-        
+
         _typeCheckingScopes.Peek().AddVariable(name, variable);
     }
 
@@ -137,7 +138,7 @@ public class TypeChecker
         foreach (var unionSignature in unions)
         {
             using var _ = PushScope(unionSignature, genericPlaceholders: unionSignature.TypeParameters);
-            
+
             foreach (var function in unionSignature.Functions)
             {
                 TypeCheckFunctionBody(function);
@@ -225,7 +226,7 @@ public class TypeChecker
                 }
             }
         }
-        
+
         foreach (var expression in _program.Expressions)
         {
             TypeCheckExpression(expression);
@@ -299,7 +300,7 @@ public class TypeChecker
                 { GenericName = typeParameter.StringValue, OwnerType = signature }));
 
             @class.Signature = signature;
-            
+
             var typeParametersLookup = @class.TypeParameters.ToLookup(x => x.StringValue);
 
             foreach (var grouping in typeParametersLookup)
@@ -368,7 +369,8 @@ public class TypeChecker
                     {
                         if (fields.Any(x => x.Name == field.Name.StringValue))
                         {
-                            _errors.Add(TypeCheckerError.DuplicateFieldInUnionClassVariant(union.Name, classVariant.Name, field.Name));
+                            _errors.Add(TypeCheckerError.DuplicateFieldInUnionClassVariant(union.Name,
+                                classVariant.Name, field.Name));
                         }
 
                         if (field.AccessModifier is not null)
@@ -436,6 +438,7 @@ public class TypeChecker
                 {
                     throw new InvalidOperationException($"Field with name {field.Name} already defined");
                 }
+
                 fields.Add(typeField);
             }
         }
@@ -476,19 +479,20 @@ public class TypeChecker
         };
         var functionType = InstantiateFunction(fnSignature, ownerType, GenericPlaceholders);
 
-        using var _ = PushScope(null, fnSignature, fnSignature.ReturnType, genericPlaceholders: functionType.TypeArguments);
+        using var _ = PushScope(null, fnSignature, fnSignature.ReturnType,
+            genericPlaceholders: functionType.TypeArguments);
         foreach (var parameter in fnSignature.Parameters.Values)
         {
             AddScopedVariable(
                 parameter.Name.StringValue,
                 parameter);
         }
-        
+
         foreach (var fn in fnSignature.LocalFunctions)
         {
             ScopedFunctions[fn.Name] = fn;
         }
-        
+
         var expressionsDiverge = false;
         foreach (var expression in fnSignature.Expressions)
         {
@@ -504,7 +508,7 @@ public class TypeChecker
                 fnSignature.ReturnType,
                 InstantiatedClass.Unit));
         }
-        
+
         foreach (var localFn in fnSignature.LocalFunctions)
         {
             TypeCheckFunctionBody(localFn);
@@ -513,8 +517,10 @@ public class TypeChecker
                     !fnSignature.AccessedOuterVariables.Contains(accessedOuterVariable)
                     && accessedOuterVariable switch
                     {
-                        FieldVariable => throw new InvalidOperationException("Field variable is not captured in a scope"),
-                        FunctionParameter functionParameterVariable => functionParameterVariable.ContainingFunction != fnSignature,
+                        FieldVariable => throw new InvalidOperationException(
+                            "Field variable is not captured in a scope"),
+                        FunctionParameter functionParameterVariable => functionParameterVariable.ContainingFunction !=
+                                                                       fnSignature,
                         LocalVariable localVariable => localVariable.ContainingFunction != fnSignature,
                         _ => throw new ArgumentOutOfRangeException(nameof(accessedOuterVariable))
                     }));
@@ -2935,8 +2941,87 @@ public class TypeChecker
         public required string Name { get; init; }
         public Guid Id { get; } = Guid.NewGuid();
 
+        private static readonly Dictionary<int, ClassSignature> CachedFunctionClasses = [];
+        
+        public static ClassSignature Function(InstantiatedFunction instantiatedFunction)
+        {
+            var parameters = instantiatedFunction.Parameters
+                .Select(x => (parameterType: x.Value.Type, x.Value.Mutable))
+                .ToArray();
+            var returnType = instantiatedFunction.ReturnType;
+            
+            var typeParamsCount = parameters.Length + 1;
+
+            if (CachedFunctionClasses.TryGetValue(typeParamsCount, out var cachedSignature))
+            {
+                return cachedSignature;
+            }
+
+            var typeParameters = new List<GenericTypeReference>();
+
+            var functions = new List<FunctionSignature>();
+            
+            var signature =  new ClassSignature
+            {
+                Name = $"Function`{typeParamsCount}",
+                TypeParameters = typeParameters,
+                // there are really two fields here. The function's closure or `this` argument, and the function pointer itself.
+                // but these are not represented in the type system, they only happen when compiling to IL
+                Fields = [null!, null!],
+                Functions = functions
+            };
+
+            var callFunctionParameters = new OrderedDictionary<string, FunctionParameter>();
+
+            var functionSignature = new FunctionSignature(
+                Token.Identifier("Call", SourceSpan.Default),
+                [],
+                callFunctionParameters,
+                isStatic: false,
+                isMutable: false,
+                expressions: [],
+                localFunctions: [],
+                functionIndex: 0)
+            {
+                ReturnType = returnType,
+                OwnerType = signature
+            };
+            functions.Add(functionSignature);
+            
+            foreach (var (i, (paramType, isMutable)) in parameters.Index())
+            {
+                var name = $"arg{i}";
+                callFunctionParameters.Add(name, new FunctionParameter(
+                    functionSignature,
+                    Token.Identifier(name, SourceSpan.Default),
+                    paramType,
+                    isMutable,
+                    ParameterIndex: (uint)i
+                ));
+            }
+            
+            typeParameters.AddRange(parameters
+                .Select(x => x.parameterType)
+                .Append(returnType)
+                .Select((x, i) => new GenericTypeReference
+            {
+                GenericName = i == typeParamsCount - 1 ? "TReturn" : $"TParam{i}",
+                OwnerType = signature
+            }));
+
+            CachedFunctionClasses[typeParamsCount] = signature;
+
+            return signature;
+        }
+
+        private static readonly Dictionary<int, ClassSignature> CachedTupleSignatures = [];
         public static ClassSignature Tuple(IReadOnlyList<ITypeReference> elements)
         {
+            if (CachedTupleSignatures.TryGetValue(elements.Count, out var cachedSignature))
+            {
+                return cachedSignature;
+            }
+            
             var typeParameters = new List<GenericTypeReference>(elements.Count);
             var signature = new ClassSignature
             {
@@ -2966,6 +3051,8 @@ public class TypeChecker
                 OwnerType = signature
             }));
 
+            CachedTupleSignatures[elements.Count] = signature;
+            
             return signature;
         }
     }
