@@ -96,9 +96,7 @@ public record LoadGlobalFunction(InstructionAddress Address, FunctionDefinitionR
 /// <summary>
 /// Loads a reference to the specified type function onto the evaluation stack
 /// </summary>
-/// <param name="Address"></param>
-/// <param name="FunctionIndex"></param>
-public record LoadTypeFunction(InstructionAddress Address, ConcreteReefTypeReference ReefType, uint FunctionIndex) : IInstruction;
+public record LoadTypeFunction(InstructionAddress Address, ConcreteReefTypeReference ReefType, uint FunctionIndex, IReadOnlyList<IReefTypeReference> TypeArguments) : IInstruction;
 
 /// <summary>
 /// Pops the top of the evaluation stack and stores it in the specified local index

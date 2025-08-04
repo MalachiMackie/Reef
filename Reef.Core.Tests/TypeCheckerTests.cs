@@ -38,22 +38,11 @@ public class TypeCheckerTests
     {
         const string src =
             """
-            static fn First(a: string) {
-                fn Second() {
-                    fn Third() {
-                        var c = 1;
-                        fn Fourth() {
-                            var b = a;
-                            var d = c;
-                        }
-                        
-                        Fourth();
-                    }
-                    Third();
-                }
-                Second();
+            fn MyFn<T>() {
+                MyFn::<string>();
             }
             """;
+;
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
@@ -65,6 +54,18 @@ public class TypeCheckerTests
     {
         return new TheoryData<string>
         {
+            """
+            class MyClass<T> {
+                fn MyFn() {
+                    var a = new MyClass::<string>{};
+                }
+            }
+            """,
+            """
+            fn MyFn<T>() {
+                MyFn::<string>();
+            }
+            """,
             """
             class MyClass {
                 fn MyFn() {

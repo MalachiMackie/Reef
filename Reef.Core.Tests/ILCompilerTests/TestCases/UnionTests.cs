@@ -168,7 +168,7 @@ public static class UnionTests
                             instructions: [
                                 new LoadIntConstant(Addr(0), 1),
                                 new LoadStringConstant(Addr(1), ""),
-                                new LoadTypeFunction(Addr(2), ConcreteTypeReference("MyUnion"), 2),
+                                new LoadTypeFunction(Addr(2), ConcreteTypeReference("MyUnion"), 2, []),
                                 new Call(Addr(3)),
                                 new StoreLocal(Addr(4), 0),
                                 LoadUnit(5),

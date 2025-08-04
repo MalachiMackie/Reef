@@ -603,7 +603,7 @@ public class ILCompile
 
     private void CompileGenericInstantiationExpression(GenericInstantiationExpression genericInstantiationExpression, bool calling)
     {
-        throw new NotImplementedException();
+        CompileExpression(genericInstantiationExpression.GenericInstantiation.Value, calling);
     }
     
     private void CompileBinaryOperatorExpression(
@@ -963,7 +963,7 @@ public class ILCompile
                     unionReference,
                     // tuple variant create functions are placed after all declared functions, and we need to skip any previous tuple union variants
                     (uint)(unionType.Signature.Functions.Count
-                        + unionType.Signature.Variants.Take((int)variantIndex).Count(x => x is TypeChecker.TupleUnionVariant))));
+                        + unionType.Signature.Variants.Take((int)variantIndex).Count(x => x is TypeChecker.TupleUnionVariant)), []));
                 break;
             }
             case TypeChecker.UnitUnionVariant:
@@ -1206,7 +1206,8 @@ public class ILCompile
                 GetTypeReference(instantiatedFunction.OwnerType) as ConcreteReefTypeReference ??
                 throw new InvalidOperationException("Expected concrete type reference"),
                 instantiatedFunction.FunctionIndex ??
-                throw new InvalidOperationException("Expected function index")));
+                throw new InvalidOperationException("Expected function index"),
+                instantiatedFunction.TypeArguments.Select(GetTypeReference).ToArray()));
         }
         else
         {
@@ -1395,7 +1396,7 @@ public class ILCompile
                     .Append(x.ReturnType)
                     .Select(GetTypeReference)
                     .ToArray()
-            }, FunctionIndex: 0));
+            }, FunctionIndex: 0, []));
         }
     }
     

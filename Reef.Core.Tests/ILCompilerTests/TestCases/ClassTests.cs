@@ -273,7 +273,7 @@ public static class ClassTests
                                 new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
                                 new StoreLocal(Addr(1), 0),
                                 new LoadLocal(Addr(2), 0),
-                                new LoadTypeFunction(Addr(3), ConcreteTypeReference("MyClass"), 0),
+                                new LoadTypeFunction(Addr(3), ConcreteTypeReference("MyClass"), 0, []),
                                 new Call(Addr(4)),
                                 Drop(5),
                                 LoadUnit(6),
@@ -326,7 +326,7 @@ public static class ClassTests
                                 new LoadLocal(Addr(2), 0),
                                 new LoadIntConstant(Addr(3), 1),
                                 new LoadStringConstant(Addr(4), ""),
-                                new LoadTypeFunction(Addr(5), ConcreteTypeReference("MyClass"), 0),
+                                new LoadTypeFunction(Addr(5), ConcreteTypeReference("MyClass"), 0, []),
                                 new Call(Addr(6)),
                                 Drop(7),
                                 LoadUnit(8),
@@ -362,7 +362,7 @@ public static class ClassTests
                             instructions:
                             [
                                 new LoadIntConstant(Addr(0), 1),
-                                new LoadTypeFunction(Addr(1), ConcreteTypeReference("MyClass"), 0),
+                                new LoadTypeFunction(Addr(1), ConcreteTypeReference("MyClass"), 0, []),
                                 new Call(Addr(2)),
                                 Drop(3),
                                 LoadUnit(4),

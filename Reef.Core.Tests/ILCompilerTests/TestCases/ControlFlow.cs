@@ -43,7 +43,7 @@ public static class ControlFlow
                                     [
                                         ConcreteTypeReference("int"),
                                         ConcreteTypeReference("string")
-                                    ]), 0),
+                                    ]), 0, []),
                                 new Call(Addr(2)),
                                 new CopyStack(Addr(3)),
                                 new LoadField(Addr(4), 0, 0),
@@ -60,7 +60,7 @@ public static class ControlFlow
                                     [
                                         ConcreteTypeReference("int"),
                                         ConcreteTypeReference("string")
-                                    ]), 0),
+                                    ]), 0, []),
                                 new Call(Addr(13)),
                                 Return(14)
                             ])

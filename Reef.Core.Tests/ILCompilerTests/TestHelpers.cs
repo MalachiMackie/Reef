@@ -9,10 +9,10 @@ public static class TestHelpers
         return new ReefMethod.Local { DisplayName = name, Type = type };
     }
 
-    public static FunctionDefinitionReference FunctionDefinitionReference(string name) => new()
+    public static FunctionDefinitionReference FunctionDefinitionReference(string name, IReadOnlyList<IReefTypeReference>? typeArguments = null) => new()
     {
         Name = name,
-        TypeArguments = [],
+        TypeArguments = typeArguments ?? [],
         DefinitionId = Guid.Empty
     };
 
