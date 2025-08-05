@@ -129,7 +129,9 @@ public static class MethodTests
                                 new Call(Addr(1)),
                                 Drop(2),
                                 LoadUnit(3),
-                                Return(4)
+                                Drop(4),
+                                LoadUnit(5),
+                                Return(6)
                             ])
                     ])
             },

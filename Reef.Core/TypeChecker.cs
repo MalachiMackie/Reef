@@ -1459,7 +1459,10 @@ public class TypeChecker
                     leftType = TypeCheckExpression(@operator.Left, allowUninstantiatedVariable: true);
                     // we don't actually want the result of this value
                     @operator.Left.ValueUseful = false;
-                    ExpectAssignableExpression(@operator.Left);
+                    if (leftType is not UnknownType)
+                    {
+                        ExpectAssignableExpression(@operator.Left);
+                    }
                 }
                 var rightType = @operator.Right is null
                     ? UnknownType.Instance
@@ -1467,15 +1470,18 @@ public class TypeChecker
                 
                 if (@operator.Left is ValueAccessorExpression
                     {
-                        ValueAccessor: { AccessType: ValueAccessType.Variable, Token: StringToken variableName }
-                    })
+                        ValueAccessor: { AccessType: ValueAccessType.Variable, Token: StringToken variableName },
+                    } && leftType is not UnknownType)
                 {
                     var variable = GetScopedVariable(variableName.StringValue);
 
                     if (variable is LocalVariable { Instantiated: false } localVariable)
                     {
                         localVariable.Instantiated = true;
-                        localVariable.Type ??= rightType;
+                        if (localVariable.Type is UnknownInferredType {ResolvedType: null} unknownInferredType)
+                        {
+                            unknownInferredType.ResolvedType = rightType;
+                        }
                     }
 
                     if (variable is FieldVariable && CurrentFunctionSignature is not {IsMutable: true})
@@ -1504,7 +1510,11 @@ public class TypeChecker
                 ValueAccessor: { AccessType: ValueAccessType.Variable, Token: StringToken valueToken }
             }:
             {
-                var variable = GetScopedVariable(valueToken.StringValue);
+                if (!TryGetScopedVariable(valueToken, out var variable))
+                {
+                    _errors.Add(TypeCheckerError.SymbolNotFound(valueToken));
+                    return false;
+                }
                 if (variable is LocalVariable { Instantiated: false }
                     or LocalVariable { Mutable: true }
                     or FieldVariable { Mutable: true }
@@ -1952,7 +1962,7 @@ public class TypeChecker
             _errors.Add(TypeCheckerError.AccessUninitializedVariable(variableName));
         }
 
-        return valueVariable.Type ?? UnknownType.Instance;
+        return valueVariable.Type;
     }
 
     private InstantiatedClass TypeCheckVariableDeclaration(
@@ -1973,7 +1983,7 @@ public class TypeChecker
             {
                 variable = new LocalVariable(
                     CurrentFunctionSignature,
-                    varName, null, Instantiated: false, Mutable: mutModifier is not null);
+                    varName, new UnknownInferredType(), Instantiated: false, Mutable: mutModifier is not null);
                 break;
             }
             case { Value: { } value, Type: var type, MutabilityModifier: var mutModifier }:
@@ -2348,14 +2358,14 @@ public class TypeChecker
     {
         StringToken Name { get; }
         
-        ITypeReference? Type { get; }
+        ITypeReference Type { get; }
         bool ReferencedInClosure { get; set; }
     }
 
-    public record LocalVariable(FunctionSignature? ContainingFunction, StringToken Name, ITypeReference? Type, bool Instantiated, bool Mutable) : IVariable
+    public record LocalVariable(FunctionSignature? ContainingFunction, StringToken Name, ITypeReference Type, bool Instantiated, bool Mutable) : IVariable
     {
         public bool Instantiated { get; set; } = Instantiated;
-        public ITypeReference? Type { get; set; } = Type;
+        public ITypeReference Type { get; set; } = Type;
         public bool ReferencedInClosure { get; set; }
     }
 
@@ -2384,6 +2394,11 @@ public class TypeChecker
                 _ => throw new UnreachableException()
             };
         }
+    }
+
+    public class UnknownInferredType : ITypeReference
+    {
+        public ITypeReference? ResolvedType { get; set; }
     }
 
     public class UnknownType : ITypeReference

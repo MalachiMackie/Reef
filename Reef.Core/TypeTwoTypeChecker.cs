@@ -390,13 +390,13 @@ public class TypeTwoTypeChecker
             throw new InvalidOperationException("Expected variable to be created");
         }
 
-        if (variable.Type is not { } variableType)
+        if (variable.Type is TypeChecker.UnknownInferredType{ResolvedType: null})
         {
             _errors.Add(TypeCheckerError.UnresolvedInferredVariableType(variable.Name));
             return;
         }
         
-        CheckTypeReferenceIsResolved(variableType, variableDeclarationExpression);
+        CheckTypeReferenceIsResolved(variable.Type, variableDeclarationExpression);
     }
 
     private void CheckTypeReferenceIsResolved(TypeChecker.ITypeReference typeReference, IExpression expression)

@@ -1241,6 +1241,11 @@ public class TypeCheckerTests
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
             {
+                "assign unknown variable",
+                "a = 2;",
+                [TypeCheckerError.SymbolNotFound(Identifier("a"))]
+            },
+            {
                 "unresolved generic type when referencing the same generic type",
                 """
                 fn MyFn<T>() {

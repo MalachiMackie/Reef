@@ -55,48 +55,19 @@ public class Tests
     [Fact]
     public void SingleTest()
     {
-        const string source = """
-                class MyClass {
-                    pub fn MyFn<T>(){}
-                }
-                var a = new MyClass{};
-                a.MyFn::<string>();
-                """;
+        const string source = "if (true) {}";
         var expected = Module(
-            types:
-            [
-                Class("MyClass",
-                    methods:
-                    [
-                        Method("MyFn",
-                            typeParameters: ["T"],
-                            parameters:
-                            [
-                                Parameter("this", ConcreteTypeReference("MyClass"))
-                            ],
-                            instructions:
-                            [
-                                LoadUnit(0),
-                                Return(1)
-                            ])
-                    ])
-            ],
             methods:
             [
                 Method("!Main",
                     isStatic: true,
-                    locals:
-                    [
-                        Local("a", ConcreteTypeReference("MyClass"))
-                    ],
                     instructions:
                     [
-                        new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
-                        new StoreLocal(Addr(1), 0),
-                        new LoadLocal(Addr(2), 0),
-                        new LoadTypeFunction(Addr(3), ConcreteTypeReference("MyClass"), 0,
-                            [ConcreteTypeReference("string")]),
-                        new Call(Addr(4)),
+                        new LoadBoolConstant(Addr(0), true),
+                        new BranchIfFalse(Addr(1), Addr(4)),
+                        LoadUnit(2),
+                        new Branch(Addr(3), Addr(5)),
+                        LoadUnit(4),
                         Drop(5),
                         LoadUnit(6),
                         Return(7)

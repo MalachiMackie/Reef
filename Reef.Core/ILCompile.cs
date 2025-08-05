@@ -1,4 +1,5 @@
-﻿using Reef.IL;
+﻿using System.Diagnostics;
+using Reef.IL;
 
 namespace Reef.Core;
 
@@ -26,7 +27,7 @@ public class ILCompile
 
     private InstructionAddress NextAddress()
     {
-        var nextAddress = Instructions.LastOrDefault()?.Address.Index + 1 ?? 0;
+        var nextAddress = (uint)Instructions.Count;
         return new InstructionAddress(nextAddress);
     }
     
@@ -484,6 +485,7 @@ public class ILCompile
     {
         return typeReference switch
         {
+            TypeChecker.UnknownInferredType{ResolvedType: {} resolvedType} => GetTypeReference(resolvedType),
             TypeChecker.GenericTypeReference genericTypeReference =>
                 GetTypeReference(genericTypeReference.ResolvedType ?? throw new InvalidOperationException("Expected resolved type")),
             TypeChecker.GenericPlaceholder genericPlaceholder =>
@@ -591,14 +593,7 @@ public class ILCompile
 
         if (!expression.ValueUseful)
         {
-            if (Instructions[^1] is LoadUnitConstant loadUnit)
-            {
-                Instructions.Remove(loadUnit);
-            }
-            else
-            {
-                Instructions.Add(new Drop(NextAddress()));
-            }
+            Instructions.Add(new Drop(NextAddress()));
         }
     }
 
@@ -804,9 +799,56 @@ public class ILCompile
         }
     }
     
-    private static void CompileIfExpression(
+    private void CompileIfExpression(
         IfExpressionExpression ifExpression)
     {
+        CompileExpression(ifExpression.IfExpression.CheckExpression);
+        
+        var jumpToEndIndices = new List<int>();
+        var previousCheckIndex = Instructions.Count;
+        
+        Instructions.Add(new BranchIfFalse(NextAddress(), null!));
+        CompileExpression(ifExpression.IfExpression.Body ?? throw new InvalidOperationException("Expected if body"));
+
+        foreach (var elseIf in ifExpression.IfExpression.ElseIfs)
+        {
+            jumpToEndIndices.Add(Instructions.Count);
+            Instructions.Add(new Branch(NextAddress(), null!));
+            
+            Instructions[previousCheckIndex] = new BranchIfFalse(
+                new InstructionAddress((uint)previousCheckIndex),
+                NextAddress());
+            
+            CompileExpression(elseIf.CheckExpression);
+            
+            previousCheckIndex = Instructions.Count;
+            Instructions.Add(new BranchIfFalse(NextAddress(), null!));
+            
+            CompileExpression(elseIf.Body ?? throw new InvalidOperationException("Expected else if body"));
+        }
+
+        jumpToEndIndices.Add(Instructions.Count);
+        Instructions.Add(new Branch(NextAddress(), null!));
+
+        Instructions[previousCheckIndex] = new BranchIfFalse(
+            new InstructionAddress((uint)previousCheckIndex),
+            NextAddress());
+            
+        if (ifExpression.IfExpression.ElseBody is not null)
+        {
+            CompileExpression(ifExpression.IfExpression.ElseBody);
+        }
+        else
+        {
+            Instructions.Add(new LoadUnitConstant(NextAddress()));
+        }
+
+        var after = NextAddress();
+
+        foreach (var index in jumpToEndIndices)
+        {
+            Instructions[index] = new Branch(Instructions[index].Address, after);
+        }
     }
     
     private static void CompileMatchesExpression(
@@ -1306,7 +1348,7 @@ public class ILCompile
             {
                 // load value from locals object
                 Instructions.Add(new LoadLocal(NextAddress(), 0));
-                var fieldIndex = currentFunction.LocalsTypeFields.Index().First(x => x.Item == referencedVariable).Index;
+                var fieldIndex = currentFunction.LocalsTypeFields.Index().First(y => y.Item == referencedVariable).Index;
                 Instructions.Add(new LoadField(NextAddress(), 0, (uint)fieldIndex));
             }
             else
