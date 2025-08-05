@@ -1723,6 +1723,38 @@ public static class ParseErrorTestCases
                     ParserError.ExpectedTokenOrExpression(Token.Else(SourceSpan.Default), TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union)
                 ]
             ),
+            (
+                "var a: (int, string,)",
+                new LangProgram([], [], [], []),
+                []
+            ),
+            (
+                "var a: ()",
+                new LangProgram([], [], [], []),
+                [
+                    ParserError.ExpectedType(Token.RightParenthesis(SourceSpan.Default))
+                ]
+            ),
+            (
+                "var a: Fn()",
+                new LangProgram([], [], [], []),
+                []
+            ),
+            (
+                "var a: Fn(): int",
+                new LangProgram([], [], [], []),
+                []
+            ),
+            (
+                "var a: Fn(int, string)",
+                new LangProgram([], [], [], []),
+                []
+            ),
+            (
+                "var a: Fn(mut int)",
+                new LangProgram([], [], [], []),
+                []
+            )
         ];
 
         var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();

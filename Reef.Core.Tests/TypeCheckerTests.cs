@@ -55,6 +55,47 @@ public class TypeCheckerTests
         return new TheoryData<string>
         {
             """
+            fn SomeFn(){}
+            fn OtherFn(){}
+            var mut a = SomeFn;
+            a = OtherFn;
+            """,
+            """
+            class MyClass{
+                pub fn InstanceFn(mut a: int): string { return ""; }
+                pub static fn StaticFn(mut a: int): string { return ""; }
+            }
+            fn GlobalFn(mut a: int): string { return ""; }
+            var instance = new MyClass{};
+            var a = GlobalFn;
+            a = instance.InstanceFn;
+            a = MyClass::StaticFn;
+            """,
+            """
+            fn SomeFn(){}
+            var a: Fn() = SomeFn;
+            """,
+            """
+            fn SomeFn(a: int){}
+            var a: Fn(int) = SomeFn;
+            """,
+            """
+            fn SomeFn(a: int): string {return "";}
+            var a: Fn(int): string = SomeFn;
+            """,
+            """
+            fn SomeFn(mut a: int){}
+            var a: Fn(mut int) = SomeFn;
+            """,
+            """
+            var mut a = (1, "");
+            a = (3, "hi");
+            """,
+            """
+            var a: (int, string);
+            a = (1, "");
+            """,
+            """
             class MyClass<T> {
                 fn MyFn() {
                     fn InnerFn(param: T): T {
@@ -1240,6 +1281,101 @@ public class TypeCheckerTests
     {
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
+            {
+                "incorrect tuple types",
+                """
+                var a: (int, string) = ("", 1);
+                """,
+                []
+            },
+            {
+                "too many tuple members",
+                """
+                var a: (int, string) = (1, "", 2);
+                """,
+                []
+            },
+            {
+                "not enough tuple members",
+                """
+                var a: (int, string, string) = (1, "");
+                """,
+                []
+            },
+            {
+                "function type too many parameters",
+                """
+                fn SomeFn(a: int){}
+                var a: Fn() = SomeFn;
+                """,
+                []
+            },
+            {
+                "function type incorrect parameter type",
+                """
+                fn SomeFn(a: int){}
+                var a: Fn(string) = SomeFn;
+                """,
+                []
+            },
+            {
+                "function type not enough parameters",
+                """
+                fn SomeFn(){}
+                var a: Fn(int) = SomeFn;
+                """,
+                []
+            },
+            {
+                "function type incorrect return type when expected unit",
+                """
+                fn SomeFn(a: int): string {return "";}
+                var a: Fn(int) = SomeFn;
+                """,
+                []
+            },
+            {
+                "function type expected return type but used void",
+                """
+                fn SomeFn(a: int) {}
+                var a: Fn(int): string = SomeFn;
+                """,
+                []
+            },
+            {
+                "function type incorrect return type",
+                """
+                fn SomeFn(a: int): int {return 1;}
+                var a: Fn(int): string = SomeFn;
+                """,
+                []
+            },
+            {
+                "function type incorrect parameter mutability",
+                """
+                fn SomeFn(mut a: int){}
+                var a: Fn(int) = SomeFn;
+                """,
+                []
+            },
+            {
+                "function type incorrect parameter mutability",
+                """
+                fn SomeFn(a: int){}
+                var a: Fn(mut int) = SomeFn;
+                """,
+                []
+            },
+            {
+                "reassigning inferred function type",
+                """
+                fn SomeFn(){}
+                fn OtherFn(): int{return 1}
+                var mut a = SomeFn;
+                a = OtherFn;
+                """,
+                []
+            },
             {
                 "assign unknown variable",
                 "a = 2;",
