@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using FluentAssertions;
 using Xunit.Abstractions;
-using static Reef.Core.Tests.ParserTests.RemoveSourceSpanHelpers;
 using static Reef.Core.Tests.ExpressionHelpers;
 
 #pragma warning disable IDE0060 // Remove unused parameter
@@ -42,16 +41,15 @@ public class Tests(ITestOutputHelper testOutputHelper)
         var result = Parser.PopExpression(tokens);
         result.Should().NotBeNull();
 
-        // clear out the source spans, we don't care about them
-        var expression = RemoveSourceSpan(result);
-
         try
         {
-            expression.Should().BeEquivalentTo(expectedExpression, opts => opts.AllowingInfiniteRecursion());
+            result.Should().BeEquivalentTo(expectedExpression, 
+                opts => opts.AllowingInfiniteRecursion()
+                    .Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
         }
         catch
         {
-            testOutputHelper.WriteLine("Expected {0}, found {1}", expectedExpression, expression);
+            testOutputHelper.WriteLine("Expected {0}, found {1}", expectedExpression, result);
             throw;
         }
     }
@@ -76,15 +74,14 @@ public class Tests(ITestOutputHelper testOutputHelper)
 
         result.Errors.Should().BeEmpty();
         
-        var program = RemoveSourceSpan(result.ParsedProgram);
-
         try
         {
-            program.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion());
+            result.ParsedProgram.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion()
+                .Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
         }
         catch
         {
-            testOutputHelper.WriteLine("Expected [{0}], found [{1}]", expectedProgram, program);
+            testOutputHelper.WriteLine("Expected [{0}], found [{1}]", expectedProgram, result.ParsedProgram);
             throw;
         }
     }
@@ -97,12 +94,9 @@ public class Tests(ITestOutputHelper testOutputHelper)
 
         var output = Parser.Parse(tokens);
 
-        expectedProgram = RemoveSourceSpan(expectedProgram);
-        expectedErrors = RemoveSourceSpan(expectedErrors.ToArray());
-        var program = RemoveSourceSpan(output.ParsedProgram);
-        var errors = RemoveSourceSpan(output.Errors);
-
-        errors.Should().BeEquivalentTo(expectedErrors);
-        program.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion());
+        output.Errors.Should().BeEquivalentTo(
+            expectedErrors,
+            opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
+        output.ParsedProgram.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion().Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
     }
 }

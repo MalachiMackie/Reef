@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using FluentAssertions;
-using Reef.Core.Tests.ParserTests;
 
 using static Reef.Core.TypeChecker;
 using static Reef.Core.Tests.ExpressionHelpers;
@@ -28,9 +27,9 @@ public class TypeCheckerTests
     {
         var program = Parser.Parse(Tokenizer.Tokenize(source));
         program.Errors.Should().BeEmpty();
-        var errors = TypeChecker.TypeCheck(program.ParsedProgram).Select(RemoveSourceSpanHelpers.RemoveSourceSpan);
+        var errors = TypeChecker.TypeCheck(program.ParsedProgram);
 
-        errors.Should().BeEquivalentTo(expectedErrors).And.NotBeEmpty();
+        errors.Should().BeEquivalentTo(expectedErrors, opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan))).And.NotBeEmpty();
     }
 
     [Fact]
