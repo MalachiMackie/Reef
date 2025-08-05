@@ -484,13 +484,14 @@ public class ILCompile
     {
         return typeReference switch
         {
-            TypeChecker.GenericTypeReference { ResolvedType: null } genericTypeReference => new GenericReefTypeReference
-            {
-                DefinitionId = genericTypeReference.OwnerType.Id,
-                TypeParameterName = genericTypeReference.GenericName
-            },
             TypeChecker.GenericTypeReference genericTypeReference =>
-                GetTypeReference(genericTypeReference.ResolvedType),
+                GetTypeReference(genericTypeReference.ResolvedType ?? throw new InvalidOperationException("Expected resolved type")),
+            TypeChecker.GenericPlaceholder genericPlaceholder =>
+                new GenericReefTypeReference
+                {
+                    DefinitionId = genericPlaceholder.OwnerType.Id,
+                    TypeParameterName = genericPlaceholder.GenericName
+                },
             TypeChecker.InstantiatedClass instantiatedClass => new ConcreteReefTypeReference
             {
                 Name = instantiatedClass.Signature.Name,

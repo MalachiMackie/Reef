@@ -39,10 +39,10 @@ public class TypeCheckerTests
         const string src =
             """
             fn MyFn<T>() {
-                MyFn::<string>();
+                MyFn();
             }
             """;
-;
+
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
@@ -54,6 +54,17 @@ public class TypeCheckerTests
     {
         return new TheoryData<string>
         {
+            """
+            class MyClass<T> {
+                fn MyFn() {
+                    fn InnerFn(param: T): T {
+                        return param;
+                    }
+                    
+                    var a = InnerFn(todo!);
+                }
+            }
+            """,
             """
             class MyClass<T> {
                 fn MyFn() {
@@ -1230,6 +1241,17 @@ public class TypeCheckerTests
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
             {
+                "unresolved generic type when referencing the same generic type",
+                """
+                fn MyFn<T>() {
+                    MyFn();
+                }
+                """,
+                [
+                    TypeCheckerError.UnresolvedInferredGenericType(MethodCall(VariableAccessor("MyFn")), "T")
+                ]
+            },
+            {
                 "access instance method in static method - class",
                 """
                 class MyClass {
@@ -1539,7 +1561,7 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                [MismatchedTypes(GenericTypeReference("T2"), GenericTypeReference("T"))]
+                [MismatchedTypes(GenericPlaceholder("T2"), GenericPlaceholder("T"))]
             },
             {
                 "incompatible inferred types",
@@ -2503,7 +2525,7 @@ public class TypeCheckerTests
             {
                 "generic variable returned as concrete class",
                 "fn MyFn<T1>(param: T1): int { return param; }",
-                [MismatchedTypes(Int, GenericTypeReference("T1"))]
+                [MismatchedTypes(Int, GenericPlaceholder("T1"))]
             },
             {
                 "duplicate function generic parameter",
@@ -3105,6 +3127,15 @@ public class TypeCheckerTests
         {
             return ClassName;
         }
+    }
+
+    private static GenericPlaceholder GenericPlaceholder(string name)
+    {
+        return new GenericPlaceholder
+        {
+            GenericName = name,
+            OwnerType = null!
+        };
     }
 
     private static GenericTypeReference GenericTypeReference(string name)

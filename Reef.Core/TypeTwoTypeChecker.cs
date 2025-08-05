@@ -21,7 +21,7 @@ public class TypeTwoTypeChecker
     {
         foreach (var function in program.Functions)
         {
-            CheckFunction(function, []);
+            CheckFunction(function);
         }
 
         foreach (var union in program.Unions)
@@ -38,7 +38,7 @@ public class TypeTwoTypeChecker
 
         foreach (var expression in program.Expressions)
         {
-            CheckExpression(expression, []);
+            CheckExpression(expression);
         }
     }
 
@@ -49,10 +49,9 @@ public class TypeTwoTypeChecker
             throw new Exception("Union Signature was not created");
         }
 
-        var unionGenerics = union.Signature.TypeParameters.ToHashSet();
         foreach (var function in union.Functions)
         {
-            CheckFunction(function, unionGenerics);
+            CheckFunction(function);
         }
     }
 
@@ -63,21 +62,20 @@ public class TypeTwoTypeChecker
             throw new InvalidOperationException("Class signature was not created");
         }
 
-        var classGenerics = programClass.Signature.TypeParameters.ToHashSet();
         foreach (var function in programClass.Functions)
         {
-            CheckFunction(function, classGenerics);
+            CheckFunction(function);
         }
 
         foreach (var expression in programClass.Fields
                      .Select(x => x.InitializerValue)
                      .Where(x => x is not null))
         {
-            CheckExpression(expression!, classGenerics);
+            CheckExpression(expression!);
         }
     }
 
-    private void CheckFunction(LangFunction function, HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckFunction(LangFunction function)
     {
         if (function.Signature is null)
         {
@@ -86,33 +84,30 @@ public class TypeTwoTypeChecker
 
         _localVariables.Push(function.Signature.LocalVariables.ToDictionary(x => x, _ => false));
 
-        HashSet<TypeChecker.GenericTypeReference> innerGenerics =
-            [..function.Signature.TypeParameters, ..expectedGenerics];
         foreach (var blockFunction in function.Block.Functions)
         {
-            CheckFunction(blockFunction, innerGenerics);
+            CheckFunction(blockFunction);
         }
 
         foreach (var expression in function.Block.Expressions)
         {
-            CheckExpression(expression, innerGenerics);
+            CheckExpression(expression);
         }
     }
 
-    private void CheckExpression(IExpression expression,
-        HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckExpression(IExpression expression)
     {
         if (expression.ResolvedType is null)
         {
             throw new UnreachableException("Every expression should be type checked");
         }
 
-        CheckTypeReferenceIsResolved(expression.ResolvedType, expression, expectedGenerics);
+        CheckTypeReferenceIsResolved(expression.ResolvedType, expression);
 
         switch (expression)
         {
             case VariableDeclarationExpression variableDeclarationExpression:
-                CheckVariableDeclaration(variableDeclarationExpression, expectedGenerics);
+                CheckVariableDeclaration(variableDeclarationExpression);
                 break;
             case ValueAccessorExpression valueAccessorExpression:
             {
@@ -120,46 +115,46 @@ public class TypeTwoTypeChecker
                 break;
             }
             case MethodReturnExpression methodReturnExpression:
-                CheckMethodReturn(methodReturnExpression, expectedGenerics);
+                CheckMethodReturn(methodReturnExpression);
                 break;
             case MethodCallExpression methodCallExpression:
-                CheckMethodCall(methodCallExpression.MethodCall, expectedGenerics);
+                CheckMethodCall(methodCallExpression.MethodCall);
                 break;
             case BlockExpression blockExpression:
-                CheckBlock(blockExpression.Block, expectedGenerics);
+                CheckBlock(blockExpression.Block);
                 break;
             case IfExpressionExpression ifExpressionExpression:
-                CheckIfExpression(ifExpressionExpression.IfExpression, expectedGenerics);
+                CheckIfExpression(ifExpressionExpression.IfExpression);
                 break;
             case BinaryOperatorExpression binaryOperatorExpression:
-                CheckBinaryOperatorExpression(binaryOperatorExpression.BinaryOperator, expectedGenerics);
+                CheckBinaryOperatorExpression(binaryOperatorExpression.BinaryOperator);
                 break;
             case ObjectInitializerExpression objectInitializerExpression:
-                CheckObjectInitializer(objectInitializerExpression.ObjectInitializer, expectedGenerics);
+                CheckObjectInitializer(objectInitializerExpression.ObjectInitializer);
                 break;
             case MemberAccessExpression memberAccessExpression:
-                CheckMemberAccess(memberAccessExpression.MemberAccess, expectedGenerics);
+                CheckMemberAccess(memberAccessExpression.MemberAccess);
                 break;
             case StaticMemberAccessExpression:
                 // nothing to check
                 break;
             case GenericInstantiationExpression genericInstantiationExpression:
-                CheckGenericInstantiation(genericInstantiationExpression.GenericInstantiation, expectedGenerics);
+                CheckGenericInstantiation(genericInstantiationExpression.GenericInstantiation);
                 break;
             case UnaryOperatorExpression unaryOperatorExpression:
-                CheckUnaryOperator(unaryOperatorExpression.UnaryOperator, expectedGenerics);
+                CheckUnaryOperator(unaryOperatorExpression.UnaryOperator);
                 break;
             case UnionClassVariantInitializerExpression unionClassVariantInitializerExpression:
-                CheckUnionClassVariantInitializer(unionClassVariantInitializerExpression.UnionInitializer, expectedGenerics);
+                CheckUnionClassVariantInitializer(unionClassVariantInitializerExpression.UnionInitializer);
                 break;
             case MatchesExpression matchesExpression:
-                CheckMatchesExpression(matchesExpression, expectedGenerics);
+                CheckMatchesExpression(matchesExpression);
                 break;
             case TupleExpression tupleExpression:
-                CheckTupleExpression(tupleExpression, expectedGenerics);
+                CheckTupleExpression(tupleExpression);
                 break;
             case MatchExpression matchExpression:
-                CheckMatchExpression(matchExpression, expectedGenerics);
+                CheckMatchExpression(matchExpression);
                 break;
             default:
                 throw new NotImplementedException($"{expression.ExpressionType}");
@@ -184,15 +179,14 @@ public class TypeTwoTypeChecker
         }
     }
 
-    private void CheckMatchExpression(MatchExpression matchExpression,
-        HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckMatchExpression(MatchExpression matchExpression)
     {
-        CheckExpression(matchExpression.Value, expectedGenerics);
+        CheckExpression(matchExpression.Value);
         foreach (var arm in matchExpression.Arms)
         {
             if (arm.Expression is not null)
             {
-                CheckExpression(arm.Expression, expectedGenerics);
+                CheckExpression(arm.Expression);
             }
         }
 
@@ -220,77 +214,69 @@ public class TypeTwoTypeChecker
         }
     }
 
-    private void CheckTupleExpression(TupleExpression tupleExpression,
-        HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckTupleExpression(TupleExpression tupleExpression)
     {
         foreach (var element in tupleExpression.Values)
         {
-            CheckExpression(element, expectedGenerics);
+            CheckExpression(element);
         }
     }
 
-    private void CheckMatchesExpression(MatchesExpression matchesExpression,
-        HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckMatchesExpression(MatchesExpression matchesExpression)
     {
-        CheckExpression(matchesExpression.ValueExpression, expectedGenerics);
+        CheckExpression(matchesExpression.ValueExpression);
     }
 
-    private void CheckUnionClassVariantInitializer(UnionClassVariantInitializer unionInitializer,
-        HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckUnionClassVariantInitializer(UnionClassVariantInitializer unionInitializer)
     {
         foreach (var initializer in unionInitializer.FieldInitializers)
         {
             if (initializer.Value is not null)
             {
-                CheckExpression(initializer.Value, expectedGenerics);
+                CheckExpression(initializer.Value);
             }
         }
     }
 
-    private void CheckUnaryOperator(UnaryOperator unaryOperator,
-        HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckUnaryOperator(UnaryOperator unaryOperator)
     {
         if (unaryOperator.Operand is not null)
         {
-            CheckExpression(unaryOperator.Operand, expectedGenerics);
+            CheckExpression(unaryOperator.Operand);
         }
     }
 
-    private void CheckGenericInstantiation(GenericInstantiation genericInstantiation,
-        HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckGenericInstantiation(GenericInstantiation genericInstantiation)
     {
-        CheckExpression(genericInstantiation.Value, expectedGenerics);
+        CheckExpression(genericInstantiation.Value);
     }
 
-    private void CheckMemberAccess(MemberAccess memberAccess,
-        HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckMemberAccess(MemberAccess memberAccess)
     {
-        CheckExpression(memberAccess.Owner, expectedGenerics);
+        CheckExpression(memberAccess.Owner);
     }
 
-    private void CheckObjectInitializer(ObjectInitializer objectInitializer,
-        HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckObjectInitializer(ObjectInitializer objectInitializer)
     {
         foreach (var initializer in objectInitializer.FieldInitializers)
         {
             if (initializer.Value is not null)
             {
-                CheckExpression(initializer.Value, expectedGenerics);
+                CheckExpression(initializer.Value);
             }
         }
     }
 
-    private void CheckBinaryOperatorExpression(BinaryOperator binaryOperator,
-        HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckBinaryOperatorExpression(BinaryOperator binaryOperator)
     {
         if (binaryOperator.Left is not null)
         {
-            CheckExpression(binaryOperator.Left, expectedGenerics);
+            CheckExpression(binaryOperator.Left);
         }
 
         if (binaryOperator.Right is not null)
         {
-            CheckExpression(binaryOperator.Right, expectedGenerics);
+            CheckExpression(binaryOperator.Right);
         }
 
         if (binaryOperator is
@@ -303,17 +289,16 @@ public class TypeTwoTypeChecker
         }
     }
 
-    private void CheckIfExpression(IfExpression ifExpression,
-        HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckIfExpression(IfExpression ifExpression)
     {
         var uninitializedLocalVariables = _localVariables.Peek().Where(x => !x.Value)
             .Select(x => x.Key)
-            .ToDictionary(x => x, x => new TypeChecker.VariableIfInstantiation());
+            .ToDictionary(x => x, _ => new TypeChecker.VariableIfInstantiation());
         
-        CheckExpression(ifExpression.CheckExpression, expectedGenerics);
+        CheckExpression(ifExpression.CheckExpression);
         if (ifExpression.Body is not null)
         {
-            CheckExpression(ifExpression.Body, expectedGenerics);
+            CheckExpression(ifExpression.Body);
         }
 
         foreach (var (variable, variableIfInstantiation) in uninitializedLocalVariables)
@@ -324,10 +309,10 @@ public class TypeTwoTypeChecker
         
         foreach (var elseIf in ifExpression.ElseIfs)
         {
-            CheckExpression(elseIf.CheckExpression, expectedGenerics);
+            CheckExpression(elseIf.CheckExpression);
             if (elseIf.Body is not null)
             {
-                CheckExpression(elseIf.Body, expectedGenerics);
+                CheckExpression(elseIf.Body);
             }
             
             foreach (var (variable, variableInstantiation) in uninitializedLocalVariables)
@@ -339,7 +324,7 @@ public class TypeTwoTypeChecker
 
         if (ifExpression.ElseBody is not null)
         {
-            CheckExpression(ifExpression.ElseBody, expectedGenerics);
+            CheckExpression(ifExpression.ElseBody);
             
             foreach (var (variable, variableInstantiation) in uninitializedLocalVariables)
             {
@@ -359,41 +344,37 @@ public class TypeTwoTypeChecker
         }
     }
 
-    private void CheckBlock(Block blockExpressionBlock,
-        HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckBlock(Block blockExpressionBlock)
     {
         foreach (var function in blockExpressionBlock.Functions)
         {
-            CheckFunction(function, expectedGenerics);
+            CheckFunction(function);
         }
 
         foreach (var expression in blockExpressionBlock.Expressions)
         {
-            CheckExpression(expression, expectedGenerics);
+            CheckExpression(expression);
         }
     }
 
-    private void CheckMethodCall(MethodCall methodCall,
-        HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckMethodCall(MethodCall methodCall)
     {
-        CheckExpression(methodCall.Method, expectedGenerics);
+        CheckExpression(methodCall.Method);
         foreach (var parameter in methodCall.ArgumentList)
         {
-            CheckExpression(parameter, expectedGenerics);
+            CheckExpression(parameter);
         }
     }
 
-    private void CheckMethodReturn(MethodReturnExpression methodReturnExpression,
-        HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckMethodReturn(MethodReturnExpression methodReturnExpression)
     {
         if (methodReturnExpression.MethodReturn.Expression is not null)
         {
-            CheckExpression(methodReturnExpression.MethodReturn.Expression, expectedGenerics);
+            CheckExpression(methodReturnExpression.MethodReturn.Expression);
         }
     }
 
-    private void CheckVariableDeclaration(VariableDeclarationExpression variableDeclarationExpression,
-        HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckVariableDeclaration(VariableDeclarationExpression variableDeclarationExpression)
     {
         if (variableDeclarationExpression.VariableDeclaration.Value is { } value)
         {
@@ -401,7 +382,7 @@ public class TypeTwoTypeChecker
             {
                 _localVariables.Peek()[localVariable] = true;
             }
-            CheckExpression(value, expectedGenerics);
+            CheckExpression(value);
         }
 
         if (variableDeclarationExpression.VariableDeclaration.Variable is not { } variable)
@@ -415,11 +396,10 @@ public class TypeTwoTypeChecker
             return;
         }
         
-        CheckTypeReferenceIsResolved(variableType, variableDeclarationExpression, expectedGenerics);
+        CheckTypeReferenceIsResolved(variableType, variableDeclarationExpression);
     }
 
-    private void CheckTypeReferenceIsResolved(TypeChecker.ITypeReference typeReference, IExpression expression,
-        HashSet<TypeChecker.GenericTypeReference> expectedGenerics)
+    private void CheckTypeReferenceIsResolved(TypeChecker.ITypeReference typeReference, IExpression expression)
     {
         switch (typeReference)
         {
@@ -427,7 +407,7 @@ public class TypeTwoTypeChecker
             {
                 foreach (var argument in classTypeArguments)
                 {
-                    CheckTypeReferenceIsResolved(argument, expression, expectedGenerics);
+                    CheckTypeReferenceIsResolved(argument, expression);
                 }
 
                 break;
@@ -436,7 +416,7 @@ public class TypeTwoTypeChecker
             {
                 foreach (var argument in unionTypeArguments)
                 {
-                    CheckTypeReferenceIsResolved(argument, expression, expectedGenerics);
+                    CheckTypeReferenceIsResolved(argument, expression);
                 }
 
                 break;
@@ -445,15 +425,14 @@ public class TypeTwoTypeChecker
             {
                 foreach (var argument in functionTypeArguments)
                 {
-                    CheckTypeReferenceIsResolved(argument, expression, expectedGenerics);
+                    CheckTypeReferenceIsResolved(argument, expression);
                 }
 
                 break;
             }
             case TypeChecker.GenericTypeReference genericTypeReference:
             {
-                if (!expectedGenerics.Contains(genericTypeReference)
-                    && genericTypeReference.ResolvedType is null
+                if (genericTypeReference.ResolvedType is null
                     && _erroredGenerics.Add(genericTypeReference))
                 {
                     _errors.Add(TypeCheckerError.UnresolvedInferredGenericType(expression, genericTypeReference.GenericName));
