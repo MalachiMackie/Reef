@@ -32,8 +32,7 @@ public static class PopExpressionTestCases
                 new MatchExpression(VariableAccessor("a"), [
                     new MatchArm(
                         new TypePattern(
-                            new TypeIdentifier(Identifier("SomeClass"), [],
-                                SourceRange.Default),
+                            NamedTypeIdentifier("SomeClass"),
                             null, SourceRange.Default),
                         VariableAccessor("b")),
                     new MatchArm(new DiscardPattern(SourceRange.Default), VariableAccessor("b"))
@@ -48,8 +47,7 @@ public static class PopExpressionTestCases
                 new MatchExpression(VariableAccessor("a"), [
                     new MatchArm(
                         new ClassPattern(
-                            new TypeIdentifier(Identifier("SomeClass"), [],
-                                SourceRange.Default),
+                            NamedTypeIdentifier("SomeClass"),
                             [new FieldPattern(Identifier("SomeField"), VariableDeclarationPattern("SomeField"))],
                             false,
                             null, SourceRange.Default),
@@ -65,15 +63,13 @@ public static class PopExpressionTestCases
                 new MatchExpression(VariableAccessor("a"), [
                     new MatchArm(
                         new UnionClassVariantPattern(
-                            new TypeIdentifier(Identifier("SomeUnion"), [],
-                                SourceRange.Default),
+                            NamedTypeIdentifier("SomeUnion"),
                             Identifier("B"),
                             [
                                 new FieldPattern(
                                     Identifier("SomeField"),
                                     new UnionClassVariantPattern(
-                                        new TypeIdentifier(Identifier("OtherUnion"), [],
-                                            SourceRange.Default),
+                                        NamedTypeIdentifier("OtherUnion"),
                                         Identifier("C"),
                                         [
                                             new FieldPattern(
@@ -96,13 +92,11 @@ public static class PopExpressionTestCases
                     new MatchesExpression(
                         VariableAccessor("a"),
                         new UnionTupleVariantPattern(
-                            new TypeIdentifier(Identifier("OtherUnion"), [],
-                                SourceRange.Default),
+                            NamedTypeIdentifier("OtherUnion"),
                             Identifier("B"),
                             [
                                 new UnionVariantPattern(
-                                    new TypeIdentifier(Identifier("MyUnion"), [],
-                                        SourceRange.Default),
+                                    NamedTypeIdentifier("MyUnion"),
                                     Identifier("A"),
                                     Identifier("c"), SourceRange.Default)
                             ],
@@ -116,7 +110,7 @@ public static class PopExpressionTestCases
                 new VariableDeclarationExpression(new VariableDeclaration(
                         Identifier("b"),
                         null,
-                        new TypeIdentifier(Identifier("bool"), [], SourceRange.Default),
+                        NamedTypeIdentifier("bool"),
                         new MatchesExpression(
                             VariableAccessor("a"),
                             new TypePattern(
@@ -130,7 +124,7 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new TypePattern(
-                        new TypeIdentifier(Identifier("string"), [], SourceRange.Default),
+                        NamedTypeIdentifier("string"),
                         null
                         , SourceRange.Default)
                     , SourceRange.Default)
@@ -140,7 +134,7 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionVariantPattern(
-                        new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyUnion"),
                         Identifier("A"),
                         null
                         , SourceRange.Default)
@@ -165,7 +159,7 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionTupleVariantPattern(
-                        new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyUnion"),
                         Identifier("A"),
                         [
                             new VariableDeclarationPattern(Identifier("b"),
@@ -179,7 +173,7 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionTupleVariantPattern(
-                        new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyUnion"),
                         Identifier("A"),
                         [
                             new VariableDeclarationPattern(Identifier("b"),
@@ -193,7 +187,7 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionTupleVariantPattern(
-                        new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyUnion"),
                         Identifier("A"),
                         [
                             new VariableDeclarationPattern(Identifier("b"),
@@ -209,12 +203,11 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionTupleVariantPattern(
-                        new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyUnion"),
                         Identifier("A"),
                         [
                             new UnionVariantPattern(
-                                new TypeIdentifier(Identifier("OtherUnion"), [],
-                                    SourceRange.Default),
+                                NamedTypeIdentifier("OtherUnion"),
                                 Identifier("C"),
                                 null
                                 , SourceRange.Default)
@@ -227,12 +220,11 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionTupleVariantPattern(
-                        new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyUnion"),
                         Identifier("A"),
                         [
                             new UnionVariantPattern(
-                                new TypeIdentifier(Identifier("OtherUnion"), [],
-                                    SourceRange.Default),
+                                NamedTypeIdentifier("OtherUnion"),
                                 Identifier("C"),
                                 Identifier("c")
                                 , SourceRange.Default)
@@ -245,12 +237,11 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionTupleVariantPattern(
-                        new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyUnion"),
                         Identifier("A"),
                         [
                             new UnionTupleVariantPattern(
-                                new TypeIdentifier(Identifier("OtherUnion"), [],
-                                    SourceRange.Default),
+                                NamedTypeIdentifier("OtherUnion"),
                                 Identifier("C"),
                                 [
                                     new VariableDeclarationPattern(Identifier("d"),
@@ -267,7 +258,7 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionClassVariantPattern(
-                        new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyUnion"),
                         Identifier("A"),
                         [
                             new FieldPattern(Identifier("MyField"), VariableDeclarationPattern("MyField"))
@@ -281,7 +272,7 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionClassVariantPattern(
-                        new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyUnion"),
                         Identifier("A"),
                         [
                             new FieldPattern(Identifier("MyField"), VariableDeclarationPattern("MyField"))
@@ -295,7 +286,7 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionClassVariantPattern(
-                        new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyUnion"),
                         Identifier("A"),
                         [
                             new FieldPattern(Identifier("MyField"), VariableDeclarationPattern("MyField")),
@@ -314,7 +305,7 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new ClassPattern(
-                        new TypeIdentifier(Identifier("MyClass"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyClass"),
                         [
                             new FieldPattern(Identifier("MyField"), VariableDeclarationPattern("MyField"))
                         ],
@@ -327,7 +318,7 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new ClassPattern(
-                        new TypeIdentifier(Identifier("MyClass"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyClass"),
                         [
                             new FieldPattern(Identifier("MyField"), VariableDeclarationPattern("MyField"))
                         ],
@@ -340,7 +331,7 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionClassVariantPattern(
-                        new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyUnion"),
                         Identifier("A"),
                         [
                             new FieldPattern(Identifier("MyField"), VariableDeclarationPattern("MyField"))
@@ -354,14 +345,13 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionClassVariantPattern(
-                        new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyUnion"),
                         Identifier("A"),
                         [
                             new FieldPattern(
                                 Identifier("MyField"),
                                 new UnionVariantPattern(
-                                    new TypeIdentifier(Identifier("MyUnion"), [],
-                                        SourceRange.Default),
+                                    NamedTypeIdentifier("MyUnion"),
                                     Identifier("B"),
                                     Identifier("f"), SourceRange.Default))
                         ],
@@ -374,14 +364,13 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new UnionClassVariantPattern(
-                        new TypeIdentifier(Identifier("MyUnion"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyUnion"),
                         Identifier("A"),
                         [
                             new FieldPattern(
                                 Identifier("MyField"),
                                 new UnionTupleVariantPattern(
-                                    new TypeIdentifier(Identifier("MyUnion"), [],
-                                        SourceRange.Default),
+                                    NamedTypeIdentifier("MyUnion"),
                                     Identifier("B"),
                                     [
                                         new VariableDeclarationPattern(Identifier("c"),
@@ -398,7 +387,7 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new ClassPattern(
-                        new TypeIdentifier(Identifier("MyClass"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyClass"),
                         [
                             new FieldPattern(Identifier("MyField"), VariableDeclarationPattern("MyField"))
                         ],
@@ -412,7 +401,7 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new TypePattern(
-                        new TypeIdentifier(Identifier("MyClass"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyClass"),
                         null
                         , SourceRange.Default)
                     , SourceRange.Default)
@@ -422,7 +411,7 @@ public static class PopExpressionTestCases
                 new MatchesExpression(
                     VariableAccessor("a"),
                     new TypePattern(
-                        new TypeIdentifier(Identifier("MyClass"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyClass"),
                         Identifier("b"),
                         SourceRange.Default),
                     SourceRange.Default)
@@ -520,13 +509,13 @@ public static class PopExpressionTestCases
                 new VariableDeclaration(
                     Identifier("a"),
                     null,
-                    new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
+                    NamedTypeIdentifier("int"),
                     VariableAccessor("b")), SourceRange.Default)),
             ("var a: int", new VariableDeclarationExpression(
                 new VariableDeclaration(
                     Identifier("a"),
                     null,
-                    new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
+                    NamedTypeIdentifier("int"),
                     null), SourceRange.Default)),
             ("var mut a = 2", new VariableDeclarationExpression(new VariableDeclaration(
                 Identifier("a"),
@@ -540,33 +529,33 @@ public static class PopExpressionTestCases
             ("var mut a: int = 2", new VariableDeclarationExpression(new VariableDeclaration(
                 Identifier("a"),
                 new MutabilityModifier(Token.Mut(SourceSpan.Default)),
-                new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
+                NamedTypeIdentifier("int"),
                 new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                     Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default)),
             ("var a: bool = b", new VariableDeclarationExpression(new VariableDeclaration(
                 Identifier("a"),
                 null,
-                new TypeIdentifier(Identifier("bool"), [], SourceRange.Default),
+                NamedTypeIdentifier("bool"),
                 VariableAccessor("b")), SourceRange.Default)),
             ("var a: int = b", new VariableDeclarationExpression(new VariableDeclaration(
                 Identifier("a"),
                 null,
-                new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
+                NamedTypeIdentifier("int"),
                 VariableAccessor("b")), SourceRange.Default)),
             ("var a: string = b", new VariableDeclarationExpression(new VariableDeclaration(
                 Identifier("a"),
                 null,
-                new TypeIdentifier(Identifier("string"), [], SourceRange.Default),
+                NamedTypeIdentifier("string"),
                 VariableAccessor("b")), SourceRange.Default)),
             ("var a: result = b", new VariableDeclarationExpression(new VariableDeclaration(
                 Identifier("a"),
                 null,
-                new TypeIdentifier(Identifier("result"), [], SourceRange.Default),
+                NamedTypeIdentifier("result"),
                 VariableAccessor("b")), SourceRange.Default)),
             ("var a: MyType = b", new VariableDeclarationExpression(new VariableDeclaration(
                 Identifier("a"),
                 null,
-                new TypeIdentifier(Identifier("MyType"), [], SourceRange.Default),
+                NamedTypeIdentifier("MyType"),
                 VariableAccessor("b")), SourceRange.Default)),
             ("var a = 1", new VariableDeclarationExpression(new VariableDeclaration(
                 Identifier("a"),
@@ -770,7 +759,7 @@ public static class PopExpressionTestCases
                         new ValueAccessorExpression(new ValueAccessor(
                             ValueAccessType.Variable,
                             Identifier("a"))),
-                        [new TypeIdentifier(Identifier("string"), [], SourceRange.Default)]),
+                        [NamedTypeIdentifier("string")]),
                     SourceRange.Default),
                 []), SourceRange.Default)),
             ("a::<string, int>()", new MethodCallExpression(new MethodCall(
@@ -779,8 +768,8 @@ public static class PopExpressionTestCases
                         ValueAccessType.Variable,
                         Identifier("a")
                     )), [
-                    new TypeIdentifier(Identifier("string"), [], SourceRange.Default),
-                    new TypeIdentifier(Identifier("int"), [], SourceRange.Default)
+                    NamedTypeIdentifier("string"),
+                    NamedTypeIdentifier("int")
                 ]), SourceRange.Default), []), SourceRange.Default)),
             ("a::<string, int, result::<int>>()", new MethodCallExpression(new MethodCall(
                 new GenericInstantiationExpression(new GenericInstantiation(new ValueAccessorExpression(
@@ -788,11 +777,10 @@ public static class PopExpressionTestCases
                         ValueAccessType.Variable,
                         Identifier("a")
                     )), [
-                    new TypeIdentifier(Identifier("string"), [], SourceRange.Default),
-                    new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
-                    new TypeIdentifier(Identifier("result"),
-                        [new TypeIdentifier(Identifier("int"), [], SourceRange.Default)],
-                        SourceRange.Default)
+                    NamedTypeIdentifier("string"),
+                    NamedTypeIdentifier("int"),
+                    NamedTypeIdentifier("result",
+                        [NamedTypeIdentifier("int")])
                 ]), SourceRange.Default),
                 []), SourceRange.Default)),
             ("a(b)", new MethodCallExpression(new MethodCall(VariableAccessor("a"), [
@@ -836,10 +824,10 @@ public static class PopExpressionTestCases
                 VariableAccessor("a"),
                 Token.Star(SourceSpan.Default)))),
             ("new Thing {}", new ObjectInitializerExpression(new ObjectInitializer(
-                new TypeIdentifier(Identifier("Thing"), [], SourceRange.Default),
+                NamedTypeIdentifier("Thing"),
                 []), SourceRange.Default)),
             ("new Thing {A = a}", new ObjectInitializerExpression(new ObjectInitializer(
-                    new TypeIdentifier(Identifier("Thing"), [], SourceRange.Default),
+                    NamedTypeIdentifier("Thing"),
                     [new FieldInitializer(Identifier("A"), VariableAccessor("a"))]),
                 SourceRange.Default)),
             ("myFn(a,)", new MethodCallExpression(new MethodCall(
@@ -852,9 +840,9 @@ public static class PopExpressionTestCases
                         Identifier("a")))
                 ]), SourceRange.Default)),
             ("new SomeType::<string,>{}", new ObjectInitializerExpression(new ObjectInitializer(
-                new TypeIdentifier(Identifier("SomeType"), [
-                    new TypeIdentifier(Identifier("string"), [], SourceRange.Default)
-                ], SourceRange.Default),
+                NamedTypeIdentifier("SomeType", [
+                    NamedTypeIdentifier("string")
+                ]),
                 []), SourceRange.Default)),
             ("SomeFn::<string,>()", new MethodCallExpression(new MethodCall(
                 new GenericInstantiationExpression(
@@ -862,39 +850,38 @@ public static class PopExpressionTestCases
                         new ValueAccessorExpression(new ValueAccessor(
                             ValueAccessType.Variable,
                             Identifier("SomeFn"))),
-                        [new TypeIdentifier(Identifier("string"), [], SourceRange.Default)]),
+                        [NamedTypeIdentifier("string")]),
                     SourceRange.Default),
                 []
             ), SourceRange.Default)),
             ("new Thing {A = a,}", new ObjectInitializerExpression(new ObjectInitializer(
-                    new TypeIdentifier(Identifier("Thing"), [], SourceRange.Default),
+                    NamedTypeIdentifier("Thing"),
                     [new FieldInitializer(Identifier("A"), VariableAccessor("a"))]),
                 SourceRange.Default)),
             ("new Thing {A = a, B = b}", new ObjectInitializerExpression(new ObjectInitializer(
-                new TypeIdentifier(Identifier("Thing"), [], SourceRange.Default),
+                NamedTypeIdentifier("Thing"),
                 [
                     new FieldInitializer(Identifier("A"), VariableAccessor("a")),
                     new FieldInitializer(Identifier("B"), VariableAccessor("b"))
                 ]), SourceRange.Default)),
             ("MyType::CallMethod",
                 new StaticMemberAccessExpression(new StaticMemberAccess(
-                    new TypeIdentifier(Identifier("MyType"), [], SourceRange.Default),
+                    NamedTypeIdentifier("MyType"),
                     Identifier("CallMethod")))),
             ("MyType::StaticField.InstanceField", new MemberAccessExpression(
                 new MemberAccess(
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("MyType"), [], SourceRange.Default),
+                        NamedTypeIdentifier("MyType"),
                         Identifier("StaticField"))),
                     Identifier("InstanceField")
                 ))),
             ("string::CallMethod",
                 new StaticMemberAccessExpression(new StaticMemberAccess(
-                    new TypeIdentifier(Identifier("string"), [], SourceRange.Default),
+                    NamedTypeIdentifier("string"),
                     Identifier("CallMethod")))),
             ("result::<string>::CallMethod", new StaticMemberAccessExpression(new StaticMemberAccess(
-                new TypeIdentifier(Identifier("result"),
-                    [new TypeIdentifier(Identifier("string"), [], SourceRange.Default)],
-                    SourceRange.Default),
+                NamedTypeIdentifier("result",
+                    [NamedTypeIdentifier("string")]),
                 Identifier("CallMethod")))),
             // ____binding strength tests
             // __greater than
@@ -1042,7 +1029,7 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.GreaterThan,
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("b"), [], SourceRange.Default),
+                        NamedTypeIdentifier("b"),
                         Identifier("c"))),
                     Token.RightAngleBracket(SourceSpan.Default)))
             ),
@@ -1198,7 +1185,7 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.LessThan,
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("b"), [], SourceRange.Default),
+                        NamedTypeIdentifier("b"),
                         Identifier("c")
                     )),
                     Token.LeftAngleBracket(SourceSpan.Default)))
@@ -1347,7 +1334,7 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Multiply,
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("b"), [], SourceRange.Default),
+                        NamedTypeIdentifier("b"),
                         Identifier("c")
                     )),
                     Token.Star(SourceSpan.Default)))
@@ -1504,7 +1491,7 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Divide,
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("b"), [], SourceRange.Default),
+                        NamedTypeIdentifier("b"),
                         Identifier("c")
                     )),
                     Token.ForwardSlash(SourceSpan.Default)))
@@ -1661,7 +1648,7 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Plus,
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("b"), [], SourceRange.Default),
+                        NamedTypeIdentifier("b"),
                         Identifier("c")
                     )),
                     Token.Plus(SourceSpan.Default)))
@@ -1818,7 +1805,7 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Minus,
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("b"), [], SourceRange.Default),
+                        NamedTypeIdentifier("b"),
                         Identifier("c")
                     )),
                     Token.Dash(SourceSpan.Default)))
@@ -2074,7 +2061,7 @@ public static class PopExpressionTestCases
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("b"), [], SourceRange.Default),
+                        NamedTypeIdentifier("b"),
                         Identifier("c")
                     )),
                     Token.Equals(SourceSpan.Default)))
@@ -2231,7 +2218,7 @@ public static class PopExpressionTestCases
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.EqualityCheck,
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("b"), [], SourceRange.Default),
+                        NamedTypeIdentifier("b"),
                         Identifier("c")
                     )),
                     Token.DoubleEquals(SourceSpan.Default)))
@@ -2351,7 +2338,7 @@ public static class PopExpressionTestCases
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.GreaterThan,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("a"), [], SourceRange.Default),
+                        NamedTypeIdentifier("a"),
                         Identifier("b")
                     )),
                     VariableAccessor("c"),
@@ -2362,7 +2349,7 @@ public static class PopExpressionTestCases
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.LessThan,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("a"), [], SourceRange.Default),
+                        NamedTypeIdentifier("a"),
                         Identifier("b")
                     )),
                     VariableAccessor("c"),
@@ -2373,7 +2360,7 @@ public static class PopExpressionTestCases
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.Multiply,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("a"), [], SourceRange.Default),
+                        NamedTypeIdentifier("a"),
                         Identifier("b")
                     )),
                     VariableAccessor("c"),
@@ -2384,7 +2371,7 @@ public static class PopExpressionTestCases
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.Divide,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("a"), [], SourceRange.Default),
+                        NamedTypeIdentifier("a"),
                         Identifier("b")
                     )),
                     VariableAccessor("c"),
@@ -2395,7 +2382,7 @@ public static class PopExpressionTestCases
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.Plus,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("a"), [], SourceRange.Default),
+                        NamedTypeIdentifier("a"),
                         Identifier("b")
                     )),
                     VariableAccessor("c"),
@@ -2406,7 +2393,7 @@ public static class PopExpressionTestCases
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.Minus,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("a"), [], SourceRange.Default),
+                        NamedTypeIdentifier("a"),
                         Identifier("b")
                     )),
                     VariableAccessor("c"),
@@ -2417,7 +2404,7 @@ public static class PopExpressionTestCases
                 new UnaryOperatorExpression(new UnaryOperator(
                     UnaryOperatorType.FallOut,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("a"), [], SourceRange.Default),
+                        NamedTypeIdentifier("a"),
                         Identifier("b")
                     )),
                     Token.QuestionMark(SourceSpan.Default)))
@@ -2427,7 +2414,7 @@ public static class PopExpressionTestCases
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.ValueAssignment,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("a"), [], SourceRange.Default),
+                        NamedTypeIdentifier("a"),
                         Identifier("b")
                     )),
                     VariableAccessor("c"),
@@ -2438,7 +2425,7 @@ public static class PopExpressionTestCases
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.EqualityCheck,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("a"), [], SourceRange.Default),
+                        NamedTypeIdentifier("a"),
                         Identifier("b")
                     )),
                     VariableAccessor("c"),
@@ -2448,7 +2435,7 @@ public static class PopExpressionTestCases
                 "a::b.c",
                 new MemberAccessExpression(new MemberAccess(
                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                        new TypeIdentifier(Identifier("a"), [], SourceRange.Default),
+                        NamedTypeIdentifier("a"),
                         Identifier("b")
                     )),
                     Identifier("c")))

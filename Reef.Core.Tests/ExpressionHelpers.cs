@@ -45,7 +45,7 @@ public static class ExpressionHelpers
     public static VariableDeclarationExpression VariableDeclaration(
         string name,
         IExpression? value = null,
-        TypeIdentifier? type = null,
+        ITypeIdentifier? type = null,
         bool isMutable = false)
     {
         return new VariableDeclarationExpression(new VariableDeclaration(
@@ -57,24 +57,24 @@ public static class ExpressionHelpers
             value), SourceRange.Default);
     }
 
-    public static TypeIdentifier IntType()
+    public static NamedTypeIdentifier IntType()
     {
-        return new TypeIdentifier(Identifier("int"), [], SourceRange.Default);
+        return new NamedTypeIdentifier(Identifier("int"), [], SourceRange.Default);
     }
 
-    public static TypeIdentifier StringType()
+    public static NamedTypeIdentifier StringType()
     {
-        return new TypeIdentifier(Identifier("string"), [], SourceRange.Default);
+        return new NamedTypeIdentifier(Identifier("string"), [], SourceRange.Default);
     }
     
-    public static TypeIdentifier BooleanType()
+    public static NamedTypeIdentifier BooleanType()
     {
-        return new TypeIdentifier(Identifier("bool"), [], SourceRange.Default);
+        return new NamedTypeIdentifier(Identifier("bool"), [], SourceRange.Default);
     }
 
     public static ClassField ClassField(
         string name,
-        TypeIdentifier? type = null,
+        ITypeIdentifier? type = null,
         bool isMutable = false,
         bool isStatic = false,
         bool isPublic = false,
@@ -127,7 +127,7 @@ public static class ExpressionHelpers
         bool isMutable = false,
         IReadOnlyList<FunctionParameter>? parameters = null,
         IReadOnlyList<string>? typeParameters = null,
-        TypeIdentifier? returnType = null)
+        ITypeIdentifier? returnType = null)
     {
         return new LangFunction(isPublic
                 ? new AccessModifier(Token.Pub(SourceSpan.Default))
@@ -145,7 +145,7 @@ public static class ExpressionHelpers
             new Block([], []));
     }
 
-    public static FunctionParameter FunctionParameter(string name, TypeIdentifier? type = null, bool isMutable = false)
+    public static FunctionParameter FunctionParameter(string name, ITypeIdentifier? type = null, bool isMutable = false)
     {
         return new FunctionParameter(
             type,
@@ -163,12 +163,12 @@ public static class ExpressionHelpers
         return new MethodCallExpression(new MethodCall(method, arguments), SourceRange.Default);
     }
     
-    public static StaticMemberAccessExpression StaticMemberAccess(TypeIdentifier type, string? memberName)
+    public static StaticMemberAccessExpression StaticMemberAccess(NamedTypeIdentifier type, string? memberName)
     {
         return new StaticMemberAccessExpression(new StaticMemberAccess(type, memberName is null ? null : Token.Identifier(memberName, SourceSpan.Default)));
     }
 
-    public static GenericInstantiationExpression GenericInstantiation(IExpression value, IReadOnlyList<TypeIdentifier>? typeArguments = null)
+    public static GenericInstantiationExpression GenericInstantiation(IExpression value, IReadOnlyList<ITypeIdentifier>? typeArguments = null)
     {
         return new GenericInstantiationExpression(new GenericInstantiation(
             value,
@@ -195,12 +195,12 @@ public static class ExpressionHelpers
         return new MatchExpression(value, arms ?? [],  SourceRange.Default);
     }
 
-    public static ObjectInitializerExpression ObjectInitializer(TypeIdentifier type, IReadOnlyList<FieldInitializer>? fieldInitializers = null)
+    public static ObjectInitializerExpression ObjectInitializer(NamedTypeIdentifier type, IReadOnlyList<FieldInitializer>? fieldInitializers = null)
     {
         return new ObjectInitializerExpression(new ObjectInitializer(type, fieldInitializers ?? []), SourceRange.Default);
     }
 
-    public static UnionClassVariantInitializerExpression UnionClassVariantInitializer(TypeIdentifier type,
+    public static UnionClassVariantInitializerExpression UnionClassVariantInitializer(NamedTypeIdentifier type,
         string variantName, IReadOnlyList<FieldInitializer>? fieldInitializers = null)
     {
         return new UnionClassVariantInitializerExpression(
@@ -224,7 +224,7 @@ public static class ExpressionHelpers
 
     public static DiscardPattern DiscardPattern() => new (SourceRange.Default);
 
-    public static UnionVariantPattern UnionVariantPattern(TypeIdentifier unionType, string? variantName = null, string? variableName = null)
+    public static UnionVariantPattern UnionVariantPattern(ITypeIdentifier unionType, string? variantName = null, string? variableName = null)
     {
         return new UnionVariantPattern(
             unionType,
@@ -233,7 +233,7 @@ public static class ExpressionHelpers
             SourceRange.Default);
     }
 
-    public static UnionTupleVariantPattern UnionTupleVariantPattern(TypeIdentifier unionType, string variantName, IReadOnlyList<IPattern>? patterns = null, string? variableName = null)
+    public static UnionTupleVariantPattern UnionTupleVariantPattern(ITypeIdentifier unionType, string variantName, IReadOnlyList<IPattern>? patterns = null, string? variableName = null)
     {
         return new UnionTupleVariantPattern(unionType,
             Token.Identifier(variantName, SourceSpan.Default),
@@ -243,7 +243,7 @@ public static class ExpressionHelpers
     }
     
     public static UnionClassVariantPattern UnionClassVariantPattern(
-        TypeIdentifier unionType,
+        ITypeIdentifier unionType,
         string variantName,
         IReadOnlyList<(string, IPattern?)>? patterns = null,
         string? variableName = null,
@@ -259,7 +259,7 @@ public static class ExpressionHelpers
     }
 
     public static ClassPattern ClassPattern(
-        TypeIdentifier type,
+        ITypeIdentifier type,
         IReadOnlyList<(string, IPattern?)>? patterns = null,
         string? variableName = null,
         bool fieldsDiscarded = false)
@@ -273,12 +273,12 @@ public static class ExpressionHelpers
             SourceRange.Default);
     }
 
-    public static TypeIdentifier TypeIdentifier(string typeName, IReadOnlyList<TypeIdentifier>? typeArguments = null)
+    public static NamedTypeIdentifier NamedTypeIdentifier(string typeName, IReadOnlyList<ITypeIdentifier>? typeArguments = null)
     {
-        return new TypeIdentifier(Token.Identifier(typeName, SourceSpan.Default), typeArguments ?? [], SourceRange.Default);
+        return new NamedTypeIdentifier(Token.Identifier(typeName, SourceSpan.Default), typeArguments ?? [], SourceRange.Default);
     }
     
-    public static TypePattern TypePattern(TypeIdentifier type, string? variableName = null)
+    public static TypePattern TypePattern(ITypeIdentifier type, string? variableName = null)
     {
         return new TypePattern(
             type,

@@ -33,8 +33,47 @@ public record LangProgram(
     public List<TypeChecker.LocalVariable> TopLevelLocalVariables { get; } = [];
 }
 
-// todo: is this an ok name?
-public record TypeIdentifier(StringToken Identifier, IReadOnlyList<TypeIdentifier> TypeArguments, SourceRange SourceRange)
+public interface ITypeIdentifier
+{
+    SourceRange SourceRange { get; }
+}
+
+public record TupleTypeIdentifier(IReadOnlyList<ITypeIdentifier> Members, SourceRange SourceRange) : ITypeIdentifier
+{
+    public override string ToString()
+    {
+        return $"({string.Join(", ", Members)})";
+    }
+}
+
+public record FnTypeIdentifierParameter(ITypeIdentifier ParameterType, bool Mut)
+{
+    public override string ToString()
+    {
+        return Mut
+            ? $"mut {ParameterType}"
+            : ParameterType.ToString() ?? "";
+    }
+}
+
+public record FnTypeIdentifier(IReadOnlyList<FnTypeIdentifierParameter> Parameters, ITypeIdentifier? ReturnType, SourceRange SourceRange)
+    : ITypeIdentifier
+{
+    public override string ToString()
+    {
+        var sb = new StringBuilder("Fn(");
+        sb.AppendJoin(", ", Parameters);
+        sb.Append(')');
+        if (ReturnType is not null)
+        {
+            sb.Append($": {ReturnType}");
+        }
+
+        return sb.ToString();
+    }
+}
+
+public record NamedTypeIdentifier(StringToken Identifier, IReadOnlyList<ITypeIdentifier> TypeArguments, SourceRange SourceRange) : ITypeIdentifier
 {
     public override string ToString()
     {
@@ -57,7 +96,7 @@ public record LangFunction(
     StringToken Name,
     IReadOnlyList<StringToken> TypeParameters,
     IReadOnlyList<FunctionParameter> Parameters,
-    TypeIdentifier? ReturnType,
+    ITypeIdentifier? ReturnType,
     Block Block)
 {
     public TypeChecker.FunctionSignature? Signature { get; set; }
@@ -108,7 +147,7 @@ public record AccessModifier(Token Token)
     }
 }
 
-public record FunctionParameter(TypeIdentifier? Type, MutabilityModifier? MutabilityModifier, StringToken Identifier)
+public record FunctionParameter(ITypeIdentifier? Type, MutabilityModifier? MutabilityModifier, StringToken Identifier)
 {
     public override string ToString()
     {

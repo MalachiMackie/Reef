@@ -2019,7 +2019,19 @@ public class TypeChecker
     }
 
     private ITypeReference GetTypeReference(
-        TypeIdentifier typeIdentifier)
+        ITypeIdentifier typeIdentifier)
+    {
+        return typeIdentifier switch
+        {
+            FnTypeIdentifier fnTypeIdentifier => throw new NotImplementedException(),
+            NamedTypeIdentifier namedTypeIdentifier => GetTypeReference(namedTypeIdentifier),
+            TupleTypeIdentifier tupleTypeIdentifier => throw new NotImplementedException(),
+            _ => throw new ArgumentOutOfRangeException(nameof(typeIdentifier))
+        };
+    }
+
+    private ITypeReference GetTypeReference(
+        NamedTypeIdentifier typeIdentifier)
     {
         var identifierName = typeIdentifier.Identifier.StringValue;
         

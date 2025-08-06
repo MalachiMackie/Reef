@@ -647,7 +647,7 @@ public sealed class Parser : IDisposable
         return true;
     }
     
-    private bool ExpectCurrentTypeIdentifier([NotNullWhen(true)] out TypeIdentifier? typeIdentifier)
+    private bool ExpectCurrentTypeIdentifier([NotNullWhen(true)] out ITypeIdentifier? typeIdentifier)
     {
         if (!_hasNext)
         {
@@ -660,8 +660,22 @@ public sealed class Parser : IDisposable
 
         return typeIdentifier is not null;
     }
+    
+    private bool ExpectNextNamedTypeIdentifier([NotNullWhen(true)] out NamedTypeIdentifier? typeIdentifier)
+    {
+        if (!MoveNext())
+        {
+            _errors.Add(ParserError.ExpectedType(null));
+            typeIdentifier = null;
+            return false;
+        }
 
-    private bool ExpectNextTypeIdentifier([NotNullWhen(true)] out TypeIdentifier? typeIdentifier)
+        typeIdentifier = GetNamedTypeIdentifier();
+
+        return typeIdentifier is not null;
+    }
+
+    private bool ExpectNextTypeIdentifier([NotNullWhen(true)] out ITypeIdentifier? typeIdentifier)
     {
         if (!MoveNext())
         {
@@ -909,7 +923,7 @@ public sealed class Parser : IDisposable
                 return new FunctionParameter(parameterType, parameterMutabilityModifier, parameterName);
             });
 
-        TypeIdentifier? returnType = null;
+        ITypeIdentifier? returnType = null;
 
         if (!_hasNext)
         {
@@ -952,8 +966,8 @@ public sealed class Parser : IDisposable
         return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
             new Block(scope.Expressions, scope.Functions));
     }
-
-    private TypeIdentifier? GetTypeIdentifier()
+    
+    private NamedTypeIdentifier? GetNamedTypeIdentifier()
     {
         // use manual check instead of `ExpectCurrentIdentifier` so we can display the `ExpectedType` error
         if (Current is not StringToken { Type: TokenType.Identifier } typeIdentifier)
@@ -962,7 +976,7 @@ public sealed class Parser : IDisposable
             return null;
         }
         
-        var typeArguments = new List<TypeIdentifier>();
+        var typeArguments = new List<ITypeIdentifier>();
         Token? lastToken = null;
         if (MoveNext() && Current.Type == TokenType.Turbofish)
         {
@@ -983,7 +997,41 @@ public sealed class Parser : IDisposable
                 });
         }
 
-        return new TypeIdentifier(typeIdentifier, typeArguments,
+        return new NamedTypeIdentifier(typeIdentifier, typeArguments,
+            new SourceRange(typeIdentifier.SourceSpan, lastToken?.SourceSpan ?? typeIdentifier.SourceSpan));
+    }
+
+    private ITypeIdentifier? GetTypeIdentifier()
+    {
+        // use manual check instead of `ExpectCurrentIdentifier` so we can display the `ExpectedType` error
+        if (Current is not StringToken { Type: TokenType.Identifier } typeIdentifier)
+        {
+            _errors.Add(ParserError.ExpectedType(Current));
+            return null;
+        }
+        
+        var typeArguments = new List<ITypeIdentifier>();
+        Token? lastToken = null;
+        if (MoveNext() && Current.Type == TokenType.Turbofish)
+        {
+            (typeArguments, lastToken) = GetCommaSeparatedList(
+                TokenType.RightAngleBracket,
+                expectedTokens: [],
+                expectExpression: false,
+                expectType: true,
+                expectPattern: false,
+                () =>
+                {
+                    var typeArgument = GetTypeIdentifier();
+                    if (typeArgument is null)
+                    {
+                        MoveNext();
+                    }
+                    return typeArgument;
+                });
+        }
+
+        return new NamedTypeIdentifier(typeIdentifier, typeArguments,
             new SourceRange(typeIdentifier.SourceSpan, lastToken?.SourceSpan ?? typeIdentifier.SourceSpan));
     }
 
@@ -1491,7 +1539,7 @@ public sealed class Parser : IDisposable
             return null;
         }
         
-        IReadOnlyList<TypeIdentifier>? typeArguments = null;
+        IReadOnlyList<ITypeIdentifier>? typeArguments = null;
         if (previousExpression is GenericInstantiationExpression genericInstantiationExpression)
         {
             typeArguments = genericInstantiationExpression.GenericInstantiation.TypeArguments;
@@ -1509,7 +1557,7 @@ public sealed class Parser : IDisposable
             throw new UnreachableException("It should be impossible to get here");
         }
 
-        var type = new TypeIdentifier(token, typeArguments ?? [], previousExpression.SourceRange);
+        var type = new NamedTypeIdentifier(token, typeArguments ?? [], previousExpression.SourceRange);
 
         ExpectNextIdentifier(out var memberName);
 
@@ -1537,7 +1585,7 @@ public sealed class Parser : IDisposable
     private IExpression? GetInitializer()
     {
         var newToken = Current;
-        if (!ExpectNextTypeIdentifier(out var type))
+        if (!ExpectNextNamedTypeIdentifier(out var type))
         {
             MoveNext();
             return null;
@@ -1564,7 +1612,7 @@ public sealed class Parser : IDisposable
     }
 
     private UnionClassVariantInitializerExpression? GetUnionClassVariantInitializer(
-        TypeIdentifier type, Token newToken)
+        NamedTypeIdentifier type, Token newToken)
     {
         if (!ExpectNextIdentifier(out var variantName))
         {
@@ -1613,7 +1661,7 @@ public sealed class Parser : IDisposable
             });
     }
 
-    private ObjectInitializerExpression GetObjectInitializer(TypeIdentifier type)
+    private ObjectInitializerExpression GetObjectInitializer(NamedTypeIdentifier type)
     {
         var firstToken = Current;
         var (fieldInitializers, lastToken) = GetFieldInitializers();
@@ -1811,7 +1859,7 @@ public sealed class Parser : IDisposable
                 new SourceRange(start, identifier.SourceSpan));
         }
 
-        TypeIdentifier? type = null;
+        ITypeIdentifier? type = null;
         IExpression? valueExpression = null;
         var lastTokenSpan = identifier.SourceSpan;
 

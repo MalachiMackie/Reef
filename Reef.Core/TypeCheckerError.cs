@@ -96,7 +96,7 @@ public record TypeCheckerError
             $"Unknown variant {variantIdentifier} on union {unionName}");
     }
 
-    public static TypeCheckerError NonClassUsedInClassPattern(TypeIdentifier typeIdentifier)
+    public static TypeCheckerError NonClassUsedInClassPattern(ITypeIdentifier typeIdentifier)
     {
         return new(
             TypeCheckerErrorType.NonClassUsedInClassPattern,
@@ -111,7 +111,7 @@ public record TypeCheckerError
             $"Not all fields in union class variant pattern were listed. Missing fields: {string.Join(", ", missingFields)}");
     }
 
-    public static TypeCheckerError MissingFieldsInClassPattern(IEnumerable<string> fieldNames, TypeIdentifier className)
+    public static TypeCheckerError MissingFieldsInClassPattern(IEnumerable<string> fieldNames, ITypeIdentifier className)
     {
         return new(
             TypeCheckerErrorType.MissingFieldsInClassPattern,

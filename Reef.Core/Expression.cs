@@ -79,7 +79,7 @@ public record MemberAccess(IExpression Owner, StringToken? MemberName)
     public TypeChecker.ITypeReference? OwnerType { get; set; }
 }
 
-public record StaticMemberAccess(TypeIdentifier Type, StringToken? MemberName)
+public record StaticMemberAccess(NamedTypeIdentifier Type, StringToken? MemberName)
 {
     public uint? ItemIndex { get; set; }
     public MemberType? MemberType { get; set; }
@@ -214,7 +214,7 @@ public record GenericInstantiationExpression(GenericInstantiation GenericInstant
     }
 }
 
-public record GenericInstantiation(IExpression Value, IReadOnlyList<TypeIdentifier> TypeArguments)
+public record GenericInstantiation(IExpression Value, IReadOnlyList<ITypeIdentifier> TypeArguments)
 {
     public override string ToString()
     {
@@ -285,7 +285,7 @@ public record MatchesExpression(IExpression ValueExpression, IPattern? Pattern, 
 }
 
 public record UnionClassVariantInitializer(
-    TypeIdentifier UnionType,
+    NamedTypeIdentifier UnionType,
     StringToken VariantIdentifier,
     IReadOnlyList<FieldInitializer> FieldInitializers)
 {
@@ -313,7 +313,7 @@ public record ObjectInitializerExpression(ObjectInitializer ObjectInitializer, S
 public record VariableDeclaration(
     StringToken VariableNameToken,
     MutabilityModifier? MutabilityModifier,
-    TypeIdentifier? Type,
+    ITypeIdentifier? Type,
     IExpression? Value)
 {
     public TypeChecker.IVariable? Variable { get; set; }
@@ -466,7 +466,7 @@ public record MethodReturn(IExpression? Expression)
     }
 }
 
-public record ObjectInitializer(TypeIdentifier Type, IReadOnlyList<FieldInitializer> FieldInitializers)
+public record ObjectInitializer(NamedTypeIdentifier Type, IReadOnlyList<FieldInitializer> FieldInitializers)
 {
     public override string ToString()
     {

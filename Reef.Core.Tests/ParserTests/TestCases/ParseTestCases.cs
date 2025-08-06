@@ -12,7 +12,7 @@ public static class ParseTestCases
                 new VariableDeclarationExpression(new VariableDeclaration(
                     Identifier("a"),
                     null,
-                    new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
+                    NamedTypeIdentifier("int"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Multiply,
                         new TupleExpression([
@@ -44,10 +44,10 @@ public static class ParseTestCases
                             null,
                             null,
                             new UnionClassVariantInitializerExpression(new UnionClassVariantInitializer(
-                                new TypeIdentifier(Identifier("MyUnion"),
+                                NamedTypeIdentifier("MyUnion",
                                 [
-                                    new TypeIdentifier(Identifier("string"), [], SourceRange.Default)
-                                ], SourceRange.Default),
+                                    NamedTypeIdentifier("string")
+                                ]),
                                 Identifier("A"),
                                 []), SourceRange.Default)
                         ), SourceRange.Default)
@@ -88,8 +88,7 @@ public static class ParseTestCases
                             null,
                             null,
                             new UnionClassVariantInitializerExpression(new UnionClassVariantInitializer(
-                                new TypeIdentifier(Identifier("MyUnion"), [],
-                                    SourceRange.Default),
+                                NamedTypeIdentifier("MyUnion"),
                                 Identifier("A"),
                                 [
                                     new FieldInitializer(
@@ -123,8 +122,7 @@ public static class ParseTestCases
                                             null,
                                             null,
                                             Identifier("MyField"),
-                                            new TypeIdentifier(Identifier("string"), [],
-                                                SourceRange.Default),
+                                            NamedTypeIdentifier("string"),
                                             null
                                         ),
                                         new ClassField(null,
@@ -147,7 +145,7 @@ public static class ParseTestCases
                             null,
                             null,
                             Identifier("myFieldWithoutComma"),
-                            new TypeIdentifier(Identifier("string"), [], SourceRange.Default),
+                            NamedTypeIdentifier("string"),
                             null)
                     ])
                 ], [])),
@@ -277,17 +275,13 @@ public static class ParseTestCases
                                 new TupleUnionVariant(
                                     Identifier("B"),
                                     [
-                                        new TypeIdentifier(Identifier("string"), [],
-                                            SourceRange.Default),
-                                        new TypeIdentifier(Identifier("int"), [],
-                                            SourceRange.Default),
-                                        new TypeIdentifier(
-                                            Identifier("MyClass"),
+                                        NamedTypeIdentifier("string"),
+                                        NamedTypeIdentifier("int"),
+                                        NamedTypeIdentifier(
+                                            "MyClass",
                                             [
-                                                new TypeIdentifier(Identifier("string"), [],
-                                                    SourceRange.Default)
-                                            ]
-                                            , SourceRange.Default)
+                                                NamedTypeIdentifier("string")
+                                            ])
                                     ])
                             ])
                     ])
@@ -318,8 +312,7 @@ public static class ParseTestCases
                                     [
                                         new ClassField(null, null, null,
                                             Identifier("MyField"),
-                                            new TypeIdentifier(Identifier("string"), [],
-                                                SourceRange.Default), null)
+                                            NamedTypeIdentifier("string"), null)
                                     ]
                                 }
                             ])
@@ -334,7 +327,7 @@ public static class ParseTestCases
                     [],
                     [
                         new FunctionParameter(
-                            new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
+                            NamedTypeIdentifier("int"),
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Identifier("a")
                         )
@@ -351,12 +344,12 @@ public static class ParseTestCases
                     [],
                     [
                         new FunctionParameter(
-                            new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
+                            NamedTypeIdentifier("int"),
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Identifier("a")
                         ),
                         new FunctionParameter(
-                            new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
+                            NamedTypeIdentifier("int"),
                             null,
                             Identifier("b")
                         )
@@ -373,12 +366,12 @@ public static class ParseTestCases
                     [],
                     [
                         new FunctionParameter(
-                            new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
+                            NamedTypeIdentifier("int"),
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Identifier("a")
                         ),
                         new FunctionParameter(
-                            new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
+                            NamedTypeIdentifier("int"),
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Identifier("b")
                         )
@@ -395,7 +388,7 @@ public static class ParseTestCases
                     [],
                     [
                         new FunctionParameter(
-                            new TypeIdentifier(Identifier("int"), [], SourceRange.Default), null,
+                            NamedTypeIdentifier("int"), null,
                             Identifier("a"))
                     ],
                     null,
@@ -410,7 +403,7 @@ public static class ParseTestCases
                     [],
                     [
                         new FunctionParameter(
-                            new TypeIdentifier(Identifier("int"), [], SourceRange.Default), null,
+                            NamedTypeIdentifier("int"), null,
                             Identifier("a"))
                     ],
                     null,
@@ -552,7 +545,7 @@ public static class ParseTestCases
             ], [], [])),
             ("fn MyFn(): string {}", new LangProgram([], [
                 new LangFunction(null, null, null, Identifier("MyFn"), [], [],
-                    new TypeIdentifier(Identifier("string"), [], SourceRange.Default),
+                    NamedTypeIdentifier("string"),
                     new Block([], []))
             ], [], [])),
             ("fn MyFn(): result::<int, MyErrorType> {}", new LangProgram([], [
@@ -563,13 +556,12 @@ public static class ParseTestCases
                     Identifier("MyFn"),
                     [],
                     [],
-                    new TypeIdentifier(
-                        Identifier("result"),
+                    NamedTypeIdentifier(
+                        "result",
                         [
-                            new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
-                            new TypeIdentifier(Identifier("MyErrorType"), [],
-                                SourceRange.Default)
-                        ], SourceRange.Default),
+                            NamedTypeIdentifier("int"),
+                            NamedTypeIdentifier("MyErrorType")
+                        ]),
                     new Block([], []))
             ], [], [])),
             ("fn MyFn(): Outer::<Inner::<int>> {}", new LangProgram([], [
@@ -580,13 +572,13 @@ public static class ParseTestCases
                     Identifier("MyFn"),
                     [],
                     [],
-                    new TypeIdentifier(
-                        Identifier("Outer"),
+                    NamedTypeIdentifier(
+                        "Outer",
                         [
-                            new TypeIdentifier(Identifier("Inner"), [
-                                new TypeIdentifier(Identifier("int"), [], SourceRange.Default)
-                            ], SourceRange.Default)
-                        ], SourceRange.Default),
+                            NamedTypeIdentifier("Inner", [
+                                NamedTypeIdentifier("int")
+                            ])
+                        ]),
                     new Block([], []))
             ], [], [])),
             ("fn MyFn(): Outer::<Inner::<int>, Inner::<int>> {}", new LangProgram([], [
@@ -597,16 +589,14 @@ public static class ParseTestCases
                     Identifier("MyFn"),
                     [],
                     [],
-                    new TypeIdentifier(
-                        Identifier("Outer"),
+                    NamedTypeIdentifier(
+                        "Outer",
                         [
-                            new TypeIdentifier(Identifier("Inner"),
-                                [new TypeIdentifier(Identifier("int"), [], SourceRange.Default)],
-                                SourceRange.Default),
-                            new TypeIdentifier(Identifier("Inner"),
-                                [new TypeIdentifier(Identifier("int"), [], SourceRange.Default)],
-                                SourceRange.Default)
-                        ], SourceRange.Default),
+                            NamedTypeIdentifier("Inner",
+                                [NamedTypeIdentifier("int")]),
+                            NamedTypeIdentifier("Inner",
+                                [NamedTypeIdentifier("int")])
+                        ]),
                     new Block([], []))
             ], [], [])),
             ("fn MyFn(): result::<int, MyErrorType, ThirdTypeArgument> {}", new LangProgram([], [
@@ -617,15 +607,13 @@ public static class ParseTestCases
                     Identifier("MyFn"),
                     [],
                     [],
-                    new TypeIdentifier(
-                        Identifier("result"),
+                    NamedTypeIdentifier(
+                        "result",
                         [
-                            new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
-                            new TypeIdentifier(Identifier("MyErrorType"), [],
-                                SourceRange.Default),
-                            new TypeIdentifier(Identifier("ThirdTypeArgument"), [],
-                                SourceRange.Default)
-                        ], SourceRange.Default),
+                            NamedTypeIdentifier("int"),
+                            NamedTypeIdentifier("MyErrorType"),
+                            NamedTypeIdentifier("ThirdTypeArgument")
+                        ]),
                     new Block([], []))
             ], [], [])),
             ("fn MyFn() { var a = 2; }", new LangProgram([], [
@@ -656,7 +644,7 @@ public static class ParseTestCases
                     [],
                     [
                         new FunctionParameter(
-                            new TypeIdentifier(Identifier("int"), [], SourceRange.Default), null,
+                            NamedTypeIdentifier("int"), null,
                             Identifier("a"))
                     ],
                     null,
@@ -722,12 +710,11 @@ public static class ParseTestCases
                     Identifier("MyFn"),
                     [],
                     [
-                        new FunctionParameter(new TypeIdentifier(
-                            Identifier("result"), [
-                                new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
-                                new TypeIdentifier(Identifier("MyType"), [],
-                                    SourceRange.Default)
-                            ], SourceRange.Default), null, Identifier("a"))
+                        new FunctionParameter(NamedTypeIdentifier(
+                            "result", [
+                                NamedTypeIdentifier("int"),
+                                NamedTypeIdentifier("MyType")
+                            ]), null, Identifier("a"))
                     ],
                     null,
                     new Block([], [])
@@ -742,10 +729,10 @@ public static class ParseTestCases
                     [],
                     [
                         new FunctionParameter(
-                            new TypeIdentifier(Identifier("int"), [], SourceRange.Default), null,
+                            NamedTypeIdentifier("int"), null,
                             Identifier("a")),
                         new FunctionParameter(
-                            new TypeIdentifier(Identifier("MyType"), [], SourceRange.Default),
+                            NamedTypeIdentifier("MyType"),
                             null, Identifier("b"))
                     ],
                     null,
@@ -760,7 +747,7 @@ public static class ParseTestCases
                     Identifier("MyFn"),
                     [],
                     [],
-                    new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
+                    NamedTypeIdentifier("int"),
                     new Block(
                     [
                         new MethodReturnExpression(new MethodReturn(new ValueAccessorExpression(
@@ -816,7 +803,7 @@ public static class ParseTestCases
                             null,
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Identifier("MyField"),
-                            new TypeIdentifier(Identifier("string"), [], SourceRange.Default), null)
+                            NamedTypeIdentifier("string"), null)
                     ])
             ], [])),
             ("class MyClass {pub static mut field MyField: string,}", new LangProgram([], [], [
@@ -831,7 +818,7 @@ public static class ParseTestCases
                             new StaticModifier(Token.Static(SourceSpan.Default)),
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Identifier("MyField"),
-                            new TypeIdentifier(Identifier("string"), [], SourceRange.Default), null)
+                            NamedTypeIdentifier("string"), null)
                     ])
             ], [])),
             ("class MyClass {mut field MyField: string,}", new LangProgram([], [], [
@@ -846,7 +833,7 @@ public static class ParseTestCases
                             null,
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Identifier("MyField"),
-                            new TypeIdentifier(Identifier("string"), [], SourceRange.Default), null)
+                            NamedTypeIdentifier("string"), null)
                     ])
             ], [])),
             ("class MyClass {field MyField: string,}", new LangProgram([], [], [
@@ -861,7 +848,7 @@ public static class ParseTestCases
                             null,
                             null,
                             Identifier("MyField"),
-                            new TypeIdentifier(Identifier("string"), [], SourceRange.Default), null)
+                            NamedTypeIdentifier("string"), null)
                     ])
             ], [])),
             ("class MyClass {pub field MyField: string,}", new LangProgram([], [], [
@@ -876,7 +863,7 @@ public static class ParseTestCases
                             null,
                             null,
                             Identifier("MyField"),
-                            new TypeIdentifier(Identifier("string"), [], SourceRange.Default), null)
+                            NamedTypeIdentifier("string"), null)
                     ])
             ], [])),
             ("class MyClass {pub mut field MyField: string, pub fn MyFn() {},}", new LangProgram([], [], [
@@ -894,7 +881,7 @@ public static class ParseTestCases
                             null,
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Identifier("MyField"),
-                            new TypeIdentifier(Identifier("string"), [], SourceRange.Default), null)
+                            NamedTypeIdentifier("string"), null)
                     ])
             ], [])),
             ("class MyClass {field MyField: string, fn MyFn() {}}", new LangProgram([], [], [
@@ -912,7 +899,7 @@ public static class ParseTestCases
                             null,
                             null,
                             Identifier("MyField"),
-                            new TypeIdentifier(Identifier("string"), [], SourceRange.Default), null)
+                            NamedTypeIdentifier("string"), null)
                     ])
             ], [])),
             ("pub fn DoSomething(a: int): result::<int, string> {}", new LangProgram(
@@ -926,14 +913,14 @@ public static class ParseTestCases
                         [],
                         [
                             new FunctionParameter(
-                                new TypeIdentifier(Identifier("int"), [], SourceRange.Default), null,
+                                NamedTypeIdentifier("int"), null,
                                 Identifier("a"))
                         ],
-                        new TypeIdentifier(Identifier("result"),
+                        NamedTypeIdentifier("result",
                         [
-                            new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
-                            new TypeIdentifier(Identifier("string"), [], SourceRange.Default)
-                        ], SourceRange.Default),
+                            NamedTypeIdentifier("int"),
+                            NamedTypeIdentifier("string")
+                        ]),
                         new Block([], []))
                 ],
                 [], [])),
@@ -954,7 +941,7 @@ public static class ParseTestCases
                                     new StaticModifier(Token.Static(SourceSpan.Default)),
                                     null,
                                     Identifier("someField"),
-                                    new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
+                                    NamedTypeIdentifier("int"),
                                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                                         Token.IntLiteral(3, SourceSpan.Default))))
                             ]
@@ -1063,20 +1050,20 @@ public static class ParseTestCases
                         [],
                         [
                             new FunctionParameter(
-                                new TypeIdentifier(Identifier("int"), [], SourceRange.Default), null,
+                                NamedTypeIdentifier("int"), null,
                                 Identifier("a"))
                         ],
-                        new TypeIdentifier(Identifier("result"),
+                        NamedTypeIdentifier("result",
                         [
-                            new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
-                            new TypeIdentifier(Identifier("string"), [], SourceRange.Default)
-                        ], SourceRange.Default),
+                            NamedTypeIdentifier("int"),
+                            NamedTypeIdentifier("string")
+                        ]),
                         new Block(
                             [
                                 new VariableDeclarationExpression(new VariableDeclaration(
                                     Identifier("b"),
                                     null,
-                                    new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
+                                    NamedTypeIdentifier("int"),
                                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                                         Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default),
                                 new IfExpressionExpression(new IfExpression(
@@ -1125,8 +1112,7 @@ public static class ParseTestCases
                                     null,
                                     null,
                                     new ObjectInitializerExpression(new ObjectInitializer(
-                                        new TypeIdentifier(Identifier("Class2"), [],
-                                            SourceRange.Default),
+                                        NamedTypeIdentifier("Class2"),
                                         [
                                             new FieldInitializer(Identifier("A"),
                                                 new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
@@ -1134,8 +1120,7 @@ public static class ParseTestCases
                                         ]), SourceRange.Default)), SourceRange.Default),
                                 new MethodCallExpression(new MethodCall(
                                     new StaticMemberAccessExpression(new StaticMemberAccess(
-                                        new TypeIdentifier(Identifier("MyClass"), [],
-                                            SourceRange.Default),
+                                        NamedTypeIdentifier("MyClass"),
                                         Identifier("StaticMethod")
                                     )),
                                     []), SourceRange.Default),
@@ -1145,8 +1130,7 @@ public static class ParseTestCases
                                             new ValueAccessor(ValueAccessType.Variable,
                                                 Identifier("PrivateFn"))),
                                         [
-                                            new TypeIdentifier(Identifier("string"), [],
-                                                SourceRange.Default)
+                                            NamedTypeIdentifier("string")
                                         ]), SourceRange.Default),
                                     []
                                 ), SourceRange.Default),
@@ -1208,14 +1192,14 @@ public static class ParseTestCases
                         [],
                         [
                             new FunctionParameter(
-                                new TypeIdentifier(Identifier("int"), [], SourceRange.Default), null,
+                                NamedTypeIdentifier("int"), null,
                                 Identifier("a"))
                         ],
-                        new TypeIdentifier(Identifier("result"),
+                        NamedTypeIdentifier("result",
                         [
-                            new TypeIdentifier(Identifier("int"), [], SourceRange.Default),
-                            new TypeIdentifier(Identifier("string"), [], SourceRange.Default)
-                        ], SourceRange.Default),
+                            NamedTypeIdentifier("int"),
+                            NamedTypeIdentifier("string")
+                        ]),
                         new Block(
                             [
                                 new VariableDeclarationExpression(new VariableDeclaration(
@@ -1271,25 +1255,25 @@ public static class ParseTestCases
                                 null,
                                 null,
                                 Identifier("FieldA"),
-                                new TypeIdentifier(Identifier("string"), [], SourceRange.Default),
+                                NamedTypeIdentifier("string"),
                                 null),
                             new ClassField(null,
                                 null,
                                 new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                                 Identifier("FieldB"),
-                                new TypeIdentifier(Identifier("string"), [], SourceRange.Default),
+                                NamedTypeIdentifier("string"),
                                 null),
                             new ClassField(new AccessModifier(Token.Pub(SourceSpan.Default)),
                                 null,
                                 new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                                 Identifier("FieldC"),
-                                new TypeIdentifier(Identifier("string"), [], SourceRange.Default),
+                                NamedTypeIdentifier("string"),
                                 null),
                             new ClassField(new AccessModifier(Token.Pub(SourceSpan.Default)),
                                 null,
                                 null,
                                 Identifier("FieldD"),
-                                new TypeIdentifier(Identifier("string"), [], SourceRange.Default),
+                                NamedTypeIdentifier("string"),
                                 null)
                         ]),
                     new ProgramClass(
@@ -1319,7 +1303,7 @@ public static class ParseTestCases
                                 null,
                                 null,
                                 Identifier("A"),
-                                new TypeIdentifier(Identifier("string"), [], SourceRange.Default),
+                                NamedTypeIdentifier("string"),
                                 null)
                         ]
                     )

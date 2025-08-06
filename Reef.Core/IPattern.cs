@@ -8,7 +8,7 @@ public interface IPattern
 }
 
 public record UnionVariantPattern(
-    TypeIdentifier Type,
+    ITypeIdentifier Type,
     StringToken? VariantName,
     StringToken? VariableName,
     SourceRange SourceRange) : IPattern
@@ -17,7 +17,7 @@ public record UnionVariantPattern(
 }
 
 public record UnionTupleVariantPattern(
-    TypeIdentifier Type,
+    ITypeIdentifier Type,
     StringToken VariantName,
     IReadOnlyList<IPattern> TupleParamPatterns,
     StringToken? VariableName,
@@ -27,7 +27,7 @@ public record UnionTupleVariantPattern(
 }
 
 public record UnionClassVariantPattern(
-    TypeIdentifier Type,
+    ITypeIdentifier Type,
     StringToken VariantName,
     IReadOnlyList<FieldPattern> FieldPatterns,
     bool RemainingFieldsDiscarded,
@@ -50,7 +50,7 @@ public record DiscardPattern(SourceRange SourceRange) : IPattern
 }
 
 public record ClassPattern(
-    TypeIdentifier Type,
+    ITypeIdentifier Type,
     IReadOnlyList<FieldPattern> FieldPatterns,
     bool RemainingFieldsDiscarded,
     StringToken? VariableName,
@@ -59,7 +59,7 @@ public record ClassPattern(
     public TypeChecker.ITypeReference? TypeReference { get; set; }
 }
 
-public record TypePattern(TypeIdentifier Type, StringToken? VariableName, SourceRange SourceRange) : IPattern
+public record TypePattern(ITypeIdentifier Type, StringToken? VariableName, SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference? TypeReference { get; set; }
 }

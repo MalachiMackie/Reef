@@ -2055,7 +2055,7 @@ public class TypeCheckerTests
                 var b: bool = a matches MyUnion::B(_, _);
                 """,
                 [TypeCheckerError.IncorrectNumberOfPatternsInTupleVariantUnionPattern(UnionTupleVariantPattern(
-                    TypeIdentifier("MyUnion"),
+                    NamedTypeIdentifier("MyUnion"),
                     "B",
                     [new DiscardPattern(SourceRange.Default), new DiscardPattern(SourceRange.Default)]),
                     1)]
@@ -2068,7 +2068,7 @@ public class TypeCheckerTests
                 var b: bool = a matches MyUnion::B(_, _);
                 """,
                 [TypeCheckerError.IncorrectNumberOfPatternsInTupleVariantUnionPattern(UnionTupleVariantPattern(
-                        TypeIdentifier("MyUnion"),
+                        NamedTypeIdentifier("MyUnion"),
                         "B",
                         [new DiscardPattern(SourceRange.Default), new DiscardPattern(SourceRange.Default)]),
                     3)]
@@ -2098,7 +2098,7 @@ public class TypeCheckerTests
                 var a = new MyUnion::A { MyField = "" };
                 var b: bool = a matches MyUnion { MyField: int };
                 """,
-                [TypeCheckerError.NonClassUsedInClassPattern(TypeIdentifier("MyUnion"))]
+                [TypeCheckerError.NonClassUsedInClassPattern(NamedTypeIdentifier("MyUnion"))]
             },
             {
                 "class variant pattern does not list all fields",
@@ -2108,7 +2108,7 @@ public class TypeCheckerTests
                 var b: bool = a matches MyUnion::A { MyField: _ };
                 """,
                 [TypeCheckerError.MissingFieldsInUnionClassVariantPattern(UnionClassVariantPattern(
-                    TypeIdentifier("MyUnion"),
+                    NamedTypeIdentifier("MyUnion"),
                     "A"),
                     ["OtherField"])]
             },
@@ -2128,7 +2128,7 @@ public class TypeCheckerTests
                 var a = new MyClass { MyField = "", OtherField = true };
                 var b: bool = a matches MyClass { MyField: string };
                 """,
-                [TypeCheckerError.MissingFieldsInClassPattern(["OtherField"], TypeIdentifier("MyClass"))]
+                [TypeCheckerError.MissingFieldsInClassPattern(["OtherField"], NamedTypeIdentifier("MyClass"))]
             },
             {
                 "non public field in class pattern",
@@ -2253,7 +2253,7 @@ public class TypeCheckerTests
                 // MyField is not marked as mutable
                 MyClass::MyField = "";
                 """,
-                [TypeCheckerError.NonMutableMemberAssignment(StaticMemberAccess(TypeIdentifier("MyClass"), "MyField"))]
+                [TypeCheckerError.NonMutableMemberAssignment(StaticMemberAccess(NamedTypeIdentifier("MyClass"), "MyField"))]
             },
             {
                 "non mutable param member assigned",
@@ -2660,7 +2660,7 @@ public class TypeCheckerTests
             {
                 "static member accessed on generic type",
                 "fn MyFn<T1>() {var a = T1::something;}",
-                [TypeCheckerError.StaticMemberAccessOnGenericReference(StaticMemberAccess(TypeIdentifier("T1"), "something"))]
+                [TypeCheckerError.StaticMemberAccessOnGenericReference(StaticMemberAccess(NamedTypeIdentifier("T1"), "something"))]
             },
             {
                 "generic variable returned as concrete class",
@@ -2722,16 +2722,16 @@ public class TypeCheckerTests
                 "unresolved inferred types",
                 "var a: result::<>",
                 [
-                    TypeCheckerError.UnresolvedInferredGenericType(VariableDeclaration("a", type: TypeIdentifier("result")), "TValue"),
-                    TypeCheckerError.UnresolvedInferredGenericType(VariableDeclaration("a", type: TypeIdentifier("result")), "TError"),
+                    TypeCheckerError.UnresolvedInferredGenericType(VariableDeclaration("a", type: NamedTypeIdentifier("result")), "TValue"),
+                    TypeCheckerError.UnresolvedInferredGenericType(VariableDeclaration("a", type: NamedTypeIdentifier("result")), "TError"),
                 ]
             },
             {
                 "unresolved inferred types",
                 "var a: result",
                 [
-                    TypeCheckerError.UnresolvedInferredGenericType(VariableDeclaration("a", type: TypeIdentifier("result")), "TValue"),
-                    TypeCheckerError.UnresolvedInferredGenericType(VariableDeclaration("a", type: TypeIdentifier("result")), "TError"),
+                    TypeCheckerError.UnresolvedInferredGenericType(VariableDeclaration("a", type: NamedTypeIdentifier("result")), "TValue"),
+                    TypeCheckerError.UnresolvedInferredGenericType(VariableDeclaration("a", type: NamedTypeIdentifier("result")), "TError"),
                 ]
             },
             {
@@ -2823,7 +2823,7 @@ public class TypeCheckerTests
                 var a = new MyClass {};
                 """,
                 [TypeCheckerError.FieldsLeftUnassignedInClassInitializer(new ObjectInitializerExpression(
-                    new ObjectInitializer(TypeIdentifier("MyClass"), []), SourceRange.Default),
+                    new ObjectInitializer(NamedTypeIdentifier("MyClass"), []), SourceRange.Default),
                     ["someField"])]
             },
             {
@@ -3084,7 +3084,7 @@ public class TypeCheckerTests
                 var a: MyClass = new MyClass { someField = 3 };
                 var b = a matches MyClass {};
                 """,
-                [TypeCheckerError.MissingFieldsInClassPattern(["someField"], TypeIdentifier("MyClass"))]
+                [TypeCheckerError.MissingFieldsInClassPattern(["someField"], NamedTypeIdentifier("MyClass"))]
             },
             {
                 "calling closure when variable is uninitialized",
