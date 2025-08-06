@@ -37,11 +37,9 @@ public class TypeCheckerTests
     {
         const string src =
             """
-            fn MyFn<T>() {
-                MyFn();
-            }
+            var a: (int, string);
+            a = (1, "");
             """;
-
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
@@ -55,6 +53,11 @@ public class TypeCheckerTests
         {
             """
             fn SomeFn(){}
+            var a: () = SomeFn();
+            """,
+            "fn SomeFn(): () {}",
+            """
+            fn SomeFn(){}
             fn OtherFn(){}
             var mut a = SomeFn;
             a = OtherFn;
@@ -66,7 +69,7 @@ public class TypeCheckerTests
             }
             fn GlobalFn(mut a: int): string { return ""; }
             var instance = new MyClass{};
-            var a = GlobalFn;
+            var mut a = GlobalFn;
             a = instance.InstanceFn;
             a = MyClass::StaticFn;
             """,
@@ -1281,25 +1284,30 @@ public class TypeCheckerTests
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
             {
+                "assigning value to unit type",
+                "var a: () = 1;",
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Unit, Int)]
+            },
+            {
                 "incorrect tuple types",
                 """
                 var a: (int, string) = ("", 1);
                 """,
-                []
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(Int, String), TupleType(String, Int))]
             },
             {
                 "too many tuple members",
                 """
                 var a: (int, string) = (1, "", 2);
                 """,
-                []
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(Int, String), TupleType(Int, String, Int))]
             },
             {
                 "not enough tuple members",
                 """
                 var a: (int, string, string) = (1, "");
                 """,
-                []
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(Int, String, String), TupleType(Int, String))]
             },
             {
                 "function type too many parameters",
@@ -3230,6 +3238,13 @@ public class TypeCheckerTests
     private static readonly InstantiatedClass String = InstantiatedClass.String;
     private static readonly InstantiatedClass Boolean = InstantiatedClass.Boolean;
     private static readonly InstantiatedClass Unit = InstantiatedClass.Unit;
+
+    private static InstantiatedClass TupleType(params IReadOnlyList<ITypeReference> members)
+    {
+        var signature = ClassSignature.Tuple(members);
+        return new InstantiatedClass(
+            signature, signature.TypeParameters.Zip(members).Select(x => x.First.Instantiate(x.Second)).ToArray());
+    }
 
     private static InstantiatedUnion Result(ITypeReference value, ITypeReference error)
     {

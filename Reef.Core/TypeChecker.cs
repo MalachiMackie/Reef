@@ -2025,9 +2025,15 @@ public class TypeChecker
         {
             FnTypeIdentifier fnTypeIdentifier => throw new NotImplementedException(),
             NamedTypeIdentifier namedTypeIdentifier => GetTypeReference(namedTypeIdentifier),
-            TupleTypeIdentifier tupleTypeIdentifier => throw new NotImplementedException(),
+            TupleTypeIdentifier tupleTypeIdentifier => GetTypeReference(tupleTypeIdentifier),
+            UnitTypeIdentifier => InstantiatedClass.Unit,
             _ => throw new ArgumentOutOfRangeException(nameof(typeIdentifier))
         };
+    }
+
+    private ITypeReference GetTypeReference(TupleTypeIdentifier tupleTypeIdentifier)
+    {
+        return InstantiateTuple(tupleTypeIdentifier.Members.Select(x => (GetTypeReference(x), x.SourceRange)).ToArray(), tupleTypeIdentifier.SourceRange);
     }
 
     private ITypeReference GetTypeReference(
@@ -2174,6 +2180,7 @@ public class TypeChecker
                     if (reportError)
                         _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
                     result = false;
+                    break;
                 }
 
                 var argumentsPassed = true;
@@ -2199,6 +2206,7 @@ public class TypeChecker
                     if (reportError)
                         _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
                     result = false;
+                    break;
                 }
 
                 var argumentsPassed = true;
@@ -2428,10 +2436,11 @@ public class TypeChecker
         public required string GenericName { get; init; }
         public required ITypeSignature OwnerType { get; init; }
 
-        public GenericTypeReference Instantiate() => new()
+        public GenericTypeReference Instantiate(ITypeReference? resolvedType = null) => new()
         {
             GenericName = GenericName,
-            OwnerType = OwnerType
+            OwnerType = OwnerType,
+            ResolvedType = resolvedType
         };
 
         public override string ToString() => GenericName;
@@ -2655,7 +2664,7 @@ public class TypeChecker
 
         public bool IsSameSignature(InstantiatedClass other)
         {
-            return Signature == other.Signature;
+            return Signature.Id == other.Signature.Id;
         }
 
         public override string ToString()
@@ -3017,12 +3026,9 @@ public class TypeChecker
         
         public static ClassSignature Function(InstantiatedFunction instantiatedFunction)
         {
-            var parameters = instantiatedFunction.Parameters
-                .Select(x => (parameterType: x.Value.Type, x.Value.Mutable))
-                .ToArray();
-            var returnType = instantiatedFunction.ReturnType;
+            var parameters = instantiatedFunction.Parameters;
             
-            var typeParamsCount = parameters.Length + 1;
+            var typeParamsCount = parameters.Count + 1;
 
             if (CachedFunctionClasses.TryGetValue(typeParamsCount, out var cachedSignature))
             {
@@ -3055,31 +3061,32 @@ public class TypeChecker
                 localFunctions: [],
                 functionIndex: 0)
             {
-                ReturnType = returnType,
+                ReturnType = null!,
                 OwnerType = signature
             };
             functions.Add(functionSignature);
             
-            foreach (var (i, (paramType, isMutable)) in parameters.Index())
+            
+            typeParameters.AddRange(Enumerable.Range(0, typeParamsCount).Select(i => new GenericPlaceholder
+                {
+                    GenericName = i == typeParamsCount - 1 ? "TReturn" : $"TParam{i}",
+                    OwnerType = signature
+                }));
+
+            functionSignature.ReturnType = typeParameters[^1];
+            
+            foreach (var i in Enumerable.Range(0, parameters.Count))
             {
                 var name = $"arg{i}";
                 callFunctionParameters.Add(name, new FunctionParameter(
                     functionSignature,
                     Token.Identifier(name, SourceSpan.Default),
-                    paramType,
-                    isMutable,
+                    typeParameters[i],
+                    Mutable: false,
                     ParameterIndex: (uint)i
                 ));
             }
             
-            typeParameters.AddRange(parameters
-                .Select(x => x.parameterType)
-                .Append(returnType)
-                .Select((x, i) => new GenericPlaceholder
-            {
-                GenericName = i == typeParamsCount - 1 ? "TReturn" : $"TParam{i}",
-                OwnerType = signature
-            }));
 
             CachedFunctionClasses[typeParamsCount] = signature;
 
@@ -3095,32 +3102,32 @@ public class TypeChecker
             }
             
             var typeParameters = new List<GenericPlaceholder>(elements.Count);
+            var fields = new List<TypeField>();
             var signature = new ClassSignature
             {
                 TypeParameters = typeParameters,
                 Name = $"Tuple`{elements.Count}",
-                Fields =
-                [
-                    ..elements.Select((type, i) => new TypeField
-                    {
-                        // todo: verify this
-                        IsMutable = false,
-                        Name = TupleFieldNames.TryGetValue(i, out var name)
-                            ? name
-                            : throw new InvalidOperationException("Tuple can only contain at most 10 elements"),
-                        IsStatic = false,
-                        Type = type,
-                        IsPublic = true,
-                        StaticInitializer = null,
-                        FieldIndex = (uint)i
-                    })
-                ],
+                Fields = fields,
                 Functions = []
             };
             typeParameters.AddRange(Enumerable.Range(0, elements.Count).Select(x => new GenericPlaceholder
             {
                 GenericName = $"T{x}",
                 OwnerType = signature
+            }));
+            
+            fields.AddRange(elements.Select((_, i) => new TypeField
+            {
+                // todo: verify this
+                IsMutable = false,
+                Name = TupleFieldNames.TryGetValue(i, out var name)
+                    ? name
+                    : throw new InvalidOperationException("Tuple can only contain at most 10 elements"),
+                IsStatic = false,
+                Type = typeParameters[i],
+                IsPublic = true,
+                StaticInitializer = null,
+                FieldIndex = (uint)i
             }));
 
             CachedTupleSignatures[elements.Count] = signature;
