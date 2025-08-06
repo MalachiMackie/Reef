@@ -1724,35 +1724,66 @@ public static class ParseErrorTestCases
                 ]
             ),
             (
+                "var a: (, string)",
+                new LangProgram([
+                    VariableDeclaration("a", type: TupleTypeIdentifier([StringType()]))
+                ], [], [], []),
+                [ParserError.ExpectedTypeOrToken(Token.Comma(SourceSpan.Default), TokenType.RightParenthesis)]
+            ),
+            (
                 "var a: (int, string,)",
-                new LangProgram([], [], [], []),
+                new LangProgram([
+                    VariableDeclaration("a", type: TupleTypeIdentifier([IntType(), StringType()]))
+                ], [], [], []),
                 []
             ),
             (
                 "var a: ()",
-                new LangProgram([], [], [], []),
-                [
-                    ParserError.ExpectedType(Token.RightParenthesis(SourceSpan.Default))
-                ]
+                new LangProgram([
+                    VariableDeclaration("a", type: UnitTypeIdentifier())
+                ], [], [], []),
+                []
             ),
             (
                 "var a: Fn()",
-                new LangProgram([], [], [], []),
+                new LangProgram([
+                    VariableDeclaration("a", type: FnTypeIdentifier())
+                ], [], [], []),
                 []
             ),
             (
                 "var a: Fn(): int",
-                new LangProgram([], [], [], []),
+                new LangProgram([
+                        VariableDeclaration("a", type: FnTypeIdentifier(returnType: IntType()))
+                    ],
+                    [], [], []),
                 []
             ),
             (
-                "var a: Fn(int, string)",
-                new LangProgram([], [], [], []),
+                "var a: Fn(int, string,)",
+                new LangProgram([
+                    VariableDeclaration("a", type: FnTypeIdentifier([
+                        FnTypeIdentifierParameter(IntType()),
+                        FnTypeIdentifierParameter(StringType()),
+                    ]))
+                ], [], [], []),
                 []
+            ),
+            (
+                "var a: Fn(int string)",
+                new LangProgram([
+                    VariableDeclaration("a", type: FnTypeIdentifier([
+                        FnTypeIdentifierParameter(IntType()),
+                        FnTypeIdentifierParameter(StringType()),
+                    ]))
+                ], [], [], []),
+                [ParserError.ExpectedToken(Identifier("string"), TokenType.Comma, TokenType.RightParenthesis)]
             ),
             (
                 "var a: Fn(mut int)",
-                new LangProgram([], [], [], []),
+                new LangProgram([
+                    VariableDeclaration("a", type: FnTypeIdentifier([FnTypeIdentifierParameter(IntType(), isMut: true)]))
+                ], [], [], []),
                 []
             )
         ];

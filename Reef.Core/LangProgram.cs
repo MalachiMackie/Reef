@@ -73,6 +73,8 @@ public record FnTypeIdentifier(IReadOnlyList<FnTypeIdentifierParameter> Paramete
     }
 }
 
+public record UnitTypeIdentifier(SourceRange SourceRange) : ITypeIdentifier;
+
 public record NamedTypeIdentifier(StringToken Identifier, IReadOnlyList<ITypeIdentifier> TypeArguments, SourceRange SourceRange) : ITypeIdentifier
 {
     public override string ToString()

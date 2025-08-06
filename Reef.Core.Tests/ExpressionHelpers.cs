@@ -277,6 +277,24 @@ public static class ExpressionHelpers
     {
         return new NamedTypeIdentifier(Token.Identifier(typeName, SourceSpan.Default), typeArguments ?? [], SourceRange.Default);
     }
+
+    public static TupleTypeIdentifier TupleTypeIdentifier(IReadOnlyList<ITypeIdentifier> members)
+    {
+        return new TupleTypeIdentifier(members, SourceRange.Default);
+    }
+
+    public static UnitTypeIdentifier UnitTypeIdentifier() => new(SourceRange.Default);
+
+    public static FnTypeIdentifier FnTypeIdentifier(IReadOnlyList<FnTypeIdentifierParameter>? parameters = null,
+        ITypeIdentifier? returnType = null)
+    {
+        return new FnTypeIdentifier(parameters ?? [], returnType, SourceRange.Default);
+    }
+
+    public static FnTypeIdentifierParameter FnTypeIdentifierParameter(ITypeIdentifier parameterType, bool isMut = false)
+    {
+        return new FnTypeIdentifierParameter(parameterType, isMut);
+    }
     
     public static TypePattern TypePattern(ITypeIdentifier type, string? variableName = null)
     {

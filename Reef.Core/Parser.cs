@@ -967,6 +967,100 @@ public sealed class Parser : IDisposable
             new Block(scope.Expressions, scope.Functions));
     }
     
+    private ITypeIdentifier? GetTypeIdentifier()
+    {
+        return Current switch
+        {
+            StringToken { Type: TokenType.Identifier, StringValue: "Fn" } stringToken => GetFunctionTypeIdentifier(stringToken),
+            StringToken { Type: TokenType.Identifier } => GetNamedTypeIdentifier(),
+            { Type: TokenType.LeftParenthesis } => GetTupleTypeIdentifier(),
+            _ => DefaultCase()
+        };
+        
+        ITypeIdentifier? DefaultCase()
+        {
+            _errors.Add(ParserError.ExpectedType(Current));
+            return null;
+        }
+    }
+    
+    private ITypeIdentifier GetTupleTypeIdentifier()
+    {
+        var sourceStart = Current.SourceSpan;
+        var (members, lastToken) = GetCommaSeparatedList(
+            TokenType.RightParenthesis,
+            expectedTokens: [],
+            expectExpression: false,
+            expectType: true,
+            expectPattern: false,
+            () =>
+            {
+                var tupleMember = GetTypeIdentifier();
+                if (tupleMember is null)
+                {
+                    MoveNext();
+                }
+
+                return tupleMember;
+            });
+
+        if (members.Count == 0 && lastToken is not null)
+        {
+            return new UnitTypeIdentifier(new SourceRange(sourceStart, lastToken.SourceSpan));
+        }
+
+        return new TupleTypeIdentifier(members, new SourceRange(sourceStart, lastToken?.SourceSpan ?? sourceStart));
+    }
+
+    private FnTypeIdentifier GetFunctionTypeIdentifier(StringToken fnToken)
+    {
+        if (!ExpectNextToken(TokenType.LeftParenthesis))
+        {
+            return new FnTypeIdentifier([], null, new SourceRange(fnToken.SourceSpan, fnToken.SourceSpan));
+        }
+
+        var leftParenthesisToken = Current;
+
+        var (parameters, lastToken) = GetCommaSeparatedList(
+            TokenType.RightParenthesis,
+            [],
+            expectExpression: false,
+            expectType: true,
+            expectPattern: false,
+            () =>
+            {
+                var isMut = false;
+                if (Current.Type == TokenType.Mut)
+                {
+                    isMut = true;
+                    MoveNext();
+                }
+
+                if (!_hasNext)
+                {
+                    return null;
+                }
+
+                var type = GetTypeIdentifier();
+                if (type is null)
+                {
+                    MoveNext();
+                    return null;
+                }
+
+                return new FnTypeIdentifierParameter(type, isMut);
+            });
+
+        lastToken ??= leftParenthesisToken;
+
+        if (!_hasNext || Current.Type != TokenType.Colon || !ExpectNextTypeIdentifier(out var returnType))
+        {
+            return new FnTypeIdentifier(parameters, ReturnType: null, new SourceRange(fnToken.SourceSpan, lastToken.SourceSpan));
+        }
+        
+        return new FnTypeIdentifier(parameters, ReturnType: returnType, new SourceRange(fnToken.SourceSpan, lastToken.SourceSpan));
+    }
+
     private NamedTypeIdentifier? GetNamedTypeIdentifier()
     {
         // use manual check instead of `ExpectCurrentIdentifier` so we can display the `ExpectedType` error
@@ -1001,39 +1095,7 @@ public sealed class Parser : IDisposable
             new SourceRange(typeIdentifier.SourceSpan, lastToken?.SourceSpan ?? typeIdentifier.SourceSpan));
     }
 
-    private ITypeIdentifier? GetTypeIdentifier()
-    {
-        // use manual check instead of `ExpectCurrentIdentifier` so we can display the `ExpectedType` error
-        if (Current is not StringToken { Type: TokenType.Identifier } typeIdentifier)
-        {
-            _errors.Add(ParserError.ExpectedType(Current));
-            return null;
-        }
-        
-        var typeArguments = new List<ITypeIdentifier>();
-        Token? lastToken = null;
-        if (MoveNext() && Current.Type == TokenType.Turbofish)
-        {
-            (typeArguments, lastToken) = GetCommaSeparatedList(
-                TokenType.RightAngleBracket,
-                expectedTokens: [],
-                expectExpression: false,
-                expectType: true,
-                expectPattern: false,
-                () =>
-                {
-                    var typeArgument = GetTypeIdentifier();
-                    if (typeArgument is null)
-                    {
-                        MoveNext();
-                    }
-                    return typeArgument;
-                });
-        }
-
-        return new NamedTypeIdentifier(typeIdentifier, typeArguments,
-            new SourceRange(typeIdentifier.SourceSpan, lastToken?.SourceSpan ?? typeIdentifier.SourceSpan));
-    }
+    
 
     private IExpression? MatchTokenToExpression(IExpression? previousExpression, out bool consumedToken)
     {
