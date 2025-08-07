@@ -1284,6 +1284,29 @@ public class TypeCheckerTests
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
             {
+                "non function variable has type arguments",
+                """
+                var a = 1;
+                var b = a::<string>;
+                """,
+                []
+            },
+            {
+                "literal has type arguments",
+                "var a = 1::<int>;",
+                []
+            },
+            {
+                "non function member access has type arguments",
+                """
+                class MyClass{pub field MyField: string};
+                var a = new MyClass{MyField = ""};
+                var b = a.MyField::<string>;
+                """,
+                []
+                
+            },
+            {
                 "assigning value to unit type",
                 "var a: () = 1;",
                 [TypeCheckerError.MismatchedTypes(SourceRange.Default, Unit, Int)]
@@ -2658,7 +2681,7 @@ public class TypeCheckerTests
             {
                 "too many function arguments",
                 """fn MyFn(param1: string, param2: int) {} MyFn("value", 3, 2);""",
-                [TypeCheckerError.IncorrectNumberOfMethodArguments(MethodCall(VariableAccessor("MyFn"), StringLiteral("value"), IntLiteral(3), IntLiteral(2)), 2)]
+                [TypeCheckerError.IncorrectNumberOfMethodArguments(MethodCall(VariableAccessor("MyFn"), Literal("value"), Literal(3), Literal(2)), 2)]
             },
             {
                 "member accessed on generic instance variable",
@@ -2747,7 +2770,7 @@ public class TypeCheckerTests
                 "var a = ok(1)",
                 [TypeCheckerError.UnresolvedInferredGenericType(
                     VariableDeclaration("a",
-                        value: MethodCall(VariableAccessor("ok"), IntLiteral(1))), "TError")]
+                        value: MethodCall(VariableAccessor("ok"), Literal(1))), "TError")]
             },
             {
                 "incorrect number of type arguments",
@@ -2777,7 +2800,7 @@ public class TypeCheckerTests
             {
                 "unresolved function generic type",
                 "fn Fn1<T1>(){} Fn1::<>();",
-                [TypeCheckerError.UnresolvedInferredGenericType(MethodCall(GenericInstantiation(VariableAccessor("Fn1"))), "T1")]
+                [TypeCheckerError.UnresolvedInferredGenericType(MethodCall(VariableAccessor("Fn1")), "T1")]
             },
             {
                 "too many function type arguments",
@@ -3064,7 +3087,7 @@ public class TypeCheckerTests
             {
                 "assignment to literal",
                 "true = false",
-                [TypeCheckerError.ExpressionNotAssignable(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default))))]
+                [TypeCheckerError.ExpressionNotAssignable(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default), [])))]
             },
             {
                 // MemberAccess,

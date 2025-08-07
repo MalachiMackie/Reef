@@ -841,41 +841,44 @@ public static class ParseErrorTestCases
             ),
             (
                 "A::<",
-                new LangProgram([GenericInstantiation(VariableAccessor("A"))], [], [], []),
+                new LangProgram([VariableAccessor("A", [])], [], [], []),
                 [
                     ParserError.ExpectedTypeOrToken(null, TokenType.RightAngleBracket)
                 ]
             ),
             (
                 "A::<int",
-                new LangProgram([GenericInstantiation(VariableAccessor("A"), [IntType()])], [], [], []),
+                new LangProgram([VariableAccessor("A", [IntType()])], [], [], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.RightAngleBracket, TokenType.Comma)
                 ]
             ),
             (
                 "A::<int,",
-                new LangProgram([GenericInstantiation(VariableAccessor("A"), [IntType()])], [], [], []),
+                new LangProgram([VariableAccessor("A", [IntType()])], [], [], []),
                 [
                     ParserError.ExpectedTypeOrToken(null, TokenType.RightAngleBracket)
                 ]
             ),
             (
                 "A::<>",
-                new LangProgram([GenericInstantiation(VariableAccessor("A"))], [], [], []),
+                new LangProgram([VariableAccessor("A", [])], [], [], []),
                 []
             ),
             (
                 "::<",
                 new LangProgram([], [], [], []),
                 [
-                    ParserError.ExpectedExpression(Token.Turbofish(SourceSpan.Default))
+                    ParserError.ExpectedTokenOrExpression(Token.Turbofish(SourceSpan.Default), TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union)
                 ]
             ),
             (
-                "(1)::<int>",
-                new LangProgram([GenericInstantiation(Tuple(IntLiteral(1)), [IntType()])], [], [], []),
+                "(1)::<",
+                new LangProgram([Tuple(Literal(1))], [], [], []),
                 [
+                    ParserError.ExpectedTokenOrExpression(
+                        Token.Turbofish(SourceSpan.Default),
+                        TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union)
                 ]
             ),
             (

@@ -67,7 +67,7 @@ public record StaticMemberAccessExpression(StaticMemberAccess StaticMemberAccess
     }
 }
 
-public record MemberAccess(IExpression Owner, StringToken? MemberName)
+public record MemberAccess(IExpression Owner, StringToken? MemberName, IReadOnlyList<ITypeIdentifier>? TypeArguments)
 {
     public override string ToString()
     {
@@ -79,7 +79,7 @@ public record MemberAccess(IExpression Owner, StringToken? MemberName)
     public TypeChecker.ITypeReference? OwnerType { get; set; }
 }
 
-public record StaticMemberAccess(NamedTypeIdentifier Type, StringToken? MemberName)
+public record StaticMemberAccess(NamedTypeIdentifier Type, StringToken? MemberName, IReadOnlyList<ITypeIdentifier>? TypeArguments)
 {
     public uint? ItemIndex { get; set; }
     public MemberType? MemberType { get; set; }
@@ -196,33 +196,6 @@ public record BlockExpression(Block Block, SourceRange SourceRange) : IExpressio
     public override string ToString()
     {
         return Block.ToString();
-    }
-}
-
-public record GenericInstantiationExpression(GenericInstantiation GenericInstantiation, SourceRange SourceRange)
-    : IExpression
-{
-    public ExpressionType ExpressionType => ExpressionType.GenericInstantiation;
-    public TypeChecker.ITypeReference? ResolvedType { get; set; }
-
-    public bool Diverges { get; } = GenericInstantiation.Value.Diverges;
-    public bool ValueUseful { get; set; }
-
-    public override string ToString()
-    {
-        return $"{GenericInstantiation.Value}::<{string.Join(", ", GenericInstantiation.TypeArguments)}>";
-    }
-}
-
-public record GenericInstantiation(IExpression Value, IReadOnlyList<ITypeIdentifier> TypeArguments)
-{
-    public override string ToString()
-    {
-        var sb = new StringBuilder($"{Value}::<");
-        sb.AppendJoin(", ", TypeArguments);
-        sb.Append('>');
-
-        return sb.ToString();
     }
 }
 
@@ -403,7 +376,7 @@ public record Block(IReadOnlyList<IExpression> Expressions, IReadOnlyList<LangFu
     }
 }
 
-public record ValueAccessor(ValueAccessType AccessType, Token Token)
+public record ValueAccessor(ValueAccessType AccessType, Token Token, IReadOnlyList<ITypeIdentifier>? TypeArguments)
 {
     public override string ToString()
     {
@@ -525,7 +498,6 @@ public enum ExpressionType
     MethodCall,
     MethodReturn,
     ObjectInitializer,
-    GenericInstantiation,
     MemberAccess,
     StaticMemberAccess,
     UnionClassVariantInitializer,

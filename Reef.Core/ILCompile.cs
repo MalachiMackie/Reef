@@ -584,9 +584,6 @@ public class ILCompile
             case VariableDeclarationExpression variableDeclarationExpression:
                 CompileVariableDeclarationExpression(variableDeclarationExpression);
                 break;
-            case GenericInstantiationExpression genericInstantiationExpression:
-                CompileGenericInstantiationExpression(genericInstantiationExpression, calling);
-                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }
@@ -597,11 +594,6 @@ public class ILCompile
         }
     }
 
-    private void CompileGenericInstantiationExpression(GenericInstantiationExpression genericInstantiationExpression, bool calling)
-    {
-        CompileExpression(genericInstantiationExpression.GenericInstantiation.Value, calling);
-    }
-    
     private void CompileBinaryOperatorExpression(
         BinaryOperatorExpression binaryOperatorExpression)
     {

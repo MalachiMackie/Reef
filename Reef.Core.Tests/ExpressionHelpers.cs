@@ -5,7 +5,7 @@ public static class ExpressionHelpers
     public static ValueAccessorExpression Literal(int value)
     {
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-            Token.IntLiteral(value, SourceSpan.Default)));
+            Token.IntLiteral(value, SourceSpan.Default), null));
     }
 
     public static StringToken Identifier(string identifier) => Token.Identifier(identifier, SourceSpan.Default);
@@ -13,7 +13,7 @@ public static class ExpressionHelpers
     public static ValueAccessorExpression Literal(string value)
     {
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-            Token.StringLiteral(value, SourceSpan.Default)));
+            Token.StringLiteral(value, SourceSpan.Default), null));
     }
 
     public static BinaryOperatorExpression Multiply(IExpression? left, IExpression? right)
@@ -89,15 +89,10 @@ public static class ExpressionHelpers
             value);
     }
 
-    public static ValueAccessorExpression VariableAccessor(string name)
+    public static ValueAccessorExpression VariableAccessor(string name, IReadOnlyList<ITypeIdentifier>? typeArguments = null)
     {
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-            Token.Identifier(name, SourceSpan.Default)));
-    }
-
-    public static ValueAccessorExpression StringLiteral(string value)
-    {
-        return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.StringLiteral(value, SourceSpan.Default)));
+            Token.Identifier(name, SourceSpan.Default), typeArguments));
     }
 
     public static ProgramClass Class(string name, bool isPublic = false, IReadOnlyList<ClassField>? fields = null, IReadOnlyList<string>? typeParameters = null)
@@ -153,9 +148,9 @@ public static class ExpressionHelpers
             Token.Identifier(name, SourceSpan.Default));
     }
 
-    public static MemberAccessExpression MemberAccess(IExpression owner, string? memberName)
+    public static MemberAccessExpression MemberAccess(IExpression owner, string? memberName, IReadOnlyList<ITypeIdentifier>? typeArguments = null)
     {
-        return new MemberAccessExpression(new MemberAccess(owner, memberName is null ? null : Token.Identifier(memberName, SourceSpan.Default)));
+        return new MemberAccessExpression(new MemberAccess(owner, memberName is null ? null : Token.Identifier(memberName, SourceSpan.Default), typeArguments));
     }
 
     public static MethodCallExpression MethodCall(IExpression method, params IReadOnlyList<IExpression> arguments)
@@ -163,26 +158,14 @@ public static class ExpressionHelpers
         return new MethodCallExpression(new MethodCall(method, arguments), SourceRange.Default);
     }
     
-    public static StaticMemberAccessExpression StaticMemberAccess(NamedTypeIdentifier type, string? memberName)
+    public static StaticMemberAccessExpression StaticMemberAccess(NamedTypeIdentifier type, string? memberName, IReadOnlyList<ITypeIdentifier>? typeArguments = null)
     {
-        return new StaticMemberAccessExpression(new StaticMemberAccess(type, memberName is null ? null : Token.Identifier(memberName, SourceSpan.Default)));
-    }
-
-    public static GenericInstantiationExpression GenericInstantiation(IExpression value, IReadOnlyList<ITypeIdentifier>? typeArguments = null)
-    {
-        return new GenericInstantiationExpression(new GenericInstantiation(
-            value,
-            typeArguments ?? []), SourceRange.Default);
+        return new StaticMemberAccessExpression(new StaticMemberAccess(type, memberName is null ? null : Token.Identifier(memberName, SourceSpan.Default), typeArguments));
     }
 
     public static TupleExpression Tuple(IExpression first, params IEnumerable<IExpression> values)
     {
         return new TupleExpression([first, ..values], SourceRange.Default);
-    }
-
-    public static ValueAccessorExpression IntLiteral(int value)
-    {
-        return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(value, SourceSpan.Default)));
     }
 
     public static MatchesExpression Matches(IExpression value, IPattern? pattern = null)

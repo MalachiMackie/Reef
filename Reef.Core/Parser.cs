@@ -1115,7 +1115,6 @@ public sealed class Parser : IDisposable
             TokenType.Dot => GetMemberAccess(previousExpression),
             TokenType.DoubleColon => GetStaticMemberAccess(previousExpression),
             TokenType.Todo or TokenType.Identifier => GetVariableAccess(),
-            TokenType.Turbofish => GetGenericInstantiation(previousExpression),
             TokenType.Matches => GetMatchesExpression(previousExpression),
             TokenType.Match => GetMatchExpression(),
             _ when TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(
@@ -1417,7 +1416,7 @@ public sealed class Parser : IDisposable
 
     private ValueAccessorExpression GetLiteralExpression()
     {
-        var expression = new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Current));
+        var expression = new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Current, null));
 
         MoveNext();
 
@@ -1551,43 +1550,17 @@ public sealed class Parser : IDisposable
         }
     }
 
-    private GenericInstantiationExpression? GetGenericInstantiation(IExpression? previousExpression)
-    {
-        if (previousExpression is null)
-        {
-            _errors.Add(ParserError.ExpectedExpression(Current));
-            MoveNext();
-            return null;
-        }
-
-        var firstToken = Current;
-        var (typeArguments, lastToken) =
-            GetCommaSeparatedList(
-                TokenType.RightAngleBracket,
-                expectedTokens: [],
-                expectExpression: false,
-                expectType: true,
-                expectPattern: false,
-                () =>
-                {
-                    if (!ExpectCurrentTypeIdentifier(out var typeIdentifier))
-                    {
-                        MoveNext();
-                    }
-                    return typeIdentifier;
-                });
-
-        return new GenericInstantiationExpression(new GenericInstantiation(previousExpression, typeArguments),
-            previousExpression.SourceRange with { End = lastToken?.SourceSpan ?? firstToken.SourceSpan });
-    }
-
     private ValueAccessorExpression GetVariableAccess()
     {
         var variableToken = Current;
 
-        MoveNext();
+        IReadOnlyList<ITypeIdentifier>? typeArguments = null;
+        if (MoveNext() && Current.Type == TokenType.Turbofish)
+        {
+            typeArguments = GetTypeArguments();
+        }
 
-        return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, variableToken));
+        return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, variableToken, typeArguments));
     }
 
     private StaticMemberAccessExpression? GetStaticMemberAccess(
@@ -1601,31 +1574,48 @@ public sealed class Parser : IDisposable
             return null;
         }
         
-        IReadOnlyList<ITypeIdentifier>? typeArguments = null;
-        if (previousExpression is GenericInstantiationExpression genericInstantiationExpression)
-        {
-            typeArguments = genericInstantiationExpression.GenericInstantiation.TypeArguments;
-            previousExpression = genericInstantiationExpression.GenericInstantiation.Value;
-        }
-
         if (previousExpression is not ValueAccessorExpression
             {
                 ValueAccessor:
                 {
-                    AccessType: ValueAccessType.Variable, Token: StringToken token
+                    AccessType: ValueAccessType.Variable, Token: StringToken token, TypeArguments: var typeArguments
                 }
             })
         {
             throw new UnreachableException("It should be impossible to get here");
         }
-
+        
         var type = new NamedTypeIdentifier(token, typeArguments ?? [], previousExpression.SourceRange);
 
         ExpectNextIdentifier(out var memberName);
 
-        MoveNext();
+        IReadOnlyList<ITypeIdentifier>? memberTypeArguments = null;
+        if (MoveNext() && Current.Type == TokenType.Turbofish)
+        {
+            memberTypeArguments = GetTypeArguments();
+        }
 
-        return new StaticMemberAccessExpression(new StaticMemberAccess(type, memberName));
+        return new StaticMemberAccessExpression(new StaticMemberAccess(type, memberName, memberTypeArguments));
+    }
+
+    private IReadOnlyList<ITypeIdentifier> GetTypeArguments()
+    {
+        var (typeArguments, _) = GetCommaSeparatedList(TokenType.RightAngleBracket,
+            [],
+            expectExpression: false,
+            expectType: true,
+            expectPattern: false,
+            () =>
+            {
+                if (!ExpectCurrentTypeIdentifier(out var typeIdentifier))
+                {
+                    MoveNext();
+                }
+
+                return typeIdentifier;
+            });
+
+        return typeArguments;
     }
 
     private MemberAccessExpression? GetMemberAccess(IExpression? previousExpression)
@@ -1638,10 +1628,14 @@ public sealed class Parser : IDisposable
         }
 
         ExpectNextIdentifier(out var memberName);
-        
-        MoveNext();
 
-        return new MemberAccessExpression(new MemberAccess(previousExpression, memberName));
+        IReadOnlyList<ITypeIdentifier>? typeArguments = null;
+        if (MoveNext() && Current.Type == TokenType.Turbofish)
+        {
+            typeArguments = GetTypeArguments();
+        }
+
+        return new MemberAccessExpression(new MemberAccess(previousExpression, memberName, typeArguments));
     }
 
     private IExpression? GetInitializer()
@@ -2009,10 +2003,9 @@ public sealed class Parser : IDisposable
                 unaryOperatorType.Value),
             _ when TryGetBinaryOperatorType(token.Type, out var binaryOperatorType) => GetBinaryOperatorBindingStrength(
                 binaryOperatorType.Value),
-            TokenType.LeftParenthesis => 8,
-            TokenType.Turbofish => 7,
-            TokenType.Dot => 11,
-            TokenType.DoubleColon => 12,
+            TokenType.LeftParenthesis => 7,
+            TokenType.Dot => 10,
+            TokenType.DoubleColon => 11,
             TokenType.Matches => 1,
             _ => null
         };
@@ -2072,8 +2065,8 @@ public sealed class Parser : IDisposable
     {
         return operatorType switch
         {
-            UnaryOperatorType.FallOut => 10,
-            UnaryOperatorType.Not => 9,
+            UnaryOperatorType.FallOut => 9,
+            UnaryOperatorType.Not => 8,
             _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType,
                 typeof(UnaryOperatorType))
         };

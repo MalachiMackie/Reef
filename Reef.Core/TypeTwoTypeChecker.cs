@@ -138,9 +138,6 @@ public class TypeTwoTypeChecker
             case StaticMemberAccessExpression:
                 // nothing to check
                 break;
-            case GenericInstantiationExpression genericInstantiationExpression:
-                CheckGenericInstantiation(genericInstantiationExpression.GenericInstantiation);
-                break;
             case UnaryOperatorExpression unaryOperatorExpression:
                 CheckUnaryOperator(unaryOperatorExpression.UnaryOperator);
                 break;
@@ -245,12 +242,7 @@ public class TypeTwoTypeChecker
             CheckExpression(unaryOperator.Operand);
         }
     }
-
-    private void CheckGenericInstantiation(GenericInstantiation genericInstantiation)
-    {
-        CheckExpression(genericInstantiation.Value);
-    }
-
+    
     private void CheckMemberAccess(MemberAccess memberAccess)
     {
         CheckExpression(memberAccess.Owner);

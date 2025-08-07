@@ -19,14 +19,14 @@ public static class ParseTestCases
                             new BinaryOperatorExpression(new BinaryOperator(
                                 BinaryOperatorType.Plus,
                                 new ValueAccessorExpression(new ValueAccessor(
-                                    ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default))),
+                                    ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), null)),
                                 new ValueAccessorExpression(new ValueAccessor(
-                                    ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default))),
+                                    ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default), null)),
                                 Token.Plus(SourceSpan.Default)))
                         ], SourceRange.Default),
                         new ValueAccessorExpression(new ValueAccessor(
                             ValueAccessType.Literal,
-                            Token.IntLiteral(3, SourceSpan.Default))),
+                            Token.IntLiteral(3, SourceSpan.Default), null)),
                         Token.Star(SourceSpan.Default)))), SourceRange.Default)
             ], [], [], [])),
             (
@@ -94,12 +94,12 @@ public static class ParseTestCases
                                     new FieldInitializer(
                                         Identifier("MyField"),
                                         new ValueAccessorExpression(new ValueAccessor(
-                                            ValueAccessType.Literal, Token.StringLiteral("value", SourceSpan.Default)))
+                                            ValueAccessType.Literal, Token.StringLiteral("value", SourceSpan.Default), null))
                                     ),
                                     new FieldInitializer(
                                         Identifier("Field2"),
                                         new ValueAccessorExpression(new ValueAccessor(
-                                            ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default)))
+                                            ValueAccessType.Literal, Token.IntLiteral(2, SourceSpan.Default), null))
                                     )
                                 ]), SourceRange.Default)
                         ), SourceRange.Default)
@@ -432,11 +432,11 @@ public static class ParseTestCases
                 new VariableDeclarationExpression(new VariableDeclaration(Identifier("a"),
                     null, null,
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(1, SourceSpan.Default)))), SourceRange.Default),
+                        Token.IntLiteral(1, SourceSpan.Default), null))), SourceRange.Default),
                 new VariableDeclarationExpression(new VariableDeclaration(Identifier("b"),
                     null, null,
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default)
+                        Token.IntLiteral(2, SourceSpan.Default), null))), SourceRange.Default)
             ], [], [], [])),
             ("a = b;", new LangProgram([
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
@@ -445,12 +445,12 @@ public static class ParseTestCases
             ("error();", new LangProgram([
                 new MethodCallExpression(new MethodCall(
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("error"))), []), SourceRange.Default)
+                        Identifier("error"), null)), []), SourceRange.Default)
             ], [], [], [])),
             ("something(a,);", new LangProgram([
                 new MethodCallExpression(new MethodCall(
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("something"))),
+                        Identifier("something"), null)),
                     [
                         VariableAccessor("a")
                     ]), SourceRange.Default)
@@ -458,15 +458,15 @@ public static class ParseTestCases
             ("ok();", new LangProgram([
                 new MethodCallExpression(new MethodCall(
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("ok"))), []), SourceRange.Default)
+                        Identifier("ok"), null)), []), SourceRange.Default)
             ], [], [], [])),
             ("ok().b()", new LangProgram([
                 new MethodCallExpression(new MethodCall(
                     new MemberAccessExpression(new MemberAccess(
                         new MethodCallExpression(new MethodCall(
                             new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                                Identifier("ok"))), []), SourceRange.Default),
-                        Identifier("b"))), []), SourceRange.Default)
+                                Identifier("ok"), null)), []), SourceRange.Default),
+                        Identifier("b"), null)), []), SourceRange.Default)
             ], [], [], [])),
             ("if (a) {} b = c;", new LangProgram(
                 [
@@ -631,7 +631,7 @@ public static class ParseTestCases
                             null,
                             null,
                             new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default)
+                                Token.IntLiteral(2, SourceSpan.Default), null))), SourceRange.Default)
                     ], [])
                 )
             ], [], [])),
@@ -751,7 +751,7 @@ public static class ParseTestCases
                     new Block(
                     [
                         new MethodReturnExpression(new MethodReturn(new ValueAccessorExpression(
-                                new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default)))),
+                                new ValueAccessor(ValueAccessType.Literal, Token.IntLiteral(1, SourceSpan.Default), null))),
                             SourceRange.Default)
                     ], [])
                 )
@@ -943,7 +943,7 @@ public static class ParseTestCases
                                     Identifier("someField"),
                                     NamedTypeIdentifier("int"),
                                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                        Token.IntLiteral(3, SourceSpan.Default))))
+                                        Token.IntLiteral(3, SourceSpan.Default), null)))
                             ]
                         )
                     ], [])
@@ -1021,7 +1021,7 @@ public static class ParseTestCases
                         new MethodCallExpression(new MethodCall(VariableAccessor("DoSomething"),
                         [
                             new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                Token.IntLiteral(5, SourceSpan.Default)))
+                                Token.IntLiteral(5, SourceSpan.Default), null))
                         ]), SourceRange.Default)
                     ]), SourceRange.Default),
                     new MethodCallExpression(new MethodCall(VariableAccessor("Println"),
@@ -1029,7 +1029,7 @@ public static class ParseTestCases
                         new MethodCallExpression(new MethodCall(VariableAccessor("DoSomething"),
                         [
                             new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                Token.IntLiteral(1, SourceSpan.Default)))
+                                Token.IntLiteral(1, SourceSpan.Default), null))
                         ]), SourceRange.Default)
                     ]), SourceRange.Default),
                     new MethodCallExpression(new MethodCall(VariableAccessor("Println"),
@@ -1037,7 +1037,7 @@ public static class ParseTestCases
                         new MethodCallExpression(new MethodCall(VariableAccessor("SomethingElse"),
                         [
                             new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                Token.IntLiteral(1, SourceSpan.Default)))
+                                Token.IntLiteral(1, SourceSpan.Default), null))
                         ]), SourceRange.Default)
                     ]), SourceRange.Default)
                 ],
@@ -1065,7 +1065,7 @@ public static class ParseTestCases
                                     null,
                                     NamedTypeIdentifier("int"),
                                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                        Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default),
+                                        Token.IntLiteral(2, SourceSpan.Default), null))), SourceRange.Default),
                                 new IfExpressionExpression(new IfExpression(
                                     new BinaryOperatorExpression(new BinaryOperator(
                                         BinaryOperatorType.GreaterThan,
@@ -1078,7 +1078,7 @@ public static class ParseTestCases
                                                     new MethodCallExpression(new MethodCall(
                                                         new ValueAccessorExpression(
                                                             new ValueAccessor(ValueAccessType.Variable,
-                                                                Identifier("ok"))),
+                                                                Identifier("ok"), null)),
                                                         [VariableAccessor("a")]), SourceRange.Default)
                                                 )
                                                 , SourceRange.Default)
@@ -1094,7 +1094,7 @@ public static class ParseTestCases
                                                         new MethodCallExpression(new MethodCall(
                                                             new ValueAccessorExpression(
                                                                 new ValueAccessor(ValueAccessType.Variable,
-                                                                    Identifier("ok"))),
+                                                                    Identifier("ok"), null)),
                                                             [VariableAccessor("b")]), SourceRange.Default)
                                                     )
                                                     , SourceRange.Default)
@@ -1106,7 +1106,7 @@ public static class ParseTestCases
                                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
                                     VariableAccessor("b"),
                                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                        Token.IntLiteral(3, SourceSpan.Default))), Token.Equals(SourceSpan.Default))),
+                                        Token.IntLiteral(3, SourceSpan.Default), null)), Token.Equals(SourceSpan.Default))),
                                 new VariableDeclarationExpression(new VariableDeclaration(
                                     Identifier("thing"),
                                     null,
@@ -1116,31 +1116,28 @@ public static class ParseTestCases
                                         [
                                             new FieldInitializer(Identifier("A"),
                                                 new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                                    Token.IntLiteral(3, SourceSpan.Default))))
+                                                    Token.IntLiteral(3, SourceSpan.Default), null)))
                                         ]), SourceRange.Default)), SourceRange.Default),
                                 new MethodCallExpression(new MethodCall(
                                     new StaticMemberAccessExpression(new StaticMemberAccess(
                                         NamedTypeIdentifier("MyClass"),
-                                        Identifier("StaticMethod")
+                                        Identifier("StaticMethod"),
+                                       null 
                                     )),
                                     []), SourceRange.Default),
                                 new MethodCallExpression(new MethodCall(
-                                    new GenericInstantiationExpression(new GenericInstantiation(
                                         new ValueAccessorExpression(
                                             new ValueAccessor(ValueAccessType.Variable,
-                                                Identifier("PrivateFn"))),
-                                        [
-                                            NamedTypeIdentifier("string")
-                                        ]), SourceRange.Default),
+                                                Identifier("PrivateFn"), [NamedTypeIdentifier("string")])),
                                     []
                                 ), SourceRange.Default),
                                 new MethodReturnExpression(new MethodReturn(
                                     new MethodCallExpression(new MethodCall(
                                         new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                                            Identifier("error"))),
+                                            Identifier("error"), null)),
                                         [
                                             new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                                Token.StringLiteral("something wrong", SourceSpan.Default)))
+                                                Token.StringLiteral("something wrong", SourceSpan.Default), null))
                                         ]
                                     ), SourceRange.Default)), SourceRange.Default)
                             ],
@@ -1159,7 +1156,7 @@ public static class ParseTestCases
                                     new MethodCall(VariableAccessor("Println"),
                                     [
                                         new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                            Token.StringLiteral("Message", SourceSpan.Default)))
+                                            Token.StringLiteral("Message", SourceSpan.Default), null))
                                     ]), SourceRange.Default)
                             ],
                             [
@@ -1178,7 +1175,7 @@ public static class ParseTestCases
                                                 [
                                                     new ValueAccessorExpression(
                                                         new ValueAccessor(ValueAccessType.Literal,
-                                                            Token.StringLiteral("Something", SourceSpan.Default)))
+                                                            Token.StringLiteral("Something", SourceSpan.Default), null))
                                                 ]), SourceRange.Default)
                                         ],
                                         [
@@ -1219,7 +1216,7 @@ public static class ParseTestCases
                                     new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                                     null,
                                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                        Token.IntLiteral(2, SourceSpan.Default)))), SourceRange.Default),
+                                        Token.IntLiteral(2, SourceSpan.Default), null))), SourceRange.Default),
                                 new MethodReturnExpression(new MethodReturn(VariableAccessor("b")), SourceRange.Default)
                             ],
                             [])
