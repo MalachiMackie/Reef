@@ -57,6 +57,8 @@ public class TypeCheckerTests
     {
         return new TheoryData<string>
         {
+            "var a: bool = true && true",
+            "var a: bool = true || true",
             """
             class MyClass {
                 fn MyFn<T>() {}
@@ -1340,6 +1342,26 @@ public class TypeCheckerTests
     {
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
+            {
+                "non bool used in or",
+                "var a = 1 || true",
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, Int)]
+            },
+            {
+                "non bool used in or",
+                "var a = true || 1",
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, Int)]
+            },
+            {
+                "non bool used in and",
+                "var a = 1 && true",
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, Int)]
+            },
+            {
+                "non bool used in and",
+                "var a = true && 1",
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, Int)]
+            },
             {
                 "missing field in instance method",
                 """

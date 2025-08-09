@@ -1575,6 +1575,21 @@ public class TypeChecker
 
                 return InstantiatedClass.Boolean;
             }
+            case BinaryOperatorType.BooleanAnd:
+            case BinaryOperatorType.BooleanOr:
+            {
+                if (@operator.Left is not null)
+                {
+                    ExpectType(TypeCheckExpression(@operator.Left), InstantiatedClass.Boolean,
+                        @operator.Left.SourceRange);
+                }
+                if (@operator.Right is not null)
+                {
+                    ExpectType(TypeCheckExpression(@operator.Right), InstantiatedClass.Boolean,
+                        @operator.Right.SourceRange);
+                }
+                return InstantiatedClass.Boolean;
+            }
             case BinaryOperatorType.ValueAssignment:
             {
                 binaryOperatorExpression.ValueUseful = true;
