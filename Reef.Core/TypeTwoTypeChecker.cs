@@ -133,10 +133,10 @@ public class TypeTwoTypeChecker
                 CheckObjectInitializer(objectInitializerExpression.ObjectInitializer);
                 break;
             case MemberAccessExpression memberAccessExpression:
-                CheckMemberAccess(memberAccessExpression.MemberAccess);
+                CheckMemberAccess(memberAccessExpression);
                 break;
-            case StaticMemberAccessExpression:
-                // nothing to check
+            case StaticMemberAccessExpression staticMemberAccessExpression:
+                CheckStaticMemberAccess(staticMemberAccessExpression);
                 break;
             case UnaryOperatorExpression unaryOperatorExpression:
                 CheckUnaryOperator(unaryOperatorExpression.UnaryOperator);
@@ -161,7 +161,7 @@ public class TypeTwoTypeChecker
     private void CheckValueAccessor(ValueAccessorExpression valueAccessorExpression)
     {
         if (valueAccessorExpression.ValueAccessor.Token is StringToken nameToken
-            && valueAccessorExpression.ResolvedType is TypeChecker.InstantiatedFunction function)
+            && valueAccessorExpression.FunctionInstantiation is {} function)
         {
             var uninitializedAccessedVariables = function.AccessedOuterVariables
                 .OfType<TypeChecker.LocalVariable>()
@@ -172,6 +172,11 @@ public class TypeTwoTypeChecker
             if (uninitializedAccessedVariables.Length > 0)
             {
                 _errors.Add(TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(nameToken, uninitializedAccessedVariables));
+            }
+
+            foreach (var functionTypeArgument in function.TypeArguments)
+            {
+                CheckTypeReferenceIsResolved(functionTypeArgument, valueAccessorExpression);
             }
         }
     }
@@ -243,9 +248,32 @@ public class TypeTwoTypeChecker
         }
     }
     
-    private void CheckMemberAccess(MemberAccess memberAccess)
+    private void CheckStaticMemberAccess(StaticMemberAccessExpression staticMemberAccessExpression)
     {
-        CheckExpression(memberAccess.Owner);
+        if (staticMemberAccessExpression.StaticMemberAccess.InstantiatedFunction is not { } function)
+        {
+            return;
+        }
+
+        foreach (var functionTypeArgument in function.TypeArguments)
+        {
+            CheckTypeReferenceIsResolved(functionTypeArgument, staticMemberAccessExpression);
+        }
+    }
+    
+    private void CheckMemberAccess(MemberAccessExpression memberAccessExpression)
+    {
+        CheckExpression(memberAccessExpression.MemberAccess.Owner);
+
+        if (memberAccessExpression.MemberAccess.InstantiatedFunction is not { } function)
+        {
+            return;
+        }
+
+        foreach (var functionTypeArgument in function.TypeArguments)
+        {
+            CheckTypeReferenceIsResolved(functionTypeArgument, memberAccessExpression);
+        }
     }
 
     private void CheckObjectInitializer(ObjectInitializer objectInitializer)
@@ -407,15 +435,6 @@ public class TypeTwoTypeChecker
             case TypeChecker.InstantiatedUnion { TypeArguments: { Count: > 0 } unionTypeArguments }:
             {
                 foreach (var argument in unionTypeArguments)
-                {
-                    CheckTypeReferenceIsResolved(argument, expression);
-                }
-
-                break;
-            }
-            case TypeChecker.InstantiatedFunction { TypeArguments: { Count: > 0 } functionTypeArguments }:
-            {
-                foreach (var argument in functionTypeArguments)
                 {
                     CheckTypeReferenceIsResolved(argument, expression);
                 }

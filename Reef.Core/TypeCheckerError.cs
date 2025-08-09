@@ -12,7 +12,7 @@ public record TypeCheckerError
         Range = range;
         Message = message;
     }
-
+    
     public static TypeCheckerError MismatchedTypes(SourceRange range, TypeChecker.ITypeReference expected, TypeChecker.ITypeReference actual) =>
         new(TypeCheckerErrorType.MismatchedTypes, range, $"Expected {expected}, but found {actual}");
     
@@ -64,6 +64,13 @@ public record TypeCheckerError
             $"Variable {variableIdentifier} may be uninitialized");
     }
 
+    public static TypeCheckerError GenericTypeArgumentsOnNonFunctionValue(SourceRange sourceRange)
+    {
+        return new(TypeCheckerErrorType.GenericTypeArgumentsOnNonFunctionValue,
+            sourceRange,
+            "Type arguments can only be on functions");
+    }
+
     public static TypeCheckerError AccessingClosureWhichReferencesUninitializedVariables(StringToken functionName, IEnumerable<StringToken> uninitializedVariables)
     {
         return new TypeCheckerError(
@@ -88,14 +95,14 @@ public record TypeCheckerError
             $"Expected {expectedNumber} patterns in union tuple variant, but found {pattern.TupleParamPatterns.Count}");
     }
 
-    public static TypeCheckerError UnknownVariant(StringToken variantIdentifier, string unionName)
+    public static TypeCheckerError UnknownTypeMember(StringToken memberIdentifier, string typeName)
     {
         return new(
-            TypeCheckerErrorType.UnknownVariant,
-            new SourceRange(variantIdentifier.SourceSpan, variantIdentifier.SourceSpan),
-            $"Unknown variant {variantIdentifier} on union {unionName}");
+            TypeCheckerErrorType.UnknownTypeMember,
+            new SourceRange(memberIdentifier.SourceSpan, memberIdentifier.SourceSpan),
+            $"Unknown member {memberIdentifier} on type {typeName}");
     }
-
+    
     public static TypeCheckerError NonClassUsedInClassPattern(ITypeIdentifier typeIdentifier)
     {
         return new(
@@ -178,7 +185,7 @@ public record TypeCheckerError
             memberAccessExpression.MemberAccess.MemberName is {} memberName
                 ? new SourceRange(memberName.SourceSpan, memberName.SourceSpan)
                 : memberAccessExpression.SourceRange,
-            $"Cannot access member on {memberAccessExpression.MemberAccess.Owner} which is a generic type");
+            $"Cannot access member on '{memberAccessExpression.MemberAccess.Owner}' which is a generic type");
     }
 
     public static TypeCheckerError StaticMemberAccessOnGenericReference(StaticMemberAccessExpression staticMemberAccess)
@@ -188,7 +195,23 @@ public record TypeCheckerError
             staticMemberAccess.StaticMemberAccess.MemberName is {} memberName
                 ? new SourceRange(memberName.SourceSpan, memberName.SourceSpan)
                 : staticMemberAccess.SourceRange,
-            $"Cannot access static member on {staticMemberAccess.StaticMemberAccess.Type} which is a generic type");
+            $"Cannot access static member on '{staticMemberAccess.StaticMemberAccess.Type}' which is a generic type");
+    }
+
+    public static TypeCheckerError StaticMemberAccessOnInstanceMember(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.StaticMemberAccessOnInstanceMember,
+            sourceRange,
+            "Cannot access instance member via static member access");
+    }
+
+    public static TypeCheckerError InstanceMemberAccessOnStaticMember(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.InstanceMemberAccessOnStaticMember,
+            sourceRange,
+            "Cannot access static member via instance member access");
     }
 
     public static TypeCheckerError DuplicateTypeParameter(StringToken parameterIdentifier)
@@ -275,6 +298,14 @@ public record TypeCheckerError
             $"Cannot access instance member {memberName.StringValue} in static context"
         );
     }
+
+    public static TypeCheckerError UnionClassVariantWithoutInitializer(SourceRange sourceRange)
+    {
+        return new TypeCheckerError(
+            TypeCheckerErrorType.UnionClassVariantWithoutInitializer,
+            sourceRange,
+            "Cannot create union class variant without initializer");
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -291,7 +322,7 @@ public enum TypeCheckerErrorType
     MatchNonExhaustive,
     AccessUninitializedVariable,
     IncorrectNumberOfPatternsInTupleVariantUnionPattern,
-    UnknownVariant,
+    UnknownTypeMember,
     NonClassUsedInClassPattern,
     MissingFieldsInUnionClassVariantPattern,
     MissingFieldsInClassPattern,
@@ -318,5 +349,9 @@ public enum TypeCheckerErrorType
     AccessingClosureWhichReferencesUninitializedVariables,
     StaticLocalFunctionAccessesOuterVariable,
     GlobalFunctionMarkedAsMutable,
-    AccessInstanceMemberInStaticContext
+    AccessInstanceMemberInStaticContext,
+    GenericTypeArgumentsOnNonFunctionValue,
+    StaticMemberAccessOnInstanceMember,
+    InstanceMemberAccessOnStaticMember,
+    UnionClassVariantWithoutInitializer
 }

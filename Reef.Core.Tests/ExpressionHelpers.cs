@@ -115,6 +115,15 @@ public static class ExpressionHelpers
             variants ?? []);
     }
 
+    public static TypeChecker.FunctionObject FunctionObject(
+        IEnumerable<(bool isMut, TypeChecker.ITypeReference parameterType)>? parameters = null,
+        TypeChecker.ITypeReference? returnType = null)
+    {
+        return new TypeChecker.FunctionObject(
+            parameters: parameters?.Select(x => new TypeChecker.FunctionParameter(x.parameterType, x.isMut)).ToArray() ?? [],
+            returnType: returnType ?? TypeChecker.InstantiatedClass.Unit);
+    }
+    
     public static LangFunction Function(
         string name,
         bool isPublic = false,

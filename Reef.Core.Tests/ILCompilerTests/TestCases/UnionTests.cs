@@ -177,6 +177,73 @@ public static class UnionTests
                     ])
             },
             {
+                "create union tuple variant",
+                """
+                union MyUnion {
+                    A,
+                    B(string),
+                }
+                
+                var a = MyUnion::B;
+                var b = a("");
+                """,
+                Module(
+                    types: [
+                        Union("MyUnion",
+                            variants: [
+                                Variant("A", fields: [Field("_variantIdentifier", ConcreteTypeReference("int"), isPublic: true)]),
+                                Variant("B", fields: [
+                                    Field("_variantIdentifier", ConcreteTypeReference("int"), isPublic: true),
+                                    Field("First", ConcreteTypeReference("string"), isPublic: true),
+                                ]),
+                            ],
+                            methods: [
+                                Method("MyUnion_B_Create",
+                                    isStatic: true,
+                                    parameters: [
+                                        Parameter("First", ConcreteTypeReference("string")),
+                                    ],
+                                    returnType: ConcreteTypeReference("MyUnion"),
+                                    instructions: [
+                                        new CreateObject(Addr(0), ConcreteTypeReference("MyUnion")),
+                                        new CopyStack(Addr(1)),
+                                        new LoadIntConstant(Addr(2), 1),
+                                        new StoreField(Addr(3), 1, 0),
+                                        new CopyStack(Addr(4)),
+                                        new LoadArgument(Addr(5), 0),
+                                        new StoreField(Addr(6), 1, 1),
+                                        Return(7)
+                                    ]),
+                            ])
+                    ],
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference("Function`2", [ConcreteTypeReference("string"), ConcreteTypeReference("MyUnion")])),
+                                Local("b", ConcreteTypeReference("MyUnion"))
+                            ],
+                            instructions: [
+                                new CreateObject(Addr(0), ConcreteTypeReference("Function`2", [ConcreteTypeReference("string"), ConcreteTypeReference("MyUnion")])),
+                                new CopyStack(Addr(1)),
+                                new LoadTypeFunction(Addr(2), ConcreteTypeReference("MyUnion"), 0, []),
+                                new StoreField(Addr(3), 0, 0),
+                                new StoreLocal(Addr(4), 0),
+                                new LoadLocal(Addr(5), 0),
+                                new LoadStringConstant(Addr(6), ""),
+                                new LoadTypeFunction(
+                                    Addr(7),
+                                    ConcreteTypeReference("Function`2", [ConcreteTypeReference("string"), ConcreteTypeReference("MyUnion")]),
+                                    0,
+                                    []),
+                                new Call(Addr(8)),
+                                new StoreLocal(Addr(9), 1),
+                                LoadUnit(10),
+                                Return(11)
+                            ])
+                    ])
+            },
+            {
                 "union class initializer",
                 """
                 union MyUnion {

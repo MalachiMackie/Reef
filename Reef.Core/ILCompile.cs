@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using Reef.IL;
+﻿using Reef.IL;
 
 namespace Reef.Core;
 
@@ -169,7 +168,7 @@ public class ILCompile
                 {
                     TypeChecker.FieldVariable => throw new InvalidOperationException(
                         "Accessed outer variable cannot be a function"),
-                    TypeChecker.FunctionParameter parameterVariable => 
+                    TypeChecker.FunctionSignatureParameter parameterVariable => 
                         parameterVariable.ContainingFunction,
                     TypeChecker.LocalVariable localVariable =>
                         (localVariable.ContainingFunction ?? _mainFunction) ?? throw new InvalidOperationException(""),
@@ -506,17 +505,17 @@ public class ILCompile
                 DefinitionId = instantiatedUnion.Signature.Id,
                 TypeArguments = [..instantiatedUnion.TypeArguments.Select(GetTypeReference)]
             },
-            TypeChecker.InstantiatedFunction instantiatedFunction => FunctionCase(instantiatedFunction),
+            TypeChecker.FunctionObject functionObject => FunctionCase(functionObject),
             _ => throw new InvalidOperationException("Unexpected type reference")
         };
 
-        ConcreteReefTypeReference FunctionCase(TypeChecker.InstantiatedFunction instantiatedFunction)
+        ConcreteReefTypeReference FunctionCase(TypeChecker.FunctionObject functionObject)
         {
-            var signature = TypeChecker.ClassSignature.Function(instantiatedFunction);
-
-            var typeArguments = instantiatedFunction.Parameters
-                .Select(x => x.Value.Type)
-                .Append(instantiatedFunction.ReturnType)
+            var signature = TypeChecker.ClassSignature.Function(functionObject.Parameters);
+            
+            var typeArguments = functionObject.Parameters
+                .Select(x => x.Type)
+                .Append(functionObject.ReturnType)
                 .ToArray();
 
             var resolvedTypeArguments = signature.TypeParameters.Select((x, i) => new TypeChecker.GenericTypeReference()
@@ -535,7 +534,7 @@ public class ILCompile
         }
     }
     
-    private void CompileExpression(IExpression expression, bool calling = false)
+    private void CompileExpression(IExpression expression)
     {
         switch (expression)
         {
@@ -555,7 +554,7 @@ public class ILCompile
                 CompileMatchExpression(matchExpression);
                 break;
             case MemberAccessExpression memberAccessExpression:
-                CompileMemberAccessExpression(memberAccessExpression, calling);
+                CompileMemberAccessExpression(memberAccessExpression);
                 break;
             case MethodCallExpression methodCallExpression:
                 CompileMethodCallExpression(methodCallExpression);
@@ -567,7 +566,7 @@ public class ILCompile
                 CompileObjectInitializerExpression(objectInitializerExpression);
                 break;
             case StaticMemberAccessExpression staticMemberAccessExpression:
-                CompileStaticMemberAccessExpression(staticMemberAccessExpression, calling);
+                CompileStaticMemberAccessExpression(staticMemberAccessExpression);
                 break;
             case TupleExpression tupleExpression:
                 CompileTupleExpression(tupleExpression);
@@ -579,7 +578,7 @@ public class ILCompile
                 CompileUnionClassVariantInitializerExpression(unionClassVariantInitializerExpression);
                 break;
             case ValueAccessorExpression valueAccessorExpression:
-                CompileValueAccessorExpression(valueAccessorExpression, calling);
+                CompileValueAccessorExpression(valueAccessorExpression);
                 break;
             case VariableDeclarationExpression variableDeclarationExpression:
                 CompileVariableDeclarationExpression(variableDeclarationExpression);
@@ -854,7 +853,7 @@ public class ILCompile
     }
     
     private void CompileMemberAccessExpression(
-        MemberAccessExpression memberAccessExpression, bool calling)
+        MemberAccessExpression memberAccessExpression)
     {
         var memberIndex = memberAccessExpression.MemberAccess.ItemIndex
             ?? throw new InvalidOperationException("Expected member item index");
@@ -863,50 +862,98 @@ public class ILCompile
             
         if (memberType == MemberType.Function)
         {
-            if (memberAccessExpression.ResolvedType is not TypeChecker.InstantiatedFunction instantiatedFunction)
+            if (memberAccessExpression.MemberAccess.InstantiatedFunction is not {} instantiatedFunction)
             {
                 throw new InvalidOperationException("Expected instantiated function");
             }
-            CompileFunctionReference(instantiatedFunction, calling, instanceOwnerExpression: memberAccessExpression.MemberAccess.Owner);
+            
+            CreateFunctionObject(instantiatedFunction, memberAccessExpression.MemberAccess.Owner);
+            return;
         }
-        else if (memberType == MemberType.Field)
+        if (memberType == MemberType.Field)
         {
             CompileExpression(memberAccessExpression.MemberAccess.Owner);
             Instructions.Add(new LoadField(NextAddress(), 0, memberIndex));
+            return;
         }
-        else
-        {
-            throw new InvalidOperationException("Unexpected member type");
-        }
+        
+        throw new InvalidOperationException("Unexpected member type");
     }
     
     private void CompileMethodCallExpression(
         MethodCallExpression methodCallExpression)
     {
-        CompileExpression(methodCallExpression.MethodCall.Method, calling: true);
-
-        if (methodCallExpression.MethodCall.ArgumentList.Count > 0)
+        if (methodCallExpression.MethodCall.Method.ResolvedType is not TypeChecker.FunctionObject functionObject)
         {
-            // move instruction to load function to after the argument list loading instructions
-            if (Instructions.Count == 0)
-            {
-                throw new InvalidOperationException("Expected a function load instruction");
-            }
-            var loadFunctionInstruction = Instructions[^1];
-            Instructions.RemoveAt(Instructions.Count - 1);
+            throw new InvalidOperationException("Expected function object");
+        }
+        
+        var instantiatedFunction = methodCallExpression.MethodCall.Method switch
+        {
+            MemberAccessExpression{MemberAccess.InstantiatedFunction: var fn} => fn,
+            StaticMemberAccessExpression{StaticMemberAccess.InstantiatedFunction: var fn} => fn,
+            ValueAccessorExpression{FunctionInstantiation: var fn} => fn,
+            _ => null
+        };
+
+        // calling function object
+        if (instantiatedFunction is null)
+        {
+            // load the function object
+            CompileExpression(methodCallExpression.MethodCall.Method);
             
+            // load all the arguments
             foreach (var argument in methodCallExpression.MethodCall.ArgumentList)
             {
                 CompileExpression(argument);
             }
             
-            Instructions.Add(loadFunctionInstruction switch
+            var functionSignature = TypeChecker.ClassSignature.Function(functionObject.Parameters);
+            var functionReference = new ConcreteReefTypeReference
             {
-                LoadGlobalFunction loadGlobalFunction => loadGlobalFunction with {Address = NextAddress()},
-                LoadTypeFunction loadTypeFunction => loadTypeFunction with {Address = NextAddress()},
-                _ => throw new InvalidOperationException("Expected instruction to be function load instruction")
-            });
+                DefinitionId = functionSignature.Id,
+                Name = functionSignature.Name,
+                TypeArguments = functionObject.Parameters.Select(x => x.Type).Append(functionObject.ReturnType).Select(GetTypeReference).ToArray()
+            };
+            
+            // load Fn()::Call function
+            Instructions.Add(new LoadTypeFunction(
+                NextAddress(),
+                functionReference,
+                FunctionIndex: 0,
+                TypeArguments: []));
+            
+            Instructions.Add(new Call(NextAddress()));
+            return;
         }
+        
+        // we're directly calling a function
+        
+        // load any arguments that need to go first (eg 'this' or closure object)
+        if (methodCallExpression.MethodCall.Method is MemberAccessExpression memberAccessExpression)
+        {
+            // load the method owner
+            CompileExpression(memberAccessExpression.MemberAccess.Owner);
+        }
+        else if (instantiatedFunction.ClosureTypeId.HasValue)
+        {
+            CreateClosureObject(
+                instantiatedFunction.ClosureTypeId.Value,
+                instantiatedFunction.ClosureTypeFields.Select(x => x.fieldTypeId));
+        }
+        else if (instantiatedFunction is { IsStatic: false, OwnerSignature: {} ownerSignature }
+                 && _scopeStack.Peek().CurrentFunction?.OwnerType == ownerSignature)
+        {
+            Instructions.Add(new LoadArgument(NextAddress(), 0));
+        }
+        
+        // load all the arguments 
+        foreach (var argument in methodCallExpression.MethodCall.ArgumentList)
+        {
+            CompileExpression(argument);
+        }
+
+        LoadFunctionPointer(instantiatedFunction);
         
         Instructions.Add(new Call(NextAddress()));
     }
@@ -944,7 +991,7 @@ public class ILCompile
     }
     
     private void CompileStaticMemberAccessExpression(
-        StaticMemberAccessExpression staticMemberAccessExpression, bool calling)
+        StaticMemberAccessExpression staticMemberAccessExpression)
     {
         var ownerType = staticMemberAccessExpression.OwnerType
                         ?? throw new InvalidOperationException("Expected static member access ownerType");
@@ -960,11 +1007,11 @@ public class ILCompile
         
         if (memberType == MemberType.Function)
         {
-            if (staticMemberAccessExpression.ResolvedType is not TypeChecker.InstantiatedFunction instantiatedFunction)
+            if (staticMemberAccessExpression.StaticMemberAccess.InstantiatedFunction is not {} instantiatedFunction)
             {
                 throw new InvalidOperationException("Expected instantiated function");
             }
-            CompileFunctionReference(instantiatedFunction, calling, instanceOwnerExpression: null);
+            CreateFunctionObject(instantiatedFunction, instanceOwnerExpression: null);
         }
         else if (memberType == MemberType.Field)
         {
@@ -973,6 +1020,7 @@ public class ILCompile
         else if (memberType == MemberType.Variant)
         {
             CompileStaticMemberAccessVariantReference(
+                staticMemberAccessExpression,
                 itemIndex,
                 ownerType as TypeChecker.InstantiatedUnion ?? throw new InvalidOperationException("Expected type to be union"),
                 ownerReference);
@@ -980,6 +1028,7 @@ public class ILCompile
     }
 
     private void CompileStaticMemberAccessVariantReference(
+        StaticMemberAccessExpression expression,
         uint variantIndex,
         TypeChecker.InstantiatedUnion unionType,
         ConcreteReefTypeReference unionReference)
@@ -988,17 +1037,15 @@ public class ILCompile
         switch (variant)
         {
             case TypeChecker.ClassUnionVariant:
-            {
                 throw new InvalidOperationException("Should not be able to reference class variant");
-            }
             case TypeChecker.TupleUnionVariant:
             {
-                Instructions.Add(new LoadTypeFunction(
-                    NextAddress(),
-                    unionReference,
-                    // tuple variant create functions are placed after all declared functions, and we need to skip any previous tuple union variants
-                    (uint)(unionType.Signature.Functions.Count
-                        + unionType.Signature.Variants.Take((int)variantIndex).Count(x => x is TypeChecker.TupleUnionVariant)), []));
+                if (expression.StaticMemberAccess.InstantiatedFunction is not {} fn)
+                {
+                    throw new InvalidOperationException("Expected instantiated function");
+                }
+                
+                CreateFunctionObject(fn, instanceOwnerExpression: null);
                 break;
             }
             case TypeChecker.UnitUnionVariant:
@@ -1106,7 +1153,7 @@ public class ILCompile
     }
 
     private void CompileValueAccessorExpression(
-        ValueAccessorExpression valueAccessorExpression, bool calling)
+        ValueAccessorExpression valueAccessorExpression)
     {
         switch (valueAccessorExpression.ValueAccessor)
         {
@@ -1150,42 +1197,10 @@ public class ILCompile
             }
             case { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Identifier }:
             {
-                CompileIdentifierValueAccessor(valueAccessorExpression, calling);
+                CompileIdentifierValueAccessor(valueAccessorExpression);
                 break;
             }
         }
-    }
-
-    private void CompileFunctionReference(
-        TypeChecker.InstantiatedFunction instantiatedFunction,
-        bool calling,
-        IExpression? instanceOwnerExpression)
-    {
-        if (!calling)
-        {
-            CreateFunctionObject(instantiatedFunction, instanceOwnerExpression);
-            return;
-        }
-
-        var currentFunction = _scopeStack.Peek().CurrentFunction;
-
-        if (instanceOwnerExpression is not null)
-        {
-            CompileExpression(instanceOwnerExpression);
-        }
-        else if (instantiatedFunction.ClosureTypeId.HasValue)
-        {
-            CreateClosureObject(
-                instantiatedFunction.ClosureTypeId.Value,
-                instantiatedFunction.ClosureTypeFields.Select(x => x.fieldTypeId));
-        }
-        else if (instantiatedFunction is { IsStatic: false, OwnerSignature: {} ownerSignature }
-                 && currentFunction?.OwnerType == ownerSignature)
-        {
-            Instructions.Add(new LoadArgument(NextAddress(), 0));
-        }
-        
-        LoadFunctionPointer(instantiatedFunction);
     }
 
     private void CreateClosureObject(Guid closureTypeId, IEnumerable<Guid> closureTypeFieldTypeIds)
@@ -1257,13 +1272,13 @@ public class ILCompile
 
     private void CreateFunctionObject(TypeChecker.InstantiatedFunction instantiatedFunction, IExpression? instanceOwnerExpression)
     {
-        var signature = TypeChecker.ClassSignature.Function(instantiatedFunction);
+        var signature = TypeChecker.ClassSignature.Function(instantiatedFunction.Parameters);
 
         var functionType = new ConcreteReefTypeReference
         {
             DefinitionId = signature.Id,
             Name = signature.Name,
-            TypeArguments = instantiatedFunction.Parameters.Select(x => x.Value.Type)
+            TypeArguments = instantiatedFunction.Parameters.Select(x => x.Type)
                 .Append(instantiatedFunction.ReturnType)
                 .Select(GetTypeReference)
                 .ToArray()
@@ -1308,11 +1323,11 @@ public class ILCompile
         }
     }
 
-    private void CompileIdentifierValueAccessor(ValueAccessorExpression valueAccessorExpression, bool calling)
+    private void CompileIdentifierValueAccessor(ValueAccessorExpression valueAccessorExpression)
     {
-        if (valueAccessorExpression is { ResolvedType: TypeChecker.InstantiatedFunction instantiatedFunction, ReferencedVariable: null })
+        if (valueAccessorExpression is { FunctionInstantiation: {} instantiatedFunction, ReferencedVariable: null })
         {
-            CompileFunctionReference(instantiatedFunction, calling, instanceOwnerExpression: null);
+            CreateFunctionObject(instantiatedFunction, instanceOwnerExpression: null);
             return;
         }
         
@@ -1327,7 +1342,7 @@ public class ILCompile
             var ownerFunction = referencedVariable switch
             {
                 TypeChecker.FieldVariable => throw new InvalidOperationException("Accessed outer variable cannot be a field"),
-                TypeChecker.FunctionParameter functionParameter => functionParameter.ContainingFunction,
+                TypeChecker.FunctionSignatureParameter functionParameter => functionParameter.ContainingFunction,
                 TypeChecker.LocalVariable localVariable => localVariable.ContainingFunction
                                                            ?? _mainFunction
                                                            ?? throw new InvalidOperationException("Expected function"),
@@ -1398,7 +1413,7 @@ public class ILCompile
                     
                     break;
                 }
-                case TypeChecker.FunctionParameter(var fn, _, _, _, var parameterIndex):
+                case TypeChecker.FunctionSignatureParameter(var fn, _, _, _, var parameterIndex):
                 {
                     var adjustedParameterIndex = parameterIndex
                                          // increment parameter index by one to allow for the `this` parameter
@@ -1417,21 +1432,6 @@ public class ILCompile
                 default:
                     throw new ArgumentOutOfRangeException(nameof(referencedVariable));
             }
-        }
-
-        if (calling && valueAccessorExpression.ResolvedType is TypeChecker.InstantiatedFunction x)
-        {
-            var function = TypeChecker.ClassSignature.Function(x);
-            Instructions.Add(new LoadTypeFunction(NextAddress(), new ConcreteReefTypeReference
-            {
-                DefinitionId = function.Id,
-                Name = function.Name,
-                TypeArguments = x.Parameters
-                    .Select(y => y.Value.Type)
-                    .Append(x.ReturnType)
-                    .Select(GetTypeReference)
-                    .ToArray()
-            }, FunctionIndex: 0, []));
         }
     }
     

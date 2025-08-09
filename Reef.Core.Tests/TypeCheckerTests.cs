@@ -29,6 +29,8 @@ public class TypeCheckerTests
         program.Errors.Should().BeEmpty();
         var errors = TypeChecker.TypeCheck(program.ParsedProgram);
 
+        expectedErrors.Should().NotBeEmpty();
+
         errors.Should().BeEquivalentTo(expectedErrors, opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan))).And.NotBeEmpty();
     }
 
@@ -37,8 +39,12 @@ public class TypeCheckerTests
     {
         const string src =
             """
-            var a: (int, string);
-            a = (1, "");
+            class MyClass {
+                fn MyFn<T>() {}
+                fn OtherFn() {
+                    MyFn::<string>();
+                }
+            }
             """;
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
@@ -51,6 +57,57 @@ public class TypeCheckerTests
     {
         return new TheoryData<string>
         {
+            """
+            class MyClass {
+                fn MyFn<T>() {}
+                fn OtherFn() {
+                    MyFn::<string>();
+                }
+            }
+            """,
+            """
+            union MyUnion {
+                pub static fn SomeFn(){}
+            }
+            MyUnion::SomeFn();
+            """,
+            """
+            class MyClass {
+                field MyField: string, 
+                
+                fn MyFn() {
+                    var a = MyField;
+                } 
+            }
+            """,
+            """
+            union MyUnion {
+                pub static fn SomeFn(){}
+            }
+            var a = MyUnion::SomeFn;
+            a();
+            """,
+            """
+            union MyUnion {A, pub fn MyFn(){}}
+            var a = MyUnion::A;
+            a.MyFn();
+            """,
+            """
+            class MyClass {
+                pub mut fn MyFn() {
+                }
+            }
+            var mut a = new MyClass{};
+            var b: Fn() = a.MyFn;
+            """,
+            """
+            var mut a: Fn() = todo!;
+            a();
+            """,
+            """
+            fn NonMutFn() {}
+            var a: Fn() = NonMutFn;
+            """,
             """
             fn SomeFn(){}
             var a: () = SomeFn();
@@ -1284,27 +1341,187 @@ public class TypeCheckerTests
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
             {
+                "missing field in instance method",
+                """
+                class MyClass {
+                    field MyField: string,
+                    
+                    fn MyFn() {
+                        var a = MyField_;
+                    }
+                }
+                """,
+                [TypeCheckerError.SymbolNotFound(Identifier("MyField_"))]
+            },
+            {
+                "closure mutates non mutable variable",
+                """
+                var a = 1;
+                fn MyFn() {
+                    a = 2;
+                } 
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "missing class static member",
+                """
+                class MyClass{}
+                var a = MyClass::A;
+                """,
+                [TypeCheckerError.UnknownTypeMember(Identifier("A"), "MyClass")]
+            },
+            {
+                "missing class instance member",
+                """
+                class MyClass{}
+                var a = new MyClass{};
+                var b = a.b;
+                """,
+                [TypeCheckerError.UnknownTypeMember(Identifier("b"), "MyClass")]
+            },
+            {
+                "missing union static member",
+                """
+                union MyUnion{}
+                var a = MyUnion::A;
+                """,
+                [TypeCheckerError.UnknownTypeMember(Identifier("A"), "MyUnion")]
+            },
+            {
+                "missing union instance member",
+                """
+                union MyUnion{A}
+                var a = MyUnion::A;
+                var b = a.b;
+                """,
+                [TypeCheckerError.UnknownTypeMember(Identifier("b"), "MyUnion")]
+            },
+            {
+                "union class variant missing initializer",
+                """
+                union MyUnion {
+                    A {field MyField: string}
+                }
+                var a = MyUnion::A;
+                """,
+                [TypeCheckerError.UnionClassVariantWithoutInitializer(SourceRange.Default)]
+            },
+            {
+                "static class function accessed through member access",
+                """
+                class MyClass{pub static fn MyFn(){}}
+                var a = new MyClass{};
+                a.MyFn();
+                """,
+                [TypeCheckerError.InstanceMemberAccessOnStaticMember(SourceRange.Default)]
+            },
+            {
+                "static class field accessed through member access",
+                """
+                class MyClass{pub static field MyField: string = ""}
+                var a = new MyClass{};
+                a.MyField;
+                """,
+                [TypeCheckerError.InstanceMemberAccessOnStaticMember(SourceRange.Default)]
+            },
+            {
+                "static union function accessed through member access",
+                """
+                union MyUnion { A, pub static fn MyFn(){} }
+                var a = MyUnion::A;
+                a.MyFn();
+                """,
+                [TypeCheckerError.InstanceMemberAccessOnStaticMember(SourceRange.Default)]
+            },
+            {
+                "instance class function accessed through static access",
+                """
+                class MyClass {pub fn MyFn(){}}
+                MyClass::MyFn();
+                """,
+                [TypeCheckerError.StaticMemberAccessOnInstanceMember(SourceRange.Default)]
+            },
+            {
+                "instance class field accessed through static access",
+                """
+                class MyClass {pub field MyField: string}
+                var a = MyClass::MyField;
+                """,
+                [TypeCheckerError.StaticMemberAccessOnInstanceMember(SourceRange.Default)]
+            },
+            {
+                "instance union function accessed through static access",
+                """
+                union MyUnion {A, pub fn MyFn(){}}
+                MyUnion::MyFn();
+                """,
+                [TypeCheckerError.StaticMemberAccessOnInstanceMember(SourceRange.Default)]
+            },
+            {
                 "non function variable has type arguments",
                 """
                 var a = 1;
                 var b = a::<string>;
                 """,
-                []
+                [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)]
             },
             {
-                "literal has type arguments",
-                "var a = 1::<int>;",
-                []
+                "function variable has type arguments",
+                """
+                fn MyFn<T>(){}
+                var a = MyFn::<string>;
+                var b = a::<string>;
+                """,
+                [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)]
             },
             {
-                "non function member access has type arguments",
+                "non function class member access has type arguments",
                 """
                 class MyClass{pub field MyField: string};
                 var a = new MyClass{MyField = ""};
                 var b = a.MyField::<string>;
                 """,
-                []
-                
+                [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)]
+            },
+            {
+                "union variant has type arguments",
+                """
+                union MyUnion{A}
+                var a = MyUnion::A::<>;
+                """,
+                [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)]
+            },
+            {
+                "union tuple variant has type arguments",
+                """
+                union MyUnion{A(string)}
+                var a = MyUnion::A::<>("");
+                """,
+                [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)]
+            },
+            {
+                "union unit variant has type arguments",
+                """
+                union MyUnion{A}
+                var a = MyUnion::A::<>;
+                """,
+                [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)]
+            },
+            {
+                "creating mutable function object",
+                """
+                class MyClass {
+                    pub mut field MyField: string,
+
+                    pub mut fn MyFn() {
+                        MyField = "";
+                    }
+                }
+                var a = new MyClass {MyField = ""};
+                var b = a.MyFn;
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
             },
             {
                 "assigning value to unit type",
@@ -1338,7 +1555,12 @@ public class TypeCheckerTests
                 fn SomeFn(a: int){}
                 var a: Fn() = SomeFn;
                 """,
-                []
+                [
+                    TypeCheckerError.MismatchedTypes(
+                        SourceRange.Default,
+                        FunctionObject(), 
+                        FunctionObject(parameters: [(isMut: false, parameterType: Int)]))
+                ]
             },
             {
                 "function type incorrect parameter type",
@@ -1346,7 +1568,12 @@ public class TypeCheckerTests
                 fn SomeFn(a: int){}
                 var a: Fn(string) = SomeFn;
                 """,
-                []
+                [
+                    TypeCheckerError.MismatchedTypes(
+                        SourceRange.Default,
+                        FunctionObject(parameters: [(isMut: false, parameterType: String)]), 
+                        FunctionObject(parameters: [(isMut: false, parameterType: Int)]))
+                ]
             },
             {
                 "function type not enough parameters",
@@ -1354,7 +1581,12 @@ public class TypeCheckerTests
                 fn SomeFn(){}
                 var a: Fn(int) = SomeFn;
                 """,
-                []
+                [
+                    TypeCheckerError.MismatchedTypes(
+                        SourceRange.Default,
+                        FunctionObject(parameters: [(isMut: false, parameterType: Int)]), 
+                        FunctionObject())
+                ]
             },
             {
                 "function type incorrect return type when expected unit",
@@ -1362,7 +1594,12 @@ public class TypeCheckerTests
                 fn SomeFn(a: int): string {return "";}
                 var a: Fn(int) = SomeFn;
                 """,
-                []
+                [
+                    TypeCheckerError.MismatchedTypes(
+                        SourceRange.Default,
+                        FunctionObject(parameters: [(isMut: false, parameterType: Int)]), 
+                        FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: String))
+                ]
             },
             {
                 "function type expected return type but used void",
@@ -1370,7 +1607,12 @@ public class TypeCheckerTests
                 fn SomeFn(a: int) {}
                 var a: Fn(int): string = SomeFn;
                 """,
-                []
+                [
+                    TypeCheckerError.MismatchedTypes(
+                        SourceRange.Default,
+                        FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: String), 
+                        FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: Unit))
+                ]
             },
             {
                 "function type incorrect return type",
@@ -1378,7 +1620,12 @@ public class TypeCheckerTests
                 fn SomeFn(a: int): int {return 1;}
                 var a: Fn(int): string = SomeFn;
                 """,
-                []
+                [
+                    TypeCheckerError.MismatchedTypes(
+                        SourceRange.Default,
+                        FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: String), 
+                        FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: Int))
+                ]
             },
             {
                 "function type incorrect parameter mutability",
@@ -1386,7 +1633,12 @@ public class TypeCheckerTests
                 fn SomeFn(mut a: int){}
                 var a: Fn(int) = SomeFn;
                 """,
-                []
+                [
+                    TypeCheckerError.MismatchedTypes(
+                        SourceRange.Default,
+                        FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: Unit), 
+                        FunctionObject(parameters: [(isMut: true, parameterType: Int)], returnType: Unit))
+                ]
             },
             {
                 "function type incorrect parameter mutability",
@@ -1394,17 +1646,27 @@ public class TypeCheckerTests
                 fn SomeFn(a: int){}
                 var a: Fn(mut int) = SomeFn;
                 """,
-                []
+                [
+                    TypeCheckerError.MismatchedTypes(
+                        SourceRange.Default,
+                        FunctionObject(parameters: [(isMut: true, parameterType: Int)], returnType: Unit), 
+                        FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: Unit))
+                ]
             },
             {
-                "reassigning inferred function type",
+                "reassigning incompatible inferred function type ",
                 """
                 fn SomeFn(){}
                 fn OtherFn(): int{return 1}
                 var mut a = SomeFn;
                 a = OtherFn;
                 """,
-                []
+                [
+                    TypeCheckerError.MismatchedTypes(
+                        SourceRange.Default,
+                        FunctionObject(), 
+                        FunctionObject(returnType: Int))
+                ]
             },
             {
                 "assign unknown variable",
@@ -2111,7 +2373,7 @@ public class TypeCheckerTests
                 var a = MyUnion::B("");
                 var b: bool = a matches MyUnion::C;
                 """,
-                [TypeCheckerError.UnknownVariant(Identifier("C"), "MyUnion")]
+                [TypeCheckerError.UnknownTypeMember(Identifier("C"), "MyUnion")]
             },
             {
                 "mismatched type used for field in class variant pattern",
@@ -2361,7 +2623,7 @@ public class TypeCheckerTests
                     MyField = ""
                 };
                 """,
-                [TypeCheckerError.UnknownVariant(Identifier("B"), "MyUnion")]
+                [TypeCheckerError.UnknownTypeMember(Identifier("B"), "MyUnion")]
             },
             {
                 "incorrect expression type used in union class variant initializer",
@@ -2798,9 +3060,32 @@ public class TypeCheckerTests
                 [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 3, 2)]
             },
             {
-                "unresolved function generic type",
+                "unresolved global function generic type",
                 "fn Fn1<T1>(){} Fn1::<>();",
                 [TypeCheckerError.UnresolvedInferredGenericType(MethodCall(VariableAccessor("Fn1")), "T1")]
+            },
+            {
+                "unresolved instance function generic type",
+                """
+                class MyClass
+                {
+                    pub fn MyFn<T>(){}
+                }
+                var a = new MyClass{};
+                a.MyFn();
+                """,
+                [TypeCheckerError.UnresolvedInferredGenericType(MethodCall(MemberAccess(VariableAccessor("a"), "MyFn")), "T")]
+            },
+            {
+                "unresolved static function generic type",
+                """
+                class MyClass
+                {
+                    pub static fn MyFn<T>(){}
+                }
+                MyClass::MyFn();
+                """,
+                [TypeCheckerError.UnresolvedInferredGenericType(MethodCall(StaticMemberAccess(NamedTypeIdentifier("MyClass"), "MyFn")), "T")]
             },
             {
                 "too many function type arguments",

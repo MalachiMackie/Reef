@@ -882,6 +882,18 @@ public static class ParseErrorTestCases
                 ]
             ),
             (
+                "1::<",
+                new LangProgram([Literal(1)], [], [], []),
+                [ParserError.ExpectedTokenOrExpression(Token.Turbofish(SourceSpan.Default), TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union)]
+            ),
+            (
+                "var a = SomeFn::<string>;",
+                new([
+                    VariableDeclaration("a", VariableAccessor("SomeFn", [StringType()]))
+                ], [], [], []),
+                []
+            ),
+            (
                 "matches",
                 new LangProgram([], [], [], []),
                 [
