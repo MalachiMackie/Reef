@@ -14,7 +14,6 @@ public enum TokenType
     Fn,
     Class,
     Field,
-    // IntKeyword,
     Colon,
     LeftAngleBracket,
     RightAngleBracket,
@@ -25,16 +24,10 @@ public enum TokenType
     Else,
     IntLiteral,
     StringLiteral,
-    // StringKeyword,
-    // Result,
-    // This,
-    // Ok,
-    // Error,
     QuestionMark,
     Return,
     True,
     False,
-    // Bool,
     Plus,
     Dash,
     Star,
@@ -52,8 +45,9 @@ public enum TokenType
     Matches,
     Underscore,
     Bang,
-
     // todo: better name?
     EqualsArrow,
-    Todo
+    Todo,
+    DoubleAmpersand,
+    DoubleBar
 }

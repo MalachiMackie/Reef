@@ -203,6 +203,8 @@ public class TokenizerTests
             ["\t\t", Array.Empty<Token>()],
 
             // single tokens
+            ["&&", new [] { Token.DoubleAmpersand(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
+            ["||", new [] { Token.DoubleBar(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["::", new[] { Token.DoubleColon(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["pub", new[] { Token.Pub(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             ["union", new[] { Token.Union(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],

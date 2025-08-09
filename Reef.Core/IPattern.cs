@@ -47,6 +47,11 @@ public record VariableDeclarationPattern(StringToken VariableName, SourceRange S
 public record DiscardPattern(SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference TypeReference => TypeChecker.InstantiatedClass.Never;
+
+    public override string ToString()
+    {
+        return "_";
+    }
 }
 
 public record ClassPattern(

@@ -89,6 +89,8 @@ public record Token
             TokenType.Bang => "!",
             TokenType.Todo => "todo!",
             TokenType.EqualsArrow => "=>",
+            TokenType.DoubleAmpersand => "&&",
+            TokenType.DoubleBar => "||",
             _ => throw new UnreachableException(Type.ToString())
         };
     }
@@ -357,6 +359,24 @@ public record Token
             SourceSpan = sourceSpan,
             StringValue = contents,
             Type = TokenType.MultiLineComment
+        };
+    }
+
+    public static Token DoubleAmpersand(SourceSpan sourceSpan)
+    {
+        return new Token
+        {
+            Type = TokenType.DoubleAmpersand,
+            SourceSpan = sourceSpan
+        };
+    }
+
+    public static Token DoubleBar(SourceSpan sourceSpan)
+    {
+        return new Token
+        {
+            Type = TokenType.DoubleBar,
+            SourceSpan = sourceSpan
         };
     }
 }

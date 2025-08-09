@@ -257,6 +257,17 @@ public record MatchesExpression(IExpression ValueExpression, IPattern? Pattern, 
 
     public bool Diverges { get; } = ValueExpression.Diverges;
     public bool ValueUseful { get; set; }
+
+    public override string ToString()
+    {
+        var sb = new StringBuilder($"{ValueExpression} matches");
+        if (Pattern is not null)
+        {
+            sb.Append($" {Pattern}");
+        }
+
+        return sb.ToString();
+    }
 }
 
 public record UnionClassVariantInitializer(
@@ -472,7 +483,9 @@ public enum BinaryOperatorType
     Multiply,
     Divide,
     EqualityCheck,
-    ValueAssignment
+    ValueAssignment,
+    BooleanAnd,
+    BooleanOr
 }
 
 public enum ValueAccessType

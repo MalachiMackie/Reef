@@ -2003,10 +2003,10 @@ public sealed class Parser : IDisposable
                 unaryOperatorType.Value),
             _ when TryGetBinaryOperatorType(token.Type, out var binaryOperatorType) => GetBinaryOperatorBindingStrength(
                 binaryOperatorType.Value),
-            TokenType.LeftParenthesis => 7,
-            TokenType.Dot => 10,
-            TokenType.DoubleColon => 11,
-            TokenType.Matches => 1,
+            TokenType.LeftParenthesis => 8,
+            TokenType.Dot => 11,
+            TokenType.DoubleColon => 12,
+            TokenType.Matches => 3,
             _ => null
         };
 
@@ -2038,6 +2038,8 @@ public sealed class Parser : IDisposable
             TokenType.Dash => BinaryOperatorType.Minus,
             TokenType.DoubleEquals => BinaryOperatorType.EqualityCheck,
             TokenType.Equals => BinaryOperatorType.ValueAssignment,
+            TokenType.DoubleAmpersand => BinaryOperatorType.BooleanAnd,
+            TokenType.DoubleBar => BinaryOperatorType.BooleanOr,
             _ => null
         };
 
@@ -2048,14 +2050,16 @@ public sealed class Parser : IDisposable
     {
         return operatorType switch
         {
-            BinaryOperatorType.Multiply => 6,
-            BinaryOperatorType.Divide => 6,
-            BinaryOperatorType.Plus => 5,
-            BinaryOperatorType.Minus => 5,
-            BinaryOperatorType.GreaterThan => 4,
-            BinaryOperatorType.LessThan => 4,
-            BinaryOperatorType.EqualityCheck => 3,
-            BinaryOperatorType.ValueAssignment => 2,
+            BinaryOperatorType.Multiply => 7,
+            BinaryOperatorType.Divide => 7,
+            BinaryOperatorType.Plus => 6,
+            BinaryOperatorType.Minus => 6,
+            BinaryOperatorType.GreaterThan => 5,
+            BinaryOperatorType.LessThan => 5,
+            BinaryOperatorType.EqualityCheck => 4,
+            BinaryOperatorType.BooleanAnd => 2,
+            BinaryOperatorType.BooleanOr => 2,
+            BinaryOperatorType.ValueAssignment => 1,
             _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType,
                 typeof(BinaryOperatorType))
         };
@@ -2065,8 +2069,8 @@ public sealed class Parser : IDisposable
     {
         return operatorType switch
         {
-            UnaryOperatorType.FallOut => 9,
-            UnaryOperatorType.Not => 8,
+            UnaryOperatorType.FallOut => 10,
+            UnaryOperatorType.Not => 9,
             _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType,
                 typeof(UnaryOperatorType))
         };

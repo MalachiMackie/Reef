@@ -505,6 +505,8 @@ public static class PopExpressionTestCases
                 VariableAccessor("a"),
                 VariableAccessor("b"),
                 Token.ForwardSlash(SourceSpan.Default)))),
+            ("a && b", BinaryOperatorExpression(BinaryOperatorType.BooleanAnd, VariableAccessor("a"), VariableAccessor("b"))),
+            ("a || b", BinaryOperatorExpression(BinaryOperatorType.BooleanOr, VariableAccessor("a"), VariableAccessor("b"))),
             ("var a: int = b", new VariableDeclarationExpression(
                 new VariableDeclaration(
                     Identifier("a"),
@@ -870,6 +872,24 @@ public static class PopExpressionTestCases
                 NamedTypeIdentifier("result",
                     [NamedTypeIdentifier("string")]),
                 Identifier("CallMethod"), null))),
+            (
+                "a = b matches _",
+                BinaryOperatorExpression(BinaryOperatorType.ValueAssignment,
+                    VariableAccessor("a"),
+                    Matches(VariableAccessor("b"), DiscardPattern()))
+            ),
+            (
+                "a && b matches _",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    Matches(VariableAccessor("b"), DiscardPattern()))
+            ),
+            (
+                "a matches _ && b",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    Matches(VariableAccessor("a"), DiscardPattern()),
+                    VariableAccessor("b"))
+            ),
             // ____binding strength tests
             // __greater than
             ( // greater than
@@ -1031,6 +1051,22 @@ public static class PopExpressionTestCases
                         Token.Bang(SourceSpan.Default))),
                     Token.RightAngleBracket(SourceSpan.Default)))
             ),
+            ( // and 
+                "a > b && c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    BinaryOperatorExpression(BinaryOperatorType.GreaterThan,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // or 
+                "a > b || c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    BinaryOperatorExpression(BinaryOperatorType.GreaterThan,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
             // __Less than
             ( // greater than
                 "a < b > c",
@@ -1188,6 +1224,22 @@ public static class PopExpressionTestCases
                         Token.Bang(SourceSpan.Default))),
                     Token.LeftAngleBracket(SourceSpan.Default)))
             ),
+            ( // and 
+                "a < b && c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    BinaryOperatorExpression(BinaryOperatorType.LessThan,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // or 
+                "a < b || c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    BinaryOperatorExpression(BinaryOperatorType.LessThan,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
             // __multiply
             ( // greater than
                 "a * b > c",
@@ -1336,6 +1388,22 @@ public static class PopExpressionTestCases
                         VariableAccessor("b"),
                         Token.Bang(SourceSpan.Default))),
                     Token.Star(SourceSpan.Default)))
+            ),
+            ( // and 
+                "a * b && c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    BinaryOperatorExpression(BinaryOperatorType.Multiply,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // or 
+                "a * b || c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    BinaryOperatorExpression(BinaryOperatorType.Multiply,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
             ),
             // __divide
             ( // greater than
@@ -1494,6 +1562,22 @@ public static class PopExpressionTestCases
                         Token.Bang(SourceSpan.Default))),
                     Token.ForwardSlash(SourceSpan.Default)))
             ),
+            ( // and 
+                "a / b && c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    BinaryOperatorExpression(BinaryOperatorType.Divide,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // or 
+                "a / b || c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    BinaryOperatorExpression(BinaryOperatorType.Divide,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
             // __plus
             ( // greater than
                 "a + b > c",
@@ -1650,6 +1734,22 @@ public static class PopExpressionTestCases
                         VariableAccessor("b"),
                         Token.Bang(SourceSpan.Default))),
                     Token.Plus(SourceSpan.Default)))
+            ),
+            ( // and 
+                "a + b && c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    BinaryOperatorExpression(BinaryOperatorType.Plus,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // or 
+                "a + b || c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    BinaryOperatorExpression(BinaryOperatorType.Plus,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
             ),
             // __minus
             ( // greater than
@@ -1808,6 +1908,22 @@ public static class PopExpressionTestCases
                         Token.Bang(SourceSpan.Default))),
                     Token.Dash(SourceSpan.Default)))
             ),
+            ( // and 
+                "a - b && c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    BinaryOperatorExpression(BinaryOperatorType.Minus,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // or 
+                "a - b || c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    BinaryOperatorExpression(BinaryOperatorType.Minus,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
             // __FallOut
             ( // fallout
                 "a??",
@@ -1924,6 +2040,18 @@ public static class PopExpressionTestCases
                         VariableAccessor("b"),
                         Token.QuestionMark(SourceSpan.Default))),
                     Token.Bang(SourceSpan.Default)))
+            ),
+            ( // and 
+                "a? && b",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    FallOut(VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // or 
+                "a? || b",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    FallOut(VariableAccessor("a")),
+                    VariableAccessor("b"))
             ),
             // __ value assignment
             ( // greater than
@@ -2063,6 +2191,22 @@ public static class PopExpressionTestCases
                         VariableAccessor("b"),
                         Token.Bang(SourceSpan.Default))),
                     Token.Equals(SourceSpan.Default)))
+            ),
+            ( // and 
+                "a = b && c",
+                BinaryOperatorExpression(BinaryOperatorType.ValueAssignment,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // or 
+                "a = b || c ",
+                BinaryOperatorExpression(BinaryOperatorType.ValueAssignment,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
             ),
             // __ equality check
             ( // greater than
@@ -2221,6 +2365,22 @@ public static class PopExpressionTestCases
                         Token.Bang(SourceSpan.Default))),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
+            ( // and 
+                "a == b && c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    BinaryOperatorExpression(BinaryOperatorType.EqualityCheck,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // or 
+                "a == b || c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    BinaryOperatorExpression(BinaryOperatorType.EqualityCheck,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
             // __Member Access
             ( // greater than
                 "a.b > c",
@@ -2318,6 +2478,18 @@ public static class PopExpressionTestCases
                         VariableAccessor("a"),
                         Identifier("b"), null)),
                     Identifier("c"), null))
+            ),
+            ( // and 
+                "a.b && c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    MemberAccess(VariableAccessor("a"), "b"),
+                    VariableAccessor("c"))
+            ),
+            ( // or 
+                "a.b || c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    MemberAccess(VariableAccessor("a"), "b"),
+                    VariableAccessor("c"))
             ),
             // __Static Member Access
             ( // greater than
@@ -2426,6 +2598,18 @@ public static class PopExpressionTestCases
                         Identifier("b")
                     , null)),
                     Identifier("c"), null))
+            ),
+            ( // and 
+                "a::b && c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    StaticMemberAccess(NamedTypeIdentifier("a"), "b"),
+                    VariableAccessor("c"))
+            ),
+            ( // or 
+                "a::b || c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    StaticMemberAccess(NamedTypeIdentifier("a"), "b"),
+                    VariableAccessor("c"))
             ),
             // __Not
             ( // fallout
@@ -2543,6 +2727,232 @@ public static class PopExpressionTestCases
                         VariableAccessor("b"),
                         Token.Bang(SourceSpan.Default))),
                     Token.Bang(SourceSpan.Default)))
+            ),
+            ( // and 
+                "!a && b",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    Not(VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // or 
+                "!a || b",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    Not(VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            // __And
+            ( // fallout
+                "a && !b",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    Not(VariableAccessor("b")))
+            ),
+            ( // less than
+                "a && b < c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.LessThan,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // greater than
+                "a && b > c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.GreaterThan,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // plus
+                "a && b + c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.Plus,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // minus
+                "a && b - c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.Minus,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // multiply
+                "a && b * c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.Multiply,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // divide
+                "a && b / c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.Divide,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // assignment
+                "a && b = c",
+                BinaryOperatorExpression(BinaryOperatorType.ValueAssignment,
+                    BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // equality check
+                "a && b == c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.EqualityCheck,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // member access
+                "a && b.c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    MemberAccess(
+                        VariableAccessor("b"),
+                        "c"))
+            ),
+            ( // not
+                "a && !b",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    Not(VariableAccessor("b")))
+            ),
+            ( // fallout
+                "a && b?",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    FallOut(VariableAccessor("b")))
+            ),
+            ( // and 
+                "a && b && c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // or 
+                "a && b || c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            // __Or
+            ( // fallout
+                "a || !b",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    Not(VariableAccessor("b")))
+            ),
+            ( // less than
+                "a || b < c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.LessThan,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // greater than
+                "a || b > c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.GreaterThan,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // plus
+                "a || b + c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.Plus,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // minus
+                "a || b - c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.Minus,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // multiply
+                "a || b * c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.Multiply,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // divide
+                "a || b / c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.Divide,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // assignment
+                "a || b = c",
+                BinaryOperatorExpression(BinaryOperatorType.ValueAssignment,
+                    BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // equality check
+                "a || b == c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.EqualityCheck,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // member access
+                "a || b.c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    MemberAccess(
+                        VariableAccessor("b"),
+                        "c"))
+            ),
+            ( // not
+                "a || !b",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    Not(VariableAccessor("b")))
+            ),
+            ( // fallout
+                "a || b?",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    FallOut(VariableAccessor("b")))
+            ),
+            ( // and 
+                "a || b && c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // or 
+                "a || b || c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
             )
         }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedExpression });
     }

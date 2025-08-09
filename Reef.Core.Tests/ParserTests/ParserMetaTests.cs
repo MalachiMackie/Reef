@@ -145,7 +145,7 @@ public class ParserMetaTests
                             },
                             Right.ExpressionType: ExpressionType.ValueAccess
                         }
-                    } && a2 == binaryA.Value && b2 == binaryB.Value)).Should().BeGreaterThan(0);
+                    } && a2 == binaryA.Value && b2 == binaryB.Value)).Should().BeGreaterThan(0, $"{binaryA} - {binaryB}");
         }
 
         // a < b?

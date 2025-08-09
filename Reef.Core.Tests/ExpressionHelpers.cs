@@ -315,4 +315,27 @@ public static class ExpressionHelpers
     {
         return new ElseIf(checkExpression, elseBody);
     }
+    
+    public static BinaryOperatorExpression BinaryOperatorExpression(BinaryOperatorType type, IExpression left,
+        IExpression right)
+    {
+        return new BinaryOperatorExpression(new BinaryOperator(
+            type,
+            left,
+            right,
+            type switch
+            {
+                BinaryOperatorType.LessThan => Token.LeftAngleBracket(SourceSpan.Default),
+                BinaryOperatorType.GreaterThan => Token.RightAngleBracket(SourceSpan.Default),
+                BinaryOperatorType.Plus => Token.Plus(SourceSpan.Default),
+                BinaryOperatorType.Minus => Token.Dash(SourceSpan.Default),
+                BinaryOperatorType.Multiply => Token.Star(SourceSpan.Default),
+                BinaryOperatorType.Divide => Token.ForwardSlash(SourceSpan.Default),
+                BinaryOperatorType.EqualityCheck => Token.DoubleEquals(SourceSpan.Default),
+                BinaryOperatorType.ValueAssignment => Token.Equals(SourceSpan.Default),
+                BinaryOperatorType.BooleanAnd => Token.DoubleAmpersand(SourceSpan.Default),
+                BinaryOperatorType.BooleanOr => Token.DoubleBar(SourceSpan.Default),
+                _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+            }));
+    }
 }
