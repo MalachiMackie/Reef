@@ -649,6 +649,22 @@ public class ILCompile
 
             return;
         }
+
+        if (binaryOperatorExpression.BinaryOperator.OperatorType == BinaryOperatorType.BooleanAnd)
+        {
+            CompileBooleanAnd(
+                binaryOperatorExpression.BinaryOperator.Left ?? throw new InvalidOperationException("Expected left expression"),
+                binaryOperatorExpression.BinaryOperator.Right ?? throw new InvalidOperationException("Expected left expression"));
+            return;
+        }
+
+        if (binaryOperatorExpression.BinaryOperator.OperatorType == BinaryOperatorType.BooleanOr)
+        {
+            CompileBooleanOr(
+                binaryOperatorExpression.BinaryOperator.Left ?? throw new InvalidOperationException("Expected left expression"),
+                binaryOperatorExpression.BinaryOperator.Right ?? throw new InvalidOperationException("Expected left expression"));
+            return;
+        }
         
         CompileExpression(
             binaryOperatorExpression.BinaryOperator.Left ??
@@ -670,6 +686,46 @@ public class ILCompile
             _ => throw new ArgumentOutOfRangeException()
         };
         Instructions.Add(instruction);
+    }
+
+    private void CompileBooleanAnd(IExpression left, IExpression right)
+    {
+        CompileExpression(left);
+        var branchIfFalseIndex1 = Instructions.Count;
+        Instructions.Add(new BranchIfFalse(NextAddress(), null!));
+        CompileExpression(right);
+        var branchIfFalseIndex2 = Instructions.Count;
+        Instructions.Add(new BranchIfFalse(NextAddress(), null!));
+        Instructions.Add(new LoadBoolConstant(NextAddress(), true));
+        var branchToEndIndex = Instructions.Count;
+        Instructions.Add(new Branch(NextAddress(), null!));
+        Instructions[branchIfFalseIndex1] = new BranchIfFalse(Instructions[branchIfFalseIndex1].Address,
+            new InstructionAddress((uint)Instructions.Count));
+        Instructions[branchIfFalseIndex2] = new BranchIfFalse(Instructions[branchIfFalseIndex2].Address,
+            new InstructionAddress((uint)Instructions.Count));
+        Instructions.Add(new LoadBoolConstant(NextAddress(), false));
+        Instructions[branchToEndIndex] = new Branch(Instructions[branchToEndIndex].Address,
+            new InstructionAddress((uint)Instructions.Count));
+    }
+    
+    private void CompileBooleanOr(IExpression left, IExpression right)
+    {
+        CompileExpression(left);
+        var branchIfTrueIndex1 = Instructions.Count;
+        Instructions.Add(new BranchIfTrue(NextAddress(), null!));
+        CompileExpression(right);
+        var branchIfTrueIndex2 = Instructions.Count;
+        Instructions.Add(new BranchIfTrue(NextAddress(), null!));
+        Instructions.Add(new LoadBoolConstant(NextAddress(), false));
+        var branchToEndIndex = Instructions.Count;
+        Instructions.Add(new Branch(NextAddress(), null!));
+        Instructions[branchIfTrueIndex1] = new BranchIfTrue(Instructions[branchIfTrueIndex1].Address,
+            new InstructionAddress((uint)Instructions.Count));
+        Instructions[branchIfTrueIndex2] = new BranchIfTrue(Instructions[branchIfTrueIndex2].Address,
+            new InstructionAddress((uint)Instructions.Count));
+        Instructions.Add(new LoadBoolConstant(NextAddress(), true));
+        Instructions[branchToEndIndex] = new Branch(Instructions[branchToEndIndex].Address,
+            new InstructionAddress((uint)Instructions.Count));
     }
 
     private uint GetLocalIndex(TypeChecker.LocalVariable localVariable)

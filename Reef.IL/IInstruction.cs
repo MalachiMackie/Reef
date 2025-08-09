@@ -48,6 +48,11 @@ public record LoadLocal(InstructionAddress Address, uint LocalIndex) : IInstruct
 public record BranchIfFalse(InstructionAddress Address, InstructionAddress BranchTo) : IInstruction;
 
 /// <summary>
+/// Branch to the specified Instruction if the top of the evaluation stack is true
+/// </summary>
+public record BranchIfTrue(InstructionAddress Address, InstructionAddress BranchTo) : IInstruction;
+
+/// <summary>
 /// Copy the value from the top of the evaluation stack and pushes a copy
 /// </summary>
 /// <param name="Address"></param>

@@ -462,6 +462,54 @@ public static class SimpleExpressions
                                 Return(4)
                             ])
                     ])
+            },
+            {
+                "and",
+                "var a = true && true",
+                Module(
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference("bool"))
+                            ],
+                            instructions: [
+                                new LoadBoolConstant(Addr(0), true),
+                                new BranchIfFalse(Addr(1), Addr(6)),
+                                new LoadBoolConstant(Addr(2), true),
+                                new BranchIfFalse(Addr(3), Addr(6)),
+                                new LoadBoolConstant(Addr(4), true),
+                                new Branch(Addr(5), Addr(7)),
+                                new LoadBoolConstant(Addr(6), false),
+                                new StoreLocal(Addr(7), 0),
+                                LoadUnit(8),
+                                Return(9)
+                            ])
+                    ])
+            },
+            {
+                "or",
+                "var a = true || true",
+                Module(
+                    methods: [
+                        Method("!Main",
+                            isStatic: true,
+                            locals: [
+                                Local("a", ConcreteTypeReference("bool"))
+                            ],
+                            instructions: [
+                                new LoadBoolConstant(Addr(0), true),
+                                new BranchIfTrue(Addr(1), Addr(6)),
+                                new LoadBoolConstant(Addr(2), true),
+                                new BranchIfTrue(Addr(3), Addr(6)),
+                                new LoadBoolConstant(Addr(4), false),
+                                new Branch(Addr(5), Addr(7)),
+                                new LoadBoolConstant(Addr(6), true),
+                                new StoreLocal(Addr(7), 0),
+                                LoadUnit(8),
+                                Return(9)
+                            ])
+                    ])
             }
         };
     }
