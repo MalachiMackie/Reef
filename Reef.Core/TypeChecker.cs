@@ -704,10 +704,17 @@ public class TypeChecker
         {
             var patternVariables = TypeCheckPattern(valueType, arm.Pattern);
 
+            var anyMutableVariables = false;
             using var _ = PushScope();
             foreach (var variable in patternVariables)
             {
+                anyMutableVariables |= variable.Mutable;
                 variable.Instantiated = true;
+            }
+
+            if (anyMutableVariables)
+            {
+                ExpectAssignableExpression(matchExpression.Value);
             }
 
             if (arm.Expression is not null)
@@ -737,10 +744,17 @@ public class TypeChecker
         matchesExpression.ValueUseful = true;
         var valueType = TypeCheckExpression(matchesExpression.ValueExpression);
 
-        if (matchesExpression.Pattern is not null)
+        if (matchesExpression.Pattern is null)
         {
-            matchesExpression.DeclaredVariables =
-                TypeCheckPattern(valueType, matchesExpression.Pattern);
+            return InstantiatedClass.Boolean;
+        }
+
+        matchesExpression.DeclaredVariables =
+            TypeCheckPattern(valueType, matchesExpression.Pattern);
+
+        if (matchesExpression.DeclaredVariables.Any(x => x.Mutable))
+        {
+            ExpectAssignableExpression(matchesExpression.ValueExpression);
         }
 
         return InstantiatedClass.Boolean;
@@ -782,7 +796,7 @@ public class TypeChecker
                         variableName,
                         patternUnionType,
                         false,
-                        false);
+                        variantPattern.IsMutableVariable);
                     patternVariables.Add(variable);
                     if (!TryAddScopedVariable(variableName.StringValue, variable))
                     {
@@ -826,6 +840,12 @@ public class TypeChecker
                     {
                         continue;
                     }
+
+                    if (field.IsStatic)
+                    {
+                        _errors.Add(TypeCheckerError.StaticFieldInClassPattern(fieldName));
+                    }
+                    
                     var fieldType = field.Type;
                     
                     if (fieldPattern is null)
@@ -865,7 +885,7 @@ public class TypeChecker
                         variableName,
                         patternType,
                         false,
-                        false);
+                        classPattern.IsMutableVariable);
                     patternVariables.Add(variable);
                     if (!TryAddScopedVariable(variableName.StringValue, variable))
                     {
@@ -915,7 +935,6 @@ public class TypeChecker
 
                     if (fieldPattern is null)
                     {
-
                         var variable = new LocalVariable(
                             CurrentFunctionSignature,
                             fieldName,
@@ -941,7 +960,7 @@ public class TypeChecker
                         variableName,
                         patternType,
                         false,
-                        false);
+                        classVariantPattern.IsMutableVariable);
                     patternVariables.Add(variable);
                     if (!TryAddScopedVariable(variableName.StringValue, variable))
                     {
@@ -993,7 +1012,7 @@ public class TypeChecker
                         variableName,
                         patternType,
                         false,
-                        false);
+                        unionTupleVariantPattern.IsMutableVariable);
                     patternVariables.Add(variable);
                     if (!TryAddScopedVariable(variableName.StringValue, variable))
                     {
@@ -1003,14 +1022,14 @@ public class TypeChecker
 
                 break;
             }
-            case VariableDeclarationPattern { VariableName: var variableName }:
+            case VariableDeclarationPattern { VariableName: var variableName, IsMut: var variableMutable }:
             {
                 var variable = new LocalVariable(
                     CurrentFunctionSignature,
                     variableName,
                     valueTypeReference,
                     false,
-                    false);
+                    variableMutable);
                 patternVariables.Add(variable);
                 if (!TryAddScopedVariable(variableName.StringValue, variable))
                 {
@@ -1028,7 +1047,7 @@ public class TypeChecker
                 
                 if (variableName is not null)
                 {
-                    var variable = new LocalVariable(CurrentFunctionSignature, variableName, type, Instantiated: false, Mutable: false);
+                    var variable = new LocalVariable(CurrentFunctionSignature, variableName, type, Instantiated: false, Mutable: typePattern.IsVariableMutable);
                     patternVariables.Add(variable);
                     if (!TryAddScopedVariable(variableName.StringValue, variable))
                     {

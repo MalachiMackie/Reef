@@ -57,6 +57,15 @@ public class TypeCheckerTests
     {
         return new TheoryData<string>
         {
+            """
+            union MyUnion {
+                A(string)
+            }
+            var mut a = MyUnion::A("");
+            if (a matches MyUnion::A(var mut str)) {
+                str = "hi";
+            }
+            """,
             "var a: bool = true && true",
             "var a: bool = true || true",
             """
@@ -1342,6 +1351,196 @@ public class TypeCheckerTests
     {
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
+            {
+                "matches - mutable variable declaration on non mutable variable",
+                """
+                var a = 1;
+                if (a matches var mut b) {}
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "matches - type pattern mutable variable on non mutable variable",
+                """
+                var a = 1;
+                if (a matches int var mut b) {}
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "matches - class pattern mutable variable on non mutable variable",
+                """
+                class MyClass{} 
+                var a = new MyClass{};
+                if (a matches MyClass{} var mut b) {}
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "matches - class pattern field mutable variable on non mutable variable",
+                """
+                class MyClass {pub field MyField: string}
+                var a = new MyClass { MyField = "" };
+                if (a matches MyClass{MyField: var mut b}) {}
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "matches - mutable union variant pattern on non mutable variable",
+                """
+                union MyUnion{A}
+                var a = MyUnion::A;
+                if (a matches MyUnion::A var mut b) {
+                }
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "matches - mutable tuple variant pattern variable on non mutable variable",
+                """
+                union MyUnion { A(string) }
+                var a = MyUnion::A("");
+                if (a matches MyUnion::A(_) var mut b) {
+                }
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "matches - mutable variable declaration tuple member pattern on non mutable variable",
+                """
+                union MyUnion {
+                    A(string)
+                }
+                var a = MyUnion::A("");
+                if (a matches MyUnion::A(var mut str)) {
+                    str = "hi";
+                }
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "matches - mutable class variant pattern variable on non mutable variable",
+                """
+                union MyUnion {A{field MyField: string}}
+                var a = new MyUnion::A { MyField = "" };
+                if (a matches MyUnion::A{_} var mut b) {}
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "matches - mutable class variant field pattern on non mutable variable",
+                """
+                union MyUnion { A { field MyField: string } } 
+                var a = new MyUnion::A { MyField = "" };
+                if (a matches MyUnion::A { MyField: var mut b }) {}
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "match - mutable variable declaration on non mutable variable",
+                """
+                var a = 1;
+                match (a) { var mut b => {}}
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "match - type pattern mutable variable on non mutable variable",
+                """
+                var a = 1;
+                match (a) { int var mut b => {}}
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "match - class pattern mutable variable on non mutable variable",
+                """
+                class MyClass{} 
+                var a = new MyClass{};
+                match (a) { MyClass{} var mut b => {}}
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "match - class pattern field mutable variable on non mutable variable",
+                """
+                class MyClass {pub field MyField: string}
+                var a = new MyClass { MyField = "" };
+                match (a) { MyClass{MyField: var mut b} => {}}
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "match - mutable union variant pattern on non mutable variable",
+                """
+                union MyUnion{A}
+                var a = MyUnion::A;
+                match (a) { MyUnion::A var mut b => {}}
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "match - mutable tuple variant pattern variable on non mutable variable",
+                """
+                union MyUnion { A(string) }
+                var a = MyUnion::A("");
+                match (a) { MyUnion::A(_) var mut b => {}}
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "match - mutable variable declaration tuple member pattern on non mutable variable",
+                """
+                union MyUnion {
+                    A(string)
+                }
+                var a = MyUnion::A("");
+                match (a) { MyUnion::A(var mut str) => {}}
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "match - mutable class variant pattern variable on non mutable variable",
+                """
+                union MyUnion {A{field MyField: string}}
+                var a = new MyUnion::A { MyField = "" };
+                match (a) { MyUnion::A{_} var mut b => {}}
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "match - mutable class variant field pattern on non mutable variable",
+                """
+                union MyUnion { A { field MyField: string } } 
+                var a = new MyUnion::A { MyField = "" };
+                match (a) {MyUnion::A { MyField: var mut b } => {}} 
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "mutating non mutable pattern variable",
+                """
+                union MyUnion {
+                    A(string)
+                }
+                var a = MyUnion::A("");
+                if (a matches MyUnion::A(var str)) {
+                    str = "hi";
+                }
+                """,
+                [TypeCheckerError.NonMutableAssignment("str", SourceRange.Default)]
+            },
+            {
+                "static field used in class pattern",
+                """
+                class MyClass {
+                    pub static field MyField: string = ""
+                }
+                var a = new MyClass{};
+                if (a matches MyClass { MyField }){}
+                """,
+                [TypeCheckerError.StaticFieldInClassPattern(Identifier("MyField"))]
+            },
             {
                 "non bool used in or",
                 "var a = 1 || true",

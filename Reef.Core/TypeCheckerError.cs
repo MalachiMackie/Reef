@@ -306,6 +306,14 @@ public record TypeCheckerError
             sourceRange,
             "Cannot create union class variant without initializer");
     }
+
+    public static TypeCheckerError StaticFieldInClassPattern(StringToken identifier)
+    {
+        return new(
+            TypeCheckerErrorType.StaticFieldInClassPattern,
+            new SourceRange(identifier.SourceSpan, identifier.SourceSpan),
+            $"Cannot reference static field {identifier.StringValue} in class pattern");
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -353,5 +361,6 @@ public enum TypeCheckerErrorType
     GenericTypeArgumentsOnNonFunctionValue,
     StaticMemberAccessOnInstanceMember,
     InstanceMemberAccessOnStaticMember,
-    UnionClassVariantWithoutInitializer
+    UnionClassVariantWithoutInitializer,
+    StaticFieldInClassPattern
 }

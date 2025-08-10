@@ -1002,7 +1002,7 @@ public class ILCompile
         {
             Instructions.Add(new LoadArgument(NextAddress(), 0));
         }
-        
+
         // load all the arguments 
         foreach (var argument in methodCallExpression.MethodCall.ArgumentList)
         {
