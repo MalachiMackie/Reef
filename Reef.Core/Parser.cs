@@ -1233,17 +1233,34 @@ public sealed class Parser : IDisposable
             return new DiscardPattern(new SourceRange(start, end));
         }
 
+        var isMut = false;
+
         if (Current.Type == TokenType.Var)
         {
-            if (!ExpectNextIdentifier(out var variableName))
+            if (!MoveNext())
             {
+                _errors.Add(ParserError.ExpectedToken(null, TokenType.Mut, TokenType.Identifier));
                 return null;
             }
 
+            if (Current.Type == TokenType.Mut)
+            {
+                isMut = true;
+                MoveNext();
+            }
+
+            if (!_hasNext || Current is not StringToken{Type: TokenType.Identifier} variableName)
+            {
+                _errors.Add(ParserError.ExpectedToken(
+                    _hasNext ? Current : null,
+                    isMut ? [TokenType.Identifier] : [TokenType.Identifier, TokenType.Mut]));
+                return null;
+            }
+            
             var end = Current.SourceSpan;
             MoveNext();
 
-            return new VariableDeclarationPattern(variableName, new SourceRange(start, end));
+            return new VariableDeclarationPattern(variableName, new SourceRange(start, end), isMut);
         }
 
         if (Current.Type != TokenType.Identifier)
@@ -1257,7 +1274,7 @@ public sealed class Parser : IDisposable
 
         if (!_hasNext)
         {
-            return new TypePattern(type, null, type.SourceRange with { Start = start });
+            return new TypePattern(type, null, false, type.SourceRange with { Start = start });
         }
 
         StringToken? variantName = null;
@@ -1267,7 +1284,7 @@ public sealed class Parser : IDisposable
             if (!ExpectNextIdentifier(out variantName))
             {
                 MoveNext();
-                return new UnionVariantPattern(type, null, null, SourceRange.Default);
+                return new UnionVariantPattern(type, null, null, false, SourceRange.Default);
             }
             
             MoveNext();
@@ -1275,14 +1292,42 @@ public sealed class Parser : IDisposable
 
         if (!_hasNext && variantName is not null)
         {
-            return new UnionVariantPattern(type, variantName, null, new SourceRange(start, variantName.SourceSpan));
+            return new UnionVariantPattern(type, variantName, null, false, new SourceRange(start, variantName.SourceSpan));
         }
 
         if (Current.Type == TokenType.Var)
         {
             var endToken = Current;
-            ExpectNextIdentifier(out var variableName);
+            if (!MoveNext())
+            {
+                _errors.Add(ParserError.ExpectedToken(null, TokenType.Mut, TokenType.Identifier));
+                return variantName is null
+                    ? new TypePattern(type, null, false, new SourceRange(start, endToken.SourceSpan))
+                    : new UnionVariantPattern(type, variantName, null, false, new SourceRange(start, endToken.SourceSpan));
+            }
 
+            endToken = Current;
+            if (Current.Type == TokenType.Mut)
+            {
+                isMut = true;
+                MoveNext();
+            }
+
+            StringToken? variableName = null;
+            if (!_hasNext || Current is not StringToken { Type: TokenType.Identifier } found)
+            {
+                _errors.Add(ParserError.ExpectedToken(
+                    _hasNext ? Current : null,
+                    isMut ? [TokenType.Identifier] : [TokenType.Identifier, TokenType.Mut]));
+                
+                // couldn't find identifier, so set isMut to false
+                isMut = false;
+            }
+            else
+            {
+                variableName = found;
+            }
+            
             if (variableName is not null)
             {
                 endToken = variableName;
@@ -1290,18 +1335,17 @@ public sealed class Parser : IDisposable
 
             if (_hasNext)
             {
-                endToken = Current;
                 MoveNext();
             }
 
             return variantName is null
-                ? new TypePattern(type, variableName, new SourceRange(start, endToken.SourceSpan))
-                : new UnionVariantPattern(type, variantName, variableName, new SourceRange(start, endToken.SourceSpan));
+                ? new TypePattern(type, variableName, isMut, new SourceRange(start, endToken.SourceSpan))
+                : new UnionVariantPattern(type, variantName, variableName, isMut, new SourceRange(start, endToken.SourceSpan));
         }
 
         if (variantName is not null && Current.Type == TokenType.LeftParenthesis)
         {
-            var leftParenthesis = Current;
+            var endToken = Current;
             var (patterns, patternsLastToken) = GetCommaSeparatedList(
                 TokenType.RightParenthesis,
                 expectedTokens: [],
@@ -1310,22 +1354,57 @@ public sealed class Parser : IDisposable
                 expectPattern: true,
                 GetPattern);
 
+            if (patternsLastToken is not null)
+            {
+                endToken = patternsLastToken;
+            }
+
             StringToken? variableName = null;
 
             if (_hasNext && Current.Type == TokenType.Var)
             {
-                ExpectNextIdentifier(out variableName);
+                endToken = Current;
+                if (!MoveNext())
+                {
+                    _errors.Add(ParserError.ExpectedToken(null, TokenType.Mut, TokenType.Identifier));
+                    return new UnionTupleVariantPattern(type, variantName, patterns, null, false,
+                        new SourceRange(start, endToken.SourceSpan));
+                }
+
+                endToken = Current;
                 
+                if (Current.Type == TokenType.Mut)
+                {
+                    isMut = true;
+                    MoveNext();
+                }
+
+                if (!_hasNext || Current is not StringToken { Type: TokenType.Identifier } found)
+                {
+                    _errors.Add(ParserError.ExpectedToken(
+                        _hasNext ? Current : null,
+                        isMut ? [TokenType.Identifier] : [TokenType.Identifier, TokenType.Mut]));
+                    variableName = null;
+                    
+                    // couldn't find identifier, so set isMut to false
+                    isMut = false;
+                }
+                else
+                {
+                    variableName = found;
+                    endToken = variableName;
+                }
+
                 MoveNext();
             }
 
-            return new UnionTupleVariantPattern(type, variantName, patterns, variableName,
-                new SourceRange(start, variableName?.SourceSpan ?? patternsLastToken?.SourceSpan ?? leftParenthesis.SourceSpan));
+            return new UnionTupleVariantPattern(type, variantName, patterns, variableName, isMut,
+                new SourceRange(start, endToken.SourceSpan));
         }
 
         if (Current.Type == TokenType.LeftBrace)
         {
-            var leftBrace = Current;
+            var lastToken = Current;
             var (fieldPatterns, fieldsLastToken) = GetCommaSeparatedList(
                 TokenType.RightBrace,
                 expectedTokens: [TokenType.Underscore, TokenType.Identifier],
@@ -1355,7 +1434,7 @@ public sealed class Parser : IDisposable
 
                     if (!MoveNext())
                     {
-                        return new FieldPattern(fieldName, new VariableDeclarationPattern(fieldName, new SourceRange(fieldName.SourceSpan, fieldName.SourceSpan)));
+                        return new FieldPattern(fieldName, new VariableDeclarationPattern(fieldName, new SourceRange(fieldName.SourceSpan, fieldName.SourceSpan), false));
                     }
 
                     IPattern? pattern = null;
@@ -1378,11 +1457,16 @@ public sealed class Parser : IDisposable
                     else
                     {
                         pattern = new VariableDeclarationPattern(fieldName,
-                            new SourceRange(fieldName.SourceSpan, fieldName.SourceSpan));
+                            new SourceRange(fieldName.SourceSpan, fieldName.SourceSpan), false);
                     }
 
                     return new FieldPattern(fieldName, pattern);
                 });
+
+            if (fieldsLastToken is not null)
+            {
+                lastToken = fieldsLastToken;
+            }
 
             var discardRemainingFields = fieldPatterns.Any(x => x is { FieldName.StringValue.Length: 0, Pattern: DiscardPattern });
             
@@ -1393,25 +1477,54 @@ public sealed class Parser : IDisposable
 
             if (_hasNext && Current.Type == TokenType.Var)
             {
-                if (ExpectNextIdentifier(out variableName))
+                lastToken = Current;
+                if (!MoveNext())
                 {
+                    _errors.Add(ParserError.ExpectedToken(null, TokenType.Mut, TokenType.Identifier));
+                    return variantName is not null
+                        ? new UnionClassVariantPattern(type, variantName, newFieldPatterns, discardRemainingFields,
+                            variableName, isMut,
+                            new SourceRange(start, lastToken.SourceSpan))
+                        : new ClassPattern(type, newFieldPatterns, discardRemainingFields, variableName, isMut,
+                            new SourceRange(start, lastToken.SourceSpan));
+                }
+
+                if (Current.Type == TokenType.Mut)
+                {
+                    isMut = true;
                     MoveNext();
                 }
+
+                if (!_hasNext || Current is not StringToken { Type: TokenType.Identifier } found)
+                {
+                    _errors.Add(ParserError.ExpectedToken(
+                        _hasNext ? Current : null,
+                        isMut ? [TokenType.Identifier] : [TokenType.Identifier, TokenType.Mut]));
+                    
+                    // couldn't find identifier, so set isMut to false
+                    isMut = false;
+                }
+                else
+                {
+                    variableName = found;
+                    lastToken = variableName;
+                }
+                MoveNext();
             }
 
             return variantName is not null
-                ? new UnionClassVariantPattern(type, variantName, newFieldPatterns, discardRemainingFields, variableName,
-                    new SourceRange(start, fieldsLastToken?.SourceSpan ?? leftBrace.SourceSpan))
-                : new ClassPattern(type, newFieldPatterns, discardRemainingFields, variableName,
-                    new SourceRange(start, fieldsLastToken?.SourceSpan ?? leftBrace.SourceSpan));
+                ? new UnionClassVariantPattern(type, variantName, newFieldPatterns, discardRemainingFields, variableName, isMut,
+                    new SourceRange(start, lastToken.SourceSpan))
+                : new ClassPattern(type, newFieldPatterns, discardRemainingFields, variableName, isMut,
+                    new SourceRange(start, lastToken.SourceSpan));
         }
 
         if (variantName is not null)
         {
-            return new UnionVariantPattern(type, variantName, null, new SourceRange(start, variantName.SourceSpan));
+            return new UnionVariantPattern(type, variantName, null, false, new SourceRange(start, variantName.SourceSpan));
         }
 
-        return new TypePattern(type, null, type.SourceRange);
+        return new TypePattern(type, null, false, type.SourceRange);
     }
 
     private ValueAccessorExpression GetLiteralExpression()

@@ -42,6 +42,19 @@ public static class ExpressionHelpers
         return new BlockExpression(new Block(expressions ?? [], []), SourceRange.Default);
     }
 
+    public static LangProgram Program(
+        IReadOnlyList<IExpression>? expressions = null,
+        IReadOnlyList<LangFunction>? functions = null,
+        IReadOnlyList<ProgramClass>? classes = null,
+        IReadOnlyList<ProgramUnion>? unions = null)
+    {
+        return new LangProgram(
+            expressions ?? [],
+            functions ?? [],
+            classes ?? [],
+            unions ?? []);
+    }
+
     public static VariableDeclarationExpression VariableDeclaration(
         string name,
         IExpression? value = null,
@@ -216,21 +229,28 @@ public static class ExpressionHelpers
 
     public static DiscardPattern DiscardPattern() => new (SourceRange.Default);
 
-    public static UnionVariantPattern UnionVariantPattern(ITypeIdentifier unionType, string? variantName = null, string? variableName = null)
+    public static UnionVariantPattern UnionVariantPattern(ITypeIdentifier unionType, string? variantName = null, string? variableName = null, bool isMutableVariable = false)
     {
         return new UnionVariantPattern(
             unionType,
             variantName is null ? null : Token.Identifier(variantName, SourceSpan.Default),
             variableName is null ? null : Token.Identifier(variableName, SourceSpan.Default),
+            isMutableVariable,
             SourceRange.Default);
     }
 
-    public static UnionTupleVariantPattern UnionTupleVariantPattern(ITypeIdentifier unionType, string variantName, IReadOnlyList<IPattern>? patterns = null, string? variableName = null)
+    public static UnionTupleVariantPattern UnionTupleVariantPattern(
+        ITypeIdentifier unionType,
+        string variantName,
+        IReadOnlyList<IPattern>? patterns = null,
+        string? variableName = null,
+        bool isMutableVariable = false)
     {
         return new UnionTupleVariantPattern(unionType,
             Token.Identifier(variantName, SourceSpan.Default),
             patterns ?? [],
             variableName is null ? null : Token.Identifier(variableName, SourceSpan.Default),
+            isMutableVariable,
             SourceRange.Default);
     }
     
@@ -239,7 +259,8 @@ public static class ExpressionHelpers
         string variantName,
         IReadOnlyList<(string, IPattern?)>? patterns = null,
         string? variableName = null,
-        bool fieldsDiscarded = false)
+        bool fieldsDiscarded = false,
+        bool isMutableVariable = false)
     {
         return new UnionClassVariantPattern(
             unionType,
@@ -247,6 +268,7 @@ public static class ExpressionHelpers
             patterns?.Select(x => new FieldPattern(Token.Identifier(x.Item1, SourceSpan.Default), x.Item2)).ToArray() ?? [],
             fieldsDiscarded,
             variableName is null ? null : Token.Identifier(variableName, SourceSpan.Default),
+            isMutableVariable,
             SourceRange.Default);
     }
 
@@ -254,7 +276,8 @@ public static class ExpressionHelpers
         ITypeIdentifier type,
         IReadOnlyList<(string, IPattern?)>? patterns = null,
         string? variableName = null,
-        bool fieldsDiscarded = false)
+        bool fieldsDiscarded = false,
+        bool isMutableVariable = false)
     {
         return new ClassPattern(
             type,
@@ -262,6 +285,7 @@ public static class ExpressionHelpers
                 new FieldPattern(Token.Identifier(x.Item1, SourceSpan.Default), x.Item2)).ToArray() ?? [],
             fieldsDiscarded,
             variableName is null ? null : Token.Identifier(variableName, SourceSpan.Default),
+            isMutableVariable,
             SourceRange.Default);
     }
 
@@ -288,18 +312,19 @@ public static class ExpressionHelpers
         return new FnTypeIdentifierParameter(parameterType, isMut);
     }
     
-    public static TypePattern TypePattern(ITypeIdentifier type, string? variableName = null)
+    public static TypePattern TypePattern(ITypeIdentifier type, string? variableName = null, bool isMutableVariable = false)
     {
         return new TypePattern(
             type,
             variableName is null ? null : Token.Identifier(variableName, SourceSpan.Default),
+            isMutableVariable,
             SourceRange.Default);
     }
 
-    public static VariableDeclarationPattern VariableDeclarationPattern(string variableName)
+    public static VariableDeclarationPattern VariableDeclarationPattern(string variableName, bool isMut = false)
     {
         return new VariableDeclarationPattern(
-            Token.Identifier(variableName, SourceSpan.Default), SourceRange.Default);
+            Token.Identifier(variableName, SourceSpan.Default), SourceRange.Default, isMut);
     }
 
     public static IfExpressionExpression IfExpression(

@@ -31,9 +31,8 @@ public static class PopExpressionTestCases
                 """,
                 new MatchExpression(VariableAccessor("a"), [
                     new MatchArm(
-                        new TypePattern(
-                            NamedTypeIdentifier("SomeClass"),
-                            null, SourceRange.Default),
+                        TypePattern(
+                            NamedTypeIdentifier("SomeClass")),
                         VariableAccessor("b")),
                     new MatchArm(new DiscardPattern(SourceRange.Default), VariableAccessor("b"))
                 ], SourceRange.Default)
@@ -46,11 +45,9 @@ public static class PopExpressionTestCases
                 """,
                 new MatchExpression(VariableAccessor("a"), [
                     new MatchArm(
-                        new ClassPattern(
+                        ClassPattern(
                             NamedTypeIdentifier("SomeClass"),
-                            [new FieldPattern(Identifier("SomeField"), VariableDeclarationPattern("SomeField"))],
-                            false,
-                            null, SourceRange.Default),
+                            [("SomeField", VariableDeclarationPattern("SomeField"))]),
                         VariableAccessor("b")),
                 ], SourceRange.Default)
             ),
@@ -62,27 +59,22 @@ public static class PopExpressionTestCases
                 """,
                 new MatchExpression(VariableAccessor("a"), [
                     new MatchArm(
-                        new UnionClassVariantPattern(
+                        UnionClassVariantPattern(
                             NamedTypeIdentifier("SomeUnion"),
-                            Identifier("B"),
+                            "B",
                             [
-                                new FieldPattern(
-                                    Identifier("SomeField"),
-                                    new UnionClassVariantPattern(
+                                (
+                                    "SomeField",
+                                    UnionClassVariantPattern(
                                         NamedTypeIdentifier("OtherUnion"),
-                                        Identifier("C"),
+                                        "C",
                                         [
-                                            new FieldPattern(
-                                                Identifier("OtherField"),
-                                                new VariableDeclarationPattern(
-                                                    Identifier("d"), SourceRange.Default)
+                                            (
+                                                "OtherField",
+                                                VariableDeclarationPattern("d")
                                             )
-                                        ],
-                                        false,
-                                        null, SourceRange.Default))
-                            ],
-                            false,
-                            null, SourceRange.Default),
+                                        ]))
+                            ]),
                         VariableAccessor("d")),
                 ], SourceRange.Default)
             ),
@@ -91,16 +83,16 @@ public static class PopExpressionTestCases
                 new IfExpressionExpression(new IfExpression(
                     new MatchesExpression(
                         VariableAccessor("a"),
-                        new UnionTupleVariantPattern(
+                        UnionTupleVariantPattern(
                             NamedTypeIdentifier("OtherUnion"),
-                            Identifier("B"),
+                            "B",
                             [
-                                new UnionVariantPattern(
+                                UnionVariantPattern(
                                     NamedTypeIdentifier("MyUnion"),
-                                    Identifier("A"),
-                                    Identifier("c"), SourceRange.Default)
+                                    "A",
+                                    "c")
                             ],
-                            Identifier("b"), SourceRange.Default), SourceRange.Default),
+                            "b"), SourceRange.Default),
                     new BlockExpression(new Block([], []), SourceRange.Default),
                     [],
                     null), SourceRange.Default)
@@ -113,307 +105,242 @@ public static class PopExpressionTestCases
                         NamedTypeIdentifier("bool"),
                         new MatchesExpression(
                             VariableAccessor("a"),
-                            new TypePattern(
-                                IntType(),
-                                null, SourceRange.Default)
-                            , SourceRange.Default))
-                    , SourceRange.Default)
+                            TypePattern(IntType()),
+                            SourceRange.Default)), SourceRange.Default)
             ),
             (
                 "a matches string",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new TypePattern(
-                        NamedTypeIdentifier("string"),
-                        null
-                        , SourceRange.Default)
-                    , SourceRange.Default)
+                    TypePattern(NamedTypeIdentifier("string")), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionVariantPattern(
-                        NamedTypeIdentifier("MyUnion"),
-                        Identifier("A"),
-                        null
-                        , SourceRange.Default)
-                    , SourceRange.Default)
+                    UnionVariantPattern(NamedTypeIdentifier("MyUnion"), "A"), SourceRange.Default)
             ),
             (
                 "a matches var a",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new VariableDeclarationPattern(Identifier("a"), SourceRange.Default)
-                    , SourceRange.Default)
+                    VariableDeclarationPattern("a"), SourceRange.Default)
             ),
             (
                 "a matches _",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new DiscardPattern(SourceRange.Default)
-                    , SourceRange.Default)
+                    DiscardPattern(), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(var b)",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionTupleVariantPattern(
+                    UnionTupleVariantPattern(
                         NamedTypeIdentifier("MyUnion"),
-                        Identifier("A"),
+                        "A",
                         [
-                            new VariableDeclarationPattern(Identifier("b"),
-                                SourceRange.Default)
-                        ],
-                        null, SourceRange.Default)
-                    , SourceRange.Default)
+                            VariableDeclarationPattern("b")
+                        ]), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(var b) var c",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionTupleVariantPattern(
+                    UnionTupleVariantPattern(
                         NamedTypeIdentifier("MyUnion"),
-                        Identifier("A"),
+                        "A",
                         [
-                            new VariableDeclarationPattern(Identifier("b"),
-                                SourceRange.Default)
+                            VariableDeclarationPattern("b")
                         ],
-                        Identifier("c"), SourceRange.Default)
-                    , SourceRange.Default)
+                        "c"), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(var b, var c, _)",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionTupleVariantPattern(
+                    UnionTupleVariantPattern(
                         NamedTypeIdentifier("MyUnion"),
-                        Identifier("A"),
+                        "A",
                         [
-                            new VariableDeclarationPattern(Identifier("b"),
-                                SourceRange.Default),
-                            new VariableDeclarationPattern(Identifier("c"),
-                                SourceRange.Default),
+                            VariableDeclarationPattern("b"),
+                            VariableDeclarationPattern("c"),
                             new DiscardPattern(SourceRange.Default)
-                        ], null, SourceRange.Default)
-                    , SourceRange.Default)
+                        ]), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(OtherUnion::C)",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionTupleVariantPattern(
+                    UnionTupleVariantPattern(
                         NamedTypeIdentifier("MyUnion"),
-                        Identifier("A"),
+                        "A",
                         [
-                            new UnionVariantPattern(
+                            UnionVariantPattern(
                                 NamedTypeIdentifier("OtherUnion"),
-                                Identifier("C"),
-                                null
-                                , SourceRange.Default)
-                        ],
-                        null, SourceRange.Default)
-                    , SourceRange.Default)
+                                "C")
+                        ]), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(OtherUnion::C var c)",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionTupleVariantPattern(
+                    UnionTupleVariantPattern(
                         NamedTypeIdentifier("MyUnion"),
-                        Identifier("A"),
+                        "A",
                         [
-                            new UnionVariantPattern(
+                            UnionVariantPattern(
                                 NamedTypeIdentifier("OtherUnion"),
-                                Identifier("C"),
-                                Identifier("c")
-                                , SourceRange.Default)
-                        ],
-                        null, SourceRange.Default)
-                    , SourceRange.Default)
+                                "C",
+                                "c")
+                        ]), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A(OtherUnion::C(var d))",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionTupleVariantPattern(
+                    UnionTupleVariantPattern(
                         NamedTypeIdentifier("MyUnion"),
-                        Identifier("A"),
+                        "A",
                         [
-                            new UnionTupleVariantPattern(
+                            UnionTupleVariantPattern(
                                 NamedTypeIdentifier("OtherUnion"),
-                                Identifier("C"),
+                                "C",
                                 [
-                                    new VariableDeclarationPattern(Identifier("d"),
-                                        SourceRange.Default)
-                                ],
-                                null
-                                , SourceRange.Default)
-                        ],
-                        null, SourceRange.Default)
-                    , SourceRange.Default)
+                                    VariableDeclarationPattern("d")
+                                ])
+                        ]), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField }",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionClassVariantPattern(
+                    UnionClassVariantPattern(
                         NamedTypeIdentifier("MyUnion"),
-                        Identifier("A"),
+                        "A",
                         [
-                            new FieldPattern(Identifier("MyField"), VariableDeclarationPattern("MyField"))
-                        ],
-                        false,
-                        null
-                        , SourceRange.Default), SourceRange.Default)
+                            ("MyField", VariableDeclarationPattern("MyField"))
+                        ]), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField } var a",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionClassVariantPattern(
+                    UnionClassVariantPattern(
                         NamedTypeIdentifier("MyUnion"),
-                        Identifier("A"),
+                        "A",
                         [
-                            new FieldPattern(Identifier("MyField"), VariableDeclarationPattern("MyField"))
+                            ("MyField", VariableDeclarationPattern("MyField"))
                         ],
-                        false,
-                        Identifier("a")
-                        , SourceRange.Default), SourceRange.Default)
+                        "a"), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField, OtherField: var f }",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionClassVariantPattern(
+                    UnionClassVariantPattern(
                         NamedTypeIdentifier("MyUnion"),
-                        Identifier("A"),
+                        "A",
                         [
-                            new FieldPattern(Identifier("MyField"), VariableDeclarationPattern("MyField")),
-                            new FieldPattern(
-                                Identifier("OtherField"),
-                                new VariableDeclarationPattern(Identifier("f"),
-                                    SourceRange.Default)
+                            ("MyField", VariableDeclarationPattern("MyField")),
+                            (
+                                "OtherField",
+                                VariableDeclarationPattern("f")
                             )
-                        ],
-                        false,
-                        null
-                        , SourceRange.Default), SourceRange.Default)
+                        ]), SourceRange.Default)
             ),
             (
                 "a matches MyClass { MyField }",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new ClassPattern(
+                    ClassPattern(
                         NamedTypeIdentifier("MyClass"),
                         [
-                            new FieldPattern(Identifier("MyField"), VariableDeclarationPattern("MyField"))
-                        ],
-                        false,
-                        null
-                        , SourceRange.Default), SourceRange.Default)
+                            ("MyField", VariableDeclarationPattern("MyField"))
+                        ]), SourceRange.Default)
             ),
             (
                 "a matches MyClass { MyField } var a",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new ClassPattern(
+                    ClassPattern(
                         NamedTypeIdentifier("MyClass"),
                         [
-                            new FieldPattern(Identifier("MyField"), VariableDeclarationPattern("MyField"))
+                            ("MyField", VariableDeclarationPattern("MyField"))
                         ],
-                        false,
-                        Identifier("a")
-                        , SourceRange.Default), SourceRange.Default)
+                        "a"), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField, _ }",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionClassVariantPattern(
+                    UnionClassVariantPattern(
                         NamedTypeIdentifier("MyUnion"),
-                        Identifier("A"),
+                        "A",
                         [
-                            new FieldPattern(Identifier("MyField"), VariableDeclarationPattern("MyField"))
+                            ("MyField", VariableDeclarationPattern("MyField"))
                         ],
-                        true,
-                        null
-                        , SourceRange.Default), SourceRange.Default)
+                        fieldsDiscarded: true), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField: MyUnion::B var f }",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionClassVariantPattern(
+                    UnionClassVariantPattern(
                         NamedTypeIdentifier("MyUnion"),
-                        Identifier("A"),
+                        "A",
                         [
-                            new FieldPattern(
-                                Identifier("MyField"),
-                                new UnionVariantPattern(
+                            (
+                                "MyField",
+                                UnionVariantPattern(
                                     NamedTypeIdentifier("MyUnion"),
-                                    Identifier("B"),
-                                    Identifier("f"), SourceRange.Default))
-                        ],
-                        false,
-                        null
-                        , SourceRange.Default), SourceRange.Default)
+                                    "B",
+                                    "f"))
+                        ]), SourceRange.Default)
             ),
             (
                 "a matches MyUnion::A { MyField: MyUnion::B(var c) }",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new UnionClassVariantPattern(
+                    UnionClassVariantPattern(
                         NamedTypeIdentifier("MyUnion"),
-                        Identifier("A"),
+                        "A",
                         [
-                            new FieldPattern(
-                                Identifier("MyField"),
-                                new UnionTupleVariantPattern(
+                            (
+                                "MyField",
+                                UnionTupleVariantPattern(
                                     NamedTypeIdentifier("MyUnion"),
-                                    Identifier("B"),
+                                    "B",
                                     [
-                                        new VariableDeclarationPattern(Identifier("c"),
-                                            SourceRange.Default)
-                                    ],
-                                    null, SourceRange.Default))
-                        ],
-                        false,
-                        null
-                        , SourceRange.Default), SourceRange.Default)
+                                        VariableDeclarationPattern("c")
+                                    ]))
+                        ]), SourceRange.Default)
             ),
             (
                 "a matches MyClass { MyField, _ }",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new ClassPattern(
+                    ClassPattern(
                         NamedTypeIdentifier("MyClass"),
                         [
-                            new FieldPattern(Identifier("MyField"), VariableDeclarationPattern("MyField"))
+                            ("MyField", VariableDeclarationPattern("MyField"))
                         ],
-                        true,
-                        null
-                        , SourceRange.Default)
-                    , SourceRange.Default)
+                        fieldsDiscarded: true), SourceRange.Default)
             ),
             (
                 "a matches MyClass",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new TypePattern(
-                        NamedTypeIdentifier("MyClass"),
-                        null
-                        , SourceRange.Default)
-                    , SourceRange.Default)
+                    TypePattern(
+                        NamedTypeIdentifier("MyClass")), SourceRange.Default)
             ),
             (
                 "a matches MyClass var b",
                 new MatchesExpression(
                     VariableAccessor("a"),
-                    new TypePattern(
+                    TypePattern(
                         NamedTypeIdentifier("MyClass"),
-                        Identifier("b"),
-                        SourceRange.Default),
+                        "b"),
                     SourceRange.Default)
             ),
 
@@ -862,8 +789,7 @@ public static class PopExpressionTestCases
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("MyType"),
                         Identifier("StaticField"), null)),
-                    Identifier("InstanceField")
-                , null))),
+                    Identifier("InstanceField"), null))),
             ("string::CallMethod",
                 new StaticMemberAccessExpression(new StaticMemberAccess(
                     NamedTypeIdentifier("string"),
@@ -1026,8 +952,7 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     new MemberAccessExpression(new MemberAccess(
                         VariableAccessor("b"),
-                        Identifier("c")
-                    , null)),
+                        Identifier("c"), null)),
                     Token.RightAngleBracket(SourceSpan.Default)))
             ),
             ( // static member access
@@ -1209,8 +1134,7 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("b"),
-                        Identifier("c")
-                    , null)),
+                        Identifier("c"), null)),
                     Token.LeftAngleBracket(SourceSpan.Default)))
             ),
             ( // not
@@ -1374,8 +1298,7 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("b"),
-                        Identifier("c")
-                    , null)),
+                        Identifier("c"), null)),
                     Token.Star(SourceSpan.Default)))
             ),
             ( // not
@@ -1547,8 +1470,7 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("b"),
-                        Identifier("c")
-                    , null)),
+                        Identifier("c"), null)),
                     Token.ForwardSlash(SourceSpan.Default)))
             ),
             ( // not
@@ -1720,8 +1642,7 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("b"),
-                        Identifier("c")
-                    , null)),
+                        Identifier("c"), null)),
                     Token.Plus(SourceSpan.Default)))
             ),
             ( // not
@@ -1893,8 +1814,7 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("b"),
-                        Identifier("c")
-                    , null)),
+                        Identifier("c"), null)),
                     Token.Dash(SourceSpan.Default)))
             ),
             ( // not
@@ -2078,8 +1998,7 @@ public static class PopExpressionTestCases
                             Identifier("b"), null)),
                         new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
                             Identifier("c"), null)),
-                        Token.LeftAngleBracket(SourceSpan.Default)))
-                    , Token.Equals(SourceSpan.Default)))
+                        Token.LeftAngleBracket(SourceSpan.Default))), Token.Equals(SourceSpan.Default)))
             ),
             ( // multiply
                 "a = b * c",
@@ -2177,8 +2096,7 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("b"),
-                        Identifier("c")
-                    , null)),
+                        Identifier("c"), null)),
                     Token.Equals(SourceSpan.Default)))
             ),
             ( // not
@@ -2350,8 +2268,7 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("b"),
-                        Identifier("c")
-                    , null)),
+                        Identifier("c"), null)),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
             ( // not
@@ -2498,8 +2415,7 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.GreaterThan,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("a"),
-                        Identifier("b")
-                    , null)),
+                        Identifier("b"), null)),
                     VariableAccessor("c"),
                     Token.RightAngleBracket(SourceSpan.Default)))
             ),
@@ -2509,8 +2425,7 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.LessThan,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("a"),
-                        Identifier("b")
-                    , null)),
+                        Identifier("b"), null)),
                     VariableAccessor("c"),
                     Token.LeftAngleBracket(SourceSpan.Default)))
             ),
@@ -2520,8 +2435,7 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Multiply,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("a"),
-                        Identifier("b")
-                    , null)),
+                        Identifier("b"), null)),
                     VariableAccessor("c"),
                     Token.Star(SourceSpan.Default)))
             ),
@@ -2531,8 +2445,7 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Divide,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("a"),
-                        Identifier("b")
-                    , null)),
+                        Identifier("b"), null)),
                     VariableAccessor("c"),
                     Token.ForwardSlash(SourceSpan.Default)))
             ),
@@ -2542,8 +2455,7 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Plus,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("a"),
-                        Identifier("b")
-                    , null)),
+                        Identifier("b"), null)),
                     VariableAccessor("c"),
                     Token.Plus(SourceSpan.Default)))
             ),
@@ -2553,8 +2465,7 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Minus,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("a"),
-                        Identifier("b")
-                    , null)),
+                        Identifier("b"), null)),
                     VariableAccessor("c"),
                     Token.Dash(SourceSpan.Default)))
             ),
@@ -2564,8 +2475,7 @@ public static class PopExpressionTestCases
                     UnaryOperatorType.FallOut,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("a"),
-                        Identifier("b")
-                    , null)),
+                        Identifier("b"), null)),
                     Token.QuestionMark(SourceSpan.Default)))
             ),
             ( // value assignment
@@ -2574,8 +2484,7 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.ValueAssignment,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("a"),
-                        Identifier("b")
-                    , null)),
+                        Identifier("b"), null)),
                     VariableAccessor("c"),
                     Token.Equals(SourceSpan.Default)))
             ),
@@ -2585,8 +2494,7 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.EqualityCheck,
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("a"),
-                        Identifier("b")
-                    , null)),
+                        Identifier("b"), null)),
                     VariableAccessor("c"),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
@@ -2595,8 +2503,7 @@ public static class PopExpressionTestCases
                 new MemberAccessExpression(new MemberAccess(
                     new StaticMemberAccessExpression(new StaticMemberAccess(
                         NamedTypeIdentifier("a"),
-                        Identifier("b")
-                    , null)),
+                        Identifier("b"), null)),
                     Identifier("c"), null))
             ),
             ( // and 

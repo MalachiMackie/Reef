@@ -11,6 +11,7 @@ public record UnionVariantPattern(
     ITypeIdentifier Type,
     StringToken? VariantName,
     StringToken? VariableName,
+    bool IsMutableVariable,
     SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference? TypeReference { get; set; }
@@ -21,6 +22,7 @@ public record UnionTupleVariantPattern(
     StringToken VariantName,
     IReadOnlyList<IPattern> TupleParamPatterns,
     StringToken? VariableName,
+    bool IsMutableVariable,
     SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference? TypeReference { get; set; }
@@ -32,6 +34,7 @@ public record UnionClassVariantPattern(
     IReadOnlyList<FieldPattern> FieldPatterns,
     bool RemainingFieldsDiscarded,
     StringToken? VariableName,
+    bool IsMutableVariable,
     SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference? TypeReference { get; set; }
@@ -39,7 +42,10 @@ public record UnionClassVariantPattern(
 
 public record FieldPattern(StringToken FieldName, IPattern? Pattern);
 
-public record VariableDeclarationPattern(StringToken VariableName, SourceRange SourceRange) : IPattern
+public record VariableDeclarationPattern(
+    StringToken VariableName,
+    SourceRange SourceRange,
+    bool IsMut) : IPattern
 {
     public TypeChecker.ITypeReference TypeReference => TypeChecker.InstantiatedClass.Never;
 }
@@ -59,12 +65,13 @@ public record ClassPattern(
     IReadOnlyList<FieldPattern> FieldPatterns,
     bool RemainingFieldsDiscarded,
     StringToken? VariableName,
+    bool IsMutableVariable,
     SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference? TypeReference { get; set; }
 }
 
-public record TypePattern(ITypeIdentifier Type, StringToken? VariableName, SourceRange SourceRange) : IPattern
+public record TypePattern(ITypeIdentifier Type, StringToken? VariableName, bool IsVariableMutable, SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference? TypeReference { get; set; }
 }

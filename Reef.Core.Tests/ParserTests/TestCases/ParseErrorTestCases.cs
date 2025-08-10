@@ -937,14 +937,14 @@ public static class ParseErrorTestCases
                 "a matches A::C var",
                 new LangProgram([Matches(VariableAccessor("a"), UnionVariantPattern(NamedTypeIdentifier("A"), "C"))], [], [], []),
                 [
-                    ParserError.ExpectedToken(null, TokenType.Identifier)
+                    ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.Mut)
                 ]
             ),
             (
                 "a matches A::C var;",
                 new LangProgram([Matches(VariableAccessor("a"), UnionVariantPattern(NamedTypeIdentifier("A"), "C"))], [], [], []),
                 [
-                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier, TokenType.Mut)
                 ]
             ),
             (
@@ -1000,7 +1000,7 @@ public static class ParseErrorTestCases
                         UnionTupleVariantPattern(NamedTypeIdentifier("A"), "C", [])
                     )], [], [], []),
                 [
-                    ParserError.ExpectedToken(null, TokenType.Identifier)
+                    ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.Mut)
                 ]
             ),
             (
@@ -1011,7 +1011,7 @@ public static class ParseErrorTestCases
                         UnionTupleVariantPattern(NamedTypeIdentifier("A"), "C", [])
                     )], [], [], []),
                 [
-                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier, TokenType.Mut)
                 ]
             ),
             (
@@ -1074,7 +1074,7 @@ public static class ParseErrorTestCases
                         UnionClassVariantPattern(NamedTypeIdentifier("A"), "C", [])
                     )], [], [], []),
                 [
-                    ParserError.ExpectedToken(null, TokenType.Identifier)
+                    ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.Mut)
                 ]
             ),
             (
@@ -1133,7 +1133,7 @@ public static class ParseErrorTestCases
                         UnionClassVariantPattern(NamedTypeIdentifier("A"), "C", [])
                     )], [], [], []),
                 [
-                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier, TokenType.Mut)
                 ]
             ),
             (
@@ -1192,7 +1192,7 @@ public static class ParseErrorTestCases
                         ClassPattern(NamedTypeIdentifier("A"))
                     )], [], [], []),
                 [
-                    ParserError.ExpectedToken(null, TokenType.Identifier)
+                    ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.Mut)
                 ]
             ),
             (
@@ -1255,7 +1255,7 @@ public static class ParseErrorTestCases
                         ClassPattern(NamedTypeIdentifier("A"))
                     )], [], [], []),
                 [
-                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier, TokenType.Mut)
                 ]
             ),
             (
@@ -1276,7 +1276,7 @@ public static class ParseErrorTestCases
                         TypePattern(NamedTypeIdentifier("A"))
                     )], [], [], []),
                 [
-                    ParserError.ExpectedToken(null, TokenType.Identifier)
+                    ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.Mut)
                 ]
             ),
             (
@@ -1287,7 +1287,7 @@ public static class ParseErrorTestCases
                         TypePattern(NamedTypeIdentifier("A"))
                     )], [], [], []),
                 [
-                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier, TokenType.Mut)
                 ]
             ),
             (
@@ -1313,7 +1313,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches( VariableAccessor("a") )], [], [], []),
                 [
-                    ParserError.ExpectedToken(null, TokenType.Identifier)
+                    ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.Mut)
                 ]
             ),
             (
@@ -1321,7 +1321,7 @@ public static class ParseErrorTestCases
                 new LangProgram([
                     Matches( VariableAccessor("a") )], [], [], []),
                 [
-                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier)
+                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.Identifier, TokenType.Mut)
                 ]
             ),
             (
@@ -1800,7 +1800,136 @@ public static class ParseErrorTestCases
                     VariableDeclaration("a", type: FnTypeIdentifier([FnTypeIdentifierParameter(IntType(), isMut: true)]))
                 ], [], [], []),
                 []
-            )
+            ),
+            (
+                "a matches var mut b",
+                Program([Matches(
+                    VariableAccessor("a"),
+                    VariableDeclarationPattern("b", isMut: true))]),
+                []
+            ),
+            (
+                "a matches MyType var mut b",
+                Program([
+                    Matches(
+                        VariableAccessor("a"),
+                        TypePattern(NamedTypeIdentifier("MyType"), "b", isMutableVariable: true))
+                ]),
+                []
+            ),
+            (
+                "a matches MyUnion::A var mut b",
+                Program([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionVariantPattern(NamedTypeIdentifier("MyUnion"), "A", "b", isMutableVariable: true))
+                ]),
+                []
+            ),
+            (
+                "a matches MyUnion::A(_) var mut b",
+                Program([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionTupleVariantPattern(
+                            NamedTypeIdentifier("MyUnion"),
+                            "A",
+                            [DiscardPattern()],
+                            "b",
+                            isMutableVariable: true))
+                ]),
+                []
+            ),
+            (
+                "a matches MyUnion::A{_} var mut b",
+                Program([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionClassVariantPattern(
+                            NamedTypeIdentifier("MyUnion"),
+                            "A",
+                            [],
+                            "b",
+                            fieldsDiscarded: true,
+                            isMutableVariable: true))
+                ]),
+                []
+            ),
+            (
+                "a matches MyClass{_} var mut b",
+                Program([
+                    Matches(
+                        VariableAccessor("a"),
+                        ClassPattern(
+                            NamedTypeIdentifier("MyClass"),
+                            [],
+                            "b",
+                            fieldsDiscarded: true,
+                            isMutableVariable: true))
+                ]),
+                []
+            ),
+            (
+                "a matches var mut",
+                Program([Matches(
+                    VariableAccessor("a"))]),
+                [ParserError.ExpectedToken(null, TokenType.Identifier)]
+            ),
+            (
+                "a matches MyType var mut",
+                Program([
+                    Matches(
+                        VariableAccessor("a"),
+                        TypePattern(NamedTypeIdentifier("MyType")))
+                ]),
+                [ParserError.ExpectedToken(null, TokenType.Identifier)]
+            ),
+            (
+                "a matches MyUnion::A var mut",
+                Program([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionVariantPattern(NamedTypeIdentifier("MyUnion"), "A"))
+                ]),
+                [ParserError.ExpectedToken(null, TokenType.Identifier)]
+            ),
+            (
+                "a matches MyUnion::A(_) var mut",
+                Program([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionTupleVariantPattern(
+                            NamedTypeIdentifier("MyUnion"),
+                            "A",
+                            [DiscardPattern()]))
+                ]),
+                [ParserError.ExpectedToken(null, TokenType.Identifier)]
+            ),
+            (
+                "a matches MyUnion::A{_} var mut",
+                Program([
+                    Matches(
+                        VariableAccessor("a"),
+                        UnionClassVariantPattern(
+                            NamedTypeIdentifier("MyUnion"),
+                            "A",
+                            [],
+                            fieldsDiscarded: true))
+                ]),
+                [ParserError.ExpectedToken(null, TokenType.Identifier)]
+            ),
+            (
+                "a matches MyClass{_} var mut",
+                Program([
+                    Matches(
+                        VariableAccessor("a"),
+                        ClassPattern(
+                            NamedTypeIdentifier("MyClass"),
+                            [],
+                            fieldsDiscarded: true))
+                ]),
+                [ParserError.ExpectedToken(null, TokenType.Identifier)]
+            ),
         ];
 
         var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();
