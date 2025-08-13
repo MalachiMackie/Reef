@@ -268,6 +268,187 @@ public static class ControlFlow
                             ])
                     ])
             },
+            {
+                "discard pattern matches",
+                """
+                if (1 matches _){}
+                """,
+                Module()
+            },
+            {
+                "variable declaration pattern matches",
+                """
+                if (1 matches var a) {}
+                """,
+                Module()
+            },
+            {
+                "class pattern matches",
+                """
+                class MyClass
+                {
+                    pub field MyField: string
+                }
+                var a = new MyClass { MyField = "" };
+                if (a matches MyClass { MyField }) {}
+                """,
+                Module()
+            },
+            {
+                "class pattern matches with field pattern",
+                """
+                class MyClass
+                {
+                    pub field MyField: string
+                }
+                var a = new MyClass { MyField = "" };
+                if (a matches MyClass { MyField: var b }) {}
+                """,
+                Module()
+            },
+            {
+                "class pattern matches with field discards",
+                """
+                class MyClass
+                {
+                    pub field MyField: string
+                }
+                var a = new MyClass { MyField = "" };
+                if (a matches MyClass { _ }) {}
+                """,
+                Module()
+            },
+            {
+                "type pattern matches without variable",
+                """
+                if (1 matches int) {}
+                """,
+                Module()
+            },
+            {
+                "type pattern matches with variable",
+                """
+                if (1 matches int var b) {} 
+                """,
+                Module()
+            },
+            {
+                "union variant pattern without variable",
+                """
+                union MyUnion { A }
+                var a = MyUnion::A;
+                if (a matches MyUnion::A){}
+                """,
+                Module()
+            },
+            {
+                "union variant pattern with variable",
+                """
+                union MyUnion { A }
+                var a = MyUnion::A;
+                if (a matches MyUnion::A var b) {}
+                """,
+                Module()
+            },
+            {
+                "union tuple variant pattern",
+                """
+                union MyUnion { A(string) }
+                var a = MyUnion::A("");
+                if (a matches MyUnion::A(var b)) {}
+                """,
+                Module()
+            },
+            {
+                "union tuple variant pattern with variable",
+                """
+                union MyUnion { A(string) }
+                var a = MyUnion::A("");
+                if (a matches MyUnion::A(var b) var c) {}
+                """,
+                Module()
+            },
+            {
+                "union class variant pattern",
+                """
+                union MyUnion { A { field MyField: string } }
+                var a = new MyUnion::A { MyField = "" };
+                if (a matches MyUnion::A { MyField }){}
+                """,
+                Module()
+            },
+            {
+                "union class variant pattern",
+                """
+                union MyUnion { A { field MyField: string } }
+                var a = new MyUnion::A { MyField = "" };
+                if (a matches MyUnion::A { MyField } var b){}
+                """,
+                Module()
+            },
+            {
+                "union class variant pattern with field pattern",
+                """
+                union MyUnion { A { field MyField: string } }
+                var a = new MyUnion::A { MyField = "" };
+                if (a matches MyUnion::A { MyField: var b }){}
+                """,
+                Module()
+            },
+            {
+                "union class variant pattern with field discards",
+                """
+                union MyUnion { A { field MyField: string } }
+                var a = new MyUnion::A { MyField = "" };
+                if (a matches MyUnion::A { _ }){}
+                """,
+                Module()
+            },
+            {
+                "mutate pattern variable",
+                """
+                var a = 1;
+                if (a matches var mut b) {
+                    b = 2;
+                }
+                """,
+                Module()
+            },
+            {
+                "mutate nested pattern variable",
+                """
+                union MyUnion {
+                    A(string)
+                }
+                var mut a = MyUnion::A(""); 
+                
+                if (a matches MyUnion::A(var mut str)) {
+                    str = "hi";
+                }
+                """,
+                Module()
+            },
+            {
+                "mutate deeply nested pattern variable",
+                """
+                union UnionA {
+                    A(string)
+                }
+                
+                union UnionB {
+                    A,
+                    B(UnionA)
+                }
+                
+                var mut a = UnionB::B(UnionA::A(""));
+                
+                if (a matches UnionB::B(UnionA::A(var mut str) var mut b)) {
+                    str = "hi";
+                    b = UnionA::A("hi");
+                }
+                """,
+                Module()
+            }
         };
     }
 }
