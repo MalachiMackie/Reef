@@ -1,4 +1,6 @@
-﻿namespace Reef.Core;
+﻿using Reef.Core.TypeChecking;
+
+namespace Reef.Core;
 
 public record ProgramUnion(
     AccessModifier? AccessModifier,

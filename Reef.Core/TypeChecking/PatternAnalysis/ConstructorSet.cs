@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 
-namespace Reef.Core.PatternAnalysis;
+namespace Reef.Core.TypeChecking.PatternAnalysis;
 
 public class SplitConstructorSet
 {

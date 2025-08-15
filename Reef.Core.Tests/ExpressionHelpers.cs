@@ -1,4 +1,6 @@
-﻿namespace Reef.Core.Tests;
+﻿using Reef.Core.TypeChecking;
+
+namespace Reef.Core.Tests;
 
 public static class ExpressionHelpers
 {

@@ -2,6 +2,8 @@
 using FluentAssertions.Equivalency;
 using Reef.Core.Tests.ILCompilerTests.TestCases;
 using Reef.IL;
+using Reef.Core.TypeChecking;
+
 using static Reef.Core.Tests.ILCompilerTests.TestHelpers;
 
 namespace Reef.Core.Tests.ILCompilerTests;

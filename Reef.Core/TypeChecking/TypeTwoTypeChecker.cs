@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
-using Reef.Core.PatternAnalysis;
+using Reef.Core.TypeChecking.PatternAnalysis;
 
-namespace Reef.Core;
+namespace Reef.Core.TypeChecking;
 
 // todo: this should probably be able to be a visitor
 public class TypeTwoTypeChecker
