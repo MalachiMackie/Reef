@@ -1,9 +1,9 @@
 using Reef.Core.LoweredExpressions;
 using static Reef.Core.TypeChecking.TypeChecker;
 
-namespace Reef.Core;
+namespace Reef.Core.Absail;
 
-public static class Absail
+public static class ProgramAbsail
 {
     public static LoweredProgram Lower(LangProgram program)
     {
@@ -81,10 +81,18 @@ public static class Absail
 
     private static DataTypeMethod LowerTypeMethod(FunctionSignature fnSignature)
     {
-        IReadOnlyList<ILoweredExpression> expressions = [];
-        throw new NotImplementedException();
+        var expressions = fnSignature.Expressions.SelectMany(ExpressionAbsail.LowerExpression)
+            .ToList();
 
-#pragma warning disable CS0162
+        // if we passed type checking, and either there are no expressions or the last 
+        // expression does not diverge (throw or return), then we need to add an explicit
+        // return unit
+        if (expressions.Count == 0 || !expressions[^1].Diverges)
+        {
+            expressions.Add(new MethodReturnExpression(
+                new UnitConstantExpression(ValueUseful: true)));
+        }
+
         return new DataTypeMethod(
             fnSignature.Id,
             fnSignature.Name,
@@ -92,7 +100,6 @@ public static class Absail
             fnSignature.Parameters.Values.Select(y => GetTypeReference(y.Type)).ToArray(),
             GetTypeReference(fnSignature.ReturnType),
             expressions);
-#pragma warning restore CS0162
     }
 
     private static LoweredGenericPlaceholder GetGenericPlaceholder(GenericPlaceholder placeholder)

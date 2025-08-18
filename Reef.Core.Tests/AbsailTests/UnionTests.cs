@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Reef.Core.LoweredExpressions;
+using Reef.Core.Absail;
 
 using static Reef.Core.Tests.LoweredProgramHelpers;
 
@@ -14,7 +15,7 @@ public class UnionTests : TestBase
     public void UnionAbsailTest(string description, string source, LoweredProgram expectedProgram)
     {
         var program = CreateProgram(source);
-        var loweredProgram = Absail.Lower(program);
+        var loweredProgram = ProgramAbsail.Lower(program);
         loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
     }
 
