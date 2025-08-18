@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Reef.Core.Expressions;
 using Reef.Core.TypeChecking.PatternAnalysis;
 
 namespace Reef.Core.TypeChecking;

@@ -1,5 +1,6 @@
 ﻿namespace Reef.Core.Tests.ParserTests.TestCases;
 
+using Reef.Core.Expressions;
 using static ExpressionHelpers;
 
 public static class ParseTestCases

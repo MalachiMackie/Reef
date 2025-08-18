@@ -1,3 +1,5 @@
+using Reef.Core.Expressions;
+
 namespace Reef.Core.TypeChecking;
 
 public partial class TypeChecker

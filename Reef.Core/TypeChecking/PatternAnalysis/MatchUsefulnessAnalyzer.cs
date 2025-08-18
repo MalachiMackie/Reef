@@ -8,6 +8,7 @@
 // https://smallcultfollowing.com/babysteps/blog/2018/08/13/never-patterns-exhaustive-matching-and-uninhabited-types-oh-my/
 
 using System.Diagnostics;
+using Reef.Core.Expressions;
 
 namespace Reef.Core.TypeChecking.PatternAnalysis;
 

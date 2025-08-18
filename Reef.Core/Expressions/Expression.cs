@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using Reef.Core.TypeChecking;
 
-namespace Reef.Core;
+namespace Reef.Core.Expressions;
 
 public interface IExpression
 {

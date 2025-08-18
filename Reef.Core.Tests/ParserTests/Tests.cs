@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using FluentAssertions;
+using Reef.Core.Expressions;
 using Xunit.Abstractions;
-using static Reef.Core.Tests.ExpressionHelpers;
 
 #pragma warning disable IDE0060 // Remove unused parameter
 
