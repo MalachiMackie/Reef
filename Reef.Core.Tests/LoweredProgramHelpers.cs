@@ -103,4 +103,7 @@ public static class LoweredProgramHelpers
     public static LoweredConcreteTypeReference ConcreteTypeReference(
         string name, IReadOnlyList<ILoweredTypeReference>? typeArguments = null
     ) => new(name, Guid.Empty, typeArguments ?? []);
+
+    public static LoweredGenericPlaceholder GenericPlaceholder(string name)
+        => new(Guid.Empty, name);
 }

@@ -15,68 +15,89 @@ public static class ProgramAbsail
             Methods = methods
         };
 
-        foreach (var union in program.Unions.Select(x => x.Signature.NotNull()))
-        {
-            var unionTypeReference = new LoweredConcreteTypeReference(
-                                            union.Name,
-                                            union.Id,
-                                            []);
-
-            var dataTypeMethods = union.NotNull()
-                .Functions.Select(x => LowerTypeMethod(x, unionTypeReference)).ToList();
-            var variants = new List<DataTypeVariant>(union.Variants.Count);
-            foreach (var variant in union.Variants)
-            {
-                var variantIdentifierField = new DataTypeField(
-                        "_variantIdentifier",
-                        GetTypeReference(InstantiatedClass.Int));
-                var fields = new List<DataTypeField>() { variantIdentifierField };
-                switch (variant)
-                {
-                    case TypeChecking.TypeChecker.UnitUnionVariant u:
-                        break;
-                    case TypeChecking.TypeChecker.ClassUnionVariant u:
-                        {
-                            fields.AddRange(u.Fields.Select(x => new DataTypeField(
-                                            x.Name,
-                                            GetTypeReference(x.Type))));
-                            break;
-                        }
-                    case TypeChecking.TypeChecker.TupleUnionVariant u:
-                        {
-                            var memberTypes = u.TupleMembers.NotNull().Select(GetTypeReference).ToArray();
-                            fields.AddRange(memberTypes.Select((x, i) => new DataTypeField(
-                                            $"_tupleMember_{i}",
-                                            x)));
-
-                            // add the tuple variant as a method
-                            dataTypeMethods.Add(new DataTypeMethod(
-                                        Guid.NewGuid(),
-                                        $"{union.Name}_Create_{u.Name}",
-                                        [],
-                                        memberTypes,
-                                        unionTypeReference,
-                                        Expressions: [],
-                                        CompilerImplementationType.UnionTupleVariantInit));
-                            break;
-                        }
-                    default:
-                        throw new InvalidOperationException($"Invalid union variant {variant}");
-                }
-                variants.Add(new DataTypeVariant(
-                            variant.Name,
-                            fields));
-            }
-            dataTypes.Add(new DataType(
-                    union.NotNull().Id,
-                    union.Name,
-                    union.TypeParameters.Select(GetGenericPlaceholder).ToArray(),
-                    Variants: variants,
-                    Methods: dataTypeMethods,
-                    StaticFields: []));
-        }
+        dataTypes.AddRange(program.Unions.Select(x => LowerUnion(x.Signature.NotNull())));
+        dataTypes.AddRange(program.Classes.Select(x => LowerClass(x.Signature.NotNull())));
 
         return lowLevelProgram;
+    }
+
+    private static DataType LowerClass(ClassSignature klass)
+    {
+        var typeParameters = klass.TypeParameters.Select(GetGenericPlaceholder).ToArray();
+        var classTypeReference = new LoweredConcreteTypeReference(
+                klass.Name,
+                klass.Id,
+                typeParameters);
+
+        return new DataType(
+                klass.Id,
+                klass.Name,
+                typeParameters,
+                [],
+                [],
+                []);
+    }
+
+    private static DataType LowerUnion(UnionSignature union)
+    {
+        var typeParameters = union.TypeParameters.Select(GetGenericPlaceholder).ToArray();
+        var unionTypeReference = new LoweredConcreteTypeReference(
+                                                    union.Name,
+                                                    union.Id,
+                                                    typeParameters);
+
+        var dataTypeMethods = union.NotNull()
+            .Functions.Select(x => LowerTypeMethod(x, unionTypeReference)).ToList();
+        var variants = new List<DataTypeVariant>(union.Variants.Count);
+        foreach (var variant in union.Variants)
+        {
+            var variantIdentifierField = new DataTypeField(
+                    "_variantIdentifier",
+                    GetTypeReference(InstantiatedClass.Int));
+            var fields = new List<DataTypeField>() { variantIdentifierField };
+            switch (variant)
+            {
+                case TypeChecking.TypeChecker.UnitUnionVariant u:
+                    break;
+                case TypeChecking.TypeChecker.ClassUnionVariant u:
+                    {
+                        fields.AddRange(u.Fields.Select(x => new DataTypeField(
+                                        x.Name,
+                                        GetTypeReference(x.Type))));
+                        break;
+                    }
+                case TypeChecking.TypeChecker.TupleUnionVariant u:
+                    {
+                        var memberTypes = u.TupleMembers.NotNull().Select(GetTypeReference).ToArray();
+                        fields.AddRange(memberTypes.Select((x, i) => new DataTypeField(
+                                        $"_tupleMember_{i}",
+                                        x)));
+
+                        // add the tuple variant as a method
+                        dataTypeMethods.Add(new DataTypeMethod(
+                                    Guid.NewGuid(),
+                                    $"{union.Name}_Create_{u.Name}",
+                                    [],
+                                    memberTypes,
+                                    unionTypeReference,
+                                    Expressions: [],
+                                    CompilerImplementationType.UnionTupleVariantInit));
+                        break;
+                    }
+                default:
+                    throw new InvalidOperationException($"Invalid union variant {variant}");
+            }
+            variants.Add(new DataTypeVariant(
+                        variant.Name,
+                        fields));
+        }
+        return new DataType(
+                union.NotNull().Id,
+                union.Name,
+                typeParameters,
+                Variants: variants,
+                Methods: dataTypeMethods,
+                StaticFields: []);
     }
 
     private static DataTypeMethod LowerTypeMethod(
@@ -124,6 +145,13 @@ public static class ProgramAbsail
                     c.Signature.Name,
                     c.Signature.Id,
                     c.TypeArguments.Select(x => GetTypeReference(x.ResolvedType.NotNull())).ToArray()),
+            InstantiatedUnion u => new LoweredConcreteTypeReference(
+                    u.Signature.Name,
+                    u.Signature.Id,
+                    u.TypeArguments.Select(x => GetTypeReference(x.ResolvedType.NotNull())).ToArray()),
+            GenericPlaceholder g => new LoweredGenericPlaceholder(
+                    g.OwnerType.Id,
+                    g.GenericName),
             _ => throw new InvalidOperationException($"Type reference {typeReference.GetType()} is not supported")
         };
     }

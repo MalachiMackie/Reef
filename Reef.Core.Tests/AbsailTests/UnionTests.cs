@@ -7,7 +7,7 @@ using static Reef.Core.Tests.LoweredProgramHelpers;
 namespace Reef.Core.Tests.AbsailTests;
 
 #pragma warning disable IDE0060 // Remove unused parameter
-#pragma warning disable xunit1026 // Remove unused parameter
+#pragma warning disable xUnit1026 // Remove unused parameter
 
 public class UnionTests : TestBase
 {
@@ -15,6 +15,37 @@ public class UnionTests : TestBase
     [MemberData(nameof(TestCases))]
     public void UnionAbsailTest(string description, string source, LoweredProgram expectedProgram)
     {
+        var program = CreateProgram(source);
+        var loweredProgram = ProgramAbsail.Lower(program);
+        loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
+    }
+
+    [Fact]
+    public void SingleTest()
+    { 
+        const string source = "union MyUnion<T>{ A(T) }";
+        var expectedProgram = LoweredProgram(types:
+        [
+            DataType("MyUnion",
+                ["T"],
+                [
+                    Variant("A",
+                    [
+                        Field("_variantIdentifier", Int),
+                        Field("_tupleMember_0", GenericPlaceholder("T"))
+                    ])
+                ],
+                methods:
+                [
+                    DataTypeMethod(
+                        "MyUnion_Create_A",
+                        [],
+                        [GenericPlaceholder("T")],
+                        ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]),
+                        CompilerImplementationType.UnionTupleVariantInit)
+                ])
+        ]);
+
         var program = CreateProgram(source);
         var loweredProgram = ProgramAbsail.Lower(program);
         loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
@@ -33,6 +64,15 @@ public class UnionTests : TestBase
                 ])
             },
             {
+                "generic union",
+                "union MyUnion<T>{}",
+                LoweredProgram(types: [
+                        DataType(
+                            "MyUnion",
+                            ["T"])
+                ])
+            },
+            {
                 "union with unit variants",
                 "union MyUnion{A, B}",
                 LoweredProgram(types: [
@@ -40,6 +80,23 @@ public class UnionTests : TestBase
                         variants: [
                             Variant("A", [Field("_variantIdentifier", Int)]),
                             Variant("B", [Field("_variantIdentifier", Int)]),
+                        ])
+                ])
+            },
+            {
+                "generic union with instance function",
+                "union MyUnion<T>{pub fn SomeFn(){}}",
+                LoweredProgram(types: [
+                    DataType("MyUnion",
+                        ["T"],
+                        [],
+                        [
+                            DataTypeMethod(
+                                "SomeFn",
+                                [],
+                                [ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")])],
+                                Unit,
+                                [MethodReturn(UnitConstant(true))])
                         ])
                 ])
             },
@@ -61,6 +118,29 @@ public class UnionTests : TestBase
                                 [],
                                 [StringType, Int],
                                 ConcreteTypeReference("MyUnion"),
+                                CompilerImplementationType.UnionTupleVariantInit)
+                        ])
+                ])
+            },
+            {
+                "generic union with tuple variant",
+                "union MyUnion<T>{ A(T) }",
+                LoweredProgram(types: [
+                    DataType("MyUnion",
+                        ["T"],
+                        [
+                            Variant("A",
+                                [
+                                    Field("_variantIdentifier", Int),
+                                    Field("_tupleMember_0", GenericPlaceholder("T"))
+                                ])
+                        ],
+                        methods: [
+                            DataTypeMethod(
+                                "MyUnion_Create_A",
+                                [],
+                                [GenericPlaceholder("T")],
+                                ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]),
                                 CompilerImplementationType.UnionTupleVariantInit)
                         ])
                 ])
