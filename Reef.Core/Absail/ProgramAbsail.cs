@@ -23,7 +23,7 @@ public static class ProgramAbsail
                                             []);
 
             var dataTypeMethods = union.NotNull()
-                .Functions.Select(LowerTypeMethod).ToList();
+                .Functions.Select(x => LowerTypeMethod(x, unionTypeReference)).ToList();
             var variants = new List<DataTypeVariant>(union.Variants.Count);
             foreach (var variant in union.Variants)
             {
@@ -79,7 +79,9 @@ public static class ProgramAbsail
         return lowLevelProgram;
     }
 
-    private static DataTypeMethod LowerTypeMethod(FunctionSignature fnSignature)
+    private static DataTypeMethod LowerTypeMethod(
+            FunctionSignature fnSignature,
+            ILoweredTypeReference ownerTypeReference)
     {
         var expressions = fnSignature.Expressions.SelectMany(ExpressionAbsail.LowerExpression)
             .ToList();
@@ -93,11 +95,18 @@ public static class ProgramAbsail
                 new UnitConstantExpression(ValueUseful: true)));
         }
 
+        var parameters = fnSignature.Parameters.Values.Select(y => GetTypeReference(y.Type));
+
+        if (!fnSignature.IsStatic)
+        {
+            parameters = parameters.Prepend(ownerTypeReference);
+        }
+
         return new DataTypeMethod(
             fnSignature.Id,
             fnSignature.Name,
             fnSignature.TypeParameters.Select(GetGenericPlaceholder).ToArray(),
-            fnSignature.Parameters.Values.Select(y => GetTypeReference(y.Type)).ToArray(),
+            parameters.ToArray(),
             GetTypeReference(fnSignature.ReturnType),
             expressions);
     }

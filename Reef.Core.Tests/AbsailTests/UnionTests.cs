@@ -7,6 +7,7 @@ using static Reef.Core.Tests.LoweredProgramHelpers;
 namespace Reef.Core.Tests.AbsailTests;
 
 #pragma warning disable IDE0060 // Remove unused parameter
+#pragma warning disable xunit1026 // Remove unused parameter
 
 public class UnionTests : TestBase
 {
@@ -88,10 +89,54 @@ public class UnionTests : TestBase
                             DataTypeMethod(
                                 "MyFn",
                                 [],
-                                [],
-                                Unit, [
+                                [ConcreteTypeReference("MyUnion")],
+                                Unit, 
+                                [
                                     MethodReturn(UnitConstant(valueUseful: true)) 
                                 ])
+                        ])
+                ])
+            },
+            {
+                "union with method and tuple variants",
+                "union MyUnion { A(string), pub static fn MyFn() {}, B(string) }",
+                LoweredProgram(types: [
+                    DataType("MyUnion",
+                        methods: [
+                            DataTypeMethod(
+                                "MyFn",
+                                [],
+                                [],
+                                Unit,
+                                [
+                                    MethodReturn(UnitConstant(true))
+                                ]),
+                            DataTypeMethod(
+                                "MyUnion_Create_A",
+                                [],
+                                [StringType],
+                                ConcreteTypeReference("MyUnion"),
+                                CompilerImplementationType.UnionTupleVariantInit),
+                            DataTypeMethod(
+                                "MyUnion_Create_B",
+                                [],
+                                [StringType],
+                                ConcreteTypeReference("MyUnion"),
+                                CompilerImplementationType.UnionTupleVariantInit),
+                        ],
+                        variants: [
+                            Variant(
+                                "A",
+                                [
+                                    Field("_variantIdentifier", Int),
+                                    Field("_tupleMember_0", StringType),
+                                ]),
+                            Variant(
+                                "B",
+                                [
+                                    Field("_variantIdentifier", Int),
+                                    Field("_tupleMember_0", StringType),
+                                ]),
                         ])
                 ])
             }
