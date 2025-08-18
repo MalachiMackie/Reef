@@ -55,6 +55,8 @@ public record ClassField(
     ITypeIdentifier? Type,
     IExpression? InitializerValue)
 {
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
+
     public override string ToString()
     {
         var sb = new StringBuilder();

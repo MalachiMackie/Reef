@@ -143,10 +143,14 @@ public partial class TypeChecker {
                             throw new InvalidOperationException("StaticModifier not allowed on class union variants");
                         }
 
+                        var type = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type);
+
+                        field.ResolvedType = type;
+
                         var typeField = new TypeField
                         {
                             Name = field.Name.StringValue,
-                            Type = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type),
+                            Type = type,
                             IsMutable = field.MutabilityModifier is { Modifier.Type: TokenType.Mut },
                             IsStatic = false,
                             StaticInitializer = null,
@@ -182,10 +186,12 @@ public partial class TypeChecker {
 
             foreach (var (index, field) in @class.Fields.Index())
             {
+                var type = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type);
+                field.ResolvedType = type;
                 var typeField = new TypeField
                 {
                     Name = field.Name.StringValue,
-                    Type = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type),
+                    Type = type,
                     IsMutable = field.MutabilityModifier is { Modifier.Type: TokenType.Mut },
                     IsPublic = field.AccessModifier is { Token.Type: TokenType.Pub },
                     IsStatic = field.StaticModifier is { Token.Type: TokenType.Static },
