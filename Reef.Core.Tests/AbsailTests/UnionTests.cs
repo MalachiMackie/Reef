@@ -1,10 +1,10 @@
 using FluentAssertions;
 using Reef.Core.LoweredExpressions;
-using Reef.Core.Absail;
+using Reef.Core.Abseil;
 
 using static Reef.Core.Tests.LoweredProgramHelpers;
 
-namespace Reef.Core.Tests.AbsailTests;
+namespace Reef.Core.Tests.AbseilTests;
 
 #pragma warning disable IDE0060 // Remove unused parameter
 #pragma warning disable xUnit1026 // Remove unused parameter
@@ -13,10 +13,10 @@ public class UnionTests : TestBase
 {
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void UnionAbsailTest(string description, string source, LoweredProgram expectedProgram)
+    public void UnionAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
         var program = CreateProgram(source);
-        var loweredProgram = ProgramAbsail.Lower(program);
+        var loweredProgram = ProgramAbseil.Lower(program);
         loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
     }
 
@@ -47,7 +47,7 @@ public class UnionTests : TestBase
         ]);
 
         var program = CreateProgram(source);
-        var loweredProgram = ProgramAbsail.Lower(program);
+        var loweredProgram = ProgramAbseil.Lower(program);
         loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
     }
 

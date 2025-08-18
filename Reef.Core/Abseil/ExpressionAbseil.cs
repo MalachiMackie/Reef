@@ -1,8 +1,8 @@
 using Reef.Core.LoweredExpressions;
 
-namespace Reef.Core.Absail;
+namespace Reef.Core.Abseil;
 
-public static class ExpressionAbsail
+public static class ExpressionAbseil
 {
     public static IReadOnlyList<ILoweredExpression> LowerExpression(
             Reef.Core.Expressions.IExpression expression)

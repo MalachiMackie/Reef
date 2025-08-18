@@ -1,9 +1,9 @@
 using Reef.Core.LoweredExpressions;
 using static Reef.Core.TypeChecking.TypeChecker;
 
-namespace Reef.Core.Absail;
+namespace Reef.Core.Abseil;
 
-public static class ProgramAbsail
+public static class ProgramAbseil
 {
     public static LoweredProgram Lower(LangProgram program)
     {
@@ -104,7 +104,7 @@ public static class ProgramAbsail
             FunctionSignature fnSignature,
             ILoweredTypeReference ownerTypeReference)
     {
-        var expressions = fnSignature.Expressions.SelectMany(ExpressionAbsail.LowerExpression)
+        var expressions = fnSignature.Expressions.SelectMany(ExpressionAbseil.LowerExpression)
             .ToList();
 
         // if we passed type checking, and either there are no expressions or the last 

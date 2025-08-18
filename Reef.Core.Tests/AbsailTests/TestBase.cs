@@ -2,7 +2,7 @@ using FluentAssertions;
 using FluentAssertions.Equivalency;
 using Reef.Core.TypeChecking;
 
-namespace Reef.Core.Tests.AbsailTests;
+namespace Reef.Core.Tests.AbseilTests;
 
 public class TestBase
 {
