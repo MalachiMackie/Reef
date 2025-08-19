@@ -29,7 +29,8 @@ public class ClassTests : TestBase
                 "class MyClass{}",
                 LoweredProgram(
                         types: [
-                            DataType("MyClass")
+                            DataType("MyClass",
+                                variants: [Variant("_classVariant")])
                         ])
             },
             {
@@ -38,7 +39,8 @@ public class ClassTests : TestBase
                 LoweredProgram(
                         types: [
                             DataType("MyClass",
-                                ["T"])
+                                ["T"],
+                                variants: [Variant("_classVariant")])
                         ])
             },
             {
@@ -58,6 +60,32 @@ public class ClassTests : TestBase
                                         expressions: [MethodReturn(UnitConstant(true))])
                                 ])
                         ])
+            },
+            {
+                "class with instance fields",
+                "class MyClass { pub field MyField: string, pub field OtherField: int}",
+                LoweredProgram(types: [
+                    DataType("MyClass",
+                        variants: [
+                            Variant(
+                                "_classVariant",
+                                [
+                                    Field("MyField", StringType),
+                                    Field("OtherField", Int),
+                                ])
+                        ])
+                ])
+            },
+            {
+                "class with static fields",
+                """class MyClass { pub static field MyField: string = ""}""",
+                LoweredProgram(types: [
+                    DataType("MyClass",
+                        variants: [Variant("_classVariant")],
+                        staticFields: [
+                            StaticField("MyField", StringType, [StringConstant("", true)])
+                        ])
+                ])
             }
         };
     }

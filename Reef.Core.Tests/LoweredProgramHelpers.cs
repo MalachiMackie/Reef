@@ -19,7 +19,7 @@ public static class LoweredProgramHelpers
             IReadOnlyList<string>? typeParameters = null,
             IReadOnlyList<DataTypeVariant>? variants = null,
             IReadOnlyList<DataTypeMethod>? methods = null,
-            IReadOnlyList<DataTypeField>? staticFields = null)
+            IReadOnlyList<StaticDataTypeField>? staticFields = null)
     {
         return new(
                 Guid.Empty,
@@ -40,6 +40,14 @@ public static class LoweredProgramHelpers
     public static DataTypeField Field(string name, ILoweredTypeReference type)
     {
         return new(name, type);
+    }
+
+    public static StaticDataTypeField StaticField(
+            string name,
+            ILoweredTypeReference type,
+            IReadOnlyList<ILoweredExpression> staticInitializer)
+    {
+        return new(name, type, staticInitializer);
     }
 
     public static DataTypeMethod DataTypeMethod(
@@ -74,6 +82,9 @@ public static class LoweredProgramHelpers
                 Expressions: [],
                 compilerImplementationType);
     }
+
+    public static StringConstantExpression StringConstant(string value, bool valueUseful) => 
+        new StringConstantExpression(valueUseful, value);
 
     public static UnitConstantExpression UnitConstant(bool valueUseful) => new UnitConstantExpression(valueUseful);
 

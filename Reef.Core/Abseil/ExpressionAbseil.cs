@@ -4,9 +4,23 @@ namespace Reef.Core.Abseil;
 
 public static class ExpressionAbseil
 {
-    public static IReadOnlyList<ILoweredExpression> LowerExpression(
+    public static IEnumerable<ILoweredExpression> LowerExpression(
             Reef.Core.Expressions.IExpression expression)
     {
-        throw new NotImplementedException();
+        return expression switch
+        {
+            Expressions.ValueAccessorExpression e => LowerValueAccessorExpression(e),
+            _ => throw new NotImplementedException($"{expression.GetType()}")
+        };
+    }
+
+    public static IEnumerable<ILoweredExpression> LowerValueAccessorExpression(
+            Expressions.ValueAccessorExpression e)
+    {
+        return e switch
+        {
+            {ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: StringToken {StringValue: var stringLiteral } }} => [new StringConstantExpression(e.ValueUseful, stringLiteral)],
+            _ => throw new NotImplementedException($"e")
+        };
     }
 }

@@ -29,13 +29,22 @@ public static class ProgramAbseil
                 klass.Id,
                 typeParameters);
 
+        var staticFields = klass.Fields.Where(x => x.IsStatic)
+            .Select(x => new StaticDataTypeField(
+                        x.Name,
+                        GetTypeReference(x.Type),
+                        [..ExpressionAbseil.LowerExpression(x.StaticInitializer.NotNull())]));
+
+        var fields = klass.Fields.Where(x => !x.IsStatic)
+            .Select(x => new DataTypeField(x.Name, GetTypeReference(x.Type)));
+
         return new DataType(
                 klass.Id,
                 klass.Name,
                 typeParameters,
-                [],
-                [],
-                []);
+                [new DataTypeVariant("_classVariant", [..fields])],
+                [..klass.Functions.Select(x => LowerTypeMethod(x, classTypeReference))],
+                [..staticFields]);
     }
 
     private static DataType LowerUnion(UnionSignature union)

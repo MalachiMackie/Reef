@@ -57,7 +57,7 @@ public record MethodReturnExpression(ILoweredExpression ReturnValue) : ILoweredE
     public ILoweredTypeReference ResolvedType => ReturnValue.ResolvedType;
 }
 
-public record StringConstantExpression(bool ValueUseful) : ILoweredExpression
+public record StringConstantExpression(bool ValueUseful, string Value) : ILoweredExpression
 {
     public bool Diverges => false;
 
@@ -104,7 +104,7 @@ public record DataType(
         IReadOnlyList<LoweredGenericPlaceholder> TypeParameters,
         IReadOnlyList<DataTypeVariant> Variants,
         IReadOnlyList<DataTypeMethod> Methods,
-        IReadOnlyList<DataTypeField> StaticFields);
+        IReadOnlyList<StaticDataTypeField> StaticFields);
 
 public record DataTypeMethod(
         Guid Id,
@@ -123,6 +123,8 @@ public enum CompilerImplementationType
 public record DataTypeVariant(string Name, IReadOnlyList<DataTypeField> Fields);
 
 public record DataTypeField(string Name, ILoweredTypeReference Type);
+
+public record StaticDataTypeField(string Name, ILoweredTypeReference Type, IReadOnlyList<ILoweredExpression> StaticInitializer);
 
 public record DataTypeStaticField(ILoweredTypeReference Type);
 
