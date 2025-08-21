@@ -180,7 +180,31 @@ public record IfExpressionExpression(IfExpression IfExpression, SourceRange Sour
     public bool Diverges { get; } =
         IfExpression is { Body.Diverges: true, ElseBody.Diverges: true }
         && IfExpression.ElseIfs.All(x => x.Body is { Diverges: true });
-    public bool ValueUseful { get; set; }
+
+    private bool _valueUseful;
+    public bool ValueUseful 
+    {
+        get => _valueUseful;
+        set
+        {
+            _valueUseful = value;
+            if (IfExpression.Body is not null)
+            {
+                IfExpression.Body.ValueUseful = value;
+            }
+            foreach (var elseIf in IfExpression.ElseIfs)
+            {
+                if (elseIf.Body is not null)
+                {
+                    elseIf.Body.ValueUseful = value;
+                }
+            }
+            if (IfExpression.ElseBody is not null)
+            {
+                IfExpression.ElseBody.ValueUseful = value;
+            }
+        }
+    }
 
     public override string ToString()
     {
@@ -194,7 +218,19 @@ public record BlockExpression(Block Block, SourceRange SourceRange) : IExpressio
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public bool Diverges { get; } = Block.Expressions.Any(x => x.Diverges);
-    public bool ValueUseful { get; set; }
+    private bool _valueUseful;
+    public bool ValueUseful
+    {
+        get => _valueUseful;
+        set
+        {
+            _valueUseful = value;
+            if (Block.Expressions.Count > 0)
+            {
+                Block.Expressions[^1].ValueUseful = value;
+            }
+        }
+    }
 
     public override string ToString()
     {

@@ -13,13 +13,11 @@ public class LoweredProgram
 public interface ILoweredExpression
 {
     ILoweredTypeReference ResolvedType { get; }
-    bool Diverges { get; }
     bool ValueUseful { get; }
 }
 
 public record UnitConstantExpression(bool ValueUseful) : ILoweredExpression 
 {
-    public bool Diverges => false;
     public ILoweredTypeReference ResolvedType
     {
         get
@@ -35,8 +33,6 @@ public record UnitConstantExpression(bool ValueUseful) : ILoweredExpression
 
 public record IntConstantExpression(bool ValueUseful) : ILoweredExpression
 {
-    public bool Diverges => false;
-
     public ILoweredTypeReference ResolvedType
     {
         get
@@ -52,15 +48,12 @@ public record IntConstantExpression(bool ValueUseful) : ILoweredExpression
 
 public record MethodReturnExpression(ILoweredExpression ReturnValue) : ILoweredExpression
 {
-    public bool Diverges => true;
     public bool ValueUseful => true;
     public ILoweredTypeReference ResolvedType => ReturnValue.ResolvedType;
 }
 
 public record StringConstantExpression(bool ValueUseful, string Value) : ILoweredExpression
 {
-    public bool Diverges => false;
-
     public ILoweredTypeReference ResolvedType
     {
         get
@@ -74,10 +67,51 @@ public record StringConstantExpression(bool ValueUseful, string Value) : ILowere
     }
 }
 
+public record VariableDeclarationAndAssignmentExpression(
+        string LocalName,
+        ILoweredExpression Value,
+        bool ValueUseful) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType
+    {
+        get
+        {
+            var signature = TypeChecker.ClassSignature.Unit;
+            return new LoweredConcreteTypeReference(
+                    signature.Name,
+                    signature.Id,
+                    []);
+        }
+    }
+}
+
+public record VariableDeclarationExpression(
+        string LocalName,
+        bool ValueUseful) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType
+    {
+        get
+        {
+            var signature = TypeChecker.ClassSignature.Unit;
+            return new LoweredConcreteTypeReference(
+                    signature.Name,
+                    signature.Id,
+                    []);
+        }
+    }
+}
+
+public record LocalAssignmentExpression(
+        string LocalName,
+        ILoweredExpression Value,
+        ILoweredTypeReference ResolvedType,
+        bool ValueUseful) : ILoweredExpression
+{
+}
+
 public record BoolConstantExpression(bool ValueUseful) : ILoweredExpression
 {
-    public bool Diverges => false;
-
     public ILoweredTypeReference ResolvedType
     {
         get
@@ -93,18 +127,28 @@ public record BoolConstantExpression(bool ValueUseful) : ILoweredExpression
 
 public record LocalVariableAccessor(bool ValueUseful, ILoweredTypeReference ResolvedType) : ILoweredExpression
 {
-    public bool Diverges => false;
 }
 
-public record LoweredGlobalMethod();
+public record LoweredGlobalMethod(
+        Guid Id,
+        string Name,
+        IReadOnlyList<LoweredGenericPlaceholder> TypeParameters,
+        IReadOnlyList<ILoweredTypeReference> Parameters,
+        ILoweredTypeReference ReturnType,
+        IReadOnlyList<ILoweredExpression> Expressions,
+        IReadOnlyList<MethodLocal> Locals);
+
+public record MethodLocal(string Name, ILoweredTypeReference Type);
 
 public record DataType(
         Guid Id,
         string Name,
         IReadOnlyList<LoweredGenericPlaceholder> TypeParameters,
         IReadOnlyList<DataTypeVariant> Variants,
-        IReadOnlyList<DataTypeMethod> Methods,
+        IReadOnlyList<IDataTypeMethod> Methods,
         IReadOnlyList<StaticDataTypeField> StaticFields);
+
+public interface IDataTypeMethod;
 
 public record DataTypeMethod(
         Guid Id,
@@ -113,7 +157,14 @@ public record DataTypeMethod(
         IReadOnlyList<ILoweredTypeReference> Parameters,
         ILoweredTypeReference ReturnType,
         IReadOnlyList<ILoweredExpression> Expressions,
-        CompilerImplementationType? CompilerImplementationType = null);
+        IReadOnlyList<MethodLocal> Locals) : IDataTypeMethod;
+
+public record CompilerImplementedDataTypeMethod(
+        Guid Id,
+        string Name,
+        IReadOnlyList<ILoweredTypeReference> Parameters,
+        ILoweredTypeReference ReturnType,
+        CompilerImplementationType CompilerImplementationType) : IDataTypeMethod;
 
 public enum CompilerImplementationType
 {
@@ -124,7 +175,7 @@ public record DataTypeVariant(string Name, IReadOnlyList<DataTypeField> Fields);
 
 public record DataTypeField(string Name, ILoweredTypeReference Type);
 
-public record StaticDataTypeField(string Name, ILoweredTypeReference Type, IReadOnlyList<ILoweredExpression> StaticInitializer);
+public record StaticDataTypeField(string Name, ILoweredTypeReference Type, ILoweredExpression StaticInitializer);
 
 public record DataTypeStaticField(ILoweredTypeReference Type);
 
@@ -134,7 +185,6 @@ public record StaticFieldAccess(
         ITypeSignature MemberOwner,
         uint StaticFieldIndex) : ILoweredExpression
 {
-    public bool Diverges => false;
 }
 
 public record StaticMethodAccess(
@@ -143,7 +193,6 @@ public record StaticMethodAccess(
         ITypeSignature MemberOwner,
         InstantiatedFunction InstantiatedFunction) : ILoweredExpression
 {
-    public bool Diverges => false;
 }
 
 public record StaticMemberAccessor(
@@ -152,7 +201,6 @@ public record StaticMemberAccessor(
         ITypeSignature MemberOwner,
         uint MemberIndex) : ILoweredExpression
 {
-    public bool Diverges => false;
 }
 
 public interface ILoweredTypeReference

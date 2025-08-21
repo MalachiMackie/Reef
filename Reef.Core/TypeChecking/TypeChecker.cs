@@ -203,7 +203,6 @@ public partial class TypeChecker
     private InstantiatedClass TypeCheckVariableDeclaration(
         VariableDeclarationExpression expression)
     {
-        expression.ValueUseful = true;
         var varName = expression.VariableDeclaration.VariableNameToken;
         if (VariableIsDefined(varName.StringValue))
         {

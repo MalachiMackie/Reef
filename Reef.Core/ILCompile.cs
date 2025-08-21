@@ -588,11 +588,6 @@ public class ILCompile
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }
-
-        if (!expression.ValueUseful)
-        {
-            Instructions.Add(new Drop(NextAddress()));
-        }
     }
 
     private void CompileBinaryOperatorExpression(
@@ -841,11 +836,6 @@ public class ILCompile
         {
             CompileExpression(expression);
         }
-
-        if (!blockExpression.Diverges)
-        {
-            Instructions.Add(new LoadUnitConstant(NextAddress()));
-        }
     }
     
     private void CompileIfExpression(
@@ -982,6 +972,10 @@ public class ILCompile
                 TypeArguments: []));
             
             Instructions.Add(new Call(NextAddress()));
+            if (!methodCallExpression.ValueUseful)
+            {
+                Instructions.Add(new Drop(NextAddress()));
+            }
             return;
         }
         
@@ -1014,6 +1008,10 @@ public class ILCompile
         LoadFunctionPointer(instantiatedFunction);
         
         Instructions.Add(new Call(NextAddress()));
+        if (!methodCallExpression.ValueUseful)
+        {
+            Instructions.Add(new Drop(NextAddress()));
+        }
     }
     
     private void CompileMethodReturnExpression(
@@ -1258,6 +1256,11 @@ public class ILCompile
                 CompileIdentifierValueAccessor(valueAccessorExpression);
                 break;
             }
+        }
+
+        if (!valueAccessorExpression.ValueUseful)
+        {
+            Instructions.Add(new Drop(NextAddress()));
         }
     }
 

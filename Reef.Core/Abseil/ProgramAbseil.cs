@@ -18,7 +18,41 @@ public static class ProgramAbseil
         dataTypes.AddRange(program.Unions.Select(x => LowerUnion(x.Signature.NotNull())));
         dataTypes.AddRange(program.Classes.Select(x => LowerClass(x.Signature.NotNull())));
 
+        if (CreateMainMethod(program) is {} mainMethod)
+        {
+            methods.Add(mainMethod);
+        }
+
         return lowLevelProgram;
+    }
+
+    private static LoweredGlobalMethod? CreateMainMethod(LangProgram program)
+    {
+        if (program.Expressions.Count == 0)
+        {
+            return null;
+        }
+
+        var locals = program.TopLevelLocalVariables
+            .Select(x => new MethodLocal(x.Name.StringValue, GetTypeReference(x.Type)))
+            .ToList();
+
+        var expressions = program.Expressions.Select(ExpressionAbseil.LowerExpression).ToList();
+
+        if (!program.Expressions[^1].Diverges)
+        {
+            expressions.Add(new MethodReturnExpression(
+                        new UnitConstantExpression(true)));
+        }
+
+        return new LoweredGlobalMethod(
+                Guid.NewGuid(),
+                "_Main",
+                TypeParameters: [],
+                Parameters: [],
+                ReturnType: GetTypeReference(InstantiatedClass.Unit),
+                expressions,
+                locals);
     }
 
     private static DataType LowerClass(ClassSignature klass)
@@ -33,7 +67,7 @@ public static class ProgramAbseil
             .Select(x => new StaticDataTypeField(
                         x.Name,
                         GetTypeReference(x.Type),
-                        [..ExpressionAbseil.LowerExpression(x.StaticInitializer.NotNull())]));
+                        ExpressionAbseil.LowerExpression(x.StaticInitializer.NotNull())));
 
         var fields = klass.Fields.Where(x => !x.IsStatic)
             .Select(x => new DataTypeField(x.Name, GetTypeReference(x.Type)));
@@ -56,7 +90,9 @@ public static class ProgramAbseil
                                                     typeParameters);
 
         var dataTypeMethods = union.NotNull()
-            .Functions.Select(x => LowerTypeMethod(x, unionTypeReference)).ToList();
+            .Functions.Select(x => LowerTypeMethod(x, unionTypeReference))
+            .Cast<IDataTypeMethod>()
+            .ToList();
         var variants = new List<DataTypeVariant>(union.Variants.Count);
         foreach (var variant in union.Variants)
         {
@@ -83,13 +119,11 @@ public static class ProgramAbseil
                                         x)));
 
                         // add the tuple variant as a method
-                        dataTypeMethods.Add(new DataTypeMethod(
+                        dataTypeMethods.Add(new CompilerImplementedDataTypeMethod(
                                     Guid.NewGuid(),
                                     $"{union.Name}_Create_{u.Name}",
-                                    [],
                                     memberTypes,
                                     unionTypeReference,
-                                    Expressions: [],
                                     CompilerImplementationType.UnionTupleVariantInit));
                         break;
                     }
@@ -113,13 +147,16 @@ public static class ProgramAbseil
             FunctionSignature fnSignature,
             ILoweredTypeReference ownerTypeReference)
     {
-        var expressions = fnSignature.Expressions.SelectMany(ExpressionAbseil.LowerExpression)
+        var locals = fnSignature.LocalVariables
+            .Select(x => new MethodLocal(x.Name.StringValue, GetTypeReference(x.Type)))
+            .ToList();
+        var expressions = fnSignature.Expressions.Select(ExpressionAbseil.LowerExpression)
             .ToList();
 
         // if we passed type checking, and either there are no expressions or the last 
         // expression does not diverge (throw or return), then we need to add an explicit
         // return unit
-        if (expressions.Count == 0 || !expressions[^1].Diverges)
+        if (expressions.Count == 0 || !fnSignature.Expressions[^1].Diverges)
         {
             expressions.Add(new MethodReturnExpression(
                 new UnitConstantExpression(ValueUseful: true)));
@@ -138,7 +175,8 @@ public static class ProgramAbseil
             fnSignature.TypeParameters.Select(GetGenericPlaceholder).ToArray(),
             parameters.ToArray(),
             GetTypeReference(fnSignature.ReturnType),
-            expressions);
+            expressions,
+            locals);
     }
 
     private static LoweredGenericPlaceholder GetGenericPlaceholder(GenericPlaceholder placeholder)

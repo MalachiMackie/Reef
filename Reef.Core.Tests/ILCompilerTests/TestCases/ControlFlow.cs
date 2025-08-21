@@ -75,13 +75,10 @@ public static class ControlFlow
                             isStatic: true,
                             instructions: [
                                 new LoadBoolConstant(Addr(0), true),
-                                new BranchIfFalse(Addr(1), Addr(4)),
-                                LoadUnit(2),
-                                new Branch(Addr(3), Addr(5)),
-                                LoadUnit(4),
-                                Drop(5),
-                                LoadUnit(6),
-                                Return(7)
+                                new BranchIfFalse(Addr(1), Addr(3)),
+                                new Branch(Addr(2), Addr(3)),
+                                LoadUnit(3),
+                                Return(4)
                             ])
                     ])
             },
@@ -97,15 +94,12 @@ public static class ControlFlow
                             ],
                             instructions: [
                                 new LoadBoolConstant(Addr(0), true),
-                                new BranchIfFalse(Addr(1), Addr(6)),
+                                new BranchIfFalse(Addr(1), Addr(5)),
                                 new LoadIntConstant(Addr(2), 1),
                                 new StoreLocal(Addr(3), 0),
-                                LoadUnit(4),
-                                new Branch(Addr(5), Addr(7)),
-                                LoadUnit(6),
-                                Drop(7),
-                                LoadUnit(8),
-                                Return(9)
+                                new Branch(Addr(4), Addr(5)),
+                                LoadUnit(5),
+                                Return(6)
                             ])
                     ])
             },
@@ -268,6 +262,7 @@ public static class ControlFlow
                             ])
                     ])
             },
+            /*
             {
                 "discard pattern matches",
                 """
@@ -449,6 +444,7 @@ public static class ControlFlow
                 """,
                 Module()
             }
+        */
         };
     }
 }

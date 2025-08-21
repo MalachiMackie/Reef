@@ -6,15 +6,13 @@ using static Reef.Core.Tests.LoweredProgramHelpers;
 
 namespace Reef.Core.Tests.AbseilTests;
 
-#pragma warning disable IDE0060 // Remove unused parameter
-#pragma warning disable xUnit1026 // Remove unused parameter
-
 public class UnionTests : TestBase
 {
     [Theory]
     [MemberData(nameof(TestCases))]
     public void UnionAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
+        description.Should().NotBeEmpty();
         var program = CreateProgram(source);
         var loweredProgram = ProgramAbseil.Lower(program);
         loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
@@ -39,10 +37,9 @@ public class UnionTests : TestBase
                 [
                     DataTypeMethod(
                         "MyUnion_Create_A",
-                        [],
-                        [GenericPlaceholder("T")],
-                        ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]),
-                        CompilerImplementationType.UnionTupleVariantInit)
+                        CompilerImplementationType.UnionTupleVariantInit,
+                        parameters: [GenericPlaceholder("T")],
+                        returnType: ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]))
                 ])
         ]);
 
@@ -93,10 +90,8 @@ public class UnionTests : TestBase
                         [
                             DataTypeMethod(
                                 "SomeFn",
-                                [],
-                                [ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")])],
-                                Unit,
-                                [MethodReturn(UnitConstant(true))])
+                                [MethodReturn(UnitConstant(true))],
+                                parameters: [ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")])])
                         ])
                 ])
             },
@@ -115,10 +110,9 @@ public class UnionTests : TestBase
                         methods: [
                             DataTypeMethod(
                                 "MyUnion_Create_A",
-                                [],
-                                [StringType, Int],
-                                ConcreteTypeReference("MyUnion"),
-                                CompilerImplementationType.UnionTupleVariantInit)
+                                CompilerImplementationType.UnionTupleVariantInit,
+                                parameters: [StringType, Int],
+                                returnType: ConcreteTypeReference("MyUnion"))
                         ])
                 ])
             },
@@ -138,10 +132,9 @@ public class UnionTests : TestBase
                         methods: [
                             DataTypeMethod(
                                 "MyUnion_Create_A",
-                                [],
-                                [GenericPlaceholder("T")],
-                                ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]),
-                                CompilerImplementationType.UnionTupleVariantInit)
+                                CompilerImplementationType.UnionTupleVariantInit,
+                                parameters: [GenericPlaceholder("T")],
+                                returnType: ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]))
                         ])
                 ])
             },
@@ -168,12 +161,8 @@ public class UnionTests : TestBase
                         methods: [
                             DataTypeMethod(
                                 "MyFn",
-                                [],
-                                [ConcreteTypeReference("MyUnion")],
-                                Unit, 
-                                [
-                                    MethodReturn(UnitConstant(valueUseful: true)) 
-                                ])
+                                [MethodReturn(UnitConstant(valueUseful: true))],
+                                parameters: [ConcreteTypeReference("MyUnion")])
                         ])
                 ])
             },
@@ -185,24 +174,17 @@ public class UnionTests : TestBase
                         methods: [
                             DataTypeMethod(
                                 "MyFn",
-                                [],
-                                [],
-                                Unit,
-                                [
-                                    MethodReturn(UnitConstant(true))
-                                ]),
+                                [MethodReturn(UnitConstant(true))]),
                             DataTypeMethod(
                                 "MyUnion_Create_A",
-                                [],
-                                [StringType],
-                                ConcreteTypeReference("MyUnion"),
-                                CompilerImplementationType.UnionTupleVariantInit),
+                                CompilerImplementationType.UnionTupleVariantInit,
+                                parameters: [StringType],
+                                returnType: ConcreteTypeReference("MyUnion")),
                             DataTypeMethod(
                                 "MyUnion_Create_B",
-                                [],
-                                [StringType],
-                                ConcreteTypeReference("MyUnion"),
-                                CompilerImplementationType.UnionTupleVariantInit),
+                                CompilerImplementationType.UnionTupleVariantInit,
+                                parameters: [StringType],
+                                returnType: ConcreteTypeReference("MyUnion")),
                         ],
                         variants: [
                             Variant(
@@ -223,4 +205,3 @@ public class UnionTests : TestBase
         };
     }
 }
-#pragma warning restore IDE0060

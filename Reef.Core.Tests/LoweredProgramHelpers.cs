@@ -5,20 +5,39 @@ namespace Reef.Core.Tests;
 public static class LoweredProgramHelpers
 {
     public static LoweredProgram LoweredProgram(
-            IReadOnlyList<DataType>? types = null)
+            IReadOnlyList<DataType>? types = null,
+            IReadOnlyList<LoweredGlobalMethod>? methods = null)
     {
         return new()
         {
-            Methods = [],
+            Methods = methods ?? [],
             DataTypes = types ?? []
         };
+    }
+
+    public static LoweredGlobalMethod GlobalMethod(
+            string name,
+            IReadOnlyList<ILoweredExpression> expressions,
+            ILoweredTypeReference? returnType = null,
+            IReadOnlyList<ILoweredTypeReference>? parameters = null,
+            IReadOnlyList<string>? typeParameters = null,
+            IReadOnlyList<MethodLocal>? locals = null)
+    {
+        return new LoweredGlobalMethod(
+                Guid.Empty,
+                name,
+                typeParameters?.Select(x => new LoweredGenericPlaceholder(Guid.Empty, x)).ToArray() ?? [],
+                parameters ?? [],
+                returnType ?? Unit,
+                expressions,
+                locals ?? []);
     }
 
     public static DataType DataType(
             string name,
             IReadOnlyList<string>? typeParameters = null,
             IReadOnlyList<DataTypeVariant>? variants = null,
-            IReadOnlyList<DataTypeMethod>? methods = null,
+            IReadOnlyList<IDataTypeMethod>? methods = null,
             IReadOnlyList<StaticDataTypeField>? staticFields = null)
     {
         return new(
@@ -45,52 +64,94 @@ public static class LoweredProgramHelpers
     public static StaticDataTypeField StaticField(
             string name,
             ILoweredTypeReference type,
-            IReadOnlyList<ILoweredExpression> staticInitializer)
+            ILoweredExpression staticInitializer)
     {
         return new(name, type, staticInitializer);
     }
 
     public static DataTypeMethod DataTypeMethod(
             string name,
-            IReadOnlyList<string> typeParameters,
-            IReadOnlyList<ILoweredTypeReference> parameters,
-            ILoweredTypeReference returnType,
-            IReadOnlyList<ILoweredExpression> expressions)
+            IReadOnlyList<ILoweredExpression> expressions,
+            IReadOnlyList<string>? typeParameters = null,
+            IReadOnlyList<ILoweredTypeReference>? parameters = null,
+            ILoweredTypeReference? returnType = null,
+            IReadOnlyList<MethodLocal>? locals = null)
     {
         return new(
                 Guid.Empty,
                 name,
-                typeParameters.Select(x => new LoweredGenericPlaceholder(Guid.Empty, x)).ToArray(),
-                parameters,
-                returnType,
-                expressions);
+                typeParameters?.Select(x => new LoweredGenericPlaceholder(Guid.Empty, x)).ToArray() ?? [],
+                parameters ?? [],
+                returnType ?? Unit,
+                expressions ?? [],
+                locals ?? []);
     }
 
-    public static DataTypeMethod DataTypeMethod(
+    public static CompilerImplementedDataTypeMethod DataTypeMethod(
             string name,
-            IReadOnlyList<string> typeParameters,
-            IReadOnlyList<ILoweredTypeReference> parameters,
-            ILoweredTypeReference returnType,
-            CompilerImplementationType compilerImplementationType)
+            CompilerImplementationType compilerImplementationType,
+            IReadOnlyList<ILoweredTypeReference>? parameters = null,
+            ILoweredTypeReference? returnType = null)
     {
         return new(
                 Guid.Empty,
                 name,
-                typeParameters.Select(x => new LoweredGenericPlaceholder(Guid.Empty, x)).ToArray(),
-                parameters,
-                returnType,
-                Expressions: [],
+                parameters ?? [],
+                returnType ?? Unit,
                 compilerImplementationType);
     }
 
     public static StringConstantExpression StringConstant(string value, bool valueUseful) => 
-        new StringConstantExpression(valueUseful, value);
+        new(valueUseful, value);
 
-    public static UnitConstantExpression UnitConstant(bool valueUseful) => new UnitConstantExpression(valueUseful);
+    public static UnitConstantExpression UnitConstant(bool valueUseful) => new(valueUseful);
 
     public static MethodReturnExpression MethodReturn(ILoweredExpression value)
     {
         return new(value);
+    }
+
+    public static MethodReturnExpression MethodReturnUnit()
+    {
+        return new(UnitConstant(true));
+    }
+
+    public static VariableDeclarationAndAssignmentExpression VariableDeclaration(
+            string name,
+            ILoweredExpression value,
+            bool valueUseful)
+    {
+        return new(
+                name,
+                value,
+                valueUseful);
+    }
+
+    public static VariableDeclarationExpression VariableDeclaration(
+            string name,
+            bool valueUseful)
+    {
+        return new(
+                name,
+                valueUseful);
+    }
+
+    public static LocalAssignmentExpression LocalValueAssignment(
+            string name,
+            ILoweredExpression value,
+            bool valueUseful,
+            ILoweredTypeReference resolvedValue)
+    {
+        return new(
+                name,
+                value,
+                resolvedValue,
+                valueUseful);
+    }
+
+    public static MethodLocal Local(string name, ILoweredTypeReference type)
+    {
+        return new(name, type);
     }
 
     public static LoweredConcreteTypeReference Int { get; }
