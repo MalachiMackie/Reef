@@ -175,6 +175,45 @@ public class SimpleExpressionTests : TestBase
                             ])
                     ])
             },
+            {
+                "empty block",
+                "{}",
+                LoweredProgram(
+                    methods: [
+                        GlobalMethod("_Main",
+                            [
+                                Block([], Unit, false),
+                                MethodReturnUnit()
+                            ])
+                    ])
+            },
+            {
+                "block with one expression",
+                "{true;}",
+                LoweredProgram(
+                    methods: [
+                        GlobalMethod("_Main",
+                            [
+                                Block([BoolConstant(true, false)], Unit, false),
+                                MethodReturnUnit()
+                            ])
+                    ])
+            },
+            {
+                "block with multiple expressions",
+                "{true; 1;}",
+                LoweredProgram(
+                    methods: [
+                        GlobalMethod("_Main",
+                            [
+                                Block([
+                                    BoolConstant(true, false),
+                                    IntConstant(1, false),
+                                ], Unit, false),
+                                MethodReturnUnit()
+                            ])
+                    ])
+            },
         };
     }
 }

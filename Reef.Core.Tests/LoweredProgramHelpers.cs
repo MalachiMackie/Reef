@@ -211,6 +211,14 @@ public static class LoweredProgramHelpers
         return new(valueUseful, value);
     }
 
+    public static BlockExpression Block(
+            IReadOnlyList<ILoweredExpression> expressions,
+            ILoweredTypeReference resolvedType,
+            bool valueUseful)
+    {
+        return new(expressions, resolvedType, valueUseful);
+    }
+
     public static LoweredConcreteTypeReference Int { get; }
         = new LoweredConcreteTypeReference(
                 TypeChecking.TypeChecker.ClassSignature.Int.Name,

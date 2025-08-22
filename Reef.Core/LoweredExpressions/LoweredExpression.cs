@@ -58,6 +58,11 @@ public record LocalAssignmentExpression(
 {
 }
 
+public record BlockExpression(
+        IReadOnlyList<ILoweredExpression> Expressions,
+        ILoweredTypeReference ResolvedType,
+        bool ValueUseful) : ILoweredExpression;
+
 public record IntPlusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();

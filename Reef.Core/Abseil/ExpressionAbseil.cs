@@ -13,8 +13,22 @@ public static class ExpressionAbseil
             Expressions.VariableDeclarationExpression e => LowerVariableDeclarationExpression(e),
             Expressions.BinaryOperatorExpression e => LowerBinaryOperatorExpression(e),
             Expressions.UnaryOperatorExpression e => LowerUnaryOperatorExpression(e),
+            Expressions.BlockExpression e => LowerBlockExpression(e), 
             _ => throw new NotImplementedException($"{expression.GetType()}")
         };
+    }
+
+    private static ILoweredExpression LowerBlockExpression(Expressions.BlockExpression e)
+    {
+        foreach (var method in e.Block.Functions)
+        {
+            throw new NotImplementedException();
+        }
+
+        return new BlockExpression(
+                [..e.Block.Expressions.Select(LowerExpression)],
+                ProgramAbseil.GetTypeReference(e.ResolvedType.NotNull()),
+                e.ValueUseful);
     }
 
     private static ILoweredExpression LowerVariableDeclarationExpression(Expressions.VariableDeclarationExpression e)
