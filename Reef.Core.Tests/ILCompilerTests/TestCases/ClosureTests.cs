@@ -83,7 +83,7 @@ public static class ClosureTests
                     ],
                     methods:
                     [
-                        
+
                         Method("SomeMethod", parameters:
                             [
                                 Parameter("closureParameter", ConcreteTypeReference("SomeMethod_Closure")),

@@ -43,7 +43,7 @@ public class Tests(ITestOutputHelper testOutputHelper)
 
         try
         {
-            result.Should().BeEquivalentTo(expectedExpression, 
+            result.Should().BeEquivalentTo(expectedExpression,
                 opts => opts.AllowingInfiniteRecursion()
                     .Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
         }
@@ -73,7 +73,7 @@ public class Tests(ITestOutputHelper testOutputHelper)
         var result = Parser.Parse(tokens);
 
         result.Errors.Should().BeEmpty();
-        
+
         try
         {
             result.ParsedProgram.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion()

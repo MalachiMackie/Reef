@@ -453,14 +453,14 @@ public class Tokenizer
                 tokens[i++] = TokenType.DoubleBar;
                 break;
             default:
-            {
-                if (IsValidIdentifier([firstChar]))
                 {
-                    tokens[i++] = TokenType.Identifier;
-                }
+                    if (IsValidIdentifier([firstChar]))
+                    {
+                        tokens[i++] = TokenType.Identifier;
+                    }
 
-                break;
-            }
+                    break;
+                }
         }
 
         return i;

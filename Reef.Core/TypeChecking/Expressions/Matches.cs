@@ -4,7 +4,7 @@ namespace Reef.Core.TypeChecking;
 
 public partial class TypeChecker
 {
-private InstantiatedClass TypeCheckMatchesExpression(MatchesExpression matchesExpression)
+    private InstantiatedClass TypeCheckMatchesExpression(MatchesExpression matchesExpression)
     {
         matchesExpression.ValueUseful = true;
         var valueType = TypeCheckExpression(matchesExpression.ValueExpression);

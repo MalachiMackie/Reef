@@ -10,7 +10,7 @@ public partial class TypeChecker
         var (ownerExpression, stringToken, typeArgumentsIdentifiers) = memberAccessExpression.MemberAccess;
         ownerExpression.ValueUseful = true;
         var ownerType = TypeCheckExpression(ownerExpression);
-        
+
         if (stringToken is null)
         {
             return UnknownType.Instance;
@@ -42,7 +42,7 @@ public partial class TypeChecker
 
         var typeArguments = (typeArgumentsIdentifiers ?? [])
             .Select(x => (GetTypeReference(x), x.SourceRange)).ToArray();
-        
+
         if (!TryInstantiateClassFunction(
                 classType,
                 stringToken.StringValue,
@@ -71,8 +71,8 @@ public partial class TypeChecker
 
             return field.Type;
         }
-        
-        
+
+
         if (function.IsStatic)
         {
             _errors.Add(TypeCheckerError.InstanceMemberAccessOnStaticMember(memberAccessExpression.SourceRange));
@@ -91,7 +91,7 @@ public partial class TypeChecker
             parameters: function.Parameters,
             returnType: function.ReturnType);
     }
-    
+
     private ITypeReference TypeCheckUnionMemberAccess(
         InstantiatedUnion unionType,
         MemberAccessExpression memberAccessExpression,
@@ -103,7 +103,7 @@ public partial class TypeChecker
 
         var typeArguments = (typeArgumentsIdentifiers ?? [])
             .Select(x => (GetTypeReference(x), x.SourceRange)).ToArray();
-        
+
         if (!TryInstantiateUnionFunction(
                 unionType,
                 stringToken.StringValue,
@@ -114,7 +114,7 @@ public partial class TypeChecker
             _errors.Add(TypeCheckerError.UnknownTypeMember(stringToken, unionType.Name));
             return UnknownType.Instance;
         }
-        
+
         if (typeArgumentsIdentifiers is not null)
         {
             _errors.Add(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(memberAccessExpression.SourceRange));

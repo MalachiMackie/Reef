@@ -85,7 +85,7 @@ public partial class TypeChecker
             expectedReturnType ?? currentScope.ExpectedReturnType,
             currentTypeSignature ?? currentScope.CurrentTypeSignature,
             currentFunctionSignature ?? currentScope.CurrentFunctionSignature,
-            [..currentScope.GenericPlaceholders, ..genericPlaceholders ?? []]));
+            [.. currentScope.GenericPlaceholders, .. genericPlaceholders ?? []]));
 
         return new ScopeDisposable(PopScope);
     }
@@ -131,7 +131,7 @@ public partial class TypeChecker
         {
             CurrentScopeVariables.Add(name, variable);
         }
-        
+
         public bool ContainsVariable(string name)
         {
             return CurrentScopeVariables.ContainsKey(name) || (ParentScope?.ContainsVariable(name) ?? false);
@@ -139,7 +139,7 @@ public partial class TypeChecker
 
         public IEnumerable<IVariable> GetVariables()
         {
-            return [..CurrentScopeVariables.Values, ..ParentScope?.GetVariables() ?? []];
+            return [.. CurrentScopeVariables.Values, .. ParentScope?.GetVariables() ?? []];
         }
     }
 

@@ -5,7 +5,7 @@ namespace Reef.Core.TypeChecking;
 
 public partial class TypeChecker
 {
-private ITypeReference TypeCheckMatchExpression(MatchExpression matchExpression)
+    private ITypeReference TypeCheckMatchExpression(MatchExpression matchExpression)
     {
         matchExpression.Value.ValueUseful = true;
         var valueType = TypeCheckExpression(matchExpression.Value);
@@ -37,7 +37,7 @@ private ITypeReference TypeCheckMatchExpression(MatchExpression matchExpression)
             var armType = arm.Expression is null
                 ? UnknownType.Instance
                 : TypeCheckExpression(arm.Expression);
-            
+
             foundType ??= armType;
 
             ExpectExpressionType(foundType, arm.Expression);

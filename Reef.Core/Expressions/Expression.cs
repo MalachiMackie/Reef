@@ -21,7 +21,7 @@ public record ValueAccessorExpression(ValueAccessor ValueAccessor) : IExpression
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
     public SourceRange SourceRange => new(ValueAccessor.Token.SourceSpan, ValueAccessor.Token.SourceSpan);
-    
+
     public TypeChecker.IVariable? ReferencedVariable { get; set; }
 
     public bool Diverges => false;
@@ -86,7 +86,7 @@ public record StaticMemberAccess(NamedTypeIdentifier Type, StringToken? MemberNa
     public uint? ItemIndex { get; set; }
     public MemberType? MemberType { get; set; }
     public TypeChecker.InstantiatedFunction? InstantiatedFunction { get; set; }
-    
+
     public override string ToString()
     {
         return $"{Type}::{MemberName}";
@@ -145,7 +145,7 @@ public record BinaryOperatorExpression(BinaryOperator BinaryOperator) : IExpress
             return new SourceRange(start, end);
         }
     }
-    
+
     public bool Diverges { get; } = (BinaryOperator.Left?.Diverges ?? false) || (BinaryOperator.Right?.Diverges ?? false);
     public bool ValueUseful { get; set; }
 
@@ -160,7 +160,7 @@ public record VariableDeclarationExpression(VariableDeclaration VariableDeclarat
 {
     public ExpressionType ExpressionType => ExpressionType.VariableDeclaration;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
-    
+
     public bool Diverges { get; } = VariableDeclaration.Value?.Diverges ?? false;
     public bool ValueUseful { get; set; }
 
@@ -182,7 +182,7 @@ public record IfExpressionExpression(IfExpression IfExpression, SourceRange Sour
         && IfExpression.ElseIfs.All(x => x.Body is { Diverges: true });
 
     private bool _valueUseful;
-    public bool ValueUseful 
+    public bool ValueUseful
     {
         get => _valueUseful;
         set
@@ -316,7 +316,7 @@ public record UnionClassVariantInitializer(
     {
         return $"{UnionType}::{VariantIdentifier} {{\r\n\t{string.Join("\r\n\t,", FieldInitializers)}\r\n}}";
     }
-    
+
     public uint? VariantIndex { get; set; }
 }
 
@@ -340,7 +340,7 @@ public record VariableDeclaration(
     IExpression? Value)
 {
     public TypeChecker.IVariable? Variable { get; set; }
-    
+
     public override string ToString()
     {
         var sb = new StringBuilder("var ");

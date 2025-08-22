@@ -18,10 +18,10 @@ public partial class TypeChecker
             { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True or TokenType.False } => InstantiatedClass
                 .Boolean,
             // todo: bring union variants into scope
-            { AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: "ok"}} => TypeCheckResultVariantKeyword("Ok"),
-            { AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: "error"}} =>
+            { AccessType: ValueAccessType.Variable, Token: StringToken { Type: TokenType.Identifier, StringValue: "ok" } } => TypeCheckResultVariantKeyword("Ok"),
+            { AccessType: ValueAccessType.Variable, Token: StringToken { Type: TokenType.Identifier, StringValue: "error" } } =>
                 TypeCheckResultVariantKeyword("Error"),
-            { AccessType: ValueAccessType.Variable, Token: StringToken {Type: TokenType.Identifier, StringValue: "this" } thisToken} => TypeCheckThis(thisToken),
+            { AccessType: ValueAccessType.Variable, Token: StringToken { Type: TokenType.Identifier, StringValue: "this" } thisToken } => TypeCheckThis(thisToken),
             { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Todo } => InstantiatedClass.Never,
             {
                 AccessType: ValueAccessType.Variable,
@@ -29,7 +29,7 @@ public partial class TypeChecker
             } => TypeCheckVariableAccess(valueAccessorExpression, variableNameToken, allowUninstantiatedVariables),
             _ => throw new UnreachableException($"{valueAccessorExpression}")
         };
-        
+
         return type;
 
         ITypeReference TypeCheckThis(StringToken thisToken)
@@ -59,7 +59,7 @@ public partial class TypeChecker
 
             var okVariant = instantiatedUnion.Variants.FirstOrDefault(x => x.Name == variantName)
                             ?? throw new UnreachableException($"{variantName} is a built in variant of Result");
-            
+
             if (okVariant is not TupleUnionVariant tupleVariant)
             {
                 throw new UnreachableException($"{variantName} is a tuple variant");
@@ -148,12 +148,12 @@ public partial class TypeChecker
                     instantiatedFunction.ReturnType);
             }
         }
-        
+
         if (expression.ValueAccessor.TypeArguments is not null)
         {
             _errors.Add(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(expression.SourceRange));
         }
-        
+
         if (!TryGetScopedVariable(variableName, out var valueVariable))
         {
             _errors.Add(TypeCheckerError.SymbolNotFound(variableName));

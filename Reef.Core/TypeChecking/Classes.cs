@@ -22,19 +22,19 @@ public partial class TypeChecker
         };
 
         public static ClassSignature Unit { get; } = new()
-            { TypeParameters = [], Name = "Unit", Fields = [], Functions = [] };
+        { TypeParameters = [], Name = "Unit", Fields = [], Functions = [] };
 
         public static ClassSignature String { get; } = new()
-            { TypeParameters = [], Name = "string", Fields = [], Functions = [] };
+        { TypeParameters = [], Name = "string", Fields = [], Functions = [] };
 
         public static ClassSignature Int { get; } = new()
-            { TypeParameters = [], Name = "int", Fields = [], Functions = [] };
+        { TypeParameters = [], Name = "int", Fields = [], Functions = [] };
 
         public static ClassSignature Boolean { get; } = new()
-            { TypeParameters = [], Name = "bool", Fields = [], Functions = [] };
+        { TypeParameters = [], Name = "bool", Fields = [], Functions = [] };
 
         public static ClassSignature Never { get; } = new()
-            { TypeParameters = [], Name = "!", Fields = [], Functions = [] };
+        { TypeParameters = [], Name = "!", Fields = [], Functions = [] };
 
         public static IEnumerable<ITypeSignature> BuiltInTypes { get; } = [Unit, String, Int, Never, Boolean];
 
@@ -45,7 +45,7 @@ public partial class TypeChecker
         public Guid Id { get; } = Guid.NewGuid();
 
         private static readonly Dictionary<int, ClassSignature> CachedFunctionClasses = [];
-        
+
         public static ClassSignature Function(IReadOnlyList<FunctionParameter> parameters)
         {
             // plus 1 for return value
@@ -59,8 +59,8 @@ public partial class TypeChecker
             var typeParameters = new List<GenericPlaceholder>();
 
             var functions = new List<FunctionSignature>();
-            
-            var signature =  new ClassSignature
+
+            var signature = new ClassSignature
             {
                 Name = $"Function`{typeParamsCount}",
                 TypeParameters = typeParameters,
@@ -86,16 +86,16 @@ public partial class TypeChecker
                 OwnerType = signature
             };
             functions.Add(functionSignature);
-            
-            
+
+
             typeParameters.AddRange(Enumerable.Range(0, typeParamsCount).Select(i => new GenericPlaceholder
-                {
-                    GenericName = i == typeParamsCount - 1 ? "TReturn" : $"TParam{i}",
-                    OwnerType = signature
-                }));
+            {
+                GenericName = i == typeParamsCount - 1 ? "TReturn" : $"TParam{i}",
+                OwnerType = signature
+            }));
 
             functionSignature.ReturnType = typeParameters[^1];
-            
+
             foreach (var i in Enumerable.Range(0, parameters.Count))
             {
                 var name = $"arg{i}";
@@ -107,7 +107,7 @@ public partial class TypeChecker
                     ParameterIndex: (uint)i
                 ));
             }
-            
+
 
             CachedFunctionClasses[typeParamsCount] = signature;
 
@@ -121,7 +121,7 @@ public partial class TypeChecker
             {
                 return cachedSignature;
             }
-            
+
             var typeParameters = new List<GenericPlaceholder>(elements.Count);
             var fields = new List<TypeField>();
             var signature = new ClassSignature
@@ -136,7 +136,7 @@ public partial class TypeChecker
                 GenericName = $"T{x}",
                 OwnerType = signature
             }));
-            
+
             fields.AddRange(elements.Select((_, i) => new TypeField
             {
                 // todo: verify this
@@ -152,7 +152,7 @@ public partial class TypeChecker
             }));
 
             CachedTupleSignatures[elements.Count] = signature;
-            
+
             return signature;
         }
     }
@@ -211,7 +211,7 @@ public partial class TypeChecker
         {
             0 => throw new InvalidOperationException("Tuple must not be empty"),
             > 10 => throw new InvalidOperationException("Tuple can contain at most 10 items"),
-            _ => InstantiateClass(ClassSignature.Tuple([..types.Select(x => x.Item1)]), types, sourceRange)
+            _ => InstantiateClass(ClassSignature.Tuple([.. types.Select(x => x.Item1)]), types, sourceRange)
         };
     }
 
@@ -234,7 +234,7 @@ public partial class TypeChecker
             ];
         }
 
-        public static InstantiatedClass String { get; } = new (ClassSignature.String, []);
+        public static InstantiatedClass String { get; } = new(ClassSignature.String, []);
         public static InstantiatedClass Boolean { get; } = new(ClassSignature.Boolean, []);
 
         public static InstantiatedClass Int { get; } = new(ClassSignature.Int, []);

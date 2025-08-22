@@ -82,13 +82,13 @@ public sealed class Parser : IDisposable
             _errors
         );
     }
-    
+
     private Scope GetMemberList(
         HashSet<MemberType> allowedMemberTypes)
     {
         const TokenType closingToken = TokenType.RightBrace;
         var allowVariant = allowedMemberTypes.Contains(MemberType.UnionVariant);
-        
+
         List<TokenType> expectedTokensList = [closingToken];
         foreach (var type in allowedMemberTypes)
         {
@@ -107,7 +107,7 @@ public sealed class Parser : IDisposable
         if (!MoveNext())
         {
             LogError(null, allowComma: false);
-            
+
             return new Scope
             {
                 Classes = [],
@@ -149,7 +149,7 @@ public sealed class Parser : IDisposable
             {
                 _errors.Add(ParserError.ExpectedToken(Current, TokenType.Comma, closingToken));
             }
-            
+
             if (Current.Type == closingToken)
             {
                 foundClosingToken = Current;
@@ -184,7 +184,7 @@ public sealed class Parser : IDisposable
                 variants.Add(variant);
                 expectComma = true;
             }
-            
+
             if (!_hasNext)
             {
                 LogError(null, allowComma: true);
@@ -205,7 +205,7 @@ public sealed class Parser : IDisposable
             SourceRange = new SourceRange(start, endToken.SourceSpan)
         };
 
-        void LogError(Token? foundToken, bool allowComma) => _errors.Add(ParserError.ExpectedToken(foundToken, allowComma ? [..expectedTokens, TokenType.Comma] : expectedTokens));
+        void LogError(Token? foundToken, bool allowComma) => _errors.Add(ParserError.ExpectedToken(foundToken, allowComma ? [.. expectedTokens, TokenType.Comma] : expectedTokens));
     }
 
     /// <summary>
@@ -240,7 +240,7 @@ public sealed class Parser : IDisposable
         }
 
         var expectedTokens = expectedTokensList.Distinct().ToArray();
-        
+
         Action<Token?> logError = allowedScopeTypes.Contains(Scope.ScopeType.Expression)
             ? foundToken => _errors.Add(ParserError.ExpectedTokenOrExpression(foundToken, expectedTokens))
             : foundToken => _errors.Add(ParserError.ExpectedToken(foundToken, expectedTokens));
@@ -250,7 +250,7 @@ public sealed class Parser : IDisposable
         if (closingToken.HasValue && !MoveNext())
         {
             logError(null);
-            
+
             return new Scope
             {
                 Classes = [],
@@ -286,13 +286,13 @@ public sealed class Parser : IDisposable
 
             if (!_hasNext)
             {
-                var expectedTokensWithoutModifiers = expectedTokens.Except(new [] {accessModifier?.Token.Type, staticModifier?.Token.Type}.OfType<TokenType>());
+                var expectedTokensWithoutModifiers = expectedTokens.Except(new[] { accessModifier?.Token.Type, staticModifier?.Token.Type }.OfType<TokenType>());
                 _errors.Add(allowedScopeTypes.Contains(Scope.ScopeType.Expression) && accessModifier is null && staticModifier is null
-                    ? ParserError.ExpectedTokenOrExpression(null, [..expectedTokensWithoutModifiers])
-                    : ParserError.ExpectedToken(null, [..expectedTokensWithoutModifiers]));
+                    ? ParserError.ExpectedTokenOrExpression(null, [.. expectedTokensWithoutModifiers])
+                    : ParserError.ExpectedToken(null, [.. expectedTokensWithoutModifiers]));
                 break;
             }
-            
+
             if (allowedScopeTypes.Contains(Scope.ScopeType.Function) && Current.Type == TokenType.Fn)
             {
                 var functionDeclaration = GetFunctionDeclaration(accessModifier, staticModifier, mutabilityModifier);
@@ -300,14 +300,14 @@ public sealed class Parser : IDisposable
                     functions.Add(functionDeclaration);
                 continue;
             }
-            
+
             if (allowedScopeTypes.Contains(Scope.ScopeType.TypeDefinition) && Current.Type is TokenType.Union or TokenType.Class)
             {
                 if (mutabilityModifier is not null)
                     _errors.Add(ParserError.UnexpectedModifier(mutabilityModifier.Modifier, TokenType.Pub));
                 if (staticModifier is not null)
                     _errors.Add(ParserError.UnexpectedModifier(staticModifier.Token, TokenType.Pub));
-                
+
                 var (union, @class) = GetTypeDefinition(accessModifier);
                 if (@class is not null)
                 {
@@ -324,7 +324,7 @@ public sealed class Parser : IDisposable
                     {
                         logError(null);
                     }
-                    
+
                     break;
                 }
 
@@ -334,7 +334,7 @@ public sealed class Parser : IDisposable
             if (!allowedScopeTypes.Contains(Scope.ScopeType.Expression))
             {
                 logError(Current);
-                
+
                 if (!MoveNext())
                 {
                     return new Scope
@@ -352,7 +352,7 @@ public sealed class Parser : IDisposable
             }
 
             var beforeExpression = Current;
-            
+
             var expression = PopExpression(out var consumedToken);
             if (expression is null)
             {
@@ -364,7 +364,7 @@ public sealed class Parser : IDisposable
                     }
                     MoveNext();
                 }
-                
+
                 if (!_hasNext || Current.Type == TokenType.Semicolon && !MoveNext())
                 {
                     if (closingToken.HasValue)
@@ -383,7 +383,7 @@ public sealed class Parser : IDisposable
 
                 continue;
             }
-            
+
             expressions.Add(expression);
 
             if (tailCallExpression is not null)
@@ -473,7 +473,7 @@ public sealed class Parser : IDisposable
         StaticModifier? staticModifier = null;
 
         HashSet<TokenType> expectedTokens = [TokenType.Mut, TokenType.Static, TokenType.Pub];
-        
+
         while (_hasNext && Current.Type is TokenType.Pub or TokenType.Static or TokenType.Mut)
         {
             if (!expectedTokens.Remove(Current.Type))
@@ -496,7 +496,7 @@ public sealed class Parser : IDisposable
 
         return (accessModifier, mutabilityModifier, staticModifier);
     }
-    
+
     private (LangFunction? Function, ClassField? Field, IProgramUnionVariant? Variant) GetMember(
             HashSet<MemberType> allowedScopeTypes)
     {
@@ -504,18 +504,18 @@ public sealed class Parser : IDisposable
         {
             throw new InvalidOperationException("Expected at least one scope type");
         }
-        
+
         HashSet<TokenType> expectedTokens = [];
-        
+
         if (allowedScopeTypes.Contains(MemberType.Function))
             expectedTokens.Add(TokenType.Fn);
         if (allowedScopeTypes.Contains(MemberType.Field))
             expectedTokens.Add(TokenType.Field);
         if (allowedScopeTypes.Contains(MemberType.UnionVariant))
             expectedTokens.Add(TokenType.Identifier);
-        
-        var (accessModifier, mutabilityModifier, staticModifier) = GetModifiers( );
-        
+
+        var (accessModifier, mutabilityModifier, staticModifier) = GetModifiers();
+
         if (Current.Type == TokenType.Fn)
         {
             var function = GetFunctionDeclaration(accessModifier, staticModifier, mutabilityModifier);
@@ -537,10 +537,10 @@ public sealed class Parser : IDisposable
                 _errors.Add(ParserError.UnexpectedModifier(staticModifier.Token));
             if (accessModifier is not null)
                 _errors.Add(ParserError.UnexpectedModifier(accessModifier.Token));
-            
+
             return (null, null, GetUnionVariant(name));
         }
-        
+
         _errors.Add(ParserError.ExpectedToken(Current, expectedTokens.ToArray()));
         return (null, null, null);
     }
@@ -585,23 +585,23 @@ public sealed class Parser : IDisposable
 
         return new UnitUnionVariant(variantName);
     }
-    
+
     private bool ExpectCurrentIdentifier([NotNullWhen(true)] out StringToken? identifier, IReadOnlyList<TokenType>? otherExpectedTokens = null)
     {
         if (!_hasNext)
         {
-            _errors.Add(ParserError.ExpectedToken(null, [..otherExpectedTokens ?? [], TokenType.Identifier]));
+            _errors.Add(ParserError.ExpectedToken(null, [.. otherExpectedTokens ?? [], TokenType.Identifier]));
             identifier = null;
             return false;
         }
-        
+
         if (Current is not StringToken { Type: TokenType.Identifier } identifierToken)
         {
-            _errors.Add(ParserError.ExpectedToken(Current, [..otherExpectedTokens ?? [], TokenType.Identifier]));
+            _errors.Add(ParserError.ExpectedToken(Current, [.. otherExpectedTokens ?? [], TokenType.Identifier]));
             identifier = null;
             return false;
         }
-        
+
         identifier = identifierToken;
         return true;
     }
@@ -614,18 +614,18 @@ public sealed class Parser : IDisposable
             identifier = null;
             return false;
         }
-        
+
         if (Current is not StringToken { Type: TokenType.Identifier } identifierToken)
         {
             _errors.Add(ParserError.ExpectedToken(Current, TokenType.Identifier));
             identifier = null;
             return false;
         }
-        
+
         identifier = identifierToken;
         return true;
     }
-    
+
     private bool ExpectCurrentToken(TokenType tokenType)
     {
         if (!_hasNext || Current.Type != tokenType)
@@ -636,7 +636,7 @@ public sealed class Parser : IDisposable
 
         return true;
     }
-    
+
     private bool ExpectNextToken(TokenType tokenType)
     {
         if (!MoveNext() || Current.Type != tokenType)
@@ -647,7 +647,7 @@ public sealed class Parser : IDisposable
 
         return true;
     }
-    
+
     private bool ExpectCurrentTypeIdentifier([NotNullWhen(true)] out ITypeIdentifier? typeIdentifier)
     {
         if (!_hasNext)
@@ -656,12 +656,12 @@ public sealed class Parser : IDisposable
             typeIdentifier = null;
             return false;
         }
-        
+
         typeIdentifier = GetTypeIdentifier();
 
         return typeIdentifier is not null;
     }
-    
+
     private bool ExpectNextNamedTypeIdentifier([NotNullWhen(true)] out NamedTypeIdentifier? typeIdentifier)
     {
         if (!MoveNext())
@@ -694,7 +694,7 @@ public sealed class Parser : IDisposable
     {
         return ExpectNextExpression(null, out expression);
     }
-    
+
     private bool ExpectNextExpression(uint? currentBindingStrength, [NotNullWhen(true)] out IExpression? expression)
     {
         if (!MoveNext())
@@ -711,10 +711,10 @@ public sealed class Parser : IDisposable
         {
             _errors.Add(ParserError.ExpectedExpression(beforeExpression));
         }
-        
+
         return expression is not null;
     }
-    
+
     private ClassField? GetField(AccessModifier? accessModifier, StaticModifier? staticModifier,
         MutabilityModifier? mutabilityModifier)
     {
@@ -722,12 +722,12 @@ public sealed class Parser : IDisposable
         {
             return null;
         }
-        
+
         if (!ExpectNextToken(TokenType.Colon))
         {
             return new ClassField(accessModifier, staticModifier, mutabilityModifier, name, null, null);
         }
-        
+
         if (!ExpectNextTypeIdentifier(out var type))
         {
             return new ClassField(accessModifier, staticModifier, mutabilityModifier, name, null, null);
@@ -767,7 +767,7 @@ public sealed class Parser : IDisposable
             MoveNext();
             return null;
         }
-        
+
         if (!MoveNext())
         {
             _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftAngleBracket, TokenType.LeftBrace));
@@ -786,7 +786,7 @@ public sealed class Parser : IDisposable
                 return new ProgramUnion(accessModifier, name, typeParameters, [], []);
             }
         }
-        
+
         if (Current.Type != TokenType.LeftBrace)
         {
             _errors.Add(ParserError.ExpectedToken(Current, typeParameters is not null ? [TokenType.LeftBrace] : [TokenType.LeftBrace, TokenType.LeftAngleBracket]));
@@ -813,7 +813,7 @@ public sealed class Parser : IDisposable
             MoveNext();
             return null;
         }
-        
+
         if (!MoveNext())
         {
             _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace, TokenType.LeftAngleBracket));
@@ -869,7 +869,7 @@ public sealed class Parser : IDisposable
 
             if (!_hasNext)
             {
-                if (lastToken is {Type: TokenType.RightAngleBracket})
+                if (lastToken is { Type: TokenType.RightAngleBracket })
                 {
                     _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftParenthesis));
                 }
@@ -920,7 +920,7 @@ public sealed class Parser : IDisposable
                 }
 
                 ExpectNextTypeIdentifier(out var parameterType);
-                
+
                 return new FunctionParameter(parameterType, parameterMutabilityModifier, parameterName);
             });
 
@@ -945,7 +945,7 @@ public sealed class Parser : IDisposable
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
                     new Block([], []));
             }
-            
+
             if (!_hasNext)
             {
                 _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace));
@@ -967,7 +967,7 @@ public sealed class Parser : IDisposable
         return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
             new Block(scope.Expressions, scope.Functions));
     }
-    
+
     private ITypeIdentifier? GetTypeIdentifier()
     {
         return Current switch
@@ -977,14 +977,14 @@ public sealed class Parser : IDisposable
             { Type: TokenType.LeftParenthesis } => GetTupleTypeIdentifier(),
             _ => DefaultCase()
         };
-        
+
         ITypeIdentifier? DefaultCase()
         {
             _errors.Add(ParserError.ExpectedType(Current));
             return null;
         }
     }
-    
+
     private ITypeIdentifier GetTupleTypeIdentifier()
     {
         var sourceStart = Current.SourceSpan;
@@ -1058,7 +1058,7 @@ public sealed class Parser : IDisposable
         {
             return new FnTypeIdentifier(parameters, ReturnType: null, new SourceRange(fnToken.SourceSpan, lastToken.SourceSpan));
         }
-        
+
         return new FnTypeIdentifier(parameters, ReturnType: returnType, new SourceRange(fnToken.SourceSpan, lastToken.SourceSpan));
     }
 
@@ -1070,7 +1070,7 @@ public sealed class Parser : IDisposable
             _errors.Add(ParserError.ExpectedType(Current));
             return null;
         }
-        
+
         var typeArguments = new List<ITypeIdentifier>();
         Token? lastToken = null;
         if (MoveNext() && Current.Type == TokenType.Turbofish)
@@ -1096,7 +1096,7 @@ public sealed class Parser : IDisposable
             new SourceRange(typeIdentifier.SourceSpan, lastToken?.SourceSpan ?? typeIdentifier.SourceSpan));
     }
 
-    
+
 
     private IExpression? MatchTokenToExpression(IExpression? previousExpression, out bool consumedToken)
     {
@@ -1167,7 +1167,7 @@ public sealed class Parser : IDisposable
                 {
                     return new MatchArm(pattern, null);
                 }
-                
+
                 ExpectNextExpression(out var armExpression);
 
                 return new MatchArm(pattern, armExpression);
@@ -1210,7 +1210,7 @@ public sealed class Parser : IDisposable
             MoveNext();
             return null;
         }
-        
+
         if (!MoveNext())
         {
             _errors.Add(ParserError.ExpectedPattern(null));
@@ -1250,14 +1250,14 @@ public sealed class Parser : IDisposable
                 MoveNext();
             }
 
-            if (!_hasNext || Current is not StringToken{Type: TokenType.Identifier} variableName)
+            if (!_hasNext || Current is not StringToken { Type: TokenType.Identifier } variableName)
             {
                 _errors.Add(ParserError.ExpectedToken(
                     _hasNext ? Current : null,
                     isMut ? [TokenType.Identifier] : [TokenType.Identifier, TokenType.Mut]));
                 return null;
             }
-            
+
             var end = Current.SourceSpan;
             MoveNext();
 
@@ -1287,7 +1287,7 @@ public sealed class Parser : IDisposable
                 MoveNext();
                 return new UnionVariantPattern(type, null, null, false, SourceRange.Default);
             }
-            
+
             MoveNext();
         }
 
@@ -1320,7 +1320,7 @@ public sealed class Parser : IDisposable
                 _errors.Add(ParserError.ExpectedToken(
                     _hasNext ? Current : null,
                     isMut ? [TokenType.Identifier] : [TokenType.Identifier, TokenType.Mut]));
-                
+
                 // couldn't find identifier, so set isMut to false
                 isMut = false;
             }
@@ -1328,7 +1328,7 @@ public sealed class Parser : IDisposable
             {
                 variableName = found;
             }
-            
+
             if (variableName is not null)
             {
                 endToken = variableName;
@@ -1373,7 +1373,7 @@ public sealed class Parser : IDisposable
                 }
 
                 endToken = Current;
-                
+
                 if (Current.Type == TokenType.Mut)
                 {
                     isMut = true;
@@ -1386,7 +1386,7 @@ public sealed class Parser : IDisposable
                         _hasNext ? Current : null,
                         isMut ? [TokenType.Identifier] : [TokenType.Identifier, TokenType.Mut]));
                     variableName = null;
-                    
+
                     // couldn't find identifier, so set isMut to false
                     isMut = false;
                 }
@@ -1421,12 +1421,12 @@ public sealed class Parser : IDisposable
                         {
                             _errors.Add(ParserError.ExpectedToken(Current, TokenType.RightBrace));
                         }
-                        
+
                         // empty identifier as a hack to return out discard
                         return new FieldPattern(Token.Identifier("", SourceSpan.Default),
                             new DiscardPattern(new SourceRange(underscore.SourceSpan, underscore.SourceSpan)));
                     }
-                    
+
                     if (!ExpectCurrentIdentifier(out var fieldName))
                     {
                         MoveNext();
@@ -1470,10 +1470,10 @@ public sealed class Parser : IDisposable
             }
 
             var discardRemainingFields = fieldPatterns.Any(x => x is { FieldName.StringValue.Length: 0, Pattern: DiscardPattern });
-            
+
             var newFieldPatterns = fieldPatterns.Where(x => x.FieldName.StringValue.Length > 0)
                 .ToArray();
-            
+
             StringToken? variableName = null;
 
             if (_hasNext && Current.Type == TokenType.Var)
@@ -1501,7 +1501,7 @@ public sealed class Parser : IDisposable
                     _errors.Add(ParserError.ExpectedToken(
                         _hasNext ? Current : null,
                         isMut ? [TokenType.Identifier] : [TokenType.Identifier, TokenType.Mut]));
-                    
+
                     // couldn't find identifier, so set isMut to false
                     isMut = false;
                 }
@@ -1596,7 +1596,7 @@ public sealed class Parser : IDisposable
                     break;
                 }
             }
-            
+
             while (_hasNext && Current.Type == TokenType.Comma)
             {
                 LogError(Current, expectTerminator: true);
@@ -1635,13 +1635,13 @@ public sealed class Parser : IDisposable
 
         return (items, lastToken);
 
-        void LogError(Token? current, bool expectTerminator) 
+        void LogError(Token? current, bool expectTerminator)
         {
             if (expectedTokens.Count != 0)
             {
                 _errors.Add(expectTerminator
-                    ? ParserError.ExpectedToken(current, [..expectedTokens, terminator])
-                    : ParserError.ExpectedToken(current, [..expectedTokens]));
+                    ? ParserError.ExpectedToken(current, [.. expectedTokens, terminator])
+                    : ParserError.ExpectedToken(current, [.. expectedTokens]));
             }
             else if (expectExpression)
             {
@@ -1651,7 +1651,7 @@ public sealed class Parser : IDisposable
             }
             else if (expectType)
             {
-                _errors.Add(expectTerminator 
+                _errors.Add(expectTerminator
                     ? ParserError.ExpectedTypeOrToken(current, terminator)
                     : ParserError.ExpectedType(current));
             }
@@ -1684,10 +1684,10 @@ public sealed class Parser : IDisposable
         {
             _errors.Add(ParserError.ExpectedExpression(Current));
             MoveNext();
-            
+
             return null;
         }
-        
+
         if (previousExpression is not ValueAccessorExpression
             {
                 ValueAccessor:
@@ -1698,7 +1698,7 @@ public sealed class Parser : IDisposable
         {
             throw new UnreachableException("It should be impossible to get here");
         }
-        
+
         var type = new NamedTypeIdentifier(token, typeArguments ?? [], previousExpression.SourceRange);
 
         ExpectNextIdentifier(out var memberName);
@@ -1764,7 +1764,7 @@ public sealed class Parser : IDisposable
         if (!_hasNext)
         {
             _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace, TokenType.DoubleColon));
-            return new ObjectInitializerExpression(new ObjectInitializer(type, []), type.SourceRange with {Start = newToken.SourceSpan});
+            return new ObjectInitializerExpression(new ObjectInitializer(type, []), type.SourceRange with { Start = newToken.SourceSpan });
         }
 
         return Current.Type switch
@@ -1849,7 +1849,7 @@ public sealed class Parser : IDisposable
         return new MethodReturnExpression(new MethodReturn(valueExpression),
             new SourceRange(start, valueExpression?.SourceRange.End ?? start));
     }
-    
+
     private IExpression? PopExpression(uint? currentBindingStrength = null)
     {
         return PopExpression(out _, currentBindingStrength);
@@ -1867,7 +1867,7 @@ public sealed class Parser : IDisposable
         IExpression? previousExpression = null;
         var keepBinding = true;
         consumedToken = false;
-        
+
         while (keepBinding && Current.Type != TokenType.Semicolon)
         {
             previousExpression = MatchTokenToExpression(previousExpression, out consumedToken);
@@ -1903,7 +1903,7 @@ public sealed class Parser : IDisposable
             });
 
         return new MethodCallExpression(new MethodCall(method, argumentList),
-            method.SourceRange with { End = lastToken?.SourceSpan ?? leftParenthesis.SourceSpan  });
+            method.SourceRange with { End = lastToken?.SourceSpan ?? leftParenthesis.SourceSpan });
     }
 
     private IfExpressionExpression? GetIfExpression()
@@ -1924,9 +1924,9 @@ public sealed class Parser : IDisposable
         if (!ExpectCurrentToken(TokenType.RightParenthesis))
         {
             return new IfExpressionExpression(new IfExpression(
-                checkExpression, null, [], null), checkExpression.SourceRange with {Start = start});
+                checkExpression, null, [], null), checkExpression.SourceRange with { Start = start });
         }
-        
+
         var rightParenthesis = Current;
 
         if (!ExpectNextExpression(out var body))
@@ -1944,7 +1944,7 @@ public sealed class Parser : IDisposable
             {
                 _errors.Add(ParserError.ExpectedExpression(Current));
             }
-            
+
             // pop the "else" token off
             if (!MoveNext())
             {
@@ -2050,7 +2050,7 @@ public sealed class Parser : IDisposable
                 return new VariableDeclarationExpression(new VariableDeclaration(identifier, mutabilityModifier,
                     type, null), new SourceRange(start, lastTokenSpan));
             }
-            
+
             lastTokenSpan = valueExpression.SourceRange.End;
         }
 

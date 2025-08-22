@@ -20,7 +20,7 @@ public class UnionTests : TestBase
 
     [Fact]
     public void SingleTest()
-    { 
+    {
         const string source = "union MyUnion<T>{ A(T) }";
         var expectedProgram = LoweredProgram(types:
         [

@@ -10,7 +10,7 @@ public partial class TypeChecker
         {
             value.ValueUseful = true;
         }
-        
+
         if (tuple.Values.Count == 1)
         {
             return TypeCheckExpression(tuple.Values[0]);

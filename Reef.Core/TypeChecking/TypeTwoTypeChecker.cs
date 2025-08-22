@@ -111,10 +111,10 @@ public class TypeTwoTypeChecker
                 CheckVariableDeclaration(variableDeclarationExpression);
                 break;
             case ValueAccessorExpression valueAccessorExpression:
-            {
-                CheckValueAccessor(valueAccessorExpression);
-                break;
-            }
+                {
+                    CheckValueAccessor(valueAccessorExpression);
+                    break;
+                }
             case MethodReturnExpression methodReturnExpression:
                 CheckMethodReturn(methodReturnExpression);
                 break;
@@ -162,14 +162,14 @@ public class TypeTwoTypeChecker
     private void CheckValueAccessor(ValueAccessorExpression valueAccessorExpression)
     {
         if (valueAccessorExpression.ValueAccessor.Token is StringToken nameToken
-            && valueAccessorExpression.FunctionInstantiation is {} function)
+            && valueAccessorExpression.FunctionInstantiation is { } function)
         {
             var uninitializedAccessedVariables = function.AccessedOuterVariables
                 .OfType<TypeChecker.LocalVariable>()
                 .Where(x => !_localVariables.Peek()[x])
                 .Select(x => x.Name)
                 .ToArray();
-            
+
             if (uninitializedAccessedVariables.Length > 0)
             {
                 _errors.Add(TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(nameToken, uninitializedAccessedVariables));
@@ -248,7 +248,7 @@ public class TypeTwoTypeChecker
             CheckExpression(unaryOperator.Operand);
         }
     }
-    
+
     private void CheckStaticMemberAccess(StaticMemberAccessExpression staticMemberAccessExpression)
     {
         if (staticMemberAccessExpression.StaticMemberAccess.InstantiatedFunction is not { } function)
@@ -261,7 +261,7 @@ public class TypeTwoTypeChecker
             CheckTypeReferenceIsResolved(functionTypeArgument, staticMemberAccessExpression);
         }
     }
-    
+
     private void CheckMemberAccess(MemberAccessExpression memberAccessExpression)
     {
         CheckExpression(memberAccessExpression.MemberAccess.Owner);
@@ -303,7 +303,7 @@ public class TypeTwoTypeChecker
         if (binaryOperator is
             {
                 OperatorType: BinaryOperatorType.ValueAssignment,
-                Left: ValueAccessorExpression{ReferencedVariable: TypeChecker.LocalVariable localVariable }
+                Left: ValueAccessorExpression { ReferencedVariable: TypeChecker.LocalVariable localVariable }
             })
         {
             _localVariables.Peek()[localVariable] = true;
@@ -315,7 +315,7 @@ public class TypeTwoTypeChecker
         var uninitializedLocalVariables = _localVariables.Peek().Where(x => !x.Value)
             .Select(x => x.Key)
             .ToDictionary(x => x, _ => new TypeChecker.VariableIfInstantiation());
-        
+
         CheckExpression(ifExpression.CheckExpression);
         if (ifExpression.Body is not null)
         {
@@ -327,7 +327,7 @@ public class TypeTwoTypeChecker
             variableIfInstantiation.InstantiatedInBody = _localVariables.Peek()[variable];
             _localVariables.Peek()[variable] = false;
         }
-        
+
         foreach (var elseIf in ifExpression.ElseIfs)
         {
             CheckExpression(elseIf.CheckExpression);
@@ -335,7 +335,7 @@ public class TypeTwoTypeChecker
             {
                 CheckExpression(elseIf.Body);
             }
-            
+
             foreach (var (variable, variableInstantiation) in uninitializedLocalVariables)
             {
                 variableInstantiation.InstantiatedInEachElseIf &= _localVariables.Peek()[variable];
@@ -346,14 +346,14 @@ public class TypeTwoTypeChecker
         if (ifExpression.ElseBody is not null)
         {
             CheckExpression(ifExpression.ElseBody);
-            
+
             foreach (var (variable, variableInstantiation) in uninitializedLocalVariables)
             {
                 variableInstantiation.InstantiatedInEachElseIf &= _localVariables.Peek()[variable];
                 _localVariables.Peek()[variable] = false;
             }
         }
-        
+
         foreach (var (variable, variableInstantiation) in uninitializedLocalVariables)
         {
             _localVariables.Peek()[variable] = ifExpression.Body is not null && variableInstantiation.InstantiatedInBody
@@ -411,12 +411,12 @@ public class TypeTwoTypeChecker
             throw new InvalidOperationException("Expected variable to be created");
         }
 
-        if (variable.Type is TypeChecker.UnknownInferredType{ResolvedType: null})
+        if (variable.Type is TypeChecker.UnknownInferredType { ResolvedType: null })
         {
             _errors.Add(TypeCheckerError.UnresolvedInferredVariableType(variable.Name));
             return;
         }
-        
+
         CheckTypeReferenceIsResolved(variable.Type, variableDeclarationExpression);
     }
 
@@ -425,33 +425,33 @@ public class TypeTwoTypeChecker
         switch (typeReference)
         {
             case TypeChecker.InstantiatedClass { TypeArguments: { Count: > 0 } classTypeArguments }:
-            {
-                foreach (var argument in classTypeArguments)
                 {
-                    CheckTypeReferenceIsResolved(argument, expression);
-                }
+                    foreach (var argument in classTypeArguments)
+                    {
+                        CheckTypeReferenceIsResolved(argument, expression);
+                    }
 
-                break;
-            }
+                    break;
+                }
             case TypeChecker.InstantiatedUnion { TypeArguments: { Count: > 0 } unionTypeArguments }:
-            {
-                foreach (var argument in unionTypeArguments)
                 {
-                    CheckTypeReferenceIsResolved(argument, expression);
-                }
+                    foreach (var argument in unionTypeArguments)
+                    {
+                        CheckTypeReferenceIsResolved(argument, expression);
+                    }
 
-                break;
-            }
+                    break;
+                }
             case TypeChecker.GenericTypeReference genericTypeReference:
-            {
-                if (genericTypeReference.ResolvedType is null
-                    && _erroredGenerics.Add(genericTypeReference))
                 {
-                    _errors.Add(TypeCheckerError.UnresolvedInferredGenericType(expression, genericTypeReference.GenericName));
-                }
+                    if (genericTypeReference.ResolvedType is null
+                        && _erroredGenerics.Add(genericTypeReference))
+                    {
+                        _errors.Add(TypeCheckerError.UnresolvedInferredGenericType(expression, genericTypeReference.GenericName));
+                    }
 
-                break;
-            }
+                    break;
+                }
         }
     }
 

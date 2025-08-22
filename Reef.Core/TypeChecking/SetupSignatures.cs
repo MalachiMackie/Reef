@@ -2,7 +2,8 @@ using System.Diagnostics;
 
 namespace Reef.Core.TypeChecking;
 
-public partial class TypeChecker {
+public partial class TypeChecker
+{
 
     private (List<(ProgramClass, ClassSignature)>, List<UnionSignature>) SetupSignatures()
     {
@@ -32,7 +33,7 @@ public partial class TypeChecker {
             }
 
             typeParameters.AddRange(union.TypeParameters.Select(typeParameter => new GenericPlaceholder
-                { GenericName = typeParameter.StringValue, OwnerType = unionSignature }));
+            { GenericName = typeParameter.StringValue, OwnerType = unionSignature }));
 
             unions.Add((union, unionSignature, functions, variants));
 
@@ -56,7 +57,7 @@ public partial class TypeChecker {
                 Fields = fields,
             };
             typeParameters.AddRange(@class.TypeParameters.Select(typeParameter => new GenericPlaceholder
-                { GenericName = typeParameter.StringValue, OwnerType = signature }));
+            { GenericName = typeParameter.StringValue, OwnerType = signature }));
 
             @class.Signature = signature;
 
@@ -117,7 +118,7 @@ public partial class TypeChecker {
                     {
                         Name = variant.Name.StringValue,
                         TupleMembers =
-                            [..tupleVariant.TupleMembers.Select(GetTypeReference)]
+                            [.. tupleVariant.TupleMembers.Select(GetTypeReference)]
                     };
                 }
 

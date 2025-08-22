@@ -16,7 +16,7 @@ public interface ILoweredExpression
     bool ValueUseful { get; }
 }
 
-public record UnitConstantExpression(bool ValueUseful) : ILoweredExpression 
+public record UnitConstantExpression(bool ValueUseful) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType
     {

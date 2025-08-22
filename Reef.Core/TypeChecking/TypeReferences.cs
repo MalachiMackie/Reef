@@ -13,10 +13,10 @@ public partial class TypeChecker
     public class UnknownType : ITypeReference
     {
         public static UnknownType Instance { get; } = new();
-        
+
         private UnknownType()
         {
-            
+
         }
     }
 
@@ -51,7 +51,7 @@ public partial class TypeChecker
                 {
                     return;
                 }
-                
+
                 _resolvedType = value;
                 foreach (var link in _links)
                 {
@@ -92,7 +92,7 @@ public partial class TypeChecker
                 _ => ResolvedType
             };
         }
-        
+
         public override string ToString()
         {
             var sb = new StringBuilder($"{GenericName}=[");

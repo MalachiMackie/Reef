@@ -27,7 +27,7 @@ public static class ProgramAbseil
             methods.AddRange(dataTypeMethods);
         }
 
-        if (CreateMainMethod(program) is {} mainMethod)
+        if (CreateMainMethod(program) is { } mainMethod)
         {
             methods.Add(mainMethod);
         }
@@ -81,14 +81,14 @@ public static class ProgramAbseil
         var fields = klass.Fields.Where(x => !x.IsStatic)
             .Select(x => new DataTypeField(x.Name, GetTypeReference(x.Type)));
 
-        IReadOnlyList<IMethod> methods = [..klass.Functions.Select(x => LowerTypeMethod(klass.Name, x, classTypeReference))];
+        IReadOnlyList<IMethod> methods = [.. klass.Functions.Select(x => LowerTypeMethod(klass.Name, x, classTypeReference))];
 
         return (new DataType(
                 klass.Id,
                 klass.Name,
                 typeParameters,
-                [new DataTypeVariant("_classVariant", [..fields])],
-                [..staticFields]), methods);
+                [new DataTypeVariant("_classVariant", [.. fields])],
+                [.. staticFields]), methods);
     }
 
     private static (DataType, IReadOnlyList<IMethod> methods) LowerUnion(UnionSignature union)

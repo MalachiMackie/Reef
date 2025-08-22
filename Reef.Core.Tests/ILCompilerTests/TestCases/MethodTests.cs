@@ -156,7 +156,7 @@ public static class MethodTests
                         Method("!Main",
                             isStatic: true,
                             locals: [
-                                Local("a", ConcreteTypeReference("Function`2", 
+                                Local("a", ConcreteTypeReference("Function`2",
                                     [ConcreteTypeReference("int"), ConcreteTypeReference("Unit")]))
                             ],
                             instructions: [

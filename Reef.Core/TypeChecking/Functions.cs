@@ -58,7 +58,7 @@ public partial class TypeChecker
             {
                 _errors.Add(TypeCheckerError.ConflictingTypeParameter(typeParameter));
             }
-            
+
             if (_types.ContainsKey(typeParameter.StringValue))
             {
                 _errors.Add(TypeCheckerError.TypeParameterConflictsWithType(typeParameter));
@@ -69,7 +69,7 @@ public partial class TypeChecker
                 OwnerType = fnSignature
             });
         }
-        
+
         // ITypeReference? ownerTypeReference = CurrentTypeSignature switch
         // {
         //     null => null,
@@ -88,13 +88,13 @@ public partial class TypeChecker
         {
             var paramName = parameter.Identifier;
             var type = parameter.Type is null ? UnknownType.Instance : GetTypeReference(parameter.Type);
-            
+
             if (!parameters.TryAdd(paramName.StringValue, new FunctionSignatureParameter(fnSignature, paramName, type, parameter.MutabilityModifier is not null, (uint)index)))
             {
                 _errors.Add(TypeCheckerError.DuplicateFunctionParameter(parameter.Identifier, fn.Name));
             }
         }
-        
+
         localFunctions.AddRange(fn.Block.Functions.Select(x => TypeCheckFunctionSignature(x, functionIndex: null, ownerType: null)));
 
         // todo: function overloading
@@ -158,7 +158,7 @@ public partial class TypeChecker
         var tupleVariantIndex = instantiatedUnion.Variants.OfType<TupleUnionVariant>()
             .Index()
             .First(x => x.Item.Name == tupleVariant.Name).Index;
-        
+
         var signature = new FunctionSignature(
             Token.Identifier(tupleVariant.Name, SourceSpan.Default),
             [],
@@ -173,7 +173,7 @@ public partial class TypeChecker
             ReturnType = instantiatedUnion,
             OwnerType = instantiatedUnion.Signature
         };
-        
+
         for (var i = 0; i < tupleVariant.TupleMembers.Count; i++)
         {
             var name = i.ToString();
@@ -242,7 +242,7 @@ public partial class TypeChecker
                     }
                 }
             }
-            
+
             TypeArguments = instantiatedTypeArguments;
             var parametersList = new List<FunctionParameter>();
             Parameters = parametersList;
@@ -297,7 +297,7 @@ public partial class TypeChecker
 
     private InstantiatedFunction InstantiateFunction(FunctionSignature signature,
         ITypeReference? ownerType,
-        IReadOnlyList<(ITypeReference, SourceRange)> typeArguments, 
+        IReadOnlyList<(ITypeReference, SourceRange)> typeArguments,
         SourceRange typeArgumentsSourceRange,
         IReadOnlyCollection<GenericPlaceholder> inScopeTypeParameters)
     {
@@ -311,7 +311,7 @@ public partial class TypeChecker
                     typeArguments.Count,
                     instantiatedFunction.TypeArguments.Count));
             }
-        
+
             for (var i = 0; i < Math.Min(instantiatedFunction.TypeArguments.Count, typeArguments.Count); i++)
             {
                 var (typeArgument, sourceRange) = typeArguments[i];
@@ -319,7 +319,7 @@ public partial class TypeChecker
                 ExpectType(typeArgument, typeParameter, sourceRange);
             }
         }
-        
+
         return instantiatedFunction;
     }
 

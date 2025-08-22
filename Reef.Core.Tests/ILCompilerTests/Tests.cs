@@ -15,19 +15,19 @@ public class Tests
 
     public static TheoryData<string, string, ReefModule> ModuleStructureTestCases() =>
         ModuleStructure.TestCases();
-    
+
     public static TheoryData<string, string, ReefModule> SimpleExpressionTestCases() =>
         SimpleExpressions.TestCases();
-    
+
     public static TheoryData<string, string, ReefModule> ClassTestCases() =>
         ClassTests.TestCases();
-    
+
     public static TheoryData<string, string, ReefModule> UnionTestCases() =>
         UnionTests.TestCases();
-    
+
     public static TheoryData<string, string, ReefModule> MethodTestCases() =>
         MethodTests.TestCases();
-    
+
     public static TheoryData<string, string, ReefModule> ControlFlowTestCases() =>
         ControlFlow.TestCases();
 
@@ -66,9 +66,9 @@ public class Tests
                 var a = MyUnion::B;
                 var b = a("");
                 """;
-                var expected = Module(
-                    types: [
-                        Union("MyUnion",
+        var expected = Module(
+            types: [
+                Union("MyUnion",
                             variants: [
                                 Variant("A", fields: [Field("_variantIdentifier", ConcreteTypeReference("int"), isPublic: true)]),
                                 Variant("B", fields: [
@@ -94,9 +94,9 @@ public class Tests
                                         Return(7)
                                     ]),
                             ])
-                    ],
-                    methods: [
-                        Method("!Main",
+            ],
+            methods: [
+                Method("!Main",
                             isStatic: true,
                             locals: [
                                 Local("a", ConcreteTypeReference("Function`2", [ConcreteTypeReference("string"), ConcreteTypeReference("MyUnion")])),
@@ -120,7 +120,7 @@ public class Tests
                                 LoadUnit(10),
                                 Return(11)
                             ])
-                    ]);
+            ]);
 
         var tokens = Tokenizer.Tokenize(source);
         var program = Parser.Parse(tokens);

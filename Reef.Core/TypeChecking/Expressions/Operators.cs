@@ -6,125 +6,125 @@ namespace Reef.Core.TypeChecking;
 public partial class TypeChecker
 {
 
-private ITypeReference TypeCheckBinaryOperatorExpression(
-        BinaryOperatorExpression binaryOperatorExpression)
+    private ITypeReference TypeCheckBinaryOperatorExpression(
+            BinaryOperatorExpression binaryOperatorExpression)
     {
         var @operator = binaryOperatorExpression.BinaryOperator;
         if (@operator.Left is not null)
             @operator.Left.ValueUseful = true;
         if (@operator.Right is not null)
             @operator.Right.ValueUseful = true;
-        
+
         switch (@operator.OperatorType)
         {
             case BinaryOperatorType.LessThan:
             case BinaryOperatorType.GreaterThan:
-            {
-                if (@operator.Left is not null)
-                    TypeCheckExpression(@operator.Left);
-                if (@operator.Right is not null)
-                    TypeCheckExpression(@operator.Right);
-                ExpectExpressionType(InstantiatedClass.Int, @operator.Left);
-                ExpectExpressionType(InstantiatedClass.Int, @operator.Right);
+                {
+                    if (@operator.Left is not null)
+                        TypeCheckExpression(@operator.Left);
+                    if (@operator.Right is not null)
+                        TypeCheckExpression(@operator.Right);
+                    ExpectExpressionType(InstantiatedClass.Int, @operator.Left);
+                    ExpectExpressionType(InstantiatedClass.Int, @operator.Right);
 
-                return InstantiatedClass.Boolean;
-            }
+                    return InstantiatedClass.Boolean;
+                }
             case BinaryOperatorType.Plus:
             case BinaryOperatorType.Minus:
             case BinaryOperatorType.Multiply:
             case BinaryOperatorType.Divide:
-            {
-                if (@operator.Left is not null)
-                    TypeCheckExpression(@operator.Left);
-                if (@operator.Right is not null)
-                    TypeCheckExpression(@operator.Right);
-                
-                ExpectExpressionType(InstantiatedClass.Int, @operator.Left);
-                ExpectExpressionType(InstantiatedClass.Int, @operator.Right);
+                {
+                    if (@operator.Left is not null)
+                        TypeCheckExpression(@operator.Left);
+                    if (@operator.Right is not null)
+                        TypeCheckExpression(@operator.Right);
 
-                return InstantiatedClass.Int;
-            }
+                    ExpectExpressionType(InstantiatedClass.Int, @operator.Left);
+                    ExpectExpressionType(InstantiatedClass.Int, @operator.Right);
+
+                    return InstantiatedClass.Int;
+                }
             case BinaryOperatorType.EqualityCheck:
-            {
-                // todo: use interface. left and right implements IEquals<T>
-                if (@operator.Left is not null)
                 {
-                    ExpectType(TypeCheckExpression(@operator.Left), InstantiatedClass.Int, @operator.Left.SourceRange);
-                }
-                if (@operator.Right is not null)
-                {
-                    ExpectType(TypeCheckExpression(@operator.Right), InstantiatedClass.Int, @operator.Right.SourceRange);
-                }
+                    // todo: use interface. left and right implements IEquals<T>
+                    if (@operator.Left is not null)
+                    {
+                        ExpectType(TypeCheckExpression(@operator.Left), InstantiatedClass.Int, @operator.Left.SourceRange);
+                    }
+                    if (@operator.Right is not null)
+                    {
+                        ExpectType(TypeCheckExpression(@operator.Right), InstantiatedClass.Int, @operator.Right.SourceRange);
+                    }
 
-                return InstantiatedClass.Boolean;
-            }
+                    return InstantiatedClass.Boolean;
+                }
             case BinaryOperatorType.BooleanAnd:
             case BinaryOperatorType.BooleanOr:
-            {
-                if (@operator.Left is not null)
                 {
-                    ExpectType(TypeCheckExpression(@operator.Left), InstantiatedClass.Boolean,
-                        @operator.Left.SourceRange);
-                }
-                if (@operator.Right is not null)
-                {
-                    ExpectType(TypeCheckExpression(@operator.Right), InstantiatedClass.Boolean,
-                        @operator.Right.SourceRange);
-                }
-                return InstantiatedClass.Boolean;
-            }
-            case BinaryOperatorType.ValueAssignment:
-            {
-                binaryOperatorExpression.ValueUseful = true;
-                
-                ITypeReference leftType = UnknownType.Instance;
-                if (@operator.Left is not null)
-                {
-                    leftType = TypeCheckExpression(@operator.Left, allowUninstantiatedVariable: true);
-                    // we don't actually want the result of this value
-                    @operator.Left.ValueUseful = false;
-                    if (leftType is not UnknownType)
+                    if (@operator.Left is not null)
                     {
-                        ExpectAssignableExpression(@operator.Left);
+                        ExpectType(TypeCheckExpression(@operator.Left), InstantiatedClass.Boolean,
+                            @operator.Left.SourceRange);
                     }
+                    if (@operator.Right is not null)
+                    {
+                        ExpectType(TypeCheckExpression(@operator.Right), InstantiatedClass.Boolean,
+                            @operator.Right.SourceRange);
+                    }
+                    return InstantiatedClass.Boolean;
                 }
-                var rightType = @operator.Right is null
-                    ? UnknownType.Instance
-                    : TypeCheckExpression(@operator.Right);
-                
-                if (@operator.Left is ValueAccessorExpression
-                    {
-                        ValueAccessor: { AccessType: ValueAccessType.Variable, Token: StringToken variableName },
-                    } && leftType is not UnknownType)
+            case BinaryOperatorType.ValueAssignment:
                 {
-                    var variable = GetScopedVariable(variableName.StringValue);
+                    binaryOperatorExpression.ValueUseful = true;
 
-                    if (variable is LocalVariable { Instantiated: false } localVariable)
+                    ITypeReference leftType = UnknownType.Instance;
+                    if (@operator.Left is not null)
                     {
-                        localVariable.Instantiated = true;
-                        if (localVariable.Type is UnknownInferredType {ResolvedType: null} unknownInferredType)
+                        leftType = TypeCheckExpression(@operator.Left, allowUninstantiatedVariable: true);
+                        // we don't actually want the result of this value
+                        @operator.Left.ValueUseful = false;
+                        if (leftType is not UnknownType)
                         {
-                            unknownInferredType.ResolvedType = rightType;
+                            ExpectAssignableExpression(@operator.Left);
+                        }
+                    }
+                    var rightType = @operator.Right is null
+                        ? UnknownType.Instance
+                        : TypeCheckExpression(@operator.Right);
+
+                    if (@operator.Left is ValueAccessorExpression
+                        {
+                            ValueAccessor: { AccessType: ValueAccessType.Variable, Token: StringToken variableName },
+                        } && leftType is not UnknownType)
+                    {
+                        var variable = GetScopedVariable(variableName.StringValue);
+
+                        if (variable is LocalVariable { Instantiated: false } localVariable)
+                        {
+                            localVariable.Instantiated = true;
+                            if (localVariable.Type is UnknownInferredType { ResolvedType: null } unknownInferredType)
+                            {
+                                unknownInferredType.ResolvedType = rightType;
+                            }
+                        }
+
+                        if (variable is FieldVariable && CurrentFunctionSignature is not { IsMutable: true })
+                        {
+                            _errors.Add(TypeCheckerError.MutatingInstanceInNonMutableFunction(
+                                CurrentFunctionSignature!.Name,
+                                binaryOperatorExpression.SourceRange));
                         }
                     }
 
-                    if (variable is FieldVariable && CurrentFunctionSignature is not {IsMutable: true})
-                    {
-                        _errors.Add(TypeCheckerError.MutatingInstanceInNonMutableFunction(
-                            CurrentFunctionSignature!.Name,
-                            binaryOperatorExpression.SourceRange));
-                    }
-                }
-                
-                ExpectExpressionType(leftType, @operator.Right);
+                    ExpectExpressionType(leftType, @operator.Right);
 
-                return leftType;
-            }
+                    return leftType;
+                }
             default:
                 throw new UnreachableException(@operator.OperatorType.ToString());
         }
     }
-private ITypeReference TypeCheckUnaryOperator(UnaryOperator unaryOperator)
+    private ITypeReference TypeCheckUnaryOperator(UnaryOperator unaryOperator)
     {
         return unaryOperator.OperatorType switch
         {
@@ -138,7 +138,7 @@ private ITypeReference TypeCheckUnaryOperator(UnaryOperator unaryOperator)
     {
         if (expression is not null)
         {
-            expression.ValueUseful = true;   
+            expression.ValueUseful = true;
             TypeCheckExpression(expression);
         }
 
@@ -151,7 +151,7 @@ private ITypeReference TypeCheckUnaryOperator(UnaryOperator unaryOperator)
     {
         if (expression is not null)
         {
-            expression.ValueUseful = true;   
+            expression.ValueUseful = true;
             TypeCheckExpression(expression);
         }
 

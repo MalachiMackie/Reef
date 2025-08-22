@@ -6,7 +6,7 @@ public class ReefTypeDefinition
     public required string DisplayName { get; set; }
     public required IReadOnlyList<ReefVariant> Variants { get; set; }
     public required IReadOnlyList<ReefMethod> Methods { get; set; }
-    public required bool IsValueType { get; set; } 
+    public required bool IsValueType { get; set; }
     public required IReadOnlyList<string> TypeParameters { get; set; }
 }
 

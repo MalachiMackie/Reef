@@ -36,7 +36,7 @@ public static class ExpressionAbseil
     {
         return e switch
         {
-            {ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: StringToken {StringValue: var stringLiteral } }} => new StringConstantExpression(e.ValueUseful, stringLiteral),
+            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: StringToken { StringValue: var stringLiteral } } } => new StringConstantExpression(e.ValueUseful, stringLiteral),
             _ => throw new NotImplementedException($"e")
         };
     }

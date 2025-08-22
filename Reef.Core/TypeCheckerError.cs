@@ -8,29 +8,29 @@ public record TypeCheckerError
     public TypeCheckerErrorType Type { get; init; }
     public SourceRange Range { get; init; }
     public string Message { get; init; }
-    
+
     private TypeCheckerError(TypeCheckerErrorType type, SourceRange range, string message)
     {
         Type = type;
         Range = range;
         Message = message;
     }
-    
+
     public static TypeCheckerError MismatchedTypes(SourceRange range, TypeChecker.ITypeReference expected, TypeChecker.ITypeReference actual) =>
         new(TypeCheckerErrorType.MismatchedTypes, range, $"Expected {expected}, but found {actual}");
 
     public static TypeCheckerError ExpressionNotAssignable(IExpression expression) =>
         new(TypeCheckerErrorType.ExpressionNotAssignable, expression.SourceRange, $"Expression {expression} is not assignable");
-    
+
     public static TypeCheckerError NonMutableAssignment(string variableName, SourceRange sourceRange) =>
         new(TypeCheckerErrorType.NonMutableAssignment, sourceRange, $"Variable {variableName} is not marked as mutable");
 
     public static TypeCheckerError MutatingInstanceInNonMutableFunction(string functionName, SourceRange assignmentSourceRange) =>
         new(TypeCheckerErrorType.MutatingInstanceInNonMutableFunction, assignmentSourceRange, $"Function {functionName} is not marked as mutable");
-    
+
     public static TypeCheckerError NonMutableMemberAssignment(IExpression memberAccess) =>
         new(TypeCheckerErrorType.NonMutableMemberAssignment, memberAccess.SourceRange, $"member {memberAccess} is not marked as mutable");
-    
+
     public static TypeCheckerError NonMutableMemberOwnerAssignment(IExpression ownerExpression) =>
         new(TypeCheckerErrorType.NonMutableMemberOwnerAssignment, ownerExpression.SourceRange, $"member owner {ownerExpression} is not marked as mutable");
 
@@ -41,7 +41,7 @@ public record TypeCheckerError
     {
         return new(TypeCheckerErrorType.UnresolvedInferredVariableType, new SourceRange(variableName.SourceSpan, variableName.SourceSpan), $"Could not infer type for '{variableName.StringValue}");
     }
-    
+
     public static TypeCheckerError UnresolvedInferredGenericType(IExpression expression, string unresolvedTypeArgument)
     {
         return new(TypeCheckerErrorType.UnresolvedInferredTypeArgument, expression.SourceRange, $"Could not infer type arguments {unresolvedTypeArgument}");
@@ -105,7 +105,7 @@ public record TypeCheckerError
             new SourceRange(memberIdentifier.SourceSpan, memberIdentifier.SourceSpan),
             $"Unknown member {memberIdentifier} on type {typeName}");
     }
-    
+
     public static TypeCheckerError NonClassUsedInClassPattern(ITypeIdentifier typeIdentifier)
     {
         return new(
@@ -185,7 +185,7 @@ public record TypeCheckerError
     {
         return new(
             TypeCheckerErrorType.MemberAccessOnGenericExpression,
-            memberAccessExpression.MemberAccess.MemberName is {} memberName
+            memberAccessExpression.MemberAccess.MemberName is { } memberName
                 ? new SourceRange(memberName.SourceSpan, memberName.SourceSpan)
                 : memberAccessExpression.SourceRange,
             $"Cannot access member on '{memberAccessExpression.MemberAccess.Owner}' which is a generic type");
@@ -195,7 +195,7 @@ public record TypeCheckerError
     {
         return new(
             TypeCheckerErrorType.StaticMemberAccessOnGenericReference,
-            staticMemberAccess.StaticMemberAccess.MemberName is {} memberName
+            staticMemberAccess.StaticMemberAccess.MemberName is { } memberName
                 ? new SourceRange(memberName.SourceSpan, memberName.SourceSpan)
                 : staticMemberAccess.SourceRange,
             $"Cannot access static member on '{staticMemberAccess.StaticMemberAccess.Type}' which is a generic type");

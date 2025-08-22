@@ -1781,7 +1781,7 @@ public class TypeCheckerTests
                 [
                     TypeCheckerError.MismatchedTypes(
                         SourceRange.Default,
-                        FunctionObject(), 
+                        FunctionObject(),
                         FunctionObject(parameters: [(isMut: false, parameterType: Int)]))
                 ]
             },
@@ -1794,7 +1794,7 @@ public class TypeCheckerTests
                 [
                     TypeCheckerError.MismatchedTypes(
                         SourceRange.Default,
-                        FunctionObject(parameters: [(isMut: false, parameterType: String)]), 
+                        FunctionObject(parameters: [(isMut: false, parameterType: String)]),
                         FunctionObject(parameters: [(isMut: false, parameterType: Int)]))
                 ]
             },
@@ -1807,7 +1807,7 @@ public class TypeCheckerTests
                 [
                     TypeCheckerError.MismatchedTypes(
                         SourceRange.Default,
-                        FunctionObject(parameters: [(isMut: false, parameterType: Int)]), 
+                        FunctionObject(parameters: [(isMut: false, parameterType: Int)]),
                         FunctionObject())
                 ]
             },
@@ -1820,7 +1820,7 @@ public class TypeCheckerTests
                 [
                     TypeCheckerError.MismatchedTypes(
                         SourceRange.Default,
-                        FunctionObject(parameters: [(isMut: false, parameterType: Int)]), 
+                        FunctionObject(parameters: [(isMut: false, parameterType: Int)]),
                         FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: String))
                 ]
             },
@@ -1833,7 +1833,7 @@ public class TypeCheckerTests
                 [
                     TypeCheckerError.MismatchedTypes(
                         SourceRange.Default,
-                        FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: String), 
+                        FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: String),
                         FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: Unit))
                 ]
             },
@@ -1846,7 +1846,7 @@ public class TypeCheckerTests
                 [
                     TypeCheckerError.MismatchedTypes(
                         SourceRange.Default,
-                        FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: String), 
+                        FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: String),
                         FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: Int))
                 ]
             },
@@ -1859,7 +1859,7 @@ public class TypeCheckerTests
                 [
                     TypeCheckerError.MismatchedTypes(
                         SourceRange.Default,
-                        FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: Unit), 
+                        FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: Unit),
                         FunctionObject(parameters: [(isMut: true, parameterType: Int)], returnType: Unit))
                 ]
             },
@@ -1872,7 +1872,7 @@ public class TypeCheckerTests
                 [
                     TypeCheckerError.MismatchedTypes(
                         SourceRange.Default,
-                        FunctionObject(parameters: [(isMut: true, parameterType: Int)], returnType: Unit), 
+                        FunctionObject(parameters: [(isMut: true, parameterType: Int)], returnType: Unit),
                         FunctionObject(parameters: [(isMut: false, parameterType: Int)], returnType: Unit))
                 ]
             },
@@ -1887,7 +1887,7 @@ public class TypeCheckerTests
                 [
                     TypeCheckerError.MismatchedTypes(
                         SourceRange.Default,
-                        FunctionObject(), 
+                        FunctionObject(),
                         FunctionObject(returnType: Int))
                 ]
             },
@@ -3764,7 +3764,7 @@ public class TypeCheckerTests
     {
         return TypeCheckerError.MismatchedTypes(SourceRange.Default, expected, actual);
     }
-    
+
     private static readonly InstantiatedClass Int = InstantiatedClass.Int;
     private static readonly InstantiatedClass String = InstantiatedClass.String;
     private static readonly InstantiatedClass Boolean = InstantiatedClass.Boolean;

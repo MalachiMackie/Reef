@@ -13,295 +13,295 @@ public partial class TypeChecker
                 // discard pattern always type checks
                 break;
             case UnionVariantPattern variantPattern:
-            {
-                var patternUnionType = GetTypeReference(variantPattern.Type);
-                variantPattern.TypeReference = patternUnionType;
-
-                if (patternUnionType is not InstantiatedUnion union)
                 {
-                    throw new InvalidOperationException($"{patternUnionType} is not a union");
-                }
+                    var patternUnionType = GetTypeReference(variantPattern.Type);
+                    variantPattern.TypeReference = patternUnionType;
 
-                ExpectType(valueTypeReference, union, variantPattern.SourceRange);
-
-                if (variantPattern.VariantName is not null)
-                {
-                    if (union.Variants.All(x => x.Name != variantPattern.VariantName.StringValue))
+                    if (patternUnionType is not InstantiatedUnion union)
                     {
-                        _errors.Add(TypeCheckerError.UnknownTypeMember(variantPattern.VariantName, union.Name));
+                        throw new InvalidOperationException($"{patternUnionType} is not a union");
+                    }
+
+                    ExpectType(valueTypeReference, union, variantPattern.SourceRange);
+
+                    if (variantPattern.VariantName is not null)
+                    {
+                        if (union.Variants.All(x => x.Name != variantPattern.VariantName.StringValue))
+                        {
+                            _errors.Add(TypeCheckerError.UnknownTypeMember(variantPattern.VariantName, union.Name));
+                            break;
+                        }
+                    }
+
+                    if (variantPattern.VariableName is { } variableName)
+                    {
+                        var variable = new LocalVariable(
+                            CurrentFunctionSignature,
+                            variableName,
+                            patternUnionType,
+                            false,
+                            variantPattern.IsMutableVariable);
+                        patternVariables.Add(variable);
+                        if (!TryAddScopedVariable(variableName.StringValue, variable))
+                        {
+                            throw new InvalidOperationException($"Duplicate variable {variableName}");
+                        }
+                    }
+
+                    break;
+                }
+            case ClassPattern classPattern:
+                {
+                    var patternType = GetTypeReference(classPattern.Type);
+                    classPattern.TypeReference = patternType;
+
+                    if (patternType is UnknownType)
+                    {
                         break;
                     }
-                }
 
-                if (variantPattern.VariableName is {} variableName)
-                {
-                    var variable = new LocalVariable(
-                        CurrentFunctionSignature,
-                        variableName,
-                        patternUnionType,
-                        false,
-                        variantPattern.IsMutableVariable);
-                    patternVariables.Add(variable);
-                    if (!TryAddScopedVariable(variableName.StringValue, variable))
+                    ExpectType(patternType, valueTypeReference, classPattern.SourceRange);
+
+                    if (patternType is not InstantiatedClass classType)
                     {
-                        throw new InvalidOperationException($"Duplicate variable {variableName}");
-                    }
-                }
-
-                break;
-            }
-            case ClassPattern classPattern:
-            {
-                var patternType = GetTypeReference(classPattern.Type);
-                classPattern.TypeReference = patternType;
-
-                if (patternType is UnknownType)
-                {
-                    break;
-                }
-
-                ExpectType(patternType, valueTypeReference, classPattern.SourceRange);
-
-                if (patternType is not InstantiatedClass classType)
-                {
-                    _errors.Add(TypeCheckerError.NonClassUsedInClassPattern(classPattern.Type));
-                    break;
-                }
-
-                if (classPattern.FieldPatterns.GroupBy(x => x.FieldName.StringValue).Any(x => x.Count() > 1))
-                {
-                    throw new InvalidOperationException("Duplicate fields found");
-                }
-
-                var remainingFields = classType.Fields.Where(x => x.IsPublic)
-                    .Select(x => x.Name)
-                    .ToHashSet();
-
-                foreach (var (fieldName, fieldPattern) in classPattern.FieldPatterns)
-                {
-                    remainingFields.Remove(fieldName.StringValue);
-                    if (TryGetClassField(classType, fieldName) is not { } field)
-                    {
-                        continue;
+                        _errors.Add(TypeCheckerError.NonClassUsedInClassPattern(classPattern.Type));
+                        break;
                     }
 
-                    if (field.IsStatic)
+                    if (classPattern.FieldPatterns.GroupBy(x => x.FieldName.StringValue).Any(x => x.Count() > 1))
                     {
-                        _errors.Add(TypeCheckerError.StaticFieldInClassPattern(fieldName));
+                        throw new InvalidOperationException("Duplicate fields found");
                     }
-                    
-                    var fieldType = field.Type;
-                    
-                    if (fieldPattern is null)
+
+                    var remainingFields = classType.Fields.Where(x => x.IsPublic)
+                        .Select(x => x.Name)
+                        .ToHashSet();
+
+                    foreach (var (fieldName, fieldPattern) in classPattern.FieldPatterns)
+                    {
+                        remainingFields.Remove(fieldName.StringValue);
+                        if (TryGetClassField(classType, fieldName) is not { } field)
+                        {
+                            continue;
+                        }
+
+                        if (field.IsStatic)
+                        {
+                            _errors.Add(TypeCheckerError.StaticFieldInClassPattern(fieldName));
+                        }
+
+                        var fieldType = field.Type;
+
+                        if (fieldPattern is null)
+                        {
+                            var variable = new LocalVariable(
+                                CurrentFunctionSignature,
+                                fieldName,
+                                fieldType,
+                                false,
+                                false);
+                            patternVariables.Add(variable);
+                            if (!TryAddScopedVariable(fieldName.StringValue, variable))
+                            {
+                                throw new InvalidOperationException($"Duplicate variable {fieldName.StringValue}");
+                            }
+                        }
+                        else
+                        {
+                            patternVariables.AddRange(TypeCheckPattern(fieldType, fieldPattern));
+                        }
+                    }
+
+                    if (classPattern.RemainingFieldsDiscarded)
+                    {
+                        remainingFields.Clear();
+                    }
+
+                    if (remainingFields.Count > 0)
+                    {
+                        _errors.Add(TypeCheckerError.MissingFieldsInClassPattern(remainingFields, classPattern.Type));
+                    }
+
+                    if (classPattern.VariableName is { } variableName)
                     {
                         var variable = new LocalVariable(
                             CurrentFunctionSignature,
-                            fieldName,
-                            fieldType,
+                            variableName,
+                            patternType,
                             false,
-                            false);
+                            classPattern.IsMutableVariable);
                         patternVariables.Add(variable);
-                        if (!TryAddScopedVariable(fieldName.StringValue, variable))
+                        if (!TryAddScopedVariable(variableName.StringValue, variable))
                         {
-                            throw new InvalidOperationException($"Duplicate variable {fieldName.StringValue}");
+                            throw new InvalidOperationException($"Duplicate variable {variableName}");
                         }
                     }
-                    else
-                    {
-                        patternVariables.AddRange(TypeCheckPattern(fieldType, fieldPattern));
-                    }
-                }
 
-                if (classPattern.RemainingFieldsDiscarded)
-                {
-                    remainingFields.Clear();
+                    break;
                 }
-
-                if (remainingFields.Count > 0)
-                {
-                    _errors.Add(TypeCheckerError.MissingFieldsInClassPattern(remainingFields, classPattern.Type));
-                }
-
-                if (classPattern.VariableName is {} variableName)
-                {
-                    var variable = new LocalVariable(
-                        CurrentFunctionSignature,
-                        variableName,
-                        patternType,
-                        false,
-                        classPattern.IsMutableVariable);
-                    patternVariables.Add(variable);
-                    if (!TryAddScopedVariable(variableName.StringValue, variable))
-                    {
-                        throw new InvalidOperationException($"Duplicate variable {variableName}");
-                    }
-                }
-
-                break;
-            }
             case UnionClassVariantPattern classVariantPattern:
-            {
-                var patternType = GetTypeReference(classVariantPattern.Type);
-                classVariantPattern.TypeReference = patternType;
-
-                ExpectType(patternType, valueTypeReference, pattern.SourceRange);
-
-                if (patternType is not InstantiatedUnion union)
                 {
-                    throw new InvalidOperationException($"{patternType} is not a union");
-                }
+                    var patternType = GetTypeReference(classVariantPattern.Type);
+                    classVariantPattern.TypeReference = patternType;
 
-                var variant = union.Variants.FirstOrDefault(x => x.Name == classVariantPattern.VariantName.StringValue)
-                              ?? throw new InvalidOperationException(
-                                  $"No variant found named {classVariantPattern.VariantName.StringValue}");
+                    ExpectType(patternType, valueTypeReference, pattern.SourceRange);
 
-                if (variant is not ClassUnionVariant classVariant)
-                {
-                    throw new InvalidOperationException($"Variant {variant.Name} is not a class variant");
-                }
+                    if (patternType is not InstantiatedUnion union)
+                    {
+                        throw new InvalidOperationException($"{patternType} is not a union");
+                    }
 
-                if (classVariantPattern.FieldPatterns.GroupBy(x => x.FieldName.StringValue).Any(x => x.Count() > 1))
-                {
-                    throw new InvalidOperationException("Duplicate fields found");
-                }
+                    var variant = union.Variants.FirstOrDefault(x => x.Name == classVariantPattern.VariantName.StringValue)
+                                  ?? throw new InvalidOperationException(
+                                      $"No variant found named {classVariantPattern.VariantName.StringValue}");
 
-                if (!classVariantPattern.RemainingFieldsDiscarded &&
-                    classVariantPattern.FieldPatterns.Count != classVariant.Fields.Count)
-                {
-                    _errors.Add(TypeCheckerError.MissingFieldsInUnionClassVariantPattern(
-                        classVariantPattern,
-                        classVariant.Fields.Select(x => x.Name).Except(classVariantPattern.FieldPatterns.Select(x => x.FieldName.StringValue))));
-                }
+                    if (variant is not ClassUnionVariant classVariant)
+                    {
+                        throw new InvalidOperationException($"Variant {variant.Name} is not a class variant");
+                    }
 
-                foreach (var (fieldName, fieldPattern) in classVariantPattern.FieldPatterns)
-                {
-                    var fieldType = classVariant.Fields.FirstOrDefault(x => x.Name == fieldName.StringValue)?.Type
-                        ?? throw new InvalidOperationException($"No field named {fieldName}");
+                    if (classVariantPattern.FieldPatterns.GroupBy(x => x.FieldName.StringValue).Any(x => x.Count() > 1))
+                    {
+                        throw new InvalidOperationException("Duplicate fields found");
+                    }
 
-                    if (fieldPattern is null)
+                    if (!classVariantPattern.RemainingFieldsDiscarded &&
+                        classVariantPattern.FieldPatterns.Count != classVariant.Fields.Count)
+                    {
+                        _errors.Add(TypeCheckerError.MissingFieldsInUnionClassVariantPattern(
+                            classVariantPattern,
+                            classVariant.Fields.Select(x => x.Name).Except(classVariantPattern.FieldPatterns.Select(x => x.FieldName.StringValue))));
+                    }
+
+                    foreach (var (fieldName, fieldPattern) in classVariantPattern.FieldPatterns)
+                    {
+                        var fieldType = classVariant.Fields.FirstOrDefault(x => x.Name == fieldName.StringValue)?.Type
+                            ?? throw new InvalidOperationException($"No field named {fieldName}");
+
+                        if (fieldPattern is null)
+                        {
+                            var variable = new LocalVariable(
+                                CurrentFunctionSignature,
+                                fieldName,
+                                fieldType,
+                                false,
+                                false);
+                            patternVariables.Add(variable);
+                            if (!TryAddScopedVariable(fieldName.StringValue, variable))
+                            {
+                                throw new InvalidOperationException($"Duplicate variable {fieldName.StringValue}");
+                            }
+                        }
+                        else
+                        {
+                            patternVariables.AddRange(TypeCheckPattern(fieldType, fieldPattern));
+                        }
+                    }
+
+                    if (classVariantPattern.VariableName is { } variableName)
                     {
                         var variable = new LocalVariable(
                             CurrentFunctionSignature,
-                            fieldName,
-                            fieldType,
+                            variableName,
+                            patternType,
                             false,
-                            false);
+                            classVariantPattern.IsMutableVariable);
                         patternVariables.Add(variable);
-                        if (!TryAddScopedVariable(fieldName.StringValue, variable))
+                        if (!TryAddScopedVariable(variableName.StringValue, variable))
                         {
-                            throw new InvalidOperationException($"Duplicate variable {fieldName.StringValue}");
+                            throw new InvalidOperationException($"Duplicate variable {variableName}");
                         }
                     }
-                    else
-                    {
-                        patternVariables.AddRange(TypeCheckPattern(fieldType, fieldPattern));
-                    }
-                }
 
-                if (classVariantPattern.VariableName is {} variableName)
-                {
-                    var variable = new LocalVariable(
-                        CurrentFunctionSignature,
-                        variableName,
-                        patternType,
-                        false,
-                        classVariantPattern.IsMutableVariable);
-                    patternVariables.Add(variable);
-                    if (!TryAddScopedVariable(variableName.StringValue, variable))
-                    {
-                        throw new InvalidOperationException($"Duplicate variable {variableName}");
-                    }
+                    break;
                 }
-
-                break;
-            }
             case UnionTupleVariantPattern unionTupleVariantPattern:
-            {
-                var patternType = GetTypeReference(unionTupleVariantPattern.Type);
-                unionTupleVariantPattern.TypeReference = patternType;
-
-                ExpectType(patternType, valueTypeReference, pattern.SourceRange);
-
-                if (patternType is not InstantiatedUnion unionType)
                 {
-                    throw new InvalidOperationException($"{valueTypeReference} is not a union");
-                }
+                    var patternType = GetTypeReference(unionTupleVariantPattern.Type);
+                    unionTupleVariantPattern.TypeReference = patternType;
 
-                var variant = unionType.Variants.FirstOrDefault(x =>
-                                  x.Name == unionTupleVariantPattern.VariantName.StringValue)
-                              ?? throw new InvalidOperationException(
-                                  $"No union variant found with name {unionTupleVariantPattern.VariantName.StringValue}");
+                    ExpectType(patternType, valueTypeReference, pattern.SourceRange);
 
-                if (variant is not TupleUnionVariant tupleUnionVariant)
-                {
-                    throw new InvalidOperationException("Expected union to be a tuple variant");
-                }
+                    if (patternType is not InstantiatedUnion unionType)
+                    {
+                        throw new InvalidOperationException($"{valueTypeReference} is not a union");
+                    }
 
-                if (tupleUnionVariant.TupleMembers.Count != unionTupleVariantPattern.TupleParamPatterns.Count)
-                {
-                    _errors.Add(TypeCheckerError.IncorrectNumberOfPatternsInTupleVariantUnionPattern(
-                        unionTupleVariantPattern, tupleUnionVariant.TupleMembers.Count));
-                }
-                
-                foreach (var (tupleMemberType, tupleMemberPattern) in tupleUnionVariant.TupleMembers.Zip(
-                             unionTupleVariantPattern.TupleParamPatterns))
-                {
-                    patternVariables.AddRange(
-                        TypeCheckPattern(tupleMemberType, tupleMemberPattern));
-                }
+                    var variant = unionType.Variants.FirstOrDefault(x =>
+                                      x.Name == unionTupleVariantPattern.VariantName.StringValue)
+                                  ?? throw new InvalidOperationException(
+                                      $"No union variant found with name {unionTupleVariantPattern.VariantName.StringValue}");
 
-                if (unionTupleVariantPattern.VariableName is {} variableName)
+                    if (variant is not TupleUnionVariant tupleUnionVariant)
+                    {
+                        throw new InvalidOperationException("Expected union to be a tuple variant");
+                    }
+
+                    if (tupleUnionVariant.TupleMembers.Count != unionTupleVariantPattern.TupleParamPatterns.Count)
+                    {
+                        _errors.Add(TypeCheckerError.IncorrectNumberOfPatternsInTupleVariantUnionPattern(
+                            unionTupleVariantPattern, tupleUnionVariant.TupleMembers.Count));
+                    }
+
+                    foreach (var (tupleMemberType, tupleMemberPattern) in tupleUnionVariant.TupleMembers.Zip(
+                                 unionTupleVariantPattern.TupleParamPatterns))
+                    {
+                        patternVariables.AddRange(
+                            TypeCheckPattern(tupleMemberType, tupleMemberPattern));
+                    }
+
+                    if (unionTupleVariantPattern.VariableName is { } variableName)
+                    {
+                        var variable = new LocalVariable(
+                            CurrentFunctionSignature,
+                            variableName,
+                            patternType,
+                            false,
+                            unionTupleVariantPattern.IsMutableVariable);
+                        patternVariables.Add(variable);
+                        if (!TryAddScopedVariable(variableName.StringValue, variable))
+                        {
+                            throw new InvalidOperationException($"Duplicate variable {variableName}");
+                        }
+                    }
+
+                    break;
+                }
+            case VariableDeclarationPattern { VariableName: var variableName, IsMut: var variableMutable }:
                 {
                     var variable = new LocalVariable(
                         CurrentFunctionSignature,
                         variableName,
-                        patternType,
+                        valueTypeReference,
                         false,
-                        unionTupleVariantPattern.IsMutableVariable);
+                        variableMutable);
                     patternVariables.Add(variable);
                     if (!TryAddScopedVariable(variableName.StringValue, variable))
                     {
                         throw new InvalidOperationException($"Duplicate variable {variableName}");
                     }
-                }
 
-                break;
-            }
-            case VariableDeclarationPattern { VariableName: var variableName, IsMut: var variableMutable }:
-            {
-                var variable = new LocalVariable(
-                    CurrentFunctionSignature,
-                    variableName,
-                    valueTypeReference,
-                    false,
-                    variableMutable);
-                patternVariables.Add(variable);
-                if (!TryAddScopedVariable(variableName.StringValue, variable))
-                {
-                    throw new InvalidOperationException($"Duplicate variable {variableName}");
+                    break;
                 }
-
-                break;
-            }
             case TypePattern { Type: var typeIdentifier, VariableName: var variableName } typePattern:
-            {
-                var type = GetTypeReference(typeIdentifier);
-                typePattern.TypeReference = type;
-                
-                ExpectType(type, valueTypeReference, pattern.SourceRange);
-                
-                if (variableName is not null)
                 {
-                    var variable = new LocalVariable(CurrentFunctionSignature, variableName, type, Instantiated: false, Mutable: typePattern.IsVariableMutable);
-                    patternVariables.Add(variable);
-                    if (!TryAddScopedVariable(variableName.StringValue, variable))
-                    {
-                        throw new InvalidOperationException($"Duplicate variable {variableName}");
-                    }
-                }
+                    var type = GetTypeReference(typeIdentifier);
+                    typePattern.TypeReference = type;
 
-                break;
-            }
+                    ExpectType(type, valueTypeReference, pattern.SourceRange);
+
+                    if (variableName is not null)
+                    {
+                        var variable = new LocalVariable(CurrentFunctionSignature, variableName, type, Instantiated: false, Mutable: typePattern.IsVariableMutable);
+                        patternVariables.Add(variable);
+                        if (!TryAddScopedVariable(variableName.StringValue, variable))
+                        {
+                            throw new InvalidOperationException($"Duplicate variable {variableName}");
+                        }
+                    }
+
+                    break;
+                }
             default:
                 throw new UnreachableException(pattern.GetType().Name);
         }

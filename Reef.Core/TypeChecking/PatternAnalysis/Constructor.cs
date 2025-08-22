@@ -36,36 +36,36 @@ public interface IConstructor
             case WildcardConstructor:
                 return [];
             case VariantConstructor variantConstructor:
-            {
-                var union = typeReference as TypeChecker.InstantiatedUnion
-                            ?? throw new InvalidOperationException("Expected union");
-
-                var variant = union.Variants[(int)variantConstructor.VariantIndex];
-
-                var subTypes = variant switch
                 {
-                    TypeChecker.ClassUnionVariant classUnionVariant => classUnionVariant.Fields.Select(x => x.Type),
-                    TypeChecker.TupleUnionVariant tupleUnionVariant => tupleUnionVariant.TupleMembers,
-                    TypeChecker.UnitUnionVariant => [],
-                    _ => throw new ArgumentOutOfRangeException(nameof(variant))
-                };
+                    var union = typeReference as TypeChecker.InstantiatedUnion
+                                ?? throw new InvalidOperationException("Expected union");
 
-                return subTypes.Select(x =>
-                {
-                    return (x, new PrivateUninhabitedField(false));
-                });
-            }
+                    var variant = union.Variants[(int)variantConstructor.VariantIndex];
+
+                    var subTypes = variant switch
+                    {
+                        TypeChecker.ClassUnionVariant classUnionVariant => classUnionVariant.Fields.Select(x => x.Type),
+                        TypeChecker.TupleUnionVariant tupleUnionVariant => tupleUnionVariant.TupleMembers,
+                        TypeChecker.UnitUnionVariant => [],
+                        _ => throw new ArgumentOutOfRangeException(nameof(variant))
+                    };
+
+                    return subTypes.Select(x =>
+                    {
+                        return (x, new PrivateUninhabitedField(false));
+                    });
+                }
             case ClassConstructor:
-            {
-                var @class = typeReference as TypeChecker.InstantiatedClass
-                    ?? throw new InvalidOperationException("Expected class");
-                return @class.Fields.Select(x =>
                 {
-                    // todo: need to figure out if we can access this field 
-                    // var isVisible = true;
-                    return (x.Type, new PrivateUninhabitedField(false));
-                });
-            }
+                    var @class = typeReference as TypeChecker.InstantiatedClass
+                        ?? throw new InvalidOperationException("Expected class");
+                    return @class.Fields.Select(x =>
+                    {
+                        // todo: need to figure out if we can access this field 
+                        // var isVisible = true;
+                        return (x.Type, new PrivateUninhabitedField(false));
+                    });
+                }
             default:
                 throw new ArgumentOutOfRangeException(nameof(ctor));
         }
@@ -109,44 +109,44 @@ public interface IConstructor
         switch (this)
         {
             case ClassConstructor:
-            {
-                var concreteType = typeReference.ConcreteType();
-                if (concreteType.Item1 is TypeChecker.InstantiatedClass { Signature: var signature })
                 {
-                    return (uint)signature.Fields.Count;
-                }
+                    var concreteType = typeReference.ConcreteType();
+                    if (concreteType.Item1 is TypeChecker.InstantiatedClass { Signature: var signature })
+                    {
+                        return (uint)signature.Fields.Count;
+                    }
 
-                throw new InvalidOperationException("Expected type to be class");
-            }
+                    throw new InvalidOperationException("Expected type to be class");
+                }
             case VariantConstructor { VariantIndex: var variantIndex }:
-            {
-                var concreteType = typeReference.ConcreteType();
-                if (concreteType.Item1 is not TypeChecker.InstantiatedUnion { Signature: var unionSignature })
                 {
-                    throw new InvalidOperationException("Expected type to be union");
-                }
-                
-                var variant = unionSignature.Variants[(int)variantIndex];
-                return variant switch
-                {
-                    TypeChecker.ClassUnionVariant classUnionVariant => (uint)classUnionVariant.Fields.Count,
-                    TypeChecker.TupleUnionVariant tupleUnionVariant => (uint)tupleUnionVariant.TupleMembers.Count,
-                    TypeChecker.UnitUnionVariant => 0,
-                    _ => throw new ArgumentOutOfRangeException(nameof(variant))
-                };
+                    var concreteType = typeReference.ConcreteType();
+                    if (concreteType.Item1 is not TypeChecker.InstantiatedUnion { Signature: var unionSignature })
+                    {
+                        throw new InvalidOperationException("Expected type to be union");
+                    }
 
-            }
+                    var variant = unionSignature.Variants[(int)variantIndex];
+                    return variant switch
+                    {
+                        TypeChecker.ClassUnionVariant classUnionVariant => (uint)classUnionVariant.Fields.Count,
+                        TypeChecker.TupleUnionVariant tupleUnionVariant => (uint)tupleUnionVariant.TupleMembers.Count,
+                        TypeChecker.UnitUnionVariant => 0,
+                        _ => throw new ArgumentOutOfRangeException(nameof(variant))
+                    };
+
+                }
             case BooleanConstructor or StringLiteralConstructor or NeverConstructor
                 or NonExhaustiveConstructor or HiddenConstructor
                 or MissingConstructor or PrivateUninhabitedConstructor or WildcardConstructor:
-            {
-                return 0;
-            }
+                {
+                    return 0;
+                }
             default:
                 throw new InvalidOperationException($"Unexpected constructor type: {GetType()}");
         }
     }
-    
+
     bool IsCoveredBy(IConstructor other)
     {
         return (this, other) switch
@@ -191,4 +191,4 @@ public enum VariantVisibility
     Empty
 }
 
-public record PrivateUninhabitedField(bool Value); 
+public record PrivateUninhabitedField(bool Value);

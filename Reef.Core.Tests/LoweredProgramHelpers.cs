@@ -99,7 +99,7 @@ public static class LoweredProgramHelpers
                 compilerImplementationType);
     }
 
-    public static StringConstantExpression StringConstant(string value, bool valueUseful) => 
+    public static StringConstantExpression StringConstant(string value, bool valueUseful) =>
         new(valueUseful, value);
 
     public static UnitConstantExpression UnitConstant(bool valueUseful) => new(valueUseful);

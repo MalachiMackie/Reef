@@ -82,7 +82,7 @@ public static class ExpressionHelpers
     {
         return new NamedTypeIdentifier(Identifier("string"), [], SourceRange.Default);
     }
-    
+
     public static NamedTypeIdentifier BooleanType()
     {
         return new NamedTypeIdentifier(Identifier("bool"), [], SourceRange.Default);
@@ -116,17 +116,17 @@ public static class ExpressionHelpers
         return new ProgramClass(
             isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
             Token.Identifier(name, SourceSpan.Default),
-            [..typeParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
+            [.. typeParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
             [],
             fields ?? []);
     }
-    
+
     public static ProgramUnion Union(string name, bool isPublic = false, IReadOnlyList<IProgramUnionVariant>? variants = null, IReadOnlyList<string>? typeParameters = null)
     {
         return new ProgramUnion(
             isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
             Token.Identifier(name, SourceSpan.Default),
-            [..typeParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
+            [.. typeParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
             [],
             variants ?? []);
     }
@@ -139,7 +139,7 @@ public static class ExpressionHelpers
             parameters: parameters?.Select(x => new TypeChecker.FunctionParameter(x.parameterType, x.isMut)).ToArray() ?? [],
             returnType: returnType ?? TypeChecker.InstantiatedClass.Unit);
     }
-    
+
     public static LangFunction Function(
         string name,
         bool isPublic = false,
@@ -182,7 +182,7 @@ public static class ExpressionHelpers
     {
         return new MethodCallExpression(new MethodCall(method, arguments), SourceRange.Default);
     }
-    
+
     public static StaticMemberAccessExpression StaticMemberAccess(NamedTypeIdentifier type, string? memberName, IReadOnlyList<ITypeIdentifier>? typeArguments = null)
     {
         return new StaticMemberAccessExpression(new StaticMemberAccess(type, memberName is null ? null : Token.Identifier(memberName, SourceSpan.Default), typeArguments));
@@ -190,7 +190,7 @@ public static class ExpressionHelpers
 
     public static TupleExpression Tuple(IExpression first, params IEnumerable<IExpression> values)
     {
-        return new TupleExpression([first, ..values], SourceRange.Default);
+        return new TupleExpression([first, .. values], SourceRange.Default);
     }
 
     public static MatchesExpression Matches(IExpression value, IPattern? pattern = null)
@@ -200,7 +200,7 @@ public static class ExpressionHelpers
 
     public static MatchExpression Match(IExpression value, IReadOnlyList<MatchArm>? arms = null)
     {
-        return new MatchExpression(value, arms ?? [],  SourceRange.Default);
+        return new MatchExpression(value, arms ?? [], SourceRange.Default);
     }
 
     public static ObjectInitializerExpression ObjectInitializer(NamedTypeIdentifier type, IReadOnlyList<FieldInitializer>? fieldInitializers = null)
@@ -230,7 +230,7 @@ public static class ExpressionHelpers
         return new MatchArm(pattern, expression);
     }
 
-    public static DiscardPattern DiscardPattern() => new (SourceRange.Default);
+    public static DiscardPattern DiscardPattern() => new(SourceRange.Default);
 
     public static UnionVariantPattern UnionVariantPattern(ITypeIdentifier unionType, string? variantName = null, string? variableName = null, bool isMutableVariable = false)
     {
@@ -256,7 +256,7 @@ public static class ExpressionHelpers
             isMutableVariable,
             SourceRange.Default);
     }
-    
+
     public static UnionClassVariantPattern UnionClassVariantPattern(
         ITypeIdentifier unionType,
         string variantName,
@@ -314,7 +314,7 @@ public static class ExpressionHelpers
     {
         return new FnTypeIdentifierParameter(parameterType, isMut);
     }
-    
+
     public static TypePattern TypePattern(ITypeIdentifier type, string? variableName = null, bool isMutableVariable = false)
     {
         return new TypePattern(
@@ -343,7 +343,7 @@ public static class ExpressionHelpers
     {
         return new ElseIf(checkExpression, elseBody);
     }
-    
+
     public static BinaryOperatorExpression BinaryOperatorExpression(BinaryOperatorType type, IExpression left,
         IExpression right)
     {

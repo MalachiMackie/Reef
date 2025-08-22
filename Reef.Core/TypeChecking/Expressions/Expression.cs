@@ -3,7 +3,8 @@ using Reef.Core.Expressions;
 
 namespace Reef.Core.TypeChecking;
 
-public partial class TypeChecker {
+public partial class TypeChecker
+{
 
     private ITypeReference TypeCheckExpression(
         IExpression expression,
@@ -51,111 +52,111 @@ public partial class TypeChecker {
             {
                 ValueAccessor: { AccessType: ValueAccessType.Variable, Token: StringToken valueToken }
             }:
-            {
-                if (!TryGetScopedVariable(valueToken, out var variable))
                 {
-                    _errors.Add(TypeCheckerError.SymbolNotFound(valueToken));
+                    if (!TryGetScopedVariable(valueToken, out var variable))
+                    {
+                        _errors.Add(TypeCheckerError.SymbolNotFound(valueToken));
+                        return false;
+                    }
+                    if (variable is LocalVariable { Instantiated: false }
+                        or LocalVariable { Mutable: true }
+                        or FieldVariable { Mutable: true }
+                        or FunctionSignatureParameter { Mutable: true })
+                    {
+                        return true;
+                    }
+
+                    if (report)
+                    {
+                        _errors.Add(TypeCheckerError.NonMutableAssignment(variable.Name.StringValue,
+                            new SourceRange(valueToken.SourceSpan, valueToken.SourceSpan)));
+                    }
                     return false;
-                }
-                if (variable is LocalVariable { Instantiated: false }
-                    or LocalVariable { Mutable: true }
-                    or FieldVariable { Mutable: true }
-                    or FunctionSignatureParameter { Mutable: true})
-                {
-                    return true;
-                }
 
-                if (report)
-                {
-                    _errors.Add(TypeCheckerError.NonMutableAssignment(variable.Name.StringValue,
-                        new SourceRange(valueToken.SourceSpan, valueToken.SourceSpan)));
                 }
-                return false;
-
-            }
             case MemberAccessExpression memberAccess:
-            {
-                var owner = memberAccess.MemberAccess.Owner;
-
-                if (memberAccess.MemberAccess.MemberName is null)
                 {
-                    return false;
-                }
-            
-                var isOwnerAssignable = ExpectAssignableExpression(owner, report: false);
+                    var owner = memberAccess.MemberAccess.Owner;
 
-                if (owner.ResolvedType is not InstantiatedClass { Fields: var fields })
-                {
+                    if (memberAccess.MemberAccess.MemberName is null)
+                    {
+                        return false;
+                    }
+
+                    var isOwnerAssignable = ExpectAssignableExpression(owner, report: false);
+
+                    if (owner.ResolvedType is not InstantiatedClass { Fields: var fields })
+                    {
+                        if (report)
+                            _errors.Add(TypeCheckerError.ExpressionNotAssignable(memberAccess));
+                        return false;
+                    }
+
+                    var field = fields.FirstOrDefault(x => x.Name == memberAccess.MemberAccess.MemberName.StringValue);
+                    if (field is null)
+                    {
+                        if (report)
+                            _errors.Add(TypeCheckerError.ExpressionNotAssignable(memberAccess));
+                        return false;
+                    }
+
+                    if (!field.IsMutable)
+                    {
+                        if (report)
+                            _errors.Add(TypeCheckerError.NonMutableMemberAssignment(memberAccess));
+                        return false;
+                    }
+
+                    if (isOwnerAssignable)
+                    {
+                        return true;
+                    }
+
                     if (report)
-                        _errors.Add(TypeCheckerError.ExpressionNotAssignable(memberAccess));
+                        _errors.Add(TypeCheckerError.NonMutableMemberOwnerAssignment(owner));
                     return false;
+
                 }
-
-                var field = fields.FirstOrDefault(x => x.Name == memberAccess.MemberAccess.MemberName.StringValue);
-                if (field is null)
-                {
-                    if (report)
-                        _errors.Add(TypeCheckerError.ExpressionNotAssignable(memberAccess));
-                    return false;
-                }
-
-                if (!field.IsMutable)
-                {
-                    if (report)
-                        _errors.Add(TypeCheckerError.NonMutableMemberAssignment(memberAccess));
-                    return false;
-                }
-
-                if (isOwnerAssignable)
-                {
-                    return true;
-                }
-
-                if (report)
-                    _errors.Add(TypeCheckerError.NonMutableMemberOwnerAssignment(owner));
-                return false;
-
-            }
             case StaticMemberAccessExpression staticMemberAccess:
-            {
-                var ownerType = GetTypeReference(staticMemberAccess.StaticMemberAccess.Type);
-
-                if (staticMemberAccess.StaticMemberAccess.MemberName is null)
                 {
-                    return false;
-                }
+                    var ownerType = GetTypeReference(staticMemberAccess.StaticMemberAccess.Type);
 
-                if (ownerType is not InstantiatedClass { Fields: var fields })
-                {
+                    if (staticMemberAccess.StaticMemberAccess.MemberName is null)
+                    {
+                        return false;
+                    }
+
+                    if (ownerType is not InstantiatedClass { Fields: var fields })
+                    {
+                        if (report)
+                            _errors.Add(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
+                        return false;
+                    }
+
+                    var staticField = fields.FirstOrDefault(x =>
+                        x.Name == staticMemberAccess.StaticMemberAccess.MemberName.StringValue && x.IsStatic);
+                    if (staticField is null)
+                    {
+                        if (report)
+                            _errors.Add(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
+                        return false;
+                    }
+
+                    if (staticField.IsMutable)
+                    {
+                        return true;
+                    }
+
                     if (report)
-                        _errors.Add(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
+                        _errors.Add(TypeCheckerError.NonMutableMemberAssignment(staticMemberAccess));
                     return false;
+
                 }
-
-                var staticField = fields.FirstOrDefault(x =>
-                    x.Name == staticMemberAccess.StaticMemberAccess.MemberName.StringValue && x.IsStatic);
-                if (staticField is null)
-                {
-                    if (report)
-                        _errors.Add(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
-                    return false;
-                }
-
-                if (staticField.IsMutable)
-                {
-                    return true;
-                }
-
-                if (report)
-                    _errors.Add(TypeCheckerError.NonMutableMemberAssignment(staticMemberAccess));
-                return false;
-
-            }
         }
 
         if (report)
             _errors.Add(TypeCheckerError.ExpressionNotAssignable(expression));
-        
+
         return false;
     }
 }

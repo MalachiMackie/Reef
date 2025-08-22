@@ -54,9 +54,11 @@ public class BranchPatternUsefulness
 
         foreach (var innerRow in row.IntersectsAtLeast.Select(rowId => matrix.Rows[(int)rowId]))
         {
-            if (innerRow is { Useful: true, IsUnderGuard: false, Head: PatternPatternOrWild
+            if (innerRow is
+                {
+                    Useful: true, IsUnderGuard: false, Head: PatternPatternOrWild
                     {
-                        Pattern: {} intersecting
+                        Pattern: { } intersecting
                     }
                 })
             {
@@ -99,7 +101,7 @@ public interface IPatternOrWild
         return this switch
         {
             Wild => new WildcardConstructor(),
-            PatternPatternOrWild { Pattern: {} pattern} => pattern.Constructor,
+            PatternPatternOrWild { Pattern: { } pattern } => pattern.Constructor,
             _ => throw new UnreachableException($"{GetType()}")
         };
     }
@@ -109,7 +111,7 @@ public interface IPatternOrWild
         return this switch
         {
             Wild => Enumerable.Range(0, ctorArity).Select(_ => new Wild()),
-            PatternPatternOrWild { Pattern: {} pat} => pat.Specialize(ctor, ctorArity),
+            PatternPatternOrWild { Pattern: { } pat } => pat.Specialize(ctor, ctorArity),
             _ => throw new UnreachableException($"{GetType()}")
         };
     }
@@ -141,7 +143,7 @@ public class PatternStack
     public PatternStack PopHeadConstructor(IConstructor ctor, int ctorArity, bool ctorIsRelevant)
     {
         var headPat = Head;
-        if (headPat is PatternPatternOrWild{Pattern: {} pat} && pat.Arity > ctorArity)
+        if (headPat is PatternPatternOrWild { Pattern: { } pat } && pat.Arity > ctorArity)
         {
             throw new InvalidOperationException($"Uncaught type error: pattern {pat} has inconsistent arity");
         }
@@ -264,7 +266,8 @@ public class PlaceInfo
             missingCtors = [
                 new WildcardConstructor(),
             ];
-        } else if (missingCtors.Any(x => x.IsNonExhaustive()))
+        }
+        else if (missingCtors.Any(x => x.IsNonExhaustive()))
         {
             missingCtors = [new NonExhaustiveConstructor()];
         }
@@ -330,7 +333,7 @@ public class Matrix
         row.IntersectsAtLeast = new HashSet<uint>(Rows.Count);
         Rows.Add(row);
     }
-    
+
     public static Matrix Create(IReadOnlyList<PatternMatchArm> arms,
         TypeChecker.ITypeReference scrutineeType,
         PlaceValidity scrutValidity)
@@ -416,7 +419,7 @@ public record WitnessStack(List<WitnessPattern> Patterns)
         {
             throw new InvalidOperationException("Wrong number of fields");
         }
-        
+
         Patterns.Add(new WitnessPattern
         {
             Constructor = ctor,
@@ -432,7 +435,7 @@ public record WitnessMatrix(List<WitnessStack> Stacks)
 {
     public static WitnessMatrix Empty => new([]);
     public static WitnessMatrix UnitWitness => new([new WitnessStack([])]);
-    
+
     public IReadOnlyList<WitnessPattern> SingleColumn()
     {
         return Stacks.Select(x => x.SinglePattern()).ToArray();
@@ -451,7 +454,7 @@ public record WitnessMatrix(List<WitnessStack> Stacks)
             foreach (var missingCtor in missingCtors)
             {
                 var pattern = pcx.WildFromCtor(missingCtor);
-                var witMatrix = new WitnessMatrix([..Stacks]);
+                var witMatrix = new WitnessMatrix([.. Stacks]);
                 witMatrix.PushPattern(pattern);
                 ret.Add(witMatrix);
             }
@@ -508,7 +511,7 @@ public static class MatchUsefulnessAnalyzer
         var armUsefulness = arms.Select(arm =>
         {
             IUsefulness usefulness;
-            if (cx.BranchUsefulness[arm.Pattern.Id].IsRedundant() is {} redundancyExplanation)
+            if (cx.BranchUsefulness[arm.Pattern.Id].IsRedundant() is { } redundancyExplanation)
             {
                 usefulness = new Redundant(redundancyExplanation);
             }
@@ -528,7 +531,7 @@ public static class MatchUsefulnessAnalyzer
                 });
                 usefulness = new Useful(redundantSubPatterns);
             }
-            
+
             return (arm, usefulness);
         }).ToArray();
 
@@ -567,10 +570,10 @@ public static class MatchUsefulnessAnalyzer
                 {
                     row.IntersectsAtLeast.Add(j);
                 }
-                
+
                 useful &= row.IsUnderGuard;
             }
-            
+
             return useful && matrix.WildcardRowIsRelevant
                 ? WitnessMatrix.UnitWitness
                 : WitnessMatrix.Empty;
@@ -595,7 +598,7 @@ public static class MatchUsefulnessAnalyzer
 
         foreach (var row in matrix.Rows.Where(x => x.HeadIsBranch))
         {
-            if (row.Head is PatternPatternOrWild { Pattern: {} pattern })
+            if (row.Head is PatternPatternOrWild { Pattern: { } pattern })
             {
                 if (!cx.BranchUsefulness.TryGetValue(pattern.Id, out var usefulness))
                 {
@@ -625,131 +628,131 @@ public static class MatchUsefulnessAnalyzer
         switch (pattern)
         {
             case TypePattern:
-            {
-                arity = 0;
-                fields = [];
-                // type pattern creates a wildcard constructor because it is guaranteed to match the type is was provided for
-                constructor = new WildcardConstructor();
-                break;
-            }
-            case UnionVariantPattern{VariantName.StringValue: {} variantName}:
-            {
-                var unionType = type as TypeChecker.InstantiatedUnion
-                                ?? throw new InvalidOperationException("Expected union type");
-                var (index, variant) = unionType.Variants
-                    .Index()
-                    .FirstOrDefault(x => x.Item.Name == variantName);
-                constructor = new VariantConstructor((uint)index);
-                fields = variant switch
                 {
-                    TypeChecker.ClassUnionVariant classUnionVariant => 
-                        classUnionVariant.Fields
-                            .Index()
-                            .Select(x => new IndexedPattern
-                            {
-                                Index = (uint)x.Index,
-                                // because the current pattern does not specify any fields,
-                                // we treat each field as if it's discarded
-                                Pattern = LowerPattern(new DiscardPattern(SourceRange.Default))
-                            })
-                            .ToArray(),
-                    TypeChecker.TupleUnionVariant tupleUnionVariant => 
-                        tupleUnionVariant.TupleMembers
-                            .Index()
-                            .Select(x => new IndexedPattern()
-                            {
-                                Index = (uint)x.Index,
-                                Pattern = LowerPattern(new DiscardPattern(SourceRange.Default))
-                            })
-                            .ToArray(),
-                    TypeChecker.UnitUnionVariant => [],
-                    _ => throw new ArgumentOutOfRangeException(nameof(variant))
-                };
-                
-                arity = (uint)fields.Count;
-                break;
-            }
+                    arity = 0;
+                    fields = [];
+                    // type pattern creates a wildcard constructor because it is guaranteed to match the type is was provided for
+                    constructor = new WildcardConstructor();
+                    break;
+                }
+            case UnionVariantPattern { VariantName.StringValue: { } variantName }:
+                {
+                    var unionType = type as TypeChecker.InstantiatedUnion
+                                    ?? throw new InvalidOperationException("Expected union type");
+                    var (index, variant) = unionType.Variants
+                        .Index()
+                        .FirstOrDefault(x => x.Item.Name == variantName);
+                    constructor = new VariantConstructor((uint)index);
+                    fields = variant switch
+                    {
+                        TypeChecker.ClassUnionVariant classUnionVariant =>
+                            classUnionVariant.Fields
+                                .Index()
+                                .Select(x => new IndexedPattern
+                                {
+                                    Index = (uint)x.Index,
+                                    // because the current pattern does not specify any fields,
+                                    // we treat each field as if it's discarded
+                                    Pattern = LowerPattern(new DiscardPattern(SourceRange.Default))
+                                })
+                                .ToArray(),
+                        TypeChecker.TupleUnionVariant tupleUnionVariant =>
+                            tupleUnionVariant.TupleMembers
+                                .Index()
+                                .Select(x => new IndexedPattern()
+                                {
+                                    Index = (uint)x.Index,
+                                    Pattern = LowerPattern(new DiscardPattern(SourceRange.Default))
+                                })
+                                .ToArray(),
+                        TypeChecker.UnitUnionVariant => [],
+                        _ => throw new ArgumentOutOfRangeException(nameof(variant))
+                    };
+
+                    arity = (uint)fields.Count;
+                    break;
+                }
             case UnionTupleVariantPattern
             {
-                VariantName.StringValue: {} variantName,
-                TupleParamPatterns: {} tupleParamPatterns
+                VariantName.StringValue: { } variantName,
+                TupleParamPatterns: { } tupleParamPatterns
             }:
-            {
-                var unionType = type as TypeChecker.InstantiatedUnion
-                                ?? throw new InvalidOperationException("Expected union type");
-                var index = unionType.Variants
-                    .Index()
-                    .FirstOrDefault(x => x.Item.Name == variantName).Index;
-                constructor = new VariantConstructor((uint)index);
-                // we assume that every tuple member has been specified, so we don't need to get it from type
-                fields = tupleParamPatterns.Index()
-                    .Select(x => new IndexedPattern
-                    {
-                        Index = (uint)x.Index,
-                        Pattern = LowerPattern(x.Item)
-                    })
-                    .ToArray();
-                arity = (uint)fields.Count;
-                break;
-                
-            }
+                {
+                    var unionType = type as TypeChecker.InstantiatedUnion
+                                    ?? throw new InvalidOperationException("Expected union type");
+                    var index = unionType.Variants
+                        .Index()
+                        .FirstOrDefault(x => x.Item.Name == variantName).Index;
+                    constructor = new VariantConstructor((uint)index);
+                    // we assume that every tuple member has been specified, so we don't need to get it from type
+                    fields = tupleParamPatterns.Index()
+                        .Select(x => new IndexedPattern
+                        {
+                            Index = (uint)x.Index,
+                            Pattern = LowerPattern(x.Item)
+                        })
+                        .ToArray();
+                    arity = (uint)fields.Count;
+                    break;
+
+                }
             case UnionClassVariantPattern
             {
-                VariantName.StringValue: {} variantName,
-                FieldPatterns: {} fieldPatterns
+                VariantName.StringValue: { } variantName,
+                FieldPatterns: { } fieldPatterns
             }:
-            {
-                var unionType = type as TypeChecker.InstantiatedUnion
-                                ?? throw new InvalidOperationException("Expected union type");
-                var (index, variant) = unionType.Variants
-                    .Index()
-                    .FirstOrDefault(x => x.Item.Name == variantName);
-                if (variant is not TypeChecker.ClassUnionVariant classUnionVariant)
                 {
-                    throw new InvalidOperationException("Expected class union variant");
-                }
-                constructor = new VariantConstructor((uint)index);
-
-                fields = classUnionVariant.Fields
-                    .Index()
-                    .Select(x => new IndexedPattern
+                    var unionType = type as TypeChecker.InstantiatedUnion
+                                    ?? throw new InvalidOperationException("Expected union type");
+                    var (index, variant) = unionType.Variants
+                        .Index()
+                        .FirstOrDefault(x => x.Item.Name == variantName);
+                    if (variant is not TypeChecker.ClassUnionVariant classUnionVariant)
                     {
-                        Index = (uint)x.Index,
-                        // because the current pattern does not specify any fields,
-                        // we treat each field as if it's discarded
-                        Pattern = LowerPattern(
-                            fieldPatterns.FirstOrDefault(y => y.FieldName.StringValue == x.Item.Name)?.Pattern
-                            ?? new DiscardPattern(SourceRange.Default))
-                    })
-                    .ToArray();
-                
-                arity = (uint)fields.Count;
-                break;
-            }
+                        throw new InvalidOperationException("Expected class union variant");
+                    }
+                    constructor = new VariantConstructor((uint)index);
+
+                    fields = classUnionVariant.Fields
+                        .Index()
+                        .Select(x => new IndexedPattern
+                        {
+                            Index = (uint)x.Index,
+                            // because the current pattern does not specify any fields,
+                            // we treat each field as if it's discarded
+                            Pattern = LowerPattern(
+                                fieldPatterns.FirstOrDefault(y => y.FieldName.StringValue == x.Item.Name)?.Pattern
+                                ?? new DiscardPattern(SourceRange.Default))
+                        })
+                        .ToArray();
+
+                    arity = (uint)fields.Count;
+                    break;
+                }
             case DiscardPattern:
             case VariableDeclarationPattern:
-            {
-                arity = 0;
-                fields = [];
-                constructor = new WildcardConstructor();
-                break;
-            }
-            case ClassPattern{FieldPatterns: {} fieldPatterns}:
-            {
-                constructor = new ClassConstructor();
-                fields = (type as TypeChecker.InstantiatedClass)?.Fields
-                    .Index()
-                    .Select(x => new IndexedPattern
-                    {
-                        Index = (uint)x.Index,
-                        Pattern = LowerPattern(
-                            fieldPatterns.FirstOrDefault(y => y.FieldName.StringValue == x.Item.Name)?.Pattern
-                                ?? new DiscardPattern(SourceRange.Default))
-                    }).ToArray()
-                    ?? throw new InvalidOperationException("Expected class");
-                arity = (uint)fields.Count;
-                break;
-            }
+                {
+                    arity = 0;
+                    fields = [];
+                    constructor = new WildcardConstructor();
+                    break;
+                }
+            case ClassPattern { FieldPatterns: { } fieldPatterns }:
+                {
+                    constructor = new ClassConstructor();
+                    fields = (type as TypeChecker.InstantiatedClass)?.Fields
+                        .Index()
+                        .Select(x => new IndexedPattern
+                        {
+                            Index = (uint)x.Index,
+                            Pattern = LowerPattern(
+                                fieldPatterns.FirstOrDefault(y => y.FieldName.StringValue == x.Item.Name)?.Pattern
+                                    ?? new DiscardPattern(SourceRange.Default))
+                        }).ToArray()
+                        ?? throw new InvalidOperationException("Expected class");
+                    arity = (uint)fields.Count;
+                    break;
+                }
             default:
                 throw new UnreachableException($"{pattern.GetType()}");
         }

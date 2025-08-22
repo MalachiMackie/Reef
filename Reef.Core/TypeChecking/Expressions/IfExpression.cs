@@ -44,7 +44,7 @@ public partial class TypeChecker
             ifExpression.Body.ValueUseful = true;
             TypeCheckExpression(ifExpression.Body);
         }
-        
+
         foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
         {
             variableInstantiation.InstantiatedInBody = variable.Instantiated;
@@ -61,7 +61,7 @@ public partial class TypeChecker
             using var __ = PushScope();
             elseIf.CheckExpression.ValueUseful = true;
             TypeCheckExpression(elseIf.CheckExpression);
-            
+
             ExpectExpressionType(InstantiatedClass.Boolean, elseIf.CheckExpression);
 
             matchVariableDeclarations = elseIf.CheckExpression is MatchesExpression
@@ -81,7 +81,7 @@ public partial class TypeChecker
                 elseIf.Body.ValueUseful = true;
                 TypeCheckExpression(elseIf.Body);
             }
-            
+
             foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
             {
                 variableInstantiation.InstantiatedInEachElseIf &= variable.Instantiated;
@@ -99,14 +99,14 @@ public partial class TypeChecker
             using var __ = PushScope();
             ifExpression.ElseBody.ValueUseful = true;
             TypeCheckExpression(ifExpression.ElseBody);
-            
+
             foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
             {
                 variableInstantiation.InstantiatedInElse = variable.Instantiated;
                 variable.Instantiated = false;
             }
         }
-        
+
         foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
         {
             // if variable was instantiated in each branch, then it is instantiated

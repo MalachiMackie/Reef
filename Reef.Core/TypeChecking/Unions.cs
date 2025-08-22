@@ -8,7 +8,7 @@ public partial class TypeChecker
     public class UnionSignature : ITypeSignature
     {
         public static readonly IReadOnlyList<ITypeSignature> BuiltInTypes;
-        
+
         static UnionSignature()
         {
             var variants = new TupleUnionVariant[2];
@@ -125,7 +125,7 @@ public partial class TypeChecker
 
         return new InstantiatedUnion(signature, typeArgumentReferences);
     }
-    
+
     private InstantiatedUnion InstantiateResult(SourceRange sourceRange)
     {
         return InstantiateUnion(UnionSignature.Result, [], sourceRange);
@@ -182,7 +182,7 @@ public partial class TypeChecker
         public string Name => Signature.Name;
 
         public IReadOnlyList<GenericTypeReference> TypeArguments { get; }
-        
+
         public bool IsSameSignature(InstantiatedUnion other)
         {
             return Signature == other.Signature;

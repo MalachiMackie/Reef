@@ -5,7 +5,7 @@ namespace Reef.Core;
 public interface IPattern
 {
     SourceRange SourceRange { get; }
-    
+
     TypeChecker.ITypeReference? TypeReference { get; }
 }
 

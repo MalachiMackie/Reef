@@ -5,8 +5,8 @@ namespace Reef.Core.TypeChecking;
 public partial class TypeChecker
 {
 
-private ITypeReference TypeCheckMethodCall(
-        MethodCallExpression methodCallExpression)
+    private ITypeReference TypeCheckMethodCall(
+            MethodCallExpression methodCallExpression)
     {
         var methodCall = methodCallExpression.MethodCall;
         methodCall.Method.ValueUseful = true;
@@ -19,7 +19,7 @@ private ITypeReference TypeCheckMethodCall(
             {
                 TypeCheckExpression(argument);
             }
-            
+
             return UnknownType.Instance;
         }
 

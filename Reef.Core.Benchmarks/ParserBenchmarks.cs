@@ -110,7 +110,7 @@ public class ParserBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _tokens = [..Tokenizer.Tokenize(Source)];
+        _tokens = [.. Tokenizer.Tokenize(Source)];
     }
 
     [Benchmark]

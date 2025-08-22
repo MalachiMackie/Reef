@@ -50,7 +50,7 @@ public partial class TypeChecker
                 fieldInitializer.Value.ValueUseful = true;
                 TypeCheckExpression(fieldInitializer.Value);
             }
-            
+
             if (!fields.TryGetValue(fieldInitializer.FieldName.StringValue, out var field))
             {
                 _errors.Add(TypeCheckerError.UnknownField(fieldInitializer.FieldName, $"union variant {initializer.UnionType.Identifier.StringValue}::{initializer.VariantIdentifier.StringValue}"));
@@ -58,7 +58,7 @@ public partial class TypeChecker
             }
 
             ExpectExpressionType(field.Type, fieldInitializer.Value);
-            
+
             fieldInitializer.TypeField = field;
         }
 
@@ -78,10 +78,10 @@ public partial class TypeChecker
             {
                 TypeCheckExpression(fieldInitializer.Value!);
             }
-            
+
             return UnknownType.Instance;
         }
-        
+
         if (foundType is not InstantiatedClass instantiatedClass)
         {
             throw new InvalidOperationException($"Type {foundType} cannot be initialized");
@@ -104,7 +104,7 @@ public partial class TypeChecker
                 fieldInitializer.Value.ValueUseful = true;
                 TypeCheckExpression(fieldInitializer.Value);
             }
-            
+
             if (!fields.TryGetValue(fieldInitializer.FieldName.StringValue, out var field))
             {
                 _errors.Add(TypeCheckerError.UnknownField(fieldInitializer.FieldName, $"class {objectInitializer.Type.Identifier.StringValue}"));
@@ -112,7 +112,7 @@ public partial class TypeChecker
             }
 
             fieldInitializer.TypeField = field;
-            
+
             if (!publicInstanceFields.Contains(fieldInitializer.FieldName.StringValue))
             {
                 _errors.Add(TypeCheckerError.PrivateFieldReferenced(fieldInitializer.FieldName));
@@ -125,7 +125,7 @@ public partial class TypeChecker
 
             ExpectExpressionType(field.Type, fieldInitializer.Value);
         }
-        
+
         if (initializedFields.Count != publicInstanceFields.Count)
         {
             _errors.Add(TypeCheckerError.FieldsLeftUnassignedInClassInitializer(

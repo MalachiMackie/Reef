@@ -1123,7 +1123,7 @@ public static class ParseTestCases
                                     new StaticMemberAccessExpression(new StaticMemberAccess(
                                         NamedTypeIdentifier("MyClass"),
                                         Identifier("StaticMethod"),
-                                       null 
+                                       null
                                     )),
                                     []), SourceRange.Default),
                                 new MethodCallExpression(new MethodCall(

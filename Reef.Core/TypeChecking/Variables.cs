@@ -5,7 +5,7 @@ public partial class TypeChecker
     public interface IVariable
     {
         StringToken Name { get; }
-        
+
         ITypeReference Type { get; }
         bool ReferencedInClosure { get; set; }
     }
