@@ -75,8 +75,6 @@ public partial class TypeChecker
                 }
             case BinaryOperatorType.ValueAssignment:
                 {
-                    binaryOperatorExpression.ValueUseful = true;
-
                     ITypeReference leftType = UnknownType.Instance;
                     if (@operator.Left is not null)
                     {

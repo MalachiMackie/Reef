@@ -6,7 +6,6 @@ using static Reef.Core.Tests.LoweredProgramHelpers;
 
 namespace Reef.Core.Tests.AbseilTests;
 
-
 public class ClassTests : TestBase
 {
     [Theory]

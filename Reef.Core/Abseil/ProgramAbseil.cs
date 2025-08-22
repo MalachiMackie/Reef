@@ -194,7 +194,7 @@ public static class ProgramAbseil
         return new LoweredGenericPlaceholder(placeholder.OwnerType.Id, placeholder.GenericName);
     }
 
-    private static ILoweredTypeReference GetTypeReference(ITypeReference typeReference)
+    internal static ILoweredTypeReference GetTypeReference(ITypeReference typeReference)
     {
         return typeReference switch
         {
@@ -209,6 +209,7 @@ public static class ProgramAbseil
             GenericPlaceholder g => new LoweredGenericPlaceholder(
                     g.OwnerType.Id,
                     g.GenericName),
+            UnknownInferredType i => GetTypeReference(i.ResolvedType.NotNull()),
             _ => throw new InvalidOperationException($"Type reference {typeReference.GetType()} is not supported")
         };
     }

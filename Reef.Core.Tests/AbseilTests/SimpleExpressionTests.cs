@@ -39,6 +39,22 @@ public class SimpleExpressionTests : TestBase
                         ])
                 ])
             },
+            {
+                "local assignment",
+                "var a;a = 2;",
+                LoweredProgram(
+                    methods: [
+                        GlobalMethod("_Main",
+                            [
+                                VariableDeclaration("a", false),
+                                LocalValueAssignment("a", IntConstant(2, true), false, Int),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("a", Int)
+                            ])
+                    ])
+            },
         };
     }
 }

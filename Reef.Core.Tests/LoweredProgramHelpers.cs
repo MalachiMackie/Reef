@@ -102,6 +102,9 @@ public static class LoweredProgramHelpers
     public static StringConstantExpression StringConstant(string value, bool valueUseful) =>
         new(valueUseful, value);
 
+    public static IntConstantExpression IntConstant(int value, bool valueUseful) =>
+        new(valueUseful, value);
+
     public static UnitConstantExpression UnitConstant(bool valueUseful) => new(valueUseful);
 
     public static MethodReturnExpression MethodReturn(ILoweredExpression value)

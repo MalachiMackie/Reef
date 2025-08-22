@@ -31,7 +31,7 @@ public record UnitConstantExpression(bool ValueUseful) : ILoweredExpression
     }
 }
 
-public record IntConstantExpression(bool ValueUseful) : ILoweredExpression
+public record IntConstantExpression(bool ValueUseful, int Value) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType
     {
@@ -110,7 +110,7 @@ public record LocalAssignmentExpression(
 {
 }
 
-public record BoolConstantExpression(bool ValueUseful) : ILoweredExpression
+public record BoolConstantExpression(bool ValueUseful, bool Value) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType
     {
