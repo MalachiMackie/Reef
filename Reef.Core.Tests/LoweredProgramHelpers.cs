@@ -150,9 +150,65 @@ public static class LoweredProgramHelpers
                 valueUseful);
     }
 
+    public static IntPlusExpression IntPlus(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+
+    public static IntMinusExpression IntMinus(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+    public static IntMultiplyExpression IntMultiply(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+    public static IntDivideExpression IntDivide(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+    public static IntGreaterThanExpression IntGreaterThan(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+    public static IntLessThanExpression IntLessThan(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+    public static IntEqualsExpression IntEquals(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+    public static BoolAndExpression BoolAnd(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+    public static BoolOrExpression BoolOr(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+    public static BoolNotExpression BoolNot(
+            ILoweredExpression operand, bool valueUseful)
+    {
+        return new(valueUseful, operand);
+    }
     public static MethodLocal Local(string name, ILoweredTypeReference type)
     {
         return new(name, type);
+    }
+
+    public static BoolConstantExpression BoolConstant(bool value, bool valueUseful)
+    {
+        return new(valueUseful, value);
     }
 
     public static LoweredConcreteTypeReference Int { get; }

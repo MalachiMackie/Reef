@@ -1,5 +1,3 @@
-using Reef.Core.TypeChecking;
-
 using static Reef.Core.TypeChecking.TypeChecker;
 
 namespace Reef.Core.LoweredExpressions;
@@ -18,32 +16,12 @@ public interface ILoweredExpression
 
 public record UnitConstantExpression(bool ValueUseful) : ILoweredExpression
 {
-    public ILoweredTypeReference ResolvedType
-    {
-        get
-        {
-            var signature = TypeChecker.ClassSignature.Unit;
-            return new LoweredConcreteTypeReference(
-                    signature.Name,
-                    signature.Id,
-                    []);
-        }
-    }
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Unit.ToLoweredTypeReference();
 }
 
 public record IntConstantExpression(bool ValueUseful, int Value) : ILoweredExpression
 {
-    public ILoweredTypeReference ResolvedType
-    {
-        get
-        {
-            var signature = TypeChecker.ClassSignature.Int;
-            return new LoweredConcreteTypeReference(
-                signature.Name,
-                signature.Id,
-                []);
-        }
-    }
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
 }
 
 public record MethodReturnExpression(ILoweredExpression ReturnValue) : ILoweredExpression
@@ -54,17 +32,7 @@ public record MethodReturnExpression(ILoweredExpression ReturnValue) : ILoweredE
 
 public record StringConstantExpression(bool ValueUseful, string Value) : ILoweredExpression
 {
-    public ILoweredTypeReference ResolvedType
-    {
-        get
-        {
-            var signature = TypeChecker.ClassSignature.String;
-            return new LoweredConcreteTypeReference(
-                signature.Name,
-                signature.Id,
-                []);
-        }
-    }
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.String.ToLoweredTypeReference();
 }
 
 public record VariableDeclarationAndAssignmentExpression(
@@ -72,34 +40,14 @@ public record VariableDeclarationAndAssignmentExpression(
         ILoweredExpression Value,
         bool ValueUseful) : ILoweredExpression
 {
-    public ILoweredTypeReference ResolvedType
-    {
-        get
-        {
-            var signature = TypeChecker.ClassSignature.Unit;
-            return new LoweredConcreteTypeReference(
-                    signature.Name,
-                    signature.Id,
-                    []);
-        }
-    }
+    public ILoweredTypeReference ResolvedType { get; } =  ClassSignature.Unit.ToLoweredTypeReference();
 }
 
 public record VariableDeclarationExpression(
         string LocalName,
         bool ValueUseful) : ILoweredExpression
 {
-    public ILoweredTypeReference ResolvedType
-    {
-        get
-        {
-            var signature = TypeChecker.ClassSignature.Unit;
-            return new LoweredConcreteTypeReference(
-                    signature.Name,
-                    signature.Id,
-                    []);
-        }
-    }
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Unit.ToLoweredTypeReference();
 }
 
 public record LocalAssignmentExpression(
@@ -110,19 +58,59 @@ public record LocalAssignmentExpression(
 {
 }
 
+public record IntPlusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
+}
+
+public record IntMinusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
+}
+
+public record IntMultiplyExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
+}
+
+public record IntDivideExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
+}
+
+public record IntLessThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+}
+
+public record IntGreaterThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+}
+
+public record IntEqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+}
+
+public record BoolAndExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+}
+
+public record BoolOrExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+}
+
+public record BoolNotExpression(bool ValueUseful, ILoweredExpression Operand) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+}
+
 public record BoolConstantExpression(bool ValueUseful, bool Value) : ILoweredExpression
 {
-    public ILoweredTypeReference ResolvedType
-    {
-        get
-        {
-            var signature = TypeChecker.ClassSignature.Boolean;
-            return new LoweredConcreteTypeReference(
-                signature.Name,
-                signature.Id,
-                []);
-        }
-    }
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
 }
 
 public record LocalVariableAccessor(bool ValueUseful, ILoweredTypeReference ResolvedType) : ILoweredExpression
@@ -199,3 +187,13 @@ public interface ILoweredTypeReference
 public record LoweredConcreteTypeReference(string Name, Guid DefinitionId, IReadOnlyList<ILoweredTypeReference> TypeArguments) : ILoweredTypeReference;
 public record LoweredGenericPlaceholder(Guid OwnerDefinitionId, string placeholderName) : ILoweredTypeReference;
 
+file static class SignatureExtensionMethods
+{
+    public static LoweredConcreteTypeReference ToLoweredTypeReference(this ClassSignature signature)
+    {
+        return new LoweredConcreteTypeReference(
+                    signature.Name,
+                    signature.Id,
+                    []);
+    }
+}

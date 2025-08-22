@@ -12,6 +12,7 @@ public static class ExpressionAbseil
             Expressions.ValueAccessorExpression e => LowerValueAccessorExpression(e),
             Expressions.VariableDeclarationExpression e => LowerVariableDeclarationExpression(e),
             Expressions.BinaryOperatorExpression e => LowerBinaryOperatorExpression(e),
+            Expressions.UnaryOperatorExpression e => LowerUnaryOperatorExpression(e),
             _ => throw new NotImplementedException($"{expression.GetType()}")
         };
     }
@@ -32,6 +33,21 @@ public static class ExpressionAbseil
                 e.ValueUseful);
     }
 
+    private static ILoweredExpression LowerUnaryOperatorExpression(
+            Expressions.UnaryOperatorExpression e)
+    {
+        var operand = LowerExpression(e.UnaryOperator.Operand.NotNull());
+        switch (e.UnaryOperator.OperatorType)
+        {
+            case Expressions.UnaryOperatorType.FallOut:
+                break;
+            case Expressions.UnaryOperatorType.Not:
+                return new BoolNotExpression(e.ValueUseful, operand);
+        }
+
+        throw new NotImplementedException(e.UnaryOperator.OperatorType.ToString());
+    }
+
     private static ILoweredExpression LowerValueAccessorExpression(
             Expressions.ValueAccessorExpression e)
     {
@@ -39,6 +55,8 @@ public static class ExpressionAbseil
         {
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: StringToken { StringValue: var stringLiteral } } } => new StringConstantExpression(e.ValueUseful, stringLiteral),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue} }} => new IntConstantExpression(e.ValueUseful, intValue),
+            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.True }} => new BoolConstantExpression(e.ValueUseful, true),
+            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.False }} => new BoolConstantExpression(e.ValueUseful, false),
             _ => throw new NotImplementedException($"e")
         };
     }
@@ -46,37 +64,40 @@ public static class ExpressionAbseil
     private static ILoweredExpression LowerBinaryOperatorExpression(
             Expressions.BinaryOperatorExpression e)
     {
-        switch (e.BinaryOperator.OperatorType)
+        if (e.BinaryOperator.OperatorType == Expressions.BinaryOperatorType.ValueAssignment)
         {
-            case Expressions.BinaryOperatorType.LessThan:
-                break;
-            case Expressions.BinaryOperatorType.GreaterThan:
-                break;
-            case Expressions.BinaryOperatorType.Plus:
-                break;
-            case Expressions.BinaryOperatorType.Minus:
-                break;
-            case Expressions.BinaryOperatorType.Multiply:
-                break;
-            case Expressions.BinaryOperatorType.Divide:
-                break;
-            case Expressions.BinaryOperatorType.EqualityCheck:
-                break;
-            case Expressions.BinaryOperatorType.ValueAssignment:
-                {
-                    return LowerValueAssignment(
-                            e.BinaryOperator.Left.NotNull(),
-                            e.BinaryOperator.Right.NotNull(),
-                            e.ValueUseful);
-                }
-            case Expressions.BinaryOperatorType.BooleanAnd:
-                break;
-            case Expressions.BinaryOperatorType.BooleanOr:
-                break;
-            default:
-                throw new InvalidOperationException($"Invalid binary operator {e.BinaryOperator.OperatorType}");
+            return LowerValueAssignment(
+                    e.BinaryOperator.Left.NotNull(),
+                    e.BinaryOperator.Right.NotNull(),
+                    e.ValueUseful);
         }
 
+        var left = LowerExpression(e.BinaryOperator.Left.NotNull());
+        var right = LowerExpression(e.BinaryOperator.Right.NotNull());
+
+        return e.BinaryOperator.OperatorType switch
+        {
+            Expressions.BinaryOperatorType.LessThan
+                => new IntLessThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.GreaterThan
+                => new IntGreaterThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Plus
+                => new IntPlusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Minus
+                => new IntMinusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Multiply
+                => new IntMultiplyExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Divide
+                => new IntDivideExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.EqualityCheck
+                // todo: handle more types of equality checks 
+                => new IntEqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.BooleanAnd
+                => new BoolAndExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.BooleanOr
+                => new BoolOrExpression(e.ValueUseful, left, right),
+            _ => throw new InvalidOperationException($"Invalid binary operator {e.BinaryOperator.OperatorType}"),
+        };
         throw new NotImplementedException(e.ToString());
     }
 
