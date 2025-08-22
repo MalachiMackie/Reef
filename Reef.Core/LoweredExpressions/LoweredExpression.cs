@@ -5,13 +5,22 @@ namespace Reef.Core.LoweredExpressions;
 public class LoweredProgram
 {
     public required IReadOnlyList<DataType> DataTypes { get; init; }
-    public required IReadOnlyList<IMethod> Methods { get; init; }
+    public required IReadOnlyList<LoweredMethod> Methods { get; init; }
 }
 
 public interface ILoweredExpression
 {
     ILoweredTypeReference ResolvedType { get; }
     bool ValueUseful { get; }
+}
+
+public record CreateObjectExpression(
+        LoweredConcreteTypeReference Type,
+        string Variant,
+        bool ValueUseful,
+        IReadOnlyDictionary<string, ILoweredExpression> VariantFieldInitializers) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType => Type;
 }
 
 public record UnitConstantExpression(bool ValueUseful) : ILoweredExpression
@@ -34,6 +43,11 @@ public record StringConstantExpression(bool ValueUseful, string Value) : ILowere
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.String.ToLoweredTypeReference();
 }
+
+public record LoadArgumentExpression(
+        uint ArgumentIndex,
+        bool ValueUseful,
+        ILoweredTypeReference ResolvedType) : ILoweredExpression;
 
 public record VariableDeclarationAndAssignmentExpression(
         string LocalName,
@@ -129,7 +143,7 @@ public record LoweredMethod(
         IReadOnlyList<ILoweredTypeReference> Parameters,
         ILoweredTypeReference ReturnType,
         IReadOnlyList<ILoweredExpression> Expressions,
-        IReadOnlyList<MethodLocal> Locals) : IMethod;
+        IReadOnlyList<MethodLocal> Locals);
 
 public record MethodLocal(string Name, ILoweredTypeReference Type);
 
@@ -140,19 +154,6 @@ public record DataType(
         IReadOnlyList<DataTypeVariant> Variants,
         IReadOnlyList<StaticDataTypeField> StaticFields);
 
-public interface IMethod;
-
-public record CompilerImplementedMethod(
-        Guid Id,
-        string Name,
-        IReadOnlyList<ILoweredTypeReference> Parameters,
-        ILoweredTypeReference ReturnType,
-        CompilerImplementationType CompilerImplementationType) : IMethod;
-
-public enum CompilerImplementationType
-{
-    UnionTupleVariantInit
-}
 
 public record DataTypeVariant(string Name, IReadOnlyList<DataTypeField> Fields);
 

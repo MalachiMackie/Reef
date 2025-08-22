@@ -37,7 +37,17 @@ public class UnionTests : TestBase
         methods: [
                     Method(
                         "MyUnion_Create_A",
-                        CompilerImplementationType.UnionTupleVariantInit,
+                        [
+                            MethodReturn(CreateObject(
+                                ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]),
+                                "A",
+                                true,
+                                new()
+                                {
+                                    {"_variantIdentifier", IntConstant(0, true)},
+                                    {"_tupleMember_0", LoadArgument(0, true, GenericPlaceholder("T"))},
+                                }))
+                        ],
                         parameters: [GenericPlaceholder("T")],
                         returnType: ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]))
                 ]);
@@ -108,7 +118,18 @@ public class UnionTests : TestBase
                 ], methods: [
                             Method(
                                 "MyUnion_Create_A",
-                                CompilerImplementationType.UnionTupleVariantInit,
+                                [
+                                    MethodReturn(CreateObject(
+                                        ConcreteTypeReference("MyUnion"),
+                                        "A",
+                                        true,
+                                        new()
+                                        {
+                                            {"_variantIdentifier", IntConstant(0, true)},
+                                            {"_tupleMember_0", LoadArgument(0, true, StringType)},
+                                            {"_tupleMember_1", LoadArgument(1, true, Int)},
+                                        }))
+                                ],
                                 parameters: [StringType, Int],
                                 returnType: ConcreteTypeReference("MyUnion"))
                         ])
@@ -129,7 +150,17 @@ public class UnionTests : TestBase
                 ], methods: [
                             Method(
                                 "MyUnion_Create_A",
-                                CompilerImplementationType.UnionTupleVariantInit,
+                                [
+                                    MethodReturn(CreateObject(
+                                        ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]),
+                                        "A",
+                                        true,
+                                        new()
+                                        {
+                                            {"_variantIdentifier", IntConstant(0, true)},
+                                            {"_tupleMember_0", LoadArgument(0, true, GenericPlaceholder("T"))},
+                                        }))
+                                ],
                                 parameters: [GenericPlaceholder("T")],
                                 returnType: ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]))
                         ])
@@ -186,12 +217,32 @@ public class UnionTests : TestBase
                                 [MethodReturn(UnitConstant(true))]),
                             Method(
                                 "MyUnion_Create_A",
-                                CompilerImplementationType.UnionTupleVariantInit,
+                                [
+                                    MethodReturn(CreateObject(
+                                        ConcreteTypeReference("MyUnion"),
+                                        "A",
+                                        true,
+                                        new()
+                                        {
+                                            {"_variantIdentifier", IntConstant(0, true)},
+                                            {"_tupleMember_0", LoadArgument(0, true, StringType)},
+                                        }))
+                                ],
                                 parameters: [StringType],
                                 returnType: ConcreteTypeReference("MyUnion")),
                             Method(
                                 "MyUnion_Create_B",
-                                CompilerImplementationType.UnionTupleVariantInit,
+                                [
+                                    MethodReturn(CreateObject(
+                                        ConcreteTypeReference("MyUnion"),
+                                        "B",
+                                        true,
+                                        new()
+                                        {
+                                            {"_variantIdentifier", IntConstant(1, true)},
+                                            {"_tupleMember_0", LoadArgument(0, true, StringType)},
+                                        }))
+                                ],
                                 parameters: [StringType],
                                 returnType: ConcreteTypeReference("MyUnion")),
                         ])

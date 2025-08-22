@@ -6,7 +6,7 @@ public static class LoweredProgramHelpers
 {
     public static LoweredProgram LoweredProgram(
             IReadOnlyList<DataType>? types = null,
-            IReadOnlyList<IMethod>? methods = null)
+            IReadOnlyList<LoweredMethod>? methods = null)
     {
         return new()
         {
@@ -54,6 +54,18 @@ public static class LoweredProgramHelpers
                 fields ?? []);
     }
 
+    public static CreateObjectExpression CreateObject(
+            LoweredConcreteTypeReference type,
+            string variant,
+            bool valueUseful,
+            Dictionary<string, ILoweredExpression>? fieldInitializers = null)
+    {
+        return new(type,
+                variant,
+                valueUseful,
+                fieldInitializers ?? []);
+    }
+
     public static DataTypeField Field(string name, ILoweredTypeReference type)
     {
         return new(name, type);
@@ -83,20 +95,6 @@ public static class LoweredProgramHelpers
                 returnType ?? Unit,
                 expressions ?? [],
                 locals ?? []);
-    }
-
-    public static CompilerImplementedMethod Method(
-            string name,
-            CompilerImplementationType compilerImplementationType,
-            IReadOnlyList<ILoweredTypeReference>? parameters = null,
-            ILoweredTypeReference? returnType = null)
-    {
-        return new(
-                Guid.Empty,
-                name,
-                parameters ?? [],
-                returnType ?? Unit,
-                compilerImplementationType);
     }
 
     public static StringConstantExpression StringConstant(string value, bool valueUseful) =>
@@ -209,6 +207,11 @@ public static class LoweredProgramHelpers
     public static BoolConstantExpression BoolConstant(bool value, bool valueUseful)
     {
         return new(valueUseful, value);
+    }
+
+    public static ILoweredExpression LoadArgument(uint argumentIndex, bool valueUseful, ILoweredTypeReference resolvedType)
+    {
+        return new LoadArgumentExpression(argumentIndex, valueUseful, resolvedType);
     }
 
     public static BlockExpression Block(

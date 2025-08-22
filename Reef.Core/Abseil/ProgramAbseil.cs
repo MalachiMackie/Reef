@@ -3,52 +3,64 @@ using static Reef.Core.TypeChecking.TypeChecker;
 
 namespace Reef.Core.Abseil;
 
-public static class ProgramAbseil
+public partial class ProgramAbseil
 {
+    private readonly List<LoweredMethod> _methods = [];
+    private readonly List<DataType> _types = [];
+    private readonly LangProgram _program;
+
     public static LoweredProgram Lower(LangProgram program)
     {
-        var dataTypes = new List<DataType>();
-        var methods = new List<IMethod>();
+        return new ProgramAbseil(program).LowerInner();
+    }
+
+    private ProgramAbseil(LangProgram program)
+    {
+        _program = program;
+    }
+
+    private LoweredProgram LowerInner()
+    {
         var lowLevelProgram = new LoweredProgram()
         {
-            DataTypes = dataTypes,
-            Methods = methods
+            DataTypes = _types,
+            Methods = _methods
         };
 
-        foreach (var (dataType, dataTypeMethods) in program.Unions.Select(x => LowerUnion(x.Signature.NotNull())))
+        foreach (var (dataType, dataTypeMethods) in _program.Unions.Select(x => LowerUnion(x.Signature.NotNull())))
         {
-            dataTypes.Add(dataType);
-            methods.AddRange(dataTypeMethods);
+            _types.Add(dataType);
+            _methods.AddRange(dataTypeMethods);
         }
 
-        foreach (var (dataType, dataTypeMethods) in program.Classes.Select(x => LowerClass(x.Signature.NotNull())))
+        foreach (var (dataType, dataTypeMethods) in _program.Classes.Select(x => LowerClass(x.Signature.NotNull())))
         {
-            dataTypes.Add(dataType);
-            methods.AddRange(dataTypeMethods);
+            _types.Add(dataType);
+            _methods.AddRange(dataTypeMethods);
         }
 
-        if (CreateMainMethod(program) is { } mainMethod)
+        if (CreateMainMethod() is { } mainMethod)
         {
-            methods.Add(mainMethod);
+            _methods.Add(mainMethod);
         }
 
         return lowLevelProgram;
     }
 
-    private static LoweredMethod? CreateMainMethod(LangProgram program)
+    private LoweredMethod? CreateMainMethod()
     {
-        if (program.Expressions.Count == 0)
+        if (_program.Expressions.Count == 0)
         {
             return null;
         }
 
-        var locals = program.TopLevelLocalVariables
+        var locals = _program.TopLevelLocalVariables
             .Select(x => new MethodLocal(x.Name.StringValue, GetTypeReference(x.Type)))
             .ToList();
 
-        var expressions = program.Expressions.Select(ExpressionAbseil.LowerExpression).ToList();
+        var expressions = _program.Expressions.Select(LowerExpression).ToList();
 
-        if (!program.Expressions[^1].Diverges)
+        if (!_program.Expressions[^1].Diverges)
         {
             expressions.Add(new MethodReturnExpression(
                         new UnitConstantExpression(true)));
@@ -64,7 +76,7 @@ public static class ProgramAbseil
                 locals);
     }
 
-    private static (DataType dataType, IReadOnlyList<IMethod> methods) LowerClass(ClassSignature klass)
+    private (DataType dataType, IReadOnlyList<LoweredMethod> methods) LowerClass(ClassSignature klass)
     {
         var typeParameters = klass.TypeParameters.Select(GetGenericPlaceholder).ToArray();
         var classTypeReference = new LoweredConcreteTypeReference(
@@ -76,12 +88,12 @@ public static class ProgramAbseil
             .Select(x => new StaticDataTypeField(
                         x.Name,
                         GetTypeReference(x.Type),
-                        ExpressionAbseil.LowerExpression(x.StaticInitializer.NotNull())));
+                        LowerExpression(x.StaticInitializer.NotNull())));
 
         var fields = klass.Fields.Where(x => !x.IsStatic)
             .Select(x => new DataTypeField(x.Name, GetTypeReference(x.Type)));
 
-        IReadOnlyList<IMethod> methods = [.. klass.Functions.Select(x => LowerTypeMethod(klass.Name, x, classTypeReference))];
+        IReadOnlyList<LoweredMethod> methods = [.. klass.Functions.Select(x => LowerTypeMethod(klass.Name, x, classTypeReference))];
 
         return (new DataType(
                 klass.Id,
@@ -91,7 +103,7 @@ public static class ProgramAbseil
                 [.. staticFields]), methods);
     }
 
-    private static (DataType, IReadOnlyList<IMethod> methods) LowerUnion(UnionSignature union)
+    private (DataType, IReadOnlyList<LoweredMethod> methods) LowerUnion(UnionSignature union)
     {
         var typeParameters = union.TypeParameters.Select(GetGenericPlaceholder).ToArray();
         var unionTypeReference = new LoweredConcreteTypeReference(
@@ -101,7 +113,6 @@ public static class ProgramAbseil
 
         var dataTypeMethods = union.NotNull()
             .Functions.Select(x => LowerTypeMethod(union.Name, x, unionTypeReference))
-            .Cast<IMethod>()
             .ToList();
         var variants = new List<DataTypeVariant>(union.Variants.Count);
         foreach (var variant in union.Variants)
@@ -128,13 +139,26 @@ public static class ProgramAbseil
                                         $"_tupleMember_{i}",
                                         x)));
 
+                        var createMethodFieldInitializations = fields.Skip(1).Index().ToDictionary(x => x.Item.Name, x => (ILoweredExpression)new LoadArgumentExpression((uint)x.Index, true, x.Item.Type));
+                        createMethodFieldInitializations["_variantIdentifier"] = new IntConstantExpression(true, variants.Count);
+
                         // add the tuple variant as a method
-                        dataTypeMethods.Add(new CompilerImplementedMethod(
+                        dataTypeMethods.Add(new LoweredMethod(
                                     Guid.NewGuid(),
                                     $"{union.Name}_Create_{u.Name}",
+                                    [],
                                     memberTypes,
                                     unionTypeReference,
-                                    CompilerImplementationType.UnionTupleVariantInit));
+                                    [
+                                        new MethodReturnExpression(
+                                            new CreateObjectExpression(
+                                                unionTypeReference,
+                                                variant.Name,
+                                                true,
+                                                createMethodFieldInitializations
+                                                ))
+                                    ],
+                                    []));
                         break;
                     }
                 default:
@@ -152,7 +176,7 @@ public static class ProgramAbseil
                 StaticFields: []), dataTypeMethods);
     }
 
-    private static LoweredMethod LowerTypeMethod(
+    private LoweredMethod LowerTypeMethod(
             string typeName,
             FunctionSignature fnSignature,
             ILoweredTypeReference ownerTypeReference)
@@ -160,7 +184,7 @@ public static class ProgramAbseil
         var locals = fnSignature.LocalVariables
             .Select(x => new MethodLocal(x.Name.StringValue, GetTypeReference(x.Type)))
             .ToList();
-        var expressions = fnSignature.Expressions.Select(ExpressionAbseil.LowerExpression)
+        var expressions = fnSignature.Expressions.Select(LowerExpression)
             .ToList();
 
         // if we passed type checking, and either there are no expressions or the last 
@@ -189,12 +213,12 @@ public static class ProgramAbseil
             locals);
     }
 
-    private static LoweredGenericPlaceholder GetGenericPlaceholder(GenericPlaceholder placeholder)
+    private LoweredGenericPlaceholder GetGenericPlaceholder(GenericPlaceholder placeholder)
     {
         return new LoweredGenericPlaceholder(placeholder.OwnerType.Id, placeholder.GenericName);
     }
 
-    internal static ILoweredTypeReference GetTypeReference(ITypeReference typeReference)
+    private ILoweredTypeReference GetTypeReference(ITypeReference typeReference)
     {
         return typeReference switch
         {

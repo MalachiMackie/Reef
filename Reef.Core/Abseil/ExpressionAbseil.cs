@@ -1,10 +1,11 @@
+using System.Diagnostics;
 using Reef.Core.LoweredExpressions;
 
 namespace Reef.Core.Abseil;
 
-public static class ExpressionAbseil
+public partial class ProgramAbseil
 {
-    public static ILoweredExpression LowerExpression(
+    public ILoweredExpression LowerExpression(
             Expressions.IExpression expression)
     {
         return expression switch
@@ -14,11 +15,14 @@ public static class ExpressionAbseil
             Expressions.BinaryOperatorExpression e => LowerBinaryOperatorExpression(e),
             Expressions.UnaryOperatorExpression e => LowerUnaryOperatorExpression(e),
             Expressions.BlockExpression e => LowerBlockExpression(e), 
+            Expressions.ObjectInitializerExpression e => LowerObjectInitializationExpression(e), 
+            Expressions.UnionClassVariantInitializerExpression e => LowerUnionClassVariantInitializerExpression(e), 
+            Expressions.StaticMemberAccessExpression e => LowerStaticMemberAccess(e), 
             _ => throw new NotImplementedException($"{expression.GetType()}")
         };
     }
 
-    private static ILoweredExpression LowerBlockExpression(Expressions.BlockExpression e)
+    private BlockExpression LowerBlockExpression(Expressions.BlockExpression e)
     {
         foreach (var method in e.Block.Functions)
         {
@@ -27,11 +31,92 @@ public static class ExpressionAbseil
 
         return new BlockExpression(
                 [..e.Block.Expressions.Select(LowerExpression)],
-                ProgramAbseil.GetTypeReference(e.ResolvedType.NotNull()),
+                GetTypeReference(e.ResolvedType.NotNull()),
                 e.ValueUseful);
     }
 
-    private static ILoweredExpression LowerVariableDeclarationExpression(Expressions.VariableDeclarationExpression e)
+    private CreateObjectExpression LowerUnionClassVariantInitializerExpression(
+            Expressions.UnionClassVariantInitializerExpression e)
+    {
+        var type = GetTypeReference(e.ResolvedType.NotNull());
+        if (type is not LoweredConcreteTypeReference concreteTypeReference)
+        {
+            throw new UnreachableException();
+        }
+
+        var dataType = _types.First(x => x.Id == concreteTypeReference.DefinitionId);
+
+        var variantIdentifier = dataType.Variants.Index()
+            .First(x => x.Item.Name == e.UnionInitializer.VariantIdentifier.StringValue).Index;
+
+        var fieldInitailizers = e.UnionInitializer.FieldInitializers.ToDictionary(
+                x => x.FieldName.StringValue,
+                x => LowerExpression(x.Value.NotNull()));
+
+        fieldInitailizers["_variantIdentifier"] = new IntConstantExpression(
+                ValueUseful: true,
+                variantIdentifier);
+
+        return new(
+                concreteTypeReference,
+                e.UnionInitializer.VariantIdentifier.StringValue,
+                e.ValueUseful,
+                fieldInitailizers);
+    }
+
+    private ILoweredExpression LowerStaticMemberAccess(
+            Expressions.StaticMemberAccessExpression e)
+    {
+        if (e.StaticMemberAccess.MemberType == Expressions.MemberType.Variant)
+        {
+            var type = GetTypeReference(e.ResolvedType.NotNull())
+                as LoweredConcreteTypeReference ?? throw new UnreachableException();
+
+            var dataType = _types.First(x => x.Id == type.DefinitionId);
+            var variantName = e.StaticMemberAccess.MemberName.NotNull().StringValue;
+            var variantIdentifier = dataType.Variants.Index()
+                .First(x => x.Item.Name == variantName).Index;
+
+            var fieldInitailizers = new Dictionary<string, ILoweredExpression>()
+            {
+                {
+                    "_variantIdentifier",
+                    new IntConstantExpression(
+                        ValueUseful: true,
+                        variantIdentifier)
+                }
+            };
+
+            return new CreateObjectExpression(
+                    type,
+                    variantName,
+                    e.ValueUseful,
+                    fieldInitailizers);
+        }
+
+        throw new NotImplementedException(e.ToString());
+    }
+
+    private CreateObjectExpression LowerObjectInitializationExpression(
+            Expressions.ObjectInitializerExpression e)
+    {
+        var type = GetTypeReference(e.ResolvedType.NotNull());
+        if (type is not LoweredConcreteTypeReference concreteTypeReference)
+        {
+            throw new UnreachableException();
+        }
+
+        var fieldInitailizers = e.ObjectInitializer.FieldInitializers.ToDictionary(
+                x => x.FieldName.StringValue,
+                x => LowerExpression(x.Value.NotNull()));
+        
+        return new(concreteTypeReference,
+                "_classVariant",
+                e.ValueUseful,
+                fieldInitailizers);
+    }
+
+    private ILoweredExpression LowerVariableDeclarationExpression(Expressions.VariableDeclarationExpression e)
     {
         var variableName = e.VariableDeclaration.Variable.NotNull()
             .Name.StringValue;
@@ -47,7 +132,7 @@ public static class ExpressionAbseil
                 e.ValueUseful);
     }
 
-    private static ILoweredExpression LowerUnaryOperatorExpression(
+    private ILoweredExpression LowerUnaryOperatorExpression(
             Expressions.UnaryOperatorExpression e)
     {
         var operand = LowerExpression(e.UnaryOperator.Operand.NotNull());
@@ -62,7 +147,7 @@ public static class ExpressionAbseil
         throw new NotImplementedException(e.UnaryOperator.OperatorType.ToString());
     }
 
-    private static ILoweredExpression LowerValueAccessorExpression(
+    private ILoweredExpression LowerValueAccessorExpression(
             Expressions.ValueAccessorExpression e)
     {
         return e switch
@@ -75,7 +160,7 @@ public static class ExpressionAbseil
         };
     }
 
-    private static ILoweredExpression LowerBinaryOperatorExpression(
+    private ILoweredExpression LowerBinaryOperatorExpression(
             Expressions.BinaryOperatorExpression e)
     {
         if (e.BinaryOperator.OperatorType == Expressions.BinaryOperatorType.ValueAssignment)
@@ -115,7 +200,7 @@ public static class ExpressionAbseil
         throw new NotImplementedException(e.ToString());
     }
 
-    private static ILoweredExpression LowerValueAssignment(
+    private ILoweredExpression LowerValueAssignment(
             Expressions.IExpression left,
             Expressions.IExpression right,
             bool valueUseful)
@@ -133,7 +218,7 @@ public static class ExpressionAbseil
                 return new LocalAssignmentExpression(
                         localVariable.Name.StringValue,
                         LowerExpression(right),
-                        ProgramAbseil.GetTypeReference(localVariable.Type),
+                        GetTypeReference(localVariable.Type),
                         valueUseful);
             }
             throw new NotImplementedException(variable.ToString());
