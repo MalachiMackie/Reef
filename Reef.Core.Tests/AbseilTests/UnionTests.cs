@@ -32,16 +32,15 @@ public class UnionTests : TestBase
                         Field("_variantIdentifier", Int),
                         Field("_tupleMember_0", GenericPlaceholder("T"))
                     ])
-                ],
-                methods:
-                [
-                    DataTypeMethod(
+                ])
+        ],
+        methods: [
+                    Method(
                         "MyUnion_Create_A",
                         CompilerImplementationType.UnionTupleVariantInit,
                         parameters: [GenericPlaceholder("T")],
                         returnType: ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]))
-                ])
-        ]);
+                ]);
 
         var program = CreateProgram(source);
         var loweredProgram = ProgramAbseil.Lower(program);
@@ -86,14 +85,13 @@ public class UnionTests : TestBase
                 LoweredProgram(types: [
                     DataType("MyUnion",
                         ["T"],
-                        [],
-                        [
-                            DataTypeMethod(
-                                "SomeFn",
+                        [])
+                ], methods: [
+                            Method(
+                                "MyUnion__SomeFn",
                                 [MethodReturn(UnitConstant(true))],
                                 parameters: [ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")])])
                         ])
-                ])
             },
             {
                 "union with tuple variant",
@@ -106,15 +104,14 @@ public class UnionTests : TestBase
                                 Field("_tupleMember_0", StringType),
                                 Field("_tupleMember_1", Int),
                             ])
-                        ],
-                        methods: [
-                            DataTypeMethod(
+                        ])
+                ], methods: [
+                            Method(
                                 "MyUnion_Create_A",
                                 CompilerImplementationType.UnionTupleVariantInit,
                                 parameters: [StringType, Int],
                                 returnType: ConcreteTypeReference("MyUnion"))
                         ])
-                ])
             },
             {
                 "generic union with tuple variant",
@@ -128,15 +125,14 @@ public class UnionTests : TestBase
                                     Field("_variantIdentifier", Int),
                                     Field("_tupleMember_0", GenericPlaceholder("T"))
                                 ])
-                        ],
-                        methods: [
-                            DataTypeMethod(
+                        ])
+                ], methods: [
+                            Method(
                                 "MyUnion_Create_A",
                                 CompilerImplementationType.UnionTupleVariantInit,
                                 parameters: [GenericPlaceholder("T")],
                                 returnType: ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]))
                         ])
-                ])
             },
             {
                 "union with class variant",
@@ -157,35 +153,19 @@ public class UnionTests : TestBase
                 "union with method",
                 "union MyUnion { pub fn MyFn(){} }",
                 LoweredProgram(types: [
-                    DataType("MyUnion",
-                        methods: [
-                            DataTypeMethod(
-                                "MyFn",
+                    DataType("MyUnion")
+                ], [
+                            Method(
+                                "MyUnion__MyFn",
                                 [MethodReturn(UnitConstant(valueUseful: true))],
                                 parameters: [ConcreteTypeReference("MyUnion")])
                         ])
-                ])
             },
             {
                 "union with method and tuple variants",
                 "union MyUnion { A(string), pub static fn MyFn() {}, B(string) }",
                 LoweredProgram(types: [
                     DataType("MyUnion",
-                        methods: [
-                            DataTypeMethod(
-                                "MyFn",
-                                [MethodReturn(UnitConstant(true))]),
-                            DataTypeMethod(
-                                "MyUnion_Create_A",
-                                CompilerImplementationType.UnionTupleVariantInit,
-                                parameters: [StringType],
-                                returnType: ConcreteTypeReference("MyUnion")),
-                            DataTypeMethod(
-                                "MyUnion_Create_B",
-                                CompilerImplementationType.UnionTupleVariantInit,
-                                parameters: [StringType],
-                                returnType: ConcreteTypeReference("MyUnion")),
-                        ],
                         variants: [
                             Variant(
                                 "A",
@@ -200,7 +180,21 @@ public class UnionTests : TestBase
                                     Field("_tupleMember_0", StringType),
                                 ]),
                         ])
-                ])
+                ], methods: [
+                            Method(
+                                "MyUnion__MyFn",
+                                [MethodReturn(UnitConstant(true))]),
+                            Method(
+                                "MyUnion_Create_A",
+                                CompilerImplementationType.UnionTupleVariantInit,
+                                parameters: [StringType],
+                                returnType: ConcreteTypeReference("MyUnion")),
+                            Method(
+                                "MyUnion_Create_B",
+                                CompilerImplementationType.UnionTupleVariantInit,
+                                parameters: [StringType],
+                                returnType: ConcreteTypeReference("MyUnion")),
+                        ])
             }
         };
     }

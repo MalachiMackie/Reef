@@ -7,7 +7,7 @@ namespace Reef.Core.LoweredExpressions;
 public class LoweredProgram
 {
     public required IReadOnlyList<DataType> DataTypes { get; init; }
-    public required IReadOnlyList<LoweredGlobalMethod> Methods { get; init; }
+    public required IReadOnlyList<IMethod> Methods { get; init; }
 }
 
 public interface ILoweredExpression
@@ -129,14 +129,14 @@ public record LocalVariableAccessor(bool ValueUseful, ILoweredTypeReference Reso
 {
 }
 
-public record LoweredGlobalMethod(
+public record LoweredMethod(
         Guid Id,
         string Name,
         IReadOnlyList<LoweredGenericPlaceholder> TypeParameters,
         IReadOnlyList<ILoweredTypeReference> Parameters,
         ILoweredTypeReference ReturnType,
         IReadOnlyList<ILoweredExpression> Expressions,
-        IReadOnlyList<MethodLocal> Locals);
+        IReadOnlyList<MethodLocal> Locals) : IMethod;
 
 public record MethodLocal(string Name, ILoweredTypeReference Type);
 
@@ -145,26 +145,16 @@ public record DataType(
         string Name,
         IReadOnlyList<LoweredGenericPlaceholder> TypeParameters,
         IReadOnlyList<DataTypeVariant> Variants,
-        IReadOnlyList<IDataTypeMethod> Methods,
         IReadOnlyList<StaticDataTypeField> StaticFields);
 
-public interface IDataTypeMethod;
+public interface IMethod;
 
-public record DataTypeMethod(
-        Guid Id,
-        string Name,
-        IReadOnlyList<LoweredGenericPlaceholder> TypeParameters,
-        IReadOnlyList<ILoweredTypeReference> Parameters,
-        ILoweredTypeReference ReturnType,
-        IReadOnlyList<ILoweredExpression> Expressions,
-        IReadOnlyList<MethodLocal> Locals) : IDataTypeMethod;
-
-public record CompilerImplementedDataTypeMethod(
+public record CompilerImplementedMethod(
         Guid Id,
         string Name,
         IReadOnlyList<ILoweredTypeReference> Parameters,
         ILoweredTypeReference ReturnType,
-        CompilerImplementationType CompilerImplementationType) : IDataTypeMethod;
+        CompilerImplementationType CompilerImplementationType) : IMethod;
 
 public enum CompilerImplementationType
 {

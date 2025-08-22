@@ -6,7 +6,7 @@ public static class LoweredProgramHelpers
 {
     public static LoweredProgram LoweredProgram(
             IReadOnlyList<DataType>? types = null,
-            IReadOnlyList<LoweredGlobalMethod>? methods = null)
+            IReadOnlyList<IMethod>? methods = null)
     {
         return new()
         {
@@ -15,7 +15,7 @@ public static class LoweredProgramHelpers
         };
     }
 
-    public static LoweredGlobalMethod GlobalMethod(
+    public static LoweredMethod GlobalMethod(
             string name,
             IReadOnlyList<ILoweredExpression> expressions,
             ILoweredTypeReference? returnType = null,
@@ -23,7 +23,7 @@ public static class LoweredProgramHelpers
             IReadOnlyList<string>? typeParameters = null,
             IReadOnlyList<MethodLocal>? locals = null)
     {
-        return new LoweredGlobalMethod(
+        return new LoweredMethod(
                 Guid.Empty,
                 name,
                 typeParameters?.Select(x => new LoweredGenericPlaceholder(Guid.Empty, x)).ToArray() ?? [],
@@ -37,7 +37,6 @@ public static class LoweredProgramHelpers
             string name,
             IReadOnlyList<string>? typeParameters = null,
             IReadOnlyList<DataTypeVariant>? variants = null,
-            IReadOnlyList<IDataTypeMethod>? methods = null,
             IReadOnlyList<StaticDataTypeField>? staticFields = null)
     {
         return new(
@@ -45,7 +44,6 @@ public static class LoweredProgramHelpers
                 name,
                 typeParameters?.Select(x => new LoweredGenericPlaceholder(Guid.Empty, x)).ToArray() ?? [],
                 variants ?? [],
-                methods ?? [],
                 staticFields ?? []);
     }
 
@@ -69,7 +67,7 @@ public static class LoweredProgramHelpers
         return new(name, type, staticInitializer);
     }
 
-    public static DataTypeMethod DataTypeMethod(
+    public static LoweredMethod Method(
             string name,
             IReadOnlyList<ILoweredExpression> expressions,
             IReadOnlyList<string>? typeParameters = null,
@@ -87,7 +85,7 @@ public static class LoweredProgramHelpers
                 locals ?? []);
     }
 
-    public static CompilerImplementedDataTypeMethod DataTypeMethod(
+    public static CompilerImplementedMethod Method(
             string name,
             CompilerImplementationType compilerImplementationType,
             IReadOnlyList<ILoweredTypeReference>? parameters = null,

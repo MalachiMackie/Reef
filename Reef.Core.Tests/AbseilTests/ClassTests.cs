@@ -49,14 +49,13 @@ public class ClassTests : TestBase
                         types: [
                             DataType("MyClass",
                                 ["T"],
-                                [Variant("_classVariant")],
-                                [
-                                    DataTypeMethod(
-                                        "SomeFn",
+                                [Variant("_classVariant")])
+                        ], methods: [
+                                    Method(
+                                        "MyClass__SomeFn",
                                         [MethodReturn(UnitConstant(true))],
                                         parameters: [ConcreteTypeReference("MyClass", [GenericPlaceholder("T")])])
                                 ])
-                        ])
             },
             {
                 "class with instance fields",

@@ -8,15 +8,24 @@ public static class ProgramAbseil
     public static LoweredProgram Lower(LangProgram program)
     {
         var dataTypes = new List<DataType>();
-        var methods = new List<LoweredGlobalMethod>();
+        var methods = new List<IMethod>();
         var lowLevelProgram = new LoweredProgram()
         {
             DataTypes = dataTypes,
             Methods = methods
         };
 
-        dataTypes.AddRange(program.Unions.Select(x => LowerUnion(x.Signature.NotNull())));
-        dataTypes.AddRange(program.Classes.Select(x => LowerClass(x.Signature.NotNull())));
+        foreach (var (dataType, dataTypeMethods) in program.Unions.Select(x => LowerUnion(x.Signature.NotNull())))
+        {
+            dataTypes.Add(dataType);
+            methods.AddRange(dataTypeMethods);
+        }
+
+        foreach (var (dataType, dataTypeMethods) in program.Classes.Select(x => LowerClass(x.Signature.NotNull())))
+        {
+            dataTypes.Add(dataType);
+            methods.AddRange(dataTypeMethods);
+        }
 
         if (CreateMainMethod(program) is {} mainMethod)
         {
@@ -26,7 +35,7 @@ public static class ProgramAbseil
         return lowLevelProgram;
     }
 
-    private static LoweredGlobalMethod? CreateMainMethod(LangProgram program)
+    private static LoweredMethod? CreateMainMethod(LangProgram program)
     {
         if (program.Expressions.Count == 0)
         {
@@ -45,7 +54,7 @@ public static class ProgramAbseil
                         new UnitConstantExpression(true)));
         }
 
-        return new LoweredGlobalMethod(
+        return new LoweredMethod(
                 Guid.NewGuid(),
                 "_Main",
                 TypeParameters: [],
@@ -55,7 +64,7 @@ public static class ProgramAbseil
                 locals);
     }
 
-    private static DataType LowerClass(ClassSignature klass)
+    private static (DataType dataType, IReadOnlyList<IMethod> methods) LowerClass(ClassSignature klass)
     {
         var typeParameters = klass.TypeParameters.Select(GetGenericPlaceholder).ToArray();
         var classTypeReference = new LoweredConcreteTypeReference(
@@ -72,16 +81,17 @@ public static class ProgramAbseil
         var fields = klass.Fields.Where(x => !x.IsStatic)
             .Select(x => new DataTypeField(x.Name, GetTypeReference(x.Type)));
 
-        return new DataType(
+        IReadOnlyList<IMethod> methods = [..klass.Functions.Select(x => LowerTypeMethod(klass.Name, x, classTypeReference))];
+
+        return (new DataType(
                 klass.Id,
                 klass.Name,
                 typeParameters,
                 [new DataTypeVariant("_classVariant", [..fields])],
-                [..klass.Functions.Select(x => LowerTypeMethod(x, classTypeReference))],
-                [..staticFields]);
+                [..staticFields]), methods);
     }
 
-    private static DataType LowerUnion(UnionSignature union)
+    private static (DataType, IReadOnlyList<IMethod> methods) LowerUnion(UnionSignature union)
     {
         var typeParameters = union.TypeParameters.Select(GetGenericPlaceholder).ToArray();
         var unionTypeReference = new LoweredConcreteTypeReference(
@@ -90,8 +100,8 @@ public static class ProgramAbseil
                                                     typeParameters);
 
         var dataTypeMethods = union.NotNull()
-            .Functions.Select(x => LowerTypeMethod(x, unionTypeReference))
-            .Cast<IDataTypeMethod>()
+            .Functions.Select(x => LowerTypeMethod(union.Name, x, unionTypeReference))
+            .Cast<IMethod>()
             .ToList();
         var variants = new List<DataTypeVariant>(union.Variants.Count);
         foreach (var variant in union.Variants)
@@ -119,7 +129,7 @@ public static class ProgramAbseil
                                         x)));
 
                         // add the tuple variant as a method
-                        dataTypeMethods.Add(new CompilerImplementedDataTypeMethod(
+                        dataTypeMethods.Add(new CompilerImplementedMethod(
                                     Guid.NewGuid(),
                                     $"{union.Name}_Create_{u.Name}",
                                     memberTypes,
@@ -134,16 +144,16 @@ public static class ProgramAbseil
                         variant.Name,
                         fields));
         }
-        return new DataType(
+        return (new DataType(
                 union.NotNull().Id,
                 union.Name,
                 typeParameters,
                 Variants: variants,
-                Methods: dataTypeMethods,
-                StaticFields: []);
+                StaticFields: []), dataTypeMethods);
     }
 
-    private static DataTypeMethod LowerTypeMethod(
+    private static LoweredMethod LowerTypeMethod(
+            string typeName,
             FunctionSignature fnSignature,
             ILoweredTypeReference ownerTypeReference)
     {
@@ -169,9 +179,9 @@ public static class ProgramAbseil
             parameters = parameters.Prepend(ownerTypeReference);
         }
 
-        return new DataTypeMethod(
+        return new LoweredMethod(
             fnSignature.Id,
-            fnSignature.Name,
+            $"{typeName}__{fnSignature.Name}",
             fnSignature.TypeParameters.Select(GetGenericPlaceholder).ToArray(),
             parameters.ToArray(),
             GetTypeReference(fnSignature.ReturnType),
