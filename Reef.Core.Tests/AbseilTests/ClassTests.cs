@@ -112,6 +112,7 @@ public class ClassTests : TestBase
                                     FieldAccess(
                                         LocalAccess("a", true, ConcreteTypeReference("MyClass")),
                                         "A",
+                                        "_classVariant",
                                         valueUseful: true,
                                         resolvedType: StringType),
                                     valueUseful: false),
@@ -159,7 +160,34 @@ public class ClassTests : TestBase
                 var a = new MyClass{};
                 a.MyFn();
                 """,
-                LoweredProgram()
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass", variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method(
+                            "MyClass__MyFn",
+                            [MethodReturnUnit()],
+                            parameters: [ConcreteTypeReference("MyClass")]),
+                        Method(
+                            "_Main",
+                            [
+                                VariableDeclaration(
+                                    "a",
+                                    CreateObject(
+                                        ConcreteTypeReference("MyClass"),
+                                        "_classVariant",
+                                        true),
+                                    false),
+                                MethodCall(
+                                    FunctionReference("MyClass__MyFn"),
+                                    [LocalAccess("a", true, ConcreteTypeReference("MyClass"))],
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
+                            ],
+                            locals: [Local("a", ConcreteTypeReference("MyClass"))])
+                    ])
             },
             {
                 "call static method inside function",
@@ -173,7 +201,23 @@ public class ClassTests : TestBase
                     }
                 }
                 """,
-                LoweredProgram()
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass",
+                            variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method("MyClass__MyFn", [MethodReturnUnit()]),
+                        Method("MyClass__OtherFn",
+                            [
+                                MethodCall(
+                                    FunctionReference("MyClass__MyFn"),
+                                    [],
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
+                            ])
+                    ])
             },
             {
                 "access instance field inside function",
@@ -187,21 +231,102 @@ public class ClassTests : TestBase
                     }
                 }
                 """,
-                LoweredProgram()
+                LoweredProgram(
+                    types: [
+                        DataType(
+                            "MyClass",
+                            variants: [
+                                Variant("_classVariant", [Field("MyField", StringType)])
+                            ])
+                    ],
+                    methods: [
+                        Method("MyClass__MyFn",
+                            [
+                                VariableDeclaration(
+                                    "a",
+                                    FieldAccess(
+                                        LoadArgument(0, true, ConcreteTypeReference("MyClass")),
+                                        "MyField",
+                                        "_classVariant",
+                                        true,
+                                        StringType),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [Local("a", StringType)],
+                            parameters: [ConcreteTypeReference("MyClass")])
+                    ])
+            },
+            {
+                "access static field inside function",
+                """
+                class MyClass
+                {
+                    static field MyField: string = "",
+                    pub fn MyFn()
+                    {
+                        var a = MyField;
+                    }
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType(
+                            "MyClass",
+                            variants: [Variant("_classVariant")],
+                            staticFields: [StaticField("MyField", StringType, StringConstant("", true))])
+                    ],
+                    methods: [
+                        Method("MyClass__MyFn",
+                            [
+                                VariableDeclaration(
+                                    "a",
+                                    StaticFieldAccess(
+                                        ConcreteTypeReference("MyClass"),
+                                        "MyField",
+                                        true,
+                                        StringType),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [Local("a", StringType)],
+                            parameters: [ConcreteTypeReference("MyClass")])
+                    ])
             },
             {
                 "call instance function inside instance function",
                 """
                 class MyClass
                 {
-                    pub fn MyFn()
+                    fn MyFn()
                     {
                         OtherFn();
                     }
                     fn OtherFn(){}
                 }
                 """,
-                LoweredProgram()
+                LoweredProgram(
+                    types: [
+                        DataType(
+                            "MyClass",
+                            variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method("MyClass__MyFn",
+                            [
+                                MethodCall(
+                                    FunctionReference("MyClass__OtherFn"),
+                                    [LoadArgument(0, true, ConcreteTypeReference("MyClass"))],
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
+                            ],
+                            parameters: [ConcreteTypeReference("MyClass")]),
+                        Method(
+                            "MyClass__OtherFn",
+                            [MethodReturnUnit()],
+                            parameters: [ConcreteTypeReference("MyClass")])
+                    ])
             },
         };
     }

@@ -243,6 +243,32 @@ public class SimpleExpressionTests : TestBase
                         ])
                     ])
             },
+            {
+                "generic method call",
+                """
+                fn MyFn<T>(){}
+                MyFn::<string>();
+                MyFn::<int>();
+                """,
+                LoweredProgram(
+                    methods: [
+                        Method("MyFn", [MethodReturnUnit()], typeParameters: ["T"]),
+                        Method("_Main",
+                            [
+                                MethodCall(
+                                    FunctionReference("MyFn", [StringType]),
+                                    [],
+                                    false,
+                                    Unit),
+                                MethodCall(
+                                    FunctionReference("MyFn", [Int]),
+                                    [],
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
+                            ])
+                    ])
+            }
         };
     }
 }

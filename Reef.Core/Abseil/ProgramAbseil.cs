@@ -5,9 +5,17 @@ namespace Reef.Core.Abseil;
 
 public partial class ProgramAbseil
 {
-    private readonly Dictionary<LoweredMethod, (List<ILoweredExpression>, IReadOnlyList<Expressions.IExpression>)> _methods = [];
+    private readonly Dictionary<
+        LoweredMethod,
+        (
+            List<ILoweredExpression> loweredExpressions,
+            IReadOnlyList<Expressions.IExpression> highLevelExpressions,
+            LoweredConcreteTypeReference? ownerType
+        )> _methods = [];
     private readonly List<DataType> _types = [];
     private readonly LangProgram _program;
+    private LoweredConcreteTypeReference? _currentType;
+    private LoweredMethod? _currentFunction;
 
     public static LoweredProgram Lower(LangProgram program)
     {
@@ -22,7 +30,6 @@ public partial class ProgramAbseil
     private LoweredProgram LowerInner()
     {
 
-
         foreach (var dataType in _program.Unions.Select(x => LowerUnion(x.Signature.NotNull())))
         {
             _types.Add(dataType);
@@ -35,16 +42,19 @@ public partial class ProgramAbseil
 
         foreach (var (method, loweredExpressions, expressions) in _program.Functions.Select(x => GenerateLoweredMethod(null, x.Signature.NotNull(), null)))
         {
-            _methods.Add(method, (loweredExpressions, expressions));
+            _methods.Add(method, (loweredExpressions, expressions, null));
         }
 
         if (CreateMainMethod() is { } mainMethod)
         {
-            _methods.Add(mainMethod.Item1, (mainMethod.Item2, mainMethod.Item3));
+            _methods.Add(mainMethod.Item1, (mainMethod.Item2, mainMethod.Item3, null));
         }
 
-        foreach (var (method, (loweredExpressions, expressions)) in _methods.Where(x => x.Value.Item1.Count == 0))
+        foreach (var (method, (loweredExpressions, expressions, ownerTypeReference)) in _methods.Where(x => x.Value.loweredExpressions.Count == 0))
         {
+            _currentType = ownerTypeReference;
+            _currentFunction = method;
+
             loweredExpressions.AddRange(expressions.Select(LowerExpression));
 
             if (expressions.Count == 0 || !expressions[^1].Diverges)
@@ -104,7 +114,7 @@ public partial class ProgramAbseil
         foreach (var method in klass.Functions)
         {
             var (loweredMethod, loweredExpressions, expressions) = GenerateLoweredMethod(klass.Name, method, classTypeReference);
-            _methods.Add(loweredMethod, (loweredExpressions, expressions));
+            _methods.Add(loweredMethod, (loweredExpressions, expressions, classTypeReference));
         }
 
         return new DataType(
@@ -127,7 +137,7 @@ public partial class ProgramAbseil
         {
             var (loweredMethod, loweredExpressions, expressions) = GenerateLoweredMethod(union.Name, function, unionTypeReference);
 
-            _methods.Add(loweredMethod, (loweredExpressions, expressions));
+            _methods.Add(loweredMethod, (loweredExpressions, expressions, unionTypeReference));
         }
 
         var variants = new List<DataTypeVariant>(union.Variants.Count);
@@ -176,7 +186,7 @@ public partial class ProgramAbseil
                                     memberTypes,
                                     unionTypeReference,
                                     expressions,
-                                    []), (expressions, []));
+                                    []), (expressions, [], unionTypeReference));
                         break;
                     }
                 default:
@@ -186,6 +196,7 @@ public partial class ProgramAbseil
                         variant.Name,
                         fields));
         }
+
         return new DataType(
                 union.NotNull().Id,
                 union.Name,
@@ -199,11 +210,11 @@ public partial class ProgramAbseil
     private (LoweredMethod, List<ILoweredExpression>, IReadOnlyList<Expressions.IExpression>) GenerateLoweredMethod(
             string? typeName,
             FunctionSignature fnSignature,
-            ILoweredTypeReference? ownerTypeReference)
+            LoweredConcreteTypeReference? ownerTypeReference)
     {
         foreach (var (localMethod, localLoweredExpressions, localExpressions) in fnSignature.LocalFunctions.Select(x => GenerateLoweredMethod(null, x, null)))
         {
-            _methods.Add(localMethod, (localLoweredExpressions, localExpressions));
+            _methods.Add(localMethod, (localLoweredExpressions, localExpressions, ownerTypeReference));
         }
 
         var locals = fnSignature.LocalVariables
@@ -256,11 +267,33 @@ public partial class ProgramAbseil
                     u.Signature.Name,
                     u.Signature.Id,
                     u.TypeArguments.Select(x => GetTypeReference(x.ResolvedType.NotNull())).ToArray()),
+            GenericTypeReference g => GetTypeReference(g.ResolvedType.NotNull()),
             GenericPlaceholder g => new LoweredGenericPlaceholder(
                     g.OwnerType.Id,
                     g.GenericName),
             UnknownInferredType i => GetTypeReference(i.ResolvedType.NotNull()),
             _ => throw new InvalidOperationException($"Type reference {typeReference.GetType()} is not supported")
         };
+    }
+
+    private bool EqualTypeReferences(ILoweredTypeReference a, ILoweredTypeReference b)
+    {
+        return (a, b) switch
+        {
+            (LoweredConcreteTypeReference concreteA, LoweredConcreteTypeReference concreteB)
+                when concreteA.DefinitionId == concreteB.DefinitionId
+                && concreteA.TypeArguments.Zip(concreteB.TypeArguments)
+                    .All(x => EqualTypeReferences(x.First, x.Second)) => true,
+            (LoweredGenericPlaceholder genericA, LoweredGenericPlaceholder genericB)
+                when genericA.OwnerDefinitionId == genericB.OwnerDefinitionId => true,
+            _ => false
+        };
+    }
+
+    private bool EqualFunctionReferences(LoweredFunctionReference a, LoweredFunctionReference b)
+    {
+        return a.DefinitionId == b.DefinitionId
+            && a.TypeArguments.Zip(b.TypeArguments)
+                .All(x => EqualTypeReferences(x.First, x.Second));
     }
 }

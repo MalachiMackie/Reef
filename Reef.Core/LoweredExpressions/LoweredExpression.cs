@@ -55,6 +55,13 @@ public record MethodCallExpression(
 public record FieldAccessExpression(
         ILoweredExpression MemberOwner,
         string FieldName,
+        string VariantName,
+        bool ValueUseful,
+        ILoweredTypeReference ResolvedType) : ILoweredExpression;
+
+public record StaticFieldAccessExpression(
+        LoweredConcreteTypeReference OwnerType,
+        string FieldName,
         bool ValueUseful,
         ILoweredTypeReference ResolvedType) : ILoweredExpression;
 

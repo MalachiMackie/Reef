@@ -43,9 +43,22 @@ public partial class ProgramAbseil
         var functionReference = GetFunctionReference(instantiatedFunction.FunctionId,
                 [..instantiatedFunction.TypeArguments.Select(GetTypeReference)]);
 
+        var arguments = new List<ILoweredExpression>(functionReference.TypeArguments.Count);
+
         if (e.MethodCall.Method is Expressions.MemberAccessExpression memberAccess)
         {
-            throw new NotImplementedException("Calling instance function");
+            var owner = LowerExpression(memberAccess.MemberAccess.Owner);
+            arguments.Add(owner);
+        }
+        else if (!instantiatedFunction.IsStatic
+                && instantiatedFunction.OwnerType is not null
+                && _currentType is not null
+                && EqualTypeReferences(GetTypeReference(instantiatedFunction.OwnerType), _currentType)
+                && _currentFunction is not null
+                && EqualTypeReferences(_currentFunction.Parameters[0], _currentType))
+        {
+            arguments.Add(
+                    new LoadArgumentExpression(0, true, _currentType));
         }
 
         if (instantiatedFunction.AccessedOuterVariables.Count > 0)
@@ -53,9 +66,11 @@ public partial class ProgramAbseil
             throw new NotImplementedException("Calling closure");
         }
 
+        arguments.AddRange(e.MethodCall.ArgumentList.Select(LowerExpression));
+
         return new MethodCallExpression(
                 functionReference,
-                [..e.MethodCall.ArgumentList.Select(LowerExpression)],
+                arguments,
                 e.ValueUseful,
                 GetTypeReference(e.ResolvedType.NotNull()));
     }
@@ -68,9 +83,11 @@ public partial class ProgramAbseil
         {
             case Expressions.MemberType.Field:
                 {
+                    // todo: assert we're in a class variant
                     return new FieldAccessExpression(
                             owner,
                             e.MemberAccess.MemberName.NotNull().StringValue,
+                            "_classVariant",
                             e.ValueUseful,
                             GetTypeReference(e.ResolvedType.NotNull()));
                 }
@@ -239,9 +256,39 @@ public partial class ProgramAbseil
                                 valueUseful,
                                 GetTypeReference(variable.Type));
                     }
-                case TypeChecking.TypeChecker.FieldVariable fieldVariable:
+                case TypeChecking.TypeChecker.FieldVariable fieldVariable
+                    when fieldVariable.ContainingSignature.Id == _currentType?.DefinitionId
+                        && _currentFunction is not null:
                     {
-                        break;
+                        if (fieldVariable.IsStaticField)
+                        {
+                            return new StaticFieldAccessExpression(
+                                    _currentType,
+                                    fieldVariable.Name.StringValue,
+                                    valueUseful,
+                                    GetTypeReference(fieldVariable.Type));
+                        }
+
+                        if (_currentFunction is null
+                                || _currentFunction.Parameters.Count == 0
+                                || !EqualTypeReferences(
+                                    _currentFunction.Parameters[0],
+                                    _currentType))
+                        {
+                            throw new InvalidOperationException("Expected to be in instance function");
+                        }
+
+                        // todo: assert we're in a class and have _classVariant
+
+                        return new FieldAccessExpression(
+                            new LoadArgumentExpression(
+                                0,
+                                true,
+                                _currentType),
+                            fieldVariable.Name.StringValue,
+                            "_classVariant",
+                            valueUseful,
+                            GetTypeReference(fieldVariable.Type));
                     }
                 case TypeChecking.TypeChecker.FunctionSignatureParameter argument:
                     {

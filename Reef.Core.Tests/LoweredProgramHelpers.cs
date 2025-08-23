@@ -205,10 +205,20 @@ public static class LoweredProgramHelpers
     public static FieldAccessExpression FieldAccess(
             ILoweredExpression memberOwner,
             string fieldName,
+            string variantName,
             bool valueUseful,
             ILoweredTypeReference resolvedType)
     {
-        return new(memberOwner, fieldName, valueUseful, resolvedType);
+        return new(memberOwner, fieldName, variantName, valueUseful, resolvedType);
+    }
+
+    public static StaticFieldAccessExpression StaticFieldAccess(
+        LoweredConcreteTypeReference ownerType,
+        string fieldName,
+        bool valueUseful,
+        ILoweredTypeReference resolvedType)
+    {
+        return new(ownerType, fieldName, valueUseful, resolvedType);
     }
 
     public static MethodCallExpression MethodCall(
