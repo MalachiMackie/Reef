@@ -9,6 +9,16 @@ public static class NullExtensionMethods
     public static T NotNull<T>(this T? item, [CallerArgumentExpression(nameof(item))] string paramName = "")
         where T : class
     {
-        return item ?? throw new InvalidOperationException($"Expected {paramName} not to be null");
+        return item
+            ?? throw new InvalidOperationException($"Expected {paramName} not to be null");
+    }
+
+    public static T NotNull<T>(
+            this T? item,
+            [CallerArgumentExpression(nameof(item))] string paramName = "")
+        where T : struct
+    {
+        return item
+            ?? throw new InvalidOperationException($"Expected {paramName} not to be null");
     }
 }

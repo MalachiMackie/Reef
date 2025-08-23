@@ -81,6 +81,47 @@ public class ClassTests : TestBase
                             StaticField("MyField", StringType, StringConstant("", true))
                         ])
                 ])
+            },
+            {
+                "access class field",
+                """
+                class MyClass {pub field A: string}
+                var a = new MyClass{A = ""};
+                var b = a.A;
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass",
+                            variants: [
+                                Variant("_classVariant", [Field("A", StringType)])
+                            ])
+                    ],
+                    methods: [
+                        Method("_Main",
+                            [
+                                VariableDeclaration(
+                                    "a",
+                                    CreateObject(
+                                        ConcreteTypeReference("MyClass"),
+                                        "_classVariant",
+                                        valueUseful: true,
+                                        new(){{"A", StringConstant("", valueUseful: true)}}),
+                                    valueUseful: false),
+                                VariableDeclaration(
+                                    "b",
+                                    FieldAccess(
+                                        LocalAccess("a", true, ConcreteTypeReference("MyClass")),
+                                        "A",
+                                        valueUseful: true,
+                                        resolvedType: StringType),
+                                    valueUseful: false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("a", ConcreteTypeReference("MyClass")),
+                                Local("b", StringType),
+                            ])
+                    ])
             }
         };
     }

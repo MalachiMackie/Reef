@@ -15,24 +15,6 @@ public static class LoweredProgramHelpers
         };
     }
 
-    public static LoweredMethod GlobalMethod(
-            string name,
-            IReadOnlyList<ILoweredExpression> expressions,
-            ILoweredTypeReference? returnType = null,
-            IReadOnlyList<ILoweredTypeReference>? parameters = null,
-            IReadOnlyList<string>? typeParameters = null,
-            IReadOnlyList<MethodLocal>? locals = null)
-    {
-        return new LoweredMethod(
-                Guid.Empty,
-                name,
-                typeParameters?.Select(x => new LoweredGenericPlaceholder(Guid.Empty, x)).ToArray() ?? [],
-                parameters ?? [],
-                returnType ?? Unit,
-                expressions,
-                locals ?? []);
-    }
-
     public static DataType DataType(
             string name,
             IReadOnlyList<string>? typeParameters = null,
@@ -209,10 +191,26 @@ public static class LoweredProgramHelpers
         return new(valueUseful, value);
     }
 
-    public static ILoweredExpression LoadArgument(uint argumentIndex, bool valueUseful, ILoweredTypeReference resolvedType)
+    public static LoadArgumentExpression LoadArgument(uint argumentIndex, bool valueUseful, ILoweredTypeReference resolvedType)
     {
         return new LoadArgumentExpression(argumentIndex, valueUseful, resolvedType);
     }
+
+    public static LocalVariableAccessor LocalAccess(
+            string localName, bool valueUseful, ILoweredTypeReference resolvedType)
+    {
+        return new(localName, valueUseful, resolvedType);
+    }
+
+    public static FieldAccessExpression FieldAccess(
+            ILoweredExpression memberOwner,
+            string fieldName,
+            bool valueUseful,
+            ILoweredTypeReference resolvedType)
+    {
+        return new(memberOwner, fieldName, valueUseful, resolvedType);
+    }
+
 
     public static BlockExpression Block(
             IReadOnlyList<ILoweredExpression> expressions,

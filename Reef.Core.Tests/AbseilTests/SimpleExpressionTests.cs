@@ -26,7 +26,7 @@ public class SimpleExpressionTests : TestBase
                 "variable declaration",
                 "var a = \"\";",
                 LoweredProgram(methods: [
-                    GlobalMethod("_Main",
+                    Method("_Main",
                         [
                             VariableDeclaration(
                                 "a",
@@ -44,7 +44,7 @@ public class SimpleExpressionTests : TestBase
                 "var a;a = 2;",
                 LoweredProgram(
                     methods: [
-                        GlobalMethod("_Main",
+                        Method("_Main",
                             [
                                 VariableDeclaration("a", false),
                                 LocalValueAssignment("a", IntConstant(2, true), false, Int),
@@ -60,7 +60,7 @@ public class SimpleExpressionTests : TestBase
                 "1 + 2;",
                 LoweredProgram(
                     methods: [
-                        GlobalMethod("_Main",
+                        Method("_Main",
                             [
                                 IntPlus(IntConstant(1, true), IntConstant(2, true), false),
                                 MethodReturnUnit()
@@ -72,7 +72,7 @@ public class SimpleExpressionTests : TestBase
                 "1 - 2;",
                 LoweredProgram(
                     methods: [
-                        GlobalMethod("_Main",
+                        Method("_Main",
                             [
                                 IntMinus(IntConstant(1, true), IntConstant(2, true), false),
                                 MethodReturnUnit()
@@ -84,7 +84,7 @@ public class SimpleExpressionTests : TestBase
                 "1 * 2;",
                 LoweredProgram(
                     methods: [
-                        GlobalMethod("_Main",
+                        Method("_Main",
                             [
                                 IntMultiply(IntConstant(1, true), IntConstant(2, true), false),
                                 MethodReturnUnit()
@@ -96,7 +96,7 @@ public class SimpleExpressionTests : TestBase
                 "1 / 2;",
                 LoweredProgram(
                     methods: [
-                        GlobalMethod("_Main",
+                        Method("_Main",
                             [
                                 IntDivide(IntConstant(1, true), IntConstant(2, true), false),
                                 MethodReturnUnit()
@@ -108,7 +108,7 @@ public class SimpleExpressionTests : TestBase
                 "1 == 2;",
                 LoweredProgram(
                     methods: [
-                        GlobalMethod("_Main",
+                        Method("_Main",
                             [
                                 IntEquals(IntConstant(1, true), IntConstant(2, true), false),
                                 MethodReturnUnit()
@@ -120,7 +120,7 @@ public class SimpleExpressionTests : TestBase
                 "1 > 2;",
                 LoweredProgram(
                     methods: [
-                        GlobalMethod("_Main",
+                        Method("_Main",
                             [
                                 IntGreaterThan(IntConstant(1, true), IntConstant(2, true), false),
                                 MethodReturnUnit()
@@ -132,7 +132,7 @@ public class SimpleExpressionTests : TestBase
                 "1 < 2;",
                 LoweredProgram(
                     methods: [
-                        GlobalMethod("_Main",
+                        Method("_Main",
                             [
                                 IntLessThan(IntConstant(1, true), IntConstant(2, true), false),
                                 MethodReturnUnit()
@@ -144,7 +144,7 @@ public class SimpleExpressionTests : TestBase
                 "true || true",
                 LoweredProgram(
                     methods: [
-                        GlobalMethod("_Main",
+                        Method("_Main",
                             [
                                 BoolOr(BoolConstant(true, true), BoolConstant(true, true), false),
                                 MethodReturnUnit()
@@ -156,7 +156,7 @@ public class SimpleExpressionTests : TestBase
                 "true && true",
                 LoweredProgram(
                     methods: [
-                        GlobalMethod("_Main",
+                        Method("_Main",
                             [
                                 BoolAnd(BoolConstant(true, true), BoolConstant(true, true), false),
                                 MethodReturnUnit()
@@ -168,7 +168,7 @@ public class SimpleExpressionTests : TestBase
                 "!true",
                 LoweredProgram(
                     methods: [
-                        GlobalMethod("_Main",
+                        Method("_Main",
                             [
                                 BoolNot(BoolConstant(true, true), false),
                                 MethodReturnUnit()
@@ -180,7 +180,7 @@ public class SimpleExpressionTests : TestBase
                 "{}",
                 LoweredProgram(
                     methods: [
-                        GlobalMethod("_Main",
+                        Method("_Main",
                             [
                                 Block([], Unit, false),
                                 MethodReturnUnit()
@@ -192,7 +192,7 @@ public class SimpleExpressionTests : TestBase
                 "{true;}",
                 LoweredProgram(
                     methods: [
-                        GlobalMethod("_Main",
+                        Method("_Main",
                             [
                                 Block([BoolConstant(true, false)], Unit, false),
                                 MethodReturnUnit()
@@ -204,7 +204,7 @@ public class SimpleExpressionTests : TestBase
                 "{true; 1;}",
                 LoweredProgram(
                     methods: [
-                        GlobalMethod("_Main",
+                        Method("_Main",
                             [
                                 Block([
                                     BoolConstant(true, false),
@@ -214,6 +214,23 @@ public class SimpleExpressionTests : TestBase
                             ])
                     ])
             },
+            {
+                "local access",
+                "var a = 1; var b = a;",
+                LoweredProgram(
+                    methods: [
+                        Method("_Main",
+                            [
+                                VariableDeclaration("a", IntConstant(1, true), valueUseful: false),
+                                VariableDeclaration("b", LocalAccess("a", true, Int), valueUseful: false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("a", Int),
+                                Local("b", Int),
+                            ])
+                    ])
+            }
         };
     }
 }

@@ -16,10 +16,35 @@ public partial class ProgramAbseil
             Expressions.UnaryOperatorExpression e => LowerUnaryOperatorExpression(e),
             Expressions.BlockExpression e => LowerBlockExpression(e), 
             Expressions.ObjectInitializerExpression e => LowerObjectInitializationExpression(e), 
-            Expressions.UnionClassVariantInitializerExpression e => LowerUnionClassVariantInitializerExpression(e), 
+            Expressions.UnionClassVariantInitializerExpression e =>
+                LowerUnionClassVariantInitializerExpression(e), 
             Expressions.StaticMemberAccessExpression e => LowerStaticMemberAccess(e), 
+            Expressions.MemberAccessExpression e => LowerMemberAccessExpression(e),
             _ => throw new NotImplementedException($"{expression.GetType()}")
         };
+    }
+
+    private ILoweredExpression LowerMemberAccessExpression(
+            Expressions.MemberAccessExpression e)
+    {
+        var owner = LowerExpression(e.MemberAccess.Owner);
+        switch (e.MemberAccess.MemberType.NotNull())
+        {
+            case Expressions.MemberType.Field:
+                {
+                    return new FieldAccessExpression(
+                            owner,
+                            e.MemberAccess.MemberName.NotNull().StringValue,
+                            e.ValueUseful,
+                            GetTypeReference(e.ResolvedType.NotNull()));
+                }
+            case Expressions.MemberType.Function:
+                break;
+            case Expressions.MemberType.Variant:
+                throw new InvalidOperationException("Can never access a variant through instance member access");
+        }
+
+        throw new NotImplementedException($"{e.MemberAccess.MemberType}");
     }
 
     private BlockExpression LowerBlockExpression(Expressions.BlockExpression e)
@@ -156,8 +181,40 @@ public partial class ProgramAbseil
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue} }} => new IntConstantExpression(e.ValueUseful, intValue),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.True }} => new BoolConstantExpression(e.ValueUseful, true),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.False }} => new BoolConstantExpression(e.ValueUseful, false),
-            _ => throw new NotImplementedException($"e")
+            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Variable }, ReferencedVariable: {} variable} => VariableAccess(variable, e.ValueUseful),
+            _ => throw new NotImplementedException($"{e}")
         };
+
+        ILoweredExpression VariableAccess(
+                TypeChecking.TypeChecker.IVariable variable,
+                bool valueUseful)
+        {
+            switch (variable)
+            {
+                case TypeChecking.TypeChecker.LocalVariable localVariable:
+                    {
+                        if (localVariable.ReferencedInClosure)
+                        {
+                            throw new NotImplementedException();
+                        }
+
+                        return new LocalVariableAccessor(
+                                variable.Name.StringValue,
+                                valueUseful,
+                                GetTypeReference(variable.Type));
+                    }
+                case TypeChecking.TypeChecker.FieldVariable fieldVariable:
+                    {
+                        break;
+                    }
+                case TypeChecking.TypeChecker.FunctionSignatureParameter argument:
+                    {
+                        break;
+                    }
+            }
+
+            throw new NotImplementedException($"{variable.GetType()}");
+        }
     }
 
     private ILoweredExpression LowerBinaryOperatorExpression(

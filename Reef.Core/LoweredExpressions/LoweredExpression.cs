@@ -44,6 +44,12 @@ public record StringConstantExpression(bool ValueUseful, string Value) : ILowere
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.String.ToLoweredTypeReference();
 }
 
+public record FieldAccessExpression(
+        ILoweredExpression MemberOwner,
+        string FieldName,
+        bool ValueUseful,
+        ILoweredTypeReference ResolvedType) : ILoweredExpression;
+
 public record LoadArgumentExpression(
         uint ArgumentIndex,
         bool ValueUseful,
@@ -132,7 +138,7 @@ public record BoolConstantExpression(bool ValueUseful, bool Value) : ILoweredExp
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
 }
 
-public record LocalVariableAccessor(bool ValueUseful, ILoweredTypeReference ResolvedType) : ILoweredExpression
+public record LocalVariableAccessor(string LocalName, bool ValueUseful, ILoweredTypeReference ResolvedType) : ILoweredExpression
 {
 }
 
