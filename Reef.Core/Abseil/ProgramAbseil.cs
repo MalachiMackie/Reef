@@ -5,7 +5,7 @@ namespace Reef.Core.Abseil;
 
 public partial class ProgramAbseil
 {
-    private readonly List<LoweredMethod> _methods = [];
+    private readonly Dictionary<LoweredMethod, (List<ILoweredExpression>, IReadOnlyList<Expressions.IExpression>)> _methods = [];
     private readonly List<DataType> _types = [];
     private readonly LangProgram _program;
 
@@ -21,33 +21,47 @@ public partial class ProgramAbseil
 
     private LoweredProgram LowerInner()
     {
-        var lowLevelProgram = new LoweredProgram()
-        {
-            DataTypes = _types,
-            Methods = _methods
-        };
 
-        foreach (var (dataType, dataTypeMethods) in _program.Unions.Select(x => LowerUnion(x.Signature.NotNull())))
+
+        foreach (var dataType in _program.Unions.Select(x => LowerUnion(x.Signature.NotNull())))
         {
             _types.Add(dataType);
-            _methods.AddRange(dataTypeMethods);
         }
 
-        foreach (var (dataType, dataTypeMethods) in _program.Classes.Select(x => LowerClass(x.Signature.NotNull())))
+        foreach (var dataType in _program.Classes.Select(x => LowerClass(x.Signature.NotNull())))
         {
             _types.Add(dataType);
-            _methods.AddRange(dataTypeMethods);
+        }
+
+        foreach (var (method, loweredExpressions, expressions) in _program.Functions.Select(x => GenerateLoweredMethod(null, x.Signature.NotNull(), null)))
+        {
+            _methods.Add(method, (loweredExpressions, expressions));
         }
 
         if (CreateMainMethod() is { } mainMethod)
         {
-            _methods.Add(mainMethod);
+            _methods.Add(mainMethod.Item1, (mainMethod.Item2, mainMethod.Item3));
         }
 
-        return lowLevelProgram;
+        foreach (var (method, (loweredExpressions, expressions)) in _methods.Where(x => x.Value.Item1.Count == 0))
+        {
+            loweredExpressions.AddRange(expressions.Select(LowerExpression));
+
+            if (expressions.Count == 0 || !expressions[^1].Diverges)
+            {
+                loweredExpressions.Add(new MethodReturnExpression(
+                            new UnitConstantExpression(true)));
+            }
+        }
+
+        return new LoweredProgram()
+        {
+            DataTypes = _types,
+            Methods = [.._methods.Keys]
+        };
     }
 
-    private LoweredMethod? CreateMainMethod()
+    private (LoweredMethod, List<ILoweredExpression>, IReadOnlyList<Expressions.IExpression>)? CreateMainMethod()
     {
         if (_program.Expressions.Count == 0)
         {
@@ -58,25 +72,19 @@ public partial class ProgramAbseil
             .Select(x => new MethodLocal(x.Name.StringValue, GetTypeReference(x.Type)))
             .ToList();
 
-        var expressions = _program.Expressions.Select(LowerExpression).ToList();
+        var expressions = new List<ILoweredExpression>();
 
-        if (!_program.Expressions[^1].Diverges)
-        {
-            expressions.Add(new MethodReturnExpression(
-                        new UnitConstantExpression(true)));
-        }
-
-        return new LoweredMethod(
+        return (new LoweredMethod(
                 Guid.NewGuid(),
                 "_Main",
                 TypeParameters: [],
                 Parameters: [],
                 ReturnType: GetTypeReference(InstantiatedClass.Unit),
                 expressions,
-                locals);
+                locals), expressions, _program.Expressions);
     }
 
-    private (DataType dataType, IReadOnlyList<LoweredMethod> methods) LowerClass(ClassSignature klass)
+    private DataType LowerClass(ClassSignature klass)
     {
         var typeParameters = klass.TypeParameters.Select(GetGenericPlaceholder).ToArray();
         var classTypeReference = new LoweredConcreteTypeReference(
@@ -93,17 +101,21 @@ public partial class ProgramAbseil
         var fields = klass.Fields.Where(x => !x.IsStatic)
             .Select(x => new DataTypeField(x.Name, GetTypeReference(x.Type)));
 
-        IReadOnlyList<LoweredMethod> methods = [.. klass.Functions.Select(x => LowerTypeMethod(klass.Name, x, classTypeReference))];
+        foreach (var method in klass.Functions)
+        {
+            var (loweredMethod, loweredExpressions, expressions) = GenerateLoweredMethod(klass.Name, method, classTypeReference);
+            _methods.Add(loweredMethod, (loweredExpressions, expressions));
+        }
 
-        return (new DataType(
+        return new DataType(
                 klass.Id,
                 klass.Name,
                 typeParameters,
                 [new DataTypeVariant("_classVariant", [.. fields])],
-                [.. staticFields]), methods);
+                [.. staticFields]);
     }
 
-    private (DataType, IReadOnlyList<LoweredMethod> methods) LowerUnion(UnionSignature union)
+    private DataType LowerUnion(UnionSignature union)
     {
         var typeParameters = union.TypeParameters.Select(GetGenericPlaceholder).ToArray();
         var unionTypeReference = new LoweredConcreteTypeReference(
@@ -111,9 +123,13 @@ public partial class ProgramAbseil
                                                     union.Id,
                                                     typeParameters);
 
-        var dataTypeMethods = union.NotNull()
-            .Functions.Select(x => LowerTypeMethod(union.Name, x, unionTypeReference))
-            .ToList();
+        foreach (var function in union.Functions)
+        {
+            var (loweredMethod, loweredExpressions, expressions) = GenerateLoweredMethod(union.Name, function, unionTypeReference);
+
+            _methods.Add(loweredMethod, (loweredExpressions, expressions));
+        }
+
         var variants = new List<DataTypeVariant>(union.Variants.Count);
         foreach (var variant in union.Variants)
         {
@@ -142,14 +158,7 @@ public partial class ProgramAbseil
                         var createMethodFieldInitializations = fields.Skip(1).Index().ToDictionary(x => x.Item.Name, x => (ILoweredExpression)new LoadArgumentExpression((uint)x.Index, true, x.Item.Type));
                         createMethodFieldInitializations["_variantIdentifier"] = new IntConstantExpression(true, variants.Count);
 
-                        // add the tuple variant as a method
-                        dataTypeMethods.Add(new LoweredMethod(
-                                    Guid.NewGuid(),
-                                    $"{union.Name}_Create_{u.Name}",
-                                    [],
-                                    memberTypes,
-                                    unionTypeReference,
-                                    [
+                        List<ILoweredExpression> expressions = [
                                         new MethodReturnExpression(
                                             new CreateObjectExpression(
                                                 unionTypeReference,
@@ -157,8 +166,17 @@ public partial class ProgramAbseil
                                                 true,
                                                 createMethodFieldInitializations
                                                 ))
-                                    ],
-                                    []));
+                                    ];
+
+                        // add the tuple variant as a method
+                        _methods.Add(new LoweredMethod(
+                                    Guid.NewGuid(),
+                                    $"{union.Name}_Create_{u.Name}",
+                                    [],
+                                    memberTypes,
+                                    unionTypeReference,
+                                    expressions,
+                                    []), (expressions, []));
                         break;
                     }
                 default:
@@ -168,54 +186,62 @@ public partial class ProgramAbseil
                         variant.Name,
                         fields));
         }
-        return (new DataType(
+        return new DataType(
                 union.NotNull().Id,
                 union.Name,
                 typeParameters,
                 Variants: variants,
-                StaticFields: []), dataTypeMethods);
+                StaticFields: []);
     }
 
-    private LoweredMethod LowerTypeMethod(
-            string typeName,
+    // instead of lowering the methods expressions right here, we return the list of expressions 
+    // to add to later so that all the type and function references are available to be used
+    private (LoweredMethod, List<ILoweredExpression>, IReadOnlyList<Expressions.IExpression>) GenerateLoweredMethod(
+            string? typeName,
             FunctionSignature fnSignature,
-            ILoweredTypeReference ownerTypeReference)
+            ILoweredTypeReference? ownerTypeReference)
     {
+        foreach (var (localMethod, localLoweredExpressions, localExpressions) in fnSignature.LocalFunctions.Select(x => GenerateLoweredMethod(null, x, null)))
+        {
+            _methods.Add(localMethod, (localLoweredExpressions, localExpressions));
+        }
+
         var locals = fnSignature.LocalVariables
             .Select(x => new MethodLocal(x.Name.StringValue, GetTypeReference(x.Type)))
             .ToList();
-        var expressions = fnSignature.Expressions.Select(LowerExpression)
-            .ToList();
-
-        // if we passed type checking, and either there are no expressions or the last 
-        // expression does not diverge (throw or return), then we need to add an explicit
-        // return unit
-        if (expressions.Count == 0 || !fnSignature.Expressions[^1].Diverges)
-        {
-            expressions.Add(new MethodReturnExpression(
-                new UnitConstantExpression(ValueUseful: true)));
-        }
-
+        var expressions = new List<ILoweredExpression>();
         var parameters = fnSignature.Parameters.Values.Select(y => GetTypeReference(y.Type));
 
-        if (!fnSignature.IsStatic)
+        if (!fnSignature.IsStatic && ownerTypeReference is not null)
         {
             parameters = parameters.Prepend(ownerTypeReference);
         }
+        var name = typeName is null
+            ? fnSignature.Name
+            : $"{typeName}__{fnSignature.Name}";
 
-        return new LoweredMethod(
+        return (new LoweredMethod(
             fnSignature.Id,
-            $"{typeName}__{fnSignature.Name}",
+            name,
             fnSignature.TypeParameters.Select(GetGenericPlaceholder).ToArray(),
             parameters.ToArray(),
             GetTypeReference(fnSignature.ReturnType),
             expressions,
-            locals);
+            locals), expressions, fnSignature.Expressions);
     }
 
     private LoweredGenericPlaceholder GetGenericPlaceholder(GenericPlaceholder placeholder)
     {
         return new LoweredGenericPlaceholder(placeholder.OwnerType.Id, placeholder.GenericName);
+    }
+
+    private LoweredFunctionReference GetFunctionReference(Guid functionId, IReadOnlyList<ILoweredTypeReference> typeArguments)
+    {
+        var loweredMethod = _methods.Keys.First(x => x.Id == functionId);
+        return new(
+                loweredMethod.Name,
+                functionId,
+                typeArguments);
     }
 
     private ILoweredTypeReference GetTypeReference(ITypeReference typeReference)

@@ -322,7 +322,7 @@ public partial class TypeChecker
         bool isStatic,
         bool isMutable,
         IReadOnlyList<IExpression> expressions,
-        IReadOnlyList<FunctionSignature> localFunctions,
+        IEnumerable<FunctionSignature> localFunctions,
         uint? functionIndex) : ITypeSignature
     {
         public Guid Id { get; } = Guid.NewGuid();
@@ -343,7 +343,7 @@ public partial class TypeChecker
         public StringToken NameToken { get; } = nameToken;
         public string Name { get; } = nameToken.StringValue;
         public IReadOnlyList<IExpression> Expressions { get; } = expressions;
-        public IReadOnlyList<FunctionSignature> LocalFunctions { get; } = localFunctions;
+        public List<FunctionSignature> LocalFunctions { get; } = [..localFunctions];
         public List<LocalVariable> LocalVariables { get; init; } = [];
         public List<IVariable> AccessedOuterVariables { get; } = [];
     }

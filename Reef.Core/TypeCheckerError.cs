@@ -365,5 +365,5 @@ public enum TypeCheckerErrorType
     StaticMemberAccessOnInstanceMember,
     InstanceMemberAccessOnStaticMember,
     UnionClassVariantWithoutInitializer,
-    StaticFieldInClassPattern
+    StaticFieldInClassPattern,
 }

@@ -44,6 +44,14 @@ public record StringConstantExpression(bool ValueUseful, string Value) : ILowere
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.String.ToLoweredTypeReference();
 }
 
+public record MethodCallExpression(
+        LoweredFunctionReference FunctionReference,
+        IReadOnlyList<ILoweredExpression> Arguments,
+        bool ValueUseful,
+        ILoweredTypeReference ResolvedType) : ILoweredExpression
+{
+}
+
 public record FieldAccessExpression(
         ILoweredExpression MemberOwner,
         string FieldName,
@@ -192,6 +200,9 @@ public record StaticMemberAccessor(
         uint MemberIndex) : ILoweredExpression
 {
 }
+
+public record LoweredFunctionReference(string Name, Guid DefinitionId, IReadOnlyList<ILoweredTypeReference> TypeArguments)
+{}
 
 public interface ILoweredTypeReference
 { }

@@ -20,8 +20,44 @@ public partial class ProgramAbseil
                 LowerUnionClassVariantInitializerExpression(e), 
             Expressions.StaticMemberAccessExpression e => LowerStaticMemberAccess(e), 
             Expressions.MemberAccessExpression e => LowerMemberAccessExpression(e),
+            Expressions.MethodCallExpression e => LowerMethodCallExpression(e),
             _ => throw new NotImplementedException($"{expression.GetType()}")
         };
+    }
+
+    private MethodCallExpression LowerMethodCallExpression(Expressions.MethodCallExpression e)
+    {
+        var instantiatedFunction = e.MethodCall.Method switch
+        {
+            Expressions.MemberAccessExpression { MemberAccess.InstantiatedFunction: var fn } => fn,
+            Expressions.StaticMemberAccessExpression { StaticMemberAccess.InstantiatedFunction: var fn } => fn,
+            Expressions.ValueAccessorExpression { FunctionInstantiation: var fn } => fn,
+            _ => null
+        };
+
+        if (instantiatedFunction is null)
+        {
+            throw new NotImplementedException("Calling function object");
+        }
+
+        var functionReference = GetFunctionReference(instantiatedFunction.FunctionId,
+                [..instantiatedFunction.TypeArguments.Select(GetTypeReference)]);
+
+        if (e.MethodCall.Method is Expressions.MemberAccessExpression memberAccess)
+        {
+            throw new NotImplementedException("Calling instance function");
+        }
+
+        if (instantiatedFunction.AccessedOuterVariables.Count > 0)
+        {
+            throw new NotImplementedException("Calling closure");
+        }
+
+        return new MethodCallExpression(
+                functionReference,
+                [..e.MethodCall.ArgumentList.Select(LowerExpression)],
+                e.ValueUseful,
+                GetTypeReference(e.ResolvedType.NotNull()));
     }
 
     private ILoweredExpression LowerMemberAccessExpression(

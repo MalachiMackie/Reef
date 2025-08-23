@@ -83,6 +83,7 @@ public partial class TypeChecker
         var typeArguments = (expression.ValueAccessor.TypeArguments ?? [])
             .Select(x => (GetTypeReference(x), x.SourceRange))
             .ToArray();
+
         if (ScopedFunctions.TryGetValue(variableName.StringValue, out var function))
         {
             var instantiatedFunction = InstantiateFunction(
@@ -98,7 +99,6 @@ public partial class TypeChecker
                 parameters: instantiatedFunction.Parameters,
                 returnType: instantiatedFunction.ReturnType);
         }
-
 
         if (CurrentTypeSignature is UnionSignature union)
         {

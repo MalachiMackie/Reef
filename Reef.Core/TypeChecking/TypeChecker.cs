@@ -163,7 +163,11 @@ public partial class TypeChecker
 
         foreach (var fn in block.Functions)
         {
-            ScopedFunctions[fn.Name.StringValue] = fn.Signature ?? TypeCheckFunctionSignature(fn, functionIndex: null, ownerType: null);
+            var signature = fn.Signature ?? TypeCheckFunctionSignature(fn, functionIndex: null, ownerType: null);
+
+            CurrentFunctionSignature?.LocalFunctions.Add(signature);
+
+            ScopedFunctions[fn.Name.StringValue] = signature;
         }
 
         foreach (var fn in block.Functions)

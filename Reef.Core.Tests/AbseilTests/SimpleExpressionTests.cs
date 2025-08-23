@@ -230,7 +230,19 @@ public class SimpleExpressionTests : TestBase
                                 Local("b", Int),
                             ])
                     ])
-            }
+            },
+            {
+                "method call",
+                "fn MyFn(){} MyFn();",
+                LoweredProgram(
+                    methods: [
+                        Method("MyFn", [MethodReturnUnit()]),
+                        Method("_Main", [
+                            MethodCall(FunctionReference("MyFn"), [], false, Unit),
+                            MethodReturnUnit()
+                        ])
+                    ])
+            },
         };
     }
 }

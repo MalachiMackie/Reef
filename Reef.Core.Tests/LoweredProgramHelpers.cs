@@ -211,6 +211,22 @@ public static class LoweredProgramHelpers
         return new(memberOwner, fieldName, valueUseful, resolvedType);
     }
 
+    public static MethodCallExpression MethodCall(
+            LoweredFunctionReference functionReference,
+            IReadOnlyList<ILoweredExpression> arguments,
+            bool valueUseful,
+            ILoweredTypeReference resolvedType)
+    {
+        return new(functionReference, arguments, valueUseful, resolvedType);
+    }
+
+    public static LoweredFunctionReference FunctionReference(
+            string name,
+            IReadOnlyList<ILoweredTypeReference>? typeArguments = null)
+    {
+        return new(name, Guid.Empty, typeArguments ?? []);
+    }
+
 
     public static BlockExpression Block(
             IReadOnlyList<ILoweredExpression> expressions,

@@ -21,36 +21,21 @@ public class UnionTests : TestBase
     [Fact]
     public void SingleTest()
     {
-        const string source = "union MyUnion<T>{ A(T) }";
-        var expectedProgram = LoweredProgram(types:
-        [
-            DataType("MyUnion",
-                ["T"],
-                [
-                    Variant("A",
-                    [
-                        Field("_variantIdentifier", Int),
-                        Field("_tupleMember_0", GenericPlaceholder("T"))
-                    ])
-                ])
-        ],
-        methods: [
-                    Method(
-                        "MyUnion_Create_A",
-                        [
-                            MethodReturn(CreateObject(
-                                ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]),
-                                "A",
-                                true,
-                                new()
-                                {
-                                    {"_variantIdentifier", IntConstant(0, true)},
-                                    {"_tupleMember_0", LoadArgument(0, true, GenericPlaceholder("T"))},
-                                }))
-                        ],
-                        parameters: [GenericPlaceholder("T")],
-                        returnType: ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]))
-                ]);
+        const string source = 
+                "class MyClass<T>{pub fn SomeFn(){}}";
+        var expectedProgram = LoweredProgram(
+            types:
+            [
+                DataType("MyClass",
+                    ["T"],
+                    [Variant("_classVariant")])
+            ], methods:
+            [
+                Method(
+                    "MyClass__SomeFn",
+                    [MethodReturn(UnitConstant(true))],
+                    parameters: [ConcreteTypeReference("MyClass", [GenericPlaceholder("T")])])
+            ]);
 
         var program = CreateProgram(source);
         var loweredProgram = ProgramAbseil.Lower(program);

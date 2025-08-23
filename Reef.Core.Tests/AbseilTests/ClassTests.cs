@@ -122,7 +122,87 @@ public class ClassTests : TestBase
                                 Local("b", StringType),
                             ])
                     ])
-            }
+            },
+            {
+                "call static method",
+                """
+                MyClass::MyFn();
+                class MyClass
+                {
+                    pub static fn MyFn(){}
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass", variants: [Variant("_classVariant")]),
+                    ],
+                    methods: [
+                        Method("MyClass__MyFn", [MethodReturnUnit()]),
+                        Method("_Main",
+                            [
+                                MethodCall(
+                                    FunctionReference("MyClass__MyFn"),
+                                    [],
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
+                            ])
+                    ])
+            },
+            {
+                "call instance method",
+                """
+                class MyClass
+                {
+                    pub fn MyFn(){}
+                }
+                var a = new MyClass{};
+                a.MyFn();
+                """,
+                LoweredProgram()
+            },
+            {
+                "call static method inside function",
+                """
+                class MyClass
+                {
+                    pub static fn MyFn(){}
+                    pub static fn OtherFn()
+                    {
+                        MyFn();
+                    }
+                }
+                """,
+                LoweredProgram()
+            },
+            {
+                "access instance field inside function",
+                """
+                class MyClass
+                {
+                    field MyField: string,
+                    pub fn MyFn()
+                    {
+                        var a = MyField;
+                    }
+                }
+                """,
+                LoweredProgram()
+            },
+            {
+                "call instance function inside instance function",
+                """
+                class MyClass
+                {
+                    pub fn MyFn()
+                    {
+                        OtherFn();
+                    }
+                    fn OtherFn(){}
+                }
+                """,
+                LoweredProgram()
+            },
         };
     }
 }
