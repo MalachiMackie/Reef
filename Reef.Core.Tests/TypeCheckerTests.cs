@@ -60,6 +60,26 @@ public class TypeCheckerTests
         return new TheoryData<string>
         {
             """
+            var a = 1;
+            SomeFn();
+            fn SomeFn()
+            {
+                var b = a;
+            }
+            """,
+            """
+            class MyClass
+            {
+                fn SomeFn()
+                {
+                    TopLevelFn();
+                }
+            }
+            fn TopLevelFn()
+            {
+            }
+            """,
+            """
             union MyUnion {
                 A(string)
             }
@@ -1353,6 +1373,44 @@ public class TypeCheckerTests
     {
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
+            {
+                "closure accesses variable before declaration",
+                """
+                fn MyFn()
+                {
+                    var b = a;
+                }
+                MyFn();
+
+                var a = 1;
+                """,
+                [TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("MyFn"), [Identifier("a")])]
+            },
+            {
+                "closure accesses variable before declaration",
+                """
+                fn MyFn()
+                {
+                    var b = a;
+                }
+                var c = MyFn;
+
+                var a = 1;
+                """,
+                [TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("MyFn"), [Identifier("a")])]
+            },
+            {
+                "accessing closure before captured variables have been declared",
+                """
+                MyFn();
+                var a = 1;
+                fn MyFn()
+                {
+                    var b = a;
+                }
+                """,
+                [TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("MyFn"), [Identifier("a")])]
+            },
             {
                 "matches - mutable variable declaration on non mutable variable",
                 """

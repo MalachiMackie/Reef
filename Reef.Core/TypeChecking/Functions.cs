@@ -70,14 +70,6 @@ public partial class TypeChecker
             });
         }
 
-        // ITypeReference? ownerTypeReference = CurrentTypeSignature switch
-        // {
-        //     null => null,
-        //     ClassSignature classSignature => InstantiateClass(classSignature, [], SourceRange.Default),
-        //     UnionSignature unionSignature => InstantiateUnion(unionSignature, [], SourceRange.Default),
-        //     _ => throw new ArgumentOutOfRangeException(nameof(CurrentTypeSignature))
-        // };
-
         using var _ = PushScope(genericPlaceholders: fnSignature.TypeParameters, currentFunctionSignature: fnSignature);
 
         fnSignature.ReturnType = fn.ReturnType is null
