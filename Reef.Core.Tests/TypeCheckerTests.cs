@@ -1389,6 +1389,19 @@ public class TypeCheckerTests
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
             {
+                "assigning to 'this'",
+                """
+                class MyClass
+                {
+                    mut fn SomeFn()
+                    {
+                        this = new MyClass{};
+                    }
+                }
+                """,
+                [TypeCheckerError.NonMutableAssignment("this", SourceRange.Default)]
+            },
+            {
                 "closure accesses variable before declaration",
                 """
                 fn MyFn()
@@ -2309,7 +2322,7 @@ public class TypeCheckerTests
             {
                 "this used outside of class instance",
                 "var a = this;",
-                [TypeCheckerError.ThisAccessedOutsideOfInstanceMethod(Identifier("this"))]
+                [TypeCheckerError.SymbolNotFound(Identifier("this"))]
             },
             {
                 "this used in static class function",
@@ -2320,7 +2333,7 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                [TypeCheckerError.ThisAccessedOutsideOfInstanceMethod(Identifier("this"))]
+                [TypeCheckerError.SymbolNotFound(Identifier("this"))]
             },
             {
                 "this used in static union function",
@@ -2331,7 +2344,7 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                [TypeCheckerError.ThisAccessedOutsideOfInstanceMethod(Identifier("this"))]
+                [TypeCheckerError.SymbolNotFound(Identifier("this"))]
             },
             {
                 "pattern variable used in wrong match arm",

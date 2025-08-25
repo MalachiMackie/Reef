@@ -98,6 +98,12 @@ public partial class TypeChecker
         return true;
     }
 
+    private InstantiatedUnion InstantiateUnion(UnionSignature signature)
+    {
+        return new InstantiatedUnion(signature, [..signature.TypeParameters.Select(x => x.Instantiate())]);
+
+    }
+
     private InstantiatedUnion InstantiateUnion(UnionSignature signature, IReadOnlyList<(ITypeReference, SourceRange)> typeArguments, SourceRange sourceRange)
     {
         // when instantiating, create new generic type references so they can be resolved

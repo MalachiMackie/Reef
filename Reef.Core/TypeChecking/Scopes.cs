@@ -28,6 +28,8 @@ public partial class TypeChecker
                 || fieldOwner != CurrentTypeSignature)
             && (variable is not LocalVariable { ContainingFunction: var localOwner }
                 || localOwner != CurrentFunctionSignature)
+            && (variable is not ThisVariable { ContainingFunction: var thisOwner }
+                || thisOwner != CurrentFunctionSignature)
             && !CurrentFunctionSignature.AccessedOuterVariables.Contains(variable))
         {
             if (CurrentFunctionSignature.IsStatic)

@@ -21,7 +21,6 @@ public partial class TypeChecker
             { AccessType: ValueAccessType.Variable, Token: StringToken { Type: TokenType.Identifier, StringValue: "ok" } } => TypeCheckResultVariantKeyword("Ok"),
             { AccessType: ValueAccessType.Variable, Token: StringToken { Type: TokenType.Identifier, StringValue: "error" } } =>
                 TypeCheckResultVariantKeyword("Error"),
-            { AccessType: ValueAccessType.Variable, Token: StringToken { Type: TokenType.Identifier, StringValue: "this" } thisToken } => TypeCheckThis(thisToken),
             { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Todo } => InstantiatedClass.Never,
             {
                 AccessType: ValueAccessType.Variable,
@@ -31,27 +30,6 @@ public partial class TypeChecker
         };
 
         return type;
-
-        ITypeReference TypeCheckThis(StringToken thisToken)
-        {
-            if (CurrentTypeSignature is null || CurrentFunctionSignature is null)
-            {
-                _errors.Add(TypeCheckerError.ThisAccessedOutsideOfInstanceMethod(thisToken));
-                return UnknownType.Instance;
-            }
-
-            if (CurrentFunctionSignature.IsStatic)
-            {
-                _errors.Add(TypeCheckerError.ThisAccessedOutsideOfInstanceMethod(thisToken));
-            }
-
-            return CurrentTypeSignature switch
-            {
-                UnionSignature unionSignature => InstantiateUnion(unionSignature, [], new SourceRange(thisToken.SourceSpan, thisToken.SourceSpan)),
-                ClassSignature classSignature => InstantiateClass(classSignature, [], new SourceRange(thisToken.SourceSpan, thisToken.SourceSpan)),
-                _ => throw new UnreachableException($"Unknown signature type {CurrentTypeSignature.GetType()}")
-            };
-        }
 
         ITypeReference TypeCheckResultVariantKeyword(string variantName)
         {

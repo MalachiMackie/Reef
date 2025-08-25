@@ -27,4 +27,10 @@ public partial class TypeChecker
     {
         public bool ReferencedInClosure { get; set; }
     }
+
+    public record ThisVariable(ITypeReference Type, FunctionSignature ContainingFunction) : IVariable
+    {
+        public StringToken Name { get; } = Token.Identifier("this", SourceSpan.Default);
+        public bool ReferencedInClosure { get; set; }
+    }
 }

@@ -528,6 +528,33 @@ public class ClassTests : TestBase
                             returnType: StringType)
                     ])
             },
+            {
+                "this reference",
+                """
+                class MyClass
+                {
+                    fn SomeFn()
+                    {
+                        var a = this;
+                    }
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass", variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method("MyClass__SomeFn",
+                            [
+                                VariableDeclaration("a",
+                                    LoadArgument(0, true, ConcreteTypeReference("MyClass")),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            parameters: [ConcreteTypeReference("MyClass")],
+                            locals: [Local("a", ConcreteTypeReference("MyClass"))])
+                    ])
+            }
         };
     }
 }

@@ -156,6 +156,11 @@ public partial class TypeChecker
         }
     }
 
+    private InstantiatedClass InstantiateClass(ClassSignature signature)
+    {
+        return new InstantiatedClass(signature, [..signature.TypeParameters.Select(x => x.Instantiate())]);
+    }
+
     private InstantiatedClass InstantiateClass(ClassSignature signature, IReadOnlyList<(ITypeReference, SourceRange)> typeArguments, SourceRange sourceRange)
     {
         GenericTypeReference[] typeArgumentReferences =

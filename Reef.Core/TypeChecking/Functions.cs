@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using Reef.Core.Expressions;
 
@@ -99,6 +100,17 @@ public partial class TypeChecker
             AddScopedVariable(
                 parameter.Name.StringValue,
                 parameter);
+        }
+
+        if (!fnSignature.IsStatic && fnSignature.OwnerType is not null)
+        {
+            AddScopedVariable(
+                    "this",
+                    new ThisVariable(fnSignature.OwnerType switch {
+                            ClassSignature c => InstantiateClass(c),
+                            UnionSignature u => InstantiateUnion(u),
+                            _ => throw new UnreachableException()
+                        }, fnSignature));
         }
 
         foreach (var fn in fnSignature.LocalFunctions)

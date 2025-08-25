@@ -268,6 +268,21 @@ public partial class ProgramAbseil
                                 valueUseful,
                                 resolvedType);
                     }
+                case TypeChecking.TypeChecker.ThisVariable thisVariable:
+                    {
+                        if (thisVariable.ReferencedInClosure)
+                        {
+                            throw new NotImplementedException();
+                        }
+
+                        Debug.Assert(_currentFunction is not null);
+                        Debug.Assert(_currentType is not null); 
+                        Debug.Assert(_currentFunction.Parameters.Count > 0);
+                        Debug.Assert(EqualTypeReferences(_currentFunction.Parameters[0], _currentType));
+
+                        return new LoadArgumentExpression(
+                                0, valueUseful, resolvedType);
+                    }
                 case TypeChecking.TypeChecker.FieldVariable fieldVariable
                     when fieldVariable.ContainingSignature.Id == _currentType?.DefinitionId
                         && _currentFunction is not null:
