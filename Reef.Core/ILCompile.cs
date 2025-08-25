@@ -55,12 +55,12 @@ public class ILCompile
                 isStatic: true,
                 isMutable: false,
                 program.Expressions,
-                program.Functions.Select(x => x.Signature!).Where(x => !x.IsStatic).ToArray(),
                 functionIndex: null
             )
             {
                 ReturnType = TypeChecker.InstantiatedClass.Unit,
                 LocalVariables = [.. program.TopLevelLocalVariables],
+                LocalFunctions = [..program.Functions.Select(x => x.Signature!).Where(x => !x.IsStatic)],
                 OwnerType = null,
             };
             mainMethod = CompileMethod(_mainFunction);

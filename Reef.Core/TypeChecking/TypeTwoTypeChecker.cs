@@ -100,7 +100,7 @@ public class TypeTwoTypeChecker
     {
         if (expression.ResolvedType is null)
         {
-            throw new UnreachableException("Every expression should be type checked");
+            throw new UnreachableException($"Every expression should be type checked: {expression}");
         }
 
         CheckTypeReferenceIsResolved(expression.ResolvedType, expression);

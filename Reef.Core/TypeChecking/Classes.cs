@@ -79,7 +79,6 @@ public partial class TypeChecker
                 isStatic: false,
                 isMutable: false,
                 expressions: [],
-                localFunctions: [],
                 functionIndex: 0)
             {
                 ReturnType = null!,

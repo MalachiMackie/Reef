@@ -9,8 +9,6 @@ public partial class TypeChecker
     {
         var parameters = new OrderedDictionary<string, FunctionSignatureParameter>();
 
-        List<FunctionSignature> localFunctions = [];
-
         var name = fn.Name.StringValue;
         var typeParameters = new List<GenericPlaceholder>(fn.TypeParameters.Count);
         var fnSignature = new FunctionSignature(
@@ -20,7 +18,6 @@ public partial class TypeChecker
             fn.StaticModifier is not null,
             fn.MutabilityModifier is not null,
             fn.Block.Expressions,
-            localFunctions,
             functionIndex)
         {
             ReturnType = null!,
@@ -87,7 +84,7 @@ public partial class TypeChecker
             }
         }
 
-        localFunctions.AddRange(fn.Block.Functions.Select(x => TypeCheckFunctionSignature(x, functionIndex: null, ownerType: null)));
+        fnSignature.LocalFunctions.AddRange(fn.Block.Functions.Select(x => TypeCheckFunctionSignature(x, functionIndex: null, ownerType: null)));
 
         // todo: function overloading
         return fnSignature;
@@ -157,7 +154,6 @@ public partial class TypeChecker
             parameters,
             isStatic: true,
             isMutable: false,
-            [],
             [],
             // make sure the function comes after all the user defined functions 
             functionIndex: (uint)instantiatedUnion.Signature.Functions.Count + (uint)tupleVariantIndex)
@@ -322,7 +318,6 @@ public partial class TypeChecker
         bool isStatic,
         bool isMutable,
         IReadOnlyList<IExpression> expressions,
-        IEnumerable<FunctionSignature> localFunctions,
         uint? functionIndex) : ITypeSignature
     {
         public Guid Id { get; } = Guid.NewGuid();
@@ -343,7 +338,7 @@ public partial class TypeChecker
         public StringToken NameToken { get; } = nameToken;
         public string Name { get; } = nameToken.StringValue;
         public IReadOnlyList<IExpression> Expressions { get; } = expressions;
-        public List<FunctionSignature> LocalFunctions { get; } = [..localFunctions];
+        public List<FunctionSignature> LocalFunctions { get; init; } = [];
         public List<LocalVariable> LocalVariables { get; init; } = [];
         public List<IVariable> AccessedOuterVariables { get; } = [];
     }

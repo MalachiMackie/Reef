@@ -42,12 +42,16 @@ public class TypeCheckerTests
         const string src =
             """
             class MyClass {
-                fn MyFn<T>() {}
-                fn OtherFn() {
-                    MyFn::<string>();
+                mut field MyField: string,
+                
+                mut fn MyFn() {
+                    fn InnerFn() {
+                        MyField = "";
+                    }
                 }
             }
             """;
+;
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
