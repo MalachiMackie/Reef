@@ -477,7 +477,57 @@ public class ClassTests : TestBase
                                 MethodReturnUnit()
                             ])
                     ])
-            }
+            },
+            {
+                "argument access in instance function",
+                """
+                class MyClass
+                {
+                    fn SomeFn(a: string): string { return a; }
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType(
+                            "MyClass",
+                            variants: [
+                                Variant("_classVariant")
+                            ])
+                    ],
+                    methods: [
+                        Method("MyClass__SomeFn",
+                            [
+                                MethodReturn(LoadArgument(1, true, StringType))
+                            ],
+                            parameters: [ConcreteTypeReference("MyClass"), StringType],
+                            returnType: StringType)
+                    ])
+            },
+            {
+                "argument access in static function",
+                """
+                class MyClass
+                {
+                    static fn SomeFn(a: string): string { return a; }
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType(
+                            "MyClass",
+                            variants: [
+                                Variant("_classVariant")
+                            ])
+                    ],
+                    methods: [
+                        Method("MyClass__SomeFn",
+                            [
+                                MethodReturn(LoadArgument(0, true, StringType))
+                            ],
+                            parameters: [StringType],
+                            returnType: StringType)
+                    ])
+            },
         };
     }
 }

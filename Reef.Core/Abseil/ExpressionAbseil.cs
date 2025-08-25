@@ -21,8 +21,18 @@ public partial class ProgramAbseil
             Expressions.StaticMemberAccessExpression e => LowerStaticMemberAccess(e), 
             Expressions.MemberAccessExpression e => LowerMemberAccessExpression(e),
             Expressions.MethodCallExpression e => LowerMethodCallExpression(e),
+            Expressions.MethodReturnExpression e => LowerMethodReturnExpression(e),
             _ => throw new NotImplementedException($"{expression.GetType()}")
         };
+    }
+
+    private MethodReturnExpression LowerMethodReturnExpression(
+            Expressions.MethodReturnExpression e)
+    {
+        return new MethodReturnExpression(
+                e.MethodReturn.Expression is not null
+                    ? LowerExpression(e.MethodReturn.Expression)
+                    : new UnitConstantExpression(true));
     }
 
     private MethodCallExpression LowerMethodCallExpression(Expressions.MethodCallExpression e)
@@ -228,13 +238,14 @@ public partial class ProgramAbseil
     private ILoweredExpression LowerValueAccessorExpression(
             Expressions.ValueAccessorExpression e)
     {
+
         return e switch
         {
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: StringToken { StringValue: var stringLiteral } } } => new StringConstantExpression(e.ValueUseful, stringLiteral),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue} }} => new IntConstantExpression(e.ValueUseful, intValue),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.True }} => new BoolConstantExpression(e.ValueUseful, true),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.False }} => new BoolConstantExpression(e.ValueUseful, false),
-            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Variable }, ReferencedVariable: {} variable} => VariableAccess(variable, e.ValueUseful),
+            { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, ReferencedVariable: {} variable} => VariableAccess(variable, e.ValueUseful),
             _ => throw new NotImplementedException($"{e}")
         };
 
@@ -242,6 +253,7 @@ public partial class ProgramAbseil
                 TypeChecking.TypeChecker.IVariable variable,
                 bool valueUseful)
         {
+            var resolvedType = GetTypeReference(e.ResolvedType.NotNull());
             switch (variable)
             {
                 case TypeChecking.TypeChecker.LocalVariable localVariable:
@@ -254,7 +266,7 @@ public partial class ProgramAbseil
                         return new LocalVariableAccessor(
                                 variable.Name.StringValue,
                                 valueUseful,
-                                GetTypeReference(variable.Type));
+                                resolvedType);
                     }
                 case TypeChecking.TypeChecker.FieldVariable fieldVariable
                     when fieldVariable.ContainingSignature.Id == _currentType?.DefinitionId
@@ -266,7 +278,7 @@ public partial class ProgramAbseil
                                     _currentType,
                                     fieldVariable.Name.StringValue,
                                     valueUseful,
-                                    GetTypeReference(fieldVariable.Type));
+                                    resolvedType);
                         }
 
                         if (_currentFunction is null
@@ -276,6 +288,11 @@ public partial class ProgramAbseil
                                     _currentType))
                         {
                             throw new InvalidOperationException("Expected to be in instance function");
+                        }
+
+                        if (fieldVariable.ReferencedInClosure)
+                        {
+                            throw new NotImplementedException();
                         }
 
                         // todo: assert we're in a class and have _classVariant
@@ -288,11 +305,26 @@ public partial class ProgramAbseil
                             fieldVariable.Name.StringValue,
                             "_classVariant",
                             valueUseful,
-                            GetTypeReference(fieldVariable.Type));
+                            resolvedType);
                     }
                 case TypeChecking.TypeChecker.FunctionSignatureParameter argument:
                     {
-                        break;
+                        Debug.Assert(_currentFunction is not null); 
+
+                        var argumentIndex = argument.ParameterIndex;
+                        if (argument.ReferencedInClosure)
+                        {
+                            throw new NotImplementedException();
+                        }
+
+                        if (argument.ContainingFunction.AccessedOuterVariables.Count > 0
+                                || (argument.ContainingFunction.OwnerType is not null
+                                    && !argument.ContainingFunction.IsStatic))
+                        {
+                            argumentIndex++;
+                        }
+
+                        return new LoadArgumentExpression(argumentIndex, valueUseful, resolvedType);
                     }
             }
 
@@ -427,6 +459,6 @@ public partial class ProgramAbseil
                 resolvedType);
         }
 
-        throw new NotImplementedException(left.ToString());
+        throw new UnreachableException();
     }
 }

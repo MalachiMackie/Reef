@@ -268,6 +268,20 @@ public class SimpleExpressionTests : TestBase
                                 MethodReturnUnit()
                             ])
                     ])
+            },
+            {
+                "function parameter access",
+                "fn MyFn(a: string): string { return a; }",
+                LoweredProgram(
+                    methods: [
+                        Method("MyFn",
+                            [
+                                MethodReturn(
+                                    LoadArgument(0, true, StringType))
+                            ],
+                            parameters: [StringType],
+                            returnType: StringType)
+                    ])
             }
         };
     }
