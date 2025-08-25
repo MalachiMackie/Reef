@@ -815,9 +815,9 @@ public class TypeCheckerTests
             "var a: bool = !(true);",
             """
             var a = (1, true, "");
-            var b: int = a.First;
-            var c: bool = a.Second;
-            var d: string = a.Third;
+            var b: int = a.Item0;
+            var c: bool = a.Item1;
+            var d: string = a.Item2;
             """,
             "var a: int = (1 + 2) * 3;",
             "var a: bool = !true;",

@@ -7,19 +7,7 @@ public partial class TypeChecker
 {
     public class ClassSignature : ITypeSignature
     {
-        public static readonly Dictionary<int, string> TupleFieldNames = new()
-        {
-            { 0, "First" },
-            { 1, "Second" },
-            { 2, "Third" },
-            { 3, "Fourth" },
-            { 4, "Fifth" },
-            { 5, "Sixth" },
-            { 6, "Seventh" },
-            { 7, "Eighth" },
-            { 8, "Ninth" },
-            { 9, "Tenth" }
-        };
+        public static string TupleFieldName(int index) => $"Item{index}";
 
         public static ClassSignature Unit { get; } = new()
         { TypeParameters = [], Name = "Unit", Fields = [], Functions = [] };
@@ -140,9 +128,7 @@ public partial class TypeChecker
             {
                 // todo: verify this
                 IsMutable = false,
-                Name = TupleFieldNames.TryGetValue(i, out var name)
-                    ? name
-                    : throw new InvalidOperationException("Tuple can only contain at most 10 elements"),
+                Name = TupleFieldName(i),
                 IsStatic = false,
                 Type = typeParameters[i],
                 IsPublic = true,

@@ -357,7 +357,7 @@ public class ILCompile
                             DisplayName = variant.Name,
                             Fields = tupleUnionVariant.TupleMembers.Select((y, i) => new ReefField
                             {
-                                DisplayName = TypeChecker.ClassSignature.TupleFieldNames[i],
+                                DisplayName = TypeChecker.ClassSignature.TupleFieldName(i),
                                 IsStatic = false,
                                 IsPublic = true,
                                 StaticInitializerInstructions = [],
@@ -387,7 +387,7 @@ public class ILCompile
                             var memberType = GetTypeReference(member);
                             parameters.Add(new ReefMethod.Parameter
                             {
-                                DisplayName = TypeChecker.ClassSignature.TupleFieldNames[memberIndex],
+                                DisplayName = TypeChecker.ClassSignature.TupleFieldName(memberIndex),
                                 Type = memberType,
                             });
                         }

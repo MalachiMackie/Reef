@@ -73,14 +73,14 @@ public class Tests
                                 Variant("A", fields: [Field("_variantIdentifier", ConcreteTypeReference("int"), isPublic: true)]),
                                 Variant("B", fields: [
                                     Field("_variantIdentifier", ConcreteTypeReference("int"), isPublic: true),
-                                    Field("First", ConcreteTypeReference("string"), isPublic: true),
+                                    Field("Item0", ConcreteTypeReference("string"), isPublic: true),
                                 ]),
                             ],
                             methods: [
                                 Method("MyUnion_B_Create",
                                     isStatic: true,
                                     parameters: [
-                                        Parameter("First", ConcreteTypeReference("string")),
+                                        Parameter("Item0", ConcreteTypeReference("string")),
                                     ],
                                     returnType: ConcreteTypeReference("MyUnion"),
                                     instructions: [

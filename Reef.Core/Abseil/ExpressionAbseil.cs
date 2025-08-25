@@ -22,8 +22,27 @@ public partial class ProgramAbseil
             Expressions.MemberAccessExpression e => LowerMemberAccessExpression(e),
             Expressions.MethodCallExpression e => LowerMethodCallExpression(e),
             Expressions.MethodReturnExpression e => LowerMethodReturnExpression(e),
+            Expressions.TupleExpression e => LowerTupleExpression(e),
             _ => throw new NotImplementedException($"{expression.GetType()}")
         };
+    }
+
+    private ILoweredExpression LowerTupleExpression(
+            Expressions.TupleExpression e)
+    {
+        if (e.Values.Count == 1)
+        {
+            return LowerExpression(e.Values[0]);
+        }
+
+        var tupleType = GetTypeReference(e.ResolvedType.NotNull()) as LoweredConcreteTypeReference;
+        Debug.Assert(tupleType is not null, "tuple type is not concrete");
+
+        return new CreateObjectExpression(
+            tupleType,
+            "_tupleVariant",
+            e.ValueUseful,
+            e.Values.Index().ToDictionary(x => $"Item{x.Index}", x => LowerExpression(x.Item)));
     }
 
     private MethodReturnExpression LowerMethodReturnExpression(

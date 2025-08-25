@@ -282,6 +282,38 @@ public class SimpleExpressionTests : TestBase
                             parameters: [StringType],
                             returnType: StringType)
                     ])
+            },
+            {
+                "single element tuple",
+                "(1)",
+                LoweredProgram(
+                    methods: [
+                        Method("_Main",
+                            [
+                                IntConstant(1, false),
+                                MethodReturnUnit()
+                            ])
+                    ])
+            },
+            {
+                "two element tuple",
+                "(1, \"\")",
+                LoweredProgram(
+                    methods: [
+                        Method("_Main",
+                            [
+                                CreateObject(
+                                    ConcreteTypeReference("Tuple`2", [Int, StringType]),
+                                    "_tupleVariant",
+                                    false,
+                                    new()
+                                    {
+                                        {"Item0", IntConstant(1, true)},
+                                        {"Item1", StringConstant("", true)},
+                                    }),
+                                MethodReturnUnit()
+                            ])
+                    ])
             }
         };
     }

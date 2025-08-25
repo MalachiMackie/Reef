@@ -221,8 +221,8 @@ public static class ModuleStructure
                                 fields:
                                 [
                                     Field("_variantIdentifier", ConcreteTypeReference("int"), isPublic: true),
-                                    Field("First", ConcreteTypeReference("string"), isPublic: true),
-                                    Field("Second", ConcreteTypeReference("int"), isPublic: true),
+                                    Field("Item0", ConcreteTypeReference("string"), isPublic: true),
+                                    Field("Item1", ConcreteTypeReference("int"), isPublic: true),
                                 ]),
                             Variant("C",
                                 fields:
@@ -236,8 +236,8 @@ public static class ModuleStructure
                                 "MyUnion_B_Create",
                                 isStatic: true,
                                 parameters: [
-                                    Parameter("First", ConcreteTypeReference("string")),
-                                    Parameter("Second", ConcreteTypeReference("int")),
+                                    Parameter("Item0", ConcreteTypeReference("string")),
+                                    Parameter("Item1", ConcreteTypeReference("int")),
                                 ],
                                 returnType: ConcreteTypeReference("MyUnion"),
                                 instructions: [

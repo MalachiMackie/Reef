@@ -162,7 +162,7 @@ public partial class ProgramAbseil
                     {
                         var memberTypes = u.TupleMembers.NotNull().Select(GetTypeReference).ToArray();
                         fields.AddRange(memberTypes.Select((x, i) => new DataTypeField(
-                                        $"_tupleMember_{i}",
+                                        $"Item{i}",
                                         x)));
 
                         var createMethodFieldInitializations = fields.Skip(1).Index().ToDictionary(x => x.Item.Name, x => (ILoweredExpression)new LoadArgumentExpression((uint)x.Index, true, x.Item.Type));

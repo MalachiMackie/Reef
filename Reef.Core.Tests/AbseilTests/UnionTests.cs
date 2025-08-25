@@ -96,8 +96,8 @@ public class UnionTests : TestBase
                         variants: [
                             Variant("A", [
                                 Field("_variantIdentifier", Int),
-                                Field("_tupleMember_0", StringType),
-                                Field("_tupleMember_1", Int),
+                                Field("Item0", StringType),
+                                Field("Item1", Int),
                             ])
                         ])
                 ], methods: [
@@ -111,8 +111,8 @@ public class UnionTests : TestBase
                                         new()
                                         {
                                             {"_variantIdentifier", IntConstant(0, true)},
-                                            {"_tupleMember_0", LoadArgument(0, true, StringType)},
-                                            {"_tupleMember_1", LoadArgument(1, true, Int)},
+                                            {"Item0", LoadArgument(0, true, StringType)},
+                                            {"Item1", LoadArgument(1, true, Int)},
                                         }))
                                 ],
                                 parameters: [StringType, Int],
@@ -129,7 +129,7 @@ public class UnionTests : TestBase
                             Variant("A",
                                 [
                                     Field("_variantIdentifier", Int),
-                                    Field("_tupleMember_0", GenericPlaceholder("T"))
+                                    Field("Item0", GenericPlaceholder("T"))
                                 ])
                         ])
                 ], methods: [
@@ -143,7 +143,7 @@ public class UnionTests : TestBase
                                         new()
                                         {
                                             {"_variantIdentifier", IntConstant(0, true)},
-                                            {"_tupleMember_0", LoadArgument(0, true, GenericPlaceholder("T"))},
+                                            {"Item0", LoadArgument(0, true, GenericPlaceholder("T"))},
                                         }))
                                 ],
                                 parameters: [GenericPlaceholder("T")],
@@ -187,13 +187,13 @@ public class UnionTests : TestBase
                                 "A",
                                 [
                                     Field("_variantIdentifier", Int),
-                                    Field("_tupleMember_0", StringType),
+                                    Field("Item0", StringType),
                                 ]),
                             Variant(
                                 "B",
                                 [
                                     Field("_variantIdentifier", Int),
-                                    Field("_tupleMember_0", StringType),
+                                    Field("Item0", StringType),
                                 ]),
                         ])
                 ], methods: [
@@ -210,7 +210,7 @@ public class UnionTests : TestBase
                                         new()
                                         {
                                             {"_variantIdentifier", IntConstant(0, true)},
-                                            {"_tupleMember_0", LoadArgument(0, true, StringType)},
+                                            {"Item0", LoadArgument(0, true, StringType)},
                                         }))
                                 ],
                                 parameters: [StringType],
@@ -225,7 +225,7 @@ public class UnionTests : TestBase
                                         new()
                                         {
                                             {"_variantIdentifier", IntConstant(1, true)},
-                                            {"_tupleMember_0", LoadArgument(0, true, StringType)},
+                                            {"Item0", LoadArgument(0, true, StringType)},
                                         }))
                                 ],
                                 parameters: [StringType],

@@ -6,14 +6,14 @@ public partial class TypeChecker
 {
     private ITypeReference TypeCheckTupleExpression(TupleExpression tuple)
     {
-        foreach (var value in tuple.Values)
-        {
-            value.ValueUseful = true;
-        }
-
         if (tuple.Values.Count == 1)
         {
             return TypeCheckExpression(tuple.Values[0]);
+        }
+
+        foreach (var value in tuple.Values)
+        {
+            value.ValueUseful = true;
         }
 
         var types = tuple.Values.Select(value => (TypeCheckExpression(value), value.SourceRange)).ToArray();
