@@ -328,6 +328,156 @@ public class ClassTests : TestBase
                             parameters: [ConcreteTypeReference("MyClass")])
                     ])
             },
+            {
+                "assign to field through member access",
+                """
+                class MyClass
+                {
+                    pub mut field MyField: string
+                }
+                var mut a = new MyClass{MyField = ""};
+                a.MyField = "hi";
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType(
+                            "MyClass",
+                            variants: [
+                                Variant("_classVariant", [Field("MyField", StringType)])
+                            ])
+                    ],
+                    methods: [
+                        Method("_Main",
+                            [
+                                VariableDeclaration("a",
+                                    CreateObject(
+                                        ConcreteTypeReference("MyClass"),
+                                        "_classVariant",
+                                        true,
+                                        new(){{"MyField", StringConstant("", true)}}),
+                                    false),
+                                FieldAssignment(
+                                    LocalAccess("a", true, ConcreteTypeReference("MyClass")),
+                                    "MyField",
+                                    StringConstant("hi", true),
+                                    false,
+                                    StringType),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("a", ConcreteTypeReference("MyClass"))
+                            ])
+                    ])
+            },
+            {
+                "assign to field in current type",
+                """
+                class MyClass
+                {
+                    pub mut field MyField: string,
+
+                    mut fn SomeFn()
+                    {
+                        MyField = "hi";
+                    }
+
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType(
+                            "MyClass",
+                            variants: [
+                                Variant("_classVariant", [Field("MyField", StringType)])
+                            ])
+                    ],
+                    methods: [
+                        Method("MyClass__SomeFn",
+                            [
+                                FieldAssignment(
+                                    LoadArgument(0, true, ConcreteTypeReference("MyClass")),
+                                    "MyField",
+                                    StringConstant("hi", true),
+                                    false,
+                                    StringType),
+                                MethodReturnUnit()
+                            ],
+                            parameters: [
+                                ConcreteTypeReference("MyClass")
+                            ])
+                    ])
+            },
+            {
+                "assign to static field in current type",
+                """
+                class MyClass
+                {
+                    pub mut static field MyField: string = "",
+
+                    static fn SomeFn()
+                    {
+                        MyField = "hi";
+                    }
+
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType(
+                            "MyClass",
+                            variants: [
+                                Variant("_classVariant")
+                            ],
+                            staticFields: [
+                                StaticField("MyField", StringType, StringConstant("", true))
+                            ])
+                    ],
+                    methods: [
+                        Method("MyClass__SomeFn",
+                            [
+                                StaticFieldAssignment(
+                                    ConcreteTypeReference("MyClass"),
+                                    "MyField",
+                                    StringConstant("hi", true),
+                                    false,
+                                    StringType),
+                                MethodReturnUnit()
+                            ])
+                    ])
+            },
+            {
+                "assign to static field through static member access",
+                """
+                class MyClass
+                {
+                    pub mut static field MyField: string = "",
+                }
+                MyClass::MyField = "hi";
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType(
+                            "MyClass",
+                            variants: [
+                                Variant("_classVariant")
+                            ],
+                            staticFields: [
+                                StaticField("MyField", StringType, StringConstant("", true))
+                            ])
+                    ],
+                    methods: [
+                        Method("_Main",
+                            [
+                                StaticFieldAssignment(
+                                    ConcreteTypeReference("MyClass"),
+                                    "MyField",
+                                    StringConstant("hi", true),
+                                    false,
+                                    StringType),
+                                MethodReturnUnit()
+                            ])
+                    ])
+            }
         };
     }
 }

@@ -308,7 +308,8 @@ public partial class ProgramAbseil
             return LowerValueAssignment(
                     e.BinaryOperator.Left.NotNull(),
                     e.BinaryOperator.Right.NotNull(),
-                    e.ValueUseful);
+                    e.ValueUseful,
+                    GetTypeReference(e.ResolvedType.NotNull()));
         }
 
         var left = LowerExpression(e.BinaryOperator.Left.NotNull());
@@ -343,7 +344,8 @@ public partial class ProgramAbseil
     private ILoweredExpression LowerValueAssignment(
             Expressions.IExpression left,
             Expressions.IExpression right,
-            bool valueUseful)
+            bool valueUseful,
+            ILoweredTypeReference resolvedType)
     {
         if (left is Expressions.ValueAccessorExpression valueAccessor)
         {
@@ -358,11 +360,73 @@ public partial class ProgramAbseil
                 return new LocalAssignmentExpression(
                         localVariable.Name.StringValue,
                         LowerExpression(right),
-                        GetTypeReference(localVariable.Type),
+                        resolvedType,
                         valueUseful);
             }
+
+            if (variable is TypeChecking.TypeChecker.FieldVariable fieldVariable)
+            {
+                if (fieldVariable.ReferencedInClosure)
+                {
+                    throw new NotImplementedException();
+                }
+
+                Debug.Assert(_currentType is not null);
+                Debug.Assert(fieldVariable.ContainingSignature.Id == _currentType.DefinitionId);
+
+                if (fieldVariable.IsStaticField)
+                {
+                    return new StaticFieldAssignmentExpression(
+                        _currentType,
+                        fieldVariable.Name.StringValue,
+                        LowerExpression(right),
+                        valueUseful,
+                        resolvedType);
+                }
+
+                Debug.Assert(_currentFunction is not null);
+                Debug.Assert(_currentFunction.Parameters.Count > 0);
+                Debug.Assert(EqualTypeReferences(_currentFunction.Parameters[0], _currentType));
+
+                return new FieldAssignmentExpression(
+                    new LoadArgumentExpression(0, true, _currentType),
+                    fieldVariable.Name.StringValue,
+                    LowerExpression(right),
+                    valueUseful,
+                    resolvedType);
+            }
+
             throw new NotImplementedException(variable.ToString());
         }
+
+        if (left is Expressions.MemberAccessExpression memberAccess)
+        {
+            var memberOwner = LowerExpression(memberAccess.MemberAccess.Owner);
+
+            return new FieldAssignmentExpression(
+                memberOwner,
+                memberAccess.MemberAccess.MemberName.NotNull().StringValue,
+                LowerExpression(right),
+                valueUseful,
+                resolvedType);
+        }
+
+        if (left is Expressions.StaticMemberAccessExpression staticMemberAccess)
+        {
+            if (GetTypeReference(staticMemberAccess.OwnerType.NotNull())
+                    is not LoweredConcreteTypeReference concreteType)
+            {
+                throw new InvalidOperationException("Expected type to be concrete");
+            }
+
+            return new StaticFieldAssignmentExpression(
+                concreteType,
+                staticMemberAccess.StaticMemberAccess.MemberName.NotNull().StringValue,
+                LowerExpression(right),
+                valueUseful,
+                resolvedType);
+        }
+
         throw new NotImplementedException(left.ToString());
     }
 }

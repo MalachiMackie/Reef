@@ -93,6 +93,24 @@ public record LocalAssignmentExpression(
 {
 }
 
+public record StaticFieldAssignmentExpression(
+        LoweredConcreteTypeReference OwnerType,
+        string FieldName,
+        ILoweredExpression FieldValue,
+        bool ValueUseful,
+        ILoweredTypeReference ResolvedType) : ILoweredExpression
+{
+}
+
+public record FieldAssignmentExpression(
+        ILoweredExpression FieldOwnerExpression,
+        string FieldName,
+        ILoweredExpression FieldValue,
+        bool ValueUseful,
+        ILoweredTypeReference ResolvedType) : ILoweredExpression
+{
+}
+
 public record BlockExpression(
         IReadOnlyList<ILoweredExpression> Expressions,
         ILoweredTypeReference ResolvedType,

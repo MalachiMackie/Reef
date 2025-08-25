@@ -64,6 +64,17 @@ public class TypeCheckerTests
         return new TheoryData<string>
         {
             """
+            class MyClass {
+                static mut field MyField: string = "",
+
+                // SomeFn doesn't need to be marked as mutable because it mutates a static field, not an instance field
+                fn SomeFn()
+                {
+                    MyField = "hi";
+                }
+            }
+            """,
+            """
             var a = 1;
             SomeFn();
             fn SomeFn()

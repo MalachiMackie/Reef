@@ -106,7 +106,9 @@ public partial class TypeChecker
                             }
                         }
 
-                        if (variable is FieldVariable && CurrentFunctionSignature is not { IsMutable: true })
+                        if (variable is FieldVariable fieldVariable
+                                && !fieldVariable.IsStaticField
+                                && CurrentFunctionSignature is not { IsMutable: true })
                         {
                             _errors.Add(TypeCheckerError.MutatingInstanceInNonMutableFunction(
                                 CurrentFunctionSignature!.Name,

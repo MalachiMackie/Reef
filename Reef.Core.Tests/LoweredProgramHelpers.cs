@@ -246,6 +246,26 @@ public static class LoweredProgramHelpers
         return new(expressions, resolvedType, valueUseful);
     }
 
+    public static FieldAssignmentExpression FieldAssignment(
+            ILoweredExpression fieldOwnerExpression,
+            string fieldName,
+            ILoweredExpression fieldValue,
+            bool valueUseful,
+            ILoweredTypeReference resolvedType)
+    {
+        return new(fieldOwnerExpression, fieldName, fieldValue, valueUseful, resolvedType);
+    }
+
+    public static StaticFieldAssignmentExpression StaticFieldAssignment(
+            LoweredConcreteTypeReference ownerType,
+            string fieldName,
+            ILoweredExpression fieldValue,
+            bool valueUseful,
+            ILoweredTypeReference resolvedType)
+    {
+        return new(ownerType, fieldName, fieldValue, valueUseful, resolvedType);
+    }
+
     public static LoweredConcreteTypeReference Int { get; }
         = new LoweredConcreteTypeReference(
                 TypeChecking.TypeChecker.ClassSignature.Int.Name,

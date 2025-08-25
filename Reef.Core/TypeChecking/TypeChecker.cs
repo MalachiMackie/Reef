@@ -575,8 +575,8 @@ public partial class TypeChecker
     public interface ITypeSignature
     {
         string Name { get; }
-
         Guid Id { get; }
+        IReadOnlyList<GenericPlaceholder> TypeParameters { get; }
     }
 
     public record TypeField
