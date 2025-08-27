@@ -358,6 +358,7 @@ public class ClassTests : TestBase
                                     false),
                                 FieldAssignment(
                                     LocalAccess("a", true, ConcreteTypeReference("MyClass")),
+                                    "_classVariant",
                                     "MyField",
                                     StringConstant("hi", true),
                                     false,
@@ -396,6 +397,7 @@ public class ClassTests : TestBase
                             [
                                 FieldAssignment(
                                     LoadArgument(0, true, ConcreteTypeReference("MyClass")),
+                                    "_classVariant",
                                     "MyField",
                                     StringConstant("hi", true),
                                     false,

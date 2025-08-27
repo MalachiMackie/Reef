@@ -84,7 +84,7 @@ public partial class ProgramAbseil
                 && _currentType is not null
                 && EqualTypeReferences(GetTypeReference(instantiatedFunction.OwnerType), _currentType)
                 && _currentFunction is not null
-                && EqualTypeReferences(_currentFunction.Parameters[0], _currentType))
+                && EqualTypeReferences(_currentFunction.Value.LoweredMethod.Parameters[0], _currentType))
         {
             arguments.Add(
                     new LoadArgumentExpression(0, true, _currentType));
@@ -151,7 +151,7 @@ public partial class ProgramAbseil
             throw new UnreachableException();
         }
 
-        var dataType = _types.First(x => x.Id == concreteTypeReference.DefinitionId);
+        var dataType = _types[concreteTypeReference.DefinitionId];
 
         var variantIdentifier = dataType.Variants.Index()
             .First(x => x.Item.Name == e.UnionInitializer.VariantIdentifier.StringValue).Index;
@@ -179,7 +179,7 @@ public partial class ProgramAbseil
             var type = GetTypeReference(e.ResolvedType.NotNull())
                 as LoweredConcreteTypeReference ?? throw new UnreachableException();
 
-            var dataType = _types.First(x => x.Id == type.DefinitionId);
+            var dataType = _types[type.DefinitionId];
             var variantName = e.StaticMemberAccess.MemberName.NotNull().StringValue;
             var variantIdentifier = dataType.Variants.Index()
                 .First(x => x.Item.Name == variantName).Index;
@@ -228,15 +228,68 @@ public partial class ProgramAbseil
         var variableName = e.VariableDeclaration.Variable.NotNull()
             .Name.StringValue;
 
+        var referencedInClosure = e.VariableDeclaration.Variable!.ReferencedInClosure;
+
         if (e.VariableDeclaration.Value is null)
         {
+            if (referencedInClosure)
+            {
+                // the variable has been consumed into the locals variable, and we're not assigning a value, so just put a unit constant here
+                return new UnitConstantExpression(e.ValueUseful);
+            }
             return new VariableDeclarationExpression(variableName, e.ValueUseful);
         }
 
-        return new VariableDeclarationAndAssignmentExpression(
-                variableName,
-                LowerExpression(e.VariableDeclaration.Value),
-                e.ValueUseful);
+        var loweredValue = LowerExpression(e.VariableDeclaration.Value);
+
+        if (!referencedInClosure)
+        {
+            return new VariableDeclarationAndAssignmentExpression(
+                    variableName,
+                    loweredValue,
+                    e.ValueUseful);
+        }
+
+        var localsTypeId = _currentFunction.NotNull().FunctionSignature.LocalsTypeId
+            .NotNull();
+        var localsType = _types[localsTypeId];
+        
+        var localsFieldAssignment = new FieldAssignmentExpression(
+            new LocalVariableAccessor("__locals",
+                true,
+                new LoweredConcreteTypeReference(
+                    localsType.Name,
+                    localsType.Id,
+                    [])),
+            "_classVariant",
+            variableName,
+            loweredValue,
+            // hard code this to false, because either `e.ValueUseful` was false,
+            // or we're going to replace the value with a block
+            false,
+            loweredValue.ResolvedType);
+
+        if (e.ValueUseful)
+        {
+            // because the value of this variable declaration expression is useful
+            // (ie used in the parent expression), and we have just changed what that
+            // resulting value would be (value declarations return unit, but field
+            // assignments return the assigned value), we need to stick this assignment
+            // in a block and put a unit constant back
+
+            // I'm not sure if this is going to bite me in the butt because of any specific
+            // block semantics (ie dropping values at the end of a block)
+            var unit = new UnitConstantExpression(ValueUseful: true);
+            return new BlockExpression(
+                [
+                    localsFieldAssignment,
+                    unit
+                ],
+                unit.ResolvedType,
+                ValueUseful: true);
+        }
+
+        return localsFieldAssignment;
     }
 
     private ILoweredExpression LowerUnaryOperatorExpression(
@@ -279,7 +332,40 @@ public partial class ProgramAbseil
                     {
                         if (localVariable.ReferencedInClosure)
                         {
-                            throw new NotImplementedException();
+                            var currentFunction = _currentFunction.NotNull();
+                            var containingFunction = localVariable.ContainingFunction.NotNull();
+                            var containingFunctionLocals = _types[containingFunction.LocalsTypeId.NotNull()];
+                            if (containingFunction.Id == currentFunction.FunctionSignature.Id)
+                            {
+                                throw new NotImplementedException();
+                            }
+                            else
+                            {
+                                var closureTypeId = _currentFunction.NotNull()
+                                        .FunctionSignature.ClosureTypeId.NotNull();
+                                var closureType = _types[closureTypeId];
+
+                                return new FieldAccessExpression(
+                                    new FieldAccessExpression(
+                                        new LoadArgumentExpression(
+                                            0,
+                                            true,
+                                            new LoweredConcreteTypeReference(
+                                                closureType.Name,
+                                                closureTypeId,
+                                                [])),
+                                        containingFunctionLocals.Name,
+                                        "_classVariant",
+                                        true,
+                                        new LoweredConcreteTypeReference(
+                                            containingFunctionLocals.Name,
+                                            containingFunctionLocals.Id,
+                                            [])),
+                                    localVariable.Name.StringValue,
+                                    "_classVariant",
+                                    e.ValueUseful,
+                                    resolvedType);
+                            }
                         }
 
                         return new LocalVariableAccessor(
@@ -296,8 +382,10 @@ public partial class ProgramAbseil
 
                         Debug.Assert(_currentFunction is not null);
                         Debug.Assert(_currentType is not null); 
-                        Debug.Assert(_currentFunction.Parameters.Count > 0);
-                        Debug.Assert(EqualTypeReferences(_currentFunction.Parameters[0], _currentType));
+                        Debug.Assert(_currentFunction.Value.LoweredMethod.Parameters.Count > 0);
+                        Debug.Assert(EqualTypeReferences(
+                                    _currentFunction.Value.LoweredMethod.Parameters[0],
+                                    _currentType));
 
                         return new LoadArgumentExpression(
                                 0, valueUseful, resolvedType);
@@ -316,9 +404,9 @@ public partial class ProgramAbseil
                         }
 
                         if (_currentFunction is null
-                                || _currentFunction.Parameters.Count == 0
+                                || _currentFunction.Value.LoweredMethod.Parameters.Count == 0
                                 || !EqualTypeReferences(
-                                    _currentFunction.Parameters[0],
+                                    _currentFunction.Value.LoweredMethod.Parameters[0],
                                     _currentType))
                         {
                             throw new InvalidOperationException("Expected to be in instance function");
@@ -451,11 +539,14 @@ public partial class ProgramAbseil
                 }
 
                 Debug.Assert(_currentFunction is not null);
-                Debug.Assert(_currentFunction.Parameters.Count > 0);
-                Debug.Assert(EqualTypeReferences(_currentFunction.Parameters[0], _currentType));
+                Debug.Assert(_currentFunction.Value.LoweredMethod.Parameters.Count > 0);
+                Debug.Assert(EqualTypeReferences(
+                            _currentFunction.Value.LoweredMethod.Parameters[0],
+                            _currentType));
 
                 return new FieldAssignmentExpression(
                     new LoadArgumentExpression(0, true, _currentType),
+                    "_classVariant",
                     fieldVariable.Name.StringValue,
                     LowerExpression(right),
                     valueUseful,
@@ -471,6 +562,7 @@ public partial class ProgramAbseil
 
             return new FieldAssignmentExpression(
                 memberOwner,
+                "_classVariant",
                 memberAccess.MemberAccess.MemberName.NotNull().StringValue,
                 LowerExpression(right),
                 valueUseful,

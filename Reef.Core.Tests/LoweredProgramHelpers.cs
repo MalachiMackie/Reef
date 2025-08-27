@@ -248,12 +248,13 @@ public static class LoweredProgramHelpers
 
     public static FieldAssignmentExpression FieldAssignment(
             ILoweredExpression fieldOwnerExpression,
+            string variantName,
             string fieldName,
             ILoweredExpression fieldValue,
             bool valueUseful,
             ILoweredTypeReference resolvedType)
     {
-        return new(fieldOwnerExpression, fieldName, fieldValue, valueUseful, resolvedType);
+        return new(fieldOwnerExpression, variantName, fieldName, fieldValue, valueUseful, resolvedType);
     }
 
     public static StaticFieldAssignmentExpression StaticFieldAssignment(

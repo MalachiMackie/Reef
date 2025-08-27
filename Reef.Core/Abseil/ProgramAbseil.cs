@@ -8,14 +8,16 @@ public partial class ProgramAbseil
     private readonly Dictionary<
         LoweredMethod,
         (
+            FunctionSignature fnSignature,
             List<ILoweredExpression> loweredExpressions,
             IReadOnlyList<Expressions.IExpression> highLevelExpressions,
-            LoweredConcreteTypeReference? ownerType
+            LoweredConcreteTypeReference? ownerType,
+            bool needsLowering
         )> _methods = [];
-    private readonly List<DataType> _types = [];
+    private readonly Dictionary<Guid, DataType> _types = [];
     private readonly LangProgram _program;
     private LoweredConcreteTypeReference? _currentType;
-    private LoweredMethod? _currentFunction;
+    private (LoweredMethod LoweredMethod, FunctionSignature FunctionSignature)? _currentFunction;
 
     public static LoweredProgram Lower(LangProgram program)
     {
@@ -29,31 +31,52 @@ public partial class ProgramAbseil
 
     private LoweredProgram LowerInner()
     {
-
         foreach (var dataType in _program.Unions.Select(x => LowerUnion(x.Signature.NotNull())))
         {
-            _types.Add(dataType);
+            _types.Add(dataType.Id, dataType);
         }
 
         foreach (var dataType in _program.Classes.Select(x => LowerClass(x.Signature.NotNull())))
         {
-            _types.Add(dataType);
+            _types.Add(dataType.Id, dataType);
         }
 
-        foreach (var (method, loweredExpressions, expressions) in _program.Functions.Select(x => GenerateLoweredMethod(null, x.Signature.NotNull(), null)))
+        foreach (var fnSignature in _program.Functions
+                .Select(x => x.Signature.NotNull())
+                .Where(x => x.AccessedOuterVariables.Count == 0))
         {
-            _methods.Add(method, (loweredExpressions, expressions, null));
+            var (method, loweredExpressions, expressions) = GenerateLoweredMethod(null, fnSignature, null);
+            _methods.Add(method, (fnSignature, loweredExpressions, expressions, null, true));
         }
 
-        if (CreateMainMethod() is { } mainMethod)
+        var mainSignature = new FunctionSignature(
+                Token.Identifier("_Main", SourceSpan.Default),
+                [],
+                [],
+                isStatic: true,
+                isMutable: false,
+                _program.Expressions,
+                functionIndex: null)
         {
-            _methods.Add(mainMethod.Item1, (mainMethod.Item2, mainMethod.Item3, null));
+            ReturnType = InstantiatedClass.Unit,
+            OwnerType = null,
+            LocalVariables = _program.TopLevelLocalVariables,
+            LocalFunctions = [.. _program.Functions
+                .Select(x => x.Signature.NotNull())
+                .Where(x => x.AccessedOuterVariables.Count > 0)]
+        };
+
+        if (mainSignature.Expressions.Count > 0)
+        {
+            var (method, loweredExpressions, expressions) = GenerateLoweredMethod(
+                    null, mainSignature, null);
+            _methods.Add(method, (mainSignature, loweredExpressions, expressions, null, true));
         }
 
-        foreach (var (method, (loweredExpressions, expressions, ownerTypeReference)) in _methods.Where(x => x.Value.loweredExpressions.Count == 0))
+        foreach (var (method, (fnSignature, loweredExpressions, expressions, ownerTypeReference, _)) in _methods.Where(x => x.Value.needsLowering))
         {
             _currentType = ownerTypeReference;
-            _currentFunction = method;
+            _currentFunction = (method, fnSignature);
 
             loweredExpressions.AddRange(expressions.Select(LowerExpression));
 
@@ -66,32 +89,9 @@ public partial class ProgramAbseil
 
         return new LoweredProgram()
         {
-            DataTypes = _types,
+            DataTypes = [.._types.Values],
             Methods = [.._methods.Keys]
         };
-    }
-
-    private (LoweredMethod, List<ILoweredExpression>, IReadOnlyList<Expressions.IExpression>)? CreateMainMethod()
-    {
-        if (_program.Expressions.Count == 0)
-        {
-            return null;
-        }
-
-        var locals = _program.TopLevelLocalVariables
-            .Select(x => new MethodLocal(x.Name.StringValue, GetTypeReference(x.Type)))
-            .ToList();
-
-        var expressions = new List<ILoweredExpression>();
-
-        return (new LoweredMethod(
-                Guid.NewGuid(),
-                "_Main",
-                TypeParameters: [],
-                Parameters: [],
-                ReturnType: GetTypeReference(InstantiatedClass.Unit),
-                expressions,
-                locals), expressions, _program.Expressions);
     }
 
     private DataType LowerClass(ClassSignature klass)
@@ -114,7 +114,7 @@ public partial class ProgramAbseil
         foreach (var method in klass.Functions)
         {
             var (loweredMethod, loweredExpressions, expressions) = GenerateLoweredMethod(klass.Name, method, classTypeReference);
-            _methods.Add(loweredMethod, (loweredExpressions, expressions, classTypeReference));
+            _methods.Add(loweredMethod, (method, loweredExpressions, expressions, classTypeReference, true));
         }
 
         return new DataType(
@@ -137,7 +137,7 @@ public partial class ProgramAbseil
         {
             var (loweredMethod, loweredExpressions, expressions) = GenerateLoweredMethod(union.Name, function, unionTypeReference);
 
-            _methods.Add(loweredMethod, (loweredExpressions, expressions, unionTypeReference));
+            _methods.Add(loweredMethod, (function, loweredExpressions, expressions, unionTypeReference, true));
         }
 
         var variants = new List<DataTypeVariant>(union.Variants.Count);
@@ -178,15 +178,20 @@ public partial class ProgramAbseil
                                                 ))
                                     ];
 
-                        // add the tuple variant as a method
-                        _methods.Add(new LoweredMethod(
+                        var method = new LoweredMethod(
                                     Guid.NewGuid(),
                                     $"{union.Name}_Create_{u.Name}",
                                     [],
                                     memberTypes,
                                     unionTypeReference,
                                     expressions,
-                                    []), (expressions, [], unionTypeReference));
+                                    []);
+
+                        // add the tuple variant as a method
+                        _methods.Add(
+                                method,
+                                // pass null as the signature because it's never used as the current function
+                                (null!, expressions, [], unionTypeReference, false));
                         break;
                     }
                 default:
@@ -208,28 +213,138 @@ public partial class ProgramAbseil
     // instead of lowering the methods expressions right here, we return the list of expressions 
     // to add to later so that all the type and function references are available to be used
     private (LoweredMethod, List<ILoweredExpression>, IReadOnlyList<Expressions.IExpression>) GenerateLoweredMethod(
-            string? typeName,
+            string? ownerName,
             FunctionSignature fnSignature,
             LoweredConcreteTypeReference? ownerTypeReference)
     {
-        foreach (var (localMethod, localLoweredExpressions, localExpressions) in fnSignature.LocalFunctions.Select(x => GenerateLoweredMethod(null, x, null)))
+        var name = ownerName is null
+            ? fnSignature.Name
+            : $"{ownerName}__{fnSignature.Name}";
+
+        var localsAccessedInClosure = fnSignature.LocalVariables.Where(x => x.ReferencedInClosure).ToArray();
+        DataType? localsType = null;
+        if (localsAccessedInClosure.Length > 0)
         {
-            _methods.Add(localMethod, (localLoweredExpressions, localExpressions, ownerTypeReference));
+            localsType = new DataType(
+                Guid.NewGuid(),
+                $"{name}__Locals",
+                [],
+                [
+                    new DataTypeVariant(
+                        "_classVariant",
+                        [..localsAccessedInClosure.Select(
+                            x => new DataTypeField(
+                                x.Name.StringValue,
+                                GetTypeReference(x.Type)))])
+                ],
+                []);
+            _types.Add(localsType.Id, localsType);
+
+            fnSignature.LocalsTypeId = localsType.Id;
         }
 
-        var locals = fnSignature.LocalVariables
-            .Select(x => new MethodLocal(x.Name.StringValue, GetTypeReference(x.Type)))
-            .ToList();
-        var expressions = new List<ILoweredExpression>();
+        DataType? closureType = null;
+        if (fnSignature.AccessedOuterVariables.Count > 0)
+        {
+            var fields = new Dictionary<Guid, DataTypeField>();
+
+            foreach (var variable in fnSignature.AccessedOuterVariables)
+            {
+                switch (variable)
+                {
+                    case LocalVariable localVariable:
+                        {
+                            var localTypeId = localVariable.ContainingFunction.NotNull()
+                                .LocalsTypeId.NotNull(expectedReason: "the containing function containing the referenced local should have already been lowered");
+                            var localType = _types[localTypeId];
+                            var localTypeReference = new LoweredConcreteTypeReference(
+                                localType.Name,
+                                localTypeId,
+                                []);
+
+                            fields.TryAdd(
+                                localTypeId,
+                                new DataTypeField(localType.Name, localTypeReference)); 
+                            break;
+                        }
+                    case FunctionSignatureParameter parameterVariable:
+                            throw new NotImplementedException();
+                    case FieldVariable fieldVariable:
+                            throw new NotImplementedException();
+                    case ThisVariable thisVariable:
+                            throw new NotImplementedException();
+                }
+            }
+
+            closureType = new DataType(
+                Guid.NewGuid(),
+                $"{name}__Closure",
+                [],
+                [
+                    new DataTypeVariant(
+                        "_classVariant",
+                        [..fields.Values])
+                ],
+                []);
+
+            fnSignature.ClosureTypeId = closureType.Id;
+
+            _types.Add(closureType.Id, closureType);
+        }
+
+        foreach (var localSignature in fnSignature.LocalFunctions)
+        {
+            var (localMethod, localLoweredExpressions, localExpressions) = 
+                GenerateLoweredMethod(ownerName: name, localSignature, null);
+
+            _methods.Add(localMethod, (localSignature, localLoweredExpressions, localExpressions, ownerTypeReference, true));
+        }
+
+        var locals = new List<MethodLocal>(
+                fnSignature.LocalVariables.Count
+                - localsAccessedInClosure.Length
+                + (localsAccessedInClosure.Length > 0 ? 1 : 0));
+        var expressions = new List<ILoweredExpression>(fnSignature.Expressions.Count);
+
+        if (localsType is not null)
+        {
+            var localsTypeReference = new LoweredConcreteTypeReference(
+                            localsType.Name,
+                            localsType.Id,
+                            []);
+
+            locals.Add(new MethodLocal(
+                        "__locals",
+                        localsTypeReference));
+
+            expressions.Add(
+                new VariableDeclarationAndAssignmentExpression(
+                    "__locals",
+                    new CreateObjectExpression(
+                        localsTypeReference,
+                        "_classVariant",
+                        true,
+                        []),
+                    false));
+
+        }
+
+        locals.AddRange(fnSignature.LocalVariables.Where(x => !x.ReferencedInClosure)
+                .Select(x => new MethodLocal(x.Name.StringValue, GetTypeReference(x.Type))));
+
         var parameters = fnSignature.Parameters.Values.Select(y => GetTypeReference(y.Type));
 
         if (!fnSignature.IsStatic && ownerTypeReference is not null)
         {
             parameters = parameters.Prepend(ownerTypeReference);
         }
-        var name = typeName is null
-            ? fnSignature.Name
-            : $"{typeName}__{fnSignature.Name}";
+        else if (closureType is not null)
+        {
+            parameters = parameters.Prepend(new LoweredConcreteTypeReference(
+                closureType.Name,
+                closureType.Id,
+                []));
+        }
 
         return (new LoweredMethod(
             fnSignature.Id,

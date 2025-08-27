@@ -18,7 +18,7 @@ public record CreateObjectExpression(
         LoweredConcreteTypeReference Type,
         string Variant,
         bool ValueUseful,
-        IReadOnlyDictionary<string, ILoweredExpression> VariantFieldInitializers) : ILoweredExpression
+        Dictionary<string, ILoweredExpression> VariantFieldInitializers) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType => Type;
 }
@@ -104,6 +104,7 @@ public record StaticFieldAssignmentExpression(
 
 public record FieldAssignmentExpression(
         ILoweredExpression FieldOwnerExpression,
+        string VariantName,
         string FieldName,
         ILoweredExpression FieldValue,
         bool ValueUseful,
