@@ -1389,6 +1389,14 @@ public class TypeCheckerTests
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
             {
+                "duplicate variable declaration",
+                """
+                var a = "";
+                var a = "";
+                """,
+                []
+            },
+            {
                 "assigning to 'this'",
                 """
                 class MyClass

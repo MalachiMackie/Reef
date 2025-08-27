@@ -176,6 +176,92 @@ public class ClosureTests : TestBase
                                 Local("b", StringType)
                             ])
                     ])
+            },
+            {
+                "parameter used in closure",
+                """
+                fn MyFn(a: string)
+                {
+                    var b = a;
+                    fn InnerFn()
+                    {
+                        var c = a;
+                    }
+                }
+                """,
+                LoweredProgram()
+            },
+            {
+                "field used in closure",
+                """
+                class MyClass
+                {
+                    field MyField: string,
+
+                    fn MyFn()
+                    {
+                        var a = MyField;
+                        fn InnerFn()
+                        {
+                            var b = MyField;
+                        }
+                    }
+                }
+                """,
+                LoweredProgram()
+            },
+            {
+                "assigning local in closure",
+                """
+                var mut a = "";
+                a = "hi";
+                fn InnerFn()
+                {
+                    a = "bye";
+                }
+                """,
+                LoweredProgram()
+            },
+            {
+                "assigning field in closure",
+                """
+                class MyClass
+                {
+                    mut field MyField: string,
+
+                    mut fn MyFn()
+                    {
+                        MyField = "hi";
+                        fn InnerFn()
+                        {
+                            MyField = "bye";
+                        }
+                    }
+                }
+                """,
+                LoweredProgram()
+            },
+            {
+                "calling closure",
+                """
+                class MyClass
+                {
+                    mut field MyField: string,
+
+                    mut fn MyFn(param: string)
+                    {
+                        var a = "";
+                        fn InnerFn()
+                        {
+                            var _a = a;
+                            var _param = param;
+                            var _myField = MyField;
+                        }
+                        InnerFn();
+                    }
+                }
+                """,
+                LoweredProgram()
             }
         };
     }
