@@ -93,6 +93,89 @@ public class ClosureTests : TestBase
                                 Local("b", StringType)
                             ])
                     ])
+            },
+            {
+                "access local that is referenced in closure",
+                """
+                var a = "";
+                var c = a;
+                fn InnerFn() {
+                    var b = a;
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("_Main__Locals",
+                            variants: [
+                                Variant("_classVariant", [Field("a", StringType)])
+                            ]),
+                        DataType("_Main__InnerFn__Closure",
+                            variants: [
+                                Variant("_classVariant", [Field("_Main__Locals", ConcreteTypeReference("_Main__Locals"))])
+                            ])
+                    ],
+                    methods: [
+                        Method(
+                            "_Main",
+                            [
+                                VariableDeclaration(
+                                    "__locals", 
+                                    CreateObject(
+                                        ConcreteTypeReference("_Main__Locals"),
+                                        "_classVariant",
+                                        true),
+                                    false),
+                                FieldAssignment(
+                                    LocalAccess("__locals", true, ConcreteTypeReference("_Main__Locals")),
+                                    "_classVariant",
+                                    "a",
+                                    StringConstant("", true),
+                                    false,
+                                    StringType),
+                                VariableDeclaration(
+                                    "c",
+                                    FieldAccess(
+                                        LocalAccess(
+                                            "__locals",
+                                            true,
+                                            ConcreteTypeReference("_Main__Locals")),
+                                        "a",
+                                        "_classVariant",
+                                        true,
+                                        StringType),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("__locals", ConcreteTypeReference("_Main__Locals")),
+                                Local("c", StringType),
+                            ]),
+                        Method(
+                            "_Main__InnerFn",
+                            [
+                                VariableDeclaration(
+                                    "b",
+                                    FieldAccess(
+                                        FieldAccess(
+                                            LoadArgument(0, true, ConcreteTypeReference("_Main__InnerFn__Closure")),
+                                            "_Main__Locals",
+                                            "_classVariant",
+                                            true,
+                                            ConcreteTypeReference("_Main__Locals")),
+                                        "a",
+                                        "_classVariant",
+                                        true,
+                                        StringType),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            parameters: [
+                                ConcreteTypeReference("_Main__InnerFn__Closure")
+                            ],
+                            locals: [
+                                Local("b", StringType)
+                            ])
+                    ])
             }
         };
     }

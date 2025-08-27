@@ -12,6 +12,7 @@ public partial class TypeChecker
 
     public record LocalVariable(FunctionSignature? ContainingFunction, StringToken Name, ITypeReference Type, bool Instantiated, bool Mutable) : IVariable
     {
+        public FunctionSignature? ContainingFunction { get;set; } = ContainingFunction;
         public bool Instantiated { get; set; } = Instantiated;
         public ITypeReference Type { get; set; } = Type;
         public bool ReferencedInClosure { get; set; }

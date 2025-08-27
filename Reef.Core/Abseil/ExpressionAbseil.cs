@@ -335,37 +335,43 @@ public partial class ProgramAbseil
                             var currentFunction = _currentFunction.NotNull();
                             var containingFunction = localVariable.ContainingFunction.NotNull();
                             var containingFunctionLocals = _types[containingFunction.LocalsTypeId.NotNull()];
-                            if (containingFunction.Id == currentFunction.FunctionSignature.Id)
-                            {
-                                throw new NotImplementedException();
-                            }
-                            else
-                            {
-                                var closureTypeId = _currentFunction.NotNull()
-                                        .FunctionSignature.ClosureTypeId.NotNull();
-                                var closureType = _types[closureTypeId];
-
-                                return new FieldAccessExpression(
-                                    new FieldAccessExpression(
-                                        new LoadArgumentExpression(
-                                            0,
-                                            true,
-                                            new LoweredConcreteTypeReference(
-                                                closureType.Name,
-                                                closureTypeId,
-                                                [])),
-                                        containingFunctionLocals.Name,
-                                        "_classVariant",
-                                        true,
-                                        new LoweredConcreteTypeReference(
+                            var localsTypeReference = new LoweredConcreteTypeReference(
                                             containingFunctionLocals.Name,
                                             containingFunctionLocals.Id,
-                                            [])),
+                                            []);
+                            if (containingFunction.Id == currentFunction.FunctionSignature.Id)
+                            {
+                                return new FieldAccessExpression(
+                                    new LocalVariableAccessor(
+                                        "__locals",
+                                        true,
+                                        localsTypeReference),
                                     localVariable.Name.StringValue,
                                     "_classVariant",
                                     e.ValueUseful,
                                     resolvedType);
                             }
+                            var closureTypeId = _currentFunction.NotNull()
+                                    .FunctionSignature.ClosureTypeId.NotNull();
+                            var closureType = _types[closureTypeId];
+
+                            return new FieldAccessExpression(
+                                new FieldAccessExpression(
+                                    new LoadArgumentExpression(
+                                        0,
+                                        true,
+                                        new LoweredConcreteTypeReference(
+                                            closureType.Name,
+                                            closureTypeId,
+                                            [])),
+                                    containingFunctionLocals.Name,
+                                    "_classVariant",
+                                    true,
+                                    localsTypeReference),
+                                localVariable.Name.StringValue,
+                                "_classVariant",
+                                e.ValueUseful,
+                                resolvedType);
                         }
 
                         return new LocalVariableAccessor(

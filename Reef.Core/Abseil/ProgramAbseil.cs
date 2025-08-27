@@ -65,6 +65,10 @@ public partial class ProgramAbseil
                 .Select(x => x.Signature.NotNull())
                 .Where(x => x.AccessedOuterVariables.Count > 0)]
         };
+        foreach (var local in _program.TopLevelLocalVariables)
+        {
+            local.ContainingFunction = mainSignature;
+        }
 
         if (mainSignature.Expressions.Count > 0)
         {
@@ -254,7 +258,8 @@ public partial class ProgramAbseil
                 {
                     case LocalVariable localVariable:
                         {
-                            var localTypeId = localVariable.ContainingFunction.NotNull()
+                            var containingFunction = localVariable.ContainingFunction.NotNull();
+                            var localTypeId = containingFunction
                                 .LocalsTypeId.NotNull(expectedReason: "the containing function containing the referenced local should have already been lowered");
                             var localType = _types[localTypeId];
                             var localTypeReference = new LoweredConcreteTypeReference(
@@ -349,8 +354,8 @@ public partial class ProgramAbseil
         return (new LoweredMethod(
             fnSignature.Id,
             name,
-            fnSignature.TypeParameters.Select(GetGenericPlaceholder).ToArray(),
-            parameters.ToArray(),
+            [.. fnSignature.TypeParameters.Select(GetGenericPlaceholder)],
+            [.. parameters],
             GetTypeReference(fnSignature.ReturnType),
             expressions,
             locals), expressions, fnSignature.Expressions);
@@ -377,11 +382,11 @@ public partial class ProgramAbseil
             InstantiatedClass c => new LoweredConcreteTypeReference(
                     c.Signature.Name,
                     c.Signature.Id,
-                    c.TypeArguments.Select(x => GetTypeReference(x.ResolvedType.NotNull())).ToArray()),
+                    [.. c.TypeArguments.Select(x => GetTypeReference(x.ResolvedType.NotNull()))]),
             InstantiatedUnion u => new LoweredConcreteTypeReference(
                     u.Signature.Name,
                     u.Signature.Id,
-                    u.TypeArguments.Select(x => GetTypeReference(x.ResolvedType.NotNull())).ToArray()),
+                    [.. u.TypeArguments.Select(x => GetTypeReference(x.ResolvedType.NotNull()))]),
             GenericTypeReference g => GetTypeReference(g.ResolvedType.NotNull()),
             GenericPlaceholder g => new LoweredGenericPlaceholder(
                     g.OwnerType.Id,
@@ -391,7 +396,7 @@ public partial class ProgramAbseil
         };
     }
 
-    private bool EqualTypeReferences(ILoweredTypeReference a, ILoweredTypeReference b)
+    private static bool EqualTypeReferences(ILoweredTypeReference a, ILoweredTypeReference b)
     {
         return (a, b) switch
         {
@@ -403,12 +408,5 @@ public partial class ProgramAbseil
                 when genericA.OwnerDefinitionId == genericB.OwnerDefinitionId => true,
             _ => false
         };
-    }
-
-    private bool EqualFunctionReferences(LoweredFunctionReference a, LoweredFunctionReference b)
-    {
-        return a.DefinitionId == b.DefinitionId
-            && a.TypeArguments.Zip(b.TypeArguments)
-                .All(x => EqualTypeReferences(x.First, x.Second));
     }
 }
