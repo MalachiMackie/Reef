@@ -1394,7 +1394,7 @@ public class TypeCheckerTests
                 var a = "";
                 var a = "";
                 """,
-                []
+                [TypeCheckerError.DuplicateVariableDeclaration(Identifier("a"))]
             },
             {
                 "assigning to 'this'",

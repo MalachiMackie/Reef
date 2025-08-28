@@ -208,10 +208,11 @@ public partial class TypeChecker
         VariableDeclarationExpression expression)
     {
         var varName = expression.VariableDeclaration.VariableNameToken;
-        if (VariableIsDefined(varName.StringValue))
+        var isVariableDefined = VariableIsDefined(varName.StringValue);
+        if (isVariableDefined)
         {
-            throw new InvalidOperationException(
-                $"Variable with name {varName} already exists");
+            // todo: variable shadowing?
+            _errors.Add(TypeCheckerError.DuplicateVariableDeclaration(varName));
         }
 
         LocalVariable? variable = null;
@@ -251,7 +252,7 @@ public partial class TypeChecker
                 }
         }
 
-        if (variable is not null)
+        if (variable is not null && !isVariableDefined)
         {
             AddScopedVariable(varName.StringValue, variable);
         }

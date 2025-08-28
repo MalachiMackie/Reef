@@ -317,6 +317,14 @@ public record TypeCheckerError
             new SourceRange(identifier.SourceSpan, identifier.SourceSpan),
             $"Cannot reference static field {identifier.StringValue} in class pattern");
     }
+
+    public static TypeCheckerError DuplicateVariableDeclaration(StringToken identifier)
+    {
+        return new(
+            TypeCheckerErrorType.DuplicateVariableDeclaration,
+            new SourceRange(identifier.SourceSpan, identifier.SourceSpan),
+            $"Variable {identifier.StringValue} has already been declared");
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -366,4 +374,5 @@ public enum TypeCheckerErrorType
     InstanceMemberAccessOnStaticMember,
     UnionClassVariantWithoutInitializer,
     StaticFieldInClassPattern,
+    DuplicateVariableDeclaration,
 }
