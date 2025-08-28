@@ -226,8 +226,9 @@ public partial class ProgramAbseil
             : $"{ownerName}__{fnSignature.Name}";
 
         var localsAccessedInClosure = fnSignature.LocalVariables.Where(x => x.ReferencedInClosure).ToArray();
+        var parametersAccessedInClosure = fnSignature.Parameters.Values.Where(x => x.ReferencedInClosure).ToArray();
         DataType? localsType = null;
-        if (localsAccessedInClosure.Length > 0)
+        if (localsAccessedInClosure.Length > 0 || parametersAccessedInClosure.Length > 0)
         {
             localsType = new DataType(
                 Guid.NewGuid(),
@@ -236,10 +237,14 @@ public partial class ProgramAbseil
                 [
                     new DataTypeVariant(
                         "_classVariant",
-                        [..localsAccessedInClosure.Select(
-                            x => new DataTypeField(
-                                x.Name.StringValue,
-                                GetTypeReference(x.Type)))])
+                        [
+                            ..localsAccessedInClosure.Cast<IVariable>()
+                                .Concat(parametersAccessedInClosure.Cast<IVariable>())
+                                .Select(
+                                    x => new DataTypeField(
+                                        x.Name.StringValue,
+                                        GetTypeReference(x.Type))),
+                        ])
                 ],
                 []);
             _types.Add(localsType.Id, localsType);
@@ -267,13 +272,33 @@ public partial class ProgramAbseil
                                 localTypeId,
                                 []);
 
+                            // try add because we might have already added this function's 
+                            // local type if we're referencing multiple variables from
+                            // the owner function
                             fields.TryAdd(
                                 localTypeId,
                                 new DataTypeField(localType.Name, localTypeReference)); 
                             break;
                         }
                     case FunctionSignatureParameter parameterVariable:
-                            throw new NotImplementedException();
+                        {
+                            var containingFunction = parameterVariable.ContainingFunction.NotNull(); 
+                            var localTypeId = containingFunction
+                                .LocalsTypeId.NotNull();
+                            var localType = _types[localTypeId];
+                            var localTypeReference = new LoweredConcreteTypeReference(
+                                localType.Name,
+                                localTypeId,
+                                []);
+
+                            // try add because we might have already added this function's 
+                            // local type if we're referencing multiple variables from
+                            // the owner function
+                            fields.TryAdd(
+                                    localTypeId,
+                                    new DataTypeField(localType.Name, localTypeReference));
+                            break;
+                        }
                     case FieldVariable fieldVariable:
                             throw new NotImplementedException();
                     case ThisVariable thisVariable:
@@ -321,6 +346,23 @@ public partial class ProgramAbseil
             locals.Add(new MethodLocal(
                         "__locals",
                         localsTypeReference));
+            var hasCompilerInsertedFirstParameter = 
+                (!fnSignature.IsStatic && ownerTypeReference is not null)
+                || closureType is not null;
+
+
+            var fieldInitializers = new Dictionary<string, ILoweredExpression>();
+            foreach (var parameter in parametersAccessedInClosure)
+            {
+                
+                fieldInitializers.Add(
+                        parameter.Name.StringValue,
+                        new LoadArgumentExpression(
+                            (uint)(parameter.ParameterIndex
+                            + (hasCompilerInsertedFirstParameter ? 1 : 0)),
+                            true,
+                            GetTypeReference(parameter.Type)));
+            }
 
             expressions.Add(
                 new VariableDeclarationAndAssignmentExpression(
@@ -329,7 +371,7 @@ public partial class ProgramAbseil
                         localsTypeReference,
                         "_classVariant",
                         true,
-                        []),
+                        fieldInitializers),
                     false));
 
         }

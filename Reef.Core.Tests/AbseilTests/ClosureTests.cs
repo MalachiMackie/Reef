@@ -189,7 +189,75 @@ public class ClosureTests : TestBase
                     }
                 }
                 """,
-                LoweredProgram()
+                LoweredProgram(
+                    types: [
+                        DataType(
+                            "MyFn__Locals",
+                            variants: [Variant("_classVariant", [Field("a", StringType)])]),
+                        DataType(
+                            "MyFn__InnerFn__Closure",
+                            variants: [
+                                Variant(
+                                    "_classVariant",
+                                    [Field("MyFn__Locals", ConcreteTypeReference("MyFn__Locals"))])
+                            ])
+                    ],
+                    methods: [
+                        Method(
+                            "MyFn__InnerFn",
+                            [
+                                VariableDeclaration(
+                                    "c",
+                                    FieldAccess(
+                                        FieldAccess(
+                                            LoadArgument(
+                                                0,
+                                                true,
+                                                ConcreteTypeReference("MyFn__InnerFn__Closure")),
+                                            "MyFn__Locals",
+                                            "_classVariant",
+                                            true,
+                                            ConcreteTypeReference("MyFn__Locals")),
+                                        "a",
+                                        "_classVariant",
+                                        true,
+                                        StringType),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [Local("c", StringType)],
+                            parameters: [ConcreteTypeReference("MyFn__InnerFn__Closure")]),
+                        Method(
+                            "MyFn",
+                            [
+                                VariableDeclaration(
+                                    "__locals",
+                                    CreateObject(
+                                        ConcreteTypeReference("MyFn__Locals"),
+                                        "_classVariant",
+                                        true,
+                                        new(){{"a", LoadArgument(0, true, StringType)}}),
+                                    false),
+                                VariableDeclaration(
+                                    "b",
+                                    FieldAccess(
+                                        LocalAccess(
+                                            "__locals",
+                                            true,
+                                            ConcreteTypeReference("MyFn__Locals")),
+                                        "a",
+                                        "_classVariant",
+                                        true,
+                                        StringType),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("__locals", ConcreteTypeReference("MyFn__Locals")),
+                                Local("b", StringType)
+                            ],
+                            parameters: [StringType])
+                    ])
             },
             {
                 "field used in closure",
