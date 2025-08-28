@@ -409,8 +409,16 @@ public partial class ProgramAbseil
                                     resolvedType);
                         }
 
-                        if (_currentFunction is null
-                                || _currentFunction.Value.LoweredMethod.Parameters.Count == 0
+                        if (_currentFunction.Value.FunctionSignature.ClosureTypeId.HasValue)
+                        {
+                            var loweredMethod = _currentFunction.Value.LoweredMethod;
+                            // we're a closure, so reference the value through the this field
+                            // of the closure type
+                            Debug.Assert(loweredMethod.Parameters.Count > 0);
+                            here!!!
+                        }
+
+                        if (_currentFunction.Value.LoweredMethod.Parameters.Count == 0
                                 || !EqualTypeReferences(
                                     _currentFunction.Value.LoweredMethod.Parameters[0],
                                     _currentType))

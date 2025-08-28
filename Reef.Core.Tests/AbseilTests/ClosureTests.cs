@@ -276,7 +276,111 @@ public class ClosureTests : TestBase
                     }
                 }
                 """,
-                LoweredProgram()
+                LoweredProgram(
+                    types: [
+                        DataType(
+                            "MyClass",
+                            variants: [
+                                Variant("_classVariant",
+                                    [Field("MyField", StringType)])
+                            ]),
+                        DataType(
+                            "MyClass__MyFn__InnerFn__Closure",
+                            variants: [
+                                Variant("_classVariant", [Field("this", ConcreteTypeReference("MyCla"))])
+                            ])
+                    ],
+                    methods: [
+                        Method("MyClass__MyFn__InnerFn",
+                            [
+                                VariableDeclaration(
+                                    "b",
+                                    FieldAccess(
+                                        FieldAccess(
+                                            LoadArgument(
+                                                0,
+                                                true,
+                                                ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")),
+                                            "this",
+                                            "_classVariant",
+                                            true,
+                                            ConcreteTypeReference("MyClass")),
+                                        "MyField",
+                                        "_classVariant",
+                                        true,
+                                        StringType),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [Local("b", StringType)],
+                            parameters: [ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")]),
+                            Method(
+                                "MyClass__MyFn",
+                                [
+                                    VariableDeclaration(
+                                        "a",
+                                        FieldAccess(
+                                            LoadArgument(
+                                                0, true, ConcreteTypeReference("MyClass")),
+                                            "MyField",
+                                            "_classVariant",
+                                            true,
+                                            StringType),
+                                        true),
+                                    MethodReturnUnit()
+                                ],
+                                locals: [Local("a", StringType)],
+                                parameters: [ConcreteTypeReference("MyClass")])
+                    ])
+            },
+            {
+                "static field used in inner closure",
+                """
+                class MyClass
+                {
+                    static field MyField: string = "",
+
+                    fn MyFn()
+                    {
+                        fn InnerFn()
+                        {
+                            var b = MyField;
+                        }
+                    }
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType(
+                            "MyClass",
+                            variants: [
+                                Variant("_classVariant")
+                            ],
+                            staticFields: [StaticField("MyField", StringType, StringConstant("", true))]),
+                    ],
+                    methods: [
+                        Method("MyClass__MyFn__InnerFn",
+                            [
+                                VariableDeclaration(
+                                    "b",
+                                    StaticFieldAccess(
+                                        ConcreteTypeReference("MyClass"),
+                                        "MyField",
+                                        true,
+                                        StringType),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [Local("b", StringType)],
+                            parameters: []),
+                            Method(
+                                "MyClass__MyFn",
+                                [
+                                    MethodReturnUnit()
+                                ],
+                                locals: [],
+                                parameters: [ConcreteTypeReference("MyClass")])
+                    ])
             },
             {
                 "assigning local in closure",
