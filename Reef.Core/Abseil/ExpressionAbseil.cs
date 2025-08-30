@@ -636,14 +636,7 @@ public partial class ProgramAbseil
 
             if (variable is TypeChecking.TypeChecker.FieldVariable fieldVariable)
             {
-                if (fieldVariable.ReferencedInClosure)
-                {
-                    throw new NotImplementedException();
-                }
-
                 Debug.Assert(_currentType is not null);
-                Debug.Assert(fieldVariable.ContainingSignature.Id == _currentType.DefinitionId);
-
                 if (fieldVariable.IsStaticField)
                 {
                     return new StaticFieldAssignmentExpression(
@@ -653,6 +646,39 @@ public partial class ProgramAbseil
                         valueUseful,
                         resolvedType);
                 }
+
+                if (fieldVariable.ReferencedInClosure
+                    && _currentFunction is
+                    {
+                        FunctionSignature: { ClosureTypeId: not null} functionSignature
+                    })
+                {
+                    var closureType = _types[functionSignature.ClosureTypeId.Value];
+                    var closureTypeReference = new LoweredConcreteTypeReference(
+                            closureType.Name,
+                            closureType.Id,
+                            []);
+
+                    return new FieldAssignmentExpression(
+                        new FieldAccessExpression(
+                            new LoadArgumentExpression(
+                                0,
+                                true,
+                                closureTypeReference),
+                            "this",
+                            "_classVariant",
+                            true,
+                            _currentType),
+                        "_classVariant",
+                        fieldVariable.Name.StringValue,
+                        LowerExpression(right),
+                        valueUseful,
+                        resolvedType);
+                }
+
+                Debug.Assert(fieldVariable.ContainingSignature.Id == _currentType.DefinitionId);
+
+                
 
                 Debug.Assert(_currentFunction is not null);
                 Debug.Assert(_currentFunction.Value.LoweredMethod.Parameters.Count > 0);

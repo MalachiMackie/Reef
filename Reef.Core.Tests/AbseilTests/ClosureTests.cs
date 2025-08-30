@@ -562,14 +562,71 @@ public class ClosureTests : TestBase
                     mut fn MyFn()
                     {
                         MyField = "hi";
-                        fn InnerFn()
+                        mut fn InnerFn()
                         {
                             MyField = "bye";
                         }
                     }
                 }
                 """,
-                LoweredProgram()
+                LoweredProgram(
+                    types: [
+                        DataType(
+                            "MyClass",
+                            variants: [
+                                Variant(
+                                    "_classVariant",
+                                    [Field("MyField", StringType)])
+                            ]),
+                        DataType(
+                            "MyClass__MyFn__InnerFn__Closure",
+                            variants: [
+                                Variant(
+                                    "_classVariant",
+                                    fields: [Field("this", ConcreteTypeReference("MyClass"))])
+                            ])
+                    ],
+                    methods: [
+                        Method(
+                            "MyClass__MyFn__InnerFn",
+                            [
+                                FieldAssignment(
+                                    FieldAccess(
+                                        LoadArgument(
+                                            0,
+                                            true,
+                                            ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")),
+                                        "this",
+                                        "_classVariant",
+                                        true,
+                                        ConcreteTypeReference("MyClass")),
+                                    "_classVariant",
+                                    "MyField",
+                                    StringConstant("bye", true),
+                                    false,
+                                    StringType),
+                                MethodReturnUnit()
+                            ],
+                            parameters: [
+                                ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")
+                            ]),
+                        Method(
+                            "MyClass__MyFn",
+                            [
+                                FieldAssignment(
+                                    LoadArgument(
+                                        0, true, ConcreteTypeReference("MyClass")),
+                                    "_classVariant",
+                                    "MyField",
+                                    StringConstant("hi", true),
+                                    false,
+                                    StringType),
+                                MethodReturnUnit()
+                            ],
+                            parameters: [
+                                ConcreteTypeReference("MyClass")
+                            ])
+                    ])
             },
             {
                 "calling closure",
