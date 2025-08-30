@@ -25,7 +25,7 @@ public partial class TypeChecker
             && (variable is not FunctionSignatureParameter { ContainingFunction: var parameterOwner }
                 || parameterOwner != CurrentFunctionSignature)
             && (variable is not FieldVariable { ContainingSignature: var fieldOwner }
-                || fieldOwner != CurrentTypeSignature)
+                || CurrentFunctionSignature.OwnerType is null)
             && (variable is not LocalVariable { ContainingFunction: var localOwner }
                 || localOwner != CurrentFunctionSignature)
             && (variable is not ThisVariable { ContainingFunction: var thisOwner }

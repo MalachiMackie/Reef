@@ -412,10 +412,31 @@ public partial class ProgramAbseil
                         if (_currentFunction.Value.FunctionSignature.ClosureTypeId.HasValue)
                         {
                             var loweredMethod = _currentFunction.Value.LoweredMethod;
+                            var fnSignature = _currentFunction.Value.FunctionSignature;
+                            var closureType = _types[fnSignature.ClosureTypeId.Value];
+                            var closureTypeReference = new LoweredConcreteTypeReference(closureType.Name, closureType.Id, []);
+
                             // we're a closure, so reference the value through the this field
                             // of the closure type
                             Debug.Assert(loweredMethod.Parameters.Count > 0);
-                            here!!!
+                            Debug.Assert(
+                                    EqualTypeReferences(
+                                        loweredMethod.Parameters[0],
+                                        closureTypeReference));
+                            return new FieldAccessExpression(
+                                new FieldAccessExpression(
+                                    new LoadArgumentExpression(
+                                        0,
+                                        true,
+                                        closureTypeReference),
+                                    "this",
+                                    "_classVariant",
+                                    true,
+                                    _currentType),
+                                fieldVariable.Name.StringValue,
+                                "_classVariant",
+                                valueUseful,
+                                resolvedType);
                         }
 
                         if (_currentFunction.Value.LoweredMethod.Parameters.Count == 0
@@ -424,11 +445,6 @@ public partial class ProgramAbseil
                                     _currentType))
                         {
                             throw new InvalidOperationException("Expected to be in instance function");
-                        }
-
-                        if (fieldVariable.ReferencedInClosure)
-                        {
-                            throw new NotImplementedException();
                         }
 
                         // todo: assert we're in a class and have _classVariant
@@ -545,7 +561,6 @@ public partial class ProgramAbseil
                 => new BoolOrExpression(e.ValueUseful, left, right),
             _ => throw new InvalidOperationException($"Invalid binary operator {e.BinaryOperator.OperatorType}"),
         };
-        throw new NotImplementedException(e.ToString());
     }
 
     private ILoweredExpression LowerValueAssignment(

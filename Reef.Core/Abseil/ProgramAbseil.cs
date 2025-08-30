@@ -300,7 +300,20 @@ public partial class ProgramAbseil
                             break;
                         }
                     case FieldVariable fieldVariable:
-                            throw new NotImplementedException();
+                        {
+                            var signature = fieldVariable.ContainingSignature;
+                            var typeReference = new LoweredConcreteTypeReference(
+                                    signature.Name,
+                                    signature.Id,
+                                    [..signature.TypeParameters
+                                        .Select(GetTypeReference)]);
+
+                            fields.TryAdd(
+                                signature.Id,
+                                new DataTypeField("this", typeReference));
+
+                            break;
+                        }
                     case ThisVariable thisVariable:
                             throw new NotImplementedException();
                 }

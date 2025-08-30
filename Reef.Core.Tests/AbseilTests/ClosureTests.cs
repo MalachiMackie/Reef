@@ -17,6 +17,91 @@ public class ClosureTests : TestBase
         var loweredProgram = ProgramAbseil.Lower(program);
         loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
     }
+    
+    [Fact]
+    public void SingleTest()
+    {
+        var source = """
+                class MyClass
+                {
+                    field MyField: string,
+
+                    fn MyFn()
+                    {
+                        var a = MyField;
+                        fn InnerFn()
+                        {
+                            var b = MyField;
+                        }
+                    }
+                }
+                """;
+        var expectedProgram = LoweredProgram(
+            types:
+            [
+                DataType(
+                    "MyClass",
+                    variants:
+                    [
+                        Variant("_classVariant",
+                            [Field("MyField", StringType)])
+                    ]),
+                DataType(
+                    "MyClass__MyFn__InnerFn__Closure",
+                    variants:
+                    [
+                        Variant("_classVariant", [Field("this", ConcreteTypeReference("MyClass"))])
+                    ])
+            ],
+            methods:
+            [
+                Method("MyClass__MyFn__InnerFn",
+                    [
+                        VariableDeclaration(
+                            "b",
+                            FieldAccess(
+                                FieldAccess(
+                                    LoadArgument(
+                                        0,
+                                        true,
+                                        ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")),
+                                    "this",
+                                    "_classVariant",
+                                    true,
+                                    ConcreteTypeReference("MyClass")),
+                                "MyField",
+                                "_classVariant",
+                                true,
+                                StringType),
+                            false),
+                        MethodReturnUnit()
+                    ],
+                    locals: [Local("b", StringType)],
+                    parameters: [ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")]),
+                Method(
+                    "MyClass__MyFn",
+                    [
+                        VariableDeclaration(
+                            "a",
+                            FieldAccess(
+                                LoadArgument(
+                                    0, true, ConcreteTypeReference("MyClass")),
+                                "MyField",
+                                "_classVariant",
+                                true,
+                                StringType),
+                            false),
+                        MethodReturnUnit()
+                    ],
+                    locals: [Local("a", StringType)],
+                    parameters: [ConcreteTypeReference("MyClass")])
+            ]);
+        
+        var program = CreateProgram(source);
+        var loweredProgram = ProgramAbseil.Lower(program);
+        loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
+    }
+    
 
     public static TheoryData<string, string, LoweredProgram> TestCases()
     {
@@ -287,7 +372,7 @@ public class ClosureTests : TestBase
                         DataType(
                             "MyClass__MyFn__InnerFn__Closure",
                             variants: [
-                                Variant("_classVariant", [Field("this", ConcreteTypeReference("MyCla"))])
+                                Variant("_classVariant", [Field("this", ConcreteTypeReference("MyClass"))])
                             ])
                     ],
                     methods: [
@@ -326,7 +411,7 @@ public class ClosureTests : TestBase
                                             "_classVariant",
                                             true,
                                             StringType),
-                                        true),
+                                        false),
                                     MethodReturnUnit()
                                 ],
                                 locals: [Local("a", StringType)],

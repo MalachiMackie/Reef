@@ -142,8 +142,8 @@ public partial class TypeChecker
                     !fnSignature.AccessedOuterVariables.Contains(accessedOuterVariable)
                     && accessedOuterVariable switch
                     {
-                        FieldVariable => throw new InvalidOperationException(
-                            "Field variable is not captured in a scope"),
+                        // need to add the field as a captured variable if we're not the top level function in the type
+                        FieldVariable => fnSignature.OwnerType is null, 
                         FunctionSignatureParameter functionParameterVariable => functionParameterVariable.ContainingFunction !=
                                                                        fnSignature,
                         LocalVariable localVariable => localVariable.ContainingFunction != fnSignature,
