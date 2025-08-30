@@ -477,7 +477,80 @@ public class ClosureTests : TestBase
                     a = "bye";
                 }
                 """,
-                LoweredProgram()
+                LoweredProgram(
+                    types: [
+                        DataType("_Main__Locals",
+                            variants: [
+                                Variant("_classVariant",
+                                    [Field("a", StringType)])
+                            ]),
+                        DataType(
+                            "_Main__InnerFn__Closure",
+                            variants: [
+                                Variant("_classVariant",
+                                    [Field("_Main__Locals", ConcreteTypeReference("_Main__Locals"))])
+                            ])
+                    ],
+                    methods: [
+                        Method(
+                            "_Main__InnerFn",
+                            [
+                                FieldAssignment(
+                                    FieldAccess(
+                                        LoadArgument(
+                                            0, true, ConcreteTypeReference("_Main__InnerFn__Closure")),
+                                        "_Main__Locals",
+                                        "_classVariant",
+                                        true,
+                                        ConcreteTypeReference("_Main__Locals")),
+                                    "_classVariant",
+                                    "a",
+                                    StringConstant("bye", true),
+                                    false,
+                                    StringType),
+                                MethodReturnUnit()
+                            ],
+                            parameters: [
+                                ConcreteTypeReference("_Main__InnerFn__Closure")
+                            ]),
+                        Method(
+                            "_Main",
+                            [
+                                VariableDeclaration(
+                                    "__locals",
+                                    CreateObject(
+                                        ConcreteTypeReference("_Main__Locals"),
+                                        "_classVariant",
+                                        true,
+                                        []),
+                                    false),
+                                FieldAssignment(
+                                    LocalAccess(
+                                        "__locals",
+                                        true,
+                                        ConcreteTypeReference("_Main__Locals")),
+                                    "_classVariant",
+                                    "a",
+                                    StringConstant("", true),
+                                    false,
+                                    StringType),
+                                FieldAssignment(
+                                    LocalAccess(
+                                        "__locals",
+                                        true,
+                                        ConcreteTypeReference("_Main__Locals")),
+                                    "_classVariant",
+                                    "a",
+                                    StringConstant("hi", true),
+                                    false,
+                                    StringType),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("__locals",
+                                    ConcreteTypeReference("_Main__Locals"))
+                            ])
+                    ])
             },
             {
                 "assigning field in closure",

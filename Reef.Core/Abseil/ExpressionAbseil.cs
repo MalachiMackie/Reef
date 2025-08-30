@@ -576,7 +576,55 @@ public partial class ProgramAbseil
             {
                 if (localVariable.ReferencedInClosure)
                 {
-                    throw new NotImplementedException();
+                    var containingFunction = localVariable.ContainingFunction;
+                    Debug.Assert(_currentFunction.HasValue);
+                    Debug.Assert(containingFunction is not null);
+                    Debug.Assert(containingFunction.LocalsTypeId.HasValue);
+                    var localsType = _types[containingFunction.LocalsTypeId.Value];
+                    var localsTypeReference = new LoweredConcreteTypeReference(
+                        localsType.Name,
+                        localsType.Id,
+                        []);
+
+                    if (_currentFunction.Value.FunctionSignature == containingFunction)
+                    {
+                        return new FieldAssignmentExpression(
+                            new LocalVariableAccessor(
+                                "__locals",
+                                true,
+                                localsTypeReference),
+                            "_classVariant",
+                            localVariable.Name.StringValue,
+                            LowerExpression(right),
+                            valueUseful,
+                            resolvedType);
+                    }
+
+                    Debug.Assert(_currentFunction.Value.FunctionSignature.ClosureTypeId.HasValue);
+                    var closureType = _types[_currentFunction.Value.FunctionSignature.ClosureTypeId.Value];
+                    var closureTypeReference = new LoweredConcreteTypeReference(
+                            closureType.Name,
+                            closureType.Id,
+                            []);
+
+                    Debug.Assert(_currentFunction.Value.LoweredMethod.Parameters.Count > 0);
+                    Debug.Assert(EqualTypeReferences(
+                            closureTypeReference,
+                            _currentFunction.Value.LoweredMethod.Parameters[0]));
+
+                    return new FieldAssignmentExpression(
+                        new FieldAccessExpression(
+                            new LoadArgumentExpression(
+                                0, true, closureTypeReference),
+                            localsType.Name,
+                            "_classVariant",
+                            true,
+                            localsTypeReference),
+                        "_classVariant",
+                        localVariable.Name.StringValue,
+                        LowerExpression(right),
+                        valueUseful,
+                        resolvedType);
                 }
 
                 return new LocalAssignmentExpression(
