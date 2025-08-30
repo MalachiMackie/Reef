@@ -72,12 +72,96 @@ public partial class ProgramAbseil
         var functionReference = GetFunctionReference(instantiatedFunction.FunctionId,
                 [..instantiatedFunction.TypeArguments.Select(GetTypeReference)]);
 
-        var arguments = new List<ILoweredExpression>(functionReference.TypeArguments.Count);
+        var arguments = new List<ILoweredExpression>(e.MethodCall.ArgumentList.Count);
 
         if (e.MethodCall.Method is Expressions.MemberAccessExpression memberAccess)
         {
             var owner = LowerExpression(memberAccess.MemberAccess.Owner);
             arguments.Add(owner);
+        }
+        else if (instantiatedFunction.ClosureTypeId.HasValue)
+        {
+            var closureType = _types[instantiatedFunction.ClosureTypeId.Value];
+            var closureTypeReference = new LoweredConcreteTypeReference(
+                    closureType.Name,
+                    closureType.Id,
+                    []);
+
+            var fieldInitializers = new Dictionary<string, ILoweredExpression>();
+
+            Debug.Assert(_currentFunction.HasValue);
+
+            foreach (var variable in instantiatedFunction.AccessedOuterVariables)
+            {
+                switch (variable)
+                {
+                    case TypeChecking.TypeChecker.LocalVariable localVariable:
+                        {
+                            if (localVariable.ContainingFunction != _currentFunction.Value.FunctionSignature)
+                            {
+                                break;
+                            }
+                            Debug.Assert(_currentFunction.Value.FunctionSignature.LocalsTypeId.HasValue);
+                            var localsType = _types[_currentFunction.Value.FunctionSignature.LocalsTypeId.Value];
+
+                            fieldInitializers.TryAdd(
+                                localsType.Name,
+                                new LocalVariableAccessor(
+                                    "__locals",
+                                    true,
+                                    new LoweredConcreteTypeReference(
+                                        localsType.Name,
+                                        localsType.Id,
+                                        [])));
+                            break;
+                        }
+                    case TypeChecking.TypeChecker.FieldVariable fieldVariable:
+                        {
+                            Debug.Assert(_currentType is not null);
+                            Debug.Assert(
+                                EqualTypeReferences(
+                                    _currentFunction.Value.LoweredMethod.Parameters[0],
+                                    _currentType));
+                            fieldInitializers.TryAdd(
+                                "this",
+                                new LoadArgumentExpression(
+                                    0,
+                                    true,
+                                    _currentType));
+
+                            break;
+                        }
+                    case TypeChecking.TypeChecker.ThisVariable:
+                        throw new NotImplementedException();
+                    case TypeChecking.TypeChecker.FunctionSignatureParameter parameter:
+                        {
+                            if (parameter.ContainingFunction != _currentFunction.Value.FunctionSignature)
+                            {
+                                break;
+                            }
+                            Debug.Assert(_currentFunction.Value.FunctionSignature.LocalsTypeId.HasValue);
+                            var localsType = _types[_currentFunction.Value.FunctionSignature.LocalsTypeId.Value];
+
+                            fieldInitializers.TryAdd(
+                                localsType.Name,
+                                new LocalVariableAccessor(
+                                    "__locals",
+                                    true,
+                                    new LoweredConcreteTypeReference(
+                                        localsType.Name,
+                                        localsType.Id,
+                                        [])));
+                            break;
+                        }
+                }
+            }
+
+            arguments.Add(
+                new CreateObjectExpression(
+                    closureTypeReference,
+                    "_classVariant",
+                    true,
+                    fieldInitializers));
         }
         else if (!instantiatedFunction.IsStatic
                 && instantiatedFunction.OwnerType is not null
@@ -88,11 +172,6 @@ public partial class ProgramAbseil
         {
             arguments.Add(
                     new LoadArgumentExpression(0, true, _currentType));
-        }
-
-        if (instantiatedFunction.AccessedOuterVariables.Count > 0)
-        {
-            throw new NotImplementedException("Calling closure");
         }
 
         arguments.AddRange(e.MethodCall.ArgumentList.Select(LowerExpression));
