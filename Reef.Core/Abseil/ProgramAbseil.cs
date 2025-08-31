@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Reef.Core.LoweredExpressions;
 using static Reef.Core.TypeChecking.TypeChecker;
 
@@ -45,7 +46,7 @@ public partial class ProgramAbseil
                 .Select(x => x.Signature.NotNull())
                 .Where(x => x.AccessedOuterVariables.Count == 0))
         {
-            var (method, loweredExpressions, expressions) = GenerateLoweredMethod(null, fnSignature, null);
+            var (method, loweredExpressions, expressions) = GenerateLoweredMethod(null, fnSignature, null, null);
             _methods.Add(method, (fnSignature, loweredExpressions, expressions, null, true));
         }
 
@@ -73,7 +74,7 @@ public partial class ProgramAbseil
         if (mainSignature.Expressions.Count > 0)
         {
             var (method, loweredExpressions, expressions) = GenerateLoweredMethod(
-                    null, mainSignature, null);
+                    null, mainSignature, null, null);
             _methods.Add(method, (mainSignature, loweredExpressions, expressions, null, true));
         }
 
@@ -117,7 +118,7 @@ public partial class ProgramAbseil
 
         foreach (var method in klass.Functions)
         {
-            var (loweredMethod, loweredExpressions, expressions) = GenerateLoweredMethod(klass.Name, method, classTypeReference);
+            var (loweredMethod, loweredExpressions, expressions) = GenerateLoweredMethod(klass.Name, method, classTypeReference, classTypeReference);
             _methods.Add(loweredMethod, (method, loweredExpressions, expressions, classTypeReference, true));
         }
 
@@ -139,7 +140,7 @@ public partial class ProgramAbseil
 
         foreach (var function in union.Functions)
         {
-            var (loweredMethod, loweredExpressions, expressions) = GenerateLoweredMethod(union.Name, function, unionTypeReference);
+            var (loweredMethod, loweredExpressions, expressions) = GenerateLoweredMethod(union.Name, function, unionTypeReference, unionTypeReference);
 
             _methods.Add(loweredMethod, (function, loweredExpressions, expressions, unionTypeReference, true));
         }
@@ -219,7 +220,8 @@ public partial class ProgramAbseil
     private (LoweredMethod, List<ILoweredExpression>, IReadOnlyList<Expressions.IExpression>) GenerateLoweredMethod(
             string? ownerName,
             FunctionSignature fnSignature,
-            LoweredConcreteTypeReference? ownerTypeReference)
+            LoweredConcreteTypeReference? ownerTypeReference,
+            LoweredConcreteTypeReference? parentTypeReference)
     {
         var name = ownerName is null
             ? fnSignature.Name
@@ -315,7 +317,13 @@ public partial class ProgramAbseil
                             break;
                         }
                     case ThisVariable thisVariable:
-                            throw new NotImplementedException();
+                        {
+                            Debug.Assert(parentTypeReference is not null);
+                            fields.TryAdd(
+                                parentTypeReference.DefinitionId,
+                                new DataTypeField("this", parentTypeReference));
+                            break;
+                        }
                 }
             }
 
@@ -338,9 +346,9 @@ public partial class ProgramAbseil
         foreach (var localSignature in fnSignature.LocalFunctions)
         {
             var (localMethod, localLoweredExpressions, localExpressions) = 
-                GenerateLoweredMethod(ownerName: name, localSignature, null);
+                GenerateLoweredMethod(ownerName: name, localSignature, null, parentTypeReference);
 
-            _methods.Add(localMethod, (localSignature, localLoweredExpressions, localExpressions, ownerTypeReference, true));
+            _methods.Add(localMethod, (localSignature, localLoweredExpressions, localExpressions, parentTypeReference, true));
         }
 
         var locals = new List<MethodLocal>(

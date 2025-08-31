@@ -41,17 +41,28 @@ public class TypeCheckerTests
     {
         const string src =
             """
-            class MyClass {
-                mut field MyField: string,
-                
-                mut fn MyFn() {
-                    fn InnerFn() {
-                        MyField = "";
+            class MyClass
+            {
+                field MyField: string,
+
+                fn MyFn(param: string)
+                {
+                    var a = "";
+                    fn MiddleFn(b: int)
+                    {
+                        fn InnerFn()
+                        {
+                            var _a = a;
+                            var _b = b;
+                            var _param = param;
+                            var _myField = MyField;
+                        }
+                        InnerFn();
                     }
+                    MiddleFn(3);
                 }
             }
             """;
-;
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
         var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
@@ -63,6 +74,41 @@ public class TypeCheckerTests
     {
         return new TheoryData<string>
         {
+            """
+            class MyClass
+            {
+                field MyField: string,
+
+                fn MyFn(param: string)
+                {
+                    var a = "";
+                    fn MiddleFn(b: int)
+                    {
+                        fn InnerFn()
+                        {
+                            var _a = a;
+                            var _b = b;
+                            var _param = param;
+                            var _myField = MyField;
+                        }
+                        InnerFn();
+                    }
+                    MiddleFn(3);
+                }
+            }
+            """,
+            """
+            var a = 1;
+            fn SomeFn()
+            {
+                fn InnerFn()
+                {
+                    var b = a;
+                }
+                InnerFn();
+            }
+            SomeFn();
+            """,
             """
             class MyClass {
                 static mut field MyField: string = "",
@@ -3725,6 +3771,23 @@ public class TypeCheckerTests
                 var a: int;
                 fn SomeFn() {
                     var b = a;
+                }
+                SomeFn();
+                a = 1;
+                """,
+                [TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("SomeFn"), [Identifier("a")])]
+            },
+            {
+                "calling deep closure when variable is uninitialized",
+                """
+                var a: int;
+                fn SomeFn()
+                {
+                    fn InnerFn()
+                    {
+                        var b = a;
+                    }
+                    InnerFn();
                 }
                 SomeFn();
                 a = 1;

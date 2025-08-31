@@ -110,7 +110,7 @@ public partial class TypeChecker
                             ClassSignature c => InstantiateClass(c),
                             UnionSignature u => InstantiateUnion(u),
                             _ => throw new UnreachableException()
-                        }, fnSignature));
+                        }));
         }
 
         foreach (var fn in fnSignature.LocalFunctions)
@@ -142,8 +142,8 @@ public partial class TypeChecker
                     !fnSignature.AccessedOuterVariables.Contains(accessedOuterVariable)
                     && accessedOuterVariable switch
                     {
-                        // need to add the field as a captured variable if we're not the top level function in the type
-                        FieldVariable => fnSignature.OwnerType is null, 
+                        // need to add the field and this as a captured variable if we're not the top level function in the type
+                        FieldVariable or ThisVariable => fnSignature.OwnerType is null, 
                         FunctionSignatureParameter functionParameterVariable => functionParameterVariable.ContainingFunction !=
                                                                        fnSignature,
                         LocalVariable localVariable => localVariable.ContainingFunction != fnSignature,

@@ -8,7 +8,21 @@ namespace Reef.Core.TypeChecking;
 public class TypeTwoTypeChecker
 {
     private readonly List<TypeCheckerError> _errors = [];
-    private readonly Stack<Dictionary<TypeChecker.LocalVariable, bool>> _localVariables = [];
+    private readonly Stack<Dictionary<TypeChecker.LocalVariable, bool>> _localVariablesInitialized = [];
+
+    private bool GetLocalVariableInitialized(TypeChecker.LocalVariable variable)
+    {
+        foreach (var stack in _localVariablesInitialized)
+        {
+            if (stack.TryGetValue(variable, out var initialized))
+            {
+                return initialized;
+            }
+        }
+
+        Debug.Fail("Failed to find local variable");
+        return false;
+    }
 
     public static IReadOnlyList<TypeCheckerError> TypeTwoTypeCheck(LangProgram program)
     {
@@ -20,11 +34,6 @@ public class TypeTwoTypeChecker
 
     private void InnerTypeTwoTypeCheck(LangProgram program)
     {
-        foreach (var function in program.Functions)
-        {
-            CheckFunction(function);
-        }
-
         foreach (var union in program.Unions)
         {
             CheckUnion(union);
@@ -35,12 +44,23 @@ public class TypeTwoTypeChecker
             CheckClass(programClass);
         }
 
-        _localVariables.Push(program.TopLevelLocalVariables.ToDictionary(x => x, _ => false));
+        _localVariablesInitialized.Push(program.TopLevelLocalVariables.ToDictionary(x => x, _ => true));
+        
+        foreach (var function in program.Functions)
+        {
+            CheckFunction(function);
+        }
+
+        _localVariablesInitialized.Pop();
+        
+        _localVariablesInitialized.Push(program.TopLevelLocalVariables.ToDictionary(x => x, _ => false));
 
         foreach (var expression in program.Expressions)
         {
             CheckExpression(expression);
         }
+
+        _localVariablesInitialized.Pop();
     }
 
     private void CheckUnion(ProgramUnion union)
@@ -83,17 +103,22 @@ public class TypeTwoTypeChecker
             throw new InvalidOperationException("Function signature was not created");
         }
 
-        _localVariables.Push(function.Signature.LocalVariables.ToDictionary(x => x, _ => false));
-
-        foreach (var blockFunction in function.Block.Functions)
-        {
-            CheckFunction(blockFunction);
-        }
+        _localVariablesInitialized.Push(function.Signature.LocalVariables.ToDictionary(x => x, _ => false));
 
         foreach (var expression in function.Block.Expressions)
         {
             CheckExpression(expression);
         }
+
+        _localVariablesInitialized.Pop();
+        
+        _localVariablesInitialized.Push(function.Signature.LocalVariables.ToDictionary(x => x, _ => true));
+
+        foreach (var blockFunction in function.Block.Functions)
+        {
+            CheckFunction(blockFunction);
+        }
+        _localVariablesInitialized.Pop();
     }
 
     private void CheckExpression(IExpression expression)
@@ -166,7 +191,7 @@ public class TypeTwoTypeChecker
         {
             var uninitializedAccessedVariables = function.AccessedOuterVariables
                 .OfType<TypeChecker.LocalVariable>()
-                .Where(x => !_localVariables.Peek()[x])
+                .Where(x => !GetLocalVariableInitialized(x))
                 .Select(x => x.Name)
                 .ToArray();
 
@@ -306,13 +331,13 @@ public class TypeTwoTypeChecker
                 Left: ValueAccessorExpression { ReferencedVariable: TypeChecker.LocalVariable localVariable }
             })
         {
-            _localVariables.Peek()[localVariable] = true;
+            _localVariablesInitialized.Peek()[localVariable] = true;
         }
     }
 
     private void CheckIfExpression(IfExpression ifExpression)
     {
-        var uninitializedLocalVariables = _localVariables.Peek().Where(x => !x.Value)
+        var uninitializedLocalVariables = _localVariablesInitialized.Peek().Where(x => !x.Value)
             .Select(x => x.Key)
             .ToDictionary(x => x, _ => new TypeChecker.VariableIfInstantiation());
 
@@ -324,8 +349,8 @@ public class TypeTwoTypeChecker
 
         foreach (var (variable, variableIfInstantiation) in uninitializedLocalVariables)
         {
-            variableIfInstantiation.InstantiatedInBody = _localVariables.Peek()[variable];
-            _localVariables.Peek()[variable] = false;
+            variableIfInstantiation.InstantiatedInBody = _localVariablesInitialized.Peek()[variable];
+            _localVariablesInitialized.Peek()[variable] = false;
         }
 
         foreach (var elseIf in ifExpression.ElseIfs)
@@ -338,8 +363,8 @@ public class TypeTwoTypeChecker
 
             foreach (var (variable, variableInstantiation) in uninitializedLocalVariables)
             {
-                variableInstantiation.InstantiatedInEachElseIf &= _localVariables.Peek()[variable];
-                _localVariables.Peek()[variable] = false;
+                variableInstantiation.InstantiatedInEachElseIf &= _localVariablesInitialized.Peek()[variable];
+                _localVariablesInitialized.Peek()[variable] = false;
             }
         }
 
@@ -349,14 +374,14 @@ public class TypeTwoTypeChecker
 
             foreach (var (variable, variableInstantiation) in uninitializedLocalVariables)
             {
-                variableInstantiation.InstantiatedInEachElseIf &= _localVariables.Peek()[variable];
-                _localVariables.Peek()[variable] = false;
+                variableInstantiation.InstantiatedInEachElseIf &= _localVariablesInitialized.Peek()[variable];
+                _localVariablesInitialized.Peek()[variable] = false;
             }
         }
 
         foreach (var (variable, variableInstantiation) in uninitializedLocalVariables)
         {
-            _localVariables.Peek()[variable] = ifExpression.Body is not null && variableInstantiation.InstantiatedInBody
+            _localVariablesInitialized.Peek()[variable] = ifExpression.Body is not null && variableInstantiation.InstantiatedInBody
                                                                              && ifExpression.ElseBody is not null &&
                                                                              variableInstantiation.InstantiatedInElse
                                                                              && (ifExpression.ElseIfs.Count == 0 ||
@@ -401,7 +426,7 @@ public class TypeTwoTypeChecker
         {
             if (variableDeclarationExpression.VariableDeclaration.Variable is TypeChecker.LocalVariable localVariable)
             {
-                _localVariables.Peek()[localVariable] = true;
+                _localVariablesInitialized.Peek()[localVariable] = true;
             }
             CheckExpression(value);
         }

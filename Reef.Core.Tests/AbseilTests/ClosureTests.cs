@@ -26,76 +26,254 @@ public class ClosureTests : TestBase
                 {
                     field MyField: string,
 
-                    fn MyFn()
+                    fn MyFn(param: string)
                     {
-                        var a = MyField;
-                        fn InnerFn()
+                        var a = "";
+                        fn MiddleFn(b: int)
                         {
-                            var b = MyField;
+                            fn InnerFn()
+                            {
+                                var _a = a;
+                                var _b = b;
+                                var _param = param;
+                                var _myField = MyField;
+                            }
+                            InnerFn();
                         }
+                        MiddleFn(3);
                     }
                 }
                 """;
-        var expectedProgram = LoweredProgram(
-            types:
-            [
-                DataType(
-                    "MyClass",
-                    variants:
-                    [
-                        Variant("_classVariant",
-                            [Field("MyField", StringType)])
-                    ]),
-                DataType(
-                    "MyClass__MyFn__InnerFn__Closure",
-                    variants:
-                    [
-                        Variant("_classVariant", [Field("this", ConcreteTypeReference("MyClass"))])
-                    ])
-            ],
-            methods:
-            [
-                Method("MyClass__MyFn__InnerFn",
-                    [
-                        VariableDeclaration(
-                            "b",
-                            FieldAccess(
-                                FieldAccess(
-                                    LoadArgument(
-                                        0,
-                                        true,
-                                        ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")),
-                                    "this",
+                var expectedProgram = LoweredProgram(
+                    types: [
+                        DataType("MyClass",
+                            variants: [
+                                Variant("_classVariant", [Field("MyField", StringType)])
+                            ]),
+                        DataType("MyClass__MyFn__Locals",
+                            variants: [
+                                Variant(
                                     "_classVariant",
-                                    true,
-                                    ConcreteTypeReference("MyClass")),
-                                "MyField",
-                                "_classVariant",
-                                true,
-                                StringType),
-                            false),
-                        MethodReturnUnit()
+                                    [
+                                        Field("param", StringType),
+                                        Field("a", StringType),
+                                    ])
+                            ]),
+                        DataType("MyClass__MyFn__MiddleFn__Locals",
+                            variants: [
+                                Variant("_classVariant", [Field("b", Int)])
+                            ]),
+                        DataType("MyClass__MyFn__MiddleFn__Closure",
+                            variants: [
+                                Variant(
+                                    "_classVariant",
+                                    [
+                                        Field("this", ConcreteTypeReference("MyClass")),
+                                        Field("MyClass__MyFn__Locals", ConcreteTypeReference("MyClass__MyFn__Locals"))
+                                    ])
+                            ]),
+                        DataType("MyClass__MyFn__MiddleFn__InnerFn__Closure",
+                            variants: [
+                                Variant(
+                                    "_classVariant",
+                                    [
+                                        Field("this", ConcreteTypeReference("MyClass")),
+                                        Field("MyClass__MyFn__Locals", ConcreteTypeReference("MyClass__MyFn__Locals")),
+                                        Field("MyClass__MyFn__MiddleFn__Locals", ConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals"))
+                                    ])
+                            ])
                     ],
-                    locals: [Local("b", StringType)],
-                    parameters: [ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")]),
-                Method(
-                    "MyClass__MyFn",
-                    [
-                        VariableDeclaration(
-                            "a",
-                            FieldAccess(
-                                LoadArgument(
-                                    0, true, ConcreteTypeReference("MyClass")),
-                                "MyField",
-                                "_classVariant",
-                                true,
-                                StringType),
-                            false),
-                        MethodReturnUnit()
-                    ],
-                    locals: [Local("a", StringType)],
-                    parameters: [ConcreteTypeReference("MyClass")])
-            ]);
+                    methods: [
+                        Method("MyClass__MyFn__MiddleFn__InnerFn",
+                            [
+                                VariableDeclaration(
+                                    "_a",
+                                    FieldAccess(
+                                        FieldAccess(
+                                            LoadArgument(
+                                                0,
+                                                true,
+                                                ConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure")),
+                                            "MyClass__MyFn__Locals",
+                                            "_classVariant",
+                                            true,
+                                            ConcreteTypeReference("MyClass__MyFn__Locals")),
+                                        "a",
+                                        "_classVariant",
+                                        true,
+                                        StringType),
+                                    false),
+                                VariableDeclaration(
+                                    "_b",
+                                    FieldAccess(
+                                        FieldAccess(
+                                            LoadArgument(
+                                                0,
+                                                true,
+                                                ConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure")),
+                                            "MyClass__MyFn__MiddleFn__Locals",
+                                            "_classVariant",
+                                            true,
+                                            ConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals")),
+                                        "b",
+                                        "_classVariant",
+                                        true,
+                                        Int),
+                                    false),
+                                VariableDeclaration(
+                                    "_param",
+                                    FieldAccess(
+                                        FieldAccess(
+                                            LoadArgument(
+                                                0,
+                                                true,
+                                                ConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure")),
+                                            "MyClass__MyFn__Locals",
+                                            "_classVariant",
+                                            true,
+                                            ConcreteTypeReference("MyClass__MyFn__Locals")),
+                                        "param",
+                                        "_classVariant",
+                                        true,
+                                        StringType),
+                                    false),
+                                VariableDeclaration(
+                                    "_myField",
+                                    FieldAccess(
+                                        FieldAccess(
+                                            LoadArgument(
+                                                0,
+                                                true,
+                                                ConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure")),
+                                            "this",
+                                            "_classVariant",
+                                            true,
+                                            ConcreteTypeReference("MyClass")),
+                                        "MyField",
+                                        "_classVariant",
+                                        true,
+                                        StringType),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("_a", StringType),
+                                Local("_b", Int),
+                                Local("_param", StringType),
+                                Local("_myField", StringType)
+                            ],
+                            parameters: [
+                                ConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure")
+                            ]),
+                        Method("MyClass__MyFn__MiddleFn",
+                            [
+                                VariableDeclaration(
+                                    "__locals",
+                                    CreateObject(
+                                        ConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals"),
+                                        "_classVariant",
+                                        true,
+                                        new(){{"b", LoadArgument(1, true, Int)}}),
+                                    false),
+                                MethodCall(
+                                    FunctionReference("MyClass__MyFn__MiddleFn__InnerFn"),
+                                    [
+                                        CreateObject(
+                                            ConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure"),
+                                            "_classVariant",
+                                            true,
+                                            new(){
+                                                {"MyClass__MyFn__MiddleFn__Locals", LocalAccess("__locals", true, ConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals"))},
+                                                {
+                                                    "MyClass__MyFn__Locals",
+                                                    FieldAccess(
+                                                        LoadArgument(0, true, ConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure")),
+                                                        "MyClass__MyFn__Locals",
+                                                        "_classVariant",
+                                                        true,
+                                                        ConcreteTypeReference("MyClass__MyFn__Locals"))
+                                                },
+                                                {
+                                                    "this",
+                                                    FieldAccess(
+                                                        LoadArgument(0, true, ConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure")),
+                                                        "this",
+                                                        "_classVariant",
+                                                        true,
+                                                        ConcreteTypeReference("MyClass"))
+                                                }
+                                            })
+                                    ],
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("__locals",
+                                    ConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals"))
+                            ],
+                            parameters: [
+                                ConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure"),
+                                Int
+                            ]),
+                        Method("MyClass__MyFn",
+                            [
+                                VariableDeclaration(
+                                    "__locals",
+                                    CreateObject(
+                                        ConcreteTypeReference("MyClass__MyFn__Locals"),
+                                        "_classVariant",
+                                        true,
+                                        new()
+                                        {
+                                            {
+                                                "param",
+                                                LoadArgument(1, true, StringType)
+                                            }
+                                        }),
+                                    false),
+                                FieldAssignment(
+                                    LocalAccess(
+                                        "__locals",
+                                        true,
+                                        ConcreteTypeReference("MyClass__MyFn__Locals")),
+                                    "_classVariant",
+                                    "a",
+                                    StringConstant("", true),
+                                    false,
+                                    StringType),
+                                MethodCall(
+                                    FunctionReference("MyClass__MyFn__MiddleFn"),
+                                    [
+                                        CreateObject(
+                                            ConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure"),
+                                            "_classVariant",
+                                            true,
+                                            new()
+                                            {
+                                                {
+                                                    "MyClass__MyFn__Locals",
+                                                    LocalAccess("__locals", true, ConcreteTypeReference("MyClass__MyFn__Locals"))
+                                                },
+                                                {
+                                                    "this",
+                                                    LoadArgument(0, true, ConcreteTypeReference("MyClass"))
+                                                }
+                                            }),
+                                        IntConstant(3, true)
+                                    ],
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("__locals", ConcreteTypeReference("MyClass__MyFn__Locals"))
+                            ],
+                            parameters: [
+                                ConcreteTypeReference("MyClass"),
+                                StringType
+                            ])
+                    ]);
         
         var program = CreateProgram(source);
         var loweredProgram = ProgramAbseil.Lower(program);
@@ -553,6 +731,75 @@ public class ClosureTests : TestBase
                     ])
             },
             {
+                "this reference in closure",
+                """
+                class MyClass
+                {
+                    fn MyFn()
+                    {
+                        fn InnerFn()
+                        {
+                            var a = this;
+                        }
+                        InnerFn();
+                    }
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType(
+                            "MyClass",
+                            variants: [Variant("_classVariant")]),
+                        DataType(
+                            "MyClass__MyFn__InnerFn__Closure",
+                            variants: [
+                                Variant(
+                                    "_classVariant",
+                                    [Field("this", ConcreteTypeReference("MyClass"))])
+                            ])
+                    ],
+                    methods: [
+                        Method(
+                            "MyClass__MyFn__InnerFn",
+                            [
+                                VariableDeclaration(
+                                    "a",
+                                    FieldAccess(
+                                        LoadArgument(
+                                            0, true, ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")),
+                                        "this",
+                                        "_classVariant",
+                                        true,
+                                        ConcreteTypeReference("MyClass")),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            parameters: [
+                                ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")
+                            ],
+                            locals: [
+                                Local("a", ConcreteTypeReference("MyClass"))
+                            ]),
+                        Method(
+                            "MyClass__MyFn",
+                            [
+                                MethodCall(
+                                    FunctionReference("MyClass__MyFn__InnerFn"),
+                                    [
+                                        CreateObject(
+                                            ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure"),
+                                            "_classVariant",
+                                            true,
+                                            new(){{"this", LoadArgument(0, true, ConcreteTypeReference("MyClass"))}})
+                                    ],
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
+                            ],
+                            parameters: [ConcreteTypeReference("MyClass")])
+                    ])
+            },
+            {
                 "assigning field in closure",
                 """
                 class MyClass
@@ -779,6 +1026,262 @@ public class ClosureTests : TestBase
                                             new(){
                                                 {"this", LoadArgument(0, true, ConcreteTypeReference("MyClass"))},
                                                 {"MyClass__MyFn__Locals", LocalAccess("__locals", true, ConcreteTypeReference("MyClass__MyFn__Locals"))}
+                                            }),
+                                        IntConstant(3, true)
+                                    ],
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("__locals", ConcreteTypeReference("MyClass__MyFn__Locals"))
+                            ],
+                            parameters: [
+                                ConcreteTypeReference("MyClass"),
+                                StringType
+                            ])
+                    ])
+            },
+            {
+                "calling deep closure",
+                """
+                class MyClass
+                {
+                    field MyField: string,
+
+                    fn MyFn(param: string)
+                    {
+                        var a = "";
+                        fn MiddleFn(b: int)
+                        {
+                            fn InnerFn()
+                            {
+                                var _a = a;
+                                var _b = b;
+                                var _param = param;
+                                var _myField = MyField;
+                            }
+                            InnerFn();
+                        }
+                        MiddleFn(3);
+                    }
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass",
+                            variants: [
+                                Variant("_classVariant", [Field("MyField", StringType)])
+                            ]),
+                        DataType("MyClass__MyFn__Locals",
+                            variants: [
+                                Variant(
+                                    "_classVariant",
+                                    [
+                                        Field("param", StringType),
+                                        Field("a", StringType)
+                                    ])
+                            ]),
+                        DataType("MyClass__MyFn__MiddleFn__Locals",
+                            variants: [
+                                Variant("_classVariant", [Field("b", Int)])
+                            ]),
+                        DataType("MyClass__MyFn__MiddleFn__Closure",
+                            variants: [
+                                Variant(
+                                    "_classVariant",
+                                    [
+                                        Field("this", ConcreteTypeReference("MyClass")),
+                                        Field("MyClass__MyFn__Locals", ConcreteTypeReference("MyClass__MyFn__Locals"))
+                                    ])
+                            ]),
+                        DataType("MyClass__MyFn__MiddleFn__InnerFn__Closure",
+                            variants: [
+                                Variant(
+                                    "_classVariant",
+                                    [
+                                        Field("this", ConcreteTypeReference("MyClass")),
+                                        Field("MyClass__MyFn__Locals", ConcreteTypeReference("MyClass__MyFn__Locals")),
+                                        Field("MyClass__MyFn__MiddleFn__Locals", ConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals"))
+                                    ])
+                            ])
+                    ],
+                    methods: [
+                        Method("MyClass__MyFn__MiddleFn__InnerFn",
+                            [
+                                VariableDeclaration(
+                                    "_a",
+                                    FieldAccess(
+                                        FieldAccess(
+                                            LoadArgument(
+                                                0,
+                                                true,
+                                                ConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure")),
+                                            "MyClass__MyFn__Locals",
+                                            "_classVariant",
+                                            true,
+                                            ConcreteTypeReference("MyClass__MyFn__Locals")),
+                                        "a",
+                                        "_classVariant",
+                                        true,
+                                        StringType),
+                                    false),
+                                VariableDeclaration(
+                                    "_b",
+                                    FieldAccess(
+                                        FieldAccess(
+                                            LoadArgument(
+                                                0,
+                                                true,
+                                                ConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure")),
+                                            "MyClass__MyFn__MiddleFn__Locals",
+                                            "_classVariant",
+                                            true,
+                                            ConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals")),
+                                        "b",
+                                        "_classVariant",
+                                        true,
+                                        Int),
+                                    false),
+                                VariableDeclaration(
+                                    "_param",
+                                    FieldAccess(
+                                        FieldAccess(
+                                            LoadArgument(
+                                                0,
+                                                true,
+                                                ConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure")),
+                                            "MyClass__MyFn__Locals",
+                                            "_classVariant",
+                                            true,
+                                            ConcreteTypeReference("MyClass__MyFn__Locals")),
+                                        "param",
+                                        "_classVariant",
+                                        true,
+                                        StringType),
+                                    false),
+                                VariableDeclaration(
+                                    "_myField",
+                                    FieldAccess(
+                                        FieldAccess(
+                                            LoadArgument(
+                                                0,
+                                                true,
+                                                ConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure")),
+                                            "this",
+                                            "_classVariant",
+                                            true,
+                                            ConcreteTypeReference("MyClass")),
+                                        "MyField",
+                                        "_classVariant",
+                                        true,
+                                        StringType),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("_a", StringType),
+                                Local("_b", Int),
+                                Local("_param", StringType),
+                                Local("_myField", StringType)
+                            ],
+                            parameters: [
+                                ConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure")
+                            ]),
+                        Method("MyClass__MyFn__MiddleFn",
+                            [
+                                VariableDeclaration(
+                                    "__locals",
+                                    CreateObject(
+                                        ConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals"),
+                                        "_classVariant",
+                                        true,
+                                        new(){{"b", LoadArgument(1, true, Int)}}),
+                                    false),
+                                MethodCall(
+                                    FunctionReference("MyClass__MyFn__MiddleFn__InnerFn"),
+                                    [
+                                        CreateObject(
+                                            ConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure"),
+                                            "_classVariant",
+                                            true,
+                                            new(){
+                                                {"MyClass__MyFn__MiddleFn__Locals", LocalAccess("__locals", true, ConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals"))},
+                                                {
+                                                    "MyClass__MyFn__Locals",
+                                                    FieldAccess(
+                                                        LoadArgument(0, true, ConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure")),
+                                                        "MyClass__MyFn__Locals",
+                                                        "_classVariant",
+                                                        true,
+                                                        ConcreteTypeReference("MyClass__MyFn__Locals"))
+                                                },
+                                                {
+                                                    "this",
+                                                    FieldAccess(
+                                                        LoadArgument(0, true, ConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure")),
+                                                        "this",
+                                                        "_classVariant",
+                                                        true,
+                                                        ConcreteTypeReference("MyClass"))
+                                                }
+                                            })
+                                    ],
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("__locals",
+                                    ConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals"))
+                            ],
+                            parameters: [
+                                ConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure"),
+                                Int
+                            ]),
+                        Method("MyClass__MyFn",
+                            [
+                                VariableDeclaration(
+                                    "__locals",
+                                    CreateObject(
+                                        ConcreteTypeReference("MyClass__MyFn__Locals"),
+                                        "_classVariant",
+                                        true,
+                                        new()
+                                        {
+                                            {
+                                                "param",
+                                                LoadArgument(1, true, StringType)
+                                            }
+                                        }),
+                                    false),
+                                FieldAssignment(
+                                    LocalAccess(
+                                        "__locals",
+                                        true,
+                                        ConcreteTypeReference("MyClass__MyFn__Locals")),
+                                    "_classVariant",
+                                    "a",
+                                    StringConstant("", true),
+                                    false,
+                                    StringType),
+                                MethodCall(
+                                    FunctionReference("MyClass__MyFn__MiddleFn"),
+                                    [
+                                        CreateObject(
+                                            ConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure"),
+                                            "_classVariant",
+                                            true,
+                                            new()
+                                            {
+                                                {
+                                                    "MyClass__MyFn__Locals",
+                                                    LocalAccess("__locals", true, ConcreteTypeReference("MyClass__MyFn__Locals"))
+                                                },
+                                                {
+                                                    "this",
+                                                    LoadArgument(0, true, ConcreteTypeReference("MyClass"))
+                                                }
                                             }),
                                         IntConstant(3, true)
                                     ],
