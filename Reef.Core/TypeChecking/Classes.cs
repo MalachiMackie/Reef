@@ -34,10 +34,10 @@ public partial class TypeChecker
 
         private static readonly Dictionary<int, ClassSignature> CachedFunctionClasses = [];
 
-        public static ClassSignature Function(IReadOnlyList<FunctionParameter> parameters)
+        public static ClassSignature Function(int parameterCount)
         {
             // plus 1 for return value
-            var typeParamsCount = parameters.Count + 1;
+            var typeParamsCount = parameterCount + 1;
 
             if (CachedFunctionClasses.TryGetValue(typeParamsCount, out var cachedSignature))
             {
@@ -47,13 +47,14 @@ public partial class TypeChecker
             var typeParameters = new List<GenericPlaceholder>();
 
             var functions = new List<FunctionSignature>();
+            var fields = new List<TypeField>();
 
             var signature = new ClassSignature
             {
                 Name = $"Function`{typeParamsCount}",
                 TypeParameters = typeParameters,
                 // there are really two fields here. The function's closure or `this` argument, and the function pointer itself.
-                // but these are not represented in the type system, they only happen when compiling to IL
+                // but these are not represented in the type system, they only happen when lowering
                 Fields = [null!, null!],
                 Functions = functions
             };
@@ -83,7 +84,7 @@ public partial class TypeChecker
 
             functionSignature.ReturnType = typeParameters[^1];
 
-            foreach (var i in Enumerable.Range(0, parameters.Count))
+            foreach (var i in Enumerable.Range(0, parameterCount))
             {
                 var name = $"arg{i}";
                 callFunctionParameters.Add(name, new FunctionSignatureParameter(

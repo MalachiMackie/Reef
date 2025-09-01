@@ -279,7 +279,6 @@ public class ClosureTests : TestBase
         var loweredProgram = ProgramAbseil.Lower(program);
         loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
     }
-    
 
     public static TheoryData<string, string, LoweredProgram> TestCases()
     {

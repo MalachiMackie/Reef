@@ -227,8 +227,24 @@ public record StaticMemberAccessor(
 {
 }
 
-public record LoweredFunctionReference(string Name, Guid DefinitionId, IReadOnlyList<ILoweredTypeReference> TypeArguments)
+public record FunctionReferenceConstantExpression(
+        LoweredFunctionReference FunctionReference,
+        bool ValueUseful,
+        ILoweredTypeReference ResolvedType) : ILoweredExpression
+{
+}
+
+public record LoweredFunctionReference(
+        string Name,
+        Guid DefinitionId,
+        IReadOnlyList<ILoweredTypeReference> TypeArguments)
 {}
+
+public record LoweredFunctionType(
+        IReadOnlyList<ILoweredTypeReference> ParameterTypes,
+        ILoweredTypeReference ReturnType) : ILoweredTypeReference
+{
+}
 
 public interface ILoweredTypeReference
 { }

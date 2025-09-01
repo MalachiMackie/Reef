@@ -230,6 +230,26 @@ public static class LoweredProgramHelpers
         return new(functionReference, arguments, valueUseful, resolvedType);
     }
 
+    public static FunctionReferenceConstantExpression FunctionReferenceConstant(
+        LoweredFunctionReference functionReference,
+        bool valueUseful,
+        LoweredFunctionType functionType)
+    {
+        return new(
+                functionReference,
+                valueUseful,
+                functionType);
+    }
+
+    public static LoweredFunctionType FunctionType(
+        IReadOnlyList<ILoweredTypeReference> parameterType,
+        ILoweredTypeReference returnType)
+    {
+        return new(
+            parameterType,
+            returnType);
+    }
+
     public static LoweredFunctionReference FunctionReference(
             string name,
             IReadOnlyList<ILoweredTypeReference>? typeArguments = null)

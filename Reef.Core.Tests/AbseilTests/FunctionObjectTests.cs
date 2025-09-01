@@ -28,7 +28,36 @@ public class FunctionObjectTests : TestBase
                 fn SomeFn(){}
                 var a = SomeFn;
                 """,
-                LoweredProgram()
+                LoweredProgram(
+                    methods: [
+                        Method("SomeFn",
+                            [
+                                MethodReturnUnit()
+                            ]),
+                        Method("_Main",
+                            [
+                                VariableDeclaration(
+                                    "a",
+                                    CreateObject(
+                                        ConcreteTypeReference("Function`1", [Unit]),
+                                        "_classVariant",
+                                        true,
+                                        new() {
+                                            {
+                                                "FunctionReference",
+                                                FunctionReferenceConstant(
+                                                    FunctionReference("SomeFn"),
+                                                    true,
+                                                    FunctionType([], Unit))
+                                            }
+                                        }),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("a", ConcreteTypeReference("Function`1", [Unit]))
+                            ])
+                    ])
             },
             {
                 "assign instance function to function object",

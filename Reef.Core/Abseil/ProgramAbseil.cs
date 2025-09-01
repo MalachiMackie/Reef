@@ -455,8 +455,19 @@ public partial class ProgramAbseil
                     g.OwnerType.Id,
                     g.GenericName),
             UnknownInferredType i => GetTypeReference(i.ResolvedType.NotNull()),
+            FunctionObject f => FunctionObjectCase(f),
             _ => throw new InvalidOperationException($"Type reference {typeReference.GetType()} is not supported")
         };
+
+        LoweredConcreteTypeReference FunctionObjectCase(FunctionObject f)
+        {
+            var signature = ClassSignature.Function(f.Parameters.Count);
+            return new LoweredConcreteTypeReference(
+                signature.Name,
+                signature.Id,
+                [..f.Parameters.Select(x => GetTypeReference(x.Type))
+                    .Append(GetTypeReference(f.ReturnType))]);
+        }
     }
 
     private static bool EqualTypeReferences(ILoweredTypeReference a, ILoweredTypeReference b)
