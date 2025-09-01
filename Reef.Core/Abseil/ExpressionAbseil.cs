@@ -493,8 +493,34 @@ public partial class ProgramAbseil
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.True }} => new BoolConstantExpression(e.ValueUseful, true),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.False }} => new BoolConstantExpression(e.ValueUseful, false),
             { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, ReferencedVariable: {} variable} => VariableAccess(variable, e.ValueUseful),
+            { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, FunctionInstantiation: {} fn} => FunctionAccess(fn, (e.ResolvedType as TypeChecking.TypeChecker.FunctionObject).NotNull(), e.ValueUseful),
             _ => throw new NotImplementedException($"{e}")
         };
+
+        ILoweredExpression FunctionAccess(
+                TypeChecking.TypeChecker.InstantiatedFunction fn,
+                TypeChecking.TypeChecker.FunctionObject typeReference,
+                bool valueUseful)
+        {
+            return new CreateObjectExpression(
+                (GetTypeReference(typeReference) as LoweredConcreteTypeReference).NotNull(),
+                "_classVariant",
+                valueUseful,
+                new()
+                {
+                    {
+                        "FunctionReference",
+                        new FunctionReferenceConstantExpression(
+                                GetFunctionReference(
+                                    fn.FunctionId,
+                                    [..fn.TypeArguments.Select(GetTypeReference)]),
+                                true,
+                                new LoweredFunctionType(
+                                    [..fn.Parameters.Select(x => GetTypeReference(x.Type))],
+                                    GetTypeReference(fn.ReturnType)))
+                    }
+                });
+        }
 
         ILoweredExpression VariableAccess(
                 TypeChecking.TypeChecker.IVariable variable,

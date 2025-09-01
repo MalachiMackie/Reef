@@ -513,7 +513,7 @@ public class ILCompile
 
         ConcreteReefTypeReference FunctionCase(TypeChecker.FunctionObject functionObject)
         {
-            var signature = TypeChecker.ClassSignature.Function(functionObject.Parameters);
+            var signature = TypeChecker.ClassSignature.Function(functionObject.Parameters.Count);
 
             var typeArguments = functionObject.Parameters
                 .Select(x => x.Type)
@@ -956,7 +956,7 @@ public class ILCompile
                 CompileExpression(argument);
             }
 
-            var functionSignature = TypeChecker.ClassSignature.Function(functionObject.Parameters);
+            var functionSignature = TypeChecker.ClassSignature.Function(functionObject.Parameters.Count);
             var functionReference = new ConcreteReefTypeReference
             {
                 DefinitionId = functionSignature.Id,
@@ -1333,7 +1333,7 @@ public class ILCompile
 
     private void CreateFunctionObject(TypeChecker.InstantiatedFunction instantiatedFunction, IExpression? instanceOwnerExpression)
     {
-        var signature = TypeChecker.ClassSignature.Function(instantiatedFunction.Parameters);
+        var signature = TypeChecker.ClassSignature.Function(instantiatedFunction.Parameters.Count);
 
         var functionType = new ConcreteReefTypeReference
         {
