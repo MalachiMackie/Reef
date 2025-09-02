@@ -23,7 +23,7 @@ public class FunctionObjectTests : TestBase
         return new()
         {
             {
-                "assign static function to function object",
+                "assign global function to function object",
                 """
                 fn SomeFn(){}
                 var a = SomeFn;
@@ -60,6 +60,90 @@ public class FunctionObjectTests : TestBase
                     ])
             },
             {
+                "assign static function to function object inside type",
+                """
+                class MyClass {
+                    static fn OtherFn(){}
+                    static fn MyFn() {
+                        var a = OtherFn;
+                    }
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass",
+                            variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method("MyClass__OtherFn",
+                            [MethodReturnUnit()]),
+                        Method("MyClass__MyFn",
+                            [
+                                VariableDeclaration(
+                                    "a",
+                                    CreateObject(
+                                        ConcreteTypeReference("Function`1", [Unit]),
+                                        "_classVariant",
+                                        true,
+                                        new(){
+                                            {
+                                                "FunctionReference",
+                                                FunctionReferenceConstant(
+                                                    FunctionReference("MyClass__OtherFn"),
+                                                    true,
+                                                    FunctionType([], Unit))
+                                            }
+                                        }),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("a", ConcreteTypeReference("Function`1", [Unit]))
+                            ])
+                    ])
+            },
+            {
+                "assign static function to function object",
+                """
+                class MyClass {
+                    pub static fn OtherFn(){}
+                }
+                var a = MyClass::OtherFn;
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass",
+                            variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method("MyClass__OtherFn",
+                            [MethodReturnUnit()]),
+                        Method("_Main",
+                            [
+                                VariableDeclaration(
+                                    "a",
+                                    CreateObject(
+                                        ConcreteTypeReference("Function`1", [Unit]),
+                                        "_classVariant",
+                                        true,
+                                        new(){
+                                            {
+                                                "FunctionReference",
+                                                FunctionReferenceConstant(
+                                                    FunctionReference("MyClass__OtherFn"),
+                                                    true,
+                                                    FunctionType([], Unit))
+                                            }
+                                        }),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("a", ConcreteTypeReference("Function`1", [Unit]))
+                            ])
+                    ])
+            },
+            {
                 "assign instance function to function object",
                 """
                 class MyClass {
@@ -68,7 +152,55 @@ public class FunctionObjectTests : TestBase
                 var a = new MyClass{};
                 var b = a.MyFn;
                 """,
-                LoweredProgram()
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass", variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method(
+                            "MyClass__MyFn",
+                            [MethodReturnUnit()],
+                            parameters: [ConcreteTypeReference("MyClass")]),
+                        Method("_Main",
+                            [
+                                VariableDeclaration(
+                                    "a",
+                                    CreateObject(
+                                        ConcreteTypeReference("MyClass"),
+                                        "_classVariant",
+                                        true),
+                                    false),
+                                VariableDeclaration(
+                                    "b",
+                                    CreateObject(
+                                        ConcreteTypeReference("Function`1", [Unit]),
+                                        "_classVariant",
+                                        true,
+                                        new()
+                                        {
+                                            {
+                                                "FunctionReference",
+                                                FunctionReferenceConstant(
+                                                    FunctionReference("MyClass__MyFn"),
+                                                    true,
+                                                    FunctionType([], Unit))
+                                            },
+                                            {
+                                                "FunctionParameter",
+                                                LocalAccess(
+                                                    "a",
+                                                    true,
+                                                    ConcreteTypeReference("MyClass"))
+                                            }
+                                        }),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("a", ConcreteTypeReference("MyClass")),
+                                Local("b", ConcreteTypeReference("Function`1", [Unit]))
+                            ])
+                    ])
             },
             {
                 "assigning closure to function object",
@@ -86,7 +218,7 @@ public class FunctionObjectTests : TestBase
                             var _param = param;
                             var _myField = MyField;
                         }
-                        var a = InnerFn;
+                        var b = InnerFn;
                     }
                 }
                 """,

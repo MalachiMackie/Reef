@@ -296,7 +296,31 @@ public partial class ProgramAbseil
                             GetTypeReference(e.ResolvedType.NotNull()));
                 }
             case Expressions.MemberType.Function:
-                break;
+                {
+                    var fn = e.MemberAccess.InstantiatedFunction.NotNull();
+                    return new CreateObjectExpression(
+                        (GetTypeReference(e.ResolvedType.NotNull()) as LoweredConcreteTypeReference).NotNull(),
+                        "_classVariant",
+                        e.ValueUseful,
+                        new()
+                        {
+                            {
+                                "FunctionReference",
+                                new FunctionReferenceConstantExpression(
+                                    GetFunctionReference(
+                                        fn.FunctionId,
+                                        [..fn.TypeArguments.Select(GetTypeReference)]),
+                                    true,
+                                    new LoweredFunctionType(
+                                        [..fn.Parameters.Select(x => GetTypeReference(x.Type))],
+                                        GetTypeReference(fn.ReturnType)))
+                            },
+                            {
+                                "FunctionParameter",
+                                owner
+                            }
+                        });
+                }
             case Expressions.MemberType.Variant:
                 throw new InvalidOperationException("Can never access a variant through instance member access");
         }
@@ -374,6 +398,29 @@ public partial class ProgramAbseil
                     variantName,
                     e.ValueUseful,
                     fieldInitailizers);
+        }
+
+        if (e.StaticMemberAccess.MemberType == Expressions.MemberType.Function)
+        {
+            var fn = e.StaticMemberAccess.InstantiatedFunction.NotNull();
+            return new CreateObjectExpression(
+                (GetTypeReference(e.ResolvedType.NotNull()) as LoweredConcreteTypeReference).NotNull(),
+                "_classVariant",
+                e.ValueUseful,
+                new()
+                {
+                    {
+                        "FunctionReference",
+                        new FunctionReferenceConstantExpression(
+                            GetFunctionReference(
+                                fn.FunctionId,
+                                [..fn.TypeArguments.Select(GetTypeReference)]),
+                            true,
+                            new LoweredFunctionType(
+                                [..fn.Parameters.Select(x => GetTypeReference(x.Type))],
+                                GetTypeReference(fn.ReturnType)))
+                    }
+                });
         }
 
         throw new NotImplementedException(e.ToString());
