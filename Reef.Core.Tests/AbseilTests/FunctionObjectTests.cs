@@ -222,7 +222,161 @@ public class FunctionObjectTests : TestBase
                     }
                 }
                 """,
-                LoweredProgram()
+                LoweredProgram(
+                    types: [
+                        DataType(
+                            "MyClass",
+                            variants: [
+                                Variant("_classVariant", [Field("MyField", StringType)])
+                            ]),
+                        DataType(
+                            "MyClass__MyFn__Locals",
+                            variants: [
+                                Variant(
+                                    "_classVariant",
+                                    [
+                                        Field("a", StringType),
+                                        Field("param", StringType)
+                                    ])
+                            ]),
+                        DataType(
+                            "MyClass__MyFn__InnerFn__Closure",
+                            variants: [
+                                Variant(
+                                    "_classVariant",
+                                    [
+                                        Field("this", ConcreteTypeReference("MyClass")),
+                                        Field(
+                                            "MyClass__MyFn__Locals",
+                                            ConcreteTypeReference("MyClass__MyFn__Locals"))
+                                    ])
+                            ])
+                    ],
+                    methods: [
+                        Method(
+                            "MyClass__MyFn__InnerFn",
+                            [
+                                VariableDeclaration(
+                                    "_a",
+                                    FieldAccess(
+                                        FieldAccess(
+                                            LoadArgument(
+                                                0, true, ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")),
+                                            "MyClass__MyFn__Locals",
+                                            "_classVariant",
+                                            true,
+                                            ConcreteTypeReference("MyClass__MyFn__Locals")),
+                                        "a",
+                                        "_classVariant",
+                                        true,
+                                        StringType),
+                                    false),
+                                VariableDeclaration(
+                                    "_param",
+                                    FieldAccess(
+                                        FieldAccess(
+                                            LoadArgument(
+                                                0, true, ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")),
+                                            "MyClass__MyFn__Locals",
+                                            "_classVariant",
+                                            true,
+                                            ConcreteTypeReference("MyClass__MyFn__Locals")),
+                                        "param",
+                                        "_classVariant",
+                                        true,
+                                        StringType),
+                                    false),
+                                VariableDeclaration(
+                                    "_myField",
+                                    FieldAccess(
+                                        FieldAccess(
+                                            LoadArgument(
+                                                0, true, ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")),
+                                            "this",
+                                            "_classVariant",
+                                            true,
+                                            ConcreteTypeReference("MyClass")),
+                                        "MyField",
+                                        "_classVariant",
+                                        true,
+                                        StringType),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("_a", StringType),
+                                Local("_param", StringType),
+                                Local("_myField", StringType)
+                            ],
+                            parameters: [
+                                ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")
+                            ]),
+                        Method(
+                            "MyClass__MyFn",
+                            [
+                                VariableDeclaration(
+                                    "__locals",
+                                    CreateObject(
+                                        ConcreteTypeReference("MyClass__MyFn__Locals"),
+                                        "_classVariant",
+                                        true,
+                                        new(){{"param", LoadArgument(1, true, StringType)}}),
+                                    false),
+                                FieldAssignment(
+                                    LocalAccess("__locals", true, ConcreteTypeReference("MyClass__MyFn__Locals")),
+                                    "_classVariant",
+                                    "a",
+                                    StringConstant("", true),
+                                    false,
+                                    StringType),
+                                VariableDeclaration(
+                                    "b",
+                                    CreateObject(
+                                        ConcreteTypeReference("Function`1", [Unit]),
+                                        "_classVariant",
+                                        true,
+                                        new()
+                                        {
+                                            {
+                                                "FunctionReference",
+                                                FunctionReferenceConstant(
+                                                    FunctionReference("MyClass__MyFn__InnerFn"),
+                                                    true,
+                                                    FunctionType(
+                                                        [ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")],
+                                                        Unit))
+                                            },
+                                            {
+                                                "FunctionParameter",
+                                                CreateObject(
+                                                    ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure"),
+                                                    "_classVariant",
+                                                    true,
+                                                    new()
+                                                    {
+                                                        {
+                                                            "this",
+                                                            LoadArgument(0, true, ConcreteTypeReference("MyClass"))
+                                                        },
+                                                        {
+                                                            "MyClass__MyFn__Locals",
+                                                            LocalAccess(
+                                                                "__locals",
+                                                                true,
+                                                                ConcreteTypeReference("MyClass__MyFn__Locals"))
+                                                        }
+                                                    })
+                                            }
+                                        }),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            parameters: [ConcreteTypeReference("MyClass"), StringType],
+                            locals: [
+                                Local("__locals", ConcreteTypeReference("MyClass__MyFn__Locals")),
+                                Local("b", ConcreteTypeReference("Function`1", [Unit]))
+                            ])
+                    ])
             },
             {
                 "call function object without parameters",
