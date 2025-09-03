@@ -340,18 +340,13 @@ public partial class ProgramAbseil
                 }
             case Expressions.MemberType.Variant:
                 throw new InvalidOperationException("Can never access a variant through instance member access");
+            default:
+                throw new UnreachableException($"{e.MemberAccess.MemberType}");
         }
-
-        throw new NotImplementedException($"{e.MemberAccess.MemberType}");
     }
 
     private BlockExpression LowerBlockExpression(Expressions.BlockExpression e)
     {
-        foreach (var method in e.Block.Functions)
-        {
-            throw new NotImplementedException();
-        }
-
         return new BlockExpression(
                 [..e.Block.Expressions.Select(LowerExpression)],
                 GetTypeReference(e.ResolvedType.NotNull()),

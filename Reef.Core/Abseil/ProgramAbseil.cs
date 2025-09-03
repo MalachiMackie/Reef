@@ -135,7 +135,8 @@ public partial class ProgramAbseil
             LocalVariables = _program.TopLevelLocalVariables,
             LocalFunctions = [.. _program.Functions
                 .Select(x => x.Signature.NotNull())
-                .Where(x => x.AccessedOuterVariables.Count > 0)]
+                .Where(x => x.AccessedOuterVariables.Count > 0)
+                .Concat(_program.TopLevelLocalFunctions)]
         };
         foreach (var local in _program.TopLevelLocalVariables)
         {

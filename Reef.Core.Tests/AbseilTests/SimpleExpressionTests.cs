@@ -314,6 +314,24 @@ public class SimpleExpressionTests : TestBase
                                 MethodReturnUnit()
                             ])
                     ])
+            },
+            {
+                "local function in block",
+                """
+                {
+                    fn SomeFn(){}
+                }
+                """,
+                LoweredProgram(
+                    methods: [
+                        Method("_Main__SomeFn",
+                            [MethodReturnUnit()]),
+                        Method("_Main",
+                            [
+                                Block([], Unit, false),
+                                MethodReturnUnit()
+                            ])
+                    ])
             }
         };
     }

@@ -165,7 +165,10 @@ public partial class TypeChecker
         {
             var signature = fn.Signature ?? TypeCheckFunctionSignature(fn, functionIndex: null, ownerType: null);
 
-            CurrentFunctionSignature?.LocalFunctions.Add(signature);
+            var localFunctions = CurrentFunctionSignature?.LocalFunctions
+                ?? _program.TopLevelLocalFunctions;
+
+            localFunctions.Add(signature);
 
             ScopedFunctions[fn.Name.StringValue] = signature;
         }

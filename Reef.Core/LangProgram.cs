@@ -33,6 +33,7 @@ public record LangProgram(
     }
 
     public List<TypeChecker.LocalVariable> TopLevelLocalVariables { get; } = [];
+    public List<TypeChecker.FunctionSignature> TopLevelLocalFunctions { get; } = [];
 }
 
 public interface ITypeIdentifier
