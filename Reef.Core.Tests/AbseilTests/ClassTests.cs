@@ -125,6 +125,35 @@ public class ClassTests : TestBase
                     ])
             },
             {
+                "access static field",
+                """
+                class MyClass{pub static field MyField: string = ""}
+                var a = MyClass::MyField;
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType(
+                            "MyClass",
+                            variants: [Variant("_classVariant")],
+                            staticFields: [StaticField("MyField", StringType, StringConstant("", true))])
+                    ],
+                    methods: [
+                        Method("_Main",
+                            [
+                                VariableDeclaration(
+                                    "a",
+                                    StaticFieldAccess(
+                                        ConcreteTypeReference("MyClass"),
+                                        "MyField",
+                                        true,
+                                        StringType),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [Local("a", StringType)])
+                    ])
+            },
+            {
                 "call static method",
                 """
                 MyClass::MyFn();

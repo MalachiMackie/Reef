@@ -435,7 +435,16 @@ public partial class ProgramAbseil
                 });
         }
 
-        throw new NotImplementedException(e.ToString());
+        if (e.StaticMemberAccess.MemberType == Expressions.MemberType.Field)
+        {
+            return new StaticFieldAccessExpression(
+                (GetTypeReference(e.OwnerType.NotNull()) as LoweredConcreteTypeReference).NotNull(),
+                e.StaticMemberAccess.MemberName.NotNull().StringValue,
+                e.ValueUseful,
+                GetTypeReference(e.ResolvedType.NotNull()));
+        }
+
+        throw new UnreachableException();
     }
 
     private CreateObjectExpression LowerObjectInitializationExpression(
