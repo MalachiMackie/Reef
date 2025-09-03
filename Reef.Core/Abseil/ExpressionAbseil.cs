@@ -542,12 +542,12 @@ public partial class ProgramAbseil
         switch (e.UnaryOperator.OperatorType)
         {
             case Expressions.UnaryOperatorType.FallOut:
-                break;
+                throw new NotImplementedException();
             case Expressions.UnaryOperatorType.Not:
                 return new BoolNotExpression(e.ValueUseful, operand);
         }
 
-        throw new NotImplementedException(e.UnaryOperator.OperatorType.ToString());
+        throw new UnreachableException();
     }
 
     private ILoweredExpression LowerValueAccessorExpression(
@@ -562,7 +562,7 @@ public partial class ProgramAbseil
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.False }} => new BoolConstantExpression(e.ValueUseful, false),
             { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, ReferencedVariable: {} variable} => VariableAccess(variable, e.ValueUseful),
             { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, FunctionInstantiation: {} fn} => FunctionAccess(fn, (e.ResolvedType as TypeChecking.TypeChecker.FunctionObject).NotNull(), e.ValueUseful),
-            _ => throw new NotImplementedException($"{e}")
+            _ => throw new UnreachableException($"{e}")
         };
 
         ILoweredExpression FunctionAccess(
@@ -816,7 +816,7 @@ public partial class ProgramAbseil
                     }
             }
 
-            throw new NotImplementedException($"{variable.GetType()}");
+            throw new UnreachableException($"{variable.GetType()}");
         }
     }
 
@@ -992,7 +992,7 @@ public partial class ProgramAbseil
                     resolvedType);
             }
 
-            throw new NotImplementedException(variable.ToString());
+            throw new UnreachableException(variable.ToString());
         }
 
         if (left is Expressions.MemberAccessExpression memberAccess)
