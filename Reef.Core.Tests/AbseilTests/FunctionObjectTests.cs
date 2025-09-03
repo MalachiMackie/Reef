@@ -385,18 +385,107 @@ public class FunctionObjectTests : TestBase
                 var a = SomeFn;
                 a();
                 """,
-                LoweredProgram()
+                LoweredProgram(
+                    methods: [
+                        Method("SomeFn", [MethodReturnUnit()]),
+                        Method("_Main",
+                            [
+                                VariableDeclaration(
+                                    "a",
+                                    CreateObject(
+                                        ConcreteTypeReference("Function`1", [Unit]),
+                                        "_classVariant",
+                                        true,
+                                        new()
+                                        {
+                                            {
+                                                "FunctionReference",
+                                                FunctionReferenceConstant(
+                                                    FunctionReference("SomeFn"),
+                                                    true,
+                                                    FunctionType([], Unit))
+                                            }
+                                        }),
+                                    false),
+                                MethodCall(
+                                    FunctionReference("Function`1__Call"),
+                                    [
+                                        LocalAccess(
+                                            "a",
+                                            true,
+                                            ConcreteTypeReference("Function`1", [Unit]))
+                                    ],
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local(
+                                    "a",
+                                    ConcreteTypeReference("Function`1", [Unit]))
+                            ])
+                    ])
             },
             {
                 "call function object with parameters",
                 """
-                fn SomeFn(a: string): string { return a; }
+                fn SomeFn(a: string): int { return 1; }
                 var a = SomeFn;
-                a("");
+                var b = a("");
                 """,
-                LoweredProgram()
+                LoweredProgram(
+                    methods: [
+                        Method(
+                            "SomeFn",
+                            [MethodReturn(IntConstant(1, true))],
+                            parameters: [StringType],
+                            returnType: Int),
+                        Method("_Main",
+                            [
+                                VariableDeclaration(
+                                    "a",
+                                    CreateObject(
+                                        ConcreteTypeReference("Function`2", [StringType, Int]),
+                                        "_classVariant",
+                                        true,
+                                        new()
+                                        {
+                                            {
+                                                "FunctionReference",
+                                                FunctionReferenceConstant(
+                                                    FunctionReference("SomeFn"),
+                                                    true,
+                                                    FunctionType([StringType], Int))
+                                            }
+                                        }),
+                                    false),
+                                VariableDeclaration(
+                                    "b",
+                                    MethodCall(
+                                        FunctionReference("Function`2__Call"),
+                                        [
+                                            LocalAccess(
+                                                "a",
+                                                true,
+                                                ConcreteTypeReference("Function`2", [StringType, Int])),
+                                            StringConstant("", true)
+                                        ],
+                                        true,
+                                        Int),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local(
+                                    "a",
+                                    ConcreteTypeReference("Function`2", [StringType, Int])),
+                                Local("b", Int)
+                            ])
+                    ])
             }
         };
+
+        
     }
 }
 

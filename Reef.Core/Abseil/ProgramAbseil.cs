@@ -20,6 +20,8 @@ public partial class ProgramAbseil
     private LoweredConcreteTypeReference? _currentType;
     private (LoweredMethod LoweredMethod, FunctionSignature FunctionSignature)? _currentFunction;
 
+    private readonly IReadOnlyList<LoweredProgram> _importedPrograms;
+
     public static LoweredProgram Lower(LangProgram program)
     {
         return new ProgramAbseil(program).LowerInner();
@@ -27,6 +29,75 @@ public partial class ProgramAbseil
 
     private ProgramAbseil(LangProgram program)
     {
+        var importedDataTypes = new List<DataType>();
+        var importedMethods = new List<LoweredMethod>();
+
+        var ptrType = new LoweredConcreteTypeReference(
+                ClassSignature.Ptr.Name,
+                ClassSignature.Ptr.Id,
+                []);
+
+        for (var i = 0; i < 7; i++)
+        {
+            var fnClass = ClassSignature.Function(i);
+            importedDataTypes.Add(
+                new DataType(
+                    fnClass.Id,
+                    fnClass.Name,
+                    [..fnClass.TypeParameters.Select(GetGenericPlaceholder)],
+                    [
+                        new DataTypeVariant(
+                            "_classVariant",
+                            [
+                                new DataTypeField(
+                                    "FunctionReference",
+                                    new LoweredFunctionType(
+                                        [..fnClass.TypeParameters.SkipLast(1).Select(GetGenericPlaceholder)],
+                                        GetTypeReference(fnClass.TypeParameters[^1]))),
+                                new DataTypeField(
+                                    "FunctionParameter",
+                                    ptrType)
+                            ])
+                    ],
+                    []));
+
+            /*
+             * pub class Function`1<TReturn>
+             * {
+             *     pub field FunctionReference: FnType<TReturn>,
+             *     pub field FunctionParameter: Option<Ptr>,
+             *
+             *     pub fn Call(): TReturn
+             *     {
+             *         if (FunctionParameter matches Option::Some(ptr)) {
+             *           return ((FnType<Ptr, TReturn>)FunctionReference)(ptr);
+             *         }
+             *         return FunctionReference();
+             *     }
+             * }
+             *
+             */
+
+            var call = fnClass.Functions[0];
+
+            importedMethods.Add(
+                new LoweredMethod(
+                    call.Id,
+                    $"{fnClass.Name}__{call.Name}",
+                    [],
+                    [..call.Parameters.Values.Select(x => GetTypeReference(x.Type))],
+                    GetTypeReference(call.ReturnType),
+                    [],// todo
+                    []));
+        }
+
+        _importedPrograms = [
+            new LoweredProgram()
+            {
+                DataTypes = importedDataTypes,
+                Methods = importedMethods
+            }
+        ];
         _program = program;
     }
 
@@ -431,7 +502,10 @@ public partial class ProgramAbseil
 
     private LoweredFunctionReference GetFunctionReference(Guid functionId, IReadOnlyList<ILoweredTypeReference> typeArguments)
     {
-        var loweredMethod = _methods.Keys.First(x => x.Id == functionId);
+        var loweredMethod = _methods.Keys.FirstOrDefault(x => x.Id == functionId)
+            ?? _importedPrograms.SelectMany(x => x.Methods)
+                .First(x => x.Id == functionId);
+
         return new(
                 loweredMethod.Name,
                 functionId,

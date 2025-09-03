@@ -247,35 +247,44 @@ public partial class ProgramAbseil
             _ => null
         };
 
+        var arguments = new List<ILoweredExpression>(e.MethodCall.ArgumentList.Count);
+        LoweredFunctionReference functionReference;
+
         if (instantiatedFunction is null)
         {
-            throw new NotImplementedException("Calling function object");
-        }
+            var fn = TypeChecking.TypeChecker.ClassSignature
+                .Function(e.MethodCall.ArgumentList.Count)
+                .Functions.First(x => x.Name == "Call");
 
-        var functionReference = GetFunctionReference(instantiatedFunction.FunctionId,
+            functionReference = GetFunctionReference(fn.Id, []);
+
+            arguments.Add(LowerExpression(e.MethodCall.Method));
+        }
+        else
+        {
+            functionReference = GetFunctionReference(instantiatedFunction.FunctionId,
                 [..instantiatedFunction.TypeArguments.Select(GetTypeReference)]);
 
-        var arguments = new List<ILoweredExpression>(e.MethodCall.ArgumentList.Count);
-
-        if (e.MethodCall.Method is Expressions.MemberAccessExpression memberAccess)
-        {
-            var owner = LowerExpression(memberAccess.MemberAccess.Owner);
-            arguments.Add(owner);
-        }
-        else if (instantiatedFunction.ClosureTypeId.HasValue)
-        {
-            var createClosure = CreateClosureObject(instantiatedFunction);
-            arguments.Add(createClosure);
-        }
-        else if (!instantiatedFunction.IsStatic
-                && instantiatedFunction.OwnerType is not null
-                && _currentType is not null
-                && EqualTypeReferences(GetTypeReference(instantiatedFunction.OwnerType), _currentType)
-                && _currentFunction is not null
-                && EqualTypeReferences(_currentFunction.Value.LoweredMethod.Parameters[0], _currentType))
-        {
-            arguments.Add(
-                    new LoadArgumentExpression(0, true, _currentType));
+            if (e.MethodCall.Method is Expressions.MemberAccessExpression memberAccess)
+            {
+                var owner = LowerExpression(memberAccess.MemberAccess.Owner);
+                arguments.Add(owner);
+            }
+            else if (instantiatedFunction.ClosureTypeId.HasValue)
+            {
+                var createClosure = CreateClosureObject(instantiatedFunction);
+                arguments.Add(createClosure);
+            }
+            else if (!instantiatedFunction.IsStatic
+                    && instantiatedFunction.OwnerType is not null
+                    && _currentType is not null
+                    && EqualTypeReferences(GetTypeReference(instantiatedFunction.OwnerType), _currentType)
+                    && _currentFunction is not null
+                    && EqualTypeReferences(_currentFunction.Value.LoweredMethod.Parameters[0], _currentType))
+            {
+                arguments.Add(
+                        new LoadArgumentExpression(0, true, _currentType));
+            }
         }
 
         arguments.AddRange(e.MethodCall.ArgumentList.Select(LowerExpression));

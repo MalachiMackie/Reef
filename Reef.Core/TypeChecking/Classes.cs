@@ -18,6 +18,9 @@ public partial class TypeChecker
         public static ClassSignature Int { get; } = new()
         { TypeParameters = [], Name = "int", Fields = [], Functions = [] };
 
+        public static ClassSignature Ptr { get; } = new()
+        { TypeParameters = [], Name = "ptr", Fields = [], Functions = [] };
+
         public static ClassSignature Boolean { get; } = new()
         { TypeParameters = [], Name = "bool", Fields = [], Functions = [] };
 
