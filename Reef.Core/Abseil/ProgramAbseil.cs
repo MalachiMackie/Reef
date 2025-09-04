@@ -258,7 +258,7 @@ public partial class ProgramAbseil
                         var method = new LoweredMethod(
                                     Guid.NewGuid(),
                                     $"{union.Name}_Create_{u.Name}",
-                                    [],
+                                    typeParameters,
                                     memberTypes,
                                     unionTypeReference,
                                     expressions,
@@ -489,7 +489,10 @@ public partial class ProgramAbseil
         return (new LoweredMethod(
             fnSignature.Id,
             name,
-            [.. fnSignature.TypeParameters.Select(GetGenericPlaceholder)],
+            [
+                .. fnSignature.TypeParameters.Select(GetGenericPlaceholder),
+                .. ownerTypeReference?.TypeArguments.Select(x => (x as LoweredGenericPlaceholder).NotNull()) ?? []
+            ],
             [.. parameters],
             GetTypeReference(fnSignature.ReturnType),
             expressions,
@@ -501,7 +504,10 @@ public partial class ProgramAbseil
         return new LoweredGenericPlaceholder(placeholder.OwnerType.Id, placeholder.GenericName);
     }
 
-    private LoweredFunctionReference GetFunctionReference(Guid functionId, IReadOnlyList<ILoweredTypeReference> typeArguments)
+    private LoweredFunctionReference GetFunctionReference(
+            Guid functionId,
+            IReadOnlyList<ILoweredTypeReference> typeArguments,
+            IReadOnlyList<ILoweredTypeReference> ownerTypeArguments)
     {
         var loweredMethod = _methods.Keys.FirstOrDefault(x => x.Id == functionId)
             ?? _importedPrograms.SelectMany(x => x.Methods)
@@ -510,7 +516,7 @@ public partial class ProgramAbseil
         return new(
                 loweredMethod.Name,
                 functionId,
-                typeArguments);
+                [..typeArguments, ..ownerTypeArguments]);
     }
 
     private ILoweredTypeReference GetTypeReference(ITypeReference typeReference)

@@ -34,7 +34,8 @@ public class UnionTests : TestBase
                 Method(
                     "MyClass__SomeFn",
                     [MethodReturn(UnitConstant(true))],
-                    parameters: [ConcreteTypeReference("MyClass", [GenericPlaceholder("T")])])
+                    parameters: [ConcreteTypeReference("MyClass", [GenericPlaceholder("T")])],
+                    typeParameters: ["T"])
             ]);
 
         var program = CreateProgram(source);
@@ -85,7 +86,8 @@ public class UnionTests : TestBase
                             Method(
                                 "MyUnion__SomeFn",
                                 [MethodReturn(UnitConstant(true))],
-                                parameters: [ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")])])
+                                parameters: [ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")])],
+                                typeParameters: ["T"])
                         ])
             },
             {
@@ -146,6 +148,7 @@ public class UnionTests : TestBase
                                             {"Item0", LoadArgument(0, true, GenericPlaceholder("T"))},
                                         }))
                                 ],
+                                typeParameters: ["T"],
                                 parameters: [GenericPlaceholder("T")],
                                 returnType: ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]))
                         ])

@@ -482,6 +482,52 @@ public class FunctionObjectTests : TestBase
                                 Local("b", Int)
                             ])
                     ])
+            },
+            {
+                "assign generic function to function object",
+                """
+                class MyClass<T>
+                {
+                    pub static fn SomeFn<T2>(){}
+                }
+                var a = MyClass::<string>::SomeFn::<int>;
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass", ["T"], [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method(
+                            "MyClass__SomeFn",
+                            [MethodReturnUnit()],
+                            ["T", "T2"]),
+                        Method(
+                            "_Main",
+                            [
+                                VariableDeclaration(
+                                    "a",
+                                    CreateObject(
+                                        ConcreteTypeReference("Function`1", [Unit]),
+                                        "_classVariant",
+                                        true,
+                                        new()
+                                        {
+                                            {
+                                                "FunctionReference",
+                                                FunctionReferenceConstant(
+                                                    FunctionReference("MyClass__SomeFn", [StringType, Int]),
+                                                    true,
+                                                    FunctionType([], Unit))
+                                            }
+                                        }),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("a",
+                                    ConcreteTypeReference("Function`1", [Unit]))
+                            ])
+                    ])
             }
         };
 

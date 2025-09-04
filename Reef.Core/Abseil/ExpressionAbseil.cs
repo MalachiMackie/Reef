@@ -256,19 +256,20 @@ public partial class ProgramAbseil
                 .Function(e.MethodCall.ArgumentList.Count)
                 .Functions.First(x => x.Name == "Call");
 
-            functionReference = GetFunctionReference(fn.Id, []);
+            functionReference = GetFunctionReference(fn.Id, [], []);
 
             arguments.Add(LowerExpression(e.MethodCall.Method));
         }
         else
         {
-            functionReference = GetFunctionReference(instantiatedFunction.FunctionId,
-                [..instantiatedFunction.TypeArguments.Select(GetTypeReference)]);
-
+            IReadOnlyList<ILoweredTypeReference> ownerTypeArguments = [];
             if (e.MethodCall.Method is Expressions.MemberAccessExpression memberAccess)
             {
                 var owner = LowerExpression(memberAccess.MemberAccess.Owner);
                 arguments.Add(owner);
+                ownerTypeArguments = owner.ResolvedType is LoweredConcreteTypeReference concrete
+                    ? concrete.TypeArguments
+                    : throw new UnreachableException("Shouldn't ever be able to call a method on a generic parameter");
             }
             else if (instantiatedFunction.ClosureTypeId.HasValue)
             {
@@ -285,6 +286,21 @@ public partial class ProgramAbseil
                 arguments.Add(
                         new LoadArgumentExpression(0, true, _currentType));
             }
+
+            if (e.MethodCall.Method is Expressions.StaticMemberAccessExpression staticMemberAccess)
+            {
+                ownerTypeArguments = (GetTypeReference(staticMemberAccess.OwnerType.NotNull())
+                    as LoweredConcreteTypeReference).NotNull().TypeArguments;
+            }
+            if (e.MethodCall.Method is Expressions.ValueAccessorExpression valueAccessor
+                    && _currentType is not null)
+            {
+                ownerTypeArguments = _currentType.TypeArguments;
+            }
+
+            functionReference = GetFunctionReference(instantiatedFunction.FunctionId,
+                [..instantiatedFunction.TypeArguments.Select(GetTypeReference)],
+                ownerTypeArguments);
         }
 
         arguments.AddRange(e.MethodCall.ArgumentList.Select(LowerExpression));
@@ -314,6 +330,9 @@ public partial class ProgramAbseil
                 }
             case Expressions.MemberType.Function:
                 {
+                    var ownerTypeArguments = (owner.ResolvedType as LoweredConcreteTypeReference)
+                        .NotNull().TypeArguments;
+
                     var fn = e.MemberAccess.InstantiatedFunction.NotNull();
                     return new CreateObjectExpression(
                         (GetTypeReference(e.ResolvedType.NotNull()) as LoweredConcreteTypeReference).NotNull(),
@@ -326,7 +345,8 @@ public partial class ProgramAbseil
                                 new FunctionReferenceConstantExpression(
                                     GetFunctionReference(
                                         fn.FunctionId,
-                                        [..fn.TypeArguments.Select(GetTypeReference)]),
+                                        [..fn.TypeArguments.Select(GetTypeReference)],
+                                        ownerTypeArguments),
                                     true,
                                     new LoweredFunctionType(
                                         [..fn.Parameters.Select(x => GetTypeReference(x.Type))],
@@ -414,6 +434,7 @@ public partial class ProgramAbseil
 
         if (e.StaticMemberAccess.MemberType == Expressions.MemberType.Function)
         {
+            var ownerTypeArguments = (GetTypeReference(e.OwnerType.NotNull()) as LoweredConcreteTypeReference).NotNull().TypeArguments;
             var fn = e.StaticMemberAccess.InstantiatedFunction.NotNull();
             return new CreateObjectExpression(
                 (GetTypeReference(e.ResolvedType.NotNull()) as LoweredConcreteTypeReference).NotNull(),
@@ -426,7 +447,8 @@ public partial class ProgramAbseil
                         new FunctionReferenceConstantExpression(
                             GetFunctionReference(
                                 fn.FunctionId,
-                                [..fn.TypeArguments.Select(GetTypeReference)]),
+                                [..fn.TypeArguments.Select(GetTypeReference)],
+                                ownerTypeArguments),
                             true,
                             new LoweredFunctionType(
                                 [..fn.Parameters.Select(x => GetTypeReference(x.Type))],
@@ -545,9 +567,10 @@ public partial class ProgramAbseil
                 throw new NotImplementedException();
             case Expressions.UnaryOperatorType.Not:
                 return new BoolNotExpression(e.ValueUseful, operand);
+            default:
+                throw new UnreachableException();
         }
 
-        throw new UnreachableException();
     }
 
     private ILoweredExpression LowerValueAccessorExpression(
@@ -572,6 +595,8 @@ public partial class ProgramAbseil
         {
             var method = _methods.Keys.First(x => x.Id == fn.FunctionId);
 
+            var ownerTypeArguments = _currentType?.TypeArguments ?? [];
+
             var functionObjectParameters = new Dictionary<string, ILoweredExpression>
             {
                 {
@@ -579,7 +604,8 @@ public partial class ProgramAbseil
                     new FunctionReferenceConstantExpression(
                             GetFunctionReference(
                                 fn.FunctionId,
-                                [..fn.TypeArguments.Select(GetTypeReference)]),
+                                [..fn.TypeArguments.Select(GetTypeReference)],
+                                ownerTypeArguments),
                             true,
                             new LoweredFunctionType(
                                 method.Parameters,

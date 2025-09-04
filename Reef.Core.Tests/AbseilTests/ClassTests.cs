@@ -53,6 +53,7 @@ public class ClassTests : TestBase
                                     Method(
                                         "MyClass__SomeFn",
                                         [MethodReturn(UnitConstant(true))],
+                                        typeParameters: ["T"],
                                         parameters: [ConcreteTypeReference("MyClass", [GenericPlaceholder("T")])])
                                 ])
             },
@@ -584,6 +585,171 @@ public class ClassTests : TestBase
                             ],
                             parameters: [ConcreteTypeReference("MyClass")],
                             locals: [Local("a", ConcreteTypeReference("MyClass"))])
+                    ])
+            },
+            {
+                "non generic function in generic class",
+                """
+                class MyClass<T>
+                {
+                    static fn SomeFn(){}
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass", ["T"], variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method("MyClass__SomeFn", [MethodReturnUnit()], ["T"])
+                    ])
+            },
+            {
+                "generic function in generic class",
+                """
+                class MyClass<T>
+                {
+                    static fn SomeFn<T1>(){}
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass", ["T"], variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method("MyClass__SomeFn", [MethodReturnUnit()], ["T", "T1"])
+                    ])
+            },
+            {
+                "reference static generic method in generic type",
+                """
+                class MyClass<T>
+                {
+                    pub static fn SomeFn<T1>(){}
+                }
+                MyClass::<string>::SomeFn::<int>()
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass", ["T"], variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method("MyClass__SomeFn", [MethodReturnUnit()], ["T", "T1"]),
+                        Method("_Main",
+                            [
+                                MethodCall(
+                                    FunctionReference(
+                                        "MyClass__SomeFn",
+                                        [StringType, Int]),
+                                    [],
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
+                            ])
+                    ])
+            },
+            {
+                "reference generic method on instance of generic type",
+                """
+                class MyClass<T>
+                {
+                    pub fn SomeFn<T2>(){}
+                }
+                var a = new MyClass::<string>{};
+                a.SomeFn::<int>();
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass", ["T"], variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method(
+                            "MyClass__SomeFn",
+                            [MethodReturnUnit()],
+                            ["T", "T2"],
+                            parameters: [ConcreteTypeReference("MyClass", [GenericPlaceholder("T")])]),
+                        Method("_Main",
+                            [
+                                VariableDeclaration(
+                                    "a",
+                                    CreateObject(
+                                        ConcreteTypeReference("MyClass", [StringType]),
+                                        "_classVariant",
+                                        true),
+                                    false),
+                                MethodCall(
+                                    FunctionReference("MyClass__SomeFn", [StringType, Int]),
+                                    [LocalAccess("a", true, ConcreteTypeReference("MyClass", [StringType]))],
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("a", ConcreteTypeReference("MyClass", [StringType]))
+                            ])
+                    ])
+            },
+            {
+                "reference generic method inside generic type",
+                """
+                class MyClass<T>
+                {
+                    static fn SomeFn<T1>(){}
+
+                    static fn OtherFn()
+                    {
+                        SomeFn::<string>();
+                    }
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass", ["T"], [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method("MyClass__SomeFn", [MethodReturnUnit()], ["T", "T1"]),
+                        Method("MyClass__OtherFn",
+                            [
+                                MethodCall(
+                                    FunctionReference("MyClass__SomeFn",
+                                        [GenericPlaceholder("T"), StringType]),
+                                    [],
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
+                            ],
+                            ["T"])
+                    ])
+            },
+            {
+                "reference non generic method inside generic type",
+                """
+                class MyClass<T>
+                {
+                    static fn SomeFn(){}
+
+                    static fn OtherFn()
+                    {
+                        SomeFn();
+                    }
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass", ["T"], [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method("MyClass__SomeFn", [MethodReturnUnit()], ["T"]),
+                        Method("MyClass__OtherFn",
+                            [
+                                MethodCall(
+                                    FunctionReference("MyClass__SomeFn",
+                                        [GenericPlaceholder("T")]),
+                                    [],
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
+                            ],
+                            ["T"])
                     ])
             }
         };
