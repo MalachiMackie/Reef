@@ -325,6 +325,14 @@ public record TypeCheckerError
             new SourceRange(identifier.SourceSpan, identifier.SourceSpan),
             $"Variable {identifier.StringValue} has already been declared");
     }
+
+    public static TypeCheckerError IfExpressionValueUsedWithoutElseBranch(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.IfExpressionValueUsedWithoutElseBranch,
+            sourceRange,
+            "If expression value is used without an if branch");
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -375,4 +383,5 @@ public enum TypeCheckerErrorType
     UnionClassVariantWithoutInitializer,
     StaticFieldInClassPattern,
     DuplicateVariableDeclaration,
+    IfExpressionValueUsedWithoutElseBranch
 }

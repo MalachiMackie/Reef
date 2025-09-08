@@ -9,6 +9,23 @@ public static class ParseTestCases
     {
         return new (string Source, LangProgram ExpectedProgram)[]
         {
+            (
+             """
+             var a = if (true) {} else {};
+             """,
+             new(
+                 [
+                    VariableDeclaration(
+                        "a",
+                        IfExpression(
+                            Literal(true),
+                            Block(),
+                            Block()))
+                 ],
+                 [],
+                 [],
+                 [])
+            ),
             ("var a: int = (1 + 2) * 3;", new LangProgram([
                 new VariableDeclarationExpression(new VariableDeclaration(
                     Identifier("a"),

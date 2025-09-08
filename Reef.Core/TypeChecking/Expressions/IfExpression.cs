@@ -11,7 +11,8 @@ public partial class TypeChecker
         public bool InstantiatedInEachElseIf { get; set; } = true;
     }
 
-    private ITypeReference TypeCheckIfExpression(IfExpression ifExpression)
+    private ITypeReference TypeCheckIfExpression(
+        IfExpression ifExpression)
     {
         // scope around the entire if expression. Variables declared in the check expression (e.g. with matches) will be
         // conditionally available in the body

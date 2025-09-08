@@ -150,7 +150,7 @@ public class TypeTwoTypeChecker
                 CheckBlock(blockExpression.Block);
                 break;
             case IfExpressionExpression ifExpressionExpression:
-                CheckIfExpression(ifExpressionExpression.IfExpression);
+                CheckIfExpression(ifExpressionExpression);
                 break;
             case BinaryOperatorExpression binaryOperatorExpression:
                 CheckBinaryOperatorExpression(binaryOperatorExpression.BinaryOperator);
@@ -335,8 +335,9 @@ public class TypeTwoTypeChecker
         }
     }
 
-    private void CheckIfExpression(IfExpression ifExpression)
+    private void CheckIfExpression(IfExpressionExpression e)
     {
+        var ifExpression = e.IfExpression;
         var uninitializedLocalVariables = _localVariablesInitialized.Peek().Where(x => !x.Value)
             .Select(x => x.Key)
             .ToDictionary(x => x, _ => new TypeChecker.VariableIfInstantiation());
@@ -377,6 +378,10 @@ public class TypeTwoTypeChecker
                 variableInstantiation.InstantiatedInEachElseIf &= _localVariablesInitialized.Peek()[variable];
                 _localVariablesInitialized.Peek()[variable] = false;
             }
+        }
+        else if (e.ValueUseful)
+        {
+            _errors.Add(TypeCheckerError.IfExpressionValueUsedWithoutElseBranch(e.SourceRange));
         }
 
         foreach (var (variable, variableInstantiation) in uninitializedLocalVariables)

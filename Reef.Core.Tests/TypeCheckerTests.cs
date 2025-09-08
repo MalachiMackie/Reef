@@ -63,6 +63,12 @@ public class TypeCheckerTests
         return new TheoryData<string>
         {
             """
+            var a = if (true) {} else {};
+            """,
+            """
+            var a = if (true) {} else if (true) {} else {}; 
+            """,
+            """
             fn OtherFn(): result::<int, int>
             {
                 return ok(1);
@@ -1433,6 +1439,20 @@ public class TypeCheckerTests
     {
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
+            {
+                "assign else if to variable without else",
+                """
+                var a = if (true) {} else if (true) {};
+                """,
+                [TypeCheckerError.IfExpressionValueUsedWithoutElseBranch(SourceRange.Default)]
+            },
+            {
+                "assign if to variable without else",
+                """
+                var a = if (true) {};
+                """,
+                [TypeCheckerError.IfExpressionValueUsedWithoutElseBranch(SourceRange.Default)]
+            },
             {
                 "duplicate variable declaration",
                 """

@@ -19,6 +19,15 @@ public static class ExpressionHelpers
             Token.StringLiteral(value, SourceSpan.Default), null));
     }
 
+    public static ValueAccessorExpression Literal(bool value)
+    {
+        return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
+            value
+                ? Token.True(SourceSpan.Default)
+                : Token.False(SourceSpan.Default),
+            null));
+    }
+
     public static BinaryOperatorExpression Multiply(IExpression? left, IExpression? right)
     {
         return new BinaryOperatorExpression(new BinaryOperator(
