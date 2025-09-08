@@ -278,7 +278,7 @@ public static class LoweredProgramHelpers
             check,
             body,
             elseIfs ?? [],
-            elseBody ?? UnitConstant(true),
+            elseBody,
             valueUseful,
             resolvedType);
     }

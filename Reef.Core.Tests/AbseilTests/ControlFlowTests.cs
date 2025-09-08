@@ -190,6 +190,129 @@ public class ControlFlowTests : TestBase
                             ],
                             returnType: ConcreteTypeReference("result", [Int, Int]))
                     ])
+            },
+            {
+                "simple if",
+                """
+                var mut a = 0;
+                if (true) a = 1;
+                """,
+                LoweredProgram(
+                    methods: [
+                        Method("_Main",
+                            [
+                                VariableDeclaration("a", IntConstant(0, true), false),
+                                IfExpression(
+                                    BoolConstant(true, true),
+                                    LocalValueAssignment(
+                                        "a",
+                                        IntConstant(1, true),
+                                        true,
+                                        Int),
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
+                            ],
+                            locals: [Local("a", Int)])
+                    ])
+            },
+            {
+                "if else",
+                """
+                if (true) {}
+                else {}
+                """,
+                LoweredProgram(
+                    methods: [
+                        Method(
+                            "_Main",
+                            [
+                                IfExpression(
+                                    BoolConstant(true, true),
+                                    Block([], Unit, true),
+                                    false,
+                                    Unit,
+                                    elseBody: Block([], Unit, true)),
+                                MethodReturnUnit()
+                            ])
+                    ])
+            },
+            {
+                "assign if else to variable",
+                """
+                var b = if (true) { } else { };
+                """,
+                LoweredProgram(
+                    methods: [
+                        Method(
+                            "_Main",
+                            [
+                                VariableDeclaration(
+                                    "b",
+                                    IfExpression(
+                                        BoolConstant(true, true),
+                                        Block([], Unit, true),
+                                        true,
+                                        Unit,
+                                        elseBody: Block([], Unit, true)),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("b", Unit)
+                            ])
+                    ])
+            },
+            {
+                "if else if",
+                """
+                if (true)
+                {
+                }
+                else if (true)
+                {
+                }
+                """,
+                LoweredProgram(
+                    methods: [
+                        Method("_Main",
+                            [
+                                IfExpression(
+                                    BoolConstant(true, true),
+                                    Block([], Unit, true),
+                                    false,
+                                    Unit,
+                                    [
+                                        (BoolConstant(true, true), Block([], Unit, true))
+                                    ]),
+                                MethodReturnUnit()
+                            ])
+                    ])
+            },
+            {
+                "if else if else",
+                """
+                if (true)
+                {}
+                else if (true)
+                {}
+                else
+                {}
+                """,
+                LoweredProgram(
+                    methods: [
+                        Method("_Main",
+                            [
+                                IfExpression(
+                                    BoolConstant(true, true),
+                                    Block([], Unit, true),
+                                    false,
+                                    Unit,
+                                    [(BoolConstant(true, true), Block([], Unit, true))],
+                                    Block([], Unit, true)),
+                                MethodReturnUnit()
+                            ])
+                    ])
             }
         };
     }

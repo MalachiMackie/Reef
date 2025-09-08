@@ -18,7 +18,7 @@ public record IfExpression(
         ILoweredExpression Check,
         ILoweredExpression Body,
         IReadOnlyList<(ILoweredExpression Check, ILoweredExpression Body)> ElseIfs,
-        ILoweredExpression ElseBody,
+        ILoweredExpression? ElseBody,
         bool ValueUseful,
         ILoweredTypeReference ResolvedType) : ILoweredExpression;
 

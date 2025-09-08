@@ -24,8 +24,21 @@ public partial class ProgramAbseil
             Expressions.MethodCallExpression e => LowerMethodCallExpression(e),
             Expressions.MethodReturnExpression e => LowerMethodReturnExpression(e),
             Expressions.TupleExpression e => LowerTupleExpression(e),
+            Expressions.IfExpressionExpression e => LowerIfExpression(e),
             _ => throw new NotImplementedException($"{expression.GetType()}")
         };
+    }
+
+    private IfExpression LowerIfExpression(
+        Expressions.IfExpressionExpression e)
+    {
+        return new IfExpression(
+            LowerExpression(e.IfExpression.CheckExpression),
+            LowerExpression(e.IfExpression.Body.NotNull()),
+            [..e.IfExpression.ElseIfs.Select(x => (LowerExpression(x.CheckExpression), LowerExpression(x.Body.NotNull())))],
+            e.IfExpression.ElseBody is {} elseBody ? LowerExpression(elseBody) : null,
+            e.ValueUseful,
+            GetTypeReference(e.ResolvedType.NotNull()));
     }
 
     private ILoweredExpression LowerTupleExpression(
