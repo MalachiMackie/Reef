@@ -114,11 +114,28 @@ public partial class TypeChecker
 
                 TupleUnionVariant TypeCheckTupleVariant(Core.TupleUnionVariant tupleVariant)
                 {
+                    var createFunctionParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
                     return new TupleUnionVariant
                     {
                         Name = variant.Name.StringValue,
-                        TupleMembers =
-                            [.. tupleVariant.TupleMembers.Select(GetTypeReference)]
+                        TupleMembers = [.. tupleVariant.TupleMembers.Select(GetTypeReference)],
+                        CreateFunction = new FunctionSignature(
+                            Token.Identifier($"{unionSignature.Name}_Create_{variant.Name.StringValue}", SourceSpan.Default),
+                            [],
+                            createFunctionParameters,
+                            IsStatic: true,
+                            IsMutable: false,
+                            [],
+                            0)
+                        {
+                            OwnerType = unionSignature,
+                            ReturnType = new InstantiatedUnion(
+                                unionSignature,
+                                [.. unionSignature.TypeParameters.Select(x => new GenericTypeReference{
+                                    OwnerType = x.OwnerType,
+                                    GenericName = x.GenericName,
+                                })])
+                        }
                     };
                 }
 

@@ -91,6 +91,62 @@ public partial class ProgramAbseil
                     []));
         }
 
+        var errorGeneric = new LoweredGenericPlaceholder(
+                                    UnionSignature.Result.Id,
+                                    "TError");
+        var valueGeneric = new LoweredGenericPlaceholder(
+                                    UnionSignature.Result.Id,
+                                    "TValue");
+        var intRef = new LoweredConcreteTypeReference(
+                                    ClassSignature.Int.Name,
+                                    ClassSignature.Int.Id,
+                                    []);
+        var result = new LoweredConcreteTypeReference(
+                UnionSignature.Result.Name,
+                UnionSignature.Result.Id,
+                [valueGeneric, errorGeneric]);
+
+        var resultDataType = new DataType(
+            UnionSignature.Result.Id,
+            UnionSignature.Result.Name,
+            [..UnionSignature.Result.TypeParameters.Select(GetGenericPlaceholder)],
+            [
+                new DataTypeVariant(
+                    "Ok",
+                    [
+                        new DataTypeField(
+                            "_variantIdentifier",
+                            intRef),
+                        new DataTypeField(
+                            "Item0",
+                            valueGeneric)
+                    ]),
+                new DataTypeVariant(
+                    "Error",
+                    [
+                        new DataTypeField(
+                            "_variantIdentifier",
+                            intRef),
+                        new DataTypeField(
+                            "Item0",
+                            errorGeneric)
+                    ])
+            ],
+            []);
+        importedDataTypes.Add(resultDataType);
+        foreach (var variant in UnionSignature.Result.Variants.OfType<TypeChecking.TypeChecker.TupleUnionVariant>())
+        {
+            importedMethods.Add(
+                new LoweredMethod(
+                    variant.CreateFunction.Id,
+                    variant.CreateFunction.Name,
+                    resultDataType.TypeParameters,
+                    [..variant.CreateFunction.Parameters.Values.Select(x => GetTypeReference(x.Type))],
+                    GetTypeReference(variant.CreateFunction.ReturnType),
+                    [],
+                    []));
+        }
+
         _importedPrograms = [
             new LoweredProgram()
             {
@@ -125,10 +181,10 @@ public partial class ProgramAbseil
                 Token.Identifier("_Main", SourceSpan.Default),
                 [],
                 [],
-                isStatic: true,
-                isMutable: false,
+                IsStatic: true,
+                IsMutable: false,
                 _program.Expressions,
-                functionIndex: null)
+                FunctionIndex: null)
         {
             ReturnType = InstantiatedClass.Unit,
             OwnerType = null,
@@ -256,8 +312,8 @@ public partial class ProgramAbseil
                                     ];
 
                         var method = new LoweredMethod(
-                                    Guid.NewGuid(),
-                                    $"{union.Name}_Create_{u.Name}",
+                                    u.CreateFunction.Id,
+                                    u.CreateFunction.Name,
                                     typeParameters,
                                     memberTypes,
                                     unionTypeReference,
@@ -513,10 +569,14 @@ public partial class ProgramAbseil
             ?? _importedPrograms.SelectMany(x => x.Methods)
                 .First(x => x.Id == functionId);
 
+        IReadOnlyList<ILoweredTypeReference> resultingTypeArguments = [..typeArguments, ..ownerTypeArguments];
+        
+        Debug.Assert(resultingTypeArguments.Count == loweredMethod.TypeParameters.Count);
+
         return new(
                 loweredMethod.Name,
                 functionId,
-                [..typeArguments, ..ownerTypeArguments]);
+                resultingTypeArguments);
     }
 
     private ILoweredTypeReference GetTypeReference(ITypeReference typeReference)
@@ -524,17 +584,20 @@ public partial class ProgramAbseil
         return typeReference switch
         {
             InstantiatedClass c => new LoweredConcreteTypeReference(
-                    c.Signature.Name,
-                    c.Signature.Id,
-                    [.. c.TypeArguments.Select(x => GetTypeReference(x.ResolvedType.NotNull()))]),
+                c.Signature.Name,
+                c.Signature.Id,
+                [.. c.TypeArguments.Select(GetTypeReference)]),
             InstantiatedUnion u => new LoweredConcreteTypeReference(
-                    u.Signature.Name,
-                    u.Signature.Id,
-                    [.. u.TypeArguments.Select(x => GetTypeReference(x.ResolvedType.NotNull()))]),
-            GenericTypeReference g => GetTypeReference(g.ResolvedType.NotNull()),
+                u.Signature.Name,
+                u.Signature.Id,
+                [.. u.TypeArguments.Select(GetTypeReference)]),
+            GenericTypeReference {ResolvedType: {} resolvedType} => GetTypeReference(resolvedType),
+            GenericTypeReference {ResolvedType: null} g => new LoweredGenericPlaceholder(
+                g.OwnerType.Id,
+                g.GenericName),
             GenericPlaceholder g => new LoweredGenericPlaceholder(
-                    g.OwnerType.Id,
-                    g.GenericName),
+                g.OwnerType.Id,
+                g.GenericName),
             UnknownInferredType i => GetTypeReference(i.ResolvedType.NotNull()),
             FunctionObject f => FunctionObjectCase(f),
             _ => throw new InvalidOperationException($"Type reference {typeReference.GetType()} is not supported")

@@ -164,11 +164,11 @@ public partial class TypeChecker
             Token.Identifier(tupleVariant.Name, SourceSpan.Default),
             [],
             parameters,
-            isStatic: true,
-            isMutable: false,
-            [],
+            IsStatic: true,
+            IsMutable: false,
+            Expressions: [],
             // make sure the function comes after all the user defined functions 
-            functionIndex: (uint)instantiatedUnion.Signature.Functions.Count + (uint)tupleVariantIndex)
+            FunctionIndex: (uint)instantiatedUnion.Signature.Functions.Count + (uint)tupleVariantIndex)
         {
             ReturnType = instantiatedUnion,
             OwnerType = instantiatedUnion.Signature
@@ -323,33 +323,26 @@ public partial class TypeChecker
         return instantiatedFunction;
     }
 
-    public class FunctionSignature(
-        StringToken nameToken,
-        IReadOnlyList<GenericPlaceholder> typeParameters,
-        OrderedDictionary<string, FunctionSignatureParameter> parameters,
-        bool isStatic,
-        bool isMutable,
-        IReadOnlyList<IExpression> expressions,
-        uint? functionIndex) : ITypeSignature
+    public record FunctionSignature(
+        StringToken NameToken,
+        IReadOnlyList<GenericPlaceholder> TypeParameters,
+        OrderedDictionary<string, FunctionSignatureParameter> Parameters,
+        bool IsStatic,
+        bool IsMutable,
+        IReadOnlyList<IExpression> Expressions,
+        uint? FunctionIndex) : ITypeSignature
     {
         public Guid Id { get; } = Guid.NewGuid();
-        public uint? FunctionIndex { get; } = functionIndex;
         public Guid? LocalsTypeId { get; set; }
         public Guid? ClosureTypeId { get; set; }
         public List<(Guid fieldTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureTypeFields { get; set; } = [];
         public IReadOnlyList<IVariable> LocalsTypeFields { get; set; } = [];
-        public bool IsStatic { get; } = isStatic;
         public bool IsGlobal => OwnerType is null;
-        public bool IsMutable { get; } = isMutable;
-        public IReadOnlyList<GenericPlaceholder> TypeParameters { get; } = typeParameters;
-        public OrderedDictionary<string, FunctionSignatureParameter> Parameters { get; } = parameters;
 
         // mutable due to setting up signatures and generic stuff
         public required ITypeReference ReturnType { get; set; }
         public required ITypeSignature? OwnerType { get; init; }
-        public StringToken NameToken { get; } = nameToken;
-        public string Name { get; } = nameToken.StringValue;
-        public IReadOnlyList<IExpression> Expressions { get; } = expressions;
+        public string Name => NameToken.StringValue;
         public List<FunctionSignature> LocalFunctions { get; init; } = [];
         public List<LocalVariable> LocalVariables { get; init; } = [];
         public List<IVariable> AccessedOuterVariables { get; } = [];

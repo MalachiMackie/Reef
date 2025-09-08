@@ -38,13 +38,12 @@ public partial class TypeChecker
             var okVariant = instantiatedUnion.Variants.FirstOrDefault(x => x.Name == variantName)
                             ?? throw new UnreachableException($"{variantName} is a built in variant of Result");
 
-            if (okVariant is not TupleUnionVariant tupleVariant)
+            if (okVariant is not TupleUnionVariant {CreateFunction: var tupleVariantFunctionSignature} tupleVariant)
             {
                 throw new UnreachableException($"{variantName} is a tuple variant");
             }
 
-            var tupleVariantFunction = GetUnionTupleVariantFunction(tupleVariant, instantiatedUnion);
-
+            var tupleVariantFunction = InstantiateFunction(tupleVariantFunctionSignature, instantiatedUnion, [], SourceRange.Default, GenericPlaceholders);
             valueAccessorExpression.FunctionInstantiation = tupleVariantFunction;
 
             return new FunctionObject(

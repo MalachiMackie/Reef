@@ -178,7 +178,7 @@ public record TypeCheckerError
         return new(
             TypeCheckerErrorType.IncorrectNumberOfMethodArguments,
             methodCallExpression.SourceRange,
-            $"Expected {expectedNumberOfMethodArguments} arguments, but found {methodCallExpression.MethodCall.ArgumentList.Count}");
+            $"Expected {expectedNumberOfMethodArguments} arguments for method {methodCallExpression.MethodCall.Method}, but found {methodCallExpression.MethodCall.ArgumentList.Count}");
     }
 
     public static TypeCheckerError MemberAccessOnGenericExpression(MemberAccessExpression memberAccessExpression)

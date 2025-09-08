@@ -52,10 +52,10 @@ public class ILCompile
                 Token.Identifier("!Main", SourceSpan.Default),
                 [],
                 [],
-                isStatic: true,
-                isMutable: false,
+                IsStatic: true,
+                IsMutable: false,
                 program.Expressions,
-                functionIndex: null
+                FunctionIndex: null
             )
             {
                 ReturnType = TypeChecker.InstantiatedClass.Unit,

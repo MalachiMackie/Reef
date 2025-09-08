@@ -23,10 +23,11 @@ public class TypeCheckerTests
     [Theory]
     [MemberData(nameof(FailedExpressionTestCases))]
     public void Should_FailTypeChecking_When_ExpressionsAreNotValid(
-        [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")] string description,
+        string description,
         string source,
         IReadOnlyList<TypeCheckerError> expectedErrors)
     {
+        description.Should().NotBeNull();
         var program = Parser.Parse(Tokenizer.Tokenize(source));
         program.Errors.Should().BeEmpty();
         var errors = TypeChecker.TypeCheck(program.ParsedProgram);
@@ -41,25 +42,12 @@ public class TypeCheckerTests
     {
         const string src =
             """
-            class MyClass
-            {
-                field MyField: string,
-
-                fn MyFn(param: string)
-                {
-                    var a = "";
-                    fn MiddleFn(b: int)
-                    {
-                        fn InnerFn()
-                        {
-                            var _a = a;
-                            var _b = b;
-                            var _param = param;
-                            var _myField = MyField;
-                        }
-                        InnerFn();
+            class MyClass<T> {
+                fn SomeFn(param: T): result::<T, string> {
+                    if (true) {
+                        return ok(param);
                     }
-                    MiddleFn(3);
+                    return error("some error");
                 }
             }
             """;
@@ -74,6 +62,17 @@ public class TypeCheckerTests
     {
         return new TheoryData<string>
         {
+            """
+            fn OtherFn(): result::<int, int>
+            {
+                return ok(1);
+            }
+            fn SomeFn(): result::<string, int>
+            {
+                var a = OtherFn()?;
+                return ok("");
+            }
+            """,
             """
             class MyClass
             {

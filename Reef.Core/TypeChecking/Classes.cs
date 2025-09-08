@@ -68,10 +68,10 @@ public partial class TypeChecker
                 Token.Identifier("Call", SourceSpan.Default),
                 [],
                 callFunctionParameters,
-                isStatic: false,
-                isMutable: false,
-                expressions: [],
-                functionIndex: 0)
+                IsStatic: false,
+                IsMutable: false,
+                Expressions: [],
+                FunctionIndex: 0)
             {
                 ReturnType = null!,
                 OwnerType = signature
@@ -211,20 +211,48 @@ public partial class TypeChecker
 
     public class InstantiatedClass : ITypeReference
     {
+        public InstantiatedClass CloneWithTypeArguments(IReadOnlyList<GenericTypeReference> typeArguments)
+        {
+            return new InstantiatedClass(
+                Signature,
+                typeArguments,
+                Fields);
+        }
+
+        private InstantiatedClass(
+            ClassSignature signature,
+            IReadOnlyList<GenericTypeReference> typeArguments,
+            IReadOnlyList<TypeField> fields)
+        {
+            Signature = signature;
+            TypeArguments = typeArguments;
+            Fields = fields;
+        }
+        
         public InstantiatedClass(ClassSignature signature, IReadOnlyList<GenericTypeReference> typeArguments)
         {
+            ITypeReference HandleType(ITypeReference type)
+            {
+                return type switch
+                {
+                    GenericTypeReference genericTypeReference => typeArguments.First(y =>
+                        y.GenericName == genericTypeReference.GenericName),
+                    GenericPlaceholder placeholder =>
+                        typeArguments.First(y => y.GenericName == placeholder.GenericName),
+                    InstantiatedUnion union => union.CloneWithTypeArguments([
+                        ..union.TypeArguments.Select(HandleType).Cast<GenericTypeReference>()
+                    ]),
+                    InstantiatedClass klass => klass.CloneWithTypeArguments([..klass.TypeArguments.Select(HandleType).Cast<GenericTypeReference>()]),
+                    _ => type
+                };
+            }
+            
             Signature = signature;
             TypeArguments = typeArguments;
 
             Fields =
             [
-                ..signature.Fields.Select(x => x with { Type = x.Type switch
-                {
-                    GenericTypeReference genericTypeReference => typeArguments.First(y =>
-                        y.GenericName == genericTypeReference.GenericName),
-                    GenericPlaceholder placeholder => typeArguments.First(y => y.GenericName == placeholder.GenericName),
-                    var type => type
-                } })
+                ..signature.Fields.Select(x => x with { Type = HandleType(x.Type)})
             ];
         }
 

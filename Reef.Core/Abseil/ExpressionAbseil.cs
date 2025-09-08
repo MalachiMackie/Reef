@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Reef.Core.LoweredExpressions;
+using static Reef.Core.TypeChecking.TypeChecker;
 
 namespace Reef.Core.Abseil;
 
@@ -252,11 +253,14 @@ public partial class ProgramAbseil
 
         if (instantiatedFunction is null)
         {
-            var fn = TypeChecking.TypeChecker.ClassSignature
+            var fn = ClassSignature
                 .Function(e.MethodCall.ArgumentList.Count)
                 .Functions.First(x => x.Name == "Call");
 
-            functionReference = GetFunctionReference(fn.Id, [], []);
+            functionReference = GetFunctionReference(
+                    fn.Id,
+                    [],
+                    []);
 
             arguments.Add(LowerExpression(e.MethodCall.Method));
         }
@@ -292,10 +296,24 @@ public partial class ProgramAbseil
                 ownerTypeArguments = (GetTypeReference(staticMemberAccess.OwnerType.NotNull())
                     as LoweredConcreteTypeReference).NotNull().TypeArguments;
             }
-            if (e.MethodCall.Method is Expressions.ValueAccessorExpression valueAccessor
-                    && _currentType is not null)
+            else if (e.MethodCall.Method is Expressions.ValueAccessorExpression valueAccessor)
             {
-                ownerTypeArguments = _currentType.TypeArguments;
+                if (_currentType is not null)
+                {
+                    ownerTypeArguments = _currentType.TypeArguments;
+                }
+                else if (valueAccessor.FunctionInstantiation.NotNull()
+                        .OwnerType is {} ownerType)
+                {
+                    var ownerTypeReference = GetTypeReference(ownerType);
+                    if (ownerTypeReference is LoweredConcreteTypeReference
+                        {
+                            TypeArguments: var ownerReferenceTypeArguments
+                        })
+                    {
+                        ownerTypeArguments = ownerReferenceTypeArguments;
+                    }
+                }
             }
 
             functionReference = GetFunctionReference(instantiatedFunction.FunctionId,
@@ -561,16 +579,84 @@ public partial class ProgramAbseil
             Expressions.UnaryOperatorExpression e)
     {
         var operand = LowerExpression(e.UnaryOperator.Operand.NotNull());
-        switch (e.UnaryOperator.OperatorType)
+        return e.UnaryOperator.OperatorType switch
         {
-            case Expressions.UnaryOperatorType.FallOut:
-                throw new NotImplementedException();
-            case Expressions.UnaryOperatorType.Not:
-                return new BoolNotExpression(e.ValueUseful, operand);
-            default:
-                throw new UnreachableException();
-        }
+            Expressions.UnaryOperatorType.FallOut => LowerFallout(
+                    LowerExpression(e.UnaryOperator.Operand.NotNull()),
+                    e.ValueUseful,
+                    GetTypeReference(e.ResolvedType.NotNull())),
+            Expressions.UnaryOperatorType.Not => new BoolNotExpression(e.ValueUseful, operand),
+            _ => throw new UnreachableException(),
+        };
+    }
 
+    private BlockExpression LowerFallout(
+        ILoweredExpression operand,
+        bool valueUseful,
+        ILoweredTypeReference resolvedType)
+    {
+        var (okVariantIndex, okVariant) = UnionSignature.Result
+            .Variants.Index()
+            .First(x => x.Item.Name == "Ok");
+
+        Debug.Assert(_currentFunction.HasValue);
+        var locals = _currentFunction.Value.LoweredMethod.Locals;
+        var localName = $"Local{locals.Count}";
+        locals.Add(new MethodLocal(localName, operand.ResolvedType));
+
+        /*
+         * var a = b()?;
+         * // turns into:
+         * var _tempLocal;
+         * var a = {
+         *   _tempLocal = b();
+         *   if (_tempLocal._variantIdentifier == OkVariantIdentifier)
+         *   {
+         *     _tempLocal.Item0
+         *   }
+         *   else
+         *   {
+         *     return _tempLocal;
+         *   }
+         * }
+         */
+
+        return new BlockExpression(
+            [
+                new LocalAssignmentExpression(
+                    localName,
+                    operand,
+                    operand.ResolvedType,
+                    false),
+                new IfExpression(
+                    Check: new IntEqualsExpression(
+                        true,
+                        new FieldAccessExpression(
+                            new LocalVariableAccessor(
+                                localName, true, operand.ResolvedType),
+                            "_variantIdentifier",
+                            "Ok",
+                            true,
+                            new LoweredConcreteTypeReference(
+                                ClassSignature.Int.Name,
+                                ClassSignature.Int.Id,
+                                [])),
+                        new IntConstantExpression(true, okVariantIndex)),
+                    Body: new FieldAccessExpression(
+                        new LocalVariableAccessor(
+                            localName, true, operand.ResolvedType),
+                        "Item0",
+                        okVariant.Name,
+                        true,
+                        resolvedType),
+                    ElseIfs: [],
+                    ElseBody: new MethodReturnExpression(new LocalVariableAccessor(
+                                localName, true, operand.ResolvedType)),
+                    true,
+                    resolvedType)
+            ],
+            resolvedType,
+            valueUseful);
     }
 
     private ILoweredExpression LowerValueAccessorExpression(
@@ -584,13 +670,13 @@ public partial class ProgramAbseil
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.True }} => new BoolConstantExpression(e.ValueUseful, true),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.False }} => new BoolConstantExpression(e.ValueUseful, false),
             { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, ReferencedVariable: {} variable} => VariableAccess(variable, e.ValueUseful),
-            { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, FunctionInstantiation: {} fn} => FunctionAccess(fn, (e.ResolvedType as TypeChecking.TypeChecker.FunctionObject).NotNull(), e.ValueUseful),
+            { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, FunctionInstantiation: {} fn} => FunctionAccess(fn, (e.ResolvedType as FunctionObject).NotNull(), e.ValueUseful),
             _ => throw new UnreachableException($"{e}")
         };
 
         ILoweredExpression FunctionAccess(
-                TypeChecking.TypeChecker.InstantiatedFunction fn,
-                TypeChecking.TypeChecker.FunctionObject typeReference,
+                InstantiatedFunction fn,
+                FunctionObject typeReference,
                 bool valueUseful)
         {
             var method = _methods.Keys.First(x => x.Id == fn.FunctionId);

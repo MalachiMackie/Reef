@@ -67,7 +67,7 @@ public static class LoweredProgramHelpers
             IReadOnlyList<string>? typeParameters = null,
             IReadOnlyList<ILoweredTypeReference>? parameters = null,
             ILoweredTypeReference? returnType = null,
-            IReadOnlyList<MethodLocal>? locals = null)
+            List<MethodLocal>? locals = null)
     {
         return new(
                 Guid.Empty,
@@ -264,6 +264,23 @@ public static class LoweredProgramHelpers
             bool valueUseful)
     {
         return new(expressions, resolvedType, valueUseful);
+    }
+
+    public static IfExpression IfExpression(
+        ILoweredExpression check,
+        ILoweredExpression body,
+        bool valueUseful,
+        ILoweredTypeReference resolvedType,
+        IReadOnlyList<(ILoweredExpression Check, ILoweredExpression Body)>? elseIfs = null,
+        ILoweredExpression? elseBody = null)
+    {
+        return new(
+            check,
+            body,
+            elseIfs ?? [],
+            elseBody ?? UnitConstant(true),
+            valueUseful,
+            resolvedType);
     }
 
     public static FieldAssignmentExpression FieldAssignment(

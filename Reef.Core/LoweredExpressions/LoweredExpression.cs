@@ -14,6 +14,14 @@ public interface ILoweredExpression
     bool ValueUseful { get; }
 }
 
+public record IfExpression(
+        ILoweredExpression Check,
+        ILoweredExpression Body,
+        IReadOnlyList<(ILoweredExpression Check, ILoweredExpression Body)> ElseIfs,
+        ILoweredExpression ElseBody,
+        bool ValueUseful,
+        ILoweredTypeReference ResolvedType) : ILoweredExpression;
+
 public record CreateObjectExpression(
         LoweredConcreteTypeReference Type,
         string Variant,
@@ -183,7 +191,7 @@ public record LoweredMethod(
         IReadOnlyList<ILoweredTypeReference> Parameters,
         ILoweredTypeReference ReturnType,
         IReadOnlyList<ILoweredExpression> Expressions,
-        IReadOnlyList<MethodLocal> Locals);
+        List<MethodLocal> Locals);
 
 public record MethodLocal(string Name, ILoweredTypeReference Type);
 

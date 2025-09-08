@@ -332,7 +332,7 @@ public class SimpleExpressionTests : TestBase
                                 MethodReturnUnit()
                             ])
                     ])
-            }
+            },
         };
     }
 }
