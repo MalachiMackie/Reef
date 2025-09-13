@@ -577,18 +577,18 @@ public class TypeCheckerTests
             """,
             """
             union MyEnum {
-                A()
+                A(int)
             }
 
-            var a = MyEnum::A();
+            var a = MyEnum::A(1);
             """,
             """
             union MyUnion {
-                A()
+                A(int)
             }  
             
-            var a = MyUnion::A();
-            if (a matches MyUnion::A() var b) {
+            var a = MyUnion::A(1);
+            if (a matches MyUnion::A(_) var b) {
             }
             """,
             """
@@ -1439,6 +1439,11 @@ public class TypeCheckerTests
     {
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
+            {
+                "union tuple variant with no members",
+                "union MyUnion{A()}",
+                [TypeCheckerError.EmptyUnionTupleVariant("MyUnion", Identifier("A"))]
+            },
             {
                 "assign else if to variable without else",
                 """

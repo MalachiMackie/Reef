@@ -3,10 +3,11 @@ using Reef.Core.LoweredExpressions;
 using Reef.Core.Abseil;
 
 using static Reef.Core.Tests.LoweredProgramHelpers;
+using Xunit.Abstractions;
 
 namespace Reef.Core.Tests.AbseilTests;
 
-public class UnionTests : TestBase
+public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutputHelper)
 {
     [Theory]
     [MemberData(nameof(TestCases))]
@@ -15,6 +16,9 @@ public class UnionTests : TestBase
         description.Should().NotBeEmpty();
         var program = CreateProgram(source);
         var loweredProgram = ProgramAbseil.Lower(program);
+
+        PrintPrograms(expectedProgram, loweredProgram);
+
         loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
     }
 

@@ -560,6 +560,18 @@ public partial class ProgramAbseil
         return new LoweredGenericPlaceholder(placeholder.OwnerType.Id, placeholder.GenericName);
     }
 
+    private DataType GetDataType(
+            Guid typeId,
+            IReadOnlyList<ILoweredTypeReference> typeArguments)
+    {
+        if (_types.TryGetValue(typeId, out var dataType))
+            return dataType;
+
+        return _importedPrograms.Select(x => x.DataTypes.FirstOrDefault(y => y.Id == typeId))
+            .FirstOrDefault(x => x is not null)
+            ?? throw new InvalidOperationException($"No data type with id {typeId} was found");
+    }
+
     private LoweredFunctionReference GetFunctionReference(
             Guid functionId,
             IReadOnlyList<ILoweredTypeReference> typeArguments,

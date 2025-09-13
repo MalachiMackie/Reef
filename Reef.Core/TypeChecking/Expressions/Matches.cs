@@ -6,8 +6,8 @@ public partial class TypeChecker
 {
     private InstantiatedClass TypeCheckMatchesExpression(MatchesExpression matchesExpression)
     {
-        matchesExpression.ValueUseful = true;
         var valueType = TypeCheckExpression(matchesExpression.ValueExpression);
+        matchesExpression.ValueExpression.ValueUseful = true;
 
         if (matchesExpression.Pattern is null)
         {

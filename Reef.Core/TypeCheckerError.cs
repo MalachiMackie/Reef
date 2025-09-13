@@ -333,6 +333,14 @@ public record TypeCheckerError
             sourceRange,
             "If expression value is used without an if branch");
     }
+
+    public static TypeCheckerError EmptyUnionTupleVariant(string unionName, StringToken variantIdentifier)
+    {
+        return new(
+            TypeCheckerErrorType.EmptyUnionTupleVariant,
+            new SourceRange(variantIdentifier.SourceSpan, variantIdentifier.SourceSpan),
+            $"Union tuple variant {unionName}::{variantIdentifier.StringValue}() must have at least one tuple member");
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -383,5 +391,6 @@ public enum TypeCheckerErrorType
     UnionClassVariantWithoutInitializer,
     StaticFieldInClassPattern,
     DuplicateVariableDeclaration,
-    IfExpressionValueUsedWithoutElseBranch
+    IfExpressionValueUsedWithoutElseBranch,
+    EmptyUnionTupleVariant
 }

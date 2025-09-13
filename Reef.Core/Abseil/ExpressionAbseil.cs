@@ -25,8 +25,365 @@ public partial class ProgramAbseil
             Expressions.MethodReturnExpression e => LowerMethodReturnExpression(e),
             Expressions.TupleExpression e => LowerTupleExpression(e),
             Expressions.IfExpressionExpression e => LowerIfExpression(e),
+            Expressions.MatchesExpression e => LowerMatchesExpression(e),
             _ => throw new NotImplementedException($"{expression.GetType()}")
         };
+    }
+
+    private ILoweredExpression LowerMatchesPattern(
+            ILoweredExpression e,
+            IPattern pattern,
+            bool valueUseful)
+    {
+        var locals = _currentFunction.NotNull().LoweredMethod.Locals;
+        var operandType = e.ResolvedType;
+        var boolType = GetTypeReference(InstantiatedClass.Boolean);
+        switch (pattern)
+        {
+            case DiscardPattern:
+                {
+                    var localName = $"Local{locals.Count}";
+                    locals.Add(new MethodLocal(
+                                localName,
+                                operandType));
+                    return new BlockExpression(
+                            [
+                                new VariableDeclarationAndAssignmentExpression(
+                                    localName,
+                                    e,
+                                    false),
+                                // true constant because discard always matches
+                                new BoolConstantExpression(ValueUseful: true, Value: true)
+                            ],
+                            boolType,
+                            valueUseful);
+                }
+            case VariableDeclarationPattern {VariableName.StringValue: var variableName}:
+                {
+                    // variable declaration patterns already have their locals added 
+                    var localName = variableName;
+                    return new BlockExpression(
+                            [
+                                new VariableDeclarationAndAssignmentExpression(
+                                    localName,
+                                    e,
+                                    false),
+                                // variable declaration patterns always match 
+                                new BoolConstantExpression(ValueUseful: true, Value: true)
+                            ],
+                            boolType,
+                            valueUseful);
+                }
+            case TypePattern { VariableName: var variableName }: 
+                 {
+                     string localName;
+                     if (variableName is not null)
+                     {
+                         localName = variableName.StringValue;
+                     }
+                     else
+                     {
+                         localName = $"Local{locals.Count}";
+                         locals.Add(new MethodLocal(
+                                     localName,
+                                     operandType));
+                     }
+
+                    return new BlockExpression(
+                            [
+                                new VariableDeclarationAndAssignmentExpression(
+                                    localName,
+                                    e,
+                                    false),
+
+                                // TODO: for now, type patterns always evaluate to true.
+                                // In the future,this will only be true when the operands concrete
+                                // type is known.When the operand is some dynamic dispatch
+                                // interface, we willneed some way of checking the concrete
+                                // type at runtime
+                                new BoolConstantExpression(ValueUseful: true, Value: true)
+                            ],
+                            boolType,
+                            valueUseful);
+                 }
+            case UnionVariantPattern {
+                VariableName: var variableName,
+                TypeReference: var unionType,
+                VariantName: var variantName
+            }:
+            {
+                string localName;
+                if (variableName is not null)
+                {
+                    localName = variableName.StringValue;
+                }
+                else
+                {
+                    locals.Add(new MethodLocal(
+                            localName = $"Local{locals.Count}",
+                            operandType));
+                }
+                var type = (GetTypeReference(unionType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+                var dataType = GetDataType(type.DefinitionId, type.TypeArguments);
+                var variantIndex = dataType.Variants.Index()
+                    .First(x => x.Item.Name == variantName.NotNull().StringValue)
+                    .Index;
+
+                return new BlockExpression(
+                    [
+                        new VariableDeclarationAndAssignmentExpression(
+                            localName,
+                            e,
+                            false),
+                        new IntEqualsExpression(
+                            ValueUseful: true,
+                            new FieldAccessExpression(
+                                new LocalVariableAccessor(
+                                    localName,
+                                    true,
+                                    operandType),
+                                "_variantIdentifier",
+                                variantName!.StringValue,
+                                true,
+                                GetTypeReference(InstantiatedClass.Int)),
+                            new IntConstantExpression(
+                                true,
+                                variantIndex))
+                    ],
+                    boolType,
+                    valueUseful);
+            }
+            case UnionTupleVariantPattern
+            {
+                VariantName: var variantName,
+                VariableName: var variableName,
+                TupleParamPatterns: var tupleParamPatterns,
+                TypeReference: var unionType,
+            }:
+            {
+                string localName;
+                if (variableName is not null)
+                {
+                    localName = variableName.StringValue;
+                }
+                else
+                {
+                    locals.Add(new MethodLocal(
+                            localName = $"Local{locals.Count}",
+                            operandType));
+                }
+                var type = (GetTypeReference(unionType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+                var dataType = GetDataType(type.DefinitionId, type.TypeArguments);
+                var (variantIndex, variant) = dataType.Variants.Index()
+                    .First(x => x.Item.Name == variantName.NotNull().StringValue);
+                
+                // type checker should have checked there's at least tuple member
+                Debug.Assert(tupleParamPatterns.Count > 0);
+
+                var variantIdentifierCheck = new IntEqualsExpression(
+                            ValueUseful: true,
+                            new FieldAccessExpression(
+                                new LocalVariableAccessor(
+                                    localName,
+                                    true,
+                                    operandType),
+                                "_variantIdentifier",
+                                variantName!.StringValue,
+                                true,
+                                GetTypeReference(InstantiatedClass.Int)),
+                            new IntConstantExpression(
+                                true,
+                                variantIndex));
+
+                var localAccessor = new LocalVariableAccessor(localName, true, operandType);
+
+                var tuplePatternExpressions = tupleParamPatterns.Select(
+                        (x, i) => LowerMatchesPattern(
+                            new FieldAccessExpression(
+                                localAccessor,
+                                $"Item{i}",
+                                variantName!.StringValue,
+                                true,
+                                // skip the first _variantIdentifier field
+                                variant.Fields[i + 1].Type),
+                            x,
+                            valueUseful: true));
+
+                var checkExpressions = tuplePatternExpressions.Prepend(variantIdentifierCheck)
+                    .ToArray();
+
+                Debug.Assert(checkExpressions.Length >= 2);
+
+                // collate all the check expressions into a recurse bool and tree
+                var lastExpression = checkExpressions[^1];
+                for (var i = checkExpressions.Length - 2; i >= 0; i--)
+                {
+                    lastExpression = new BoolAndExpression(
+                        true,
+                        checkExpressions[i],
+                        lastExpression);
+                }
+
+                return new BlockExpression(
+                        [
+                            new VariableDeclarationAndAssignmentExpression(
+                                localName,
+                                e,
+                                false),
+                            lastExpression
+                        ],
+                        boolType,
+                        valueUseful);
+            }
+        case UnionClassVariantPattern
+            {
+                VariantName: var variantName,
+                VariableName: var variableName,
+                FieldPatterns: var fieldPatterns,
+                TypeReference: var unionType,
+            }:
+            {
+                string localName;
+                if (variableName is not null)
+                {
+                    localName = variableName.StringValue;
+                }
+                else
+                {
+                    locals.Add(new MethodLocal(
+                            localName = $"Local{locals.Count}",
+                            operandType));
+                }
+                var type = (GetTypeReference(unionType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+                var dataType = GetDataType(type.DefinitionId, type.TypeArguments);
+                var (variantIndex, variant) = dataType.Variants.Index()
+                    .First(x => x.Item.Name == variantName.NotNull().StringValue);
+
+                var variantIdentifierCheck = new IntEqualsExpression(
+                            ValueUseful: true,
+                            new FieldAccessExpression(
+                                new LocalVariableAccessor(
+                                    localName,
+                                    true,
+                                    operandType),
+                                "_variantIdentifier",
+                                variantName!.StringValue,
+                                true,
+                                GetTypeReference(InstantiatedClass.Int)),
+                            new IntConstantExpression(
+                                true,
+                                variantIndex));
+
+                var localAccessor = new LocalVariableAccessor(localName, true, operandType);
+
+                var checkExpressions = new List<ILoweredExpression>(fieldPatterns.Count + 1)
+                {
+                    variantIdentifierCheck
+                };
+                foreach (var fieldPattern in fieldPatterns)
+                {
+                    var fieldName = fieldPattern.FieldName.StringValue;
+                    checkExpressions.Add(LowerMatchesPattern(
+                        new FieldAccessExpression(
+                            localAccessor,
+                            fieldName,
+                            variantName.StringValue,
+                            true,
+                            variant.Fields.First(x => x.Name == fieldName).Type),
+                        fieldPattern.Pattern.NotNull(),
+                        true));
+                }
+
+                // collate all the check expressions into a recurse bool and tree
+                var lastExpression = checkExpressions[^1];
+                for (var i = checkExpressions.Count - 2; i >= 0; i--)
+                {
+                    lastExpression = new BoolAndExpression(
+                        true,
+                        checkExpressions[i],
+                        lastExpression);
+                }
+
+                return new BlockExpression(
+                        [
+                            new VariableDeclarationAndAssignmentExpression(
+                                localName,
+                                e,
+                                false),
+                            lastExpression
+                        ],
+                        boolType,
+                        valueUseful);
+            }
+        case ClassPattern
+            {
+                VariableName: var variableName,
+                FieldPatterns: var fieldPatterns,
+                TypeReference: var unionType,
+            }:
+            {
+                string localName;
+                if (variableName is not null)
+                {
+                    localName = variableName.StringValue;
+                }
+                else
+                {
+                    locals.Add(new MethodLocal(
+                            localName = $"Local{locals.Count}",
+                            operandType));
+                }
+                var type = (GetTypeReference(unionType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+                var dataType = GetDataType(type.DefinitionId, type.TypeArguments);
+
+                var localAccessor = new LocalVariableAccessor(localName, true, operandType);
+
+                var checkExpressions = new List<ILoweredExpression>(fieldPatterns.Count);
+                foreach (var fieldPattern in fieldPatterns)
+                {
+                    var fieldName = fieldPattern.FieldName.StringValue;
+                    checkExpressions.Add(LowerMatchesPattern(
+                        new FieldAccessExpression(
+                            localAccessor,
+                            fieldName,
+                            "_classVariant",
+                            true,
+                            dataType.Variants[0].Fields.First(x => x.Name == fieldName).Type),
+                        fieldPattern.Pattern.NotNull(),
+                        true));
+                }
+
+                // collate all the check expressions into a recurse bool and tree
+                var lastExpression = checkExpressions[^1];
+                for (var i = checkExpressions.Count - 2; i >= 0; i--)
+                {
+                    lastExpression = new BoolAndExpression(
+                        true,
+                        checkExpressions[i],
+                        lastExpression);
+                }
+
+                return new BlockExpression(
+                        [
+                            new VariableDeclarationAndAssignmentExpression(
+                                localName,
+                                e,
+                                false),
+                            lastExpression
+                        ],
+                        boolType,
+                        valueUseful);
+            }
+        }
+        throw new NotImplementedException(); 
+    }
+
+    private ILoweredExpression LowerMatchesExpression(
+        Expressions.MatchesExpression e)
+    {
+        var valueExpression = LowerExpression(e.ValueExpression);
+
+        return LowerMatchesPattern(valueExpression, e.Pattern.NotNull(), e.ValueUseful);
     }
 
     private IfExpression LowerIfExpression(

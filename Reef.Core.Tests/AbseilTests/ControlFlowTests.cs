@@ -2,12 +2,12 @@
 using FluentAssertions;
 using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
-
+using Xunit.Abstractions;
 using static Reef.Core.Tests.LoweredProgramHelpers;
 
 namespace Reef.Core.Tests.AbseilTests;
 
-public class ControlFlowTests : TestBase
+public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(testOutputHelper)
 {
     [Theory]
     [MemberData(nameof(TestCases))]
@@ -16,6 +16,9 @@ public class ControlFlowTests : TestBase
         description.Should().NotBeEmpty();
         var program = CreateProgram(source);
         var loweredProgram = ProgramAbseil.Lower(program);
+
+        PrintPrograms(expectedProgram, loweredProgram);
+
         loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
     }
 
@@ -313,7 +316,7 @@ public class ControlFlowTests : TestBase
                                 MethodReturnUnit()
                             ])
                     ])
-            }
+            },
         };
     }
 }

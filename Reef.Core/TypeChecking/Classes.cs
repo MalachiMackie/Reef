@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
@@ -35,7 +36,7 @@ public partial class TypeChecker
         public required string Name { get; init; }
         public Guid Id { get; } = Guid.NewGuid();
 
-        private static readonly Dictionary<int, ClassSignature> CachedFunctionClasses = [];
+        private static readonly ConcurrentDictionary<int, ClassSignature> CachedFunctionClasses = [];
 
         public static ClassSignature Function(int parameterCount)
         {

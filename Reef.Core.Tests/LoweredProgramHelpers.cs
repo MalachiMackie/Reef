@@ -304,6 +304,12 @@ public static class LoweredProgramHelpers
         return new(ownerType, fieldName, fieldValue, valueUseful, resolvedType);
     }
 
+    public static LoweredConcreteTypeReference BooleanType { get; }
+        = new LoweredConcreteTypeReference(
+                TypeChecking.TypeChecker.ClassSignature.Boolean.Name,
+                TypeChecking.TypeChecker.ClassSignature.Boolean.Id,
+                []);
+
     public static LoweredConcreteTypeReference Int { get; }
         = new LoweredConcreteTypeReference(
                 TypeChecking.TypeChecker.ClassSignature.Int.Name,

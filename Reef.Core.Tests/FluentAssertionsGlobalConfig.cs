@@ -9,6 +9,6 @@ public static class FluentAssertionsGlobalConfig
     [ModuleInitializer]
     public static void Initialize()
     {
-        AssertionConfiguration.Current.Equivalency.Modify(x => x.PreferringRuntimeMemberTypes());
+        AssertionConfiguration.Current.Equivalency.Modify(x => x.PreferringRuntimeMemberTypes().AllowingInfiniteRecursion());
     }
 }

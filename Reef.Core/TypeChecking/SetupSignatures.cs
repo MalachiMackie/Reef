@@ -114,6 +114,12 @@ public partial class TypeChecker
 
                 TupleUnionVariant TypeCheckTupleVariant(Core.TupleUnionVariant tupleVariant)
                 {
+                    if (tupleVariant.TupleMembers.Count == 0)
+                    {
+                        _errors.Add(TypeCheckerError.EmptyUnionTupleVariant(
+                                    unionSignature.Name, variant.Name));
+                    }
+
                     var createFunctionParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
                     return new TupleUnionVariant
                     {
