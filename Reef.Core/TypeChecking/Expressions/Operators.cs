@@ -156,12 +156,25 @@ public partial class TypeChecker
         }
 
         // todo: could implement with an interface? union Result : IFallout?
-        if (ExpectedReturnType is not InstantiatedUnion { Name: "result" or "option" } union)
+        if (ExpectedReturnType is not InstantiatedUnion { Name: "result" } union)
         {
-            throw new InvalidOperationException("Fallout operator is only valid for Result and Option return types");
+            throw new InvalidOperationException("Fallout operator is only valid for Result return type");
         }
 
-        ExpectExpressionType(ExpectedReturnType, expression);
+        var expectedErrorType = union.TypeArguments.First(x => x.GenericName == "TError")
+            .ResolvedType.NotNull();
+
+        // synthesize a return type with only the error generic populated so that we don't 
+        // check the value generic. This is so the following successfully type checks:
+        // fn SomeFn(): result::<string, int> {
+        //     var someResult: result::<int, int> = todo!;
+        //     var a: int = someResult?;
+        // }
+        var synthesizedReturnType = InstantiateUnion(union.Signature);
+        synthesizedReturnType.TypeArguments.First(x => x.GenericName == "TError")
+            .ResolvedType = expectedErrorType;
+
+        ExpectExpressionType(synthesizedReturnType, expression);
 
         if (union.Name == UnionSignature.Result.Name)
         {
