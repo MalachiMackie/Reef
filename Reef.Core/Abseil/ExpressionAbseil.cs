@@ -386,16 +386,39 @@ public partial class ProgramAbseil
         return LowerMatchesPattern(valueExpression, e.Pattern.NotNull(), e.ValueUseful);
     }
 
-    private IfExpression LowerIfExpression(
+    private SwitchIntExpression LowerIfExpression(
         Expressions.IfExpressionExpression e)
     {
-        return new IfExpression(
-            LowerExpression(e.IfExpression.CheckExpression),
+
+        var elseBody = e.IfExpression.ElseBody is not null
+            ? LowerExpression(e.IfExpression.ElseBody)
+            : new UnitConstantExpression(false);
+
+        var checksAndBodies = e.IfExpression.ElseIfs
+            .Select(x => (LowerExpression(x.CheckExpression), LowerExpression(x.Body.NotNull())));
+
+        var lastExpression = elseBody;
+
+        var typeReference = GetTypeReference(e.ResolvedType.NotNull());
+
+        foreach (var (check, body) in checksAndBodies.Reverse())
+        {
+            lastExpression = new SwitchIntExpression(
+                new CastBoolToIntExpression(check, true),
+                new()
+                { { 0, lastExpression } },
+                body,
+                e.ValueUseful,
+                typeReference);
+        }
+
+        return new SwitchIntExpression(
+            new CastBoolToIntExpression(LowerExpression(e.IfExpression.CheckExpression), true),
+            new()
+            { { 0, lastExpression } },
             LowerExpression(e.IfExpression.Body.NotNull()),
-            [..e.IfExpression.ElseIfs.Select(x => (LowerExpression(x.CheckExpression), LowerExpression(x.Body.NotNull())))],
-            e.IfExpression.ElseBody is {} elseBody ? LowerExpression(elseBody) : null,
             e.ValueUseful,
-            GetTypeReference(e.ResolvedType.NotNull()));
+            typeReference);
     }
 
     private ILoweredExpression LowerTupleExpression(
@@ -998,31 +1021,34 @@ public partial class ProgramAbseil
                     operand,
                     operand.ResolvedType,
                     false),
-                new IfExpression(
-                    Check: new IntEqualsExpression(
-                        true,
-                        new FieldAccessExpression(
-                            new LocalVariableAccessor(
-                                localName, true, operand.ResolvedType),
-                            "_variantIdentifier",
-                            "Ok",
-                            true,
-                            new LoweredConcreteTypeReference(
-                                ClassSignature.Int.Name,
-                                ClassSignature.Int.Id,
-                                [])),
-                        new IntConstantExpression(true, okVariantIndex)),
-                    Body: new FieldAccessExpression(
+
+                new SwitchIntExpression(
+                    new FieldAccessExpression(
                         new LocalVariableAccessor(
                             localName, true, operand.ResolvedType),
-                        "Item0",
-                        okVariant.Name,
+                        "_variantIdentifier",
+                        "Ok",
                         true,
-                        resolvedType),
-                    ElseIfs: [],
-                    ElseBody: new MethodReturnExpression(new LocalVariableAccessor(
-                                localName, true, operand.ResolvedType)),
-                    true,
+                        new LoweredConcreteTypeReference(
+                            ClassSignature.Int.Name,
+                            ClassSignature.Int.Id,
+                            [])),
+                    new()
+                    {
+                        {
+                            0, 
+                            new FieldAccessExpression(
+                                new LocalVariableAccessor(
+                                    localName, true, operand.ResolvedType),
+                                "Item0",
+                                okVariant.Name,
+                                true,
+                                resolvedType)
+                        }
+                    },
+                    new MethodReturnExpression(new LocalVariableAccessor(
+                        localName, true, operand.ResolvedType)),
+                    valueUseful,
                     resolvedType)
             ],
             resolvedType,

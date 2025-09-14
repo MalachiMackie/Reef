@@ -266,23 +266,6 @@ public static class LoweredProgramHelpers
         return new(expressions, resolvedType, valueUseful);
     }
 
-    public static IfExpression IfExpression(
-        ILoweredExpression check,
-        ILoweredExpression body,
-        bool valueUseful,
-        ILoweredTypeReference resolvedType,
-        IReadOnlyList<(ILoweredExpression Check, ILoweredExpression Body)>? elseIfs = null,
-        ILoweredExpression? elseBody = null)
-    {
-        return new(
-            check,
-            body,
-            elseIfs ?? [],
-            elseBody,
-            valueUseful,
-            resolvedType);
-    }
-
     public static FieldAssignmentExpression FieldAssignment(
             ILoweredExpression fieldOwnerExpression,
             string variantName,
@@ -302,6 +285,22 @@ public static class LoweredProgramHelpers
             ILoweredTypeReference resolvedType)
     {
         return new(ownerType, fieldName, fieldValue, valueUseful, resolvedType);
+    }
+
+    public static SwitchIntExpression SwitchInt(
+        ILoweredExpression checkExpression,
+        Dictionary<int, ILoweredExpression> results,
+        ILoweredExpression otherwise,
+        bool valueUseful,
+        ILoweredTypeReference resolvedType)
+    {
+        return new(checkExpression, results, otherwise, valueUseful, resolvedType);
+    }
+
+    public static CastBoolToIntExpression CastBoolToInt(
+        ILoweredExpression intExpression, bool valueUseful)
+    {
+        return new(intExpression, valueUseful);
     }
 
     public static LoweredConcreteTypeReference BooleanType { get; }

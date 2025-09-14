@@ -14,13 +14,19 @@ public interface ILoweredExpression
     bool ValueUseful { get; }
 }
 
-public record IfExpression(
+public record SwitchIntExpression(
         ILoweredExpression Check,
-        ILoweredExpression Body,
-        IReadOnlyList<(ILoweredExpression Check, ILoweredExpression Body)> ElseIfs,
-        ILoweredExpression? ElseBody,
+        Dictionary<int, ILoweredExpression> Results,
+        ILoweredExpression Otherwise,
         bool ValueUseful,
         ILoweredTypeReference ResolvedType) : ILoweredExpression;
+
+public record CastBoolToIntExpression(
+        ILoweredExpression BoolExpression,
+        bool ValueUseful) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
+}
 
 public record CreateObjectExpression(
         LoweredConcreteTypeReference Type,

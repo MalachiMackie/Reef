@@ -393,33 +393,39 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
                 _stringBuilder.Append(')');
                 break;
             }
-            case IfExpression e:
+            case SwitchIntExpression e:
             {
-                _stringBuilder.Append("if (");
+                _stringBuilder.Append("int-switch (");
                 PrettyPrintExpression(e.Check);
-                _stringBuilder.Append(") ");
-                PrettyPrintExpression(e.Body);
-                if (e.ElseIfs.Count > 0) {
-                    foreach (var (check, body) in e.ElseIfs)
-                    {
-                        _stringBuilder.AppendLine();
-                        Indent();
-
-                        _stringBuilder.Append(" else if (");
-                        PrettyPrintExpression(check);
-                        _stringBuilder.Append(") ");
-                        PrettyPrintExpression(body);
-                    }
-                }
-
-                if (e.ElseBody is not null)
+                _stringBuilder.AppendLine(") {");
+                _indentationLevel++;
+                foreach (var (i, result) in e.Results)
                 {
-                    _stringBuilder.AppendLine();
                     Indent();
-                    _stringBuilder.Append(" else ");
-                    PrettyPrintExpression(e.ElseBody);
+                    _stringBuilder.Append($"{i} => ");
+                    PrettyPrintExpression(result);
+                    _stringBuilder.AppendLine(",");
                 }
-
+                Indent();
+                _stringBuilder.Append("otherwise => ");
+                PrettyPrintExpression(e.Otherwise);
+                _stringBuilder.AppendLine(",");
+                _indentationLevel--;
+                Indent();
+                _stringBuilder.Append('}');
+                break;
+            }
+            case CastBoolToIntExpression e:
+            {
+                _stringBuilder.Append("(int -> bool)");
+                if (!parensAroundExpressions) {
+                    // we always want to print parentheses around this expression
+                    _stringBuilder.Append('(');
+                }
+                PrettyPrintExpression(e.BoolExpression);
+                if (!parensAroundExpressions) {
+                    _stringBuilder.Append(')');
+                }
                 break;
             }
             case BlockExpression e:

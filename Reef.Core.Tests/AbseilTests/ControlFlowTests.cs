@@ -26,86 +26,55 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
     public void SingleTest()
     {
         var source = """
-                fn SomeFn(): result::<int, int>
+                var mut a = 0;
+                if (true)
                 {
-                    return error(1);
+                    a = 1;
                 }
-
-                fn OtherFn(): result::<int, int>
+                else if (true)
                 {
-                    var a = SomeFn()?;
-                    return ok(a);
+                    a = 2;
                 }
                 """;
-        var expectedProgram = LoweredProgram(
+                var expectedProgram = LoweredProgram(
                     methods: [
-                        Method(
-                            "OtherFn",
+                        Method("_Main",
                             [
                                 VariableDeclaration(
-                                    "a",
-                                    Block(
-                                        [
-                                            LocalValueAssignment(
-                                                "Local1",
-                                                MethodCall(
-                                                    FunctionReference("SomeFn", []),
-                                                    [],
-                                                    true,
-                                                    ConcreteTypeReference("result", [Int, Int])),
+                                    "a", IntConstant(0, true), false),
+                                SwitchInt(
+                                    CastBoolToInt(BoolConstant(true, true), true),
+                                    new()
+                                    {
+                                        {
+                                            0,
+                                            SwitchInt(
+                                                CastBoolToInt(BoolConstant(true, true), true),
+                                                new()
+                                                {
+                                                    {
+                                                        0,
+                                                        UnitConstant(false)
+                                                    }
+                                                },
+                                                Block([LocalValueAssignment("a", IntConstant(2, true), true, Int)], Unit, true),
                                                 false,
-                                                ConcreteTypeReference("result", [Int, Int])),
-                                            IfExpression(
-                                                IntEquals(
-                                                    FieldAccess(
-                                                        LocalAccess("Local1", true, ConcreteTypeReference("result", [Int, Int])),
-                                                        "_variantIdentifier",
-                                                        "Ok",
-                                                        true,
-                                                        Int),
-                                                    IntConstant(0, true),
-                                                    true),
-                                                FieldAccess(
-                                                    LocalAccess("Local1", true, ConcreteTypeReference("result", [Int, Int])),
-                                                    "Item0",
-                                                    "Ok",
-                                                    true,
-                                                    Int),
-                                                valueUseful: true,
-                                                resolvedType: Int,
-                                                elseBody: MethodReturn(
-                                                    LocalAccess("Local1", true, ConcreteTypeReference("result", [Int, Int]))))
-                                        ],
-                                        Int,
-                                        true),
-                                    false),
-                                MethodReturn(
-                                    MethodCall(
-                                        FunctionReference("result_Create_Ok", [Int, Int]),
-                                        [LocalAccess("a", true, Int)],
-                                        true,
-                                        ConcreteTypeReference("result", [Int, Int])))
+                                                Unit)
+                                        }
+                                    },
+                                    Block([LocalValueAssignment("a", IntConstant(1, true), true, Int)], Unit, true),
+                                    false,
+                                    Unit),
+                                MethodReturnUnit()
                             ],
-                            locals: [
-                                Local("a", Int),
-                                Local("Local1", ConcreteTypeReference("result", [Int, Int]))
-                            ],
-                            returnType: ConcreteTypeReference("result", [Int, Int])),
-                        Method(
-                            "SomeFn",
-                            [
-                                MethodReturn(
-                                    MethodCall(
-                                        FunctionReference("result_Create_Error", [Int, Int]),
-                                        [IntConstant(1, true)],
-                                        true,
-                                        ConcreteTypeReference("result", [Int, Int])))
-                            ],
-                            returnType: ConcreteTypeReference("result", [Int, Int]))
+                            locals: [Local("a", Int)])
                     ]);
 
         var program = CreateProgram(source);
         var loweredProgram = ProgramAbseil.Lower(program);
+        
+        PrintPrograms(expectedProgram, loweredProgram, false, false);
+        
         loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
     }
 
@@ -145,26 +114,29 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                                     ConcreteTypeReference("result", [Int, Int])),
                                                 false,
                                                 ConcreteTypeReference("result", [Int, Int])),
-                                            IfExpression(
-                                                IntEquals(
-                                                    FieldAccess(
-                                                        LocalAccess("Local1", true, ConcreteTypeReference("result", [Int, Int])),
-                                                        "_variantIdentifier",
-                                                        "Ok",
-                                                        true,
-                                                        Int),
-                                                    IntConstant(0, true),
-                                                    true),
+                                            SwitchInt(
                                                 FieldAccess(
                                                     LocalAccess("Local1", true, ConcreteTypeReference("result", [Int, Int])),
-                                                    "Item0",
+                                                    "_variantIdentifier",
                                                     "Ok",
                                                     true,
                                                     Int),
+                                                new()
+                                                {
+                                                    {
+                                                        0,
+                                                        FieldAccess(
+                                                            LocalAccess("Local1", true, ConcreteTypeReference("result", [Int, Int])),
+                                                            "Item0",
+                                                            "Ok",
+                                                            true,
+                                                            Int)
+                                                        }
+                                                },
+                                                MethodReturn(
+                                                    LocalAccess("Local1", true, ConcreteTypeReference("result", [Int, Int]))),
                                                 valueUseful: true,
-                                                resolvedType: Int,
-                                                elseBody: MethodReturn(
-                                                    LocalAccess("Local1", true, ConcreteTypeReference("result", [Int, Int]))))
+                                                resolvedType: Int)
                                         ],
                                         Int,
                                         true),
@@ -205,13 +177,43 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                         Method("_Main",
                             [
                                 VariableDeclaration("a", IntConstant(0, true), false),
-                                IfExpression(
-                                    BoolConstant(true, true),
-                                    LocalValueAssignment(
-                                        "a",
-                                        IntConstant(1, true),
-                                        true,
-                                        Int),
+                                SwitchInt(
+                                    CastBoolToInt(BoolConstant(true, true), true),
+                                    new() {
+                                        {0, UnitConstant(false)}
+                                    },
+                                    LocalValueAssignment("a", IntConstant(1, true), true, Int),
+                                    false,
+                                    Unit),
+                                MethodReturnUnit(),
+                            ],
+                            locals: [Local("a", Int)])
+                    ])
+            },
+            {
+                "if else",
+                """
+                var mut a = 0;
+                if (true) {a = 1}
+                else {a = 2}
+                """,
+                LoweredProgram(
+                    methods: [
+                        Method(
+                            "_Main",
+                            [
+                                VariableDeclaration("a", IntConstant(0, true), false),
+                                SwitchInt(
+                                    CastBoolToInt(BoolConstant(true, true), true),
+                                    new(){
+                                        {
+                                            0,
+                                            Block(
+                                                [LocalValueAssignment("a", IntConstant(2, true), true, Int)],
+                                                Unit,
+                                                true)},
+                                    },
+                                    Block([LocalValueAssignment("a", IntConstant(1, true), true, Int)], Unit, true),
                                     false,
                                     Unit),
                                 MethodReturnUnit()
@@ -220,30 +222,10 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                     ])
             },
             {
-                "if else",
-                """
-                if (true) {}
-                else {}
-                """,
-                LoweredProgram(
-                    methods: [
-                        Method(
-                            "_Main",
-                            [
-                                IfExpression(
-                                    BoolConstant(true, true),
-                                    Block([], Unit, true),
-                                    false,
-                                    Unit,
-                                    elseBody: Block([], Unit, true)),
-                                MethodReturnUnit()
-                            ])
-                    ])
-            },
-            {
                 "assign if else to variable",
                 """
-                var b = if (true) { } else { };
+                var mut a = 1;
+                var b = if (true) { a = 2; } else { a = 3; };
                 """,
                 LoweredProgram(
                     methods: [
@@ -251,17 +233,38 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                             "_Main",
                             [
                                 VariableDeclaration(
+                                    "a", IntConstant(1, true), false),
+                                VariableDeclaration(
                                     "b",
-                                    IfExpression(
-                                        BoolConstant(true, true),
-                                        Block([], Unit, true),
+                                    SwitchInt(
+                                        CastBoolToInt(BoolConstant(true, true), true),
+                                        new()
+                                        {
+                                            {
+                                                0,
+                                                Block(
+                                                    [
+                                                        LocalValueAssignment(
+                                                            "a",
+                                                            IntConstant(3, true),
+                                                            true,
+                                                            Int)
+                                                    ],
+                                                    Unit,
+                                                    true)
+                                            }
+                                        },
+                                        Block(
+                                            [LocalValueAssignment("a", IntConstant(2, true), true, Int)],
+                                            Unit,
+                                            true),
                                         true,
-                                        Unit,
-                                        elseBody: Block([], Unit, true)),
+                                        Unit),
                                     false),
                                 MethodReturnUnit()
                             ],
                             locals: [
+                                Local("a", Int),
                                 Local("b", Unit)
                             ])
                     ])
@@ -269,52 +272,92 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
             {
                 "if else if",
                 """
+                var mut a = 0;
                 if (true)
                 {
+                    a = 1;
                 }
                 else if (true)
                 {
+                    a = 2;
                 }
                 """,
                 LoweredProgram(
                     methods: [
                         Method("_Main",
                             [
-                                IfExpression(
-                                    BoolConstant(true, true),
-                                    Block([], Unit, true),
+                                VariableDeclaration(
+                                    "a", IntConstant(0, true), false),
+                                SwitchInt(
+                                    CastBoolToInt(BoolConstant(true, true), true),
+                                    new()
+                                    {
+                                        {
+                                            0,
+                                            SwitchInt(
+                                                CastBoolToInt(BoolConstant(true, true), true),
+                                                new()
+                                                {
+                                                    {
+                                                        0,
+                                                        UnitConstant(false)
+                                                    }
+                                                },
+                                                Block([LocalValueAssignment("a", IntConstant(2, true), true, Int)], Unit, true),
+                                                false,
+                                                Unit)
+                                        }
+                                    },
+                                    Block([LocalValueAssignment("a", IntConstant(1, true), true, Int)], Unit, true),
                                     false,
-                                    Unit,
-                                    [
-                                        (BoolConstant(true, true), Block([], Unit, true))
-                                    ]),
+                                    Unit),
                                 MethodReturnUnit()
-                            ])
+                            ],
+                            locals: [Local("a", Int)])
                     ])
             },
             {
                 "if else if else",
                 """
+                var mut a = 0;
                 if (true)
-                {}
+                {a = 1;}
                 else if (true)
-                {}
+                {a = 2;}
                 else
-                {}
+                {a = 3;}
                 """,
                 LoweredProgram(
                     methods: [
                         Method("_Main",
                             [
-                                IfExpression(
-                                    BoolConstant(true, true),
-                                    Block([], Unit, true),
+                                VariableDeclaration("a", IntConstant(0, true), false),
+                                SwitchInt(
+                                    CastBoolToInt(BoolConstant(true, true), true),
+                                    new()
+                                    {
+                                        {
+                                            0,
+                                            SwitchInt(
+                                                CastBoolToInt(BoolConstant(true, true), true),
+                                                new()
+                                                {
+                                                    {
+                                                        0,
+                                                        Block([LocalValueAssignment("a", IntConstant(3, true), true, Int)], Unit, true)
+                                                    }
+                                                },
+                                                Block([LocalValueAssignment("a", IntConstant(2, true), true, Int)], Unit, true),
+                                                false,
+                                                Unit)
+                                        }
+                                    },
+                                    Block([LocalValueAssignment("a", IntConstant(1, true), true, Int)], Unit, true),
                                     false,
-                                    Unit,
-                                    [(BoolConstant(true, true), Block([], Unit, true))],
-                                    Block([], Unit, true)),
+                                    Unit),
                                 MethodReturnUnit()
-                            ])
+                            ],
+                            locals: [Local("a", Int)])
                     ])
             },
         };
