@@ -122,7 +122,7 @@ public partial class ProgramAbseil
                 throw new NotImplementedException();
             }
 
-            IReadOnlyCollection<INode>? previousNodes = null;
+            IReadOnlyCollection<IPatternMatchingNode>? previousNodes = null;
             var originalNode = new FieldNode(
                 dataType.Variants[0].Fields[0].Name,
                 [],
@@ -130,7 +130,7 @@ public partial class ProgramAbseil
             {
                 Otherwise = otherwise
             };
-            IReadOnlyCollection<INode>? nodes = [originalNode];
+            IReadOnlyCollection<IPatternMatchingNode>? nodes = [originalNode];
 
             foreach (var field in dataType.Variants[0].Fields)
             {
@@ -147,9 +147,9 @@ public partial class ProgramAbseil
                     nodes = [..previousNodes.SelectMany(x => x.UniquePatterns.Select(y => y.NextField.NotNull()))];
                 }
 
-                foreach (var (_, uniquePatterns, valueTuples) in nodes.OfType<FieldNode>())
+                foreach (var (_, uniquePatterns, originalPatterns) in nodes.OfType<FieldNode>())
                 {
-                    foreach (var (pattern, armExpression) in valueTuples)
+                    foreach (var (pattern, armExpression) in originalPatterns)
                     {
                         var classPattern = (pattern as ClassPattern).NotNull();
                         var fieldPattern = classPattern.FieldPatterns.FirstOrDefault(x => x.FieldName.StringValue == field.Name);
@@ -178,13 +178,13 @@ public partial class ProgramAbseil
             ILoweredExpression ProcessNode(FieldNode node)
             {
                 var nextPatterns = new List<(IPattern, ILoweredExpression)>();
-                foreach (var b in node.UniquePatterns)
+                foreach (var uniquePattern in node.UniquePatterns)
                 {
                     ILoweredExpression exp;
-                    if (b.NextField is null)
+                    if (uniquePattern.NextField is null)
                     {
-                        Debug.Assert(b.OriginalPatterns.Count == 1);
-                        var (originalPattern, originalExpression) = b.OriginalPatterns[0];
+                        Debug.Assert(uniquePattern.OriginalPatterns.Count == 1);
+                        var (originalPattern, originalExpression) = uniquePattern.OriginalPatterns[0];
                         var variableName = (originalPattern as ClassPattern).NotNull().VariableName?.StringValue;
                         if (variableName is not null)
                         {
@@ -199,15 +199,15 @@ public partial class ProgramAbseil
 
                         exp = originalExpression;
                     }
-                    else if (b.NextField is FieldNode nextField)
+                    else if (uniquePattern.NextField is FieldNode nextField)
                     {
                         exp = ProcessNode(nextField);
                     }
                     else
                     {
-                        throw new InvalidOperationException($"Expected structural node. Got {b.NextField.GetType()}");
+                        throw new InvalidOperationException($"Expected structural node. Got {uniquePattern.NextField.GetType()}");
                     }
-                    nextPatterns.Add((b.Pattern, exp));
+                    nextPatterns.Add((uniquePattern.Pattern, exp));
                 }
                 
                 var fieldType = dataType.Variants[0].Fields.First(x => x.Name == node.FieldName).Type;
@@ -263,7 +263,7 @@ public partial class ProgramAbseil
 
             var originalNode = new TopLevelNode([], unionPatterns){Otherwise = otherwise};
 
-            IReadOnlyList<INode> nodes = [originalNode];
+            IReadOnlyList<IPatternMatchingNode> nodes = [originalNode];
 
             foreach (var variant in dataType.Variants)
             {
@@ -310,7 +310,7 @@ public partial class ProgramAbseil
 
                 foreach (var field in variant.Fields.Where(x => x.Name != "_variantIdentifier"))
                 {
-                    var newVariantNodes = new List<INode>();
+                    var newVariantNodes = new List<IPatternMatchingNode>();
                     foreach (var previousNode in previousNodes)
                     {
                         foreach (var b in previousNode.UniquePatterns)
@@ -385,20 +385,20 @@ public partial class ProgramAbseil
 
             return ProcessNode(originalNode);
 
-            ILoweredExpression ProcessNode(INode node)
+            ILoweredExpression ProcessNode(IPatternMatchingNode node)
             {
                 var nextPatterns = new List<(IPattern, ILoweredExpression)>();
-                foreach (var b in node.UniquePatterns)
+                foreach (var uniquePattern in node.UniquePatterns)
                 {
                     ILoweredExpression expression;
-                    if (b.NextField is {UniquePatterns.Count: > 0})
+                    if (uniquePattern.NextField is {UniquePatterns.Count: > 0})
                     {
-                        expression = ProcessNode(b.NextField);
+                        expression = ProcessNode(uniquePattern.NextField);
                     }
                     else
                     {
-                        Debug.Assert(b.OriginalPatterns.Count == 1);
-                        (var originalPattern, expression) = b.OriginalPatterns[0];
+                        Debug.Assert(uniquePattern.OriginalPatterns.Count == 1);
+                        (var originalPattern, expression) = uniquePattern.OriginalPatterns[0];
                         var variableName = originalPattern switch
                         {
                             UnionVariantPattern variantPattern => variantPattern.VariableName?.StringValue,
@@ -424,7 +424,7 @@ public partial class ProgramAbseil
                         }
                     }
 
-                    nextPatterns.Add((b.Pattern, expression));
+                    nextPatterns.Add((uniquePattern.Pattern, expression));
                 }
 
                 switch (node)
@@ -505,7 +505,7 @@ public partial class ProgramAbseil
         throw new UnreachableException();
     }
 
-    private interface INode
+    private interface IPatternMatchingNode
     {
         public List<B> UniquePatterns { get; }
         public List<(IPattern, ILoweredExpression)> OriginalPatterns { get; }
@@ -514,7 +514,7 @@ public partial class ProgramAbseil
 
     private record TopLevelNode(
         List<B> UniquePatterns,
-        List<(IPattern, ILoweredExpression)> OriginalPatterns) : INode
+        List<(IPattern, ILoweredExpression)> OriginalPatterns) : IPatternMatchingNode
     {
         public ILoweredExpression? Otherwise { get; set; }
     }
@@ -523,7 +523,7 @@ public partial class ProgramAbseil
         string VariantName,
         string FieldName,
         List<B> UniquePatterns,
-        List<(IPattern, ILoweredExpression)> OriginalPatterns) : INode
+        List<(IPattern, ILoweredExpression)> OriginalPatterns) : IPatternMatchingNode
     {
         public ILoweredExpression? Otherwise { get; set; }
     }
@@ -531,14 +531,14 @@ public partial class ProgramAbseil
     private record FieldNode(
         string FieldName,
         List<B> UniquePatterns,
-        List<(IPattern, ILoweredExpression)> OriginalPatterns) : INode
+        List<(IPattern, ILoweredExpression)> OriginalPatterns) : IPatternMatchingNode
     {
         public ILoweredExpression? Otherwise { get; set; }
     }
 
     private record B(IPattern Pattern, List<(IPattern, ILoweredExpression)> OriginalPatterns)
     {
-        public INode? NextField { get; set; }
+        public IPatternMatchingNode? NextField { get; set; }
     };
 
     private bool PatternsEquivalent(IPattern a, IPattern b)

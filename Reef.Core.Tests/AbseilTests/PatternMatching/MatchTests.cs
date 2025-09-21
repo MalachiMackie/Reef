@@ -780,6 +780,22 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             ])
                     ],
                     methods: [
+                        Method("MyUnion_Create_X",
+                            [
+                                MethodReturn(
+                                    CreateObject(
+                                        ConcreteTypeReference("MyUnion"),
+                                        "X",
+                                        true,
+                                        new()
+                                        {
+                                            {"Item0", LoadArgument(0, true, ConcreteTypeReference("OtherUnion"))},
+                                            {"Item1", LoadArgument(1, true, ConcreteTypeReference("OtherUnion"))},
+                                            {"_variantIdentifier", IntConstant(0, true)},
+                                        }))
+                            ],
+                            parameters: [ConcreteTypeReference("OtherUnion"), ConcreteTypeReference("OtherUnion")],
+                            returnType: ConcreteTypeReference("MyUnion")),
                         Method(
                             "_Main",
                             [
@@ -791,135 +807,141 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         true,
                                         new(){{"_variantIdentifier", IntConstant(1, true)}}),
                                     false),
-                                SwitchInt(
-                                    Block(
-                                        [
-                                            VariableDeclaration(
-                                                "Local1",
-                                                LocalAccess("a", true, ConcreteTypeReference("MyUnion")),
-                                                false),
+                                Block(
+                                    [
+                                        VariableDeclaration(
+                                            "Local1",
+                                            LocalAccess("a", true, ConcreteTypeReference("MyUnion")),
+                                            false),
+                                        SwitchInt(
                                             FieldAccess(
                                                 LocalAccess("Local1", true, ConcreteTypeReference("MyUnion")),
                                                 "_variantIdentifier",
                                                 "X",
                                                 true,
-                                                Int)
-                                        ],
-                                        Int,
-                                        true),
-                                    new()
-                                    {
-                                        {
-                                            0,
-                                            SwitchInt(
-                                                Block(
-                                                    [
-                                                        VariableDeclaration(
-                                                            "Local2",
-                                                            FieldAccess(
-                                                                LocalAccess(
-                                                                    "Local1",
-                                                                    true,
-                                                                    ConcreteTypeReference("MyUnion")),
-                                                                "Item0",
-                                                                "X",
-                                                                true,
-                                                                ConcreteTypeReference("OtherUnion")),
-                                                            false),
-                                                        FieldAccess(
-                                                            LocalAccess(
-                                                                "Local2",
-                                                                true,
-                                                                ConcreteTypeReference("OtherUnion")),
-                                                            "_variantIdentifier",
-                                                            "A",
-                                                            true,
-                                                            Int)
-                                                    ],
-                                                    Int,
-                                                    true),
-                                                new(){
-                                                    {
-                                                        0,
-                                                        SwitchInt(
-                                                            Block(
-                                                                [
-                                                                    VariableDeclaration(
-                                                                        "Local3",
-                                                                        FieldAccess(
-                                                                            LocalAccess(
-                                                                                "Local1",
-                                                                                true,
-                                                                                ConcreteTypeReference("MyUnion")),
-                                                                            "Item1",
-                                                                            "X",
-                                                                            true,
-                                                                            ConcreteTypeReference("OtherUnion")),
-                                                                        false),
-                                                                    FieldAccess(
-                                                                        LocalAccess("Local3",
-                                                                            true,
-                                                                            ConcreteTypeReference("OtherUnion")),
-                                                                        "_variantIdentifier",
-                                                                        "A",
-                                                                        true,
-                                                                        Int)
-                                                                ],
-                                                                Int,
-                                                                true),
-                                                            new() {
-                                                                {
-                                                                    0,
-                                                                    IntConstant(1, true)
-                                                                }
-                                                            },
-                                                            IntConstant(2, true),
-                                                            true,
-                                                            Int)
-                                                    },
+                                                Int),
+                                            new()
+                                            {
+                                                {
+                                                    1,
+                                                    IntConstant(0, true)
                                                 },
-                                                SwitchInt(
+                                                {
+                                                    0,
                                                     Block(
                                                         [
                                                             VariableDeclaration(
                                                                 "Local4",
                                                                 FieldAccess(
                                                                     LocalAccess(
-                                                                        "Local1",
-                                                                        true,
-                                                                        ConcreteTypeReference("MyUnion")),
-                                                                    "Item1",
+                                                                        "Local1", true, ConcreteTypeReference("MyUnion")),
+                                                                    "Item0",
                                                                     "X",
                                                                     true,
                                                                     ConcreteTypeReference("OtherUnion")),
                                                                 false),
-                                                            FieldAccess(
-                                                                LocalAccess("Local4",
+                                                            SwitchInt(
+                                                                FieldAccess(
+                                                                    LocalAccess("Local4", true, ConcreteTypeReference("OtherUnion")),
+                                                                    "_variantIdentifier",
+                                                                    "A",
                                                                     true,
-                                                                    ConcreteTypeReference("OtherUnion")),
-                                                                "_variantIdentifier",
-                                                                "A",
+                                                                    Int),
+                                                                new()
+                                                                {
+                                                                    {
+                                                                        0,
+                                                                        Block(
+                                                                            [
+                                                                                VariableDeclaration(
+                                                                                    "Local2",
+                                                                                    FieldAccess(
+                                                                                        LocalAccess(
+                                                                                            "Local1", true, ConcreteTypeReference("MyUnion")),
+                                                                                        "Item1",
+                                                                                        "X",
+                                                                                        true,
+                                                                                        ConcreteTypeReference("OtherUnion")),
+                                                                                    false),
+                                                                                SwitchInt(
+                                                                                    FieldAccess(
+                                                                                        LocalAccess("Local2", true, ConcreteTypeReference("OtherUnion")),
+                                                                                        "_variantIdentifier",
+                                                                                        "A",
+                                                                                        true,
+                                                                                        Int),
+                                                                                    new()
+                                                                                    {
+                                                                                        {
+                                                                                            0,
+                                                                                            IntConstant(1, true)
+                                                                                        },
+                                                                                        {
+                                                                                            1,
+                                                                                            IntConstant(2, true)
+                                                                                        }
+                                                                                    },
+                                                                                    Unreachable(),
+                                                                                    true,
+                                                                                    Int)
+                                                                            ],
+                                                                            Int,
+                                                                            true)
+                                                                    },
+                                                                    {
+                                                                        1,
+                                                                        Block(
+                                                                            [
+                                                                                VariableDeclaration(
+                                                                                    "Local3",
+                                                                                    FieldAccess(
+                                                                                        LocalAccess(
+                                                                                            "Local1", true, ConcreteTypeReference("MyUnion")),
+                                                                                        "Item1",
+                                                                                        "X",
+                                                                                        true,
+                                                                                        ConcreteTypeReference("OtherUnion")),
+                                                                                    false),
+                                                                                SwitchInt(
+                                                                                    FieldAccess(
+                                                                                        LocalAccess("Local3", true, ConcreteTypeReference("OtherUnion")),
+                                                                                        "_variantIdentifier",
+                                                                                        "A",
+                                                                                        true,
+                                                                                        Int),
+                                                                                    new()
+                                                                                    {
+                                                                                        {
+                                                                                            0,
+                                                                                            IntConstant(3, true)
+                                                                                        },
+                                                                                        {
+                                                                                            1,
+                                                                                            IntConstant(4, true)
+                                                                                        }
+                                                                                    },
+                                                                                    Unreachable(),
+                                                                                    true,
+                                                                                    Int)
+                                                                            ],
+                                                                            Int,
+                                                                            true)
+                                                                    }
+                                                                },
+                                                                Unreachable(),
                                                                 true,
                                                                 Int)
                                                         ],
                                                         Int,
-                                                        true),
-                                                    new(){
-                                                        {
-                                                            0,
-                                                            IntConstant(3, true)
-                                                        }
-                                                    },
-                                                    IntConstant(4, true),
-                                                    true,
-                                                    Int),
-                                                true,
-                                                Int)
-                                        }
-                                    },
-                                    IntConstant(0, true),
-                                    false,
-                                    Int),
+                                                        true)
+                                                }
+                                            },
+                                            Unreachable(),
+                                            true,
+                                            Int)
+                                    ],
+                                    Int,
+                                    false),
                                 MethodReturnUnit()
                             ],
                             locals: [
@@ -1097,17 +1119,14 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                         Method(
                             "_Main",
                             [
-                                SwitchInt(
-                                    Block([
+                                Block(
+                                    [
                                         VariableDeclaration("Local0", IntConstant(1, true), false),
-                                        CastBoolToInt(BoolConstant(true, true), true),
-                                    ], BooleanType, true),
-                                    new(){
-                                        {0, Unreachable()}
-                                    },
-                                    IntConstant(1, true),
-                                    false,
-                                    Int)
+                                        IntConstant(1, true)
+                                    ],
+                                    Int,
+                                    false),
+                                MethodReturnUnit()
                             ],
                             locals: [
                                 Local("Local0", Int)
@@ -1243,7 +1262,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             "MyUnion",
                             variants: [
                                 Variant("A", [Field("_variantIdentifier", Int)]),
-                                Variant("A", [Field("_variantIdentifier", Int)])
+                                Variant("B", [Field("_variantIdentifier", Int)])
                             ]),
                         DataType(
                             "MyClass",
@@ -1274,10 +1293,52 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             }
                                         }),
                                     false),
+                                Block(
+                                    [
+                                        VariableDeclaration(
+                                            "Local1",
+                                            LocalAccess("a", true, ConcreteTypeReference("MyClass")),
+                                            false),
+                                        Block(
+                                            [
+                                                VariableDeclaration(
+                                                    "Local2",
+                                                    FieldAccess(
+                                                        LocalAccess("Local1", true, ConcreteTypeReference("MyClass")),
+                                                        "MyField",
+                                                        "_classVariant",
+                                                        true,
+                                                        ConcreteTypeReference("MyUnion")),
+                                                    false),
+                                                SwitchInt(
+                                                    FieldAccess(
+                                                        LocalAccess("Local2", true, ConcreteTypeReference("MyUnion")),
+                                                        "_variantIdentifier",
+                                                        "A",
+                                                        true,
+                                                        Int),
+                                                    new()
+                                                    {
+                                                        {
+                                                            0,
+                                                            IntConstant(1, true)
+                                                        }
+                                                    },
+                                                    IntConstant(2, true),
+                                                    true,
+                                                    Int)
+                                            ],
+                                            Int,
+                                            true)
+                                    ],
+                                    Int,
+                                    false),
                                 MethodReturnUnit()
                             ],
                             locals: [
                                 Local("a", ConcreteTypeReference("MyClass")),
+                                Local("Local1", ConcreteTypeReference("MyClass")),
+                                Local("Local2", ConcreteTypeReference("MyUnion")),
                             ])
                     ])
             },
@@ -1294,7 +1355,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 match (a) {
                     MyClass { MyField: MyUnion::A, SecondField: MyUnion::A } => 1,
                     MyClass { MyField: MyUnion::B, SecondField: MyUnion::A } => 2,
-                    MyClass { MyField: MyUnion::C, SecondField: MyUnion::A } => 2,
+                    MyClass { MyField: MyUnion::C, SecondField: MyUnion::A } => 4,
                     _ => 3
                 }
                 """,
@@ -1310,7 +1371,12 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                         DataType(
                             "MyClass",
                             variants: [
-                                Variant("_classVariant", [Field("MyField", ConcreteTypeReference("MyUnion"))])
+                                Variant(
+                                    "_classVariant",
+                                    [
+                                        Field("MyField", ConcreteTypeReference("MyUnion")),
+                                        Field("SecondField", ConcreteTypeReference("MyUnion")),
+                                    ])
                             ])
                     ],
                     methods: [
@@ -1333,13 +1399,167 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                     {
                                                         {"_variantIdentifier", IntConstant(0, true)}
                                                     })
+                                            },
+                                            {
+                                                "SecondField",
+                                                CreateObject(
+                                                    ConcreteTypeReference("MyUnion"),
+                                                    "B",
+                                                    true,
+                                                    new()
+                                                    {
+                                                        {"_variantIdentifier", IntConstant(1, true)}
+                                                    })
                                             }
                                         }),
+                                    false),
+                                Block(
+                                    [
+                                        VariableDeclaration(
+                                            "Local1",
+                                            LocalAccess("a", true, ConcreteTypeReference("MyClass")),
+                                            false),
+                                        Block(
+                                            [
+                                                VariableDeclaration(
+                                                    "Local5",
+                                                    FieldAccess(
+                                                        LocalAccess("Local1", true, ConcreteTypeReference("MyClass")),
+                                                        "MyField",
+                                                        "_classVariant",
+                                                        true,
+                                                        ConcreteTypeReference("MyUnion")),
+                                                    false),
+                                                SwitchInt(
+                                                    FieldAccess(
+                                                        LocalAccess("Local5", true, ConcreteTypeReference("MyUnion")),
+                                                        "_variantIdentifier",
+                                                        "A",
+                                                        true,
+                                                        Int),
+                                                    new()
+                                                    {
+                                                        {
+                                                            0,
+                                                            Block(
+                                                                [
+                                                                    VariableDeclaration(
+                                                                        "Local2",
+                                                                        FieldAccess(
+                                                                            LocalAccess("Local1", true, ConcreteTypeReference("MyClass")),
+                                                                            "SecondField",
+                                                                            "_classVariant",
+                                                                            true,
+                                                                            ConcreteTypeReference("MyUnion")),
+                                                                        false),
+                                                                    SwitchInt(
+                                                                        FieldAccess(
+                                                                            LocalAccess("Local2", true, ConcreteTypeReference("MyUnion")),
+                                                                            "_variantIdentifier",
+                                                                            "A",
+                                                                            true,
+                                                                            Int),
+                                                                        new()
+                                                                        {
+                                                                            {
+                                                                                0,
+                                                                                IntConstant(1, true)
+                                                                            }
+                                                                        },
+                                                                        IntConstant(3, true),
+                                                                        true,
+                                                                        Int)
+                                                                ],
+                                                                Int,
+                                                                true)
+                                                        },
+                                                        {
+                                                            1,
+                                                            Block(
+                                                                [
+                                                                    VariableDeclaration(
+                                                                        "Local3",
+                                                                        FieldAccess(
+                                                                            LocalAccess("Local1", true, ConcreteTypeReference("MyClass")),
+                                                                            "SecondField",
+                                                                            "_classVariant",
+                                                                            true,
+                                                                            ConcreteTypeReference("MyUnion")),
+                                                                        false),
+                                                                    SwitchInt(
+                                                                        FieldAccess(
+                                                                            LocalAccess("Local3", true, ConcreteTypeReference("MyUnion")),
+                                                                            "_variantIdentifier",
+                                                                            "A",
+                                                                            true,
+                                                                            Int),
+                                                                        new()
+                                                                        {
+                                                                            {
+                                                                                0,
+                                                                                IntConstant(2, true)
+                                                                            }
+                                                                        },
+                                                                        IntConstant(3, true),
+                                                                        true,
+                                                                        Int)
+                                                                ],
+                                                                Int,
+                                                                true)
+                                                        },
+                                                        {
+                                                            2,
+                                                            Block(
+                                                                [
+                                                                    VariableDeclaration(
+                                                                        "Local4",
+                                                                        FieldAccess(
+                                                                            LocalAccess("Local1", true, ConcreteTypeReference("MyClass")),
+                                                                            "SecondField",
+                                                                            "_classVariant",
+                                                                            true,
+                                                                            ConcreteTypeReference("MyUnion")),
+                                                                        false),
+                                                                    SwitchInt(
+                                                                        FieldAccess(
+                                                                            LocalAccess("Local4", true, ConcreteTypeReference("MyUnion")),
+                                                                            "_variantIdentifier",
+                                                                            "A",
+                                                                            true,
+                                                                            Int),
+                                                                        new()
+                                                                        {
+                                                                            {
+                                                                                0,
+                                                                                IntConstant(4, true)
+                                                                            }
+                                                                        },
+                                                                        IntConstant(3, true),
+                                                                        true,
+                                                                        Int)
+                                                                ],
+                                                                Int,
+                                                                true)
+                                                        }
+                                                    },
+                                                    IntConstant(3, true),
+                                                    true,
+                                                    Int)
+                                            ],
+                                            Int,
+                                            true)
+                                    ],
+                                    Int,
                                     false),
                                 MethodReturnUnit()
                             ],
                             locals: [
                                 Local("a", ConcreteTypeReference("MyClass")),
+                                Local("Local1", ConcreteTypeReference("MyClass")),
+                                Local("Local2", ConcreteTypeReference("MyUnion")),
+                                Local("Local3", ConcreteTypeReference("MyUnion")),
+                                Local("Local4", ConcreteTypeReference("MyUnion")),
+                                Local("Local5", ConcreteTypeReference("MyUnion")),
                             ])
                     ])
             },
