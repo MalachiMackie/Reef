@@ -450,6 +450,11 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
                 _stringBuilder.Append('}');
                 break;
             }
+            case UnreachableExpression:
+            {
+                _stringBuilder.Append("Unreachable");
+                break;
+            }
             default:
                 throw new NotImplementedException($"{expression.GetType()}");
         }

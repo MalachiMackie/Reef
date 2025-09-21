@@ -26,11 +26,661 @@ public partial class ProgramAbseil
             Expressions.TupleExpression e => LowerTupleExpression(e),
             Expressions.IfExpressionExpression e => LowerIfExpression(e),
             Expressions.MatchesExpression e => LowerMatchesExpression(e),
+            Expressions.MatchExpression e => LowerMatchExpression(e),
             _ => throw new NotImplementedException($"{expression.GetType()}")
         };
     }
 
-    private ILoweredExpression LowerMatchesPattern(
+    private ILoweredExpression LowerMatchPatterns(
+            List<(IPattern Pattern, ILoweredExpression Expression)> patterns,
+            ILoweredExpression accessExpression,
+            ILoweredExpression? otherwise)
+    {
+        var classPatterns = new List<(ClassPattern Pattern, ILoweredExpression MatchArmExpression)>();
+        var unionPatterns = new List<(IPattern Pattern, ILoweredExpression MatchArmExpression)>();
+
+        foreach (var (pattern, armExpression) in patterns)
+        {
+            switch (pattern)
+            {
+                case DiscardPattern:
+                    otherwise = armExpression;
+                    if (patterns.Count == 1)
+                    {
+                        return otherwise;
+                    }
+
+                    continue;
+                case VariableDeclarationPattern variableDeclarationPattern:
+                {
+                    otherwise = new BlockExpression(
+                        [
+                            new VariableDeclarationAndAssignmentExpression(
+                                variableDeclarationPattern.VariableName.StringValue,
+                                accessExpression,
+                                false),
+                            armExpression
+                        ],
+                        armExpression.ResolvedType,
+                        true);
+                    if (patterns.Count == 1)
+                    {
+                        return otherwise;
+                    }
+
+                    continue;
+                }
+                // for now, type pattern is guaranteed to be the only arm that matches
+                // when we eventually get interfaces, this needs to change
+                // Debug.Assert(patterns.Count == 1);
+                case TypePattern { VariableName.StringValue: var variableName }:
+                    return new BlockExpression(
+                        [
+                            new VariableDeclarationAndAssignmentExpression(
+                                variableName,
+                                accessExpression,
+                                false),
+                            armExpression
+                        ],
+                        armExpression.ResolvedType,
+                        true);
+                case TypePattern:
+                    return armExpression;
+                case ClassPattern classPattern:
+                    classPatterns.Add((classPattern, armExpression));
+                    continue;
+                case UnionVariantPattern or UnionTupleVariantPattern or UnionClassVariantPattern:
+                    unionPatterns.Add((pattern, armExpression));
+                    continue;
+                default:
+                    throw new UnreachableException($"{pattern.GetType()}");
+            }
+        }
+
+        if (classPatterns.Count > 0)
+        {
+            // for now, class patterns are mutually exclusive with union patterns until we have
+            // interfaces
+            Debug.Assert(unionPatterns.Count == 0);
+
+            LoweredConcreteTypeReference? typeReference = null;
+            foreach (var pattern in classPatterns.Select(x => x.Pattern))
+            {
+                var patternTypeReference = (GetTypeReference(pattern.TypeReference.NotNull()) as LoweredConcreteTypeReference).NotNull();
+                typeReference ??= patternTypeReference;
+
+                Debug.Assert(EqualTypeReferences(typeReference, patternTypeReference));
+            }
+
+            // check all class patterns are for the same type. This needs to change when we have interfaces
+
+            var dataType = GetDataType(typeReference!.DefinitionId, typeReference.TypeArguments);
+
+            var dataTypeFields = dataType.Variants[0].Fields;
+            if (dataTypeFields.Count == 0)
+            {
+                throw new NotImplementedException();
+            }
+
+            IReadOnlyCollection<INode>? previousNodes = null;
+            var originalNode = new FieldNode(
+                dataType.Variants[0].Fields[0].Name,
+                [],
+                [..classPatterns.Select(x => ((IPattern)x.Pattern, x.MatchArmExpression))])
+            {
+                Otherwise = otherwise
+            };
+            IReadOnlyCollection<INode>? nodes = [originalNode];
+
+            foreach (var field in dataType.Variants[0].Fields)
+            {
+                if (nodes is null)
+                {
+                    Debug.Assert(previousNodes is not null);
+                    foreach (var previousNode in previousNodes)
+                    {
+                        foreach (var b in previousNode.UniquePatterns)
+                        {
+                            b.NextField = new FieldNode(field.Name, [], b.OriginalPatterns){Otherwise = otherwise};
+                        }
+                    }
+                    nodes = [..previousNodes.SelectMany(x => x.UniquePatterns.Select(y => y.NextField.NotNull()))];
+                }
+
+                foreach (var (_, uniquePatterns, valueTuples) in nodes.OfType<FieldNode>())
+                {
+                    foreach (var (pattern, armExpression) in valueTuples)
+                    {
+                        var classPattern = (pattern as ClassPattern).NotNull();
+                        var fieldPattern = classPattern.FieldPatterns.FirstOrDefault(x => x.FieldName.StringValue == field.Name);
+                        if (fieldPattern is null)
+                        {
+                            throw new NotImplementedException();
+                        }
+
+                        var foundUniquePattern = uniquePatterns.FirstOrDefault(x => PatternsEquivalent(x.Pattern, fieldPattern.Pattern.NotNull()));
+
+                        if (foundUniquePattern is null)
+                        {
+                            foundUniquePattern = new(fieldPattern.Pattern.NotNull(), []);
+                            uniquePatterns.Add(foundUniquePattern);
+                        }
+                        foundUniquePattern.OriginalPatterns.Add((classPattern, armExpression));
+                    }
+                }
+                previousNodes = nodes;
+                nodes = null;
+                
+            }
+
+            return ProcessNode(originalNode);
+
+            ILoweredExpression ProcessNode(FieldNode node)
+            {
+                var nextPatterns = new List<(IPattern, ILoweredExpression)>();
+                foreach (var b in node.UniquePatterns)
+                {
+                    ILoweredExpression exp;
+                    if (b.NextField is null)
+                    {
+                        Debug.Assert(b.OriginalPatterns.Count == 1);
+                        var (originalPattern, originalExpression) = b.OriginalPatterns[0];
+                        var variableName = (originalPattern as ClassPattern).NotNull().VariableName?.StringValue;
+                        if (variableName is not null)
+                        {
+                            originalExpression = new BlockExpression(
+                                [
+                                    new VariableDeclarationAndAssignmentExpression(variableName, accessExpression, false),
+                                    originalExpression
+                                ],
+                                originalExpression.ResolvedType,
+                                true);
+                        }
+
+                        exp = originalExpression;
+                    }
+                    else if (b.NextField is FieldNode nextField)
+                    {
+                        exp = ProcessNode(nextField);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Expected structural node. Got {b.NextField.GetType()}");
+                    }
+                    nextPatterns.Add((b.Pattern, exp));
+                }
+                
+                var fieldType = dataType.Variants[0].Fields.First(x => x.Name == node.FieldName).Type;
+
+                var locals = _currentFunction.NotNull().LoweredMethod.Locals;
+                var localName = $"Local{locals.Count}";
+                locals.Add(new MethodLocal(localName, fieldType));
+
+                var localDeclaration = new VariableDeclarationAndAssignmentExpression(
+                    localName,
+                    new FieldAccessExpression(
+                        accessExpression,
+                        node.FieldName,
+                        "_classVariant",
+                        true,
+                        fieldType),
+                    false);
+                var localAccess = new LocalVariableAccessor(localName, true, fieldType);
+                
+                var innerExpression = LowerMatchPatterns(
+                    nextPatterns,
+                    localAccess,
+                    node.Otherwise);
+                
+                return new BlockExpression(
+                    [
+                        localDeclaration,
+                        innerExpression
+                    ],
+                    innerExpression.ResolvedType,
+                    true);
+            }
+        }
+        
+        if (unionPatterns.Count > 0)
+        {
+            // for now, class patterns are mutually exclusive with union patterns until we have
+            // interfaces
+            Debug.Assert(classPatterns.Count == 0);
+
+            LoweredConcreteTypeReference? typeReference = null;
+            foreach (var pattern in unionPatterns.Select(x => x.Pattern))
+            {
+                var patternTypeReference = (GetTypeReference(pattern.TypeReference.NotNull()) as LoweredConcreteTypeReference).NotNull();
+                typeReference ??= patternTypeReference;
+
+                Debug.Assert(EqualTypeReferences(typeReference, patternTypeReference));
+            }
+
+            // check all class patterns are for the same type. This needs to change when we have interfaces
+
+            var dataType = GetDataType(typeReference!.DefinitionId, typeReference.TypeArguments);
+
+            var originalNode = new TopLevelNode([], unionPatterns){Otherwise = otherwise};
+
+            IReadOnlyList<INode> nodes = [originalNode];
+
+            foreach (var variant in dataType.Variants)
+            {
+                foreach (var node in nodes)
+                {
+                    foreach (var (originalPattern, armExpression) in node.OriginalPatterns)
+                    {
+                        var (patternVariantName, variableName) = originalPattern switch
+                        {
+                            UnionVariantPattern variantPattern => (variantPattern.VariantName.NotNull().StringValue, variantPattern.VariableName),
+                            UnionClassVariantPattern classVariantPattern => (classVariantPattern.VariantName.StringValue, classVariantPattern.VariableName),
+                            UnionTupleVariantPattern tupleVariantPattern => (tupleVariantPattern.VariantName.StringValue, tupleVariantPattern.VariableName),
+                            _ => throw new UnreachableException()
+                        };
+
+                        if (patternVariantName == variant.Name)
+                        {
+                            var tupleVariantPattern = new UnionVariantPattern(
+                                null!,
+                                Token.Identifier(patternVariantName, SourceSpan.Default),
+                                variableName,
+                                false,
+                                SourceRange.Default)
+                            {
+                                TypeReference = originalPattern.TypeReference.NotNull()
+                            };
+                            
+                            if (node.UniquePatterns.FirstOrDefault(x => PatternsEquivalent(x.Pattern, tupleVariantPattern)) is { } uniquePattern)
+                            {
+                                uniquePattern.OriginalPatterns.Add((originalPattern, armExpression));
+                            }
+                            else
+                            {
+                                node.UniquePatterns.Add(new B(
+                                    tupleVariantPattern,
+                                    [(originalPattern, armExpression)]));
+                            }
+                        }
+                    }
+                }
+                
+                var variantNodes = nodes;
+                var previousNodes = variantNodes;
+
+                foreach (var field in variant.Fields.Where(x => x.Name != "_variantIdentifier"))
+                {
+                    var newVariantNodes = new List<INode>();
+                    foreach (var previousNode in previousNodes)
+                    {
+                        foreach (var b in previousNode.UniquePatterns)
+                        {
+                            b.NextField = new VariantFieldNode(variant.Name, field.Name, [],
+                                b.OriginalPatterns){Otherwise = otherwise};
+                            newVariantNodes.Add(b.NextField);
+                        }
+                    }
+
+                    variantNodes = newVariantNodes;
+
+                    foreach (var node in variantNodes)
+                    {
+                        var originalPatterns = node.OriginalPatterns;
+                        var uniquePatterns = node.UniquePatterns;
+                        foreach (var (originalPattern, armExpression) in originalPatterns)
+                        {
+                            B? foundUniquePattern = null;
+                            IPattern? fieldPattern = null;
+                            switch (originalPattern)
+                            {
+                                case UnionClassVariantPattern classVariantPattern:
+                                    if (variant.Name != classVariantPattern.VariantName.StringValue)
+                                    {
+                                        continue;
+                                    }
+
+                                    fieldPattern =
+                                        classVariantPattern.FieldPatterns.First(x =>
+                                            x.FieldName.StringValue == field.Name).Pattern.NotNull();
+                                    foundUniquePattern = uniquePatterns.FirstOrDefault(x =>
+                                        PatternsEquivalent(x.Pattern, fieldPattern));
+                                    break;
+                                case UnionTupleVariantPattern tupleVariantPattern:
+                                    if (variant.Name != tupleVariantPattern.VariantName.StringValue)
+                                    {
+                                        continue;
+                                    }
+
+                                    fieldPattern = tupleVariantPattern.TupleParamPatterns
+                                        .Select((x, i) => ($"Item{i}", Pattern: x))
+                                        .First(x => x.Item1 == field.Name).Pattern;
+                                    foundUniquePattern = uniquePatterns.FirstOrDefault(x =>
+                                        PatternsEquivalent(x.Pattern, fieldPattern));
+                                    break;
+                                case UnionVariantPattern variantPattern:
+                                {
+                                    if (variant.Name != variantPattern.VariantName.NotNull().StringValue)
+                                    {
+                                        continue;
+                                    }
+
+                                    node.Otherwise = armExpression;
+                                    continue;
+                                }
+                            }
+
+                            if (foundUniquePattern is null)
+                            {
+                                foundUniquePattern = new B(fieldPattern.NotNull(), []);
+                                uniquePatterns.Add(foundUniquePattern);
+                            }
+
+                            foundUniquePattern.OriginalPatterns.Add((originalPattern, armExpression));
+                        }
+                    }
+
+                    previousNodes = variantNodes;
+                }
+            }
+
+            return ProcessNode(originalNode);
+
+            ILoweredExpression ProcessNode(INode node)
+            {
+                var nextPatterns = new List<(IPattern, ILoweredExpression)>();
+                foreach (var b in node.UniquePatterns)
+                {
+                    ILoweredExpression expression;
+                    if (b.NextField is {UniquePatterns.Count: > 0})
+                    {
+                        expression = ProcessNode(b.NextField);
+                    }
+                    else
+                    {
+                        Debug.Assert(b.OriginalPatterns.Count == 1);
+                        (var originalPattern, expression) = b.OriginalPatterns[0];
+                        var variableName = originalPattern switch
+                        {
+                            UnionVariantPattern variantPattern => variantPattern.VariableName?.StringValue,
+                            UnionClassVariantPattern classVariantPattern => classVariantPattern.VariableName
+                                ?.StringValue,
+                            UnionTupleVariantPattern tupleVariantPattern => tupleVariantPattern.VariableName
+                                ?.StringValue,
+                            _ => null
+                        };
+
+                        if (variableName is not null)
+                        {
+                            expression = new BlockExpression(
+                                [
+                                    new VariableDeclarationAndAssignmentExpression(
+                                        variableName,
+                                        accessExpression,
+                                        false),
+                                    expression
+                                ],
+                                expression.ResolvedType,
+                                true);
+                        }
+                    }
+
+                    nextPatterns.Add((b.Pattern, expression));
+                }
+
+                switch (node)
+                {
+                    case TopLevelNode:
+                    {
+                        var innerResults = new Dictionary<int, ILoweredExpression>();
+                        foreach (var (pattern, expression) in nextPatterns)
+                        {
+                            var variantName = pattern switch
+                            {
+                                UnionVariantPattern variantPattern => variantPattern.VariantName.NotNull().StringValue,
+                                UnionClassVariantPattern classVariantPattern => classVariantPattern.VariantName.StringValue,
+                                UnionTupleVariantPattern tupleVariantPattern => tupleVariantPattern.VariantName.StringValue,
+                                _ => throw new UnreachableException()
+                            };
+                            
+                            var innerTypeReference = (GetTypeReference(pattern.TypeReference.NotNull()) as LoweredConcreteTypeReference)
+                                .NotNull();
+                            var innerDataType = GetDataType(innerTypeReference.DefinitionId,
+                                innerTypeReference.TypeArguments);
+                            
+                            var variantIndex = innerDataType.Variants.Index().First(x => x.Item.Name == variantName).Index;
+                            innerResults[variantIndex] = expression;
+                        }
+
+                        return new SwitchIntExpression(
+                            new FieldAccessExpression(
+                                accessExpression,
+                                "_variantIdentifier",
+                                dataType.Variants[0].Name,
+                                true,
+                                GetTypeReference(InstantiatedClass.Int)),
+                            innerResults,
+                            node.Otherwise ?? new UnreachableExpression(),
+                            true,
+                            innerResults.First().Value.ResolvedType);
+                    }
+                    case VariantFieldNode fieldNode:
+                    {
+                        var variant = dataType.Variants.First(x => x.Name == fieldNode.VariantName);
+                        var fieldType = variant.Fields.First(x => x.Name == fieldNode.FieldName).Type;
+
+                        var locals = _currentFunction.NotNull().LoweredMethod.Locals;
+                        var localName = $"Local{locals.Count}";
+                        locals.Add(new MethodLocal(localName, fieldType));
+
+                        var localDeclaration = new VariableDeclarationAndAssignmentExpression(
+                            localName,
+                            new FieldAccessExpression(
+                                accessExpression,
+                                fieldNode.FieldName,
+                                variant.Name,
+                                true,
+                                fieldType),
+                            false);
+                        var localAccess = new LocalVariableAccessor(localName, true, fieldType);
+
+                        var innerExpression =  LowerMatchPatterns(
+                            nextPatterns,
+                            localAccess,
+                            node.Otherwise);
+
+                        return new BlockExpression(
+                            [
+                                localDeclaration,
+                                innerExpression
+                            ],
+                            innerExpression.ResolvedType,
+                            true);
+                    }
+                    default:
+                        throw new UnreachableException();
+                }
+            }
+        }
+
+        throw new UnreachableException();
+    }
+
+    private interface INode
+    {
+        public List<B> UniquePatterns { get; }
+        public List<(IPattern, ILoweredExpression)> OriginalPatterns { get; }
+        public ILoweredExpression? Otherwise { get; set; }
+    }
+
+    private record TopLevelNode(
+        List<B> UniquePatterns,
+        List<(IPattern, ILoweredExpression)> OriginalPatterns) : INode
+    {
+        public ILoweredExpression? Otherwise { get; set; }
+    }
+
+    private record VariantFieldNode(
+        string VariantName,
+        string FieldName,
+        List<B> UniquePatterns,
+        List<(IPattern, ILoweredExpression)> OriginalPatterns) : INode
+    {
+        public ILoweredExpression? Otherwise { get; set; }
+    }
+
+    private record FieldNode(
+        string FieldName,
+        List<B> UniquePatterns,
+        List<(IPattern, ILoweredExpression)> OriginalPatterns) : INode
+    {
+        public ILoweredExpression? Otherwise { get; set; }
+    }
+
+    private record B(IPattern Pattern, List<(IPattern, ILoweredExpression)> OriginalPatterns)
+    {
+        public INode? NextField { get; set; }
+    };
+
+    private bool PatternsEquivalent(IPattern a, IPattern b)
+    {
+        switch (a, b)
+        {
+            case (DiscardPattern, VariableDeclarationPattern):
+            case (DiscardPattern, DiscardPattern):
+            case (VariableDeclarationPattern, VariableDeclarationPattern):
+            {
+                return true;
+            }
+            case (UnionVariantPattern left, UnionVariantPattern right):
+            {
+                var leftType = GetTypeReference(left.TypeReference.NotNull());
+                var rightType = GetTypeReference(right.TypeReference.NotNull());
+                return EqualTypeReferences(leftType, rightType)
+                    && left.VariantName.NotNull().StringValue == right.VariantName.NotNull().StringValue;
+            }
+            case (UnionClassVariantPattern left, UnionVariantPattern right):
+            {
+                var leftType = GetTypeReference(left.TypeReference.NotNull());
+                var rightType = GetTypeReference(right.TypeReference.NotNull());
+                return EqualTypeReferences(leftType, rightType)
+                       && left.VariantName.NotNull().StringValue == right.VariantName.NotNull().StringValue
+                       && left.FieldPatterns.Count == 0;
+            }
+            case (UnionVariantPattern left, UnionClassVariantPattern right):
+            {
+                var leftType = GetTypeReference(left.TypeReference.NotNull());
+                var rightType = GetTypeReference(right.TypeReference.NotNull());
+                return EqualTypeReferences(leftType, rightType)
+                       && left.VariantName.NotNull().StringValue == right.VariantName.NotNull().StringValue
+                       && right.FieldPatterns.Count == 0;
+            }
+            case (UnionClassVariantPattern left, UnionClassVariantPattern right):
+            {
+                var leftType = GetTypeReference(left.TypeReference.NotNull());
+                var rightType = GetTypeReference(right.TypeReference.NotNull());
+                var rightFieldsByName = right.FieldPatterns.ToDictionary(x => x.FieldName.StringValue);
+
+                return EqualTypeReferences(leftType, rightType)
+                       && left.FieldPatterns.Count == right.FieldPatterns.Count
+                       && left.VariantName.StringValue == right.VariantName.StringValue
+                       && left.FieldPatterns.All(x => rightFieldsByName.TryGetValue(x.FieldName.StringValue, out var rightFieldPattern)
+                                                      && PatternsEquivalent(x.Pattern.NotNull(),
+                                                          rightFieldPattern.Pattern.NotNull()));
+            }
+            case (UnionVariantPattern left, UnionTupleVariantPattern right):
+            {
+                var leftType = GetTypeReference(left.TypeReference.NotNull());
+                var rightType = GetTypeReference(right.TypeReference.NotNull());
+
+                return EqualTypeReferences(leftType, rightType)
+                       && right.TupleParamPatterns.Count == 0;
+            }
+            case (UnionTupleVariantPattern left, UnionVariantPattern right):
+            {
+                var leftType = GetTypeReference(left.TypeReference.NotNull());
+                var rightType = GetTypeReference(right.TypeReference.NotNull());
+
+                return EqualTypeReferences(leftType, rightType)
+                       && left.TupleParamPatterns.Count == 0;
+            }
+            case (UnionTupleVariantPattern left, UnionTupleVariantPattern right):
+            {
+                var leftType = GetTypeReference(left.TypeReference.NotNull());
+                var rightType = GetTypeReference(right.TypeReference.NotNull());
+
+                return EqualTypeReferences(leftType, rightType)
+                       && left.TupleParamPatterns.Zip(right.TupleParamPatterns)
+                           .All(x => PatternsEquivalent(x.First, x.Second));
+            }
+            case (TypePattern left, TypePattern right):
+            {
+                var leftType = GetTypeReference(left.TypeReference.NotNull());
+                var rightType = GetTypeReference(right.TypeReference.NotNull());
+
+                return EqualTypeReferences(leftType, rightType);
+            }
+            case (TypePattern left, ClassPattern right):
+            {
+                var leftType = GetTypeReference(left.TypeReference.NotNull());
+                var rightType = GetTypeReference(right.TypeReference.NotNull());
+
+                return EqualTypeReferences(leftType, rightType)
+                       && right.FieldPatterns.Count == 0;
+            }
+            case (ClassPattern left, TypePattern right):
+            {
+                var leftType = GetTypeReference(left.TypeReference.NotNull());
+                var rightType = GetTypeReference(right.TypeReference.NotNull());
+
+                return EqualTypeReferences(leftType, rightType)
+                       && left.FieldPatterns.Count == 0;
+            }
+            case (ClassPattern left, ClassPattern right):
+            {
+                var leftType = GetTypeReference(left.TypeReference.NotNull());
+                var rightType = GetTypeReference(right.TypeReference.NotNull());
+                var rightFieldsByName = right.FieldPatterns.ToDictionary(x => x.FieldName.StringValue);
+
+                return EqualTypeReferences(leftType, rightType)
+                       && left.FieldPatterns.Count == right.FieldPatterns.Count
+                       && left.FieldPatterns.All(x => rightFieldsByName.TryGetValue(x.FieldName.StringValue, out var rightFieldPattern)
+                                                      && PatternsEquivalent(x.Pattern.NotNull(),
+                                                          rightFieldPattern.Pattern.NotNull()));
+            }
+            default:
+                return false;
+        }
+    }
+
+    private ILoweredExpression LowerMatchExpression(Expressions.MatchExpression e)
+    {
+        var accessExpression = LowerExpression(e.Value);
+        
+        var locals = _currentFunction.NotNull().LoweredMethod.Locals;
+        var localName = $"Local{locals.Count}";
+        var localType = accessExpression.ResolvedType;
+        locals.Add(new MethodLocal(localName, localType));
+
+        var localDeclaration = new VariableDeclarationAndAssignmentExpression(
+            localName,
+            accessExpression,
+            false);
+        var localAccessor = new LocalVariableAccessor(localName, true, localType);
+        var expression =  LowerMatchPatterns(
+            [..e.Arms.Select(x => (x.Pattern, LowerExpression(x.Expression.NotNull())))],
+            localAccessor,
+            null);
+
+        return new BlockExpression(
+            [
+                localDeclaration,
+                expression
+            ],
+            expression.ResolvedType,
+            e.ValueUseful);
+    }
+
+    private BlockExpression LowerMatchesPattern(
             ILoweredExpression e,
             IPattern pattern,
             bool valueUseful)
@@ -209,7 +859,7 @@ public partial class ProgramAbseil
                             x,
                             valueUseful: true));
 
-                var checkExpressions = tuplePatternExpressions.Prepend(variantIdentifierCheck)
+                var checkExpressions = tuplePatternExpressions.Prepend<ILoweredExpression>(variantIdentifierCheck)
                     .ToArray();
 
                 Debug.Assert(checkExpressions.Length >= 2);

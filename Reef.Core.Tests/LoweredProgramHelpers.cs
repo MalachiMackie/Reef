@@ -266,6 +266,11 @@ public static class LoweredProgramHelpers
         return new(expressions, resolvedType, valueUseful);
     }
 
+    public static UnreachableExpression Unreachable()
+    {
+        return new();
+    }
+
     public static FieldAssignmentExpression FieldAssignment(
             ILoweredExpression fieldOwnerExpression,
             string variantName,

@@ -135,7 +135,7 @@ public partial class TypeChecker
 
     public interface ITypeReference
     {
-        (ITypeReference, Guid) ConcreteType()
+        (ITypeReference Type, Guid Id) ConcreteType()
         {
 
             return this switch

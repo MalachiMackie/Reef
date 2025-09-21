@@ -141,6 +141,12 @@ public record IntMinusExpression(bool ValueUseful, ILoweredExpression Left, ILow
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
 }
 
+public record UnreachableExpression() : ILoweredExpression
+{
+    public bool ValueUseful => false;
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Never.ToLoweredTypeReference();
+}
+
 public record IntMultiplyExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
