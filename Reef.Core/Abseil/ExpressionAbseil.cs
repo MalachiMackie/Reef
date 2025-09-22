@@ -739,7 +739,7 @@ public partial class ProgramAbseil
                                      operandType));
                      }
 
-                    return new BlockExpression(
+                     return new BlockExpression(
                             [
                                 new VariableDeclarationAndAssignmentExpression(
                                     localName,
@@ -749,7 +749,7 @@ public partial class ProgramAbseil
                                 // TODO: for now, type patterns always evaluate to true.
                                 // In the future,this will only be true when the operands concrete
                                 // type is known.When the operand is some dynamic dispatch
-                                // interface, we willneed some way of checking the concrete
+                                // interface, we will need some way of checking the concrete
                                 // type at runtime
                                 new BoolConstantExpression(ValueUseful: true, Value: true)
                             ],
@@ -838,7 +838,7 @@ public partial class ProgramAbseil
                                     true,
                                     operandType),
                                 "_variantIdentifier",
-                                variantName!.StringValue,
+                                variantName.StringValue,
                                 true,
                                 GetTypeReference(InstantiatedClass.Int)),
                             new IntConstantExpression(
@@ -852,7 +852,7 @@ public partial class ProgramAbseil
                             new FieldAccessExpression(
                                 localAccessor,
                                 $"Item{i}",
-                                variantName!.StringValue,
+                                variantName.StringValue,
                                 true,
                                 // skip the first _variantIdentifier field
                                 variant.Fields[i + 1].Type),
@@ -917,7 +917,7 @@ public partial class ProgramAbseil
                                     true,
                                     operandType),
                                 "_variantIdentifier",
-                                variantName!.StringValue,
+                                variantName.StringValue,
                                 true,
                                 GetTypeReference(InstantiatedClass.Int)),
                             new IntConstantExpression(
@@ -1099,7 +1099,7 @@ public partial class ProgramAbseil
     }
 
     private CreateObjectExpression CreateClosureObject(
-        TypeChecking.TypeChecker.InstantiatedFunction instantiatedFunction)
+        InstantiatedFunction instantiatedFunction)
     {
         Debug.Assert(instantiatedFunction.ClosureTypeId.HasValue);
 
@@ -1117,7 +1117,7 @@ public partial class ProgramAbseil
         {
             switch (variable)
             {
-                case TypeChecking.TypeChecker.LocalVariable localVariable:
+                case LocalVariable localVariable:
                     {
                         if (localVariable.ContainingFunction != _currentFunction.Value.FunctionSignature)
                         {
@@ -1173,8 +1173,8 @@ public partial class ProgramAbseil
                                     [])));
                         break;
                     }
-                case TypeChecking.TypeChecker.ThisVariable:
-                case TypeChecking.TypeChecker.FieldVariable:
+                case ThisVariable:
+                case FieldVariable:
                     {
                         Debug.Assert(_currentType is not null);
 
@@ -1215,7 +1215,7 @@ public partial class ProgramAbseil
                                 _currentType));
                         break;
                     }
-                case TypeChecking.TypeChecker.FunctionSignatureParameter parameter:
+                case FunctionSignatureParameter parameter:
                     {
                         if (parameter.ContainingFunction != _currentFunction.Value.FunctionSignature)
                         {
@@ -1323,12 +1323,11 @@ public partial class ProgramAbseil
                 var createClosure = CreateClosureObject(instantiatedFunction);
                 arguments.Add(createClosure);
             }
-            else if (!instantiatedFunction.IsStatic
-                    && instantiatedFunction.OwnerType is not null
-                    && _currentType is not null
-                    && EqualTypeReferences(GetTypeReference(instantiatedFunction.OwnerType), _currentType)
-                    && _currentFunction is not null
-                    && EqualTypeReferences(_currentFunction.Value.LoweredMethod.Parameters[0], _currentType))
+            else if (instantiatedFunction is { IsStatic: false, OwnerType: not null }
+                     && _currentType is not null
+                     && EqualTypeReferences(GetTypeReference(instantiatedFunction.OwnerType), _currentType)
+                     && _currentFunction is not null
+                     && EqualTypeReferences(_currentFunction.Value.LoweredMethod.Parameters[0], _currentType))
             {
                 arguments.Add(
                         new LoadArgumentExpression(0, true, _currentType));
@@ -1448,11 +1447,11 @@ public partial class ProgramAbseil
         var variantIdentifier = dataType.Variants.Index()
             .First(x => x.Item.Name == e.UnionInitializer.VariantIdentifier.StringValue).Index;
 
-        var fieldInitailizers = e.UnionInitializer.FieldInitializers.ToDictionary(
+        var fieldInitializers = e.UnionInitializer.FieldInitializers.ToDictionary(
                 x => x.FieldName.StringValue,
                 x => LowerExpression(x.Value.NotNull()));
 
-        fieldInitailizers["_variantIdentifier"] = new IntConstantExpression(
+        fieldInitializers["_variantIdentifier"] = new IntConstantExpression(
                 ValueUseful: true,
                 variantIdentifier);
 
@@ -1460,7 +1459,7 @@ public partial class ProgramAbseil
                 concreteTypeReference,
                 e.UnionInitializer.VariantIdentifier.StringValue,
                 e.ValueUseful,
-                fieldInitailizers);
+                fieldInitializers);
     }
 
     private ILoweredExpression LowerStaticMemberAccess(
@@ -1476,7 +1475,7 @@ public partial class ProgramAbseil
             var variantIdentifier = dataType.Variants.Index()
                 .First(x => x.Item.Name == variantName).Index;
 
-            var fieldInitailizers = new Dictionary<string, ILoweredExpression>()
+            var fieldInitializers = new Dictionary<string, ILoweredExpression>()
             {
                 {
                     "_variantIdentifier",
@@ -1490,7 +1489,7 @@ public partial class ProgramAbseil
                     type,
                     variantName,
                     e.ValueUseful,
-                    fieldInitailizers);
+                    fieldInitializers);
         }
 
         if (e.StaticMemberAccess.MemberType == Expressions.MemberType.Function)
@@ -1539,14 +1538,14 @@ public partial class ProgramAbseil
             throw new UnreachableException();
         }
 
-        var fieldInitailizers = e.ObjectInitializer.FieldInitializers.ToDictionary(
+        var fieldInitializers = e.ObjectInitializer.FieldInitializers.ToDictionary(
                 x => x.FieldName.StringValue,
                 x => LowerExpression(x.Value.NotNull()));
         
         return new(concreteTypeReference,
                 "_classVariant",
                 e.ValueUseful,
-                fieldInitailizers);
+                fieldInitializers);
     }
 
     private ILoweredExpression LowerVariableDeclarationExpression(Expressions.VariableDeclarationExpression e)
@@ -1638,9 +1637,9 @@ public partial class ProgramAbseil
         bool valueUseful,
         ILoweredTypeReference resolvedType)
     {
-        var (okVariantIndex, okVariant) = UnionSignature.Result
-            .Variants.Index()
-            .First(x => x.Item.Name == "Ok");
+        var okVariant = UnionSignature.Result
+            .Variants
+            .First(x => x.Name == "Ok");
 
         Debug.Assert(_currentFunction.HasValue);
         var locals = _currentFunction.Value.LoweredMethod.Locals;
@@ -1758,13 +1757,13 @@ public partial class ProgramAbseil
         }
 
         ILoweredExpression VariableAccess(
-                TypeChecking.TypeChecker.IVariable variable,
+                IVariable variable,
                 bool valueUseful)
         {
             var resolvedType = GetTypeReference(e.ResolvedType.NotNull());
             switch (variable)
             {
-                case TypeChecking.TypeChecker.LocalVariable localVariable:
+                case LocalVariable localVariable:
                     {
                         if (!localVariable.ReferencedInClosure)
                         {
@@ -1815,7 +1814,7 @@ public partial class ProgramAbseil
                             e.ValueUseful,
                             resolvedType);
                     }
-                case TypeChecking.TypeChecker.ThisVariable thisVariable:
+                case ThisVariable thisVariable:
                     {
                         Debug.Assert(_currentFunction is not null);
                         Debug.Assert(_currentType is not null); 
@@ -1851,7 +1850,7 @@ public partial class ProgramAbseil
                         return new LoadArgumentExpression(
                                 0, valueUseful, resolvedType);
                     }
-                case TypeChecking.TypeChecker.FieldVariable fieldVariable
+                case FieldVariable fieldVariable
                     when fieldVariable.ContainingSignature.Id == _currentType?.DefinitionId
                         && _currentFunction is not null:
                     {
@@ -1871,7 +1870,7 @@ public partial class ProgramAbseil
                             var closureType = _types[fnSignature.ClosureTypeId.Value];
                             var closureTypeReference = new LoweredConcreteTypeReference(closureType.Name, closureType.Id, []);
 
-                            // we're a closure, so reference the value through the this field
+                            // we're a closure, so reference the value through the "this" field
                             // of the closure type
                             Debug.Assert(loweredMethod.Parameters.Count > 0);
                             Debug.Assert(
@@ -1914,7 +1913,7 @@ public partial class ProgramAbseil
                             valueUseful,
                             resolvedType);
                     }
-                case TypeChecking.TypeChecker.FunctionSignatureParameter argument:
+                case FunctionSignatureParameter argument:
                     {
                         Debug.Assert(_currentFunction is not null);
 
@@ -2027,7 +2026,7 @@ public partial class ProgramAbseil
         if (left is Expressions.ValueAccessorExpression valueAccessor)
         {
             var variable = valueAccessor.ReferencedVariable.NotNull();
-            if (variable is TypeChecking.TypeChecker.LocalVariable localVariable)
+            if (variable is LocalVariable localVariable)
             {
                 if (localVariable.ReferencedInClosure)
                 {
@@ -2089,7 +2088,7 @@ public partial class ProgramAbseil
                         valueUseful);
             }
 
-            if (variable is TypeChecking.TypeChecker.FieldVariable fieldVariable)
+            if (variable is FieldVariable fieldVariable)
             {
                 Debug.Assert(_currentType is not null);
                 if (fieldVariable.IsStaticField)
