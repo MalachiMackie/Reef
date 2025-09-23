@@ -1291,19 +1291,25 @@ public partial class ProgramAbseil
             _ => null
         };
 
+        IReadOnlyList<ILoweredExpression> originalArguments = [..e.MethodCall.ArgumentList.Select(LowerExpression)];
+
         var arguments = new List<ILoweredExpression>(e.MethodCall.ArgumentList.Count);
         LoweredFunctionReference functionReference;
 
         if (instantiatedFunction is null)
         {
-            var fn = ClassSignature
-                .Function(e.MethodCall.ArgumentList.Count)
-                .Functions.First(x => x.Name == "Call");
+            var methodExpression = LowerExpression(e.MethodCall.Method);
 
+            var methodType = (methodExpression.ResolvedType as LoweredConcreteTypeReference).NotNull();
+
+            var fn = _importedPrograms.SelectMany(x =>
+                x.Methods.Where(y => y.Name == $"Function`{e.MethodCall.ArgumentList.Count + 1}__Call"))
+                .First();
+            
             functionReference = GetFunctionReference(
                     fn.Id,
                     [],
-                    []);
+                    methodType.TypeArguments);
 
             arguments.Add(LowerExpression(e.MethodCall.Method));
         }
@@ -1363,7 +1369,7 @@ public partial class ProgramAbseil
                 ownerTypeArguments);
         }
 
-        arguments.AddRange(e.MethodCall.ArgumentList.Select(LowerExpression));
+        arguments.AddRange(originalArguments);
 
         return new MethodCallExpression(
                 functionReference,
@@ -1467,13 +1473,51 @@ public partial class ProgramAbseil
     {
         if (e.StaticMemberAccess.MemberType == Expressions.MemberType.Variant)
         {
-            var type = GetTypeReference(e.ResolvedType.NotNull())
+            var unionType = GetTypeReference(e.OwnerType.NotNull())
                 as LoweredConcreteTypeReference ?? throw new UnreachableException();
 
-            var dataType = _types[type.DefinitionId];
+            var dataType = _types[unionType.DefinitionId];
             var variantName = e.StaticMemberAccess.MemberName.NotNull().StringValue;
-            var variantIdentifier = dataType.Variants.Index()
-                .First(x => x.Item.Name == variantName).Index;
+            var (variantIdentifier, variant) = dataType.Variants.Index()
+                .First(x => x.Item.Name == variantName);
+
+            if (variant.Fields.Any(x => x.Name != "_variantIdentifier"))
+            {
+                // we're statically accessing this variant, and there's at least one field. It must be a tuple variant
+                // because you can't access a class variant directly outside creating it. We're returning a 
+                // function object for this tuple create function
+
+                if (e.ResolvedType is not FunctionObject functionObject)
+                {
+                    throw new InvalidOperationException($"Expected a function object, got a {e.ResolvedType?.GetType()}");
+                }
+
+                var fn = e.StaticMemberAccess.InstantiatedFunction.NotNull();
+                
+                var method = _methods.Keys.First(x => x.Id == fn.FunctionId);
+                
+                var functionObjectParameters = new Dictionary<string, ILoweredExpression>
+                {
+                    {
+                        "FunctionReference",
+                        new FunctionReferenceConstantExpression(
+                            GetFunctionReference(
+                                fn.FunctionId,
+                                [],
+                               unionType.TypeArguments),
+                            true,
+                            new LoweredFunctionType(
+                                method.Parameters,
+                                method.ReturnType))
+                    }
+                };
+
+                return new CreateObjectExpression(
+                    (GetTypeReference(functionObject) as LoweredConcreteTypeReference).NotNull(),
+                    "_classVariant",
+                    e.ValueUseful,
+                    functionObjectParameters);               
+            }
 
             var fieldInitializers = new Dictionary<string, ILoweredExpression>()
             {
@@ -1486,7 +1530,7 @@ public partial class ProgramAbseil
             };
 
             return new CreateObjectExpression(
-                    type,
+                    unionType,
                     variantName,
                     e.ValueUseful,
                     fieldInitializers);

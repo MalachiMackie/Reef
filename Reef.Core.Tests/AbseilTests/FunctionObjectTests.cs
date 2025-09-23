@@ -20,11 +20,168 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
 
         loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
     }
+    
+    
+    [Fact]
+    public void SingleTest()
+    {
+        const string source = """
+                union MyUnion{A(string)}
+                var a = MyUnion::A;
+                var b = a("");
+                """;
+        var expectedProgram = LoweredProgram(
+            types:
+            [
+                DataType("MyUnion",
+                    variants:
+                    [
+                        Variant(
+                            "A",
+                            [
+                                Field("_variantIdentifier", Int),
+                                Field("Item0", StringType)
+                            ])
+                    ])
+            ],
+            methods:
+            [
+                Method("MyUnion_Create_A",
+                    [
+                        MethodReturn(
+                            CreateObject(
+                                ConcreteTypeReference("MyUnion"),
+                                "A",
+                                true,
+                                new()
+                                {
+                                    { "Item0", LoadArgument(0, true, StringType) },
+                                    { "_variantIdentifier", IntConstant(0, true) }
+                                }))
+                    ],
+                    parameters: [StringType],
+                    returnType: ConcreteTypeReference("MyUnion")),
+                Method("_Main",
+                    [
+                        VariableDeclaration(
+                            "a",
+                            CreateObject(
+                                ConcreteTypeReference("Function`2", [StringType, ConcreteTypeReference("MyUnion")]),
+                                "_classVariant",
+                                true,
+                                new()
+                                {
+                                    {
+                                        "FunctionReference",
+                                        FunctionReferenceConstant(
+                                            FunctionReference("MyUnion_Create_A"),
+                                            true,
+                                            FunctionType([StringType], ConcreteTypeReference("MyUnion")))
+                                    }
+                                }),
+                            false),
+                        VariableDeclaration(
+                            "b",
+                            MethodCall(
+                                FunctionReference("Function`2__Call", [StringType, ConcreteTypeReference("MyUnion")]),
+                                [
+                                    LocalAccess("a", true, ConcreteTypeReference("Function`2", [StringType, ConcreteTypeReference("MyUnion")])),
+                                    StringConstant("", true)
+                                ],
+                                true,
+                                ConcreteTypeReference("MyUnion")),
+                            false),
+                        MethodReturnUnit()
+                    ],
+                    locals:
+                    [
+                        Local("a", ConcreteTypeReference("Function`2", [StringType, ConcreteTypeReference("MyUnion")])),
+                        Local("b", ConcreteTypeReference("MyUnion"))
+                    ])
+            ]);
+        
+        var program = CreateProgram(source);
+        var loweredProgram = ProgramAbseil.Lower(program);
 
+        PrintPrograms(expectedProgram, loweredProgram);
+
+        loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
+    }
+    
     public static TheoryData<string, string, LoweredProgram> TestCases()
     {
         return new()
         {
+            {
+                "assign union tuple variant method to function object",
+                """
+                union MyUnion{A(string)}
+                var a = MyUnion::A;
+                var b = a("");
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("MyUnion",
+                            variants: [
+                                Variant(
+                                    "A",
+                                    [
+                                        Field("_variantIdentifier", Int),
+                                        Field("Item0", StringType)
+                                    ])
+                            ])
+                    ],
+                    methods: [
+                        Method("MyUnion_Create_A",
+                            [
+                                MethodReturn(
+                                    CreateObject(
+                                        ConcreteTypeReference("MyUnion"),
+                                        "A",
+                                        true,
+                                        new()
+                                        {
+                                            {"Item0", LoadArgument(0, true, StringType)},
+                                            {"_variantIdentifier", IntConstant(0, true)}
+                                        }))
+                            ],
+                            parameters: [StringType],
+                            returnType: ConcreteTypeReference("MyUnion")),
+                        Method("_Main",
+                            [
+                                VariableDeclaration(
+                                    "a",
+                                    CreateObject(
+                                        ConcreteTypeReference("Function`2", [StringType, ConcreteTypeReference("MyUnion")]),
+                                        "_classVariant",
+                                        true,
+                                        new()
+                                        {
+                                            {
+                                                "FunctionReference",
+                                                FunctionReferenceConstant(
+                                                    FunctionReference("MyUnion_Create_A"),
+                                                    true,
+                                                    FunctionType([StringType], ConcreteTypeReference("MyUnion")))
+                                            }
+                                        }),
+                                    false),
+                                VariableDeclaration(
+                                    "b",
+                                    MethodCall(
+                                        FunctionReference("Function`2__Call", [StringType, ConcreteTypeReference("MyUnion")]),
+                                        [LocalAccess("a", true, ConcreteTypeReference("Function`2", [StringType, ConcreteTypeReference("MyUnion")])), StringConstant("", true)],
+                                        true,
+                                        ConcreteTypeReference("MyUnion")),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [
+                                Local("a", ConcreteTypeReference("Function`2", [StringType, ConcreteTypeReference("MyUnion")])),
+                                Local("b", ConcreteTypeReference("MyUnion"))
+                            ])
+                    ])
+            },
             {
                 "assign global function to function object",
                 """
@@ -411,7 +568,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                         }),
                                     false),
                                 MethodCall(
-                                    FunctionReference("Function`1__Call"),
+                                    FunctionReference("Function`1__Call", [Unit]),
                                     [
                                         LocalAccess(
                                             "a",
@@ -465,7 +622,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                 VariableDeclaration(
                                     "b",
                                     MethodCall(
-                                        FunctionReference("Function`2__Call"),
+                                        FunctionReference("Function`2__Call", [StringType, Int]),
                                         [
                                             LocalAccess(
                                                 "a",

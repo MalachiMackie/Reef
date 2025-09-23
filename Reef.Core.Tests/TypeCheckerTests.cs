@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using FluentAssertions;
+﻿using FluentAssertions;
 using Reef.Core.TypeChecking;
 
 using static Reef.Core.TypeChecking.TypeChecker;
@@ -42,20 +41,21 @@ public class TypeCheckerTests
     {
         const string src =
             """
-            class MyClass<T> {
-                fn SomeFn(param: T): result::<T, string> {
-                    if (true) {
-                        return ok(param);
-                    }
-                    return error("some error");
-                }
+            union OtherUnion {A, B}
+            union MyUnion {
+                A(OtherUnion)
+            }
+            var a = MyUnion::A(OtherUnion::A);
+            match (a) {
+                MyUnion::A(OtherUnion::A) => 1,
             }
             """;
+        IReadOnlyList<TypeCheckerError> expectedErrors = [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)];
 
         var program = Parser.Parse(Tokenizer.Tokenize(src));
-        var act = () => TypeChecker.TypeCheck(program.ParsedProgram);
+        var result = TypeCheck(program.ParsedProgram);
 
-        act.Should().NotThrow<InvalidOperationException>();
+        result.Should().BeEquivalentTo(expectedErrors, opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
     }
 
     public static TheoryData<string> SuccessfulExpressionTestCases()
@@ -63,11 +63,12 @@ public class TypeCheckerTests
         return new TheoryData<string>
         {
             """
-            var a = if (true) {} else {};
+            union MyUnion{A(string)}
+            var a = MyUnion::A;
+            var b = a("");
             """,
-            """
-            var a = if (true) {} else if (true) {} else {}; 
-            """,
+            "var a = if (true) {} else {};",
+            "var a = if (true) {} else if (true) {} else {}; ",
             """
             fn OtherFn(): result::<int, int>
             {
@@ -1439,6 +1440,33 @@ public class TypeCheckerTests
     {
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
+            {
+                "too many arguments for function object from tuple variant",
+                """
+                union MyUnion{A(string)}
+                var a = MyUnion::A;
+                var b = a("", "");
+                """,
+                [TypeCheckerError.IncorrectNumberOfMethodArguments(MethodCall(VariableAccessor("a"), Literal(""), Literal("")), 1)]
+            },
+            {
+                "not enough arguments for function object from tuple variant",
+                """
+                union MyUnion{A(string)}
+                var a = MyUnion::A;
+                var b = a();
+                """,
+                [TypeCheckerError.IncorrectNumberOfMethodArguments(MethodCall(VariableAccessor("a")), 1)]
+            },
+            {
+                "incorrect type argument for function object from tuple variant",
+                """
+                union MyUnion{A(string)}
+                var a = MyUnion::A;
+                var b = a(1);
+                """,
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, String, Int)]
+            },
             {
                 "union tuple variant with no members",
                 "union MyUnion{A()}",

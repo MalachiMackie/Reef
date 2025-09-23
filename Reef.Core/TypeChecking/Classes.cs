@@ -51,7 +51,6 @@ public partial class TypeChecker
             var typeParameters = new List<GenericPlaceholder>();
 
             var functions = new List<FunctionSignature>();
-            var fields = new List<TypeField>();
 
             var signature = new ClassSignature
             {

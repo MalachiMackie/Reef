@@ -84,7 +84,7 @@ public partial class ProgramAbseil
                 new LoweredMethod(
                     call.Id,
                     $"{fnClass.Name}__{call.Name}",
-                    [],
+                    [..fnClass.TypeParameters.Select(GetGenericPlaceholder)],
                     [..call.Parameters.Values.Select(x => GetTypeReference(x.Type))],
                     GetTypeReference(call.ReturnType),
                     [],// todo
@@ -101,11 +101,7 @@ public partial class ProgramAbseil
                                     ClassSignature.Int.Name,
                                     ClassSignature.Int.Id,
                                     []);
-        var result = new LoweredConcreteTypeReference(
-                UnionSignature.Result.Name,
-                UnionSignature.Result.Id,
-                [valueGeneric, errorGeneric]);
-
+        
         var resultDataType = new DataType(
             UnionSignature.Result.Id,
             UnionSignature.Result.Name,
@@ -617,10 +613,13 @@ public partial class ProgramAbseil
 
         LoweredConcreteTypeReference FunctionObjectCase(FunctionObject f)
         {
-            var signature = ClassSignature.Function(f.Parameters.Count);
+            var type = _importedPrograms
+                .SelectMany(x => x.DataTypes.Where(y => y.Name == $"Function`{f.Parameters.Count + 1}"))
+                .First();
+            
             return new LoweredConcreteTypeReference(
-                signature.Name,
-                signature.Id,
+                type.Name,
+                type.Id,
                 [..f.Parameters.Select(x => GetTypeReference(x.Type))
                     .Append(GetTypeReference(f.ReturnType))]);
         }

@@ -155,35 +155,7 @@ public partial class TypeChecker
     private InstantiatedFunction GetUnionTupleVariantFunction(TupleUnionVariant tupleVariant,
         InstantiatedUnion instantiatedUnion)
     {
-        var parameters = new OrderedDictionary<string, FunctionSignatureParameter>();
-        var tupleVariantIndex = instantiatedUnion.Variants.OfType<TupleUnionVariant>()
-            .Index()
-            .First(x => x.Item.Name == tupleVariant.Name).Index;
-
-        var signature = new FunctionSignature(
-            Token.Identifier(tupleVariant.Name, SourceSpan.Default),
-            [],
-            parameters,
-            IsStatic: true,
-            IsMutable: false,
-            Expressions: [],
-            // make sure the function comes after all the user defined functions 
-            FunctionIndex: (uint)instantiatedUnion.Signature.Functions.Count + (uint)tupleVariantIndex)
-        {
-            ReturnType = instantiatedUnion,
-            OwnerType = instantiatedUnion.Signature
-        };
-
-        for (var i = 0; i < tupleVariant.TupleMembers.Count; i++)
-        {
-            var name = i.ToString();
-            var member = tupleVariant.TupleMembers[i];
-            // use default source span here because we don't actually have a source span
-            var nameToken = Token.Identifier(name, SourceSpan.Default);
-            parameters.Add(name, new FunctionSignatureParameter(signature, nameToken, member, Mutable: false, (uint)i));
-        }
-
-        return InstantiateFunction(signature, instantiatedUnion, typeArguments: [], SourceRange.Default, inScopeTypeParameters: []);
+        return InstantiateFunction(tupleVariant.CreateFunction, instantiatedUnion, typeArguments: [], SourceRange.Default, inScopeTypeParameters: []);
     }
 
     public interface IFunction

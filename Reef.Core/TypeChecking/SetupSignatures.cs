@@ -121,27 +121,52 @@ public partial class TypeChecker
                     }
 
                     var createFunctionParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+
+                    var createFunction = new FunctionSignature(
+                        Token.Identifier($"{unionSignature.Name}_Create_{variant.Name.StringValue}",
+                            SourceSpan.Default),
+                        [],
+                        createFunctionParameters,
+                        IsStatic: true,
+                        IsMutable: false,
+                        [],
+                        0)
+                    {
+                        OwnerType = unionSignature,
+                        ReturnType = new InstantiatedUnion(
+                            unionSignature,
+                            [
+                                .. unionSignature.TypeParameters.Select(x => new GenericTypeReference
+                                {
+                                    OwnerType = x.OwnerType,
+                                    GenericName = x.GenericName,
+                                })
+                            ])
+                    };
+
+                    var tupleMemberTypes = new List<ITypeReference>(tupleVariant.TupleMembers.Count);
+
+                    foreach (var (i, member) in tupleVariant.TupleMembers.Index())
+                    {
+                        var type = GetTypeReference(member);
+                        tupleMemberTypes.Add(type);
+
+                        var parameterName = $"Item{i}";
+                        createFunctionParameters.Add(
+                            parameterName,
+                            new FunctionSignatureParameter(
+                                createFunction,
+                                Token.Identifier(parameterName, SourceSpan.Default),
+                                type,
+                                Mutable: false,
+                                ParameterIndex: (uint)i));
+                    }
+
                     return new TupleUnionVariant
                     {
                         Name = variant.Name.StringValue,
-                        TupleMembers = [.. tupleVariant.TupleMembers.Select(GetTypeReference)],
-                        CreateFunction = new FunctionSignature(
-                            Token.Identifier($"{unionSignature.Name}_Create_{variant.Name.StringValue}", SourceSpan.Default),
-                            [],
-                            createFunctionParameters,
-                            IsStatic: true,
-                            IsMutable: false,
-                            [],
-                            0)
-                        {
-                            OwnerType = unionSignature,
-                            ReturnType = new InstantiatedUnion(
-                                unionSignature,
-                                [.. unionSignature.TypeParameters.Select(x => new GenericTypeReference{
-                                    OwnerType = x.OwnerType,
-                                    GenericName = x.GenericName,
-                                })])
-                        }
+                        TupleMembers = tupleMemberTypes,
+                        CreateFunction = createFunction
                     };
                 }
 

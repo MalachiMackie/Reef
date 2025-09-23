@@ -238,7 +238,7 @@ public partial class TypeChecker
                             ],
                             CreateFunction = tuple.CreateFunction with
                             {
-                                ReturnType = HandleType(tuple.CreateFunction.ReturnType),
+                                ReturnType = this, // the create function for a tuple variant within this instantiated union returns this type, so directly use `this`
                                 Parameters = createFunctionParameters,
                             }
                         };
