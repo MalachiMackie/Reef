@@ -120,7 +120,7 @@ public static class TestHelpers
     {
         return new ReefModule
         {
-            MainMethod = methods?.FirstOrDefault(x => x.DisplayName == "!Main"),
+            MainMethod = methods?.FirstOrDefault(x => x.DisplayName == "_Main"),
             Methods = methods ?? [],
             Types = types ?? []
         };

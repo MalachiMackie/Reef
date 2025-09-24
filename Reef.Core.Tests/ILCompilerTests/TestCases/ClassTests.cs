@@ -48,7 +48,21 @@ public class ClassTests
                     }
                 }
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType("MyClass", variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method("MyClass__SomeFn",
+                            [
+                                new LoadArgument(0),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            parameters: [ConcreteTypeReference("MyClass")],
+                            locals: [Local("a", ConcreteTypeReference("MyClass"))])
+                    ])
             },
             {
                 "access instance field via variable in instance method",
@@ -61,7 +75,27 @@ public class ClassTests
                     }
                 }
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType("MyClass",
+                            variants: [
+                                Variant("_classVariant", [Field("SomeField", StringType)])
+                            ])
+                    ],
+                    methods: [
+                        Method("MyClass__SomeFn",
+                            [
+                                new LoadArgument(0),
+                                new LoadField(0, "SomeField"),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            parameters: [ConcreteTypeReference("MyClass")],
+                            locals: [
+                                Local("a", StringType)
+                            ])
+                    ])
             },
             {
                 "access static field via variable in method",
@@ -74,7 +108,22 @@ public class ClassTests
                     }
                 }
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType("MyClass",
+                            variants: [Variant("_classVariant")],
+                            staticFields: [StaticField("SomeField", StringType, [StringConstant("")])])
+                    ],
+                    methods: [
+                        Method("MyClass__SomeFn",
+                            [
+                                new LoadStaticField(ConcreteTypeReference("MyClass"), "SomeField"),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", StringType)])
+                    ])
             },
             {
                 "access parameter in instance method",
@@ -85,7 +134,21 @@ public class ClassTests
                     }
                 }
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType("MyClass", variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method("MyClass__SomeFn",
+                            [
+                                new LoadArgument(1),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            parameters: [ConcreteTypeReference("MyClass"), IntType],
+                            locals: [Local("a", IntType)])
+                    ])
             },
             {
                 "create object without fields",
@@ -93,7 +156,22 @@ public class ClassTests
                 class MyClass{}
                 var a = new MyClass{};
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType("MyClass", variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method("_Main",
+                            [
+                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [
+                                Local("a", ConcreteTypeReference("MyClass"))
+                            ])
+                    ])
             },
             {
                 "create object with fields",
@@ -101,7 +179,35 @@ public class ClassTests
                 class MyClass{ pub field Field1: int, pub field Field2: string}
                 var a = new MyClass{Field2 = "", Field1 = 2};
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType("MyClass",
+                            variants: [
+                                Variant("_classVariant",
+                                    fields: [
+                                        Field("Field1", IntType),
+                                        Field("Field2", StringType)
+                                    ])
+                            ])
+                    ],
+                    methods: [
+                        Method("_Main",
+                            [
+                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new CopyStack(),
+                                new LoadIntConstant(2),
+                                new StoreField(0, "Field1"),
+                                new CopyStack(),
+                                new LoadStringConstant(""),
+                                new StoreField(0, "Field2"),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [
+                                Local("a", ConcreteTypeReference("MyClass"))
+                            ])
+                    ])
             },
             {
                 "call instance method",
@@ -112,7 +218,29 @@ public class ClassTests
                 var a = new MyClass {};
                 a.SomeFn(); 
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType("MyClass", variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method("MyClass__SomeFn",
+                            [
+                                LoadUnit(),
+                                Return()
+                            ],
+                            parameters: [ConcreteTypeReference("MyClass")]),
+                        Method("_Main",
+                            [
+                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new StoreLocal("a"),
+                                new LoadLocal("a"),
+                                new LoadFunction(FunctionDefinitionReference("MyClass__SomeFn")),
+                                new Call(),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", ConcreteTypeReference("MyClass"))])
+                    ])
             },
             {
                 "call instance method with parameters",
@@ -123,7 +251,31 @@ public class ClassTests
                 var a = new MyClass {};
                 a.SomeFn(1, ""); 
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType("MyClass", variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method("MyClass__SomeFn",
+                            [
+                                LoadUnit(),
+                                Return()
+                            ],
+                            parameters: [ConcreteTypeReference("MyClass"), IntType, StringType]),
+                        Method("_Main",
+                            [
+                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new StoreLocal("a"),
+                                new LoadLocal("a"),
+                                new LoadIntConstant(1),
+                                new LoadStringConstant(""),
+                                new LoadFunction(FunctionDefinitionReference("MyClass__SomeFn")),
+                                new Call(),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", ConcreteTypeReference("MyClass"))])
+                    ])
             },
             {
                 "call static class method",
@@ -134,7 +286,26 @@ public class ClassTests
                 }
                 MyClass::MyFn(1);
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType("MyClass", variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method("MyClass__MyFn",
+                            [
+                                LoadUnit(),
+                                Return()
+                            ],
+                            parameters: [IntType]),
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(1),
+                                new LoadFunction(FunctionDefinitionReference("MyClass__MyFn")),
+                                new Call(),
+                                LoadUnit(),
+                                Return()
+                            ])
+                    ])
             },
             {
                 "get static field",
@@ -142,7 +313,22 @@ public class ClassTests
                 class MyClass { pub static field A: int = 1 }
                 var a = MyClass::A;
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType("MyClass",
+                            variants: [Variant("_classVariant")],
+                            staticFields: [StaticField("A", IntType, [new LoadIntConstant(1)])])
+                    ],
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadStaticField(ConcreteTypeReference("MyClass"), "A"),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", IntType)])
+                    ])
             },
             {
                 "get instance field",
@@ -151,7 +337,29 @@ public class ClassTests
                 var a = new MyClass { MyField = 1 };
                 var b = a.MyField;
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType("MyClass", variants: [Variant("_classVariant", fields: [Field("MyField", IntType)])])
+                    ],
+                    methods: [
+                        Method("_Main",
+                            [
+                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new CopyStack(),
+                                new LoadIntConstant(1),
+                                new StoreField(0, "MyField"),
+                                new StoreLocal("a"),
+                                new LoadLocal("a"),
+                                new LoadField(0, "MyField"),
+                                new StoreLocal("b"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [
+                                Local("a", ConcreteTypeReference("MyClass")),
+                                Local("b", IntType)
+                            ])
+                    ])
             },
             {
                 "get instance and static field",
@@ -161,7 +369,45 @@ public class ClassTests
                 var b = a.InstanceField;
                 var c = MyClass::StaticField;
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType("MyClass",
+                            variants: [
+                                Variant("_classVariant",
+                                    fields: [
+                                        Field("Ignore", IntType),
+                                        Field("InstanceField", StringType),
+                                    ])
+                            ],
+                            staticFields: [
+                                StaticField("StaticField", IntType, [new LoadIntConstant(2)])
+                            ])
+                    ],
+                    methods: [
+                        Method("_Main",
+                            [
+                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new CopyStack(),
+                                new LoadIntConstant(1),
+                                new StoreField(0, "Ignore"),
+                                new CopyStack(),
+                                new LoadStringConstant(""),
+                                new StoreField(0, "InstanceField"),
+                                new StoreLocal("a"),
+                                new LoadLocal("a"),
+                                new LoadField(0, "InstanceField"),
+                                new StoreLocal("b"),
+                                new LoadStaticField(ConcreteTypeReference("MyClass"), "StaticField"),
+                                new StoreLocal("c"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [
+                                Local("a", ConcreteTypeReference("MyClass")),
+                                Local("b", StringType),
+                                Local("c", IntType)
+                            ])
+                    ])
             }
         };
     }

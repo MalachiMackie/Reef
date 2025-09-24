@@ -1,4 +1,5 @@
-﻿using Reef.IL;
+﻿using System.Diagnostics;
+using Reef.IL;
 using Reef.Core.TypeChecking;
 using Reef.Core.Expressions;
 using Reef.Core.LoweredExpressions;
@@ -654,10 +655,10 @@ public class ILCompile
             case CastBoolToIntExpression castBoolToIntExpression:
                 throw new NotImplementedException();
             case CreateObjectExpression createObjectExpression:
+            {
                 var typeReference = GetTypeReference(createObjectExpression.Type);
                 Instructions.Add(new CreateObject(typeReference));
-                var dataType = _types.First(x => x.Id == typeReference.DefinitionId);
-                var (variantIndex, variant) = dataType.Variants.Index().First(x => x.Item.DisplayName == createObjectExpression.Variant);
+                var (variantIndex, variant) = GetDataTypeVariant(typeReference, createObjectExpression.Variant);
                 foreach (var field in variant.Fields)
                 {
                     if (createObjectExpression.VariantFieldInitializers.TryGetValue(field.DisplayName,
@@ -674,8 +675,15 @@ public class ILCompile
                 }
 
                 break;
+            }
             case FieldAccessExpression fieldAccessExpression:
-                throw new NotImplementedException();
+            {
+                CompileExpression(fieldAccessExpression.MemberOwner);
+                var typeReference = GetTypeReference(fieldAccessExpression.MemberOwner.ResolvedType);
+                var (variantIndex, _) = GetDataTypeVariant(typeReference, fieldAccessExpression.VariantName);
+                Instructions.Add(new LoadField(variantIndex, fieldAccessExpression.FieldName));
+                break;
+            }
             case FieldAssignmentExpression fieldAssignmentExpression:
                 throw new NotImplementedException();
             case FunctionReferenceConstantExpression functionReferenceConstantExpression:
@@ -703,9 +711,26 @@ public class ILCompile
             case LocalAssignmentExpression localAssignmentExpression:
                 throw new NotImplementedException();
             case LocalVariableAccessor localVariableAccessor:
-                throw new NotImplementedException();
+            {
+                Instructions.Add(new LoadLocal(localVariableAccessor.LocalName));
+                break;
+            }
             case MethodCallExpression methodCallExpression:
-                throw new NotImplementedException();
+            {
+                foreach (var argument in methodCallExpression.Arguments)
+                {
+                    CompileExpression(argument);
+                }
+                Instructions.Add(new LoadFunction(new FunctionDefinitionReference
+                {
+                    DefinitionId = methodCallExpression.FunctionReference.DefinitionId,
+                    Name = methodCallExpression.FunctionReference.Name,
+                    TypeArguments = [..methodCallExpression.FunctionReference.TypeArguments.Select(GetTypeReference)]
+                }));
+                Instructions.Add(new Call());
+                
+                break;
+            }
             case MethodReturnExpression methodReturnExpression:
                 CompileExpression(methodReturnExpression.ReturnValue);
                 Instructions.Add(new Return());
@@ -713,7 +738,11 @@ public class ILCompile
             case StaticFieldAccess staticFieldAccess:
                 throw new NotImplementedException();
             case StaticFieldAccessExpression staticFieldAccessExpression:
-                throw new NotImplementedException();
+            {
+                var typeReference = GetTypeReference(staticFieldAccessExpression.OwnerType);
+                Instructions.Add(new LoadStaticField(typeReference, staticFieldAccessExpression.FieldName));
+                break;
+            }
             case StaticFieldAssignmentExpression staticFieldAssignmentExpression:
                 throw new NotImplementedException();
             case StaticMemberAccessor staticMemberAccessor:
@@ -721,7 +750,10 @@ public class ILCompile
             case StaticMethodAccess staticMethodAccess:
                 throw new NotImplementedException();
             case StringConstantExpression stringConstantExpression:
-                throw new NotImplementedException();
+            {
+                Instructions.Add(new LoadStringConstant(stringConstantExpression.Value));
+                break;
+            }
             case SwitchIntExpression switchIntExpression:
                 throw new NotImplementedException();
             case UnitConstantExpression unitConstantExpression:
@@ -730,12 +762,29 @@ public class ILCompile
             case UnreachableExpression unreachableExpression:
                 throw new NotImplementedException();
             case VariableDeclarationAndAssignmentExpression variableDeclarationAndAssignmentExpression:
-                throw new NotImplementedException();
+                CompileExpression(variableDeclarationAndAssignmentExpression.Value);
+                Instructions.Add(new StoreLocal(variableDeclarationAndAssignmentExpression.LocalName));
+                break;
             case VariableDeclarationExpression variableDeclarationExpression:
-                throw new NotImplementedException();
+                // noop
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }
+        
+        // todo: push units and pop unneeded values
+    }
+
+    private (uint variantIndex, ReefVariant variant) GetDataTypeVariant(IReefTypeReference typeReference, string variantName)
+    {
+        if (typeReference is not ConcreteReefTypeReference concrete)
+        {
+            throw new InvalidOperationException("Can only access fields on a concrete type");
+        }
+
+        var dataType = _types.First(x => x.Id == concrete.DefinitionId);
+        var (variantIndex, variant) = dataType.Variants.Index().First(x => x.Item.DisplayName == variantName);
+        return ((uint)variantIndex, variant);
     }
 
     private void CompileExpression(IExpression expression)
@@ -1121,7 +1170,7 @@ public class ILCompile
         if (memberType == MemberType.Field)
         {
             CompileExpression(memberAccessExpression.MemberAccess.Owner);
-            Instructions.Add(new LoadField(0, memberIndex));
+            // Instructions.Add(new LoadField(0, memberIndex));
             return;
         }
 
@@ -1165,10 +1214,10 @@ public class ILCompile
             };
 
             // load Fn()::Call function
-            Instructions.Add(new LoadTypeFunction(
-                functionReference,
-                FunctionIndex: 0,
-                TypeArguments: []));
+            // Instructions.Add(new LoadTypeFunction(
+            //     functionReference,
+            //     FunctionIndex: 0,
+            //     TypeArguments: []));
 
             Instructions.Add(new Call());
             if (!methodCallExpression.ValueUseful)
@@ -1270,7 +1319,7 @@ public class ILCompile
         }
         else if (memberType == MemberType.Field)
         {
-            Instructions.Add(new LoadStaticField(ownerReference, VariantIndex: 0, itemIndex));
+            // Instructions.Add(new LoadStaticField(ownerReference, VariantIndex: 0, itemIndex));
         }
         else if (memberType == MemberType.Variant)
         {
@@ -1370,7 +1419,7 @@ public class ILCompile
         CompileExpression(expression);
         Instructions.Add(new CopyStack());
         // load variant identifier
-        Instructions.Add(new LoadField(0, 0));
+        // Instructions.Add(new LoadField(0, 0));
         Instructions.Add(new LoadIntConstant(1));
         Instructions.Add(new CompareIntEqual());
         // var branchAddress = NextAddress();
@@ -1511,16 +1560,16 @@ public class ILCompile
     {
         if (instantiatedFunction.OwnerType is not null)
         {
-            Instructions.Add(new LoadTypeFunction(
-                GetTypeReference(instantiatedFunction.OwnerType) as ConcreteReefTypeReference ??
-                throw new InvalidOperationException("Expected concrete type reference"),
-                instantiatedFunction.FunctionIndex ??
-                throw new InvalidOperationException("Expected function index"),
-                instantiatedFunction.TypeArguments.Select(GetTypeReference).ToArray()));
+            // Instructions.Add(new LoadTypeFunction(
+            //     GetTypeReference(instantiatedFunction.OwnerType) as ConcreteReefTypeReference ??
+            //     throw new InvalidOperationException("Expected concrete type reference"),
+            //     instantiatedFunction.FunctionIndex ??
+            //     throw new InvalidOperationException("Expected function index"),
+            //     instantiatedFunction.TypeArguments.Select(GetTypeReference).ToArray()));
         }
         else
         {
-            Instructions.Add(new LoadGlobalFunction(new FunctionDefinitionReference
+            Instructions.Add(new LoadFunction(new FunctionDefinitionReference
             {
                 Name = instantiatedFunction.Name,
                 TypeArguments = instantiatedFunction.TypeArguments.Select(GetTypeReference).ToArray(),
@@ -1664,9 +1713,9 @@ public class ILCompile
                         else
                         {
                             Instructions.Add(new LoadArgument(0));
-                            Instructions.Add(new LoadField(
-                                VariantIndex: 0, // Accessing fields via named variables can only be done for classes
-                                FieldIndex: fieldVariable.FieldIndex));
+                            // Instructions.Add(new LoadField(
+                            //     VariantIndex: 0, // Accessing fields via named variables can only be done for classes
+                            //     FieldIndex: fieldVariable.FieldIndex));
                         }
 
                         break;

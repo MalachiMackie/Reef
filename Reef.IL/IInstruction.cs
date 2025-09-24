@@ -39,8 +39,7 @@ public record CompareIntEqual : IInstruction;
 /// <summary>
 /// Loads the local variable at specified index onto the evaluation stack
 /// </summary>
-/// <param name="LocalIndex"></param>
-public record LoadLocal(uint LocalIndex) : IInstruction;
+public record LoadLocal(string LocalName) : IInstruction;
 
 /// <summary>
 /// Branch to the specified Instruction if the top of the evaluation stack is false
@@ -89,18 +88,12 @@ public record Call : IInstruction;
 /// Loads a reference to the specified global function onto the evaluation stack
 /// </summary>
 /// <param name="FunctionDefinitionReference"></param>
-public record LoadGlobalFunction(FunctionDefinitionReference FunctionDefinitionReference) : IInstruction;
-
-/// <summary>
-/// Loads a reference to the specified type function onto the evaluation stack
-/// </summary>
-public record LoadTypeFunction(ConcreteReefTypeReference ReefType, uint FunctionIndex, IReadOnlyList<IReefTypeReference> TypeArguments) : IInstruction;
+public record LoadFunction(FunctionDefinitionReference FunctionDefinitionReference) : IInstruction;
 
 /// <summary>
 /// Pops the top of the evaluation stack and stores it in the specified local index
 /// </summary>
-/// <param name="LocalIndex"></param>
-public record StoreLocal(uint LocalIndex) : IInstruction;
+public record StoreLocal(string LocalName) : IInstruction;
 
 /// <summary>
 /// Creates an object of the specified type and pushes the resulting reference onto the evaluation stack
@@ -121,8 +114,7 @@ public record StoreField(uint VariantIndex, string FieldName) : IInstruction;
 /// <summary>
 /// Pops the top value off of the evaluation stack and loads the field of the reference onto the evaluation stack
 /// </summary>
-/// <param name="FieldIndex"></param>
-public record LoadField(uint VariantIndex, uint FieldIndex) : IInstruction;
+public record LoadField(uint VariantIndex, string FieldName) : IInstruction;
 
 /// <summary>
 /// Pops the top value off the evaluation stack and stores it in the specified static field
@@ -132,7 +124,7 @@ public record StoreStaticField(IReefTypeReference ReefType, uint StaticFieldInde
 /// <summary>
 /// Loads the specified static field and pushes it onto the evaluation stack
 /// </summary>
-public record LoadStaticField(IReefTypeReference ReefType, uint VariantIndex, uint FieldIndex)
+public record LoadStaticField(IReefTypeReference ReefType, string FieldName)
     : IInstruction;
 
 /// <summary>
