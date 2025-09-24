@@ -15,17 +15,24 @@ public static class TestHelpers
         TypeArguments = typeArguments ?? [],
         DefinitionId = Guid.Empty
     };
+    
+    public static StaticReefField StaticField(string name, IReefTypeReference type,
+        IReadOnlyList<IInstruction> staticInitializer)
+    {
+        return new StaticReefField
+        {
+            Type = type,
+            DisplayName = name,
+            StaticInitializerInstructions = staticInitializer
+        };
+    }
 
-    public static ReefField Field(string name, IReefTypeReference type, bool isStatic = false, bool isPublic = false,
-        IReadOnlyList<IInstruction>? staticInitializer = null)
+    public static ReefField Field(string name, IReefTypeReference type)
     {
         return new ReefField
         {
-            IsStatic = isStatic,
-            IsPublic = isPublic,
             Type = type,
             DisplayName = name,
-            StaticInitializerInstructions = staticInitializer ?? []
         };
     }
 
@@ -35,6 +42,20 @@ public static class TestHelpers
         {
             TypeParameterName = typeParameterName,
             DefinitionId = Guid.Empty
+        };
+    }
+
+    public static ConcreteReefTypeReference StringType => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.String);
+    public static ConcreteReefTypeReference IntType => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.Int);
+    public static ConcreteReefTypeReference BoolType => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.Boolean);
+
+    private static ConcreteReefTypeReference GetTypeReference(TypeChecking.TypeChecker.ClassSignature klass)
+    {
+        return new ConcreteReefTypeReference
+        {
+            Name = klass.Name,
+            TypeArguments = [],
+            DefinitionId = klass.Id
         };
     }
 
@@ -48,30 +69,19 @@ public static class TestHelpers
         };
     }
 
-    public static ReefMethod.Parameter Parameter(string name, IReefTypeReference typeReference)
-    {
-        return new ReefMethod.Parameter
-        {
-            DisplayName = name,
-            Type = typeReference
-        };
-    }
-
     public static ReefMethod Method(
         string name,
-        bool isStatic = false,
-        IReadOnlyList<ReefMethod.Parameter>? parameters = null,
+        IReadOnlyList<IInstruction> instructions,
+        IReadOnlyList<IReefTypeReference>? parameters = null,
         IReefTypeReference? returnType = null,
         IReadOnlyList<string>? typeParameters = null,
-        IReadOnlyList<IInstruction>? instructions = null,
         IReadOnlyList<ReefMethod.Local>? locals = null)
     {
         return new ReefMethod
         {
             DisplayName = name,
-            IsStatic = isStatic,
             TypeParameters = typeParameters ?? [],
-            Instructions = instructions ?? [],
+            Instructions = instructions,
             Locals = locals ?? [],
             Parameters = parameters ?? [],
             ReturnType = returnType ?? ConcreteTypeReference("Unit")
@@ -88,41 +98,20 @@ public static class TestHelpers
         };
     }
 
-    public static ReefTypeDefinition Union(
+    public static ReefTypeDefinition DataType(
         string name,
-        IReadOnlyList<ReefVariant>? variants = null,
-        IReadOnlyList<ReefMethod>? methods = null,
+        IReadOnlyList<ReefVariant> variants,
+        IReadOnlyList<StaticReefField>? staticFields = null,
         IReadOnlyList<string>? typeParameters = null)
     {
         return new ReefTypeDefinition
         {
             DisplayName = name,
-            Methods = methods ?? [],
             Id = Guid.Empty,
             IsValueType = false,
             TypeParameters = typeParameters ?? [],
-            Variants = variants ?? []
-        };
-    }
-
-    public static ReefTypeDefinition Class(
-        string name,
-        string? variantName = null,
-        IReadOnlyList<ReefMethod>? methods = null,
-        IReadOnlyList<string>? typeParameters = null,
-        IReadOnlyList<ReefField>? fields = null)
-    {
-        return new ReefTypeDefinition
-        {
-            DisplayName = name,
-            Id = Guid.Empty,
-            Methods = methods ?? [],
-            IsValueType = false,
-            TypeParameters = typeParameters ?? [],
-            Variants =
-            [
-                Variant(variantName ?? "!ClassVariant", fields: fields)
-            ]
+            Variants = variants,
+            StaticFields = staticFields ?? []
         };
     }
 
@@ -136,24 +125,24 @@ public static class TestHelpers
             Types = types ?? []
         };
     }
-
-    public static LoadUnitConstant LoadUnit(uint address)
+    
+    public static LoadUnitConstant LoadUnit()
     {
-        return new LoadUnitConstant(new InstructionAddress(address));
+        return new LoadUnitConstant();
     }
 
-    public static Return Return(uint address)
+    public static Return Return()
     {
-        return new Return(new InstructionAddress(address));
+        return new Return();
     }
 
-    public static Drop Drop(uint address)
+    public static Drop Drop()
     {
-        return new Drop(new InstructionAddress(address));
+        return new Drop();
     }
 
-    public static InstructionAddress Addr(uint address)
+    public static LoadStringConstant StringConstant(string value)
     {
-        return new InstructionAddress(address);
+        return new LoadStringConstant(value);
     }
 }

@@ -32,9 +32,9 @@ public partial class ProgramAbseil
         var importedDataTypes = new List<DataType>();
         var importedMethods = new List<LoweredMethod>();
 
-        var ptrType = new LoweredConcreteTypeReference(
-                ClassSignature.Ptr.Name,
-                ClassSignature.Ptr.Id,
+        var rawPointerType = new LoweredConcreteTypeReference(
+                ClassSignature.RawPointer.Name,
+                ClassSignature.RawPointer.Id,
                 []);
 
         for (var i = 0; i < 7; i++)
@@ -51,12 +51,12 @@ public partial class ProgramAbseil
                             [
                                 new DataTypeField(
                                     "FunctionReference",
-                                    new LoweredFunctionType(
+                                    new LoweredFunctionPointer(
                                         [..fnClass.TypeParameters.SkipLast(1).Select(GetGenericPlaceholder)],
                                         GetTypeReference(fnClass.TypeParameters[^1]))),
                                 new DataTypeField(
                                     "FunctionParameter",
-                                    ptrType)
+                                    rawPointerType)
                             ])
                     ],
                     []));

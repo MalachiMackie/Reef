@@ -233,15 +233,15 @@ public static class LoweredProgramHelpers
     public static FunctionReferenceConstantExpression FunctionReferenceConstant(
         LoweredFunctionReference functionReference,
         bool valueUseful,
-        LoweredFunctionType functionType)
+        LoweredFunctionPointer functionPointer)
     {
         return new(
                 functionReference,
                 valueUseful,
-                functionType);
+                functionPointer);
     }
 
-    public static LoweredFunctionType FunctionType(
+    public static LoweredFunctionPointer FunctionType(
         IReadOnlyList<ILoweredTypeReference> parameterType,
         ILoweredTypeReference returnType)
     {

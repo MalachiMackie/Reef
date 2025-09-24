@@ -1,10 +1,40 @@
-﻿using Reef.IL;
+﻿using FluentAssertions;
+using FluentAssertions.Equivalency;
+using Reef.Core.Abseil;
+using Reef.Core.TypeChecking;
+using Reef.IL;
 
 namespace Reef.Core.Tests.ILCompilerTests.TestCases;
 using static TestHelpers;
 
-public static class ClassTests
+public class ClassTests
 {
+    
+    [Theory]
+    [MemberData(nameof(TestCases))]
+    public void CompileToIL_Should_GenerateCorrectIL(string description, string source, ReefModule expectedModule)
+    {
+        var tokens = Tokenizer.Tokenize(source);
+        var program = Parser.Parse(tokens);
+        program.Errors.Should().BeEmpty();
+        var typeCheckErrors = TypeChecker.TypeCheck(program.ParsedProgram);
+        typeCheckErrors.Should().BeEmpty();
+
+        var loweredProgram = ProgramAbseil.Lower(program.ParsedProgram); 
+
+        var module = ILCompile.CompileToIL(loweredProgram);
+        module.Should().BeEquivalentTo(
+            expectedModule,
+            ConfigureEquivalencyCheck,
+            description);
+    }
+    
+    private static EquivalencyOptions<T> ConfigureEquivalencyCheck<T>(EquivalencyOptions<T> options)
+    {
+        return options
+            .Excluding(memberInfo => memberInfo.Type == typeof(Guid));
+    }
+    
     public static TheoryData<string, string, ReefModule> TestCases()
     {
         return new()
@@ -18,30 +48,7 @@ public static class ClassTests
                     }
                 }
                 """,
-                Module(
-                    types:
-                    [
-                        Class("MyClass", methods:
-                        [
-                            Method("SomeFn",
-                                parameters:
-                                [
-                                    Parameter("this", ConcreteTypeReference("MyClass"))
-                                ],
-                                locals:
-                                [
-                                    new ReefMethod.Local { Type = ConcreteTypeReference("MyClass"), DisplayName = "a" },
-                                ],
-                                instructions:
-                                [
-                                    new LoadArgument(new InstructionAddress(0), 0),
-                                    new StoreLocal(new InstructionAddress(1), 0),
-                                    LoadUnit(2),
-                                    Return(3)
-                                ]
-                            )
-                        ])
-                    ])
+                Module()
             },
             {
                 "access instance field via variable in instance method",
@@ -54,37 +61,7 @@ public static class ClassTests
                     }
                 }
                 """,
-                Module(
-                    types:
-                    [
-                        Class("MyClass",
-                            fields:
-                            [
-                                Field("SomeField", ConcreteTypeReference("string"))
-                            ],
-                            methods:
-                            [
-                                Method("SomeFn",
-                                    parameters:
-                                    [
-                                        Parameter("this", ConcreteTypeReference("MyClass"))
-                                    ],
-                                    locals:
-                                    [
-                                        new ReefMethod.Local
-                                            { Type = ConcreteTypeReference("string"), DisplayName = "a" },
-                                    ],
-                                    instructions:
-                                    [
-                                        new LoadArgument(new InstructionAddress(0), 0),
-                                        new LoadField(new InstructionAddress(1), 0, 0),
-                                        new StoreLocal(new InstructionAddress(2), 0),
-                                        LoadUnit(3),
-                                        Return(4)
-                                    ]
-                                )
-                            ])
-                    ])
+                Module()
             },
             {
                 "access static field via variable in method",
@@ -97,36 +74,7 @@ public static class ClassTests
                     }
                 }
                 """,
-                Module(
-                    types:
-                    [
-                        Class("MyClass",
-                            fields:
-                            [
-                                Field("SomeField", ConcreteTypeReference("string"), isStatic: true,
-                                    staticInitializer: [new LoadStringConstant(new InstructionAddress(0), "")])
-                            ],
-                            methods:
-                            [
-                                Method("SomeFn",
-                                    parameters: [],
-                                    locals:
-                                    [
-                                        new ReefMethod.Local
-                                            { Type = ConcreteTypeReference("string"), DisplayName = "a" },
-                                    ],
-                                    isStatic: true,
-                                    instructions:
-                                    [
-                                        new LoadStaticField(new InstructionAddress(0), ConcreteTypeReference("MyClass"),
-                                            0, 0),
-                                        new StoreLocal(new InstructionAddress(1), 0),
-                                        LoadUnit(2),
-                                        Return(3)
-                                    ]
-                                )
-                            ])
-                    ])
+                Module()
             },
             {
                 "access parameter in instance method",
@@ -137,62 +85,15 @@ public static class ClassTests
                     }
                 }
                 """,
-                Module(
-                    types:
-                    [
-                        Class("MyClass",
-                            methods:
-                            [
-                                Method("SomeFn",
-                                    parameters:
-                                    [
-                                        Parameter("this", ConcreteTypeReference("MyClass")),
-                                        Parameter("param", ConcreteTypeReference("int")),
-                                    ],
-                                    locals:
-                                    [
-                                        new ReefMethod.Local { Type = ConcreteTypeReference("int"), DisplayName = "a" },
-                                    ],
-                                    instructions:
-                                    [
-                                        new LoadArgument(new InstructionAddress(0), 1),
-                                        new StoreLocal(new InstructionAddress(1), 0),
-                                        LoadUnit(2),
-                                        Return(3)
-                                    ]
-                                )
-                            ])
-                    ])
+                Module()
             },
-
-
             {
                 "create object without fields",
                 """
                 class MyClass{}
                 var a = new MyClass{};
                 """,
-                Module(
-                    types:
-                    [
-                        Class("MyClass")
-                    ],
-                    methods:
-                    [
-                        Method("!Main",
-                            isStatic: true,
-                            locals:
-                            [
-                                Local("a", ConcreteTypeReference("MyClass"))
-                            ],
-                            instructions:
-                            [
-                                new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
-                                new StoreLocal(Addr(1), 0),
-                                LoadUnit(2),
-                                Return(3)
-                            ])
-                    ])
+                Module()
             },
             {
                 "create object with fields",
@@ -200,37 +101,7 @@ public static class ClassTests
                 class MyClass{ pub field Field1: int, pub field Field2: string}
                 var a = new MyClass{Field2 = "", Field1 = 2};
                 """,
-                Module(
-                    types:
-                    [
-                        Class("MyClass", fields:
-                        [
-                            Field("Field1", ConcreteTypeReference("int"), isPublic: true),
-                            Field("Field2", ConcreteTypeReference("string"), isPublic: true),
-                        ])
-                    ],
-                    methods:
-                    [
-                        Method("!Main",
-                            isStatic: true,
-                            locals:
-                            [
-                                Local("a", ConcreteTypeReference("MyClass"))
-                            ],
-                            instructions:
-                            [
-                                new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
-                                new CopyStack(Addr(1)),
-                                new LoadStringConstant(Addr(2), ""),
-                                new StoreField(Addr(3), 0, 1),
-                                new CopyStack(Addr(4)),
-                                new LoadIntConstant(Addr(5), 2),
-                                new StoreField(Addr(6), 0, 0),
-                                new StoreLocal(Addr(7), 0),
-                                LoadUnit(8),
-                                Return(9)
-                            ])
-                    ])
+                Module()
             },
             {
                 "call instance method",
@@ -241,45 +112,7 @@ public static class ClassTests
                 var a = new MyClass {};
                 a.SomeFn(); 
                 """,
-                Module(
-                    types:
-                    [
-                        Class(
-                            "MyClass",
-                            methods:
-                            [
-                                Method("SomeFn",
-                                    parameters:
-                                    [
-                                        Parameter("this", ConcreteTypeReference("MyClass"))
-                                    ],
-                                    instructions:
-                                    [
-                                        LoadUnit(0),
-                                        Return(1)
-                                    ])
-                            ])
-                    ],
-                    methods:
-                    [
-                        Method("!Main",
-                            isStatic: true,
-                            locals:
-                            [
-                                Local("a", ConcreteTypeReference("MyClass"))
-                            ],
-                            instructions:
-                            [
-                                new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
-                                new StoreLocal(Addr(1), 0),
-                                new LoadLocal(Addr(2), 0),
-                                new LoadTypeFunction(Addr(3), ConcreteTypeReference("MyClass"), 0, []),
-                                new Call(Addr(4)),
-                                Drop(5),
-                                LoadUnit(6),
-                                Return(7)
-                            ])
-                    ])
+                Module()
             },
             {
                 "call instance method with parameters",
@@ -290,49 +123,7 @@ public static class ClassTests
                 var a = new MyClass {};
                 a.SomeFn(1, ""); 
                 """,
-                Module(
-                    types:
-                    [
-                        Class(
-                            "MyClass",
-                            methods:
-                            [
-                                Method("SomeFn",
-                                    parameters:
-                                    [
-                                        Parameter("this", ConcreteTypeReference("MyClass")),
-                                        Parameter("a", ConcreteTypeReference("int")),
-                                        Parameter("b", ConcreteTypeReference("string")),
-                                    ],
-                                    instructions:
-                                    [
-                                        LoadUnit(0),
-                                        Return(1)
-                                    ])
-                            ])
-                    ],
-                    methods:
-                    [
-                        Method("!Main",
-                            isStatic: true,
-                            locals:
-                            [
-                                Local("a", ConcreteTypeReference("MyClass"))
-                            ],
-                            instructions:
-                            [
-                                new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
-                                new StoreLocal(Addr(1), 0),
-                                new LoadLocal(Addr(2), 0),
-                                new LoadIntConstant(Addr(3), 1),
-                                new LoadStringConstant(Addr(4), ""),
-                                new LoadTypeFunction(Addr(5), ConcreteTypeReference("MyClass"), 0, []),
-                                new Call(Addr(6)),
-                                Drop(7),
-                                LoadUnit(8),
-                                Return(9)
-                            ])
-                    ])
+                Module()
             },
             {
                 "call static class method",
@@ -343,32 +134,7 @@ public static class ClassTests
                 }
                 MyClass::MyFn(1);
                 """,
-                Module(
-                    types:
-                    [
-                        Class("MyClass",
-                            methods:
-                            [
-                                Method("MyFn",
-                                    isStatic: true,
-                                    parameters: [Parameter("a", ConcreteTypeReference("int"))],
-                                    instructions: [LoadUnit(0), Return(1)])
-                            ])
-                    ],
-                    methods:
-                    [
-                        Method("!Main",
-                            isStatic: true,
-                            instructions:
-                            [
-                                new LoadIntConstant(Addr(0), 1),
-                                new LoadTypeFunction(Addr(1), ConcreteTypeReference("MyClass"), 0, []),
-                                new Call(Addr(2)),
-                                Drop(3),
-                                LoadUnit(4),
-                                Return(5)
-                            ])
-                    ])
+                Module()
             },
             {
                 "get static field",
@@ -376,35 +142,7 @@ public static class ClassTests
                 class MyClass { pub static field A: int = 1 }
                 var a = MyClass::A;
                 """,
-                Module(
-                    types:
-                    [
-                        Class("MyClass", fields:
-                        [
-                            Field("A",
-                                isStatic: true,
-                                isPublic: true,
-                                type: ConcreteTypeReference("int"),
-                                staticInitializer: [new LoadIntConstant(Addr(0), 1)])
-                        ])
-                    ],
-                    methods:
-                    [
-                        Method("!Main",
-                            isStatic: true,
-                            locals:
-                            [
-                                Local("a", ConcreteTypeReference("int"))
-                            ],
-                            instructions:
-                            [
-                                new LoadStaticField(Addr(0), ConcreteTypeReference("MyClass"), VariantIndex: 0,
-                                    FieldIndex: 0),
-                                new StoreLocal(Addr(1), 0),
-                                LoadUnit(2),
-                                Return(3)
-                            ])
-                    ])
+                Module()
             },
             {
                 "get instance field",
@@ -413,35 +151,7 @@ public static class ClassTests
                 var a = new MyClass { MyField = 1 };
                 var b = a.MyField;
                 """,
-                Module(
-                    types:
-                    [
-                        Class("MyClass",
-                            fields: [Field("MyField", isPublic: true, type: ConcreteTypeReference("int"))])
-                    ],
-                    methods:
-                    [
-                        Method("!Main",
-                            isStatic: true,
-                            locals:
-                            [
-                                Local("a", ConcreteTypeReference("MyClass")),
-                                Local("b", ConcreteTypeReference("int")),
-                            ],
-                            instructions:
-                            [
-                                new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
-                                new CopyStack(Addr(1)),
-                                new LoadIntConstant(Addr(2), 1),
-                                new StoreField(Addr(3), 0, 0),
-                                new StoreLocal(Addr(4), 0),
-                                new LoadLocal(Addr(5), 0),
-                                new LoadField(Addr(6), 0, 0),
-                                new StoreLocal(Addr(7), 1),
-                                LoadUnit(8),
-                                Return(9)
-                            ])
-                    ])
+                Module()
             },
             {
                 "get instance and static field",
@@ -451,45 +161,7 @@ public static class ClassTests
                 var b = a.InstanceField;
                 var c = MyClass::StaticField;
                 """,
-                Module(
-                    types:
-                    [
-                        Class("MyClass",
-                            fields: [
-                                Field("Ignore", isPublic: true, type: ConcreteTypeReference("int")),
-                                Field("InstanceField", isPublic: true, type: ConcreteTypeReference("string")),
-                                Field("StaticField", isPublic: true, isStatic: true, type: ConcreteTypeReference("int"), staticInitializer: [new LoadIntConstant(Addr(0), 2)])
-                            ])
-                    ],
-                    methods:
-                    [
-                        Method("!Main",
-                            isStatic: true,
-                            locals:
-                            [
-                                Local("a", ConcreteTypeReference("MyClass")),
-                                Local("b", ConcreteTypeReference("string")),
-                                Local("c", ConcreteTypeReference("int")),
-                            ],
-                            instructions:
-                            [
-                                new CreateObject(Addr(0), ConcreteTypeReference("MyClass")),
-                                new CopyStack(Addr(1)),
-                                new LoadIntConstant(Addr(2), 1),
-                                new StoreField(Addr(3), 0, 0),
-                                new CopyStack(Addr(4)),
-                                new LoadStringConstant(Addr(5), ""),
-                                new StoreField(Addr(6), 0, 1),
-                                new StoreLocal(Addr(7), 0),
-                                new LoadLocal(Addr(8), 0),
-                                new LoadField(Addr(9), 0, 1),
-                                new StoreLocal(Addr(10), 1),
-                                new LoadStaticField(Addr(11), ConcreteTypeReference("MyClass"), 0, 2),
-                                new StoreLocal(Addr(12), 2),
-                                LoadUnit(13),
-                                Return(14)
-                            ])
-                    ])
+                Module()
             }
         };
     }

@@ -141,7 +141,7 @@ public record IntMinusExpression(bool ValueUseful, ILoweredExpression Left, ILow
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
 }
 
-public record UnreachableExpression() : ILoweredExpression
+public record UnreachableExpression : ILoweredExpression
 {
     public bool ValueUseful => false;
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Never.ToLoweredTypeReference();
@@ -250,8 +250,9 @@ public record StaticMemberAccessor(
 public record FunctionReferenceConstantExpression(
         LoweredFunctionReference FunctionReference,
         bool ValueUseful,
-        ILoweredTypeReference ResolvedType) : ILoweredExpression
+        LoweredFunctionPointer FunctionPointer) : ILoweredExpression
 {
+    public ILoweredTypeReference ResolvedType => FunctionPointer;
 }
 
 public record LoweredFunctionReference(
@@ -260,7 +261,7 @@ public record LoweredFunctionReference(
         IReadOnlyList<ILoweredTypeReference> TypeArguments)
 {}
 
-public record LoweredFunctionType(
+public record LoweredFunctionPointer(
         IReadOnlyList<ILoweredTypeReference> ParameterTypes,
         ILoweredTypeReference ReturnType) : ILoweredTypeReference
 {
@@ -270,7 +271,7 @@ public interface ILoweredTypeReference
 { }
 
 public record LoweredConcreteTypeReference(string Name, Guid DefinitionId, IReadOnlyList<ILoweredTypeReference> TypeArguments) : ILoweredTypeReference;
-public record LoweredGenericPlaceholder(Guid OwnerDefinitionId, string placeholderName) : ILoweredTypeReference;
+public record LoweredGenericPlaceholder(Guid OwnerDefinitionId, string PlaceholderName) : ILoweredTypeReference;
 
 file static class SignatureExtensionMethods
 {

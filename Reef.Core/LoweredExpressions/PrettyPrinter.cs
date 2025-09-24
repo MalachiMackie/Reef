@@ -42,7 +42,7 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
         if (dataType.TypeParameters.Count > 0)
         {
             _stringBuilder.Append('<');
-            _stringBuilder.AppendJoin(", ", dataType.TypeParameters.Select(x => x.placeholderName));
+            _stringBuilder.AppendJoin(", ", dataType.TypeParameters.Select(x => x.PlaceholderName));
             _stringBuilder.Append('>');
         }
         _stringBuilder.AppendLine(" {");
@@ -89,7 +89,7 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
         {
             case LoweredGenericPlaceholder placeholder:
                 {
-                    _stringBuilder.Append(placeholder.placeholderName);
+                    _stringBuilder.Append(placeholder.PlaceholderName);
                     break;
                 }
             case LoweredConcreteTypeReference concrete:
@@ -144,7 +144,7 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
                 {
                     _stringBuilder.Append(", ");
                 }
-                _stringBuilder.Append(method.TypeParameters[i].placeholderName);
+                _stringBuilder.Append(method.TypeParameters[i].PlaceholderName);
             }
             _stringBuilder.Append('>');
         }

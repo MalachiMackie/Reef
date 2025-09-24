@@ -1414,7 +1414,7 @@ public partial class ProgramAbseil
                                         [..fn.TypeArguments.Select(GetTypeReference)],
                                         ownerTypeArguments),
                                     true,
-                                    new LoweredFunctionType(
+                                    new LoweredFunctionPointer(
                                         [..fn.Parameters.Select(x => GetTypeReference(x.Type))],
                                         GetTypeReference(fn.ReturnType)))
                             },
@@ -1506,7 +1506,7 @@ public partial class ProgramAbseil
                                 [],
                                unionType.TypeArguments),
                             true,
-                            new LoweredFunctionType(
+                            new LoweredFunctionPointer(
                                 method.Parameters,
                                 method.ReturnType))
                     }
@@ -1554,7 +1554,7 @@ public partial class ProgramAbseil
                                 [..fn.TypeArguments.Select(GetTypeReference)],
                                 ownerTypeArguments),
                             true,
-                            new LoweredFunctionType(
+                            new LoweredFunctionPointer(
                                 [..fn.Parameters.Select(x => GetTypeReference(x.Type))],
                                 GetTypeReference(fn.ReturnType)))
                     }
@@ -1782,7 +1782,7 @@ public partial class ProgramAbseil
                                 [..fn.TypeArguments.Select(GetTypeReference)],
                                 ownerTypeArguments),
                             true,
-                            new LoweredFunctionType(
+                            new LoweredFunctionPointer(
                                 method.Parameters,
                                 method.ReturnType))
                 }
