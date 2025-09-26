@@ -46,7 +46,27 @@ public class UnionTests
                 }
                 var a = MyUnion::A
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType(
+                            "MyUnion",
+                            variants: [
+                                Variant("A", [VariantIdentifierField])
+                            ])
+                    ],
+                    methods: [
+                        Method("_Main",
+                            [
+                                new CreateObject(ConcreteTypeReference("MyUnion")),
+                                new CopyStack(),
+                                new LoadIntConstant(0),
+                                new StoreField(0, "_variantIdentifier"),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", ConcreteTypeReference("MyUnion"))])
+                    ])
             },
             {
                 "Create union second unit variant",
@@ -57,7 +77,28 @@ public class UnionTests
                 }
                 var a = MyUnion::B
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType(
+                            "MyUnion",
+                            variants: [
+                                Variant("A", [VariantIdentifierField]),
+                                Variant("B", [VariantIdentifierField]),
+                            ])
+                    ],
+                    methods: [
+                        Method("_Main",
+                            [
+                                new CreateObject(ConcreteTypeReference("MyUnion")),
+                                new CopyStack(),
+                                new LoadIntConstant(1),
+                                new StoreField(1, "_variantIdentifier"),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", ConcreteTypeReference("MyUnion"))])
+                    ])
             },
             {
                 "create union tuple variant",
@@ -72,10 +113,65 @@ public class UnionTests
                 
                 var a = MyUnion::C(1, "");
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType(
+                            "MyUnion",
+                            variants: [
+                                Variant("A", [VariantIdentifierField]),
+                                Variant("B", [VariantIdentifierField, Field("Item0", StringType)]),
+                                Variant("C", [VariantIdentifierField, Field("Item0", IntType), Field("Item1", StringType)]),
+                            ])
+                    ],
+                    methods: [
+                        Method("MyUnion__SomeFn",
+                            [LoadUnit(), Return()]),
+                        Method(
+                            "MyUnion_Create_B",
+                            [
+                                new CreateObject(ConcreteTypeReference("MyUnion")),
+                                new CopyStack(),
+                                new LoadIntConstant(1),
+                                new StoreField(1, "_variantIdentifier"),
+                                new CopyStack(),
+                                new LoadArgument(0),
+                                new StoreField(1, "Item0"),
+                                Return()
+                            ],
+                            parameters: [StringType],
+                            returnType: ConcreteTypeReference("MyUnion")),
+                        Method(
+                            "MyUnion_Create_C",
+                            [
+                                new CreateObject(ConcreteTypeReference("MyUnion")),
+                                new CopyStack(),
+                                new LoadIntConstant(2),
+                                new StoreField(2, "_variantIdentifier"),
+                                new CopyStack(),
+                                new LoadArgument(0),
+                                new StoreField(2, "Item0"),
+                                new CopyStack(),
+                                new LoadArgument(1),
+                                new StoreField(2, "Item1"),
+                                Return()
+                            ],
+                            parameters: [IntType, StringType],
+                            returnType: ConcreteTypeReference("MyUnion")),
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(1),
+                                new LoadStringConstant(""),
+                                new LoadFunction(FunctionDefinitionReference("MyUnion_Create_C")),
+                                new Call(),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", ConcreteTypeReference("MyUnion"))])
+                    ])
             },
             {
-                "create union tuple variant",
+                "create union tuple variant with function object",
                 """
                 union MyUnion {
                     A,
@@ -85,7 +181,48 @@ public class UnionTests
                 var a = MyUnion::B;
                 var b = a("");
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType("MyUnion",
+                            variants: [
+                                Variant("A", [VariantIdentifierField]),
+                                Variant("B", [VariantIdentifierField, Field("Item0", StringType)]),
+                            ])
+                    ],
+                    methods: [
+                        Method("MyUnion_Create_B",
+                            [
+                                new CreateObject(ConcreteTypeReference("MyUnion")),
+                                new CopyStack(),
+                                new LoadIntConstant(1),
+                                new StoreField(1, "_variantIdentifier"),
+                                new CopyStack(),
+                                new LoadArgument(0),
+                                new StoreField(1, "Item0"),
+                                Return()
+                            ],
+                            parameters: [StringType],
+                            returnType: ConcreteTypeReference("MyUnion")),
+                        Method("_Main",
+                            [
+                                new CreateObject(ConcreteTypeReference("Function`2", [StringType, ConcreteTypeReference("MyUnion")])),
+                                new CopyStack(),
+                                new LoadFunction(FunctionDefinitionReference("MyUnion_Create_B")),
+                                new StoreField(0, "FunctionReference"),
+                                new StoreLocal("a"),
+                                new LoadLocal("a"),
+                                new LoadStringConstant(""),
+                                new LoadFunction(FunctionDefinitionReference("Function`2__Call", [StringType, ConcreteTypeReference("MyUnion")])),
+                                new Call(),
+                                new StoreLocal("b"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [
+                                Local("a", ConcreteTypeReference("Function`2", [StringType, ConcreteTypeReference("MyUnion")])),
+                                Local("b", ConcreteTypeReference("MyUnion"))
+                            ])
+                    ])
             },
             {
                 "union class initializer",
@@ -99,7 +236,33 @@ public class UnionTests
                     Field2 = ""
                 };
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType("MyUnion",
+                            variants: [
+                                Variant("A", [VariantIdentifierField]),
+                                Variant("B", [VariantIdentifierField, Field("Field1", IntType), Field("Field2", StringType)]),
+                            ])
+                    ],
+                    methods: [
+                        Method("_Main",
+                            [
+                                new CreateObject(ConcreteTypeReference("MyUnion")),
+                                new CopyStack(),
+                                new LoadIntConstant(1),
+                                new StoreField(1, "_variantIdentifier"),
+                                new CopyStack(),
+                                new LoadIntConstant(1),
+                                new StoreField(1, "Field1"),
+                                new CopyStack(),
+                                new LoadStringConstant(""),
+                                new StoreField(1, "Field2"),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", ConcreteTypeReference("MyUnion"))])
+                    ])
             }
         };
     }

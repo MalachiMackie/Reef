@@ -48,7 +48,8 @@ public static class TestHelpers
     public static ConcreteReefTypeReference StringType => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.String);
     public static ConcreteReefTypeReference IntType => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.Int);
     public static ConcreteReefTypeReference BoolType => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.Boolean);
-
+    public static ReefField VariantIdentifierField => Field("_variantIdentifier", IntType);
+    
     private static ConcreteReefTypeReference GetTypeReference(TypeChecking.TypeChecker.ClassSignature klass)
     {
         return new ConcreteReefTypeReference

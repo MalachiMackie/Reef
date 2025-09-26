@@ -20,6 +20,7 @@ public class ILCompile
     }
 
     private readonly List<ReefTypeDefinition> _types = [];
+    private readonly List<ReefModule> _importedModules = []; 
     private readonly List<ReefMethod> _methods = [];
     private readonly Stack<Scope> _scopeStack = [];
     // private TypeChecker.FunctionSignature? _mainFunction;
@@ -32,8 +33,126 @@ public class ILCompile
         public required LoweredMethod? CurrentFunction { get; init; }
     }
 
+    private static ReefModule GetImportedStdLibrary()
+    {
+        var importedDataTypes = new List<ReefTypeDefinition>();
+        var importedMethods = new List<ReefMethod>();
+        
+        for (var i = 0; i < 7; i++)
+        {
+            var fnClass = TypeChecker.ClassSignature.Function(i);
+            importedDataTypes.Add(
+                new()
+                {
+                    Id = fnClass.Id,
+                    DisplayName = fnClass.Name,
+                    TypeParameters = [..fnClass.TypeParameters.Select(x => x.GenericName)],
+                    StaticFields = [],
+                    Variants = [new ReefVariant()
+                    {
+                        DisplayName = "_classVariant",
+                        Fields = [
+                            new ReefField()
+                            {
+                                DisplayName = "FunctionReference",
+                                Type = new FunctionPointerReefType
+                                {
+                                    Parameters = [..fnClass.TypeParameters.SkipLast(1).Select(GetTypeReference)],
+                                    ReturnType = GetTypeReference(fnClass.TypeParameters[^1])
+                                }
+                            }
+                        ]
+                    }],
+                    IsValueType = false
+                });
+
+            var call = fnClass.Functions[0];
+
+            importedMethods.Add(new ReefMethod()
+            {
+                DisplayName = $"{fnClass.Name}__{call.Name}",
+                Instructions = [],
+                Locals = [],
+                ReturnType = GetTypeReference(call.ReturnType),
+                Parameters = [..call.Parameters.Values.Select(x => GetTypeReference(x.Type))],
+                TypeParameters = [..fnClass.TypeParameters.Select(x => x.GenericName)]
+            });
+        }
+
+        var resultSignature = TypeChecker.UnionSignature.Result;
+        var valueGeneric = new GenericReefTypeReference
+        {
+            DefinitionId = resultSignature.Id,
+            TypeParameterName = "TValue"
+        };
+        var errorGeneric = new GenericReefTypeReference
+        {
+            DefinitionId = resultSignature.Id,
+            TypeParameterName = "TError"
+        };
+        var intRef = GetTypeReference(TypeChecker.InstantiatedClass.Int);
+
+        var resultDataType = new ReefTypeDefinition()
+        {
+            Id = TypeChecker.UnionSignature.Result.Id,
+            DisplayName = TypeChecker.UnionSignature.Result.Name,
+            TypeParameters = [..TypeChecker.UnionSignature.Result.TypeParameters.Select(x => x.GenericName)],
+            IsValueType = false,
+            StaticFields = [],
+            Variants = [
+                new ReefVariant()
+                {
+                    DisplayName = "Ok",
+                    Fields = [
+                        new ReefField{DisplayName = "_variantIdentifier", Type = intRef},
+                        new ReefField{DisplayName = "Item0", Type = valueGeneric}
+                    ]
+                },
+                new ReefVariant()
+                {
+                    DisplayName = "Error",
+                    Fields = [
+                        new ReefField{DisplayName = "_variantIdentifier", Type = intRef},
+                        new ReefField{DisplayName = "Item0", Type = errorGeneric}
+                    ]
+                }
+            ]
+        };
+        importedDataTypes.Add(resultDataType);
+        foreach (var variant in TypeChecker.UnionSignature.Result.Variants.OfType<TypeChecking.TypeChecker.TupleUnionVariant>())
+        {
+            importedMethods.Add(new()
+            {
+                DisplayName = variant.CreateFunction.Name,
+                Instructions = [],
+                Locals = [],
+                ReturnType = new ConcreteReefTypeReference
+                {
+                    DefinitionId = resultSignature.Id,
+                    Name = resultSignature.Name,
+                    TypeArguments = [valueGeneric, errorGeneric]
+                },
+                TypeParameters = ["TValue", "TError"],
+                Parameters = [..variant.CreateFunction.Parameters.Values.Select(x => new GenericReefTypeReference()
+                {
+                    DefinitionId = resultSignature.Id,
+                    TypeParameterName = variant.Name == "Ok" ? "TValue" : "TError"
+                })]
+            });
+        }
+
+        return new ReefModule()
+        {
+            Methods = importedMethods,
+            MainMethod = null,
+            Types = importedDataTypes
+        };
+
+    }
+
     private ReefModule CompileToILInner(LoweredProgram program)
     {
+        _importedModules.Add(GetImportedStdLibrary());
         _types.AddRange(program.DataTypes.Select(CompileDataType));
         _methods.AddRange(program.Methods.Select(CompileMethod));
 
@@ -584,6 +703,18 @@ public class ILCompile
         }
     }
 
+    private ReefTypeDefinition GetDataType(Guid definitionId)
+    {
+        if (_types.FirstOrDefault(x => x.Id == definitionId) is { } foundType)
+        {
+            return foundType;
+        }
+
+        return _importedModules.SelectMany(x => x.Types.Where(y => y.Id == definitionId))
+                .FirstOrDefault()
+            ?? throw new InvalidOperationException($"Unable to find type with id {definitionId}");
+    }
+
     private static IReefTypeReference GetTypeReference(TypeChecker.ITypeReference typeReference)
     {
         return typeReference switch
@@ -687,7 +818,14 @@ public class ILCompile
             case FieldAssignmentExpression fieldAssignmentExpression:
                 throw new NotImplementedException();
             case FunctionReferenceConstantExpression functionReferenceConstantExpression:
-                throw new NotImplementedException();
+                var functionReference = functionReferenceConstantExpression.FunctionReference;
+                Instructions.Add(new LoadFunction(new FunctionDefinitionReference
+                {
+                    DefinitionId = functionReference.DefinitionId,
+                    Name = functionReference.Name,
+                    TypeArguments = [..functionReference.TypeArguments.Select(GetTypeReference)]
+                }));
+                break;
             case IntConstantExpression intConstantExpression:
                 Instructions.Add(new LoadIntConstant(intConstantExpression.Value));
                 break;
@@ -782,7 +920,7 @@ public class ILCompile
             throw new InvalidOperationException("Can only access fields on a concrete type");
         }
 
-        var dataType = _types.First(x => x.Id == concrete.DefinitionId);
+        var dataType = GetDataType(concrete.DefinitionId);
         var (variantIndex, variant) = dataType.Variants.Index().First(x => x.Item.DisplayName == variantName);
         return ((uint)variantIndex, variant);
     }
