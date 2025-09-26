@@ -41,52 +41,151 @@ public class SimpleExpressions
             {
                 "push int",
                 "1",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(1),
+                                LoadUnit(),
+                                Return()
+                            ])
+                    ])
             },
             {
                 "push constant string",
                 "\"someString\"",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadStringConstant("someString"),
+                                LoadUnit(),
+                                Return()
+                            ])
+                    ])
             },
             {
                 "push constant bool true",
                 "true",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadBoolConstant(true),
+                                LoadUnit(),
+                                Return()
+                            ])
+                    ])
             },
             {
                 "push constant bool false",
                 "false",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadBoolConstant(false),
+                                LoadUnit(),
+                                Return()
+                            ])
+                    ])
             },
             {
                 "variable declaration without initializer",
                 "var a: int",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", IntType)])
+                    ])
             },
             {
                 "two variable declarations without initializers",
                 "var a: int;var b: string",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", IntType), Local("b", StringType)])
+                    ])
             },
             {
                 "variable declaration with value initializer",
                 "var a = 1",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(1),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [
+                                Local("a", IntType)
+                            ])
+                    ])
             },
             {
                 "two variable declarations with value initializers",
                 "var a = 1;var b = \"hello\"",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(1),
+                                new StoreLocal("a"),
+                                new LoadStringConstant("hello"),
+                                new StoreLocal("b"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [
+                                Local("a", IntType),
+                                Local("b", StringType)
+                            ])
+                    ])
             },
             {
                 "less than",
                 "var a = 1 < 2",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(1),
+                                new LoadIntConstant(2),
+                                new CompareIntLessThan(),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", BoolType)])
+                    ])
             },
             {
                 "greater than",
                 "var a = 1 > 2",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(1),
+                                new LoadIntConstant(2),
+                                new CompareIntGreaterThan(),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", BoolType)])
+                    ])
             },
             {
                 "access local variable",
@@ -95,32 +194,110 @@ public class SimpleExpressions
                 var b = a;
                 var c = b;
                 """,
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(1),
+                                new StoreLocal("a"),
+                                new LoadLocal("a"),
+                                new StoreLocal("b"),
+                                new LoadLocal("b"),
+                                new StoreLocal("c"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [
+                                Local("a", IntType),
+                                Local("b", IntType),
+                                Local("c", IntType)
+                            ])
+                    ])
             },
             {
                 "plus",
                 "var a = 1 + 2",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(1),
+                                new LoadIntConstant(2),
+                                new IntPlus(),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", IntType)])
+                    ])
             },
             {
                 "minus",
                 "var a = 1 - 2",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(1),
+                                new LoadIntConstant(2),
+                                new IntMinus(),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", IntType)])
+                    ])
             },
             {
                 "multiply",
                 "var a = 1 * 2",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(1),
+                                new LoadIntConstant(2),
+                                new IntMultiply(),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", IntType)])
+                    ])
             },
             {
                 "divide",
                 "var a = 1 / 2",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(1),
+                                new LoadIntConstant(2),
+                                new IntDivide(),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", IntType)])
+                    ])
             },
             {
                 "equals",
                 "var a = 1 == 2",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(1),
+                                new LoadIntConstant(2),
+                                new CompareIntEqual(),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", BoolType)])
+                    ])
             },
             {
                 "local assignment",
@@ -128,7 +305,17 @@ public class SimpleExpressions
                 var a;
                 a = 1;
                 """,
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(1),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", IntType)])
+                    ])
             },
             {
                 "field assignment",
@@ -137,7 +324,30 @@ public class SimpleExpressions
                 var mut a = new MyClass{MyField = 1};
                 a.MyField = 2;
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType("MyClass",
+                            variants: [
+                                Variant("_classVariant",
+                                    fields: [Field("MyField", IntType)])
+                            ])
+                    ],
+                    methods: [
+                        Method("_Main",
+                            [
+                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new CopyStack(),
+                                new LoadIntConstant(1),
+                                new StoreField(0, "MyField"),
+                                new StoreLocal("a"),
+                                new LoadLocal("a"),
+                                new LoadIntConstant(2),
+                                new StoreField(0, "MyField"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", ConcreteTypeReference("MyClass"))])
+                    ])
             },
             {
                 "static field assignment",
@@ -145,22 +355,73 @@ public class SimpleExpressions
                 class MyClass{pub static mut field MyField: int = 1}
                 MyClass::MyField = 2;
                 """,
-                Module()
+                Module(
+                    types: [
+                        DataType("MyClass",
+                            variants: [Variant("_classVariant")],
+                            staticFields: [StaticField("MyField", IntType, [new LoadIntConstant(1)])])
+                    ],
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(2),
+                                new StoreStaticField(ConcreteTypeReference("MyClass"), "MyField"),
+                                LoadUnit(),
+                                Return()
+                            ])
+                    ])
             },
             {
                 "single element tuple",
                 "var a = (1);",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(1),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", IntType)])
+                    ])
             },
             {
                 "tuple with multiple elements",
                 "var a = (1, true)",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new CreateObject(ConcreteTypeReference("Tuple`2", [IntType, BoolType])),
+                                new CopyStack(),
+                                new LoadIntConstant(1),
+                                new StoreField(0, "Item0"),
+                                new CopyStack(),
+                                new LoadBoolConstant(true),
+                                new StoreField(0, "Item1"),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", ConcreteTypeReference("Tuple`2", [IntType, BoolType]))])
+                    ])
             },
             {
                 "bool not",
                 "var a = !true;",
-                Module()
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadBoolConstant(true),
+                                new BoolNot(),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", BoolType)])
+                    ])
             },
             {
                 "and",

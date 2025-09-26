@@ -3981,7 +3981,7 @@ public class TypeCheckerTests
 
     private static InstantiatedClass TupleType(params IReadOnlyList<ITypeReference> members)
     {
-        var signature = ClassSignature.Tuple(members);
+        var signature = ClassSignature.Tuple((ushort)members.Count);
         return new InstantiatedClass(
             signature, signature.TypeParameters.Zip(members).Select(x => x.First.Instantiate(x.Second)).ToArray());
     }

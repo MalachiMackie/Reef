@@ -119,7 +119,7 @@ public record LoadField(uint VariantIndex, string FieldName) : IInstruction;
 /// <summary>
 /// Pops the top value off the evaluation stack and stores it in the specified static field
 /// </summary>
-public record StoreStaticField(IReefTypeReference ReefType, uint StaticFieldIndex) : IInstruction;
+public record StoreStaticField(IReefTypeReference ReefType, string StaticFieldName) : IInstruction;
 
 /// <summary>
 /// Loads the specified static field and pushes it onto the evaluation stack

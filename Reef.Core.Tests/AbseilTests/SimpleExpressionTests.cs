@@ -308,7 +308,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                             [
                                 CreateObject(
                                     ConcreteTypeReference("Tuple`2", [Int, StringType]),
-                                    "_tupleVariant",
+                                    "_classVariant",
                                     false,
                                     new()
                                     {

@@ -1084,7 +1084,7 @@ public partial class ProgramAbseil
 
         return new CreateObjectExpression(
             tupleType,
-            "_tupleVariant",
+            "_classVariant",
             e.ValueUseful,
             e.Values.Index().ToDictionary(x => $"Item{x.Index}", x => LowerExpression(x.Item)));
     }

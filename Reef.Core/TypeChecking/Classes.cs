@@ -105,30 +105,35 @@ public partial class TypeChecker
             return signature;
         }
 
-        private static readonly Dictionary<int, ClassSignature> CachedTupleSignatures = [];
-        public static ClassSignature Tuple(IReadOnlyList<ITypeReference> elements)
+        private static readonly Dictionary<ushort, ClassSignature> CachedTupleSignatures = [];
+        public static ClassSignature Tuple(ushort elementCount)
         {
-            if (CachedTupleSignatures.TryGetValue(elements.Count, out var cachedSignature))
+            if (elementCount < 2)
+            {
+                throw new InvalidOperationException("Tuple must have at least two items");
+            }
+
+            if (CachedTupleSignatures.TryGetValue(elementCount, out var cachedSignature))
             {
                 return cachedSignature;
             }
 
-            var typeParameters = new List<GenericPlaceholder>(elements.Count);
+            var typeParameters = new List<GenericPlaceholder>(elementCount);
             var fields = new List<TypeField>();
             var signature = new ClassSignature
             {
                 TypeParameters = typeParameters,
-                Name = $"Tuple`{elements.Count}",
+                Name = $"Tuple`{elementCount}",
                 Fields = fields,
                 Functions = []
             };
-            typeParameters.AddRange(Enumerable.Range(0, elements.Count).Select(x => new GenericPlaceholder
+            typeParameters.AddRange(Enumerable.Range(0, elementCount).Select(x => new GenericPlaceholder
             {
                 GenericName = $"T{x}",
                 OwnerType = signature
             }));
 
-            fields.AddRange(elements.Select((_, i) => new TypeField
+            fields.AddRange(Enumerable.Range(0, elementCount).Select(i => new TypeField
             {
                 // todo: verify this
                 IsMutable = false,
@@ -140,7 +145,7 @@ public partial class TypeChecker
                 FieldIndex = (uint)i
             }));
 
-            CachedTupleSignatures[elements.Count] = signature;
+            CachedTupleSignatures[elementCount] = signature;
 
             return signature;
         }
@@ -205,7 +210,7 @@ public partial class TypeChecker
         {
             0 => throw new InvalidOperationException("Tuple must not be empty"),
             > 10 => throw new InvalidOperationException("Tuple can contain at most 10 items"),
-            _ => InstantiateClass(ClassSignature.Tuple([.. types.Select(x => x.Item1)]), types, sourceRange)
+            _ => InstantiateClass(ClassSignature.Tuple((ushort)types.Count), types, sourceRange)
         };
     }
 

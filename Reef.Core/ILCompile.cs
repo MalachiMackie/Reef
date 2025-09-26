@@ -37,7 +37,36 @@ public class ILCompile
     {
         var importedDataTypes = new List<ReefTypeDefinition>();
         var importedMethods = new List<ReefMethod>();
-        
+
+        for (var i = 2; i < 10; i++)
+        {
+            var tupleClass = TypeChecker.ClassSignature.Tuple(2);
+            importedDataTypes.Add(
+                new ReefTypeDefinition
+                {
+                    Id = tupleClass.Id,
+                    DisplayName = tupleClass.Name,
+                    TypeParameters = [..tupleClass.TypeParameters.Select(x => x.GenericName)],
+                    StaticFields = [],
+                    Variants = [
+                        new ReefVariant
+                        {
+                            DisplayName = "_classVariant",
+                            Fields = [..Enumerable.Range(0, i).Select(j => new ReefField
+                            {
+                                DisplayName = $"Item{j}",
+                                Type = new GenericReefTypeReference
+                                {
+                                    DefinitionId = tupleClass.Id,
+                                    TypeParameterName = $"T{j}"
+                                }
+                            })]
+                        }
+                    ],
+                    IsValueType = false
+                });
+        }
+
         for (var i = 0; i < 7; i++)
         {
             var fnClass = TypeChecker.ClassSignature.Function(i);
@@ -778,9 +807,16 @@ public class ILCompile
             case BoolAndExpression boolAndExpression:
                 throw new NotImplementedException();
             case BoolConstantExpression boolConstantExpression:
-                throw new NotImplementedException();
+            {
+                Instructions.Add(new LoadBoolConstant(boolConstantExpression.Value));
+                break;
+            }
             case BoolNotExpression boolNotExpression:
-                throw new NotImplementedException();
+            {
+                CompileExpression(boolNotExpression.Operand);
+                Instructions.Add(new BoolNot());
+                break;
+            }
             case BoolOrExpression boolOrExpression:
                 throw new NotImplementedException();
             case CastBoolToIntExpression castBoolToIntExpression:
@@ -816,7 +852,19 @@ public class ILCompile
                 break;
             }
             case FieldAssignmentExpression fieldAssignmentExpression:
-                throw new NotImplementedException();
+            {
+                CompileExpression(fieldAssignmentExpression.FieldOwnerExpression);
+                CompileExpression(fieldAssignmentExpression.FieldValue);
+
+                var type = GetTypeReference(fieldAssignmentExpression.FieldOwnerExpression.ResolvedType);
+
+                var (variantIndex, _) = GetDataTypeVariant(
+                    type,
+                    fieldAssignmentExpression.VariantName);
+                
+                Instructions.Add(new StoreField(variantIndex, fieldAssignmentExpression.FieldName));
+                break;
+            }
             case FunctionReferenceConstantExpression functionReferenceConstantExpression:
                 var functionReference = functionReferenceConstantExpression.FunctionReference;
                 Instructions.Add(new LoadFunction(new FunctionDefinitionReference
@@ -830,24 +878,63 @@ public class ILCompile
                 Instructions.Add(new LoadIntConstant(intConstantExpression.Value));
                 break;
             case IntDivideExpression intDivideExpression:
-                throw new NotImplementedException();
+            {
+                CompileExpression(intDivideExpression.Left);
+                CompileExpression(intDivideExpression.Right);
+                Instructions.Add(new IntDivide());
+                break;
+            }
             case IntEqualsExpression intEqualsExpression:
-                throw new NotImplementedException();
+            {
+                CompileExpression(intEqualsExpression.Left);
+                CompileExpression(intEqualsExpression.Right);
+                Instructions.Add(new CompareIntEqual());
+                break;
+            }
             case IntGreaterThanExpression intGreaterThanExpression:
-                throw new NotImplementedException();
+            {
+                CompileExpression(intGreaterThanExpression.Left);
+                CompileExpression(intGreaterThanExpression.Right);
+                Instructions.Add(new CompareIntGreaterThan());
+                break;
+            }
             case IntLessThanExpression intLessThanExpression:
-                throw new NotImplementedException();
+            {
+                CompileExpression(intLessThanExpression.Left);
+                CompileExpression(intLessThanExpression.Right);
+                Instructions.Add(new CompareIntLessOrEqualTo());
+                break;
+            }
             case IntMinusExpression intMinusExpression:
-                throw new NotImplementedException();
+            {
+                CompileExpression(intMinusExpression.Left);
+                CompileExpression(intMinusExpression.Right);
+                Instructions.Add(new IntMinus());
+                break;
+            }
             case IntMultiplyExpression intMultiplyExpression:
-                throw new NotImplementedException();
+            {
+                CompileExpression(intMultiplyExpression.Left);
+                CompileExpression(intMultiplyExpression.Right);
+                Instructions.Add(new IntMultiply());
+                break;
+            }
             case IntPlusExpression intPlusExpression:
-                throw new NotImplementedException();
+            {
+                CompileExpression(intPlusExpression.Left);
+                CompileExpression(intPlusExpression.Right);
+                Instructions.Add(new IntPlus());
+                break;
+            }
             case LoadArgumentExpression loadArgumentExpression:
                 Instructions.Add(new LoadArgument(loadArgumentExpression.ArgumentIndex));
                 return;
             case LocalAssignmentExpression localAssignmentExpression:
-                throw new NotImplementedException();
+            {
+                CompileExpression(localAssignmentExpression.Value);
+                Instructions.Add(new StoreLocal(localAssignmentExpression.LocalName));
+                break;
+            }
             case LocalVariableAccessor localVariableAccessor:
             {
                 Instructions.Add(new LoadLocal(localVariableAccessor.LocalName));
@@ -882,7 +969,12 @@ public class ILCompile
                 break;
             }
             case StaticFieldAssignmentExpression staticFieldAssignmentExpression:
-                throw new NotImplementedException();
+            {
+                CompileExpression(staticFieldAssignmentExpression.FieldValue);
+                var typeReference = GetTypeReference(staticFieldAssignmentExpression.OwnerType);
+                Instructions.Add(new StoreStaticField(typeReference, staticFieldAssignmentExpression.FieldName));
+                break;
+            }
             case StaticMemberAccessor staticMemberAccessor:
                 throw new NotImplementedException();
             case StaticMethodAccess staticMethodAccess:
@@ -995,10 +1087,10 @@ public class ILCompile
                         var ownerType = staticMemberAccessExpression.OwnerType
                                         ?? throw new InvalidOperationException("Expected static member access owner");
 
-                        Instructions.Add(new StoreStaticField(
-                            GetTypeReference(ownerType),
-                            staticMemberAccessExpression.StaticMemberAccess.ItemIndex
-                                ?? throw new InvalidOperationException("Expected static member access item index")));
+                        // Instructions.Add(new StoreStaticField(
+                        //     GetTypeReference(ownerType),
+                        //     staticMemberAccessExpression.StaticMemberAccess.ItemIndex
+                        //         ?? throw new InvalidOperationException("Expected static member access item index")));
                         break;
                     }
                 case MemberAccessExpression memberAccessExpression:
