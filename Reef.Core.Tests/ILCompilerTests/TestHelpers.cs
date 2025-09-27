@@ -17,13 +17,13 @@ public static class TestHelpers
     };
     
     public static StaticReefField StaticField(string name, IReefTypeReference type,
-        IReadOnlyList<IInstruction> staticInitializer)
+        IEnumerable<IInstruction> staticInitializer)
     {
         return new StaticReefField
         {
             Type = type,
             DisplayName = name,
-            StaticInitializerInstructions = staticInitializer
+            StaticInitializerInstructions = new InstructionList([..staticInitializer], [])
         };
     }
 
@@ -72,7 +72,8 @@ public static class TestHelpers
 
     public static ReefMethod Method(
         string name,
-        IReadOnlyList<IInstruction> instructions,
+        IEnumerable<IInstruction> instructions,
+        IEnumerable<InstructionLabel>? labels = null,
         IReadOnlyList<IReefTypeReference>? parameters = null,
         IReefTypeReference? returnType = null,
         IReadOnlyList<string>? typeParameters = null,
@@ -82,7 +83,7 @@ public static class TestHelpers
         {
             DisplayName = name,
             TypeParameters = typeParameters ?? [],
-            Instructions = instructions,
+            Instructions = new InstructionList([..instructions], [..labels ?? []]),
             Locals = locals ?? [],
             Parameters = parameters ?? [],
             ReturnType = returnType ?? ConcreteTypeReference("Unit")

@@ -425,13 +425,119 @@ public class SimpleExpressions
             },
             {
                 "and",
-                "var a = true && true",
-                Module()
+                "var a = true && false",
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadBoolConstant(true),
+                                new BranchIfFalse("boolAnd_0_false"),
+                                new LoadBoolConstant(false),
+                                new Branch("boolAnd_0_after"),
+                                // boolAnd_0_false
+                                new LoadBoolConstant(false),
+                                // boolAnd_0_after
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            labels: [
+                                new InstructionLabel("boolAnd_0_false", 4),
+                                new InstructionLabel("boolAnd_0_after", 5),
+                            ],
+                            locals: [Local("a", BoolType)])
+                    ])
             },
             {
                 "or",
-                "var a = true || true",
-                Module()
+                "var a = true || false",
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadBoolConstant(true),
+                                new BranchIfTrue("boolOr_0_true"),
+                                new LoadBoolConstant(false),
+                                new Branch("boolOr_0_after"),
+                                // boolOr_0_true
+                                new LoadBoolConstant(true),
+                                // boolOr_0_after
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            labels: [
+                                new InstructionLabel("boolOr_0_true", 4),
+                                new InstructionLabel("boolOr_0_after", 5)
+                            ],
+                            locals: [Local("a", BoolType)])
+                    ])
+            },
+            {
+                "double and",
+                "var a = true && false && true",
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadBoolConstant(true),
+                                new BranchIfFalse("boolAnd_1_false"),
+                                new LoadBoolConstant(false),
+                                new Branch("boolAnd_1_after"),
+                                // boolAnd_1_false
+                                new LoadBoolConstant(false),
+                                // boolAnd_1_after
+                                new BranchIfFalse("boolAnd_0_false"),
+                                new LoadBoolConstant(true),
+                                new Branch("boolAnd_0_after"),
+                                // boolAnd_0_false
+                                new LoadBoolConstant(false),
+                                // boolAnd_0_after
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            labels: [
+                                new InstructionLabel("boolAnd_1_false", 4),
+                                new InstructionLabel("boolAnd_1_after", 5),
+                                new InstructionLabel("boolAnd_0_false", 8),
+                                new InstructionLabel("boolAnd_0_after", 9),
+                            ],
+                            locals: [Local("a", BoolType)])
+                    ])
+            },
+            {
+                "double or",
+                "var a = true || false || true",
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadBoolConstant(true),
+                                new BranchIfFalse("boolOr_1_true"),
+                                new LoadBoolConstant(false),
+                                new Branch("boolOr_1_after"),
+                                // boolOr_1_true
+                                new LoadBoolConstant(true),
+                                // boolOr_1_after
+                                new BranchIfFalse("boolOr_0_true"),
+                                new LoadBoolConstant(true),
+                                new Branch("boolOr_0_after"),
+                                // boolOr_0_true
+                                new LoadBoolConstant(true),
+                                // boolOr_0_after
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            labels: [
+                                new InstructionLabel("boolOr_1_true", 4),
+                                new InstructionLabel("boolOr_1_after", 5),
+                                new InstructionLabel("boolOr_0_true", 8),
+                                new InstructionLabel("boolOr_0_after", 9),
+                            ],
+                            locals: [Local("a", BoolType)])
+                    ])
             }
         };
     }

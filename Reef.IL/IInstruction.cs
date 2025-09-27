@@ -4,7 +4,20 @@ public interface IInstruction
 {
 }
 
-public record InstructionLabel(string Name, uint BeforeInstructionIndex);
+public record InstructionLabel(string Name, uint ReferencesInstructionIndex);
+
+public record InstructionList(List<IInstruction> Instructions, List<InstructionLabel> Labels)
+{
+    public void Add(IInstruction instruction)
+    {
+        Instructions.Add(instruction);
+    }
+
+    public void AddLabel(InstructionLabel label)
+    {
+        Labels.Add(label);
+    }
+}
 
 /// <summary>
 /// Compares two integer values. If the first is greater than the second, true is pushed
@@ -44,12 +57,12 @@ public record LoadLocal(string LocalName) : IInstruction;
 /// <summary>
 /// Branch to the specified Instruction if the top of the evaluation stack is false
 /// </summary>
-public record BranchIfFalse(InstructionLabel BranchTo) : IInstruction;
+public record BranchIfFalse(string BranchToLabelName) : IInstruction;
 
 /// <summary>
 /// Branch to the specified Instruction if the top of the evaluation stack is true
 /// </summary>
-public record BranchIfTrue(InstructionLabel BranchTo) : IInstruction;
+public record BranchIfTrue(string BranchToLabelName) : IInstruction;
 
 /// <summary>
 /// Copy the value from the top of the evaluation stack and pushes a copy
@@ -69,8 +82,7 @@ public record Drop : IInstruction;
 /// <summary>
 /// Unconditionally branch to the specified Instruction
 /// </summary>
-/// <param name="BranchTo"></param>
-public record Branch(InstructionLabel BranchTo) : IInstruction;
+public record Branch(string BranchToLabelName) : IInstruction;
 
 /// <summary>
 /// Returns from the current method, leaving the return value on the evaluation stack

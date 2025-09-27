@@ -54,5 +54,5 @@ public class StaticReefField
 {
     public required string DisplayName { get; set; }
     public required IReefTypeReference Type { get; set; }
-    public required IReadOnlyList<IInstruction> StaticInitializerInstructions { get; set; }
+    public required InstructionList StaticInitializerInstructions { get; set; }
 }

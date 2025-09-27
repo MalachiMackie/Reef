@@ -23,13 +23,12 @@ public class ILCompile
     private readonly List<ReefModule> _importedModules = []; 
     private readonly List<ReefMethod> _methods = [];
     private readonly Stack<Scope> _scopeStack = [];
-    // private TypeChecker.FunctionSignature? _mainFunction;
-    private List<IInstruction> Instructions => _scopeStack.Peek().Instructions;
+    private InstructionList Instructions => _scopeStack.Peek().InstructionList;
 
     private class Scope
     {
-        public List<IInstruction> Instructions { get; } = [];
-        // public required IReefTypeReference? CurrentType { get; init; }
+        public InstructionList InstructionList { get; } = new([], []);
+        public HashSet<string> ReservedLabels { get; } = [];
         public required LoweredMethod? CurrentFunction { get; init; }
     }
 
@@ -100,7 +99,7 @@ public class ILCompile
             importedMethods.Add(new ReefMethod()
             {
                 DisplayName = $"{fnClass.Name}__{call.Name}",
-                Instructions = [],
+                Instructions = new([], []),
                 Locals = [],
                 ReturnType = GetTypeReference(call.ReturnType),
                 Parameters = [..call.Parameters.Values.Select(x => GetTypeReference(x.Type))],
@@ -153,7 +152,7 @@ public class ILCompile
             importedMethods.Add(new()
             {
                 DisplayName = variant.CreateFunction.Name,
-                Instructions = [],
+                Instructions = new([], []),
                 Locals = [],
                 ReturnType = new ConcreteReefTypeReference
                 {
@@ -234,11 +233,11 @@ public class ILCompile
 
         var scope = _scopeStack.Pop();
         
-        return new ReefMethod()
+        return new ReefMethod
         {
             DisplayName = method.Name,
             Parameters = [..method.Parameters.Select(GetTypeReference)],
-            Instructions = scope.Instructions,
+            Instructions = scope.InstructionList,
             ReturnType = GetTypeReference(method.ReturnType),
             TypeParameters = [..method.TypeParameters.Select(x => x.PlaceholderName)],
             Locals = [..method.Locals.Select(x => new ReefMethod.Local(){DisplayName = x.Name, Type = GetTypeReference(x.Type)})]
@@ -516,7 +515,7 @@ public class ILCompile
                 {
                     DisplayName = field.Name,
                     Type = GetTypeReference(field.Type),
-                    StaticInitializerInstructions = scope.Instructions
+                    StaticInitializerInstructions = scope.InstructionList
                 };
             })]
         };
@@ -805,7 +804,8 @@ public class ILCompile
             case BlockExpression blockExpression:
                 throw new NotImplementedException();
             case BoolAndExpression boolAndExpression:
-                throw new NotImplementedException();
+                CompileBooleanAnd(boolAndExpression.Left, boolAndExpression.Right);
+                break;
             case BoolConstantExpression boolConstantExpression:
             {
                 Instructions.Add(new LoadBoolConstant(boolConstantExpression.Value));
@@ -818,7 +818,10 @@ public class ILCompile
                 break;
             }
             case BoolOrExpression boolOrExpression:
-                throw new NotImplementedException();
+            {
+                CompileBooleanOr(boolOrExpression.Left, boolOrExpression.Right);
+                break;
+            }
             case CastBoolToIntExpression castBoolToIntExpression:
                 throw new NotImplementedException();
             case CreateObjectExpression createObjectExpression:
@@ -1128,17 +1131,17 @@ public class ILCompile
 
         if (binaryOperatorExpression.BinaryOperator.OperatorType == BinaryOperatorType.BooleanAnd)
         {
-            CompileBooleanAnd(
-                binaryOperatorExpression.BinaryOperator.Left ?? throw new InvalidOperationException("Expected left expression"),
-                binaryOperatorExpression.BinaryOperator.Right ?? throw new InvalidOperationException("Expected left expression"));
+            // CompileBooleanAnd(
+            //     binaryOperatorExpression.BinaryOperator.Left ?? throw new InvalidOperationException("Expected left expression"),
+            //     binaryOperatorExpression.BinaryOperator.Right ?? throw new InvalidOperationException("Expected left expression"));
             return;
         }
 
         if (binaryOperatorExpression.BinaryOperator.OperatorType == BinaryOperatorType.BooleanOr)
         {
-            CompileBooleanOr(
-                binaryOperatorExpression.BinaryOperator.Left ?? throw new InvalidOperationException("Expected left expression"),
-                binaryOperatorExpression.BinaryOperator.Right ?? throw new InvalidOperationException("Expected left expression"));
+            // CompileBooleanOr(
+            //     binaryOperatorExpression.BinaryOperator.Left ?? throw new InvalidOperationException("Expected left expression"),
+            //     binaryOperatorExpression.BinaryOperator.Right ?? throw new InvalidOperationException("Expected left expression"));
             return;
         }
 
@@ -1164,44 +1167,52 @@ public class ILCompile
         Instructions.Add(instruction);
     }
 
-    private void CompileBooleanAnd(IExpression left, IExpression right)
+    private void CompileBooleanAnd(ILoweredExpression left, ILoweredExpression right)
     {
+        var scope = _scopeStack.Peek();
+        var andIndex = -1;
+        string falseLabel;
+        do
+        {
+            andIndex++;
+            falseLabel = $"boolAnd_{andIndex}_false";
+        } while (!scope.ReservedLabels.Add(falseLabel));
+
+        var afterLabel = $"boolAnd_{andIndex}_after";
+        scope.ReservedLabels.Add(afterLabel);
+
         CompileExpression(left);
-        var branchIfFalseIndex1 = Instructions.Count;
-        Instructions.Add(new BranchIfFalse(null!));
+        Instructions.Add(new BranchIfFalse(falseLabel));
         CompileExpression(right);
-        var branchIfFalseIndex2 = Instructions.Count;
-        Instructions.Add(new BranchIfFalse(null!));
-        Instructions.Add(new LoadBoolConstant(true));
-        var branchToEndIndex = Instructions.Count;
-        Instructions.Add(new Branch(null!));
-        // Instructions[branchIfFalseIndex1] = new BranchIfFalse(Instructions[branchIfFalseIndex1].Address,
-        //     new InstructionAddress((uint)Instructions.Count));
-        // Instructions[branchIfFalseIndex2] = new BranchIfFalse(Instructions[branchIfFalseIndex2].Address,
-        //     new InstructionAddress((uint)Instructions.Count));
-        // Instructions.Add(new LoadBoolConstant(false));
-        // Instructions[branchToEndIndex] = new Branch(Instructions[branchToEndIndex].Address,
-        //     new InstructionAddress((uint)Instructions.Count));
+        Instructions.Add(new Branch(afterLabel));
+        
+        Instructions.Labels.Add(new InstructionLabel(falseLabel, (uint)Instructions.Instructions.Count));
+        Instructions.Add(new LoadBoolConstant(false));
+        Instructions.Labels.Add(new InstructionLabel(afterLabel, (uint)Instructions.Instructions.Count));
     }
 
-    private void CompileBooleanOr(IExpression left, IExpression right)
+    private void CompileBooleanOr(ILoweredExpression left, ILoweredExpression right)
     {
+        var scope = _scopeStack.Peek();
+        var orIndex = -1;
+        string trueLabel;
+        do
+        {
+            orIndex++;
+            trueLabel = $"boolOr_{orIndex}_true";
+        } while (!scope.ReservedLabels.Add(trueLabel));
+
+        var afterLabel = $"boolOr_{orIndex}_after";
+        scope.ReservedLabels.Add(afterLabel);
+
         CompileExpression(left);
-        var branchIfTrueIndex1 = Instructions.Count;
-        Instructions.Add(new BranchIfTrue(null!));
+        Instructions.Add(new BranchIfTrue(trueLabel));
         CompileExpression(right);
-        var branchIfTrueIndex2 = Instructions.Count;
-        Instructions.Add(new BranchIfTrue(null!));
-        Instructions.Add(new LoadBoolConstant(false));
-        var branchToEndIndex = Instructions.Count;
-        Instructions.Add(new Branch(null!));
-        // Instructions[branchIfTrueIndex1] = new BranchIfTrue(Instructions[branchIfTrueIndex1].Address,
-        //     new InstructionAddress((uint)Instructions.Count));
-        // Instructions[branchIfTrueIndex2] = new BranchIfTrue(Instructions[branchIfTrueIndex2].Address,
-        //     new InstructionAddress((uint)Instructions.Count));
-        // Instructions.Add(new LoadBoolConstant(true));
-        // Instructions[branchToEndIndex] = new Branch(Instructions[branchToEndIndex].Address,
-        //     new InstructionAddress((uint)Instructions.Count));
+        Instructions.Add(new Branch(afterLabel));
+        
+        Instructions.Labels.Add(new InstructionLabel(trueLabel, (uint)Instructions.Instructions.Count));
+        Instructions.Add(new LoadBoolConstant(true));
+        Instructions.Labels.Add(new InstructionLabel(afterLabel, (uint)Instructions.Instructions.Count));
     }
 
     // private uint GetLocalIndex(TypeChecker.LocalVariable localVariable)
@@ -1323,14 +1334,14 @@ public class ILCompile
         CompileExpression(ifExpression.IfExpression.CheckExpression);
 
         var jumpToEndIndices = new List<int>();
-        var previousCheckIndex = Instructions.Count;
+        // var previousCheckIndex = Instructions.Count;
 
         Instructions.Add(new BranchIfFalse(null!));
         CompileExpression(ifExpression.IfExpression.Body ?? throw new InvalidOperationException("Expected if body"));
 
         foreach (var elseIf in ifExpression.IfExpression.ElseIfs)
         {
-            jumpToEndIndices.Add(Instructions.Count);
+            // jumpToEndIndices.Add(Instructions.Count);
             Instructions.Add(new Branch(null!));
 
             // Instructions[previousCheckIndex] = new BranchIfFalse(
@@ -1339,13 +1350,13 @@ public class ILCompile
 
             CompileExpression(elseIf.CheckExpression);
 
-            previousCheckIndex = Instructions.Count;
+            // previousCheckIndex = Instructions.Count;
             Instructions.Add(new BranchIfFalse(null!));
 
             CompileExpression(elseIf.Body ?? throw new InvalidOperationException("Expected else if body"));
         }
 
-        jumpToEndIndices.Add(Instructions.Count);
+        // jumpToEndIndices.Add(Instructions.Count);
         Instructions.Add(new Branch(null!));
 
         // Instructions[previousCheckIndex] = new BranchIfFalse(
