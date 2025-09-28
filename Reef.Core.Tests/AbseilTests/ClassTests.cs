@@ -184,6 +184,100 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     ])
             },
             {
+                "assign instance method to function variable from within type but different method",
+                """
+                class MyClass {
+                    pub fn OtherFn(){}
+                    pub fn MyFn() {
+                        var a = OtherFn; 
+                    }
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass",
+                            variants: [
+                                Variant("_classVariant")
+                            ])
+                    ],
+                    methods: [
+                        Method("MyClass__OtherFn",
+                            [MethodReturnUnit()],
+                            parameters: [ConcreteTypeReference("MyClass")]),
+                        Method("MyClass__MyFn",
+                            [
+                                VariableDeclaration("a",
+                                    CreateObject(
+                                        ConcreteTypeReference("Function`1", [Unit]),
+                                        "_classVariant",
+                                        true,
+                                        new()
+                                        {
+                                            {
+                                                "FunctionReference",
+                                                FunctionReferenceConstant(
+                                                    FunctionReference("MyClass__OtherFn"),
+                                                    true,
+                                                    new LoweredFunctionPointer([ConcreteTypeReference("MyClass")], Unit))
+                                            },
+                                            {
+                                                "FunctionParameter",
+                                                LoadArgument(0, true, ConcreteTypeReference("MyClass"))
+                                            }
+                                        }),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [Local("a", ConcreteTypeReference("Function`1", [Unit]))],
+                            parameters: [ConcreteTypeReference("MyClass")])
+                    ])
+            },
+            {
+                "assign instance method to function variable from within type",
+                """
+                class MyClass {
+                    pub fn MyFn() {
+                        var a = MyFn; 
+                    }
+                }
+                """,
+                LoweredProgram(
+                    types: [
+                        DataType("MyClass",
+                            variants: [
+                                Variant("_classVariant")
+                            ])
+                    ],
+                    methods: [
+                        Method("MyClass__MyFn",
+                            [
+                                VariableDeclaration("a",
+                                    CreateObject(
+                                        ConcreteTypeReference("Function`1", [Unit]),
+                                        "_classVariant",
+                                        true,
+                                        new()
+                                        {
+                                            {
+                                                "FunctionReference",
+                                                FunctionReferenceConstant(
+                                                    FunctionReference("MyClass__MyFn"),
+                                                    true,
+                                                    new LoweredFunctionPointer([ConcreteTypeReference("MyClass")], Unit))
+                                            },
+                                            {
+                                                "FunctionParameter",
+                                                LoadArgument(0, true, ConcreteTypeReference("MyClass"))
+                                            }
+                                        }),
+                                    false),
+                                MethodReturnUnit()
+                            ],
+                            locals: [Local("a", ConcreteTypeReference("Function`1", [Unit]))],
+                            parameters: [ConcreteTypeReference("MyClass")])
+                    ])
+            },
+            {
                 "call instance method",
                 """
                 class MyClass

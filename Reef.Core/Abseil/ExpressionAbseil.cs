@@ -1296,6 +1296,7 @@ public partial class ProgramAbseil
         var arguments = new List<ILoweredExpression>(e.MethodCall.ArgumentList.Count);
         LoweredFunctionReference functionReference;
 
+        // calling function object instead of normal function
         if (instantiatedFunction is null)
         {
             var methodExpression = LowerExpression(e.MethodCall.Method);
@@ -1312,62 +1313,68 @@ public partial class ProgramAbseil
                     methodType.TypeArguments);
 
             arguments.Add(LowerExpression(e.MethodCall.Method));
+            
+            arguments.AddRange(originalArguments);
+
+            return new MethodCallExpression(
+                functionReference,
+                arguments,
+                e.ValueUseful,
+                GetTypeReference(e.ResolvedType.NotNull()));
         }
-        else
+        
+        IReadOnlyList<ILoweredTypeReference> ownerTypeArguments = [];
+        if (e.MethodCall.Method is Expressions.MemberAccessExpression memberAccess)
         {
-            IReadOnlyList<ILoweredTypeReference> ownerTypeArguments = [];
-            if (e.MethodCall.Method is Expressions.MemberAccessExpression memberAccess)
-            {
-                var owner = LowerExpression(memberAccess.MemberAccess.Owner);
-                arguments.Add(owner);
-                ownerTypeArguments = owner.ResolvedType is LoweredConcreteTypeReference concrete
-                    ? concrete.TypeArguments
-                    : throw new UnreachableException("Shouldn't ever be able to call a method on a generic parameter");
-            }
-            else if (instantiatedFunction.ClosureTypeId.HasValue)
-            {
-                var createClosure = CreateClosureObject(instantiatedFunction);
-                arguments.Add(createClosure);
-            }
-            else if (instantiatedFunction is { IsStatic: false, OwnerType: not null }
-                     && _currentType is not null
-                     && EqualTypeReferences(GetTypeReference(instantiatedFunction.OwnerType), _currentType)
-                     && _currentFunction is not null
-                     && EqualTypeReferences(_currentFunction.Value.LoweredMethod.Parameters[0], _currentType))
-            {
-                arguments.Add(
-                        new LoadArgumentExpression(0, true, _currentType));
-            }
-
-            if (e.MethodCall.Method is Expressions.StaticMemberAccessExpression staticMemberAccess)
-            {
-                ownerTypeArguments = (GetTypeReference(staticMemberAccess.OwnerType.NotNull())
-                    as LoweredConcreteTypeReference).NotNull().TypeArguments;
-            }
-            else if (e.MethodCall.Method is Expressions.ValueAccessorExpression valueAccessor)
-            {
-                if (_currentType is not null)
-                {
-                    ownerTypeArguments = _currentType.TypeArguments;
-                }
-                else if (valueAccessor.FunctionInstantiation.NotNull()
-                        .OwnerType is {} ownerType)
-                {
-                    var ownerTypeReference = GetTypeReference(ownerType);
-                    if (ownerTypeReference is LoweredConcreteTypeReference
-                        {
-                            TypeArguments: var ownerReferenceTypeArguments
-                        })
-                    {
-                        ownerTypeArguments = ownerReferenceTypeArguments;
-                    }
-                }
-            }
-
-            functionReference = GetFunctionReference(instantiatedFunction.FunctionId,
-                [..instantiatedFunction.TypeArguments.Select(GetTypeReference)],
-                ownerTypeArguments);
+            var owner = LowerExpression(memberAccess.MemberAccess.Owner);
+            arguments.Add(owner);
+            ownerTypeArguments = owner.ResolvedType is LoweredConcreteTypeReference concrete
+                ? concrete.TypeArguments
+                : throw new UnreachableException("Shouldn't ever be able to call a method on a generic parameter");
         }
+        else if (instantiatedFunction.ClosureTypeId.HasValue)
+        {
+            var createClosure = CreateClosureObject(instantiatedFunction);
+            arguments.Add(createClosure);
+        }
+        else if (instantiatedFunction is { IsStatic: false, OwnerType: not null }
+                 && _currentType is not null
+                 && EqualTypeReferences(GetTypeReference(instantiatedFunction.OwnerType), _currentType)
+                 && _currentFunction is not null
+                 && EqualTypeReferences(_currentFunction.Value.LoweredMethod.Parameters[0], _currentType))
+        {
+            arguments.Add(
+                    new LoadArgumentExpression(0, true, _currentType));
+        }
+
+        if (e.MethodCall.Method is Expressions.StaticMemberAccessExpression staticMemberAccess)
+        {
+            ownerTypeArguments = (GetTypeReference(staticMemberAccess.OwnerType.NotNull())
+                as LoweredConcreteTypeReference).NotNull().TypeArguments;
+        }
+        else if (e.MethodCall.Method is Expressions.ValueAccessorExpression valueAccessor)
+        {
+            if (_currentType is not null)
+            {
+                ownerTypeArguments = _currentType.TypeArguments;
+            }
+            else if (valueAccessor.FunctionInstantiation.NotNull()
+                    .OwnerType is {} ownerType)
+            {
+                var ownerTypeReference = GetTypeReference(ownerType);
+                if (ownerTypeReference is LoweredConcreteTypeReference
+                    {
+                        TypeArguments: var ownerReferenceTypeArguments
+                    })
+                {
+                    ownerTypeArguments = ownerReferenceTypeArguments;
+                }
+            }
+        }
+
+        functionReference = GetFunctionReference(instantiatedFunction.FunctionId,
+            [..instantiatedFunction.TypeArguments.Select(GetTypeReference)],
+            ownerTypeArguments);
 
         arguments.AddRange(originalArguments);
 
@@ -1791,6 +1798,14 @@ public partial class ProgramAbseil
             if (fn.ClosureTypeId.HasValue)
             {
                 functionObjectParameters.Add("FunctionParameter", CreateClosureObject(fn));
+            }
+            else if (fn is { IsStatic: false, OwnerType: not null }
+                     && _currentType is not null
+                     && EqualTypeReferences(GetTypeReference(fn.OwnerType), _currentType)
+                     && _currentFunction is not null
+                     && EqualTypeReferences(_currentFunction.Value.LoweredMethod.Parameters[0], _currentType))
+            {
+                functionObjectParameters.Add("FunctionParameter", new LoadArgumentExpression(0, true, _currentType));
             }
 
             return new CreateObjectExpression(

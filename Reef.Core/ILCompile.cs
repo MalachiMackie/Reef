@@ -66,6 +66,13 @@ public class ILCompile
                 });
         }
 
+        var pointerType = new ConcreteReefTypeReference
+        {
+            Name = TypeChecker.ClassSignature.RawPointer.Name,
+            DefinitionId = TypeChecker.ClassSignature.RawPointer.Id,
+            TypeArguments = []
+        };
+
         for (var i = 0; i < 7; i++)
         {
             var fnClass = TypeChecker.ClassSignature.Function(i);
@@ -76,11 +83,11 @@ public class ILCompile
                     DisplayName = fnClass.Name,
                     TypeParameters = [..fnClass.TypeParameters.Select(x => x.GenericName)],
                     StaticFields = [],
-                    Variants = [new ReefVariant()
+                    Variants = [new ReefVariant
                     {
                         DisplayName = "_classVariant",
                         Fields = [
-                            new ReefField()
+                            new ReefField
                             {
                                 DisplayName = "FunctionReference",
                                 Type = new FunctionPointerReefType
@@ -88,6 +95,11 @@ public class ILCompile
                                     Parameters = [..fnClass.TypeParameters.SkipLast(1).Select(GetTypeReference)],
                                     ReturnType = GetTypeReference(fnClass.TypeParameters[^1])
                                 }
+                            },
+                            new ReefField
+                            {
+                                DisplayName = "FunctionParameter",
+                                Type = pointerType
                             }
                         ]
                     }],
@@ -802,7 +814,13 @@ public class ILCompile
         switch (expression)
         {
             case BlockExpression blockExpression:
-                throw new NotImplementedException();
+            {
+                foreach (var innerExpression in blockExpression.Expressions)
+                {
+                    CompileExpression(innerExpression);
+                }
+                break;
+            }
             case BoolAndExpression boolAndExpression:
                 CompileBooleanAnd(boolAndExpression.Left, boolAndExpression.Right);
                 break;
