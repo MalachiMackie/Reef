@@ -9,6 +9,7 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
     private readonly StringBuilder _stringBuilder = new();
     private uint _indentationLevel;
     private IReadOnlyList<MethodLocal> _methodLocals = [];
+    private IReadOnlyList<DataType> _dataTypes = [];
 
     public static string PrettyPrintLoweredProgram(
             LoweredProgram program,
@@ -24,6 +25,7 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
 
     private void PrettyPrintLoweredProgramInner(LoweredProgram program)
     {
+        _dataTypes = program.DataTypes;
         foreach (var dataType in program.DataTypes)
         {
             PrettyPrintDataType(dataType);
@@ -167,10 +169,11 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
         {
             var expression = method.Expressions[i];
             Indent();
+            var beforeLength = _stringBuilder.Length;
             PrettyPrintExpression(expression);
 
-            // only print a semicolon if it's not a tail expression
-            if (i < method.Expressions.Count - 1 || !expression.ValueUseful)
+            // only print a semicolon if it's not a tail expression and we've actually printed something
+            if ((i < method.Expressions.Count - 1 || !expression.ValueUseful) && beforeLength != _stringBuilder.Length)
             {
                 _stringBuilder.Append(';');
             }
@@ -196,16 +199,40 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
         {
             case VariableDeclarationExpression e:
             {
-                _stringBuilder.Append($"var {e.LocalName}: ");
-                var local = _methodLocals.First(x => x.Name == e.LocalName);
-                PrettyPrintTypeReference(local.Type);
+                var isInLocalsType = _methodLocals.Where(x => x.Name == "__locals")
+                    .Any(x =>
+                    {
+                        var dataType = _dataTypes.First(y => y.Id == (x.Type as LoweredConcreteTypeReference)!.DefinitionId);
+                        return dataType.Variants[0].Fields.Any(y => y.Name == e.LocalName);
+                    });
+
+                if (!isInLocalsType)
+                {
+                    _stringBuilder.Append($"var {e.LocalName}: ");
+                    var local = _methodLocals.First(x => x.Name == e.LocalName);
+                    PrettyPrintTypeReference(local.Type);
+                }
                 break;
             }
             case VariableDeclarationAndAssignmentExpression e:
             {
-                _stringBuilder.Append($"var {e.LocalName}: ");
-                var local = _methodLocals.First(x => x.Name == e.LocalName);
-                PrettyPrintTypeReference(local.Type);
+                var isInLocalsType = _methodLocals.Where(x => x.Name == "__locals")
+                    .Any(x =>
+                    {
+                        var dataType = _dataTypes.First(y => y.Id == (x.Type as LoweredConcreteTypeReference)!.DefinitionId);
+                        return dataType.Variants[0].Fields.Any(y => y.Name == e.LocalName);
+                    });
+
+                if (isInLocalsType)
+                {
+                    _stringBuilder.Append($"__locals.{e.LocalName}");
+                }
+                else
+                {
+                    _stringBuilder.Append($"var {e.LocalName}: ");
+                    var local = _methodLocals.First(x => x.Name == e.LocalName);
+                    PrettyPrintTypeReference(local.Type);
+                }
                 _stringBuilder.Append(" = ");
                 PrettyPrintExpression(e.Value);
                 break;
@@ -436,10 +463,11 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
                 {
                     var blockExpression = e.Expressions[i];
                     Indent();
+                    var beforeLength = _stringBuilder.Length;
                     PrettyPrintExpression(blockExpression);
 
-                    // only print a semicolon if it's not a tail expression
-                    if (i < e.Expressions.Count - 1 || !expression.ValueUseful)
+                    // only print a semicolon if it's not a tail expression and we've actually printed something 
+                    if ((i < e.Expressions.Count - 1 || !expression.ValueUseful) && beforeLength != _stringBuilder.Length)
                     {
                         _stringBuilder.Append(';');
                     }

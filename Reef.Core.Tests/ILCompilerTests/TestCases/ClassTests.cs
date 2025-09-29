@@ -235,7 +235,7 @@ public class ClassTests
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
                                 new LoadFunction(FunctionDefinitionReference("MyClass__SomeFn")),
-                                new Call(),
+                                new Call(1),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -270,7 +270,7 @@ public class ClassTests
                                 new LoadIntConstant(1),
                                 new LoadStringConstant(""),
                                 new LoadFunction(FunctionDefinitionReference("MyClass__SomeFn")),
-                                new Call(),
+                                new Call(3),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -301,7 +301,7 @@ public class ClassTests
                             [
                                 new LoadIntConstant(1),
                                 new LoadFunction(FunctionDefinitionReference("MyClass__MyFn")),
-                                new Call(),
+                                new Call(1),
                                 LoadUnit(),
                                 Return()
                             ])

@@ -973,7 +973,7 @@ public class ILCompile
                     Name = methodCallExpression.FunctionReference.Name,
                     TypeArguments = [..methodCallExpression.FunctionReference.TypeArguments.Select(GetTypeReference)]
                 }));
-                Instructions.Add(new Call());
+                Instructions.Add(new Call((uint)methodCallExpression.Arguments.Count));
                 
                 break;
             }
@@ -1478,7 +1478,7 @@ public class ILCompile
             //     FunctionIndex: 0,
             //     TypeArguments: []));
 
-            Instructions.Add(new Call());
+            // Instructions.Add(new Call());
             if (!methodCallExpression.ValueUseful)
             {
                 Instructions.Add(new Drop());
@@ -1514,7 +1514,7 @@ public class ILCompile
 
         LoadFunctionPointer(instantiatedFunction);
 
-        Instructions.Add(new Call());
+        // Instructions.Add(new Call());
         if (!methodCallExpression.ValueUseful)
         {
             Instructions.Add(new Drop());

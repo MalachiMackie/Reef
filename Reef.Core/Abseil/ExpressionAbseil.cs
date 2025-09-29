@@ -1608,11 +1608,6 @@ public partial class ProgramAbseil
 
         if (e.VariableDeclaration.Value is null)
         {
-            if (referencedInClosure)
-            {
-                // the variable has been consumed into the locals variable, and we're not assigning a value, so just put a unit constant here
-                return new UnitConstantExpression(e.ValueUseful);
-            }
             return new VariableDeclarationExpression(variableName, e.ValueUseful);
         }
 

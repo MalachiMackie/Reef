@@ -162,7 +162,7 @@ public class UnionTests
                                 new LoadIntConstant(1),
                                 new LoadStringConstant(""),
                                 new LoadFunction(FunctionDefinitionReference("MyUnion_Create_C")),
-                                new Call(),
+                                new Call(2),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
@@ -213,7 +213,7 @@ public class UnionTests
                                 new LoadLocal("a"),
                                 new LoadStringConstant(""),
                                 new LoadFunction(FunctionDefinitionReference("Function`2__Call", [StringType, ConcreteTypeReference("MyUnion")])),
-                                new Call(),
+                                new Call(2),
                                 new StoreLocal("b"),
                                 LoadUnit(),
                                 Return()
