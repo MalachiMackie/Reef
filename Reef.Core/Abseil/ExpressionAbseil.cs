@@ -1686,11 +1686,19 @@ public partial class ProgramAbseil
         var okVariant = UnionSignature.Result
             .Variants
             .First(x => x.Name == "Ok");
+        var errorVariant = (UnionSignature.Result
+            .Variants
+            .First(x => x.Name == "Error")
+            as TypeChecking.TypeChecker.TupleUnionVariant).NotNull();
 
         Debug.Assert(_currentFunction.HasValue);
         var locals = _currentFunction.Value.LoweredMethod.Locals;
         var localName = $"Local{locals.Count}";
         locals.Add(new MethodLocal(localName, operand.ResolvedType));
+
+        var returnType = (GetTypeReference(_currentFunction.Value.FunctionSignature.ReturnType)
+            as LoweredConcreteTypeReference).NotNull();
+        Debug.Assert(returnType.DefinitionId == UnionSignature.Result.Id);
 
         /*
          * var a = b()?;
@@ -1700,11 +1708,11 @@ public partial class ProgramAbseil
          *   _tempLocal = b();
          *   if (_tempLocal._variantIdentifier == OkVariantIdentifier)
          *   {
-         *     _tempLocal.Item0
+         *     (_tempLocal as result::ok).Item0
          *   }
          *   else
          *   {
-         *     return _tempLocal;
+         *     return err((_tempLocal as result::error).Item0);
          *   }
          * }
          */
@@ -1716,7 +1724,6 @@ public partial class ProgramAbseil
                     operand,
                     operand.ResolvedType,
                     false),
-
                 new SwitchIntExpression(
                     new FieldAccessExpression(
                         new LocalVariableAccessor(
@@ -1741,8 +1748,20 @@ public partial class ProgramAbseil
                                 resolvedType)
                         }
                     },
-                    new MethodReturnExpression(new LocalVariableAccessor(
-                        localName, true, operand.ResolvedType)),
+                    new MethodReturnExpression(
+                        new MethodCallExpression(
+                            GetFunctionReference(errorVariant.CreateFunction.Id, [], returnType.TypeArguments),
+                            [
+                                new FieldAccessExpression(
+                                    new LocalVariableAccessor(
+                                        localName, true, operand.ResolvedType),
+                                    "Item0",
+                                    errorVariant.Name,
+                                    true,
+                                    returnType.TypeArguments[1])
+                            ],
+                            true,
+                            returnType)),
                     valueUseful,
                     resolvedType)
             ],

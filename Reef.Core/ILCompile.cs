@@ -1006,7 +1006,60 @@ public class ILCompile
                 break;
             }
             case SwitchIntExpression switchIntExpression:
-                throw new NotImplementedException();
+            {
+                CompileExpression(switchIntExpression.Check);
+                var reservedLabels = _scopeStack.Peek().ReservedLabels;
+                var switchIntIndex = -1;
+                string otherwiseLabel;
+                do
+                {
+                    switchIntIndex++;
+                    otherwiseLabel = $"switchInt_{switchIntIndex}_otherwise";
+                } while (!reservedLabels.Add(otherwiseLabel));
+
+                var branches = new Dictionary<int, string>();
+                Instructions.Add(new SwitchInt(branches, otherwiseLabel));
+
+                var afterLabel = $"switchInt_{switchIntIndex}_after";
+                var afterNeeded = !switchIntExpression.Otherwise.Diverges || switchIntExpression.Results.Count > 1;
+                if (afterNeeded)
+                    reservedLabels.Add(afterLabel);
+                foreach (var intValue in switchIntExpression.Results.Keys)
+                {
+                    var label = $"switchInt_{switchIntIndex}_branch_{intValue}";
+                    reservedLabels.Add(label);
+                    branches[intValue] = label;
+                }
+
+                if (switchIntExpression.Otherwise is not UnreachableExpression)
+                {
+                    Instructions.Labels.Add(new InstructionLabel(otherwiseLabel, (uint)Instructions.Instructions.Count));
+                    CompileExpression(switchIntExpression.Otherwise);
+                    if (!switchIntExpression.Otherwise.Diverges)
+                    {
+                        Instructions.Add(new Branch(afterLabel));
+                    }
+                }
+
+                var lastBranch = switchIntExpression.Results.Keys.Max();
+                
+                foreach (var (intValue, branchExpression) in switchIntExpression.Results.OrderBy(x => x.Key))
+                {
+                    Instructions.Labels.Add(new InstructionLabel(branches[intValue], (uint)Instructions.Instructions.Count));
+                    CompileExpression(branchExpression);
+                    if (intValue != lastBranch)
+                    {
+                        Instructions.Add(new Branch(afterLabel));
+                    }
+                }
+
+                if (afterNeeded)
+                {
+                    Instructions.Labels.Add(new InstructionLabel(afterLabel, (uint)Instructions.Instructions.Count));
+                }
+
+                break;
+            }
             case UnitConstantExpression unitConstantExpression:
                 Instructions.Add(new LoadUnitConstant());
                 break;

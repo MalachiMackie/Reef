@@ -129,6 +129,11 @@ public record StoreField(uint VariantIndex, string FieldName) : IInstruction;
 public record LoadField(uint VariantIndex, string FieldName) : IInstruction;
 
 /// <summary>
+/// Pops the top int off the stack and jumps to the relevant label given in the provided options
+/// </summary>
+public record SwitchInt(Dictionary<int, string> BranchLabels, string Otherwise) : IInstruction;
+
+/// <summary>
 /// Pops the top value off the evaluation stack and stores it in the specified static field
 /// </summary>
 public record StoreStaticField(IReefTypeReference ReefType, string StaticFieldName) : IInstruction;

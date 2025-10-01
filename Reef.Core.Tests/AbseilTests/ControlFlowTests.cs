@@ -134,7 +134,18 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                                         }
                                                 },
                                                 MethodReturn(
-                                                    LocalAccess("Local1", true, ConcreteTypeReference("result", [Int, Int]))),
+                                                    MethodCall(
+                                                        FunctionReference("result_Create_Error", [Int, Int]),
+                                                        [
+                                                            FieldAccess(
+                                                                LocalAccess("Local1", true, ConcreteTypeReference("result", [Int, Int])),
+                                                                "Item0",
+                                                                "Error",
+                                                                true,
+                                                                Int)
+                                                        ],
+                                                        true,
+                                                        ConcreteTypeReference("result", [Int, Int]))),
                                                 valueUseful: true,
                                                 resolvedType: Int)
                                         ],

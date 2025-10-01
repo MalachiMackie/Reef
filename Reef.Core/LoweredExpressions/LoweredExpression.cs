@@ -12,20 +12,25 @@ public interface ILoweredExpression
 {
     ILoweredTypeReference ResolvedType { get; }
     bool ValueUseful { get; }
+    bool Diverges { get; } 
 }
 
 public record SwitchIntExpression(
-        ILoweredExpression Check,
-        Dictionary<int, ILoweredExpression> Results,
-        ILoweredExpression Otherwise,
-        bool ValueUseful,
-        ILoweredTypeReference ResolvedType) : ILoweredExpression;
+    ILoweredExpression Check,
+    Dictionary<int, ILoweredExpression> Results,
+    ILoweredExpression Otherwise,
+    bool ValueUseful,
+    ILoweredTypeReference ResolvedType) : ILoweredExpression
+{
+    public bool Diverges => Results.Values.Append(Otherwise).All(x => x.Diverges);
+}
 
 public record CastBoolToIntExpression(
         ILoweredExpression BoolExpression,
         bool ValueUseful) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record CreateObjectExpression(
@@ -35,27 +40,32 @@ public record CreateObjectExpression(
         Dictionary<string, ILoweredExpression> VariantFieldInitializers) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType => Type;
+    public bool Diverges => false;
 }
 
 public record UnitConstantExpression(bool ValueUseful) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Unit.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record IntConstantExpression(bool ValueUseful, int Value) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record MethodReturnExpression(ILoweredExpression ReturnValue) : ILoweredExpression
 {
     public bool ValueUseful => true;
     public ILoweredTypeReference ResolvedType => ReturnValue.ResolvedType;
+    public bool Diverges => true;
 }
 
 public record StringConstantExpression(bool ValueUseful, string Value) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.String.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record MethodCallExpression(
@@ -64,25 +74,35 @@ public record MethodCallExpression(
         bool ValueUseful,
         ILoweredTypeReference ResolvedType) : ILoweredExpression
 {
+    public bool Diverges => false;
 }
 
 public record FieldAccessExpression(
-        ILoweredExpression MemberOwner,
-        string FieldName,
-        string VariantName,
-        bool ValueUseful,
-        ILoweredTypeReference ResolvedType) : ILoweredExpression;
+    ILoweredExpression MemberOwner,
+    string FieldName,
+    string VariantName,
+    bool ValueUseful,
+    ILoweredTypeReference ResolvedType) : ILoweredExpression
+{
+    public bool Diverges => false;
+}
 
 public record StaticFieldAccessExpression(
-        LoweredConcreteTypeReference OwnerType,
-        string FieldName,
-        bool ValueUseful,
-        ILoweredTypeReference ResolvedType) : ILoweredExpression;
+    LoweredConcreteTypeReference OwnerType,
+    string FieldName,
+    bool ValueUseful,
+    ILoweredTypeReference ResolvedType) : ILoweredExpression
+{
+    public bool Diverges => false;
+}
 
 public record LoadArgumentExpression(
-        uint ArgumentIndex,
-        bool ValueUseful,
-        ILoweredTypeReference ResolvedType) : ILoweredExpression;
+    uint ArgumentIndex,
+    bool ValueUseful,
+    ILoweredTypeReference ResolvedType) : ILoweredExpression
+{
+    public bool Diverges => false;
+}
 
 public record VariableDeclarationAndAssignmentExpression(
         string LocalName,
@@ -90,6 +110,7 @@ public record VariableDeclarationAndAssignmentExpression(
         bool ValueUseful) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } =  ClassSignature.Unit.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record VariableDeclarationExpression(
@@ -97,6 +118,7 @@ public record VariableDeclarationExpression(
         bool ValueUseful) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Unit.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record LocalAssignmentExpression(
@@ -105,6 +127,7 @@ public record LocalAssignmentExpression(
         ILoweredTypeReference ResolvedType,
         bool ValueUseful) : ILoweredExpression
 {
+    public bool Diverges => false;
 }
 
 public record StaticFieldAssignmentExpression(
@@ -114,6 +137,7 @@ public record StaticFieldAssignmentExpression(
         bool ValueUseful,
         ILoweredTypeReference ResolvedType) : ILoweredExpression
 {
+    public bool Diverges => false;
 }
 
 public record FieldAssignmentExpression(
@@ -124,76 +148,93 @@ public record FieldAssignmentExpression(
         bool ValueUseful,
         ILoweredTypeReference ResolvedType) : ILoweredExpression
 {
+    public bool Diverges => false;
 }
 
 public record BlockExpression(
-        IReadOnlyList<ILoweredExpression> Expressions,
-        ILoweredTypeReference ResolvedType,
-        bool ValueUseful) : ILoweredExpression;
+    IReadOnlyList<ILoweredExpression> Expressions,
+    ILoweredTypeReference ResolvedType,
+    bool ValueUseful) : ILoweredExpression
+{
+    public bool Diverges => Expressions.Count > 0 && Expressions.Reverse().Any(x => x.Diverges);
+}
 
 public record IntPlusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record IntMinusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record UnreachableExpression : ILoweredExpression
 {
     public bool ValueUseful => false;
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Never.ToLoweredTypeReference();
+    public bool Diverges => true;
 }
 
 public record IntMultiplyExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record IntDivideExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record IntLessThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record IntGreaterThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record IntEqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record BoolAndExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record BoolOrExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record BoolNotExpression(bool ValueUseful, ILoweredExpression Operand) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record BoolConstantExpression(bool ValueUseful, bool Value) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
 }
 
 public record LocalVariableAccessor(string LocalName, bool ValueUseful, ILoweredTypeReference ResolvedType) : ILoweredExpression
 {
+    public bool Diverges => false;
 }
 
 public record LoweredMethod(
@@ -221,14 +262,13 @@ public record DataTypeField(string Name, ILoweredTypeReference Type);
 
 public record StaticDataTypeField(string Name, ILoweredTypeReference Type, ILoweredExpression StaticInitializer);
 
-public record DataTypeStaticField(ILoweredTypeReference Type);
-
 public record StaticFieldAccess(
         bool ValueUseful,
         ILoweredTypeReference ResolvedType,
         ITypeSignature MemberOwner,
         uint StaticFieldIndex) : ILoweredExpression
 {
+    public bool Diverges => false;
 }
 
 public record StaticMethodAccess(
@@ -237,6 +277,7 @@ public record StaticMethodAccess(
         ITypeSignature MemberOwner,
         InstantiatedFunction InstantiatedFunction) : ILoweredExpression
 {
+    public bool Diverges => false;
 }
 
 public record StaticMemberAccessor(
@@ -245,6 +286,7 @@ public record StaticMemberAccessor(
         ITypeSignature MemberOwner,
         uint MemberIndex) : ILoweredExpression
 {
+    public bool Diverges => false;
 }
 
 public record FunctionReferenceConstantExpression(
@@ -253,6 +295,7 @@ public record FunctionReferenceConstantExpression(
         LoweredFunctionPointer FunctionPointer) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType => FunctionPointer;
+    public bool Diverges => false;
 }
 
 public record LoweredFunctionReference(

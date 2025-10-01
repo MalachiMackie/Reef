@@ -12,7 +12,7 @@ public class ControlFlow
 {
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void CompileToIL_Should_GenerateCorrectIL(string description, string source, ReefModule expectedModule)
+    public void ControlFlowIL_Should_GenerateCorrectIL(string description, string source, ReefModule expectedModule)
     {
         var tokens = Tokenizer.Tokenize(source);
         var program = Parser.Parse(tokens);
@@ -46,7 +46,42 @@ public class ControlFlow
                     return ok(1);
                 }
                 """,
-                Module()
+                Module(
+                    methods: [
+                        Method("SomeFn",
+                            [
+                                new LoadIntConstant(1),
+                                new LoadFunction(FunctionDefinitionReference("result_Create_Ok", [IntType, StringType])),
+                                new Call(1),
+                                new StoreLocal("Local1"),
+                                new LoadLocal("Local1"),
+                                new LoadField(0, "_variantIdentifier"),
+                                new SwitchInt(new(){{0, "switchInt_0_branch_0"}}, "switchInt_0_otherwise"),
+                                // switchInt_0_otherwise
+                                new LoadLocal("Local1"),
+                                new LoadField(1, "Item0"),
+                                new LoadFunction(FunctionDefinitionReference("result_Create_Error", [IntType, StringType])),
+                                new Call(1),
+                                new Return(),
+                                // switchInt_0_branch_0
+                                new LoadLocal("Local1"),
+                                new LoadField(0, "Item0"),
+                                new StoreLocal("a"),
+                                new LoadIntConstant(1),
+                                new LoadFunction(FunctionDefinitionReference("result_Create_Ok", [IntType, StringType])),
+                                new Call(1),
+                                new Return()
+                            ],
+                            locals: [
+                                Local("a", IntType),
+                                Local("Local1", ConcreteTypeReference("result", [IntType, StringType]))
+                            ],
+                            labels: [
+                                new InstructionLabel("switchInt_0_otherwise", 7),
+                                new InstructionLabel("switchInt_0_branch_0", 12),
+                            ],
+                            returnType: ConcreteTypeReference("result", [IntType, StringType]))
+                    ])
             },
             {
                 "empty if is last instruction",
