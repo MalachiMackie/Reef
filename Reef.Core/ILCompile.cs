@@ -543,8 +543,6 @@ public class ILCompile
                 CompileExpression(methodReturnExpression.ReturnValue);
                 Instructions.Add(new Return());
                 break;
-            case StaticFieldAccess staticFieldAccess:
-                throw new NotImplementedException();
             case StaticFieldAccessExpression staticFieldAccessExpression:
             {
                 var typeReference = GetTypeReference(staticFieldAccessExpression.OwnerType);
@@ -558,10 +556,6 @@ public class ILCompile
                 Instructions.Add(new StoreStaticField(typeReference, staticFieldAssignmentExpression.FieldName));
                 break;
             }
-            case StaticMemberAccessor staticMemberAccessor:
-                throw new NotImplementedException();
-            case StaticMethodAccess staticMethodAccess:
-                throw new NotImplementedException();
             case StringConstantExpression stringConstantExpression:
             {
                 Instructions.Add(new LoadStringConstant(stringConstantExpression.Value));
@@ -625,8 +619,8 @@ public class ILCompile
             case UnitConstantExpression:
                 Instructions.Add(new LoadUnitConstant());
                 break;
-            case UnreachableExpression unreachableExpression:
-                throw new NotImplementedException();
+            case UnreachableExpression:
+                throw new InvalidOperationException("Should not ever have to IL Compile unreachable");
             case VariableDeclarationAndAssignmentExpression variableDeclarationAndAssignmentExpression:
                 CompileExpression(variableDeclarationAndAssignmentExpression.Value);
                 Instructions.Add(new StoreLocal(variableDeclarationAndAssignmentExpression.LocalName));

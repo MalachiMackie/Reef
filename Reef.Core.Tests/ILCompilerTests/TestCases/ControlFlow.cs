@@ -637,13 +637,11 @@ public class ControlFlow
                 union MyUnion {
                     A(string),
                     B,
-                    C
                 }
                 var a = MyUnion::B;
                 var b = match (a) {
                     MyUnion::A(_) => 1,
                     MyUnion::B => 2,
-                    _ => 3
                 };
                 """,
                 Module(
@@ -659,10 +657,6 @@ public class ControlFlow
                                     [
                                         Field("_variantIdentifier", IntType),
                                     ]),
-                                Variant("C",
-                                [
-                                    Field("_variantIdentifier", IntType),
-                                ]),
                             ])
                     ],
                     methods: [
@@ -697,9 +691,6 @@ public class ControlFlow
                                         {0, "switchInt_0_branch_0"},
                                         {1, "switchInt_0_branch_1"},
                                     }, "switchInt_0_otherwise"),
-                                // switchInt_0_otherwise
-                                new LoadIntConstant(3),
-                                new Branch("switchInt_0_after"),
                                 // switchInt_0_branch_0
                                 new LoadLocal("Local2"),
                                 new LoadField(0, "Item0"),
@@ -720,10 +711,9 @@ public class ControlFlow
                                 Local("Local3", StringType)
                             ],
                             labels: [
-                                new InstructionLabel("switchInt_0_otherwise", 10),
-                                new InstructionLabel("switchInt_0_branch_0", 12),
-                                new InstructionLabel("switchInt_0_branch_1", 17),
-                                new InstructionLabel("switchInt_0_after", 18),
+                                new InstructionLabel("switchInt_0_branch_0", 10),
+                                new InstructionLabel("switchInt_0_branch_1", 15),
+                                new InstructionLabel("switchInt_0_after", 16),
                             ])
                     ])
             },

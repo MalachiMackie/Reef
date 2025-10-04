@@ -269,33 +269,6 @@ public record DataTypeField(string Name, ILoweredTypeReference Type);
 
 public record StaticDataTypeField(string Name, ILoweredTypeReference Type, ILoweredExpression StaticInitializer);
 
-public record StaticFieldAccess(
-        bool ValueUseful,
-        ILoweredTypeReference ResolvedType,
-        ITypeSignature MemberOwner,
-        uint StaticFieldIndex) : ILoweredExpression
-{
-    public bool Diverges => false;
-}
-
-public record StaticMethodAccess(
-        bool ValueUseful,
-        ILoweredTypeReference ResolvedType,
-        ITypeSignature MemberOwner,
-        InstantiatedFunction InstantiatedFunction) : ILoweredExpression
-{
-    public bool Diverges => false;
-}
-
-public record StaticMemberAccessor(
-        bool ValueUseful,
-        ILoweredTypeReference ResolvedType,
-        ITypeSignature MemberOwner,
-        uint MemberIndex) : ILoweredExpression
-{
-    public bool Diverges => false;
-}
-
 public record FunctionReferenceConstantExpression(
         LoweredFunctionReference FunctionReference,
         bool ValueUseful,
