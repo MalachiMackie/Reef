@@ -54,7 +54,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                                 {
                                                     {
                                                         0,
-                                                        UnitConstant(false)
+                                                        Noop()
                                                     }
                                                 },
                                                 Block([LocalValueAssignment("a", IntConstant(2, true), true, Int)], Unit, true),
@@ -191,7 +191,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                 SwitchInt(
                                     CastBoolToInt(BoolConstant(true, true), true),
                                     new() {
-                                        {0, UnitConstant(false)}
+                                        {0, Noop()}
                                     },
                                     LocalValueAssignment("a", IntConstant(1, true), true, Int),
                                     false,
@@ -311,7 +311,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                                 {
                                                     {
                                                         0,
-                                                        UnitConstant(false)
+                                                        Noop()
                                                     }
                                                 },
                                                 Block([LocalValueAssignment("a", IntConstant(2, true), true, Int)], Unit, true),

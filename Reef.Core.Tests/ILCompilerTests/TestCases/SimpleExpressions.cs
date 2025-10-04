@@ -514,13 +514,13 @@ public class SimpleExpressions
                         Method("_Main",
                             [
                                 new LoadBoolConstant(true),
-                                new BranchIfFalse("boolOr_1_true"),
+                                new BranchIfTrue("boolOr_1_true"),
                                 new LoadBoolConstant(false),
                                 new Branch("boolOr_1_after"),
                                 // boolOr_1_true
                                 new LoadBoolConstant(true),
                                 // boolOr_1_after
-                                new BranchIfFalse("boolOr_0_true"),
+                                new BranchIfTrue("boolOr_0_true"),
                                 new LoadBoolConstant(true),
                                 new Branch("boolOr_0_after"),
                                 // boolOr_0_true

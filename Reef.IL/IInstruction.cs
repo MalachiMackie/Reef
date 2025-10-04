@@ -162,6 +162,11 @@ public record LoadIntConstant(int Value) : IInstruction;
 public record LoadBoolConstant(bool Value) : IInstruction;
 
 /// <summary>
+/// pops a bool off the evaluation stack and pushes it back on as an int
+/// </summary>
+public record CastBoolToInt : IInstruction;
+
+/// <summary>
 /// Loads a unit onto the evaluation stack
 /// </summary>
 public record LoadUnitConstant : IInstruction;

@@ -130,6 +130,13 @@ public record LocalAssignmentExpression(
     public bool Diverges => false;
 }
 
+public record NoopExpression : ILoweredExpression
+{
+    public bool ValueUseful => false;
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Never.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
 public record StaticFieldAssignmentExpression(
         LoweredConcreteTypeReference OwnerType,
         string FieldName,

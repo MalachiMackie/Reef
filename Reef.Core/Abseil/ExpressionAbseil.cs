@@ -1039,10 +1039,9 @@ public partial class ProgramAbseil
     private SwitchIntExpression LowerIfExpression(
         Expressions.IfExpressionExpression e)
     {
-
         var elseBody = e.IfExpression.ElseBody is not null
             ? LowerExpression(e.IfExpression.ElseBody)
-            : new UnitConstantExpression(false);
+            : new NoopExpression();
 
         var checksAndBodies = e.IfExpression.ElseIfs
             .Select(x => (LowerExpression(x.CheckExpression), LowerExpression(x.Body.NotNull())));

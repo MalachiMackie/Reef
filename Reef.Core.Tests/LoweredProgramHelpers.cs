@@ -130,6 +130,8 @@ public static class LoweredProgramHelpers
                 valueUseful);
     }
 
+    public static NoopExpression Noop() => new();
+
     public static IntPlusExpression IntPlus(
             ILoweredExpression left, ILoweredExpression right, bool valueUseful)
     {

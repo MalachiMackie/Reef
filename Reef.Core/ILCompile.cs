@@ -841,7 +841,11 @@ public class ILCompile
                 break;
             }
             case CastBoolToIntExpression castBoolToIntExpression:
-                throw new NotImplementedException();
+            {
+                CompileExpression(castBoolToIntExpression.BoolExpression);
+                Instructions.Add(new CastBoolToInt());
+                break;
+            }
             case CreateObjectExpression createObjectExpression:
             {
                 var typeReference = GetTypeReference(createObjectExpression.Type);
@@ -923,7 +927,7 @@ public class ILCompile
             {
                 CompileExpression(intLessThanExpression.Left);
                 CompileExpression(intLessThanExpression.Right);
-                Instructions.Add(new CompareIntLessOrEqualTo());
+                Instructions.Add(new CompareIntLessThan());
                 break;
             }
             case IntMinusExpression intMinusExpression:
@@ -1072,8 +1076,10 @@ public class ILCompile
             case VariableDeclarationExpression variableDeclarationExpression:
                 // noop
                 break;
+            case NoopExpression:
+                break;
             default:
-                throw new ArgumentOutOfRangeException(nameof(expression));
+                throw new ArgumentOutOfRangeException(expression.GetType().ToString());
         }
         
         // todo: push units and pop unneeded values

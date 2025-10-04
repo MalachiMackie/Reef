@@ -483,6 +483,11 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
                 _stringBuilder.Append("Unreachable");
                 break;
             }
+            case NoopExpression:
+            {
+                _stringBuilder.Append("noop");
+                break;
+            }
             default:
                 throw new NotImplementedException($"{expression.GetType()}");
         }
