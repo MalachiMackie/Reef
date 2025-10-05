@@ -1,0 +1,12 @@
+﻿{
+  "$schema": "http://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "Reef.Console": {
+      "commandName": "Project",
+      "environmentVariables": {
+        
+      },
+      "commandLineArgs": "Test.rf"
+    }
+  }
+}

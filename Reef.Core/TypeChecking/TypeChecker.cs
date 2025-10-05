@@ -35,10 +35,15 @@ public partial class TypeChecker
 
     private void TypeCheckInner()
     {
+        var printf = FunctionSignature.Printf;
+        
         // initial scope
         _typeCheckingScopes.Push(new TypeCheckingScope(
             null,
-            new Dictionary<string, FunctionSignature>(),
+            new Dictionary<string, FunctionSignature>()
+            {
+                { printf.Name, printf},
+            },
             InstantiatedClass.Unit,
             null,
             null,
@@ -163,7 +168,7 @@ public partial class TypeChecker
 
         foreach (var fn in block.Functions)
         {
-            var signature = fn.Signature ?? TypeCheckFunctionSignature(fn, functionIndex: null, ownerType: null);
+            var signature = fn.Signature ?? TypeCheckFunctionSignature(fn, ownerType: null);
 
             var localFunctions = CurrentFunctionSignature?.LocalFunctions
                 ?? _program.TopLevelLocalFunctions;
@@ -591,6 +596,5 @@ public partial class TypeChecker
         public required bool IsPublic { get; init; }
         public required bool IsMutable { get; init; }
         public required IExpression? StaticInitializer { get; init; }
-        public required uint FieldIndex { get; init; }
     }
 }

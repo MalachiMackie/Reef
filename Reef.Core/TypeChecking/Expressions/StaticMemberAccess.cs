@@ -31,7 +31,6 @@ public partial class TypeChecker
                     if (field is not null)
                     {
                         staticMemberAccess.MemberType = MemberType.Field;
-                        staticMemberAccess.ItemIndex = field.FieldIndex;
 
                         if (staticMemberAccess.TypeArguments is not null)
                         {
@@ -51,8 +50,7 @@ public partial class TypeChecker
                             memberName,
                             typeArguments,
                             staticMemberAccessExpression.SourceRange,
-                            out var function,
-                            out var functionIndex))
+                            out var function))
                     {
                         _errors.Add(TypeCheckerError.UnknownTypeMember(staticMemberAccess.MemberName!, instantiatedClass.Signature.Name));
                         return UnknownType.Instance;
@@ -63,7 +61,6 @@ public partial class TypeChecker
                         _errors.Add(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange));
                     }
 
-                    staticMemberAccess.ItemIndex = functionIndex;
                     staticMemberAccess.MemberType = MemberType.Function;
 
                     staticMemberAccess.InstantiatedFunction = function;
@@ -73,11 +70,10 @@ public partial class TypeChecker
                 }
             case InstantiatedUnion instantiatedUnion:
                 {
-                    var (variantIndex, variant) = instantiatedUnion.Variants.Index().FirstOrDefault(x => x.Item.Name == memberName);
+                    var variant = instantiatedUnion.Variants.FirstOrDefault(x => x.Name == memberName);
                     if (variant is not null)
                     {
                         staticMemberAccess.MemberType = MemberType.Variant;
-                        staticMemberAccess.ItemIndex = (uint)variantIndex;
 
                         if (staticMemberAccess.TypeArguments is not null)
                         {
@@ -121,7 +117,6 @@ public partial class TypeChecker
                     }
 
                     staticMemberAccess.MemberType = MemberType.Function;
-                    staticMemberAccess.ItemIndex = function.FunctionIndex;
                     staticMemberAccess.InstantiatedFunction = function;
 
                     return new FunctionObject(

@@ -75,7 +75,6 @@ public record MemberAccess(IExpression Owner, StringToken? MemberName, IReadOnly
         return $"{Owner}.{MemberName}";
     }
 
-    public uint? ItemIndex { get; set; }
     public MemberType? MemberType { get; set; }
     public TypeChecker.ITypeReference? OwnerType { get; set; }
     public TypeChecker.InstantiatedFunction? InstantiatedFunction { get; set; }
@@ -83,7 +82,6 @@ public record MemberAccess(IExpression Owner, StringToken? MemberName, IReadOnly
 
 public record StaticMemberAccess(NamedTypeIdentifier Type, StringToken? MemberName, IReadOnlyList<ITypeIdentifier>? TypeArguments)
 {
-    public uint? ItemIndex { get; set; }
     public MemberType? MemberType { get; set; }
     public TypeChecker.InstantiatedFunction? InstantiatedFunction { get; set; }
 

@@ -48,8 +48,7 @@ public partial class TypeChecker
                 stringToken.StringValue,
                 typeArguments,
                 memberAccessExpression.SourceRange,
-                out var function,
-                out var functionIndex))
+                out var function))
         {
             if (typeArgumentsIdentifiers is not null)
             {
@@ -67,7 +66,6 @@ public partial class TypeChecker
             }
 
             memberAccessExpression.MemberAccess.MemberType = MemberType.Field;
-            memberAccessExpression.MemberAccess.ItemIndex = field.FieldIndex;
 
             return field.Type;
         }
@@ -79,7 +77,6 @@ public partial class TypeChecker
         }
 
         memberAccessExpression.MemberAccess.MemberType = MemberType.Function;
-        memberAccessExpression.MemberAccess.ItemIndex = functionIndex;
         memberAccessExpression.MemberAccess.InstantiatedFunction = function;
 
         if (function.IsMutable)
@@ -131,7 +128,6 @@ public partial class TypeChecker
         }
 
         memberAccessExpression.MemberAccess.MemberType = MemberType.Function;
-        memberAccessExpression.MemberAccess.ItemIndex = function.FunctionIndex;
         memberAccessExpression.MemberAccess.InstantiatedFunction = function;
 
         return new FunctionObject(

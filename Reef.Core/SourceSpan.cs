@@ -1,4 +1,4 @@
-﻿namespace Reef.Core;
+﻿using System.Diagnostics;
 
 public record SourceSpan(SourcePosition Position, ushort Length)
 {

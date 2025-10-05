@@ -1,0 +1,9 @@
+﻿var a = "Hello World!";
+printf(a);
+printf("Hello World!");
+printf(a);
+printf("Hello World!");
+printf("Hello World!");
+printf(a);
+printf(a);
+printf(a);

@@ -47,8 +47,7 @@ public partial class TypeChecker
                     okCreateParameters,
                     IsStatic: true,
                     IsMutable: false,
-                    Expressions: [],
-                    FunctionIndex: 0)
+                    Expressions: [])
             {
                 ReturnType = resultTypeReference,
                 OwnerType = resultSignature
@@ -59,8 +58,7 @@ public partial class TypeChecker
                 errorCreateParameters,
                 IsStatic: true,
                 IsMutable: false,
-                Expressions: [],
-                FunctionIndex: 0)
+                Expressions: [])
             {
                 ReturnType = resultTypeReference,
                 OwnerType = resultSignature

@@ -6,7 +6,7 @@ namespace Reef.Core.TypeChecking;
 
 public partial class TypeChecker
 {
-    private FunctionSignature TypeCheckFunctionSignature(LangFunction fn, uint? functionIndex, ITypeSignature? ownerType)
+    private FunctionSignature TypeCheckFunctionSignature(LangFunction fn, ITypeSignature? ownerType)
     {
         var parameters = new OrderedDictionary<string, FunctionSignatureParameter>();
 
@@ -18,8 +18,7 @@ public partial class TypeChecker
             parameters,
             fn.StaticModifier is not null,
             fn.MutabilityModifier is not null,
-            fn.Block.Expressions,
-            functionIndex)
+            fn.Block.Expressions)
         {
             ReturnType = null!,
             OwnerType = ownerType
@@ -85,7 +84,7 @@ public partial class TypeChecker
             }
         }
 
-        fnSignature.LocalFunctions.AddRange(fn.Block.Functions.Select(x => TypeCheckFunctionSignature(x, functionIndex: null, ownerType: null)));
+        fnSignature.LocalFunctions.AddRange(fn.Block.Functions.Select(x => TypeCheckFunctionSignature(x, ownerType: null)));
 
         // todo: function overloading
         return fnSignature;
@@ -102,7 +101,7 @@ public partial class TypeChecker
                 parameter);
         }
 
-        if (!fnSignature.IsStatic && fnSignature.OwnerType is not null)
+        if (fnSignature is { IsStatic: false, OwnerType: not null })
         {
             AddScopedVariable(
                     "this",
@@ -260,8 +259,6 @@ public partial class TypeChecker
         public Guid FunctionId => Signature.Id;
         public IReadOnlyList<FunctionParameter> Parameters { get; }
         public string Name => Signature.Name;
-        public uint? FunctionIndex => Signature.FunctionIndex;
-        public Guid? LocalsTypeId => Signature.LocalsTypeId;
         public Guid? ClosureTypeId => Signature.ClosureTypeId;
         public List<(Guid fieldTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureTypeFields =>
             Signature.ClosureTypeFields;
@@ -301,15 +298,12 @@ public partial class TypeChecker
         OrderedDictionary<string, FunctionSignatureParameter> Parameters,
         bool IsStatic,
         bool IsMutable,
-        IReadOnlyList<IExpression> Expressions,
-        uint? FunctionIndex) : ITypeSignature
+        IReadOnlyList<IExpression> Expressions) : ITypeSignature
     {
         public Guid Id { get; } = Guid.NewGuid();
         public Guid? LocalsTypeId { get; set; }
         public Guid? ClosureTypeId { get; set; }
         public List<(Guid fieldTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureTypeFields { get; set; } = [];
-        public IReadOnlyList<IVariable> LocalsTypeFields { get; set; } = [];
-        public bool IsGlobal => OwnerType is null;
 
         // mutable due to setting up signatures and generic stuff
         public required ITypeReference ReturnType { get; set; }
@@ -318,6 +312,33 @@ public partial class TypeChecker
         public List<FunctionSignature> LocalFunctions { get; init; } = [];
         public List<LocalVariable> LocalVariables { get; init; } = [];
         public List<IVariable> AccessedOuterVariables { get; } = [];
+        
+        public static FunctionSignature Printf { get; }
+
+        static FunctionSignature()
+        {
+            var parameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+            var signature = new FunctionSignature(
+                Token.Identifier("printf", SourceSpan.Default),
+                [],
+                parameters,
+                IsStatic: true,
+                IsMutable: false,
+                Expressions: [])
+            {
+                OwnerType = null,
+                ReturnType = InstantiatedClass.Unit
+            };
+
+            parameters["format"] = new FunctionSignatureParameter(
+                signature,
+                Token.Identifier("format", SourceSpan.Default),
+                InstantiatedClass.String,
+                false,
+                0);
+
+            Printf = signature;
+        }
     }
 
     public record FunctionParameter(ITypeReference Type, bool Mutable);

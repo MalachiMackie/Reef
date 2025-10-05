@@ -70,8 +70,7 @@ public partial class TypeChecker
                 callFunctionParameters,
                 IsStatic: false,
                 IsMutable: false,
-                Expressions: [],
-                FunctionIndex: 0)
+                Expressions: [])
             {
                 ReturnType = null!,
                 OwnerType = signature
@@ -142,7 +141,6 @@ public partial class TypeChecker
                 Type = typeParameters[i],
                 IsPublic = true,
                 StaticInitializer = null,
-                FieldIndex = (uint)i
             }));
 
             CachedTupleSignatures[elementCount] = signature;
@@ -187,20 +185,17 @@ public partial class TypeChecker
         string functionName,
         IReadOnlyList<(ITypeReference, SourceRange)> typeArguments,
         SourceRange typeArgumentsSourceRange,
-        [NotNullWhen(true)] out InstantiatedFunction? function,
-        [NotNullWhen(true)] out uint? functionIndex)
+        [NotNullWhen(true)] out InstantiatedFunction? function)
     {
         var signature = @class.Signature.Functions.FirstOrDefault(x => x.Name == functionName);
 
         if (signature is null)
         {
             function = null;
-            functionIndex = null;
             return false;
         }
 
         function = InstantiateFunction(signature, @class, typeArguments, typeArgumentsSourceRange, inScopeTypeParameters: []);
-        functionIndex = signature.FunctionIndex ?? throw new InvalidOperationException("Class function should have index");
         return true;
     }
 

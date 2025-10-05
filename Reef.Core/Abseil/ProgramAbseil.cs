@@ -30,7 +30,18 @@ public partial class ProgramAbseil
     private ProgramAbseil(LangProgram program)
     {
         var importedDataTypes = new List<DataType>();
-        var importedMethods = new List<LoweredMethod>();
+        var printf = FunctionSignature.Printf;
+        var importedMethods = new List<LoweredMethod>()
+        {
+            new (
+                printf.Id,
+                printf.Name,
+                [],
+                [GetTypeReference(InstantiatedClass.String)],
+                GetTypeReference(InstantiatedClass.Unit),
+                [],
+                [])
+        };
 
         var rawPointerType = new LoweredConcreteTypeReference(
                 ClassSignature.RawPointer.Name,
@@ -179,8 +190,7 @@ public partial class ProgramAbseil
                 [],
                 IsStatic: true,
                 IsMutable: false,
-                _program.Expressions,
-                FunctionIndex: null)
+                _program.Expressions)
         {
             ReturnType = InstantiatedClass.Unit,
             OwnerType = null,

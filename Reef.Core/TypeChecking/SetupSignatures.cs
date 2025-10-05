@@ -85,14 +85,14 @@ public partial class TypeChecker
                 unionSignature,
                 genericPlaceholders: unionSignature.TypeParameters);
 
-            foreach (var (index, function) in union.Functions.Index())
+            foreach (var function in union.Functions)
             {
                 if (functions.Any(x => x.Name == function.Name.StringValue))
                 {
                     _errors.Add(TypeCheckerError.ConflictingFunctionName(function.Name));
                 }
 
-                functions.Add(TypeCheckFunctionSignature(function, (uint)index, unionSignature));
+                functions.Add(TypeCheckFunctionSignature(function, unionSignature));
             }
 
             foreach (var variant in union.Variants)
@@ -129,8 +129,7 @@ public partial class TypeChecker
                         createFunctionParameters,
                         IsStatic: true,
                         IsMutable: false,
-                        [],
-                        0)
+                        [])
                     {
                         OwnerType = unionSignature,
                         ReturnType = new InstantiatedUnion(
@@ -173,7 +172,7 @@ public partial class TypeChecker
                 ClassUnionVariant TypeCheckUnionClassVariant(Core.ClassUnionVariant classVariant)
                 {
                     var fields = new List<TypeField>();
-                    foreach (var (index, field) in classVariant.Fields.Index())
+                    foreach (var field in classVariant.Fields)
                     {
                         if (fields.Any(x => x.Name == field.Name.StringValue))
                         {
@@ -204,7 +203,6 @@ public partial class TypeChecker
                             IsStatic = false,
                             StaticInitializer = null,
                             IsPublic = true,
-                            FieldIndex = (uint)index
                         };
                         fields.Add(typeField);
                     }
@@ -222,7 +220,7 @@ public partial class TypeChecker
         {
             using var _ = PushScope(classSignature, genericPlaceholders: classSignature.TypeParameters);
 
-            foreach (var (index, fn) in @class.Functions.Index())
+            foreach (var fn in @class.Functions)
             {
                 if (functions.Any(x => x.Name == fn.Name.StringValue))
                 {
@@ -230,10 +228,10 @@ public partial class TypeChecker
                 }
 
                 // todo: function overloading
-                functions.Add(TypeCheckFunctionSignature(fn, (uint)index, classSignature));
+                functions.Add(TypeCheckFunctionSignature(fn, classSignature));
             }
 
-            foreach (var (index, field) in @class.Fields.Index())
+            foreach (var field in @class.Fields)
             {
                 var type = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type);
                 field.ResolvedType = type;
@@ -245,7 +243,6 @@ public partial class TypeChecker
                     IsPublic = field.AccessModifier is { Token.Type: TokenType.Pub },
                     IsStatic = field.StaticModifier is { Token.Type: TokenType.Static },
                     StaticInitializer = field.InitializerValue,
-                    FieldIndex = (uint)index
                 };
 
                 if (fields.Any(y => y.Name == typeField.Name))
@@ -262,7 +259,7 @@ public partial class TypeChecker
             var name = fn.Name.StringValue;
 
             // todo: function overloading
-            if (!ScopedFunctions.TryAdd(name, TypeCheckFunctionSignature(fn, functionIndex: null, ownerType: null)))
+            if (!ScopedFunctions.TryAdd(name, TypeCheckFunctionSignature(fn, ownerType: null)))
             {
                 _errors.Add(TypeCheckerError.ConflictingFunctionName(fn.Name));
             }
