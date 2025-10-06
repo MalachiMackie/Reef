@@ -136,6 +136,7 @@ main:
 
     private readonly Stack<FunctionDefinitionReference> _functionStack = [];
     private uint _byteOffset;
+    private const uint _shadowSpaceBytes = 32;
 
     private void ProcessInstruction(IInstruction instruction)
     {
@@ -163,19 +164,19 @@ main:
                     throw new NotImplementedException();
                 }
 
-                _codeSegment.AppendLine($"    mov     rcx, [rsp+8]");
+                // move top of stack into rcx as first argument
+                _codeSegment.AppendLine("    mov     rcx, [rsp]");
+                
+                // ensure we're byte aligned and give the callee 32 bytes of shadow space
                 var bytesToOffset = 16 - _byteOffset;
-                if (_byteOffset > 0)
-                {
-                    _codeSegment.AppendLine($"    sub     rsp, {bytesToOffset}");
-                    _byteOffset = 0;
-                    // _codeSegment.AppendLine($"    mov     rcx, [rsp + {bytesToOffset}]");
-                }
-                else
-                {
-                    // _codeSegment.AppendLine("    mov     rcx, [rsp]");
-                }
+                _codeSegment.AppendLine($"    sub     rsp, {bytesToOffset + _shadowSpaceBytes}");
+                _byteOffset = 0;
+                
                 _codeSegment.AppendLine($"    call    {functionDefinition.Name}");
+                
+                // pop off the 32 bytes of shadow space as well as it's return value 
+                _codeSegment.AppendLine($"    add     rsp, {_shadowSpaceBytes + 8}");
+                _byteOffset = 8;
                 break;
             }
             case CastBoolToInt castBoolToInt:
@@ -220,7 +221,7 @@ main:
             case LoadLocal loadLocal:
             {
                 var localIndex = _locals.Index().First(x => x.Item.DisplayName == loadLocal.LocalName).Index;
-                _codeSegment.AppendLine($"    push     [rbp-{32 + 8 + localIndex*8}]");
+                _codeSegment.AppendLine($"    push     [rbp-{_shadowSpaceBytes + localIndex*8}]");
                 _byteOffset += 8;
                 _byteOffset %= 16;
                 break;
@@ -267,7 +268,16 @@ main:
             case StoreLocal storeLocal:
             {
                 var localIndex = _locals.Index().First(x => x.Item.DisplayName == storeLocal.LocalName).Index;
-                _codeSegment.AppendLine($"    mov     [rbp-{32 + 8 + localIndex*8}], rsp");
+                // pop the value on the stack into rax
+                _codeSegment.AppendLine("    pop     rax");
+                // we want to decrement the byte offset by 8, but we may increment by 8 so we don't overflow
+                if (_byteOffset < 8)
+                    _byteOffset += 8;
+                else
+                    _byteOffset -= 8;
+                
+                // move rax into the local's dedicated stack space
+                _codeSegment.AppendLine($"    mov     [rbp-{_shadowSpaceBytes + localIndex*8}], rax");
                 break;
             }
             case StoreStaticField storeStaticField:

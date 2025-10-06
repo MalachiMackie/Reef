@@ -1,9 +1,9 @@
 ﻿var a = "Hello World!";
+var b = "Good Bye :(";
 printf(a);
-printf("Hello World!");
-printf(a);
-printf("Hello World!");
-printf("Hello World!");
-printf(a);
-printf(a);
+printf(b);
+printf("Good Bye :(");
+printf(b);
+printf("something else");
+printf(b);
 printf(a);
