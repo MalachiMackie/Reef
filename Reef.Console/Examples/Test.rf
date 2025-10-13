@@ -1,0 +1,13 @@
+﻿var a = 1;
+var b = a < 2;
+
+if (b) {
+    printf("Less than 2. ");
+}
+
+if (a > 2) {
+    printf("Greater than 2. ");
+}
+else {
+    printf("Less than or equal to 2. ");
+}

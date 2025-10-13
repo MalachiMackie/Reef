@@ -104,7 +104,7 @@ public partial class TypeChecker
             return signature;
         }
 
-        private static readonly Dictionary<ushort, ClassSignature> CachedTupleSignatures = [];
+        private static readonly ConcurrentDictionary<ushort, ClassSignature> CachedTupleSignatures = [];
         public static ClassSignature Tuple(ushort elementCount)
         {
             if (elementCount < 2)

@@ -6,7 +6,7 @@
       "environmentVariables": {
         
       },
-      "commandLineArgs": "Test.rf"
+      "commandLineArgs": "../../../Examples/HelloWorld.rf"
     }
   }
 }

@@ -1,0 +1,6 @@
+﻿var a = "Hello";
+var b = "World";
+printf(a);
+printf(" ");
+printf(b);
+printf("!");

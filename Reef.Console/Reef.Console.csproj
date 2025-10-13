@@ -13,8 +13,11 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Update="Test.rf">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <None Update="Examples\HelloWorld.rf">
+        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      </None>
+      <None Update="Examples\Test.rf">
+        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       </None>
     </ItemGroup>
 
