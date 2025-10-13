@@ -216,22 +216,35 @@ public class AssemblyLine(ReefModule reefModule)
                     break;
                 }
             case CompareIntEqual compareIntEqual:
-                _codeSegment.AppendLine($"; COMPARE_INT_EQUAL");
-                throw new NotImplementedException();
+                {
+                    _codeSegment.AppendLine($"; COMPARE_INT_EQUAL");
+
+                    _codeSegment.AppendLine("    pop    rax");
+                    _codeSegment.AppendLine("    cmp    rax, [rsp]");
+                    _codeSegment.AppendLine("    pop    rax");
+                    _codeSegment.AppendLine("    pushf");
+                    _codeSegment.AppendLine("    pop    rax");
+                    _codeSegment.AppendLine("    and    rax, 1000000b"); // zero flag
+                    _codeSegment.AppendLine("    shr    rax, 6");
+                    _codeSegment.AppendLine("    push   rax");
+
+                    break;
+                }
             case CompareIntGreaterOrEqualTo compareIntGreaterOrEqualTo:
                 _codeSegment.AppendLine($"; COMPARE_INT_GREATER_OR_EQUAL");
                 throw new NotImplementedException();
             case CompareIntGreaterThan compareIntGreaterThan:
                 {
                     _codeSegment.AppendLine($"; COMPARE_INT_GREATER");
-                    _codeSegment.AppendLine("    MOV     rax, [rsp]");
-                    _codeSegment.AppendLine("    CMP     rax, [rsp+8]");
+                    _codeSegment.AppendLine("    POP     rax");
+                    _codeSegment.AppendLine("    CMP     rax, [rsp]");
+                    _codeSegment.AppendLine("    POP     rax");
                     _codeSegment.AppendLine("    PUSHF");
                     _byteOffset += 8;
                     _byteOffset %= 16;
                     _codeSegment.AppendLine($"; ByteOffest: {_byteOffset}");
-                    _codeSegment.AppendLine("    MOV     rax, [rsp]");
-                    _codeSegment.AppendLine("    AND     rax, 10000000b");
+                    _codeSegment.AppendLine("    POP     rax");
+                    _codeSegment.AppendLine("    AND     rax, 10000000b"); // sign flag
                     _codeSegment.AppendLine("    SHR     rax, 7");
                     _codeSegment.AppendLine("    PUSH    rax");
                     _byteOffset += 8;
@@ -245,14 +258,15 @@ public class AssemblyLine(ReefModule reefModule)
             case CompareIntLessThan compareIntLessThan:
                 {
                     _codeSegment.AppendLine($"; COMPARE_INT_LESS");
-                    _codeSegment.AppendLine("    MOV     rax, [rsp]");
-                    _codeSegment.AppendLine("    CMP     [rsp+8], rax");
+                    _codeSegment.AppendLine("    POP     rax");
+                    _codeSegment.AppendLine("    CMP     [rsp], rax");
+                    _codeSegment.AppendLine("    POP     rax");
                     _codeSegment.AppendLine("    PUSHF");
                     _byteOffset += 8;
                     _byteOffset %= 16;
                     _codeSegment.AppendLine($"; ByteOffest: {_byteOffset}");
-                    _codeSegment.AppendLine("    MOV     rax, [rsp]");
-                    _codeSegment.AppendLine("    AND     rax, 10000000b");
+                    _codeSegment.AppendLine("    POP     rax");
+                    _codeSegment.AppendLine("    AND     rax, 10000000b"); // sign flag
                     _codeSegment.AppendLine("    SHR     rax, 7");
                     _codeSegment.AppendLine("    PUSH    rax");
                     _byteOffset += 8;
@@ -279,8 +293,13 @@ public class AssemblyLine(ReefModule reefModule)
                 _codeSegment.AppendLine($"; INT_MULTIPLY");
                 throw new NotImplementedException();
             case IntPlus intPlus:
-                _codeSegment.AppendLine($"; INT_PLUS");
-                throw new NotImplementedException();
+                {
+                    _codeSegment.AppendLine($"; INT_PLUS");
+
+                    _codeSegment.AppendLine($"    POP     rax");
+                    _codeSegment.AppendLine("    ADD    [rsp], rax");
+                    break;
+                }
             case LoadArgument loadArgument:
                 _codeSegment.AppendLine($"; LOAD_ARGUMENT({loadArgument.ArgumentIndex})");
                 throw new NotImplementedException();

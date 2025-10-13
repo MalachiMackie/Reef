@@ -39,4 +39,21 @@ public class VariableTests : IntegrationTestBase
         result.ExitCode.Should().Be(0);
         result.StandardOutput.Should().Be("Hello World!");
     }
+
+    [Fact]
+    public async Task VariableReassignment()
+    {
+        await SetupTest(
+            """
+            var mut a = "hello";
+            a = "world";
+
+            printf(a);
+            """);
+
+        var result = await Run();
+
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be("world");
+    }
 }
