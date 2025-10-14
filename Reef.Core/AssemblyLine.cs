@@ -299,14 +299,41 @@ public class AssemblyLine(ReefModule reefModule)
                 _codeSegment.AppendLine($"; DROP");
                 throw new NotImplementedException();
             case IntDivide intDivide:
-                _codeSegment.AppendLine($"; INT_DIVIDE");
-                throw new NotImplementedException();
+                {
+                    _codeSegment.AppendLine($"; INT_DIVIDE");
+
+                    _codeSegment.AppendLine("    pop     rcx");
+                    _codeSegment.AppendLine("    pop     rax");
+
+                    // extend rax to double quad word for divide operation
+                    _codeSegment.AppendLine("    cqo");
+                    _codeSegment.AppendLine("    idiv    rcx");
+                    _codeSegment.AppendLine("    mov     [rsp], rax");
+
+                    // todo: panic/throw when dividing by zero
+
+                    break;
+                }
             case IntMinus intMinus:
-                _codeSegment.AppendLine($"; INT_MINUS");
-                throw new NotImplementedException();
+                {
+                    _codeSegment.AppendLine($"; INT_MINUS");
+
+                    _codeSegment.AppendLine("    POP    rax");
+                    _codeSegment.AppendLine("    SUB    [rsp], rax");
+                    break;
+                }
             case IntMultiply intMultiply:
-                _codeSegment.AppendLine($"; INT_MULTIPLY");
-                throw new NotImplementedException();
+                {
+                    _codeSegment.AppendLine($"; INT_MULTIPLY");
+
+                    _codeSegment.AppendLine("    pop     rax");
+                    _codeSegment.AppendLine("    pop     rbx");
+                    // imul requires both arguments to be in registers (I think)
+                    _codeSegment.AppendLine("    imul    rax, rbx");
+                    _codeSegment.AppendLine("    mov     [rsp], rax");
+                    // todo: panic/throw on overflow
+                    break;
+                }
             case IntPlus intPlus:
                 {
                     _codeSegment.AppendLine($"; INT_PLUS");
