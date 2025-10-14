@@ -159,8 +159,12 @@ public class AssemblyLine(ReefModule reefModule)
         switch (instruction)
         {
             case BoolNot boolNot:
-                _codeSegment.AppendLine($"; BOOL_NOT");
-                throw new NotImplementedException();
+                {
+                    _codeSegment.AppendLine($"; BOOL_NOT");
+
+                    _codeSegment.AppendLine("    xor    [rsp], 1h");
+                    break;
+                }
             case Branch branch:
                 {
                     _codeSegment.AppendLine($"; BRANCH({branch.BranchToLabelName})");
@@ -346,8 +350,13 @@ public class AssemblyLine(ReefModule reefModule)
                 _codeSegment.AppendLine($"; LOAD_ARGUMENT({loadArgument.ArgumentIndex})");
                 throw new NotImplementedException();
             case LoadBoolConstant loadBoolConstant:
-                _codeSegment.AppendLine($"; LOAD_BOOL_CONSTANT({loadBoolConstant.Value})");
-                throw new NotImplementedException();
+                {
+                    _codeSegment.AppendLine($"; LOAD_BOOL_CONSTANT({loadBoolConstant.Value})");
+
+                    _codeSegment.AppendLine($"    PUSH    {(loadBoolConstant.Value ? 1 : 0)}h");
+
+                    break;
+                }
             case LoadField loadField:
                 _codeSegment.AppendLine($"; LOAD_FIELD({loadField.VariantIndex}:{loadField.FieldName})");
                 throw new NotImplementedException();
