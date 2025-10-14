@@ -108,6 +108,18 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                     ])
             },
             {
+                "int not equals",
+                "1 != 2;",
+                LoweredProgram(
+                    methods: [
+                        Method("_Main",
+                            [
+                                IntNotEquals(IntConstant(1, true), IntConstant(2, true), false),
+                                MethodReturnUnit()
+                            ])
+                    ])
+            },
+            {
                 "int equals",
                 "1 == 2;",
                 LoweredProgram(

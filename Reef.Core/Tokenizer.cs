@@ -4,7 +4,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Reef.Core;
 
-// todo: try pool allocations 
 public class Tokenizer
 {
     // maximum potential token types at the same time
@@ -282,6 +281,8 @@ public class Tokenizer
             TokenType.Comma when source is "," => Token.Comma(new SourceSpan(position, (ushort)source.Length)),
             TokenType.DoubleEquals when source is "==" => Token.DoubleEquals(new SourceSpan(position,
                 (ushort)source.Length)),
+            TokenType.NotEquals when source is "!=" => Token.NotEquals(new SourceSpan(position,
+                (ushort)source.Length)),
             TokenType.Turbofish when source is "::<" => Token.Turbofish(new SourceSpan(position,
                 (ushort)source.Length)),
             TokenType.Else when source is "else" => Token.Else(new SourceSpan(position, (ushort)source.Length)),
@@ -321,7 +322,6 @@ public class Tokenizer
         switch (firstChar)
         {
             case 'i':
-                // tokens[i++] = TokenType.IntKeyword;
                 tokens[i++] = TokenType.If;
                 tokens[i++] = TokenType.Identifier;
                 break;
@@ -333,6 +333,7 @@ public class Tokenizer
                 break;
             case '!':
                 tokens[i++] = TokenType.Bang;
+                tokens[i++] = TokenType.NotEquals;
                 break;
             case '(':
                 tokens[i++] = TokenType.LeftParenthesis;
@@ -499,6 +500,7 @@ public class Tokenizer
             TokenType.Equals => Matches(source, "="),
             TokenType.Comma => Matches(source, ","),
             TokenType.DoubleEquals => Matches(source, "=="),
+            TokenType.NotEquals => Matches(source, "!="),
             TokenType.Else => Matches(source, "else"),
             TokenType.IntLiteral => !source.ContainsAnyExcept(Digits),
             TokenType.StringLiteral => MatchesStringLiteral(source),

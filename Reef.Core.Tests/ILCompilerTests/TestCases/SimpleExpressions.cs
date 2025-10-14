@@ -283,6 +283,23 @@ public class SimpleExpressions
                     ])
             },
             {
+                "not equals",
+                "var a = 1 != 2",
+                Module(
+                    methods: [
+                        Method("_Main",
+                            [
+                                new LoadIntConstant(1),
+                                new LoadIntConstant(2),
+                                new CompareIntNotEqual(),
+                                new StoreLocal("a"),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [Local("a", BoolType)])
+                    ])
+            },
+            {
                 "equals",
                 "var a = 1 == 2",
                 Module(

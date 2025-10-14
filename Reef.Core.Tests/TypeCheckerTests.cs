@@ -1167,6 +1167,8 @@ public class TypeCheckerTests
             "var a: int = 2 / 2;",
             // EqualityCheck,
             "var a: bool = 2 == 2;",
+            // NegativeEqualityCheck,
+            "var a: bool = 2 != 2;",
             // ValueAssignment,
             "var mut a = 2; a = 3;",
             // Object Initializers
@@ -3764,8 +3766,13 @@ public class TypeCheckerTests
             },
             {
                 "incorrect type for equality check",
-                // EqualityCheck,
+                // Equality Check
                 "var a = true == 1;",
+                [MismatchedTypes(Int, Boolean)]
+            },
+            {
+                "incorrect type for negative equality check",
+                "var a = true != 1;",
                 [MismatchedTypes(Int, Boolean)]
             },
             {
@@ -3774,8 +3781,18 @@ public class TypeCheckerTests
                 [MismatchedTypes(Int, Boolean)]
             },
             {
+                "incorrect type for negative equality check",
+                "var a = 2 != true",
+                [MismatchedTypes(Int, Boolean)]
+            },
+            {
                 "incorrect type for equality check in variable declaration",
                 "var a: int = 2 == 2",
+                [MismatchedTypes(Int, Boolean)]
+            },
+            {
+                "incorrect type for negative equality check in variable declaration",
+                "var a: int = 2 != 2",
                 [MismatchedTypes(Int, Boolean)]
             },
             {

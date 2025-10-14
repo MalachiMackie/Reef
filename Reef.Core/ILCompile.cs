@@ -467,6 +467,13 @@ public class ILCompile
                 Instructions.Add(new IntDivide());
                 break;
             }
+            case IntNotEqualsExpression intNotEqualsExpression:
+            {
+                CompileExpression(intNotEqualsExpression.Left);
+                CompileExpression(intNotEqualsExpression.Right);
+                Instructions.Add(new CompareIntNotEqual());
+                break;
+            }
             case IntEqualsExpression intEqualsExpression:
             {
                 CompileExpression(intEqualsExpression.Left);

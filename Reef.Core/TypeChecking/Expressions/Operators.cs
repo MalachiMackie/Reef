@@ -44,6 +44,7 @@ public partial class TypeChecker
 
                     return InstantiatedClass.Int;
                 }
+            case BinaryOperatorType.NegativeEqualityCheck:
             case BinaryOperatorType.EqualityCheck:
                 {
                     // todo: use interface. left and right implements IEquals<T>

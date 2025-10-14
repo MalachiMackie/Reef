@@ -50,6 +50,12 @@ public record CompareIntLessOrEqualTo : IInstruction;
 public record CompareIntEqual : IInstruction;
 
 /// <summary>
+/// Compares two integer values. If they are not equal, true is pushed onto the stack,
+/// otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareIntNotEqual : IInstruction;
+
+/// <summary>
 /// Loads the local variable at specified index onto the evaluation stack
 /// </summary>
 public record LoadLocal(string LocalName) : IInstruction;

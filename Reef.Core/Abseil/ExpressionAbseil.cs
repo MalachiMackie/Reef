@@ -2081,6 +2081,8 @@ public partial class ProgramAbseil
             Expressions.BinaryOperatorType.EqualityCheck
                 // todo: handle more types of equality checks 
                 => new IntEqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.NegativeEqualityCheck
+                => new IntNotEqualsExpression(e.ValueUseful, left, right),
             Expressions.BinaryOperatorType.BooleanAnd
                 => new BoolAndExpression(e.ValueUseful, left, right),
             Expressions.BinaryOperatorType.BooleanOr

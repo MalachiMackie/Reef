@@ -369,6 +369,7 @@ public static class ExpressionHelpers
                 BinaryOperatorType.Multiply => Token.Star(SourceSpan.Default),
                 BinaryOperatorType.Divide => Token.ForwardSlash(SourceSpan.Default),
                 BinaryOperatorType.EqualityCheck => Token.DoubleEquals(SourceSpan.Default),
+                BinaryOperatorType.NegativeEqualityCheck => Token.NotEquals(SourceSpan.Default),
                 BinaryOperatorType.ValueAssignment => Token.Equals(SourceSpan.Default),
                 BinaryOperatorType.BooleanAnd => Token.DoubleAmpersand(SourceSpan.Default),
                 BinaryOperatorType.BooleanOr => Token.DoubleBar(SourceSpan.Default),

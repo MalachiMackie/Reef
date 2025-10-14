@@ -518,6 +518,7 @@ public enum BinaryOperatorType
     Multiply,
     Divide,
     EqualityCheck,
+    NegativeEqualityCheck,
     ValueAssignment,
     BooleanAnd,
     BooleanOr

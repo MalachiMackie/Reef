@@ -215,6 +215,12 @@ public record IntEqualsExpression(bool ValueUseful, ILoweredExpression Left, ILo
     public bool Diverges => false;
 }
 
+public record IntNotEqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
 public record BoolAndExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
 {
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();

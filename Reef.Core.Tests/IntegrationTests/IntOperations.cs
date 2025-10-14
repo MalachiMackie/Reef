@@ -27,6 +27,23 @@ public class IntOperations : IntegrationTestBase
     }
 
     [Fact]
+    public async Task IntNotEquals()
+    {
+        await SetupTest("""
+            if (1 != 0) {
+                printf("1 != 0");
+            }
+            if (1 != 1) {
+                printf("1 != 1");
+            }
+            """);
+
+        var output = await Run();
+        output.ExitCode.Should().Be(0);
+        output.StandardOutput.Should().Be("1 != 0");
+    }
+
+    [Fact]
     public async Task Add()
     {
         await SetupTest(

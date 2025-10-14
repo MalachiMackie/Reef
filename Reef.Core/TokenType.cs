@@ -21,6 +21,7 @@ public enum TokenType
     Equals,
     Comma,
     DoubleEquals,
+    NotEquals,
     Else,
     IntLiteral,
     StringLiteral,

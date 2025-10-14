@@ -370,6 +370,9 @@ public static class PopExpressionTestCases
             ("a == b",
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.EqualityCheck, VariableAccessor("a"),
                     VariableAccessor("b"), Token.DoubleEquals(SourceSpan.Default)))),
+            ("a != b",
+                new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.NegativeEqualityCheck, VariableAccessor("a"),
+                    VariableAccessor("b"), Token.NotEquals(SourceSpan.Default)))),
             ("ok()",
                 new MethodCallExpression(new MethodCall(
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
@@ -946,6 +949,18 @@ public static class PopExpressionTestCases
                     VariableAccessor("c"),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
+            ( // negative equality check
+                "a > b != c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.GreaterThan,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.RightAngleBracket(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
             ( // member access
                 "a > b.c",
                 new BinaryOperatorExpression(new BinaryOperator(
@@ -1118,6 +1133,18 @@ public static class PopExpressionTestCases
                     VariableAccessor("c"),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
+            ( // negative equality check
+                "a < b != c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.LessThan,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.LeftAngleBracket(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
             ( // member access
                 "a < b.c",
                 new BinaryOperatorExpression(new BinaryOperator(
@@ -1281,6 +1308,18 @@ public static class PopExpressionTestCases
                         Token.Star(SourceSpan.Default))),
                     VariableAccessor("c"),
                     Token.DoubleEquals(SourceSpan.Default)))
+            ),
+            ( // negative equality check
+                "a * b != c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.Multiply,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.Star(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.NotEquals(SourceSpan.Default)))
             ),
             ( // member access
                 "a * b.c",
@@ -1454,6 +1493,18 @@ public static class PopExpressionTestCases
                     VariableAccessor("c"),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
+            ( // equality check
+                "a / b != c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.Divide,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.ForwardSlash(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
             ( // member access
                 "a / b.c",
                 new BinaryOperatorExpression(new BinaryOperator(
@@ -1625,6 +1676,18 @@ public static class PopExpressionTestCases
                         Token.Plus(SourceSpan.Default))),
                     VariableAccessor("c"),
                     Token.DoubleEquals(SourceSpan.Default)))
+            ),
+            ( // equality check
+                "a + b != c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.Plus,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.Plus(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.NotEquals(SourceSpan.Default)))
             ),
             ( // member access
                 "a + b.c",
@@ -1798,6 +1861,18 @@ public static class PopExpressionTestCases
                     VariableAccessor("c"),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
+            ( // negative equality check
+                "a - b != c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.Minus,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.Dash(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
             ( // member access
                 "a - b.c",
                 new BinaryOperatorExpression(new BinaryOperator(
@@ -1943,6 +2018,17 @@ public static class PopExpressionTestCases
                     VariableAccessor("c"),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
+            ( // negative equality check
+                "a? != c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.FallOut,
+                        VariableAccessor("a"),
+                        Token.QuestionMark(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
             ( // member access
                 "a?.c",
                 new MemberAccessExpression(new MemberAccess(
@@ -2081,6 +2167,16 @@ public static class PopExpressionTestCases
                         VariableAccessor("b"),
                         VariableAccessor("c"),
                         Token.DoubleEquals(SourceSpan.Default))), Token.Equals(SourceSpan.Default)))
+            ),
+            ( // negative equality check
+                "a = b != c",
+                new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
+                    VariableAccessor("a"),
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.NegativeEqualityCheck,
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
+                        Token.NotEquals(SourceSpan.Default))), Token.Equals(SourceSpan.Default)))
             ),
             ( // member access
                 "a = b.c",
@@ -2253,6 +2349,18 @@ public static class PopExpressionTestCases
                     VariableAccessor("c"),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
+            ( // negative equality check
+                "a == b != c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.EqualityCheck,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.DoubleEquals(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
             ( // member access
                 "a == b.c",
                 new BinaryOperatorExpression(new BinaryOperator(
@@ -2295,6 +2403,190 @@ public static class PopExpressionTestCases
                 "a == b || c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     BinaryOperatorExpression(BinaryOperatorType.EqualityCheck,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            // __ negative equality check
+            ( // greater than
+                "a != b > c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                        Identifier("a"), null)),
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.GreaterThan,
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                            Identifier("b"), null)),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                            Identifier("c"), null)),
+                        Token.RightAngleBracket(SourceSpan.Default))),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
+            ( // less than
+                "a != b < c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                        Identifier("a"), null)),
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.LessThan,
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                            Identifier("b"), null)),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                            Identifier("c"), null)),
+                        Token.LeftAngleBracket(SourceSpan.Default))),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
+            ( // multiply
+                "a != b * c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                        Identifier("a"), null)),
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.Multiply,
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                            Identifier("b"), null)),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                            Identifier("c"), null)),
+                        Token.Star(SourceSpan.Default))),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
+            ( // divide
+                "a != b / c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                        Identifier("a"), null)),
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.Divide,
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                            Identifier("b"), null)),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                            Identifier("c"), null)),
+                        Token.ForwardSlash(SourceSpan.Default))),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
+            ( // plus
+                "a != b + c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                        Identifier("a"), null)),
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.Plus,
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                            Identifier("b"), null)),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                            Identifier("c"), null)),
+                        Token.Plus(SourceSpan.Default))),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
+            ( // minus
+                "a != b - c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                        Identifier("a"), null)),
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.Minus,
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                            Identifier("b"), null)),
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                            Identifier("c"), null)),
+                        Token.Dash(SourceSpan.Default))),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
+            ( // fallOut
+                "a != b?",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                        Identifier("a"), null)),
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.FallOut,
+                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
+                            Identifier("b"), null)),
+                        Token.QuestionMark(SourceSpan.Default))),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
+            ( // value assignment
+                "a != b = c",
+                new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.NegativeEqualityCheck,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.NotEquals(SourceSpan.Default))),
+                    VariableAccessor("c"), Token.Equals(SourceSpan.Default)))
+            ),
+            ( // equality check
+                "a != b == c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.EqualityCheck,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.NegativeEqualityCheck,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.NotEquals(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.DoubleEquals(SourceSpan.Default)))
+            ),
+            ( // negative equality check
+                "a != b != c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.NegativeEqualityCheck,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.NotEquals(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
+            ( // member access
+                "a != b.c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    VariableAccessor("a"),
+                    new MemberAccessExpression(new MemberAccess(
+                        VariableAccessor("b"),
+                        Identifier("c"), null)),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
+            ( // static member access
+                "a != b::c",
+                new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.NegativeEqualityCheck,
+                    VariableAccessor("a"),
+                    new StaticMemberAccessExpression(new StaticMemberAccess(
+                        NamedTypeIdentifier("b"),
+                        Identifier("c"), null)),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
+            ( // not
+                "a != !b",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    VariableAccessor("a"),
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Not,
+                        VariableAccessor("b"),
+                        Token.Bang(SourceSpan.Default))),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
+            ( // and 
+                "a != b && c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    BinaryOperatorExpression(BinaryOperatorType.NegativeEqualityCheck,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // or 
+                "a != b || c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    BinaryOperatorExpression(BinaryOperatorType.NegativeEqualityCheck,
                         VariableAccessor("a"),
                         VariableAccessor("b")),
                     VariableAccessor("c"))
@@ -2388,6 +2680,16 @@ public static class PopExpressionTestCases
                         Identifier("b"), null)),
                     VariableAccessor("c"),
                     Token.DoubleEquals(SourceSpan.Default)))
+            ),
+            ( // negative equality check
+                "a.b != c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new MemberAccessExpression(new MemberAccess(
+                        VariableAccessor("a"),
+                        Identifier("b"), null)),
+                    VariableAccessor("c"),
+                    Token.NotEquals(SourceSpan.Default)))
             ),
             ( // member access
                 "a.b.c",
@@ -2498,6 +2800,16 @@ public static class PopExpressionTestCases
                         Identifier("b"), null)),
                     VariableAccessor("c"),
                     Token.DoubleEquals(SourceSpan.Default)))
+            ),
+            ( // negative equality check
+                "a::b != c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new StaticMemberAccessExpression(new StaticMemberAccess(
+                        NamedTypeIdentifier("a"),
+                        Identifier("b"), null)),
+                    VariableAccessor("c"),
+                    Token.NotEquals(SourceSpan.Default)))
             ),
             ( // member access
                 "a::b.c",
@@ -2617,6 +2929,17 @@ public static class PopExpressionTestCases
                     VariableAccessor("c"),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
+            ( // negative equality check
+                "!a != c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Not,
+                        VariableAccessor("a"),
+                        Token.Bang(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
             ( // member access
                 "!a.c",
                 new UnaryOperatorExpression(new UnaryOperator(
@@ -2716,6 +3039,14 @@ public static class PopExpressionTestCases
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
                     VariableAccessor("a"),
                     BinaryOperatorExpression(BinaryOperatorType.EqualityCheck,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // negative equality check
+                "a && b != c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.NegativeEqualityCheck,
                         VariableAccessor("b"),
                         VariableAccessor("c")))
             ),
@@ -2823,6 +3154,14 @@ public static class PopExpressionTestCases
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     VariableAccessor("a"),
                     BinaryOperatorExpression(BinaryOperatorType.EqualityCheck,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // negative equality check
+                "a || b != c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.NegativeEqualityCheck,
                         VariableAccessor("b"),
                         VariableAccessor("c")))
             ),

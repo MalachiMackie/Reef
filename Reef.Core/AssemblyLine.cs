@@ -230,6 +230,21 @@ public class AssemblyLine(ReefModule reefModule)
 
                     break;
                 }
+            case CompareIntNotEqual compareIntNotEqual:
+                {
+                    _codeSegment.AppendLine($"; COMPARE_INT_NOT_EQUAL");
+
+                    _codeSegment.AppendLine("    pop    rax");
+                    _codeSegment.AppendLine("    cmp    rax, [rsp]");
+                    _codeSegment.AppendLine("    pop    rax");
+                    _codeSegment.AppendLine("    pushf");
+                    _codeSegment.AppendLine("    pop    rax");
+                    _codeSegment.AppendLine("    and    rax, 1000000b"); // zero flag
+                    _codeSegment.AppendLine("    shr    rax, 6");
+                    _codeSegment.AppendLine("    xor    rax, 1b");
+                    _codeSegment.AppendLine("    push   rax");
+                    break;
+                }
             case CompareIntGreaterOrEqualTo compareIntGreaterOrEqualTo:
                 _codeSegment.AppendLine($"; COMPARE_INT_GREATER_OR_EQUAL");
                 throw new NotImplementedException();

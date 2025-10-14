@@ -244,6 +244,13 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
                 PrettyPrintExpression(e.Right);
                 break;
             }
+            case IntNotEqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" != ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
             case IntGreaterThanExpression e:
             {
                 PrettyPrintExpression(e.Left);

@@ -168,6 +168,13 @@ public static class LoweredProgramHelpers
     {
         return new(valueUseful, left, right);
     }
+
+    public static IntNotEqualsExpression IntNotEquals(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+
     public static BoolAndExpression BoolAnd(
             ILoweredExpression left, ILoweredExpression right, bool valueUseful)
     {

@@ -59,6 +59,7 @@ public record Token
             TokenType.Equals => "=",
             TokenType.Comma => ",",
             TokenType.DoubleEquals => "==",
+            TokenType.NotEquals => "!=",
             TokenType.Else => "else",
             // TokenType.StringKeyword => "string",
             // TokenType.Result => "result",
@@ -230,6 +231,11 @@ public record Token
     public static Token DoubleEquals(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.DoubleEquals, SourceSpan = sourceSpan };
+    }
+
+    public static Token NotEquals(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.NotEquals, SourceSpan = sourceSpan };
     }
 
     public static Token Else(SourceSpan sourceSpan)
