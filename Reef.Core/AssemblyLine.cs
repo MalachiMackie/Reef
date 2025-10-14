@@ -76,6 +76,7 @@ public class AssemblyLine(ReefModule reefModule)
 
     private IReefTypeReference _returnType = null!;
     private IReadOnlyList<ReefMethod.Local> _locals = null!;
+    private IReadOnlyList<IReefTypeReference> _parameters = null!;
     private void ProcessMethod(ReefMethod method)
     {
         _returnType = method.ReturnType;
@@ -90,10 +91,32 @@ public class AssemblyLine(ReefModule reefModule)
         _codeSegment.AppendLine("    push    rbp");
         _codeSegment.AppendLine("    mov     rbp, rsp");
 
-        var stackSpaceNeeded = _locals.Count * 8;
+        _parameters = method.Parameters;
+
+        var stackSpaceNeeded = (_locals.Count + _parameters.Count) * 8;
         // ensure stack space is 16 byte aligned
         stackSpaceNeeded += stackSpaceNeeded % 16;
         _codeSegment.AppendLine($"    sub     rsp, {32 + stackSpaceNeeded}");
+
+        // todo: support non integer and non 8 byte parameters
+        for (var i = method.Parameters.Count - 1; i >= 0; i--)
+        {
+            var sourceRegister = i switch
+            {
+                0 => "rcx",
+                1 => "rdx",
+                2 => "r8",
+                3 => "r9",
+                _ => null
+            };
+
+            if (sourceRegister is null)
+            {
+                throw new NotImplementedException();
+            }
+
+            _codeSegment.AppendLine($"    mov    [rbp-{_shadowSpaceBytes + i*8}], {sourceRegister}");
+        }
 
         var labels = method.Instructions.Labels.ToLookup(x => x.ReferencesInstructionIndex, x => x.Name);
         for (var i = 0; i < method.Instructions.Instructions.Count; i++)
@@ -178,41 +201,55 @@ public class AssemblyLine(ReefModule reefModule)
                 _codeSegment.AppendLine($"; BRANCH_IF_TRUE({branchIfTrue.BranchToLabelName})");
                 throw new NotImplementedException();
             case Call call:
-            {
-                _codeSegment.AppendLine($"; CALL({call.Arity})");
-                if (call.Arity != 1)
                 {
-                    throw new NotImplementedException();
+                    _codeSegment.AppendLine($"; CALL({call.Arity})");
+                    for (var i = ((int)call.Arity) - 1; i >= 0; i--)
+                    {
+                        // todo: this does not account for non integers or values larger than 8 bytes
+                        var destinationRegister = i switch
+                        {
+                            0 => "rcx",
+                            1 => "rdx",
+                            2 => "r8",
+                            3 => "r9",
+                            _ => null
+                        };
+
+                        if (destinationRegister is not null)
+                        {
+                            _codeSegment.AppendLine($"    pop     {destinationRegister}");
+                        }
+                        else
+                        {
+                            throw new NotImplementedException("Functions with more than 4 arguments");
+                        }
+
+                    }
+
+                    var functionDefinition = _functionStack.Pop();
+
+                    if (functionDefinition.TypeArguments.Count > 0)
+                    {
+                        throw new NotImplementedException();
+                    }
+
+                    _codeSegment.AppendLine("    mov     rax, rsp");
+                    _codeSegment.AppendLine("    and     rax, 0fffffffffffffff0h");
+                    _codeSegment.AppendLine("    mov     rsp, rax");
+                    _codeSegment.AppendLine($"    sub     rsp, {_shadowSpaceBytes}");
+                    
+                    // ensure we're byte aligned and give the callee 32 bytes of shadow space
+                    var bytesToOffset = 16 - _byteOffset;
+                    _byteOffset = 0;
+                    
+                    _codeSegment.AppendLine($"    call    {functionDefinition.Name}");
+                    
+                    // pop off the 32 bytes of shadow space
+                    // TODO: we need to negate the stack alignment we did before calling the function
+                    _codeSegment.AppendLine($"    add     rsp, {_shadowSpaceBytes}");
+                    _byteOffset = 8;
+                    break;
                 }
-
-                var functionDefinition = _functionStack.Pop();
-
-                if (functionDefinition.TypeArguments.Count > 0)
-                {
-                    throw new NotImplementedException();
-                }
-
-
-                // move top of stack into rcx as first argument
-                _codeSegment.AppendLine("    mov     rcx, [rsp]");
-
-                _codeSegment.AppendLine("    mov     rax, rsp");
-                _codeSegment.AppendLine("    and     rax, 0fffffffffffffff0h");
-                _codeSegment.AppendLine("    mov     rsp, rax");
-                _codeSegment.AppendLine($"    sub     rsp, {_shadowSpaceBytes}");
-                
-                // ensure we're byte aligned and give the callee 32 bytes of shadow space
-                var bytesToOffset = 16 - _byteOffset;
-                _byteOffset = 0;
-                
-                _codeSegment.AppendLine($"    call    {functionDefinition.Name}");
-                
-                // pop off the 32 bytes of shadow space as well as it's return value
-                // TODO: we need to negate the stack alignment we did before calling the function
-                _codeSegment.AppendLine($"    add     rsp, {_shadowSpaceBytes + 8}");
-                _byteOffset = 8;
-                break;
-            }
             case CastBoolToInt castBoolToInt:
                 {
                     _codeSegment.AppendLine($"; CAST_BOOL_TO_INT");
@@ -347,8 +384,13 @@ public class AssemblyLine(ReefModule reefModule)
                     break;
                 }
             case LoadArgument loadArgument:
-                _codeSegment.AppendLine($"; LOAD_ARGUMENT({loadArgument.ArgumentIndex})");
-                throw new NotImplementedException();
+                {
+                    _codeSegment.AppendLine($"; LOAD_ARGUMENT({loadArgument.ArgumentIndex})");
+
+                    _codeSegment.AppendLine($"    push    [rbp-{_shadowSpaceBytes + (loadArgument.ArgumentIndex*8)}]");
+
+                    break;
+                }
             case LoadBoolConstant loadBoolConstant:
                 {
                     _codeSegment.AppendLine($"; LOAD_BOOL_CONSTANT({loadBoolConstant.Value})");
@@ -382,7 +424,7 @@ public class AssemblyLine(ReefModule reefModule)
             {
                 _codeSegment.AppendLine($"; LOAD_LOCAL({loadLocal.LocalName})");
                 var localIndex = _locals.Index().First(x => x.Item.DisplayName == loadLocal.LocalName).Index;
-                _codeSegment.AppendLine($"    push     [rbp-{_shadowSpaceBytes + localIndex*8}]");
+                _codeSegment.AppendLine($"    push     [rbp-{_shadowSpaceBytes + (localIndex + _parameters.Count)*8}]");
                 _byteOffset += 8;
                 _byteOffset %= 16;
                     _codeSegment.AppendLine($"; ByteOffset: {_byteOffset}");
@@ -448,7 +490,7 @@ public class AssemblyLine(ReefModule reefModule)
                 _codeSegment.AppendLine($"; ByteOffset: {_byteOffset}");
                 
                 // move rax into the local's dedicated stack space
-                _codeSegment.AppendLine($"    mov     [rbp-{_shadowSpaceBytes + localIndex*8}], rax");
+                _codeSegment.AppendLine($"    mov     [rbp-{_shadowSpaceBytes + (localIndex + _parameters.Count)*8}], rax");
                 break;
             }
             case StoreStaticField storeStaticField:
