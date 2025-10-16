@@ -25,7 +25,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
         
         testOutputHelper.WriteLine(PrettyPrinter.PrettyPrintLoweredProgram(loweredProgram, false, false));
         
-        var module = ILCompile.CompileToIL(loweredProgram);
+        var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
             expectedModule,
             ConfigureEquivalencyCheck,
@@ -105,7 +105,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
         
         testOutputHelper.WriteLine(PrettyPrinter.PrettyPrintLoweredProgram(loweredProgram, false, false));
         
-        var module = ILCompile.CompileToIL(loweredProgram);
+        var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
             expectedModule,
             ConfigureEquivalencyCheck);

@@ -21,7 +21,7 @@ public class UnionTests
 
         var loweredProgram = ProgramAbseil.Lower(program.ParsedProgram); 
 
-        var module = ILCompile.CompileToIL(loweredProgram);
+        var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
             expectedModule,
             ConfigureEquivalencyCheck,

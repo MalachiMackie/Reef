@@ -48,4 +48,20 @@ public class FunctionTests : IntegrationTestBase
         output.ExitCode.Should().Be(0);
         output.StandardOutput.Should().Be("a == 0. Hello World! c is true. Good Bye");
     }
+
+    [Fact]
+    public async Task ReturnValueFromFunction()
+    {
+        await SetupTest("""
+            fn SomeFn(): string {
+                return "Hello World";
+            }
+
+            printf(SomeFn());
+            """);
+
+        var output = await Run();
+        output.ExitCode.Should().Be(0);
+        output.StandardOutput.Should().Be("Hello World");
+    }
 }

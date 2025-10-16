@@ -4,9 +4,10 @@ using Reef.IL;
 
 namespace Reef.Core;
 
-public class AssemblyLine(ReefModule reefModule)
+public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> importedModules)
 {
     private readonly ReefModule _reefModule = reefModule;
+    private readonly IReadOnlyList<ReefModule> _importedModules = importedModules;
     
     private const string AsmHeader = """
                                      bits 64
@@ -30,9 +31,9 @@ public class AssemblyLine(ReefModule reefModule)
     /// </summary>
     private readonly Dictionary<string, string> _strings = new();
     
-    public static string Process(ReefModule reefModule)
+    public static string Process(ReefModule reefModule, IReadOnlyList<ReefModule> importedModules)
     {
-        var assemblyLine = new AssemblyLine(reefModule);
+        var assemblyLine = new AssemblyLine(reefModule, importedModules);
         return assemblyLine.ProcessInner();
     }
 
@@ -203,6 +204,7 @@ public class AssemblyLine(ReefModule reefModule)
             case Call call:
                 {
                     _codeSegment.AppendLine($"; CALL({call.Arity})");
+                    // loop through backwards because the last argument is on the top of the stack 
                     for (var i = ((int)call.Arity) - 1; i >= 0; i--)
                     {
                         // todo: this does not account for non integers or values larger than 8 bytes
@@ -248,6 +250,15 @@ public class AssemblyLine(ReefModule reefModule)
                     // TODO: we need to negate the stack alignment we did before calling the function
                     _codeSegment.AppendLine($"    add     rsp, {_shadowSpaceBytes}");
                     _byteOffset = 8;
+
+                    var method = _reefModule.Methods.FirstOrDefault(x => x.Id == functionDefinition.DefinitionId)
+                        ?? _importedModules.SelectMany(x => x.Methods).First(x => x.Id == functionDefinition.DefinitionId);
+
+                    if (method.ReturnType is not ConcreteReefTypeReference { Name: "Unit" })
+                    {
+                        _codeSegment.AppendLine("    push    rax");
+                    }
+
                     break;
                 }
             case CastBoolToInt castBoolToInt:
@@ -460,19 +471,22 @@ public class AssemblyLine(ReefModule reefModule)
                 // noop
                 break;
             case Return:
-            {
-                _codeSegment.AppendLine($"; RETURN");
-                if (_returnType is not ConcreteReefTypeReference { Name: "Unit" })
                 {
-                    throw new NotImplementedException();
-                }
+                    _codeSegment.AppendLine($"; RETURN");
+                    if (_returnType is ConcreteReefTypeReference { Name: "Unit" })
+                    {
+                        // zero out return value for null return
+                        _codeSegment.AppendLine("    xor     rax, rax");
+                    }
+                    else
+                    {
+                        _codeSegment.AppendLine("    pop     rax");
+                    }
 
-                // zero out return value for null return
-                _codeSegment.AppendLine("    xor     rax, rax");
-                _codeSegment.AppendLine("    leave");
-                _codeSegment.AppendLine("    ret");
-                break;
-            }
+                    _codeSegment.AppendLine("    leave");
+                    _codeSegment.AppendLine("    ret");
+                    break;
+                }
             case StoreField storeField:
                 _codeSegment.AppendLine($"; STORE_FIELD({storeField.VariantIndex}:{storeField.FieldName})");
                 throw new NotImplementedException();

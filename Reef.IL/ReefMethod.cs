@@ -3,6 +3,7 @@
 public class ReefMethod
 {
     public required string DisplayName { get; set; }
+    public required Guid Id { get; set; }
     public required InstructionList Instructions { get; set; }
     public required IReadOnlyList<IReefTypeReference> Parameters { get; set; }
     public required IReadOnlyList<Local> Locals { get; set; }

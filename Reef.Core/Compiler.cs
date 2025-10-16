@@ -67,10 +67,10 @@ public class Compiler
 
 
         Console.WriteLine("Compiling to IL...");
-        var il = ILCompile.CompileToIL(loweredProgram);
+        var (il, importedModules) = ILCompile.CompileToIL(loweredProgram);
 
         Console.WriteLine("Generating Assembly...");
-        var assembly = AssemblyLine.Process(il);
+        var assembly = AssemblyLine.Process(il, importedModules);
         var asmFile = $"{fileNameWithoutExtension}.asm";
         await File.WriteAllTextAsync(Path.Join(buildDirectory, asmFile), assembly);
 

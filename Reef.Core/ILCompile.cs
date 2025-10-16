@@ -10,15 +10,15 @@ namespace Reef.Core;
 
 public class ILCompile
 {
-    public static ReefModule CompileToIL(LoweredProgram program)
+    public static (ReefModule, IReadOnlyList<ReefModule> importedModules) CompileToIL(LoweredProgram program)
     {
         var compiler = new ILCompile();
 
-        return compiler.CompileToILInner(program);
+        return (compiler.CompileToILInner(program), compiler._importedModules);
     }
 
     private readonly List<ReefTypeDefinition> _types = [];
-    private readonly List<ReefModule> _importedModules = []; 
+    private readonly List<ReefModule> _importedModules = [GetImportedStdLibrary()];
     private readonly List<ReefMethod> _methods = [];
     private readonly Stack<Scope> _scopeStack = [];
     private InstructionList Instructions => _scopeStack.Peek().InstructionList;
@@ -32,7 +32,33 @@ public class ILCompile
     private static ReefModule GetImportedStdLibrary()
     {
         var importedDataTypes = new List<ReefTypeDefinition>();
-        var importedMethods = new List<ReefMethod>();
+
+        var printf = TypeChecker.FunctionSignature.Printf;
+        var importedMethods = new List<ReefMethod>()
+        {
+            new()
+            {
+                DisplayName = printf.Name,
+                Id = printf.Id,
+                Instructions = new([], []),
+                Locals = [],
+                Parameters = [
+                    new ConcreteReefTypeReference
+                    {
+                        DefinitionId = TypeChecker.ClassSignature.String.Id,
+                        Name = TypeChecker.ClassSignature.String.Name,
+                        TypeArguments = []
+                    }
+                ],
+                ReturnType = new ConcreteReefTypeReference
+                {
+                    DefinitionId = TypeChecker.ClassSignature.Unit.Id,
+                    Name = TypeChecker.ClassSignature.Unit.Name,
+                    TypeArguments = []
+                },
+                TypeParameters = []
+            }
+        };
 
         for (var i = 2; i < 10; i++)
         {
@@ -107,6 +133,7 @@ public class ILCompile
 
             importedMethods.Add(new ReefMethod()
             {
+                Id = call.Id,
                 DisplayName = $"{fnClass.Name}__{call.Name}",
                 Instructions = new([], []),
                 Locals = [],
@@ -160,6 +187,7 @@ public class ILCompile
         {
             importedMethods.Add(new()
             {
+                Id = variant.CreateFunction.Id,
                 DisplayName = variant.CreateFunction.Name,
                 Instructions = new([], []),
                 Locals = [],
@@ -189,7 +217,6 @@ public class ILCompile
 
     private ReefModule CompileToILInner(LoweredProgram program)
     {
-        _importedModules.Add(GetImportedStdLibrary());
         _types.AddRange(program.DataTypes.Select(CompileDataType));
         _methods.AddRange(program.Methods.Select(CompileMethod));
 
@@ -214,6 +241,7 @@ public class ILCompile
         
         return new ReefMethod
         {
+            Id = method.Id,
             DisplayName = method.Name,
             Parameters = [..method.Parameters.Select(GetTypeReference)],
             Instructions = scope.InstructionList,

@@ -87,7 +87,8 @@ public static class TestHelpers
             Instructions = new InstructionList([..instructions], [..labels ?? []]),
             Locals = locals ?? [],
             Parameters = parameters ?? [],
-            ReturnType = returnType ?? ConcreteTypeReference("Unit")
+            ReturnType = returnType ?? ConcreteTypeReference("Unit"),
+            Id = Guid.Empty
         };
     }
 
