@@ -81,7 +81,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                         Method("_Main",
                             [
                                 new LoadFunction(FunctionDefinitionReference("FirstFn")),
-                                new Call(0),
+                                new Call(0, 0, false),
                                 Return(),
                                 LoadUnit()
                             ])
@@ -114,9 +114,9 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                             [
                                 new CreateObject(ConcreteTypeReference("MyClass")),
                                 new LoadFunction(FunctionDefinitionReference("MyClass__InstanceFn")),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 new LoadFunction(FunctionDefinitionReference("MyClass__StaticFn")),
-                                new Call(0),
+                                new Call(0, 0, false),
                                 LoadUnit(),
                                 Return()
                             ])
@@ -140,7 +140,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                         Method("SomeFn",
                             [
                                 new LoadFunction(FunctionDefinitionReference("SomeFn__InnerFn")),
-                                new Call(0),
+                                new Call(0, 0, false),
                                 LoadUnit(),
                                 Return()
                             ])
@@ -169,7 +169,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("a"),
                                 new LoadIntConstant(1),
                                 new LoadFunction(FunctionDefinitionReference("Function`2__Call", [IntType, UnitType])),
-                                new Call(2),
+                                new Call(2, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -211,7 +211,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                                 new StoreLocal("b"),
                                 new LoadLocal("b"),
                                 new LoadFunction(FunctionDefinitionReference("Function`1__Call", [UnitType])),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -243,7 +243,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
                                 new LoadFunction(FunctionDefinitionReference("Function`1__Call", [UnitType])),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -279,7 +279,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                                 new LoadStringConstant(""),
                                 new LoadIntConstant(1),
                                 new LoadFunction(FunctionDefinitionReference("Function`3__Call", [StringType, IntType, BoolType])),
-                                new Call(3),
+                                new Call(3, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -337,7 +337,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                             [
                                 new LoadArgument(0),
                                 new LoadFunction(FunctionDefinitionReference("MyClass__MyFn")),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -391,7 +391,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                         Method("_Main",
                             [
                                 new LoadFunction(FunctionDefinitionReference("MyFn", [StringType])),
-                                new Call(0),
+                                new Call(0, 0, false),
                                 LoadUnit(),
                                 Return()
                             ])
@@ -441,7 +441,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                         Method("_Main",
                             [
                                 new LoadFunction(FunctionDefinitionReference("MyClass__MyFn", [IntType, StringType])),
-                                new Call(0),
+                                new Call(0, 0, false),
                                 LoadUnit(),
                                 Return()
                             ])
@@ -471,7 +471,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
                                 new LoadFunction(FunctionDefinitionReference("MyClass__MyFn", [IntType, StringType])),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -501,7 +501,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                             [
                                 new LoadArgument(0),
                                 new LoadFunction(FunctionDefinitionReference("MyClass__MyFn", [GenericTypeReference("T"), StringType])),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],

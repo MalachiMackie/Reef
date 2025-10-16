@@ -64,4 +64,27 @@ public class FunctionTests : IntegrationTestBase
         output.ExitCode.Should().Be(0);
         output.StandardOutput.Should().Be("Hello World");
     }
+
+    [Fact]
+    public async Task ReturnValueFromMultipleFunction()
+    {
+        await SetupTest("""
+            fn SomeFn(): string {
+                return "Hello World. ";
+            }
+            fn SomeFn2(): string {
+                return "Good Bye";
+            }
+            fn SomeFn3(a: string, b: string) {
+                printf(a);
+                printf(b);
+            }
+
+            SomeFn3(SomeFn(), SomeFn2());
+            """);
+
+        var output = await Run();
+        output.ExitCode.Should().Be(0);
+        output.StandardOutput.Should().Be("Hello World. Good Bye");
+    }
 }

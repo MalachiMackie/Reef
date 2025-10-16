@@ -28,6 +28,52 @@ public class ControlFlow
             ConfigureEquivalencyCheck,
             description);
     }
+
+    [Fact]
+    public void SingleTest()
+    {
+        var source = """
+                fn SomeFn(param: int) {
+                }
+                var a = SomeFn;
+                a(1);
+                """;
+                var expectedModule = Module(
+                    methods: [
+                        Method("SomeFn",
+                            [LoadUnit(), Return()],
+                            parameters: [IntType]),
+                        Method("_Main",
+                            [
+                                new CreateObject(ConcreteTypeReference("Function`2", [IntType, UnitType])),
+                                new CopyStack(),
+                                new LoadFunction(FunctionDefinitionReference("SomeFn")),
+                                new StoreField(0, "FunctionReference"),
+                                new StoreLocal("a"),
+                                new LoadLocal("a"),
+                                new LoadIntConstant(1),
+                                new LoadFunction(FunctionDefinitionReference("Function`2__Call", [IntType, UnitType])),
+                                new Call(2, 0, false),
+                                LoadUnit(),
+                                Return()
+                            ],
+                            locals: [
+                                Local("a", ConcreteTypeReference("Function`2", [IntType, UnitType]))
+                            ])
+                    ]);
+        var tokens = Tokenizer.Tokenize(source);
+        var program = Parser.Parse(tokens);
+        program.Errors.Should().BeEmpty();
+        var typeCheckErrors = TypeChecker.TypeCheck(program.ParsedProgram);
+        typeCheckErrors.Should().BeEmpty();
+
+        var loweredProgram = ProgramAbseil.Lower(program.ParsedProgram); 
+
+        var (module, _) = ILCompile.CompileToIL(loweredProgram);
+        module.Should().BeEquivalentTo(
+            expectedModule,
+            ConfigureEquivalencyCheck);
+    }
     
     private static EquivalencyOptions<T> ConfigureEquivalencyCheck<T>(EquivalencyOptions<T> options)
     {
@@ -53,7 +99,7 @@ public class ControlFlow
                             [
                                 new LoadIntConstant(1),
                                 new LoadFunction(FunctionDefinitionReference("result_Create_Ok", [IntType, StringType])),
-                                new Call(1),
+                                new Call(1, 0, true),
                                 new StoreLocal("Local1"),
                                 new LoadLocal("Local1"),
                                 new LoadField(0, "_variantIdentifier"),
@@ -62,7 +108,7 @@ public class ControlFlow
                                 new LoadLocal("Local1"),
                                 new LoadField(1, "Item0"),
                                 new LoadFunction(FunctionDefinitionReference("result_Create_Error", [IntType, StringType])),
-                                new Call(1),
+                                new Call(1, 0, true),
                                 new Return(),
                                 // switchInt_0_branch_0
                                 new LoadLocal("Local1"),
@@ -70,7 +116,7 @@ public class ControlFlow
                                 new StoreLocal("a"),
                                 new LoadIntConstant(1),
                                 new LoadFunction(FunctionDefinitionReference("result_Create_Ok", [IntType, StringType])),
-                                new Call(1),
+                                new Call(1, 0, true),
                                 new Return()
                             ],
                             locals: [

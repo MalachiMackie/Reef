@@ -42,7 +42,6 @@ public partial class TypeChecker
 
         if (ifExpression.Body is not null)
         {
-            ifExpression.Body.ValueUseful = true;
             TypeCheckExpression(ifExpression.Body);
         }
 
@@ -79,7 +78,6 @@ public partial class TypeChecker
 
             if (elseIf.Body is not null)
             {
-                elseIf.Body.ValueUseful = true;
                 TypeCheckExpression(elseIf.Body);
             }
 
@@ -98,7 +96,6 @@ public partial class TypeChecker
         if (ifExpression.ElseBody is not null)
         {
             using var __ = PushScope();
-            ifExpression.ElseBody.ValueUseful = true;
             TypeCheckExpression(ifExpression.ElseBody);
 
             foreach (var (variable, variableInstantiation) in uninstantiatedVariables)

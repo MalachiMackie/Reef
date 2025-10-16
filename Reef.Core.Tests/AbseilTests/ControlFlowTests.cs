@@ -57,12 +57,12 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                                         Noop()
                                                     }
                                                 },
-                                                Block([LocalValueAssignment("a", IntConstant(2, true), true, Int)], Unit, true),
+                                                Block([LocalValueAssignment("a", IntConstant(2, true), false, Int)], Unit, false),
                                                 false,
                                                 Unit)
                                         }
                                     },
-                                    Block([LocalValueAssignment("a", IntConstant(1, true), true, Int)], Unit, true),
+                                    Block([LocalValueAssignment("a", IntConstant(1, true), false, Int)], Unit, false),
                                     false,
                                     Unit),
                                 MethodReturnUnit()
@@ -193,7 +193,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                     new() {
                                         {0, Noop()}
                                     },
-                                    LocalValueAssignment("a", IntConstant(1, true), true, Int),
+                                    LocalValueAssignment("a", IntConstant(1, true), false, Int),
                                     false,
                                     Unit),
                                 MethodReturnUnit(),
@@ -220,11 +220,11 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                         {
                                             0,
                                             Block(
-                                                [LocalValueAssignment("a", IntConstant(2, true), true, Int)],
+                                                [LocalValueAssignment("a", IntConstant(2, true), false, Int)],
                                                 Unit,
-                                                true)},
+                                                false)},
                                     },
-                                    Block([LocalValueAssignment("a", IntConstant(1, true), true, Int)], Unit, true),
+                                    Block([LocalValueAssignment("a", IntConstant(1, true), false, Int)], Unit, false),
                                     false,
                                     Unit),
                                 MethodReturnUnit()
@@ -237,6 +237,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                 """
                 var mut a = 1;
                 var b = if (true) { a = 2; } else { a = 3; };
+                // var b = if (true) { a = 2; 4 } else { a = 3; 5 };
                 """,
                 LoweredProgram(
                     methods: [
@@ -314,12 +315,12 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                                         Noop()
                                                     }
                                                 },
-                                                Block([LocalValueAssignment("a", IntConstant(2, true), true, Int)], Unit, true),
+                                                Block([LocalValueAssignment("a", IntConstant(2, true), false, Int)], Unit, false),
                                                 false,
                                                 Unit)
                                         }
                                     },
-                                    Block([LocalValueAssignment("a", IntConstant(1, true), true, Int)], Unit, true),
+                                    Block([LocalValueAssignment("a", IntConstant(1, true), false, Int)], Unit, false),
                                     false,
                                     Unit),
                                 MethodReturnUnit()
@@ -355,15 +356,15 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                                 {
                                                     {
                                                         0,
-                                                        Block([LocalValueAssignment("a", IntConstant(3, true), true, Int)], Unit, true)
+                                                        Block([LocalValueAssignment("a", IntConstant(3, true), false, Int)], Unit, false)
                                                     }
                                                 },
-                                                Block([LocalValueAssignment("a", IntConstant(2, true), true, Int)], Unit, true),
+                                                Block([LocalValueAssignment("a", IntConstant(2, true), false, Int)], Unit, false),
                                                 false,
                                                 Unit)
                                         }
                                     },
-                                    Block([LocalValueAssignment("a", IntConstant(1, true), true, Int)], Unit, true),
+                                    Block([LocalValueAssignment("a", IntConstant(1, true), false, Int)], Unit, false),
                                     false,
                                     Unit),
                                 MethodReturnUnit()

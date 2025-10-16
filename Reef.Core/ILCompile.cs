@@ -5,28 +5,36 @@ using BlockExpression = Reef.Core.LoweredExpressions.BlockExpression;
 using MethodCallExpression = Reef.Core.LoweredExpressions.MethodCallExpression;
 using MethodReturnExpression = Reef.Core.LoweredExpressions.MethodReturnExpression;
 using VariableDeclarationExpression = Reef.Core.LoweredExpressions.VariableDeclarationExpression;
+using System.Reflection;
 
 namespace Reef.Core;
 
-public class ILCompile
+public class ILCompile(LoweredProgram program)
 {
     public static (ReefModule, IReadOnlyList<ReefModule> importedModules) CompileToIL(LoweredProgram program)
     {
-        var compiler = new ILCompile();
+        var compiler = new ILCompile(program);
 
-        return (compiler.CompileToILInner(program), compiler._importedModules);
+        return (compiler.CompileToILInner(), compiler._importedModules);
     }
 
     private readonly List<ReefTypeDefinition> _types = [];
     private readonly List<ReefModule> _importedModules = [GetImportedStdLibrary()];
     private readonly List<ReefMethod> _methods = [];
     private readonly Stack<Scope> _scopeStack = [];
+    private readonly LoweredProgram _program = program;
     private InstructionList Instructions => _scopeStack.Peek().InstructionList;
+    private uint StackSize
+    {
+        get => _scopeStack.Peek().StackSize;
+        set => _scopeStack.Peek().StackSize = value;
+    }
 
     private class Scope
     {
-        public InstructionList InstructionList { get; } = new([], []);
-        public HashSet<string> ReservedLabels { get; } = [];
+        public InstructionList InstructionList { get; init; } = new([], []);
+        public HashSet<string> ReservedLabels { get; init; } = [];
+        public uint StackSize { get; set; }
     }
 
     private static ReefModule GetImportedStdLibrary()
@@ -215,10 +223,10 @@ public class ILCompile
 
     }
 
-    private ReefModule CompileToILInner(LoweredProgram program)
+    private ReefModule CompileToILInner()
     {
-        _types.AddRange(program.DataTypes.Select(CompileDataType));
-        _methods.AddRange(program.Methods.Select(CompileMethod));
+        _types.AddRange(_program.DataTypes.Select(CompileDataType));
+        _methods.AddRange(_program.Methods.Select(CompileMethod));
 
         return new ReefModule
         {
@@ -412,12 +420,15 @@ public class ILCompile
                 break;
             case BoolConstantExpression boolConstantExpression:
             {
+                    StackSize += 8;
                 Instructions.Add(new LoadBoolConstant(boolConstantExpression.Value));
                 break;
             }
             case BoolNotExpression boolNotExpression:
             {
                 CompileExpression(boolNotExpression.Operand);
+
+                // no stack size modification
                 Instructions.Add(new BoolNot());
                 break;
             }
@@ -429,6 +440,8 @@ public class ILCompile
             case CastBoolToIntExpression castBoolToIntExpression:
             {
                 CompileExpression(castBoolToIntExpression.BoolExpression);
+
+                // no stack size modification
                 Instructions.Add(new CastBoolToInt());
                 break;
             }
@@ -436,14 +449,18 @@ public class ILCompile
             {
                 var typeReference = GetTypeReference(createObjectExpression.Type);
                 Instructions.Add(new CreateObject(typeReference));
+                    StackSize += 8;
                 var (variantIndex, variant) = GetDataTypeVariant(typeReference, createObjectExpression.Variant);
                 foreach (var field in variant.Fields)
                 {
                     if (createObjectExpression.VariantFieldInitializers.TryGetValue(field.DisplayName,
                             out var fieldValue))
                     {
+                        StackSize += 8;
                         Instructions.Add(new CopyStack());
                         CompileExpression(fieldValue);
+
+                        StackSize -= 16;
                         Instructions.Add(new StoreField(variantIndex, field.DisplayName));
                     }
                     else
@@ -459,6 +476,9 @@ public class ILCompile
                 CompileExpression(fieldAccessExpression.MemberOwner);
                 var typeReference = GetTypeReference(fieldAccessExpression.MemberOwner.ResolvedType);
                 var (variantIndex, _) = GetDataTypeVariant(typeReference, fieldAccessExpression.VariantName);
+
+                StackSize -= 8; // sizeof pointer
+                StackSize += 8; // assumed size of field
                 Instructions.Add(new LoadField(variantIndex, fieldAccessExpression.FieldName));
                 break;
             }
@@ -472,12 +492,14 @@ public class ILCompile
                 var (variantIndex, _) = GetDataTypeVariant(
                     type,
                     fieldAssignmentExpression.VariantName);
-                
+
+                StackSize -= 16;
                 Instructions.Add(new StoreField(variantIndex, fieldAssignmentExpression.FieldName));
                 break;
             }
             case FunctionReferenceConstantExpression functionReferenceConstantExpression:
                 var functionReference = functionReferenceConstantExpression.FunctionReference;
+                StackSize += 8;
                 Instructions.Add(new LoadFunction(new FunctionDefinitionReference
                 {
                     DefinitionId = functionReference.DefinitionId,
@@ -486,12 +508,15 @@ public class ILCompile
                 }));
                 break;
             case IntConstantExpression intConstantExpression:
+                StackSize += 8;
                 Instructions.Add(new LoadIntConstant(intConstantExpression.Value));
                 break;
             case IntDivideExpression intDivideExpression:
             {
                 CompileExpression(intDivideExpression.Left);
                 CompileExpression(intDivideExpression.Right);
+
+                StackSize -= 8;
                 Instructions.Add(new IntDivide());
                 break;
             }
@@ -499,6 +524,8 @@ public class ILCompile
             {
                 CompileExpression(intNotEqualsExpression.Left);
                 CompileExpression(intNotEqualsExpression.Right);
+
+                    StackSize -= 8;
                 Instructions.Add(new CompareIntNotEqual());
                 break;
             }
@@ -506,6 +533,8 @@ public class ILCompile
             {
                 CompileExpression(intEqualsExpression.Left);
                 CompileExpression(intEqualsExpression.Right);
+
+                    StackSize -= 8;
                 Instructions.Add(new CompareIntEqual());
                 break;
             }
@@ -513,6 +542,8 @@ public class ILCompile
             {
                 CompileExpression(intGreaterThanExpression.Left);
                 CompileExpression(intGreaterThanExpression.Right);
+
+                    StackSize -= 8;
                 Instructions.Add(new CompareIntGreaterThan());
                 break;
             }
@@ -520,6 +551,8 @@ public class ILCompile
             {
                 CompileExpression(intLessThanExpression.Left);
                 CompileExpression(intLessThanExpression.Right);
+
+                    StackSize -= 8;
                 Instructions.Add(new CompareIntLessThan());
                 break;
             }
@@ -527,6 +560,8 @@ public class ILCompile
             {
                 CompileExpression(intMinusExpression.Left);
                 CompileExpression(intMinusExpression.Right);
+
+                    StackSize -= 8;
                 Instructions.Add(new IntMinus());
                 break;
             }
@@ -534,6 +569,8 @@ public class ILCompile
             {
                 CompileExpression(intMultiplyExpression.Left);
                 CompileExpression(intMultiplyExpression.Right);
+
+                    StackSize -= 8;
                 Instructions.Add(new IntMultiply());
                 break;
             }
@@ -541,20 +578,26 @@ public class ILCompile
             {
                 CompileExpression(intPlusExpression.Left);
                 CompileExpression(intPlusExpression.Right);
+
+                    StackSize -= 8;
                 Instructions.Add(new IntPlus());
                 break;
             }
             case LoadArgumentExpression loadArgumentExpression:
+                StackSize += 8;
                 Instructions.Add(new LoadArgument(loadArgumentExpression.ArgumentIndex));
                 return;
             case LocalAssignmentExpression localAssignmentExpression:
             {
                 CompileExpression(localAssignmentExpression.Value);
+
+                    StackSize -= 8;
                 Instructions.Add(new StoreLocal(localAssignmentExpression.LocalName));
                 break;
             }
             case LocalVariableAccessor localVariableAccessor:
             {
+                    StackSize += 8;
                 Instructions.Add(new LoadLocal(localVariableAccessor.LocalName));
                 break;
             }
@@ -570,8 +613,14 @@ public class ILCompile
                     Name = methodCallExpression.FunctionReference.Name,
                     TypeArguments = [..methodCallExpression.FunctionReference.TypeArguments.Select(GetTypeReference)]
                 }));
-                Instructions.Add(new Call((uint)methodCallExpression.Arguments.Count));
-                
+                    StackSize -= (uint)(methodCallExpression.Arguments.Count * 8);
+                Instructions.Add(new Call((uint)methodCallExpression.Arguments.Count, StackSize, methodCallExpression.ValueUseful));
+
+                if (methodCallExpression.ValueUseful)
+                {
+                    StackSize += 8;
+                }
+
                 break;
             }
             case MethodReturnExpression methodReturnExpression:
@@ -581,6 +630,7 @@ public class ILCompile
             case StaticFieldAccessExpression staticFieldAccessExpression:
             {
                 var typeReference = GetTypeReference(staticFieldAccessExpression.OwnerType);
+                    StackSize += 8;
                 Instructions.Add(new LoadStaticField(typeReference, staticFieldAccessExpression.FieldName));
                 break;
             }
@@ -588,11 +638,13 @@ public class ILCompile
             {
                 CompileExpression(staticFieldAssignmentExpression.FieldValue);
                 var typeReference = GetTypeReference(staticFieldAssignmentExpression.OwnerType);
+                    StackSize -= 8;
                 Instructions.Add(new StoreStaticField(typeReference, staticFieldAssignmentExpression.FieldName));
                 break;
             }
             case StringConstantExpression stringConstantExpression:
             {
+                    StackSize += 8;
                 Instructions.Add(new LoadStringConstant(stringConstantExpression.Value));
                 break;
             }
@@ -609,6 +661,7 @@ public class ILCompile
                 } while (!reservedLabels.Add(otherwiseLabel));
 
                 var branches = new Dictionary<int, string>();
+                    StackSize -= 8;
                 Instructions.Add(new SwitchInt(branches, otherwiseLabel));
 
                 var afterLabel = $"switchInt_{switchIntIndex}_after";
@@ -622,26 +675,60 @@ public class ILCompile
                     branches[intValue] = label;
                 }
 
+                uint? expectedStackSizeAfter = null;
+                var beginningStackSize = StackSize;
+
+                var currentScope = _scopeStack.Peek();
+
                 if (switchIntExpression.Otherwise is not UnreachableExpression)
                 {
+                    _scopeStack.Push(new Scope()
+                    {
+                        InstructionList = currentScope.InstructionList,
+                        ReservedLabels = currentScope.ReservedLabels,
+                        StackSize = beginningStackSize
+                    });
+
                     Instructions.Labels.Add(new InstructionLabel(otherwiseLabel, (uint)Instructions.Instructions.Count));
                     CompileExpression(switchIntExpression.Otherwise);
                     if (!switchIntExpression.Otherwise.Diverges)
                     {
+                        expectedStackSizeAfter = StackSize;
                         Instructions.Add(new Branch(afterLabel));
                     }
+
+                    _scopeStack.Pop();
                 }
 
                 var lastBranch = switchIntExpression.Results.Keys.Max();
+
                 
                 foreach (var (intValue, branchExpression) in switchIntExpression.Results.OrderBy(x => x.Key))
                 {
+                    _scopeStack.Push(new Scope()
+                    {
+                        InstructionList = currentScope.InstructionList,
+                        ReservedLabels = currentScope.ReservedLabels,
+                        StackSize = beginningStackSize
+                    });
                     Instructions.Labels.Add(new InstructionLabel(branches[intValue], (uint)Instructions.Instructions.Count));
                     CompileExpression(branchExpression);
                     if (intValue != lastBranch)
                     {
                         Instructions.Add(new Branch(afterLabel));
                     }
+
+                    if (!branchExpression.Diverges)
+                    {
+                        expectedStackSizeAfter ??= StackSize;
+
+                        if (expectedStackSizeAfter.Value != StackSize)
+                        {
+                            throw new InvalidOperationException("Expected resulting stack size to be equivalent");
+                        }
+                    }
+
+                    _scopeStack.Pop();
                 }
 
                 if (afterNeeded)
@@ -649,15 +736,18 @@ public class ILCompile
                     Instructions.Labels.Add(new InstructionLabel(afterLabel, (uint)Instructions.Instructions.Count));
                 }
 
+                StackSize = expectedStackSizeAfter ?? beginningStackSize;
                 break;
             }
             case UnitConstantExpression:
+                // this is actually a noop, so no stack modification
                 Instructions.Add(new LoadUnitConstant());
                 break;
             case UnreachableExpression:
                 throw new InvalidOperationException("Should not ever have to IL Compile unreachable");
             case VariableDeclarationAndAssignmentExpression variableDeclarationAndAssignmentExpression:
                 CompileExpression(variableDeclarationAndAssignmentExpression.Value);
+                StackSize -= 8;
                 Instructions.Add(new StoreLocal(variableDeclarationAndAssignmentExpression.LocalName));
                 break;
             case VariableDeclarationExpression:

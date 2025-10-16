@@ -100,7 +100,7 @@ public record Return : IInstruction;
 /// on the top of the stack after the method. If the method is an instance method, a reference to the instance is passed
 /// as the first argument
 /// </summary>
-public record Call(uint Arity) : IInstruction;
+public record Call(uint Arity, uint StackSize, bool ValueUseful) : IInstruction;
 
 /// <summary>
 /// Loads a reference to the specified global function onto the evaluation stack

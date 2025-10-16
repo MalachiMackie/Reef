@@ -36,25 +36,27 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
     public void SingleTest()
     {
         var source = """
-                var a = 1;
-                fn Inner() {
+                var a = "";
+                SomeFn();
+
+                fn SomeFn() {
                     var b = a;
                 }
-                var c = Inner;
-                c();
                 """;
                 var expectedModule = Module(
                     types: [
                         DataType("_Main__Locals",
-                            variants: [Variant("_classVariant", [Field("a", IntType)])]),
-                        DataType("_Main__Inner__Closure",
                             variants: [
-                                Variant("_classVariant",
+                                Variant("_classVariant", [Field("a", StringType)])
+                            ]),
+                        DataType("_Main__SomeFn__Closure",
+                            variants: [
+                                Variant("_classVariant", 
                                     [Field("_Main__Locals", ConcreteTypeReference("_Main__Locals"))])
                             ])
                     ],
                     methods: [
-                        Method("_Main__Inner",
+                        Method("_Main__SomeFn",
                             [
                                 new LoadArgument(0),
                                 new LoadField(0, "_Main__Locals"),
@@ -63,36 +65,25 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 LoadUnit(),
                                 Return()
                             ],
-                            parameters: [ConcreteTypeReference("_Main__Inner__Closure")],
-                            locals: [Local("b", IntType)]),
+                            parameters: [ConcreteTypeReference("_Main__SomeFn__Closure")],
+                            locals: [Local("b", StringType)]),
                         Method("_Main",
                             [
                                 new CreateObject(ConcreteTypeReference("_Main__Locals")),
                                 new StoreLocal("__locals"),
                                 new LoadLocal("__locals"),
-                                new LoadIntConstant(1),
+                                new LoadStringConstant(""),
                                 new StoreField(0, "a"),
-                                new CreateObject(ConcreteTypeReference("Function`1", [UnitType])),
-                                new CopyStack(),
-                                new LoadFunction(FunctionDefinitionReference("_Main__Inner")),
-                                new StoreField(0, "FunctionReference"),
-                                new CopyStack(),
-                                new CreateObject(ConcreteTypeReference("_Main__Inner__Closure")),
+                                new CreateObject(ConcreteTypeReference("_Main__SomeFn__Closure")),
                                 new CopyStack(),
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "_Main__Locals"),
-                                new StoreField(0, "FunctionParameter"),
-                                new StoreLocal("c"),
-                                new LoadLocal("c"),
-                                new LoadFunction(FunctionDefinitionReference("Function`1__Call", [UnitType])),
-                                new Call(1),
+                                new LoadFunction(FunctionDefinitionReference("_Main__SomeFn")),
+                                new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [
-                                Local("__locals", ConcreteTypeReference("_Main__Locals")),
-                                Local("c", ConcreteTypeReference("Function`1", [UnitType]))
-                            ])
+                            locals: [Local("__locals", ConcreteTypeReference("_Main__Locals"))])
                     ]);
         
         var tokens = Tokenizer.Tokenize(source);
@@ -324,7 +315,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "_Main__Locals"),
                                 new LoadFunction(FunctionDefinitionReference("_Main__SomeFn")),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -378,7 +369,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "Outer__Locals"),
                                 new LoadFunction(FunctionDefinitionReference("Outer__SomeFn")),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -432,7 +423,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new StoreField(0, "_Main__Locals"),
                                 new LoadIntConstant(1),
                                 new LoadFunction(FunctionDefinitionReference("_Main__SomeFn")),
-                                new Call(2),
+                                new Call(2, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -521,7 +512,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                             new LoadLocal("__locals"),
                             new StoreField(0, "First__Second__Third__Locals"),
                             new LoadFunction(FunctionDefinitionReference("First__Second__Third__Fourth")),
-                            new Call(1),
+                            new Call(1, 0, false),
                             LoadUnit(),
                             Return()
                         ],
@@ -535,7 +526,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                             new LoadField(0, "First__Locals"),
                             new StoreField(0, "First__Locals"),
                             new LoadFunction(FunctionDefinitionReference("First__Second__Third")),
-                            new Call(1),
+                            new Call(1, 0, false),
                             LoadUnit(),
                             Return()
                         ],
@@ -552,7 +543,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                             new LoadLocal("__locals"),
                             new StoreField(0, "First__Locals"),
                             new LoadFunction(FunctionDefinitionReference("First__Second")),
-                            new Call(1),
+                            new Call(1, 0, false),
                             LoadUnit(),
                             Return()
                         ],
@@ -612,7 +603,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "_Main__Locals"),
                                 new LoadFunction(FunctionDefinitionReference("_Main__InnerFn")),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -701,19 +692,19 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "_Main__Locals"),
                                 new LoadFunction(FunctionDefinitionReference("_Main__InnerFn1")),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 new CreateObject(ConcreteTypeReference("_Main__InnerFn1__Closure")),
                                 new CopyStack(),
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "_Main__Locals"),
                                 new LoadFunction(FunctionDefinitionReference("_Main__InnerFn1")),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 new CreateObject(ConcreteTypeReference("_Main__InnerFn2__Closure")),
                                 new CopyStack(),
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "_Main__Locals"),
                                 new LoadFunction(FunctionDefinitionReference("_Main__InnerFn2")),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -774,7 +765,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "SomeFn__Locals"),
                                 new LoadFunction(FunctionDefinitionReference("SomeFn__InnerFn")),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 new LoadLocal("__locals"),
                                 new LoadField(0, "a"),
                                 new StoreLocal("d"),
@@ -867,7 +858,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "Outer__Inner1__Locals"),
                                 new LoadFunction(FunctionDefinitionReference("Outer__Inner1__Inner2")),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -890,7 +881,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "Outer__Locals"),
                                 new LoadFunction(FunctionDefinitionReference("Outer__Inner1")),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -1006,7 +997,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new StoreLocal("c"),
                                 new LoadLocal("c"),
                                 new LoadFunction(FunctionDefinitionReference("Function`1__Call", [UnitType])),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -1043,7 +1034,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadField(0, "_Main__Locals"),
                                 new LoadField(0, "a"),
                                 new LoadFunction(FunctionDefinitionReference("Function`1__Call", [UnitType])),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -1158,7 +1149,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("__locals"),
                                 new LoadField(0, "a"),
                                 new LoadFunction(FunctionDefinitionReference("Function`1__Call", [UnitType])),
-                                new Call(1),
+                                new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],

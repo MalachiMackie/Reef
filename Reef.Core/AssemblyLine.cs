@@ -61,12 +61,18 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
         
         _codeSegment.AppendLine("    push    rbp");
         _codeSegment.AppendLine("    mov     rbp, rsp");
-        _codeSegment.AppendLine("    sub     rsp, 32");
+        // give CRT_INIT it's shadow space
+        _codeSegment.AppendLine($"    sub     rsp, {_shadowSpaceBytes}");
         // ensure stack is 16-byte aligned
-        _codeSegment.AppendLine("    and     rsp, 0xFFFFFFFFFFFFFFF0");
+        //_codeSegment.AppendLine("    and     rsp, 0xFFFFFFFFFFFFFFF0");
         _codeSegment.AppendLine("    call    _CRT_INIT");
+        // put rsp back
+        _codeSegment.AppendLine($"    add     rsp, {_shadowSpaceBytes}");
+
+        _codeSegment.AppendLine($"    sub     rsp, {_shadowSpaceBytes}");
 
         _codeSegment.AppendLine("    call    _Main");
+        _codeSegment.AppendLine($"    add     rsp, {_shadowSpaceBytes}");
 
         // zero out rax as return value
         _codeSegment.AppendLine("    xor     rax, rax");
@@ -97,7 +103,8 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
         var stackSpaceNeeded = (_locals.Count + _parameters.Count) * 8;
         // ensure stack space is 16 byte aligned
         stackSpaceNeeded += stackSpaceNeeded % 16;
-        _codeSegment.AppendLine($"    sub     rsp, {32 + stackSpaceNeeded}");
+        _codeSegment.AppendLine($"; Allocate stack space for local variables");
+        _codeSegment.AppendLine($"    sub     rsp, {stackSpaceNeeded}");
 
         // todo: support non integer and non 8 byte parameters
         for (var i = method.Parameters.Count - 1; i >= 0; i--)
@@ -116,7 +123,7 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
                 throw new NotImplementedException();
             }
 
-            _codeSegment.AppendLine($"    mov    [rbp-{_shadowSpaceBytes + i*8}], {sourceRegister}");
+            _codeSegment.AppendLine($"    mov    [rbp-{(i + 1)*8}], {sourceRegister}");
         }
 
         var labels = method.Instructions.Labels.ToLookup(x => x.ReferencesInstructionIndex, x => x.Name);
@@ -131,7 +138,6 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
     }
 
     private readonly Stack<FunctionDefinitionReference> _functionStack = [];
-    private uint _byteOffset;
     private const uint _shadowSpaceBytes = 32;
 
     /*
@@ -235,26 +241,20 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
                         throw new NotImplementedException();
                     }
 
-                    _codeSegment.AppendLine("    mov     rax, rsp");
-                    _codeSegment.AppendLine("    and     rax, 0fffffffffffffff0h");
-                    _codeSegment.AppendLine("    mov     rsp, rax");
-                    _codeSegment.AppendLine($"    sub     rsp, {_shadowSpaceBytes}");
-                    
-                    // ensure we're byte aligned and give the callee 32 bytes of shadow space
-                    var bytesToOffset = 16 - _byteOffset;
-                    _byteOffset = 0;
+                    // calculate how many bytes we need to offset to be byte aligned by 16
+                    var bytesToOffset = call.StackSize % 16;
+
+                    _codeSegment.AppendLine($"    sub     rsp, {(_shadowSpaceBytes + bytesToOffset).ToString("X")}h");
                     
                     _codeSegment.AppendLine($"    call    {functionDefinition.Name}");
                     
-                    // pop off the 32 bytes of shadow space
-                    // TODO: we need to negate the stack alignment we did before calling the function
-                    _codeSegment.AppendLine($"    add     rsp, {_shadowSpaceBytes}");
-                    _byteOffset = 8;
+                    // move rsp back to where it was before we called the function
+                    _codeSegment.AppendLine($"    add     rsp, {(_shadowSpaceBytes + bytesToOffset).ToString("X")}h");
 
                     var method = _reefModule.Methods.FirstOrDefault(x => x.Id == functionDefinition.DefinitionId)
                         ?? _importedModules.SelectMany(x => x.Methods).First(x => x.Id == functionDefinition.DefinitionId);
 
-                    if (method.ReturnType is not ConcreteReefTypeReference { Name: "Unit" })
+                    if (call.ValueUseful && method.ReturnType is not ConcreteReefTypeReference { Name: "Unit" })
                     {
                         _codeSegment.AppendLine("    push    rax");
                     }
@@ -307,16 +307,10 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
                     _codeSegment.AppendLine("    CMP     rax, [rsp]");
                     _codeSegment.AppendLine("    POP     rax");
                     _codeSegment.AppendLine("    PUSHF");
-                    _byteOffset += 8;
-                    _byteOffset %= 16;
-                    _codeSegment.AppendLine($"; ByteOffest: {_byteOffset}");
                     _codeSegment.AppendLine("    POP     rax");
                     _codeSegment.AppendLine("    AND     rax, 10000000b"); // sign flag
                     _codeSegment.AppendLine("    SHR     rax, 7");
                     _codeSegment.AppendLine("    PUSH    rax");
-                    _byteOffset += 8;
-                    _byteOffset %= 16;
-                    _codeSegment.AppendLine($"; ByteOffset: {_byteOffset}");
                     break;
                 }
             case CompareIntLessOrEqualTo compareIntLessOrEqualTo:
@@ -329,16 +323,10 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
                     _codeSegment.AppendLine("    CMP     [rsp], rax");
                     _codeSegment.AppendLine("    POP     rax");
                     _codeSegment.AppendLine("    PUSHF");
-                    _byteOffset += 8;
-                    _byteOffset %= 16;
-                    _codeSegment.AppendLine($"; ByteOffest: {_byteOffset}");
                     _codeSegment.AppendLine("    POP     rax");
                     _codeSegment.AppendLine("    AND     rax, 10000000b"); // sign flag
                     _codeSegment.AppendLine("    SHR     rax, 7");
                     _codeSegment.AppendLine("    PUSH    rax");
-                    _byteOffset += 8;
-                    _byteOffset %= 16;
-                    _codeSegment.AppendLine($"; ByteOffset: {_byteOffset}");
                     break;
                 }
             case CopyStack copyStack:
@@ -398,7 +386,7 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
                 {
                     _codeSegment.AppendLine($"; LOAD_ARGUMENT({loadArgument.ArgumentIndex})");
 
-                    _codeSegment.AppendLine($"    push    [rbp-{_shadowSpaceBytes + (loadArgument.ArgumentIndex*8)}]");
+                    _codeSegment.AppendLine($"    push    [rbp-{(loadArgument.ArgumentIndex + 1)*8}]");
 
                     break;
                 }
@@ -426,19 +414,13 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
                     
                     var binaryFormatted = loadIntConstant.Value.ToString("x");
                     _codeSegment.AppendLine($"    push    {binaryFormatted}");
-                    _byteOffset += 8;
-                    _byteOffset %= 16;
-                    _codeSegment.AppendLine($"; ByteOffset: {_byteOffset}");
                     break;
                 }
             case LoadLocal loadLocal:
             {
                 _codeSegment.AppendLine($"; LOAD_LOCAL({loadLocal.LocalName})");
                 var localIndex = _locals.Index().First(x => x.Item.DisplayName == loadLocal.LocalName).Index;
-                _codeSegment.AppendLine($"    push     [rbp-{_shadowSpaceBytes + (localIndex + _parameters.Count)*8}]");
-                _byteOffset += 8;
-                _byteOffset %= 16;
-                    _codeSegment.AppendLine($"; ByteOffset: {_byteOffset}");
+                _codeSegment.AppendLine($"    push     [rbp-{(localIndex + _parameters.Count + 1)*8}]");
                 break;
             }
             case LoadStaticField loadStaticField:
@@ -458,9 +440,6 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
 
                 _codeSegment.AppendLine($"    lea     rax, [{stringName}]");
                 _codeSegment.AppendLine("    push    rax");
-                _byteOffset += 8;
-                _byteOffset %= 16;
-                    _codeSegment.AppendLine($"; ByteOffset: {_byteOffset}");
                 break;
             }
             case LoadType loadType:
@@ -496,15 +475,9 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
                 var localIndex = _locals.Index().First(x => x.Item.DisplayName == storeLocal.LocalName).Index;
                 // pop the value on the stack into rax
                 _codeSegment.AppendLine("    pop     rax");
-                // we want to decrement the byte offset by 8, but we may increment by 8 so we don't overflow
-                if (_byteOffset < 8)
-                    _byteOffset += 8;
-                else
-                    _byteOffset -= 8;
-                _codeSegment.AppendLine($"; ByteOffset: {_byteOffset}");
                 
                 // move rax into the local's dedicated stack space
-                _codeSegment.AppendLine($"    mov     [rbp-{_shadowSpaceBytes + (localIndex + _parameters.Count)*8}], rax");
+                _codeSegment.AppendLine($"    mov     [rbp-{(localIndex + _parameters.Count + 1)*8}], rax");
                 break;
             }
             case StoreStaticField storeStaticField:
@@ -515,7 +488,7 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
                 _codeSegment.AppendLine($"; SWITCH_INT");
                     foreach (var branch in switchInt.BranchLabels)
                     {
-                        _codeSegment.AppendLine("    mov     rax, [rsp]");
+                        _codeSegment.AppendLine("    pop     rax");
                         _codeSegment.AppendLine($"    cmp     rax, {branch.Key:x}");
                         _codeSegment.AppendLine($"    je      {branch.Value}");
                     }
