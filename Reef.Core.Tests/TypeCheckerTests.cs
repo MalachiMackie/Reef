@@ -13,7 +13,7 @@ public class TypeCheckerTests
     [MemberData(nameof(SuccessfulExpressionTestCases))]
     public void Should_SuccessfullyTypeCheckExpressions(string source)
     {
-        var program = Parser.Parse(Tokenizer.Tokenize(source));
+        var program = Parser.Parse("TypeCheckerTests", Tokenizer.Tokenize(source));
         program.Errors.Should().BeEmpty();
         var errors = TypeChecker.TypeCheck(program.ParsedProgram);
         errors.Should().BeEmpty();
@@ -27,7 +27,7 @@ public class TypeCheckerTests
         IReadOnlyList<TypeCheckerError> expectedErrors)
     {
         description.Should().NotBeNull();
-        var program = Parser.Parse(Tokenizer.Tokenize(source));
+        var program = Parser.Parse("TypeCheckerTests", Tokenizer.Tokenize(source));
         program.Errors.Should().BeEmpty();
         var errors = TypeChecker.TypeCheck(program.ParsedProgram);
 
@@ -52,7 +52,7 @@ public class TypeCheckerTests
             """;
         IReadOnlyList<TypeCheckerError> expectedErrors = [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)];
 
-        var program = Parser.Parse(Tokenizer.Tokenize(src));
+        var program = Parser.Parse("TypeCheckerTests", Tokenizer.Tokenize(src));
         var result = TypeCheck(program.ParsedProgram);
 
         result.Should().BeEquivalentTo(expectedErrors, opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));

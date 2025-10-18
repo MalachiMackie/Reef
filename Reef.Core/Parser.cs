@@ -9,11 +9,13 @@ public sealed class Parser : IDisposable
 {
     private readonly List<ParserError> _errors = [];
     private readonly IEnumerator<Token> _tokens;
+    private readonly string _moduleId;
     private bool _hasNext;
 
-    private Parser(IEnumerable<Token> tokens)
+    private Parser(string moduleId, IEnumerable<Token> tokens)
     {
         _tokens = tokens.GetEnumerator();
+        _moduleId = moduleId;
     }
 
     private Token Current => _hasNext ? _tokens.Current : throw new InvalidOperationException("No current token");
@@ -24,9 +26,9 @@ public sealed class Parser : IDisposable
         _tokens.Dispose();
     }
 
-    public static ParseResult Parse(IEnumerable<Token> tokens)
+    public static ParseResult Parse(string moduleId, IEnumerable<Token> tokens)
     {
-        using var parser = new Parser(tokens);
+        using var parser = new Parser(moduleId, tokens);
 
         return parser.ParseInner();
     }
@@ -35,9 +37,9 @@ public sealed class Parser : IDisposable
     ///     static entry point for a single expression. Used for testing
     /// </summary>
     /// <returns></returns>
-    public static IExpression? PopExpression(IEnumerable<Token> tokens)
+    public static IExpression? PopExpression(string moduleId, IEnumerable<Token> tokens)
     {
-        using var parser = new Parser(tokens);
+        using var parser = new Parser(moduleId, tokens);
 
         if (!parser.MoveNext())
         {
@@ -72,13 +74,13 @@ public sealed class Parser : IDisposable
     {
         if (!MoveNext())
         {
-            return new ParseResult(new LangProgram([], [], [], []), []);
+            return new ParseResult(new LangProgram(_moduleId, [], [], [], []), []);
         }
 
         var scope = GetScope(null, [Scope.ScopeType.TypeDefinition, Scope.ScopeType.Expression, Scope.ScopeType.Function]);
 
         return new ParseResult(
-            new LangProgram(scope.Expressions, scope.Functions, scope.Classes, scope.Unions),
+            new LangProgram(_moduleId, scope.Expressions, scope.Functions, scope.Classes, scope.Unions),
             _errors
         );
     }

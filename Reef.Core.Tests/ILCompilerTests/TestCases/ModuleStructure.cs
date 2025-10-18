@@ -1,8 +1,7 @@
 ﻿using FluentAssertions;
-using FluentAssertions.Equivalency;
 using Reef.Core.Abseil;
+using Reef.Core.IL;
 using Reef.Core.TypeChecking;
-using Reef.IL;
 using static Reef.Core.Tests.ILCompilerTests.TestHelpers;
 
 namespace Reef.Core.Tests.ILCompilerTests.TestCases;
@@ -14,7 +13,7 @@ public class ModuleStructure
     public void CompileToIL_Should_GenerateCorrectIL(string description, string source, ReefModule expectedModule)
     {
         var tokens = Tokenizer.Tokenize(source);
-        var program = Parser.Parse(tokens);
+        var program = Parser.Parse(_moduleId, tokens);
         program.Errors.Should().BeEmpty();
         var typeCheckErrors = TypeChecker.TypeCheck(program.ParsedProgram);
         typeCheckErrors.Should().BeEmpty();
@@ -24,15 +23,10 @@ public class ModuleStructure
         var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
             expectedModule,
-            ConfigureEquivalencyCheck,
             description);
     }
-    
-    private static EquivalencyOptions<T> ConfigureEquivalencyCheck<T>(EquivalencyOptions<T> options)
-    {
-        return options
-            .Excluding(memberInfo => memberInfo.Type == typeof(Guid));
-    }
+
+    private const string _moduleId = "ModuleStructure";
     
     public static TheoryData<string, string, ReefModule> TestCases()
     {
@@ -40,13 +34,13 @@ public class ModuleStructure
         {
             { "empty module", "", Module() },
             { "empty class", "class MyClass{}", Module(
-                types: [DataType("MyClass", variants: [Variant("_classVariant")])])},
+                types: [DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", variants: [Variant("_classVariant")])])},
             { "empty union", "union MyUnion{}", Module(
-                types: [DataType("MyUnion", variants: [])])},
+                types: [DataType(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion", variants: [])])},
             {
                 "union with unit variants", "union MyUnion{A, B}", Module(
                     types: [
-                        DataType("MyUnion",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion",
                             variants: [
                                 Variant("A", fields: [Field("_variantIdentifier", IntType)]),
                                 Variant("B", fields: [Field("_variantIdentifier", IntType)]),
@@ -58,7 +52,7 @@ public class ModuleStructure
                 "static fn someFn() {}",
                 Module(
                     methods: [
-                        Method("someFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.someFn"), "someFn",
                             instructions: [LoadUnit(), Return()])
                     ])
             },
@@ -67,11 +61,11 @@ public class ModuleStructure
                 "class MyClass { static fn SomeFn() {} }",
                 Module(
                     types: [
-                        DataType("MyClass",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass",
                             variants: [Variant("_classVariant")])
                     ],
                     methods: [
-                        Method("MyClass__SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn",
                             instructions: [
                                 LoadUnit(), Return()
                             ])
@@ -82,10 +76,10 @@ public class ModuleStructure
                 "union MyUnion { static fn SomeFn() {} }",
                 Module(
                     types: [
-                        DataType("MyUnion", variants: [])
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion", variants: [])
                     ],
                     methods: [
-                        Method("MyUnion__SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__SomeFn"), "MyUnion__SomeFn",
                             instructions: [LoadUnit(), Return()])
                     ])
             },
@@ -94,7 +88,7 @@ public class ModuleStructure
                 "static fn SomeFn(a: int, b: string){}",
                 Module(
                     methods: [
-                        Method("SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
                             [LoadUnit(), Return()],
                             parameters: [IntType, StringType])
                     ])
@@ -104,7 +98,7 @@ public class ModuleStructure
                 "static fn SomeFn(): int {return 1;}",
                 Module(
                     methods: [
-                        Method("SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
                             [
                                 new LoadIntConstant(1),
                                 Return()
@@ -117,7 +111,7 @@ public class ModuleStructure
                 "static fn SomeFn<T>() {}",
                 Module(
                     methods: [
-                        Method("SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
                             [LoadUnit(), Return()],
                             typeParameters: ["T"])
                     ])
@@ -127,14 +121,14 @@ public class ModuleStructure
                 "static fn SomeFn<T1, T2>(a: T1, b: T2): T2 {return b;}",
                 Module(
                     methods: [
-                        Method("SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
                             [
                                 new LoadArgument(1),
                                 Return()
                             ],
-                            parameters: [GenericTypeReference("T1"), GenericTypeReference("T2")],
+                            parameters: [GenericTypeReference(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "T1"), GenericTypeReference(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "T2")],
                             typeParameters: ["T1", "T2"],
-                            returnType: GenericTypeReference("T2"))
+                            returnType: GenericTypeReference(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "T2"))
                     ])
             },
             {
@@ -142,7 +136,7 @@ public class ModuleStructure
                 "class MyClass<T>{}",
                 Module(
                     types: [
-                        DataType("MyClass", variants: [Variant("_classVariant")], typeParameters: ["T"])
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", variants: [Variant("_classVariant")], typeParameters: ["T"])
                     ])
             },
             {
@@ -150,7 +144,7 @@ public class ModuleStructure
                 "union MyUnion<T>{}",
                 Module(
                     types: [
-                        DataType("MyUnion", variants: [], typeParameters: ["T"])
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion", variants: [], typeParameters: ["T"])
                     ])
             },
             {
@@ -158,16 +152,16 @@ public class ModuleStructure
                 "class MyClass<T> { static fn SomeFn(param: T): T{ return param;} }",
                 Module(
                     types: [
-                        DataType("MyClass", variants: [Variant("_classVariant")], typeParameters: ["T"])
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", variants: [Variant("_classVariant")], typeParameters: ["T"])
                     ],
                     methods: [
-                        Method("MyClass__SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn",
                             [
                                 new LoadArgument(0),
                                 Return()
                             ],
-                            parameters: [GenericTypeReference("T")],
-                            returnType: GenericTypeReference("T"),
+                            parameters: [GenericTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"),"T")],
+                            returnType: GenericTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "T"),
                             typeParameters: ["T"])
                     ])
             },
@@ -176,16 +170,16 @@ public class ModuleStructure
                 "union MyUnion<T> { static fn SomeFn(param: T): T{ return param;} }",
                 Module(
                     types: [
-                        DataType("MyUnion", variants: [], typeParameters: ["T"])
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion", variants: [], typeParameters: ["T"])
                     ],
                     methods: [
-                        Method("MyUnion__SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__SomeFn"), "MyUnion__SomeFn",
                             [
                                 new LoadArgument(0),
                                 Return()
                             ],
-                            parameters: [GenericTypeReference("T")],
-                            returnType: GenericTypeReference("T"),
+                            parameters: [GenericTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "T")],
+                            returnType: GenericTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "T"),
                             typeParameters: ["T"])
                     ])
             },
@@ -194,12 +188,12 @@ public class ModuleStructure
                 "class MyClass { fn SomeFn(){}}",
                 Module(
                     types: [
-                        DataType("MyClass", variants: [Variant("_classVariant")])
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", variants: [Variant("_classVariant")])
                     ],
                     methods: [
-                        Method("MyClass__SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn",
                             [LoadUnit(), Return()],
-                            parameters: [ConcreteTypeReference("MyClass")])
+                            parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")])
                     ])
             },
             {
@@ -207,12 +201,12 @@ public class ModuleStructure
                 "union MyUnion { fn SomeFn(){}}",
                 Module(
                     types: [
-                        DataType("MyUnion", variants: [])
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion", variants: [])
                     ],
                     methods: [
-                        Method("MyUnion__SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__SomeFn"), "MyUnion__SomeFn",
                             [LoadUnit(), Return()],
-                            parameters: [ConcreteTypeReference("MyUnion")])
+                            parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")])
                     ])
             },
             {
@@ -220,7 +214,7 @@ public class ModuleStructure
                 "class MyClass { pub field MyField: string, static field OtherField: int = 1}",
                 Module(
                     types: [
-                        DataType("MyClass",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass",
                             variants: [
                                 Variant("_classVariant",
                                     fields: [
@@ -237,7 +231,7 @@ public class ModuleStructure
                 "union MyUnion { A, B(string, int), C { field MyField: bool } }",
                 Module(
                     types: [
-                        DataType("MyUnion",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion",
                             variants: [
                                 Variant(
                                     "A",
@@ -257,10 +251,10 @@ public class ModuleStructure
                             ])
                     ],
                     methods: [
-                        Method("MyUnion_Create_B",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__B"), "MyUnion__Create__B",
                             [
                                 new CreateObject(
-                                    ConcreteTypeReference("MyUnion")),
+                                    ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
                                 new LoadIntConstant(1),
                                 new StoreField(1, "_variantIdentifier"),
@@ -273,7 +267,7 @@ public class ModuleStructure
                                 Return()
                             ],
                             parameters: [StringType, IntType],
-                            returnType: ConcreteTypeReference("MyUnion"))
+                            returnType: ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion"))
                     ])
             },
         };

@@ -1,8 +1,8 @@
 ﻿using FluentAssertions;
 using FluentAssertions.Equivalency;
 using Reef.Core.Abseil;
+using Reef.Core.IL;
 using Reef.Core.TypeChecking;
-using Reef.IL;
 
 using static Reef.Core.Tests.ILCompilerTests.TestHelpers;
 
@@ -15,7 +15,7 @@ public class ControlFlow
     public void ControlFlowIL_Should_GenerateCorrectIL(string description, string source, ReefModule expectedModule)
     {
         var tokens = Tokenizer.Tokenize(source);
-        var program = Parser.Parse(tokens);
+        var program = Parser.Parse(_moduleId, tokens);
         program.Errors.Should().BeEmpty();
         var typeCheckErrors = TypeChecker.TypeCheck(program.ParsedProgram);
         typeCheckErrors.Should().BeEmpty();
@@ -25,9 +25,10 @@ public class ControlFlow
         var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
             expectedModule,
-            ConfigureEquivalencyCheck,
             description);
     }
+
+    private const string _moduleId = "ControlFlow";
 
     [Fact]
     public void SingleTest()
@@ -40,29 +41,29 @@ public class ControlFlow
                 """;
                 var expectedModule = Module(
                     methods: [
-                        Method("SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
                             [LoadUnit(), Return()],
                             parameters: [IntType]),
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("Function`2", [IntType, UnitType])),
+                                new CreateObject(ConcreteTypeReference(DefId.FunctionObject(1), "Function`2", [IntType, UnitType])),
                                 new CopyStack(),
-                                new LoadFunction(FunctionDefinitionReference("SomeFn")),
+                                new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn")),
                                 new StoreField(0, "FunctionReference"),
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
                                 new LoadIntConstant(1),
-                                new LoadFunction(FunctionDefinitionReference("Function`2__Call", [IntType, UnitType])),
+                                new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(1), "Function`2__Call", [IntType, UnitType])),
                                 new Call(2, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("Function`2", [IntType, UnitType]))
+                                Local("a", ConcreteTypeReference(DefId.FunctionObject(1), "Function`2", [IntType, UnitType]))
                             ])
                     ]);
         var tokens = Tokenizer.Tokenize(source);
-        var program = Parser.Parse(tokens);
+        var program = Parser.Parse(_moduleId, tokens);
         program.Errors.Should().BeEmpty();
         var typeCheckErrors = TypeChecker.TypeCheck(program.ParsedProgram);
         typeCheckErrors.Should().BeEmpty();
@@ -71,16 +72,9 @@ public class ControlFlow
 
         var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
-            expectedModule,
-            ConfigureEquivalencyCheck);
+            expectedModule);
     }
     
-    private static EquivalencyOptions<T> ConfigureEquivalencyCheck<T>(EquivalencyOptions<T> options)
-    {
-        return options
-            .Excluding(memberInfo => memberInfo.Type == typeof(Guid))
-            .WithStrictTyping();
-    }
     public static TheoryData<string, string, ReefModule> TestCases()
     {
         return new TheoryData<string, string, ReefModule>
@@ -95,10 +89,10 @@ public class ControlFlow
                 """,
                 Module(
                     methods: [
-                        Method("SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
                             [
                                 new LoadIntConstant(1),
-                                new LoadFunction(FunctionDefinitionReference("result_Create_Ok", [IntType, StringType])),
+                                new LoadFunction(FunctionDefinitionReference(DefId.Result_Create_Ok, "result__Create__Ok", [IntType, StringType])),
                                 new Call(1, 0, true),
                                 new StoreLocal("Local1"),
                                 new LoadLocal("Local1"),
@@ -107,7 +101,7 @@ public class ControlFlow
                                 // switchInt_0_otherwise
                                 new LoadLocal("Local1"),
                                 new LoadField(1, "Item0"),
-                                new LoadFunction(FunctionDefinitionReference("result_Create_Error", [IntType, StringType])),
+                                new LoadFunction(FunctionDefinitionReference(DefId.Result_Create_Error, "result__Create__Error", [IntType, StringType])),
                                 new Call(1, 0, true),
                                 new Return(),
                                 // switchInt_0_branch_0
@@ -115,19 +109,19 @@ public class ControlFlow
                                 new LoadField(0, "Item0"),
                                 new StoreLocal("a"),
                                 new LoadIntConstant(1),
-                                new LoadFunction(FunctionDefinitionReference("result_Create_Ok", [IntType, StringType])),
+                                new LoadFunction(FunctionDefinitionReference(DefId.Result_Create_Ok, "result__Create__Ok", [IntType, StringType])),
                                 new Call(1, 0, true),
                                 new Return()
                             ],
                             locals: [
                                 Local("a", IntType),
-                                Local("Local1", ConcreteTypeReference("result", [IntType, StringType]))
+                                Local("Local1", ConcreteTypeReference(DefId.Result, "result", [IntType, StringType]))
                             ],
                             labels: [
                                 new InstructionLabel("switchInt_0_otherwise", 7),
                                 new InstructionLabel("switchInt_0_branch_0", 12),
                             ],
-                            returnType: ConcreteTypeReference("result", [IntType, StringType]))
+                            returnType: ConcreteTypeReference(DefId.Result, "result", [IntType, StringType]))
                     ])
             },
             {
@@ -135,7 +129,7 @@ public class ControlFlow
                 "if (true) {}",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadBoolConstant(true),
                                 new CastBoolToInt(),
@@ -164,7 +158,7 @@ public class ControlFlow
                 "if (true) {var a = 1}",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadBoolConstant(true),
                                 new CastBoolToInt(),
@@ -201,7 +195,7 @@ public class ControlFlow
                 """,
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadBoolConstant(true),
                                 new CastBoolToInt(),
@@ -241,7 +235,7 @@ public class ControlFlow
                 """,
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadBoolConstant(true),
                                 new CastBoolToInt(),
@@ -283,7 +277,7 @@ public class ControlFlow
                 """,
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadBoolConstant(true),
                                 new CastBoolToInt(),
@@ -357,7 +351,7 @@ public class ControlFlow
                 """,
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadBoolConstant(true),
                                 new CastBoolToInt(),
@@ -424,7 +418,7 @@ public class ControlFlow
                 """,
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 new StoreLocal("Local0"),
@@ -456,7 +450,7 @@ public class ControlFlow
                 """,
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 new StoreLocal("a"),
@@ -495,15 +489,15 @@ public class ControlFlow
                 """,
                 Module(
                     types: [
-                        DataType("MyClass",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass",
                             variants: [
                                 Variant("_classVariant", [Field("MyField", StringType)])
                             ])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 new CopyStack(),
                                 new LoadStringConstant(""),
                                 new StoreField(0, "MyField"),
@@ -534,9 +528,9 @@ public class ControlFlow
                                 new InstructionLabel("switchInt_0_after", 14),
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyClass")),
+                                Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 Local("MyField", StringType),
-                                Local("Local2", ConcreteTypeReference("MyClass"))
+                                Local("Local2", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"))
                             ])
                     ])
             },
@@ -553,7 +547,7 @@ public class ControlFlow
                 """,
                 Module(
                     types: [
-                        DataType("MyClass",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass",
                             variants: [
                                 Variant("_classVariant",
                                     [
@@ -563,9 +557,9 @@ public class ControlFlow
                             ])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 new CopyStack(),
                                 new LoadStringConstant(""),
                                 new StoreField(0, "MyField"),
@@ -610,10 +604,10 @@ public class ControlFlow
                                 new InstructionLabel("boolAnd_0_after", 21),
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyClass")),
+                                Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 Local("MyField", StringType),
                                 Local("SecondField", IntType),
-                                Local("Local3", ConcreteTypeReference("MyClass"))
+                                Local("Local3", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"))
                             ])
                     ])
             },
@@ -629,7 +623,7 @@ public class ControlFlow
                 """,
                 Module(
                     types: [
-                        DataType("MyClass",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass",
                             variants: [
                                 Variant("_classVariant",
                                     [
@@ -638,9 +632,9 @@ public class ControlFlow
                             ])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 new CopyStack(),
                                 new LoadStringConstant(""),
                                 new StoreField(0, "MyField"),
@@ -671,9 +665,9 @@ public class ControlFlow
                                 new InstructionLabel("switchInt_0_after", 14),
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyClass")),
+                                Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 Local("b", StringType),
-                                Local("Local2", ConcreteTypeReference("MyClass"))
+                                Local("Local2", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"))
                             ])
                     ])
             },
@@ -692,7 +686,7 @@ public class ControlFlow
                 """,
                 Module(
                     types: [
-                        DataType("MyUnion",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion",
                             variants: [
                                 Variant("A",
                                     [
@@ -706,10 +700,9 @@ public class ControlFlow
                             ])
                     ],
                     methods: [
-                        Method(
-                            "MyUnion_Create_A",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__A"), "MyUnion__Create__A",
                             [
-                                new CreateObject(ConcreteTypeReference("MyUnion")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
                                 new LoadIntConstant(0),
                                 new StoreField(0, "_variantIdentifier"),
@@ -719,10 +712,10 @@ public class ControlFlow
                                 Return()
                             ],
                             parameters: [StringType],
-                            returnType: ConcreteTypeReference("MyUnion")),
-                        Method("_Main",
+                            returnType: ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("MyUnion")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
                                 new LoadIntConstant(1),
                                 new StoreField(1, "_variantIdentifier"),
@@ -751,9 +744,9 @@ public class ControlFlow
                                 Return()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyUnion")),
+                                Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 Local("b", IntType),
-                                Local("Local2", ConcreteTypeReference("MyUnion")),
+                                Local("Local2", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 Local("Local3", StringType)
                             ],
                             labels: [

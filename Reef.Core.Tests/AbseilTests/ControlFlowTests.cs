@@ -1,4 +1,3 @@
-
 using FluentAssertions;
 using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
@@ -14,13 +13,15 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
     public void ControlFlowAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
         description.Should().NotBeEmpty();
-        var program = CreateProgram(source);
+        var program = CreateProgram(_moduleId, source);
         var loweredProgram = ProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
-        loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
+        loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
+
+    private const string _moduleId = "ControlFlowTests";
 
     [Fact]
     public void SingleTest()
@@ -38,7 +39,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                 """;
                 var expectedProgram = LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a", IntConstant(0, true), false),
@@ -70,12 +71,12 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                             locals: [Local("a", Int)])
                     ]);
 
-        var program = CreateProgram(source);
+        var program = CreateProgram(_moduleId, source);
         var loweredProgram = ProgramAbseil.Lower(program);
         
         PrintPrograms(expectedProgram, loweredProgram, false, false);
         
-        loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
+        loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
 
     public static TheoryData<string, string, LoweredProgram> TestCases()
@@ -98,8 +99,17 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                 """,
                 LoweredProgram(
                     methods: [
-                        Method(
-                            "OtherFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
+                            [
+                                MethodReturn(
+                                    MethodCall(
+                                        FunctionReference(DefId.Result_Create_Error, "result__Create__Error", [Int, Int]),
+                                        [IntConstant(1, true)],
+                                        true,
+                                        ConcreteTypeReference("result", DefId.Result, [Int, Int])))
+                            ],
+                            returnType: ConcreteTypeReference("result", DefId.Result, [Int, Int])),
+                        Method(new DefId(_moduleId, $"{_moduleId}.OtherFn"), "OtherFn",
                             [
                                 VariableDeclaration(
                                     "a",
@@ -108,15 +118,15 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                             LocalValueAssignment(
                                                 "Local1",
                                                 MethodCall(
-                                                    FunctionReference("SomeFn", []),
+                                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn", []),
                                                     [],
                                                     true,
-                                                    ConcreteTypeReference("result", [Int, Int])),
+                                                    ConcreteTypeReference("result", DefId.Result, [Int, Int])),
                                                 false,
-                                                ConcreteTypeReference("result", [Int, Int])),
+                                                ConcreteTypeReference("result", DefId.Result, [Int, Int])),
                                             SwitchInt(
                                                 FieldAccess(
-                                                    LocalAccess("Local1", true, ConcreteTypeReference("result", [Int, Int])),
+                                                    LocalAccess("Local1", true, ConcreteTypeReference("result", DefId.Result, [Int, Int])),
                                                     "_variantIdentifier",
                                                     "Ok",
                                                     true,
@@ -126,7 +136,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                                     {
                                                         0,
                                                         FieldAccess(
-                                                            LocalAccess("Local1", true, ConcreteTypeReference("result", [Int, Int])),
+                                                            LocalAccess("Local1", true, ConcreteTypeReference("result", DefId.Result, [Int, Int])),
                                                             "Item0",
                                                             "Ok",
                                                             true,
@@ -135,17 +145,17 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                                 },
                                                 MethodReturn(
                                                     MethodCall(
-                                                        FunctionReference("result_Create_Error", [Int, Int]),
+                                                        FunctionReference(DefId.Result_Create_Error, "result__Create__Error", [Int, Int]),
                                                         [
                                                             FieldAccess(
-                                                                LocalAccess("Local1", true, ConcreteTypeReference("result", [Int, Int])),
+                                                                LocalAccess("Local1", true, ConcreteTypeReference("result", DefId.Result, [Int, Int])),
                                                                 "Item0",
                                                                 "Error",
                                                                 true,
                                                                 Int)
                                                         ],
                                                         true,
-                                                        ConcreteTypeReference("result", [Int, Int]))),
+                                                        ConcreteTypeReference("result", DefId.Result, [Int, Int]))),
                                                 valueUseful: true,
                                                 resolvedType: Int)
                                         ],
@@ -154,27 +164,16 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                     false),
                                 MethodReturn(
                                     MethodCall(
-                                        FunctionReference("result_Create_Ok", [Int, Int]),
+                                        FunctionReference(DefId.Result_Create_Ok, "result__Create__Ok", [Int, Int]),
                                         [LocalAccess("a", true, Int)],
                                         true,
-                                        ConcreteTypeReference("result", [Int, Int])))
+                                        ConcreteTypeReference("result", DefId.Result, [Int, Int])))
                             ],
                             locals: [
                                 Local("a", Int),
-                                Local("Local1", ConcreteTypeReference("result", [Int, Int]))
+                                Local("Local1", ConcreteTypeReference("result", DefId.Result, [Int, Int]))
                             ],
-                            returnType: ConcreteTypeReference("result", [Int, Int])),
-                        Method(
-                            "SomeFn",
-                            [
-                                MethodReturn(
-                                    MethodCall(
-                                        FunctionReference("result_Create_Error", [Int, Int]),
-                                        [IntConstant(1, true)],
-                                        true,
-                                        ConcreteTypeReference("result", [Int, Int])))
-                            ],
-                            returnType: ConcreteTypeReference("result", [Int, Int]))
+                            returnType: ConcreteTypeReference("result", DefId.Result, [Int, Int]))
                     ])
             },
             {
@@ -185,7 +184,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                 """,
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration("a", IntConstant(0, true), false),
                                 SwitchInt(
@@ -210,8 +209,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                 """,
                 LoweredProgram(
                     methods: [
-                        Method(
-                            "_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration("a", IntConstant(0, true), false),
                                 SwitchInt(
@@ -241,8 +239,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                 """,
                 LoweredProgram(
                     methods: [
-                        Method(
-                            "_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a", IntConstant(1, true), false),
@@ -296,7 +293,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                 """,
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a", IntConstant(0, true), false),
@@ -341,7 +338,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                 """,
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration("a", IntConstant(0, true), false),
                                 SwitchInt(

@@ -1,8 +1,8 @@
 ﻿using FluentAssertions;
 using FluentAssertions.Equivalency;
 using Reef.Core.Abseil;
+using Reef.Core.IL;
 using Reef.Core.TypeChecking;
-using Reef.IL;
 
 namespace Reef.Core.Tests.ILCompilerTests.TestCases;
 using static TestHelpers;
@@ -15,7 +15,7 @@ public class ClassTests
     public void CompileToIL_Should_GenerateCorrectIL(string description, string source, ReefModule expectedModule)
     {
         var tokens = Tokenizer.Tokenize(source);
-        var program = Parser.Parse(tokens);
+        var program = Parser.Parse(_moduleId, tokens);
         program.Errors.Should().BeEmpty();
         var typeCheckErrors = TypeChecker.TypeCheck(program.ParsedProgram);
         typeCheckErrors.Should().BeEmpty();
@@ -25,15 +25,10 @@ public class ClassTests
         var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
             expectedModule,
-            ConfigureEquivalencyCheck,
             description);
     }
-    
-    private static EquivalencyOptions<T> ConfigureEquivalencyCheck<T>(EquivalencyOptions<T> options)
-    {
-        return options
-            .Excluding(memberInfo => memberInfo.Type == typeof(Guid));
-    }
+
+    private const string _moduleId = "ClassTests";
     
     public static TheoryData<string, string, ReefModule> TestCases()
     {
@@ -50,18 +45,18 @@ public class ClassTests
                 """,
                 Module(
                     types: [
-                        DataType("MyClass", variants: [Variant("_classVariant")])
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", variants: [Variant("_classVariant")])
                     ],
                     methods: [
-                        Method("MyClass__SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn",
                             [
                                 new LoadArgument(0),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
                             ],
-                            parameters: [ConcreteTypeReference("MyClass")],
-                            locals: [Local("a", ConcreteTypeReference("MyClass"))])
+                            parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")],
+                            locals: [Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"))])
                     ])
             },
             {
@@ -77,13 +72,13 @@ public class ClassTests
                 """,
                 Module(
                     types: [
-                        DataType("MyClass",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass",
                             variants: [
                                 Variant("_classVariant", [Field("SomeField", StringType)])
                             ])
                     ],
                     methods: [
-                        Method("MyClass__SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn",
                             [
                                 new LoadArgument(0),
                                 new LoadField(0, "SomeField"),
@@ -91,7 +86,7 @@ public class ClassTests
                                 LoadUnit(),
                                 Return()
                             ],
-                            parameters: [ConcreteTypeReference("MyClass")],
+                            parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")],
                             locals: [
                                 Local("a", StringType)
                             ])
@@ -110,14 +105,14 @@ public class ClassTests
                 """,
                 Module(
                     types: [
-                        DataType("MyClass",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass",
                             variants: [Variant("_classVariant")],
                             staticFields: [StaticField("SomeField", StringType, [StringConstant("")])])
                     ],
                     methods: [
-                        Method("MyClass__SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn",
                             [
-                                new LoadStaticField(ConcreteTypeReference("MyClass"), "SomeField"),
+                                new LoadStaticField(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"), "SomeField"),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
@@ -136,17 +131,17 @@ public class ClassTests
                 """,
                 Module(
                     types: [
-                        DataType("MyClass", variants: [Variant("_classVariant")])
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", variants: [Variant("_classVariant")])
                     ],
                     methods: [
-                        Method("MyClass__SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn",
                             [
                                 new LoadArgument(1),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
                             ],
-                            parameters: [ConcreteTypeReference("MyClass"), IntType],
+                            parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"), IntType],
                             locals: [Local("a", IntType)])
                     ])
             },
@@ -158,18 +153,18 @@ public class ClassTests
                 """,
                 Module(
                     types: [
-                        DataType("MyClass", variants: [Variant("_classVariant")])
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", variants: [Variant("_classVariant")])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyClass"))
+                                Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"))
                             ])
                     ])
             },
@@ -181,7 +176,7 @@ public class ClassTests
                 """,
                 Module(
                     types: [
-                        DataType("MyClass",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass",
                             variants: [
                                 Variant("_classVariant",
                                     fields: [
@@ -191,9 +186,9 @@ public class ClassTests
                             ])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 new CopyStack(),
                                 new LoadIntConstant(2),
                                 new StoreField(0, "Field1"),
@@ -205,7 +200,7 @@ public class ClassTests
                                 Return()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyClass"))
+                                Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"))
                             ])
                     ])
             },
@@ -220,26 +215,26 @@ public class ClassTests
                 """,
                 Module(
                     types: [
-                        DataType("MyClass", variants: [Variant("_classVariant")])
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", variants: [Variant("_classVariant")])
                     ],
                     methods: [
-                        Method("MyClass__SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn",
                             [
                                 LoadUnit(),
                                 Return()
                             ],
-                            parameters: [ConcreteTypeReference("MyClass")]),
-                        Method("_Main",
+                            parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")]),
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
-                                new LoadFunction(FunctionDefinitionReference("MyClass__SomeFn")),
+                                new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn")),
                                 new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", ConcreteTypeReference("MyClass"))])
+                            locals: [Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"))])
                     ])
             },
             {
@@ -253,28 +248,28 @@ public class ClassTests
                 """,
                 Module(
                     types: [
-                        DataType("MyClass", variants: [Variant("_classVariant")])
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", variants: [Variant("_classVariant")])
                     ],
                     methods: [
-                        Method("MyClass__SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn",
                             [
                                 LoadUnit(),
                                 Return()
                             ],
-                            parameters: [ConcreteTypeReference("MyClass"), IntType, StringType]),
-                        Method("_Main",
+                            parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"), IntType, StringType]),
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
                                 new LoadIntConstant(1),
                                 new LoadStringConstant(""),
-                                new LoadFunction(FunctionDefinitionReference("MyClass__SomeFn")),
+                                new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn")),
                                 new Call(3, 0, false),
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", ConcreteTypeReference("MyClass"))])
+                            locals: [Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"))])
                     ])
             },
             {
@@ -288,19 +283,19 @@ public class ClassTests
                 """,
                 Module(
                     types: [
-                        DataType("MyClass", variants: [Variant("_classVariant")])
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", variants: [Variant("_classVariant")])
                     ],
                     methods: [
-                        Method("MyClass__MyFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn",
                             [
                                 LoadUnit(),
                                 Return()
                             ],
                             parameters: [IntType]),
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
-                                new LoadFunction(FunctionDefinitionReference("MyClass__MyFn")),
+                                new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn")),
                                 new Call(1, 0, false),
                                 LoadUnit(),
                                 Return()
@@ -315,14 +310,14 @@ public class ClassTests
                 """,
                 Module(
                     types: [
-                        DataType("MyClass",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass",
                             variants: [Variant("_classVariant")],
                             staticFields: [StaticField("A", IntType, [new LoadIntConstant(1)])])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadStaticField(ConcreteTypeReference("MyClass"), "A"),
+                                new LoadStaticField(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"), "A"),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
@@ -339,12 +334,12 @@ public class ClassTests
                 """,
                 Module(
                     types: [
-                        DataType("MyClass", variants: [Variant("_classVariant", fields: [Field("MyField", IntType)])])
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", variants: [Variant("_classVariant", fields: [Field("MyField", IntType)])])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 new CopyStack(),
                                 new LoadIntConstant(1),
                                 new StoreField(0, "MyField"),
@@ -356,7 +351,7 @@ public class ClassTests
                                 Return()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyClass")),
+                                Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 Local("b", IntType)
                             ])
                     ])
@@ -371,7 +366,7 @@ public class ClassTests
                 """,
                 Module(
                     types: [
-                        DataType("MyClass",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass",
                             variants: [
                                 Variant("_classVariant",
                                     fields: [
@@ -384,9 +379,9 @@ public class ClassTests
                             ])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 new CopyStack(),
                                 new LoadIntConstant(1),
                                 new StoreField(0, "Ignore"),
@@ -397,13 +392,13 @@ public class ClassTests
                                 new LoadLocal("a"),
                                 new LoadField(0, "InstanceField"),
                                 new StoreLocal("b"),
-                                new LoadStaticField(ConcreteTypeReference("MyClass"), "StaticField"),
+                                new LoadStaticField(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"), "StaticField"),
                                 new StoreLocal("c"),
                                 LoadUnit(),
                                 Return()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyClass")),
+                                Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 Local("b", StringType),
                                 Local("c", IntType)
                             ])

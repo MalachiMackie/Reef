@@ -1,8 +1,7 @@
 ﻿using FluentAssertions;
-using FluentAssertions.Equivalency;
 using Reef.Core.Abseil;
+using Reef.Core.IL;
 using Reef.Core.TypeChecking;
-using Reef.IL;
 using static Reef.Core.Tests.ILCompilerTests.TestHelpers;
 
 namespace Reef.Core.Tests.ILCompilerTests.TestCases;
@@ -14,7 +13,7 @@ public class SimpleExpressions
     public void CompileToIL_Should_GenerateCorrectIL(string description, string source, ReefModule expectedModule)
     {
         var tokens = Tokenizer.Tokenize(source);
-        var program = Parser.Parse(tokens);
+        var program = Parser.Parse(_moduleId, tokens);
         program.Errors.Should().BeEmpty();
         var typeCheckErrors = TypeChecker.TypeCheck(program.ParsedProgram);
         typeCheckErrors.Should().BeEmpty();
@@ -24,16 +23,11 @@ public class SimpleExpressions
         var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
             expectedModule,
-            ConfigureEquivalencyCheck,
             description);
     }
-    
-    private static EquivalencyOptions<T> ConfigureEquivalencyCheck<T>(EquivalencyOptions<T> options)
-    {
-        return options
-            .Excluding(memberInfo => memberInfo.Type == typeof(Guid));
-    }
-    
+
+    private const string _moduleId = "SimpleExpressions";
+
     public static TheoryData<string, string, ReefModule> TestCases()
     {
         return new()
@@ -43,7 +37,7 @@ public class SimpleExpressions
                 "1",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 LoadUnit(),
@@ -56,7 +50,7 @@ public class SimpleExpressions
                 "\"someString\"",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadStringConstant("someString"),
                                 LoadUnit(),
@@ -69,7 +63,7 @@ public class SimpleExpressions
                 "true",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadBoolConstant(true),
                                 LoadUnit(),
@@ -82,7 +76,7 @@ public class SimpleExpressions
                 "false",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadBoolConstant(false),
                                 LoadUnit(),
@@ -95,7 +89,7 @@ public class SimpleExpressions
                 "var a: int",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 LoadUnit(),
                                 Return()
@@ -108,7 +102,7 @@ public class SimpleExpressions
                 "var a: int;var b: string",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 LoadUnit(),
                                 Return()
@@ -121,7 +115,7 @@ public class SimpleExpressions
                 "var a = 1",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 new StoreLocal("a"),
@@ -138,7 +132,7 @@ public class SimpleExpressions
                 "var a = 1;var b = \"hello\"",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 new StoreLocal("a"),
@@ -158,7 +152,7 @@ public class SimpleExpressions
                 "var a = 1 < 2",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 new LoadIntConstant(2),
@@ -175,7 +169,7 @@ public class SimpleExpressions
                 "var a = 1 > 2",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 new LoadIntConstant(2),
@@ -196,7 +190,7 @@ public class SimpleExpressions
                 """,
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 new StoreLocal("a"),
@@ -219,7 +213,7 @@ public class SimpleExpressions
                 "var a = 1 + 2",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 new LoadIntConstant(2),
@@ -236,7 +230,7 @@ public class SimpleExpressions
                 "var a = 1 - 2",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 new LoadIntConstant(2),
@@ -253,7 +247,7 @@ public class SimpleExpressions
                 "var a = 1 * 2",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 new LoadIntConstant(2),
@@ -270,7 +264,7 @@ public class SimpleExpressions
                 "var a = 1 / 2",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 new LoadIntConstant(2),
@@ -287,7 +281,7 @@ public class SimpleExpressions
                 "var a = 1 != 2",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 new LoadIntConstant(2),
@@ -304,7 +298,7 @@ public class SimpleExpressions
                 "var a = 1 == 2",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 new LoadIntConstant(2),
@@ -324,7 +318,7 @@ public class SimpleExpressions
                 """,
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 new StoreLocal("a"),
@@ -343,16 +337,16 @@ public class SimpleExpressions
                 """,
                 Module(
                     types: [
-                        DataType("MyClass",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass",
                             variants: [
                                 Variant("_classVariant",
                                     fields: [Field("MyField", IntType)])
                             ])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("MyClass")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 new CopyStack(),
                                 new LoadIntConstant(1),
                                 new StoreField(0, "MyField"),
@@ -363,7 +357,7 @@ public class SimpleExpressions
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", ConcreteTypeReference("MyClass"))])
+                            locals: [Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"))])
                     ])
             },
             {
@@ -374,15 +368,15 @@ public class SimpleExpressions
                 """,
                 Module(
                     types: [
-                        DataType("MyClass",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass",
                             variants: [Variant("_classVariant")],
                             staticFields: [StaticField("MyField", IntType, [new LoadIntConstant(1)])])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(2),
-                                new StoreStaticField(ConcreteTypeReference("MyClass"), "MyField"),
+                                new StoreStaticField(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"), "MyField"),
                                 LoadUnit(),
                                 Return()
                             ])
@@ -393,7 +387,7 @@ public class SimpleExpressions
                 "var a = (1);",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 new StoreLocal("a"),
@@ -408,9 +402,9 @@ public class SimpleExpressions
                 "var a = (1, true)",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("Tuple`2", [IntType, BoolType])),
+                                new CreateObject(ConcreteTypeReference(DefId.Tuple(2), "Tuple`2", [IntType, BoolType])),
                                 new CopyStack(),
                                 new LoadIntConstant(1),
                                 new StoreField(0, "Item0"),
@@ -421,7 +415,7 @@ public class SimpleExpressions
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", ConcreteTypeReference("Tuple`2", [IntType, BoolType]))])
+                            locals: [Local("a", ConcreteTypeReference(DefId.Tuple(2), "Tuple`2", [IntType, BoolType]))])
                     ])
             },
             {
@@ -429,7 +423,7 @@ public class SimpleExpressions
                 "var a = !true;",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadBoolConstant(true),
                                 new BoolNot(),
@@ -445,7 +439,7 @@ public class SimpleExpressions
                 "var a = true && false",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadBoolConstant(true),
                                 new BranchIfFalse("boolAnd_0_false"),
@@ -470,7 +464,7 @@ public class SimpleExpressions
                 "var a = true || false",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadBoolConstant(true),
                                 new BranchIfTrue("boolOr_0_true"),
@@ -495,7 +489,7 @@ public class SimpleExpressions
                 "var a = true && false && true",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadBoolConstant(true),
                                 new BranchIfFalse("boolAnd_1_false"),
@@ -528,7 +522,7 @@ public class SimpleExpressions
                 "var a = true || false || true",
                 Module(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadBoolConstant(true),
                                 new BranchIfTrue("boolOr_1_true"),

@@ -14,13 +14,15 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
     public void SimpleExpressionAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
         description.Should().NotBeEmpty();
-        var program = CreateProgram(source);
+        var program = CreateProgram(_moduleId, source);
         var loweredProgram = ProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
-        loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
+        loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
+
+    private const string _moduleId = "SimpleExpressionTests";
 
     public static TheoryData<string, string, LoweredProgram> TestCases()
     {
@@ -30,7 +32,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "variable declaration",
                 "var a = \"\";",
                 LoweredProgram(methods: [
-                    Method("_Main",
+                    Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                         [
                             VariableDeclaration(
                                 "a",
@@ -48,7 +50,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "var a;a = 2;",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration("a", false),
                                 LocalValueAssignment("a", IntConstant(2, true), false, Int),
@@ -64,7 +66,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "1 + 2;",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 IntPlus(IntConstant(1, true), IntConstant(2, true), false),
                                 MethodReturnUnit()
@@ -76,7 +78,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "1 - 2;",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 IntMinus(IntConstant(1, true), IntConstant(2, true), false),
                                 MethodReturnUnit()
@@ -88,7 +90,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "1 * 2;",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 IntMultiply(IntConstant(1, true), IntConstant(2, true), false),
                                 MethodReturnUnit()
@@ -100,7 +102,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "1 / 2;",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 IntDivide(IntConstant(1, true), IntConstant(2, true), false),
                                 MethodReturnUnit()
@@ -112,7 +114,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "1 != 2;",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 IntNotEquals(IntConstant(1, true), IntConstant(2, true), false),
                                 MethodReturnUnit()
@@ -124,7 +126,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "1 == 2;",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 IntEquals(IntConstant(1, true), IntConstant(2, true), false),
                                 MethodReturnUnit()
@@ -136,7 +138,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "1 > 2;",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 IntGreaterThan(IntConstant(1, true), IntConstant(2, true), false),
                                 MethodReturnUnit()
@@ -148,7 +150,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "1 < 2;",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 IntLessThan(IntConstant(1, true), IntConstant(2, true), false),
                                 MethodReturnUnit()
@@ -160,7 +162,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "true || true",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 BoolOr(BoolConstant(true, true), BoolConstant(true, true), false),
                                 MethodReturnUnit()
@@ -172,7 +174,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "true && true",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 BoolAnd(BoolConstant(true, true), BoolConstant(true, true), false),
                                 MethodReturnUnit()
@@ -184,7 +186,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "!true",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 BoolNot(BoolConstant(true, true), false),
                                 MethodReturnUnit()
@@ -196,7 +198,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "{}",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 Block([], Unit, false),
                                 MethodReturnUnit()
@@ -208,7 +210,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "{true;}",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 Block([BoolConstant(true, false)], Unit, false),
                                 MethodReturnUnit()
@@ -220,7 +222,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "{true; 1;}",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 Block([
                                     BoolConstant(true, false),
@@ -235,7 +237,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "var a = 1; var b = a;",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration("a", IntConstant(1, true), valueUseful: false),
                                 VariableDeclaration("b", LocalAccess("a", true, Int), valueUseful: false),
@@ -252,9 +254,9 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "fn MyFn(){} MyFn();",
                 LoweredProgram(
                     methods: [
-                        Method("MyFn", [MethodReturnUnit()]),
-                        Method("_Main", [
-                            MethodCall(FunctionReference("MyFn"), [], false, Unit),
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn", [MethodReturnUnit()]),
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main", [
+                            MethodCall(FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn"), [], false, Unit),
                             MethodReturnUnit()
                         ])
                     ])
@@ -268,16 +270,16 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 """,
                 LoweredProgram(
                     methods: [
-                        Method("MyFn", [MethodReturnUnit()], typeParameters: ["T"]),
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn", [MethodReturnUnit()], typeParameters: [(new DefId(_moduleId, $"{_moduleId}.MyFn"), "T")]),
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 MethodCall(
-                                    FunctionReference("MyFn", [StringType]),
+                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn", [StringType]),
                                     [],
                                     false,
                                     Unit),
                                 MethodCall(
-                                    FunctionReference("MyFn", [Int]),
+                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn", [Int]),
                                     [],
                                     false,
                                     Unit),
@@ -290,7 +292,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "fn MyFn(a: string): string { return a; }",
                 LoweredProgram(
                     methods: [
-                        Method("MyFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn",
                             [
                                 MethodReturn(
                                     LoadArgument(0, true, StringType))
@@ -304,7 +306,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "(1)",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 IntConstant(1, false),
                                 MethodReturnUnit()
@@ -316,10 +318,10 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "(1, \"\")",
                 LoweredProgram(
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 CreateObject(
-                                    ConcreteTypeReference("Tuple`2", [Int, StringType]),
+                                    ConcreteTypeReference("Tuple`2", DefId.Tuple(2), [Int, StringType]),
                                     "_classVariant",
                                     false,
                                     new()
@@ -340,9 +342,9 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 """,
                 LoweredProgram(
                     methods: [
-                        Method("_Main__SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main__SomeFn"), "_Main__SomeFn",
                             [MethodReturnUnit()]),
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 Block([], Unit, false),
                                 MethodReturnUnit()

@@ -70,7 +70,7 @@ public class BranchPatternUsefulness
 
 public class UsefulnessContext
 {
-    public required Dictionary<Guid, BranchPatternUsefulness> BranchUsefulness { get; set; }
+    public required Dictionary<PatternId, BranchPatternUsefulness> BranchUsefulness { get; set; }
     public required uint ComplexityLimit { get; set; }
     public required uint ComplexityLevel { get; set; }
 

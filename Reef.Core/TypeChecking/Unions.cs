@@ -15,6 +15,7 @@ public partial class TypeChecker
             var typeParameters = new GenericPlaceholder[2];
             var resultSignature = new UnionSignature
             {
+                Id = DefId.Result,
                 TypeParameters = typeParameters,
                 Name = "result",
                 Variants = variants,
@@ -42,7 +43,8 @@ public partial class TypeChecker
             var okCreateParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
             var errorCreateParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
             var okCreateFunction = new FunctionSignature(
-                    Token.Identifier("result_Create_Ok", SourceSpan.Default),
+                    new DefId(DefId.Result.ModuleId, DefId.Result.FullName + "__Create__Ok"),
+                    Token.Identifier("result__Create__Ok", SourceSpan.Default),
                     [],
                     okCreateParameters,
                     IsStatic: true,
@@ -53,7 +55,8 @@ public partial class TypeChecker
                 OwnerType = resultSignature
             };
             var errorCreateFunction = new FunctionSignature(
-                Token.Identifier("result_Create_Error", SourceSpan.Default),
+                new DefId(DefId.Result.ModuleId, DefId.Result.FullName + "__Create__Error"),
+                Token.Identifier("result__Create__Error", SourceSpan.Default),
                 [],
                 errorCreateParameters,
                 IsStatic: true,
@@ -96,7 +99,7 @@ public partial class TypeChecker
         }
 
         public static UnionSignature Result { get; }
-        public Guid Id { get; } = Guid.NewGuid();
+        public required DefId Id { get; init; }
         public required IReadOnlyList<GenericPlaceholder> TypeParameters { get; init; }
         public required IReadOnlyList<IUnionVariant> Variants { get; init; }
         public required IReadOnlyList<FunctionSignature> Functions { get; init; }
@@ -147,10 +150,9 @@ public partial class TypeChecker
         return true;
     }
 
-    private InstantiatedUnion InstantiateUnion(UnionSignature signature)
+    private static InstantiatedUnion InstantiateUnion(UnionSignature signature)
     {
         return new InstantiatedUnion(signature, [..signature.TypeParameters.Select(x => x.Instantiate())]);
-
     }
 
     private InstantiatedUnion InstantiateUnion(UnionSignature signature, IReadOnlyList<(ITypeReference, SourceRange)> typeArguments, SourceRange sourceRange)

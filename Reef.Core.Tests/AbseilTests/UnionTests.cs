@@ -14,13 +14,15 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
     public void UnionAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
         description.Should().NotBeEmpty();
-        var program = CreateProgram(source);
+        var program = CreateProgram(_moduleId, source);
         var loweredProgram = ProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
-        loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
+        loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
+
+    private const string _moduleId = "UnionTests";
 
     [Fact]
     public void SingleTest()
@@ -30,21 +32,20 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
         var expectedProgram = LoweredProgram(
             types:
             [
-                DataType("MyClass",
+                DataType(_moduleId, "MyClass",
                     ["T"],
                     [Variant("_classVariant")])
             ], methods:
             [
-                Method(
-                    "MyClass__SomeFn",
+                Method(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn",
                     [MethodReturn(UnitConstant(true))],
-                    parameters: [ConcreteTypeReference("MyClass", [GenericPlaceholder("T")])],
-                    typeParameters: ["T"])
+                    parameters: [ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"), [GenericPlaceholder(new DefId(_moduleId, $"{_moduleId}.MyClass"), "T")])],
+                    typeParameters: [(new DefId(_moduleId, $"{_moduleId}.MyClass"), "T")])
             ]);
 
-        var program = CreateProgram(source);
+        var program = CreateProgram(_moduleId, source);
         var loweredProgram = ProgramAbseil.Lower(program);
-        loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
+        loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
 
     public static TheoryData<string, string, LoweredProgram> TestCases()
@@ -55,16 +56,14 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 "empty union",
                 "union MyUnion{}",
                 LoweredProgram(types: [
-                        DataType(
-                            "MyUnion")
+                        DataType(_moduleId, "MyUnion")
                 ])
             },
             {
                 "generic union",
                 "union MyUnion<T>{}",
                 LoweredProgram(types: [
-                        DataType(
-                            "MyUnion",
+                        DataType(_moduleId, "MyUnion",
                             ["T"])
                 ])
             },
@@ -72,7 +71,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 "union with unit variants",
                 "union MyUnion{A, B}",
                 LoweredProgram(types: [
-                    DataType("MyUnion",
+                    DataType(_moduleId, "MyUnion",
                         variants: [
                             Variant("A", [Field("_variantIdentifier", Int)]),
                             Variant("B", [Field("_variantIdentifier", Int)]),
@@ -83,22 +82,21 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 "generic union with instance function",
                 "union MyUnion<T>{pub fn SomeFn(){}}",
                 LoweredProgram(types: [
-                    DataType("MyUnion",
+                    DataType(_moduleId, "MyUnion",
                         ["T"],
                         [])
                 ], methods: [
-                            Method(
-                                "MyUnion__SomeFn",
+                            Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__SomeFn"), "MyUnion__SomeFn",
                                 [MethodReturn(UnitConstant(true))],
-                                parameters: [ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")])],
-                                typeParameters: ["T"])
+                                parameters: [ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"), [GenericPlaceholder(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "T")])],
+                                typeParameters: [(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "T")])
                         ])
             },
             {
                 "union with tuple variant",
                 "union MyUnion { A(string, int) }",
                 LoweredProgram(types: [
-                    DataType("MyUnion",
+                    DataType(_moduleId, "MyUnion",
                         variants: [
                             Variant("A", [
                                 Field("_variantIdentifier", Int),
@@ -107,11 +105,10 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             ])
                         ])
                 ], methods: [
-                            Method(
-                                "MyUnion_Create_A",
+                            Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__A"), "MyUnion__Create__A",
                                 [
                                     MethodReturn(CreateObject(
-                                        ConcreteTypeReference("MyUnion"),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "A",
                                         true,
                                         new()
@@ -122,46 +119,45 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         }))
                                 ],
                                 parameters: [StringType, Int],
-                                returnType: ConcreteTypeReference("MyUnion"))
+                                returnType: ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")))
                         ])
             },
             {
                 "generic union with tuple variant",
                 "union MyUnion<T>{ A(T) }",
                 LoweredProgram(types: [
-                    DataType("MyUnion",
+                    DataType(_moduleId, "MyUnion",
                         ["T"],
                         [
                             Variant("A",
                                 [
                                     Field("_variantIdentifier", Int),
-                                    Field("Item0", GenericPlaceholder("T"))
+                                    Field("Item0", GenericPlaceholder(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "T"))
                                 ])
                         ])
                 ], methods: [
-                            Method(
-                                "MyUnion_Create_A",
+                            Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__A"), "MyUnion__Create__A",
                                 [
                                     MethodReturn(CreateObject(
-                                        ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"), [GenericPlaceholder(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "T")]),
                                         "A",
                                         true,
                                         new()
                                         {
                                             {"_variantIdentifier", IntConstant(0, true)},
-                                            {"Item0", LoadArgument(0, true, GenericPlaceholder("T"))},
+                                            {"Item0", LoadArgument(0, true, GenericPlaceholder(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "T"))},
                                         }))
                                 ],
-                                typeParameters: ["T"],
-                                parameters: [GenericPlaceholder("T")],
-                                returnType: ConcreteTypeReference("MyUnion", [GenericPlaceholder("T")]))
+                                typeParameters: [(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "T")],
+                                parameters: [GenericPlaceholder(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "T")],
+                                returnType: ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"), [GenericPlaceholder(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "T")]))
                         ])
             },
             {
                 "union with class variant",
                 "union MyUnion { A { field MyField: string, field OtherField: int } }",
                 LoweredProgram(types: [
-                    DataType("MyUnion",
+                    DataType(_moduleId, "MyUnion",
                         variants: [
                             Variant("A",
                                 fields: [
@@ -176,19 +172,18 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 "union with method",
                 "union MyUnion { pub fn MyFn(){} }",
                 LoweredProgram(types: [
-                    DataType("MyUnion")
+                    DataType(_moduleId, "MyUnion")
                 ], [
-                            Method(
-                                "MyUnion__MyFn",
+                            Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__MyFn"), "MyUnion__MyFn",
                                 [MethodReturn(UnitConstant(valueUseful: true))],
-                                parameters: [ConcreteTypeReference("MyUnion")])
+                                parameters: [ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))])
                         ])
             },
             {
                 "union with method and tuple variants",
                 "union MyUnion { A(string), pub static fn MyFn() {}, B(string) }",
                 LoweredProgram(types: [
-                    DataType("MyUnion",
+                    DataType(_moduleId, "MyUnion",
                         variants: [
                             Variant(
                                 "A",
@@ -204,14 +199,12 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 ]),
                         ])
                 ], methods: [
-                            Method(
-                                "MyUnion__MyFn",
+                            Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__MyFn"), "MyUnion__MyFn",
                                 [MethodReturn(UnitConstant(true))]),
-                            Method(
-                                "MyUnion_Create_A",
+                            Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__A"), "MyUnion__Create__A",
                                 [
                                     MethodReturn(CreateObject(
-                                        ConcreteTypeReference("MyUnion"),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "A",
                                         true,
                                         new()
@@ -221,12 +214,11 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         }))
                                 ],
                                 parameters: [StringType],
-                                returnType: ConcreteTypeReference("MyUnion")),
-                            Method(
-                                "MyUnion_Create_B",
+                                returnType: ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                            Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__B"), "MyUnion__Create__B",
                                 [
                                     MethodReturn(CreateObject(
-                                        ConcreteTypeReference("MyUnion"),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "B",
                                         true,
                                         new()
@@ -236,7 +228,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         }))
                                 ],
                                 parameters: [StringType],
-                                returnType: ConcreteTypeReference("MyUnion")),
+                                returnType: ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                         ])
             }
         };

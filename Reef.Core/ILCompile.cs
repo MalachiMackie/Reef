@@ -1,11 +1,10 @@
-﻿using Reef.IL;
-using Reef.Core.TypeChecking;
+﻿using Reef.Core.TypeChecking;
 using Reef.Core.LoweredExpressions;
 using BlockExpression = Reef.Core.LoweredExpressions.BlockExpression;
 using MethodCallExpression = Reef.Core.LoweredExpressions.MethodCallExpression;
 using MethodReturnExpression = Reef.Core.LoweredExpressions.MethodReturnExpression;
 using VariableDeclarationExpression = Reef.Core.LoweredExpressions.VariableDeclarationExpression;
-using System.Reflection;
+using Reef.Core.IL;
 
 namespace Reef.Core;
 
@@ -337,7 +336,7 @@ public class ILCompile(LoweredProgram program)
         }
     }
 
-    private ReefTypeDefinition GetDataType(Guid definitionId)
+    private ReefTypeDefinition GetDataType(DefId definitionId)
     {
         if (_types.FirstOrDefault(x => x.Id == definitionId) is { } foundType)
         {

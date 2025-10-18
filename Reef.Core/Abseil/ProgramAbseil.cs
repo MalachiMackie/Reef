@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Reef.Core.Common;
 using Reef.Core.LoweredExpressions;
 using static Reef.Core.TypeChecking.TypeChecker;
 
@@ -15,7 +16,7 @@ public partial class ProgramAbseil
             LoweredConcreteTypeReference? ownerType,
             bool needsLowering
         )> _methods = [];
-    private readonly Dictionary<Guid, DataType> _types = [];
+    private readonly Dictionary<DefId, DataType> _types = [];
     private readonly LangProgram _program;
     private LoweredConcreteTypeReference? _currentType;
     private (LoweredMethod LoweredMethod, FunctionSignature FunctionSignature)? _currentFunction;
@@ -176,15 +177,8 @@ public partial class ProgramAbseil
             _types.Add(dataType.Id, dataType);
         }
 
-        foreach (var fnSignature in _program.Functions
-                .Select(x => x.Signature.NotNull())
-                .Where(x => x.AccessedOuterVariables.Count == 0))
-        {
-            var (method, loweredExpressions, expressions) = GenerateLoweredMethod(null, fnSignature, null, null);
-            _methods.Add(method, (fnSignature, loweredExpressions, expressions, null, true));
-        }
-
         var mainSignature = new FunctionSignature(
+                DefId.Main(_program.ModuleId),
                 Token.Identifier("_Main", SourceSpan.Default),
                 [],
                 [],
@@ -195,22 +189,31 @@ public partial class ProgramAbseil
             ReturnType = InstantiatedClass.Unit,
             OwnerType = null,
             LocalVariables = _program.TopLevelLocalVariables,
-            LocalFunctions = [.. _program.Functions
-                .Select(x => x.Signature.NotNull())
-                .Where(x => x.AccessedOuterVariables.Count > 0)
-                .Concat(_program.TopLevelLocalFunctions)]
+            LocalFunctions = _program.TopLevelLocalFunctions
         };
         foreach (var local in _program.TopLevelLocalVariables)
         {
             local.ContainingFunction = mainSignature;
         }
 
+        var fnSignaturesToGenerate = _program.Functions.Select(x => x.Signature.NotNull());
         if (mainSignature.Expressions.Count > 0)
         {
-            var (method, loweredExpressions, expressions) = GenerateLoweredMethod(
-                    null, mainSignature, null, null);
-            _methods.Add(method, (mainSignature, loweredExpressions, expressions, null, true));
+            fnSignaturesToGenerate = fnSignaturesToGenerate.Prepend(mainSignature);
         }
+
+        foreach (var fnSignature in fnSignaturesToGenerate)
+        {
+            var (method, loweredExpressions, expressions) = GenerateLoweredMethod(null, fnSignature, null, null);
+            _methods.Add(method, (fnSignature, loweredExpressions, expressions, null, true));
+        }
+
+        //if (mainSignature.Expressions.Count > 0)
+        //{
+        //    var (method, loweredExpressions, expressions) = GenerateLoweredMethod(
+        //            null, mainSignature, null, null);
+        //    _methods.Add(method, (mainSignature, loweredExpressions, expressions, null, true));
+        //}
 
         foreach (var (method, (fnSignature, loweredExpressions, expressions, ownerTypeReference, _)) in _methods.Where(x => x.Value.needsLowering))
         {
@@ -367,7 +370,7 @@ public partial class ProgramAbseil
         if (localsAccessedInClosure.Length > 0 || parametersAccessedInClosure.Length > 0)
         {
             localsType = new DataType(
-                Guid.NewGuid(),
+                new DefId(fnSignature.Id.ModuleId, fnSignature.Id.FullName + "__Locals"),
                 $"{name}__Locals",
                 [],
                 [
@@ -391,7 +394,7 @@ public partial class ProgramAbseil
         DataType? closureType = null;
         if (fnSignature.AccessedOuterVariables.Count > 0)
         {
-            var fields = new Dictionary<Guid, DataTypeField>();
+            var fields = new Dictionary<DefId, DataTypeField>();
 
             foreach (var variable in fnSignature.AccessedOuterVariables)
             {
@@ -462,7 +465,7 @@ public partial class ProgramAbseil
             }
 
             closureType = new DataType(
-                Guid.NewGuid(),
+                new DefId(fnSignature.Id.ModuleId, fnSignature.Id.FullName + "__Closure"),
                 $"{name}__Closure",
                 [],
                 [
@@ -567,7 +570,7 @@ public partial class ProgramAbseil
     }
 
     private DataType GetDataType(
-            Guid typeId,
+            DefId typeId,
             IReadOnlyList<ILoweredTypeReference> typeArguments)
     {
         if (_types.TryGetValue(typeId, out var dataType))
@@ -579,7 +582,7 @@ public partial class ProgramAbseil
     }
 
     private LoweredFunctionReference GetFunctionReference(
-            Guid functionId,
+            DefId functionId,
             IReadOnlyList<ILoweredTypeReference> typeArguments,
             IReadOnlyList<ILoweredTypeReference> ownerTypeArguments)
     {

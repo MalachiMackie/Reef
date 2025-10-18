@@ -6,13 +6,14 @@ namespace Reef.Core.TypeChecking;
 
 public partial class TypeChecker
 {
-    private FunctionSignature TypeCheckFunctionSignature(LangFunction fn, ITypeSignature? ownerType)
+    private FunctionSignature TypeCheckFunctionSignature(DefId defId, LangFunction fn, ITypeSignature? ownerType)
     {
         var parameters = new OrderedDictionary<string, FunctionSignatureParameter>();
 
         var name = fn.Name.StringValue;
         var typeParameters = new List<GenericPlaceholder>(fn.TypeParameters.Count);
         var fnSignature = new FunctionSignature(
+            defId,
             fn.Name,
             typeParameters,
             parameters,
@@ -84,7 +85,10 @@ public partial class TypeChecker
             }
         }
 
-        fnSignature.LocalFunctions.AddRange(fn.Block.Functions.Select(x => TypeCheckFunctionSignature(x, ownerType: null)));
+        fnSignature.LocalFunctions.AddRange(fn.Block.Functions.Select(x => TypeCheckFunctionSignature(
+            new DefId(defId.ModuleId, defId.FullName + $"__{x.Name}"),
+            x,
+            ownerType: null)));
 
         // todo: function overloading
         return fnSignature;
@@ -93,7 +97,7 @@ public partial class TypeChecker
     private void TypeCheckFunctionBody(FunctionSignature fnSignature)
     {
         using var _ = PushScope(null, fnSignature, fnSignature.ReturnType,
-            genericPlaceholders: fnSignature.TypeParameters);
+            genericPlaceholders: fnSignature.TypeParameters, fnSignature.Id);
         foreach (var parameter in fnSignature.Parameters.Values)
         {
             AddScopedVariable(
@@ -256,11 +260,11 @@ public partial class TypeChecker
         public ITypeSignature? OwnerSignature => Signature.OwnerType;
         public IReadOnlyList<GenericTypeReference> TypeArguments { get; }
         public ITypeReference ReturnType { get; }
-        public Guid FunctionId => Signature.Id;
+        public DefId FunctionId => Signature.Id;
         public IReadOnlyList<FunctionParameter> Parameters { get; }
         public string Name => Signature.Name;
-        public Guid? ClosureTypeId => Signature.ClosureTypeId;
-        public List<(Guid fieldTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureTypeFields =>
+        public DefId? ClosureTypeId => Signature.ClosureTypeId;
+        public List<(DefId fieldTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureTypeFields =>
             Signature.ClosureTypeFields;
     }
 
@@ -293,6 +297,7 @@ public partial class TypeChecker
     }
 
     public record FunctionSignature(
+        DefId Id,
         StringToken NameToken,
         IReadOnlyList<GenericPlaceholder> TypeParameters,
         OrderedDictionary<string, FunctionSignatureParameter> Parameters,
@@ -300,10 +305,9 @@ public partial class TypeChecker
         bool IsMutable,
         IReadOnlyList<IExpression> Expressions) : ITypeSignature
     {
-        public Guid Id { get; } = Guid.NewGuid();
-        public Guid? LocalsTypeId { get; set; }
-        public Guid? ClosureTypeId { get; set; }
-        public List<(Guid fieldTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureTypeFields { get; set; } = [];
+        public DefId? LocalsTypeId { get; set; }
+        public DefId? ClosureTypeId { get; set; }
+        public List<(DefId fieldTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureTypeFields { get; set; } = [];
 
         // mutable due to setting up signatures and generic stuff
         public required ITypeReference ReturnType { get; set; }
@@ -319,6 +323,7 @@ public partial class TypeChecker
         {
             var parameters = new OrderedDictionary<string, FunctionSignatureParameter>();
             var signature = new FunctionSignature(
+                new DefId(DefId.CoreLibModuleId, DefId.CoreLibNamespace + ".printf"),
                 Token.Identifier("printf", SourceSpan.Default),
                 [],
                 parameters,

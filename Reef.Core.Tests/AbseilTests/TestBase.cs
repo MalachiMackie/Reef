@@ -15,10 +15,10 @@ public class TestBase
         TestOutput = testOutputHelper;
     }
 
-    protected static LangProgram CreateProgram(string source)
+    protected static LangProgram CreateProgram(string moduleId, string source)
     {
         var tokens = Tokenizer.Tokenize(source);
-        var parseResult = Parser.Parse(tokens);
+        var parseResult = Parser.Parse(moduleId, tokens);
         parseResult.Errors.Should().BeEmpty();
         var program = parseResult.ParsedProgram;
         var typeCheckErrors = TypeChecker.TypeCheck(program);
@@ -34,10 +34,5 @@ public class TestBase
         TestOutput.WriteLine("----------------------------------------");
         TestOutput.WriteLine("Actual Program:");
         TestOutput.WriteLine(PrettyPrinter.PrettyPrintLoweredProgram(actual, parensAroundExpressions, printValueUseful));
-    }
-
-    protected static EquivalencyOptions<T> IgnoringGuids<T>(EquivalencyOptions<T> opts)
-    {
-        return opts.Excluding(m => m.Type == typeof(Guid));
     }
 }

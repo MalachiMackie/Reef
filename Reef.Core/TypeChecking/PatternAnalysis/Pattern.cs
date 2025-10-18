@@ -6,6 +6,11 @@ public class IndexedPattern
     public required DeconstructedPattern Pattern { get; set; }
 }
 
+public record struct PatternId(Guid Value)
+{
+    public static PatternId New() => new(Guid.NewGuid());
+}
+
 public class DeconstructedPattern
 {
     public required IConstructor Constructor { get; set; }
@@ -13,7 +18,7 @@ public class DeconstructedPattern
     public required uint Arity { get; set; }
     public required TypeChecker.ITypeReference TypeReference { get; set; }
     public required IPattern PatternData { get; set; }
-    public Guid Id { get; } = Guid.NewGuid();
+    public PatternId Id { get; } = PatternId.New();
 
     public void Walk(Func<DeconstructedPattern, bool> path)
     {

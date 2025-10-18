@@ -219,7 +219,8 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
                 var isInLocalsType = _methodLocals.Where(x => x.Name == "__locals")
                     .Any(x =>
                     {
-                        var dataType = _dataTypes.First(y => y.Id == (x.Type as LoweredConcreteTypeReference)!.DefinitionId);
+                        var dataType = _dataTypes.FirstOrDefault(y => y.Id == (x.Type as LoweredConcreteTypeReference)!.DefinitionId)
+                            ?? throw new InvalidOperationException($"No data type found with definition id {(x.Type as LoweredConcreteTypeReference)!.DefinitionId}");
                         return dataType.Variants[0].Fields.Any(y => y.Name == e.LocalName);
                     });
 

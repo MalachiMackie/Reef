@@ -55,12 +55,14 @@ public static class ExpressionHelpers
     }
 
     public static LangProgram Program(
+        string moduleId,
         IReadOnlyList<IExpression>? expressions = null,
         IReadOnlyList<LangFunction>? functions = null,
         IReadOnlyList<ProgramClass>? classes = null,
         IReadOnlyList<ProgramUnion>? unions = null)
     {
         return new LangProgram(
+            moduleId,
             expressions ?? [],
             functions ?? [],
             classes ?? [],

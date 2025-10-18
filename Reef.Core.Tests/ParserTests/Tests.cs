@@ -25,7 +25,7 @@ public class Tests(ITestOutputHelper testOutputHelper)
         string source,
         IEnumerable<Token> tokens)
     {
-        var result = Parser.Parse(tokens);
+        var result = Parser.Parse("Tests", tokens);
 
         result.Errors.Should().NotBeEmpty();
     }
@@ -38,7 +38,7 @@ public class Tests(ITestOutputHelper testOutputHelper)
         IEnumerable<Token> tokens,
         IExpression expectedExpression)
     {
-        var result = Parser.PopExpression(tokens);
+        var result = Parser.PopExpression("Tests", tokens);
         result.Should().NotBeNull();
 
         try
@@ -58,7 +58,7 @@ public class Tests(ITestOutputHelper testOutputHelper)
     public void SingleTest()
     {
         const string source = "::<";
-        var result = Parser.Parse(Tokenizer.Tokenize(source));
+        var result = Parser.Parse("Tests", Tokenizer.Tokenize(source));
         result.Should().NotBeNull();
     }
 
@@ -70,7 +70,7 @@ public class Tests(ITestOutputHelper testOutputHelper)
         IEnumerable<Token> tokens,
         LangProgram expectedProgram)
     {
-        var result = Parser.Parse(tokens);
+        var result = Parser.Parse("ParseTestCases", tokens);
 
         result.Errors.Should().BeEmpty();
 
@@ -92,7 +92,7 @@ public class Tests(ITestOutputHelper testOutputHelper)
     {
         var tokens = Tokenizer.Tokenize(source);
 
-        var output = Parser.Parse(tokens);
+        var output = Parser.Parse("ParseErrorTestCases", tokens);
 
         output.Errors.Should().BeEquivalentTo(
             expectedErrors,

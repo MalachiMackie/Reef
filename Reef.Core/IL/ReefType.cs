@@ -1,4 +1,4 @@
-﻿namespace Reef.IL;
+﻿namespace Reef.Core.IL;
 
 public class ReefTypeDefinition
 {
@@ -13,7 +13,7 @@ public class ReefTypeDefinition
 public class FunctionDefinitionReference
 {
     public required string Name { get; set; }
-    public required Guid DefinitionId { get; set; }
+    public required DefId DefinitionId { get; set; }
     public required IReadOnlyList<IReefTypeReference> TypeArguments { get; set; }
 }
 
@@ -22,13 +22,13 @@ public interface IReefTypeReference;
 public class ConcreteReefTypeReference : IReefTypeReference
 {
     public required string Name { get; set; }
-    public required Guid DefinitionId { get; set; }
+    public required DefId DefinitionId { get; set; }
     public required IReadOnlyList<IReefTypeReference> TypeArguments { get; set; }
 }
 
 public class GenericReefTypeReference : IReefTypeReference
 {
-    public required Guid DefinitionId { get; set; }
+    public required DefId DefinitionId { get; set; }
     public required string TypeParameterName { get; set; }
 }
 

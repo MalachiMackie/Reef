@@ -24,6 +24,7 @@ public partial class TypeChecker
     private ITypeSignature? CurrentTypeSignature => _typeCheckingScopes.Peek().CurrentTypeSignature;
     private FunctionSignature? CurrentFunctionSignature => _typeCheckingScopes.Peek().CurrentFunctionSignature;
     private ITypeReference ExpectedReturnType => _typeCheckingScopes.Peek().ExpectedReturnType;
+    private DefId? CurrentDefId => _typeCheckingScopes.Peek().CurrentDefId; 
 
     public static IReadOnlyList<TypeCheckerError> TypeCheck(LangProgram program)
     {
@@ -47,7 +48,8 @@ public partial class TypeChecker
             InstantiatedClass.Unit,
             null,
             null,
-            []));
+            [],
+            null));
 
         var (classes, unions) = SetupSignatures();
 
@@ -143,6 +145,8 @@ public partial class TypeChecker
             }
         }
 
+        PushScope(defId: DefId.Main(_program.ModuleId));
+
         foreach (var expression in _program.Expressions)
         {
             TypeCheckExpression(expression);
@@ -152,6 +156,7 @@ public partial class TypeChecker
         {
             TypeCheckFunctionBody(functionSignature);
         }
+        PopScope();
 
         PopScope();
 
@@ -166,9 +171,11 @@ public partial class TypeChecker
     {
         using var _ = PushScope();
 
+        var currentDefId = CurrentDefId.NotNull(expectedReason: "Block must be in a type");
+
         foreach (var fn in block.Functions)
         {
-            var signature = fn.Signature ?? TypeCheckFunctionSignature(fn, ownerType: null);
+            var signature = fn.Signature ?? TypeCheckFunctionSignature(new DefId(currentDefId.ModuleId, currentDefId.FullName + $"__{fn.Name}"), fn, ownerType: null);
 
             var localFunctions = CurrentFunctionSignature?.LocalFunctions
                 ?? _program.TopLevelLocalFunctions;
@@ -286,13 +293,13 @@ public partial class TypeChecker
     private FunctionObject GetFnTypeReference(FnTypeIdentifier identifier)
     {
         return new FunctionObject(
-            identifier.Parameters.Select(x => new FunctionParameter(GetTypeReference(x.ParameterType), x.Mut)).ToArray(),
+            [.. identifier.Parameters.Select(x => new FunctionParameter(GetTypeReference(x.ParameterType), x.Mut))],
             identifier.ReturnType is null ? InstantiatedClass.Unit : GetTypeReference(identifier.ReturnType));
     }
 
-    private ITypeReference GetTypeReference(TupleTypeIdentifier tupleTypeIdentifier)
+    private InstantiatedClass GetTypeReference(TupleTypeIdentifier tupleTypeIdentifier)
     {
-        return InstantiateTuple(tupleTypeIdentifier.Members.Select(x => (GetTypeReference(x), x.SourceRange)).ToArray(), tupleTypeIdentifier.SourceRange);
+        return InstantiateTuple([.. tupleTypeIdentifier.Members.Select(x => (GetTypeReference(x), x.SourceRange))], tupleTypeIdentifier.SourceRange);
     }
 
     private ITypeReference GetTypeReference(
@@ -584,7 +591,7 @@ public partial class TypeChecker
     public interface ITypeSignature
     {
         string Name { get; }
-        Guid Id { get; }
+        DefId Id { get; }
         IReadOnlyList<GenericPlaceholder> TypeParameters { get; }
     }
 

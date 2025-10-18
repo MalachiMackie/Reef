@@ -11,22 +11,22 @@ public partial class TypeChecker
         public static string TupleFieldName(int index) => $"Item{index}";
 
         public static ClassSignature Unit { get; } = new()
-        { TypeParameters = [], Name = "Unit", Fields = [], Functions = [] };
+        { Id = DefId.Unit, TypeParameters = [], Name = "Unit", Fields = [], Functions = [] };
 
         public static ClassSignature String { get; } = new()
-        { TypeParameters = [], Name = "string", Fields = [], Functions = [] };
+        { Id = DefId.String, TypeParameters = [], Name = "string", Fields = [], Functions = [] };
 
         public static ClassSignature Int { get; } = new()
-        { TypeParameters = [], Name = "int", Fields = [], Functions = [] };
+        { Id = DefId.Int, TypeParameters = [], Name = "int", Fields = [], Functions = [] };
 
         public static ClassSignature RawPointer { get; } = new()
-        { TypeParameters = [], Name = "rawPointer", Fields = [], Functions = [] };
+        { Id = DefId.RawPointer, TypeParameters = [], Name = "rawPointer", Fields = [], Functions = [] };
 
         public static ClassSignature Boolean { get; } = new()
-        { TypeParameters = [], Name = "bool", Fields = [], Functions = [] };
+        { Id = DefId.Boolean, TypeParameters = [], Name = "bool", Fields = [], Functions = [] };
 
         public static ClassSignature Never { get; } = new()
-        { TypeParameters = [], Name = "!", Fields = [], Functions = [] };
+        { Id = DefId.Never, TypeParameters = [], Name = "!", Fields = [], Functions = [] };
 
         public static IEnumerable<ITypeSignature> BuiltInTypes { get; } = [Unit, String, Int, Never, Boolean];
 
@@ -34,7 +34,7 @@ public partial class TypeChecker
         public required IReadOnlyList<TypeField> Fields { get; init; }
         public required IReadOnlyList<FunctionSignature> Functions { get; init; }
         public required string Name { get; init; }
-        public Guid Id { get; } = Guid.NewGuid();
+        public required DefId Id { get; init; }
 
         private static readonly ConcurrentDictionary<int, ClassSignature> CachedFunctionClasses = [];
 
@@ -52,9 +52,12 @@ public partial class TypeChecker
 
             var functions = new List<FunctionSignature>();
 
+            var functionName = $"Function`{typeParamsCount}";
+
             var signature = new ClassSignature
             {
-                Name = $"Function`{typeParamsCount}",
+                Id = DefId.FunctionObject(parameterCount),
+                Name = functionName,
                 TypeParameters = typeParameters,
                 // there are really two fields here. The function's closure or `this` argument, and the function pointer itself.
                 // but these are not represented in the type system, they only happen when lowering
@@ -65,6 +68,7 @@ public partial class TypeChecker
             var callFunctionParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
 
             var functionSignature = new FunctionSignature(
+                new DefId(signature.Id.ModuleId, signature.Id.FullName + "__Call"),
                 Token.Identifier("Call", SourceSpan.Default),
                 [],
                 callFunctionParameters,
@@ -119,10 +123,12 @@ public partial class TypeChecker
 
             var typeParameters = new List<GenericPlaceholder>(elementCount);
             var fields = new List<TypeField>();
+            var name = $"Tuple`{elementCount}";
             var signature = new ClassSignature
             {
+                Id = DefId.Tuple(elementCount),
                 TypeParameters = typeParameters,
-                Name = $"Tuple`{elementCount}",
+                Name = name,
                 Fields = fields,
                 Functions = []
             };

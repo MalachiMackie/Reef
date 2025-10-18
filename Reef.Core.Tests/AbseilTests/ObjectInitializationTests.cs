@@ -14,13 +14,15 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
     public void ObjectInitializationAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
         description.Should().NotBeEmpty();
-        var program = CreateProgram(source);
+        var program = CreateProgram(_moduleId, source);
         var loweredProgram = ProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
-        loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
+        loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
+
+    private const string _moduleId = "ObjectInitializationTests";
 
     public static TheoryData<string, string, LoweredProgram> TestCases()
     {
@@ -31,16 +33,16 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                 "class MyClass{} new MyClass{}",
                 LoweredProgram(
                         types: [
-                            DataType("MyClass",
+                            DataType(_moduleId, "MyClass",
                                 variants: [
                                     Variant("_classVariant")
                                 ])
                         ],
                         methods: [
-                            Method("_Main",
+                            Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                                 [
                                     CreateObject(
-                                        ConcreteTypeReference("MyClass"),
+                                        ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass")),
                                         "_classVariant",
                                         false),
                                     MethodReturnUnit()
@@ -52,16 +54,16 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                 "class MyClass{pub field MyField: string} new MyClass{MyField = \"\"}",
                 LoweredProgram(
                         types: [
-                            DataType("MyClass",
+                            DataType(_moduleId, "MyClass",
                                 variants: [
                                     Variant("_classVariant", [Field("MyField", StringType)])
                                 ])
                         ],
                         methods: [
-                            Method("_Main",
+                            Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                                 [
                                     CreateObject(
-                                        ConcreteTypeReference("MyClass"),
+                                        ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass")),
                                         "_classVariant",
                                         false,
                                         new(){{"MyField", StringConstant("", true)}}),
@@ -74,14 +76,14 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                 "union MyUnion{A} MyUnion::A",
                 LoweredProgram(
                     types: [
-                        DataType("MyUnion",
+                        DataType(_moduleId, "MyUnion",
                             variants: [Variant("A", [Field("_variantIdentifier", Int)])])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 CreateObject(
-                                    ConcreteTypeReference("MyUnion"),
+                                    ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                     "A",
                                     false,
                                     new(){{"_variantIdentifier", IntConstant(0, true)}}),
@@ -94,7 +96,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                 "union MyUnion{A {field a: string}} new MyUnion::A { a = \"hi\"};",
                 LoweredProgram(
                     types: [
-                        DataType("MyUnion",
+                        DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant("A", [
                                     Field("_variantIdentifier", Int),
@@ -103,10 +105,10 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                             ])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 CreateObject(
-                                    ConcreteTypeReference("MyUnion"),
+                                    ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                     "A",
                                     false,
                                     new()

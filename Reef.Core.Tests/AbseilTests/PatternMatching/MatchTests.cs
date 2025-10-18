@@ -13,13 +13,15 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
     public void MatchAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
         description.Should().NotBeEmpty();
-        var program = CreateProgram(source);
+        var program = CreateProgram(_moduleId, source);
         var loweredProgram = ProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram, false, false);
 
-        loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
+        loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
+
+    private const string _moduleId = "MatchTests";
 
     [Fact]
     public void SingleTest()
@@ -37,34 +39,31 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 """;
                 var expectedProgram = LoweredProgram(
                     types: [
-                        DataType(
-                            "OtherUnion",
+                        DataType(_moduleId, "OtherUnion",
                             variants: [
                                 Variant("A", [Field("_variantIdentifier", Int)]),
                                 Variant("B", [Field("_variantIdentifier", Int)]),
                                 Variant("C", [Field("_variantIdentifier", Int)]),
                                 Variant("D", [Field("_variantIdentifier", Int)]),
                             ]),
-                        DataType(
-                            "MyUnion",
+                        DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant(
                                     "X",
                                     [
                                         Field("_variantIdentifier", Int),
-                                        Field("MyField", ConcreteTypeReference("OtherUnion"))
+                                        Field("MyField", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))
                                     ]),
                                 Variant("Y", [Field("_variantIdentifier", Int)]),
                             ]),
                     ],
                     methods: [
-                        Method(
-                            "_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("MyUnion"),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "Y",
                                         true,
                                         new(){
@@ -75,11 +74,11 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     [
                                         VariableDeclaration(
                                             "Local5",
-                                            LocalAccess("a", true, ConcreteTypeReference("MyUnion")),
+                                            LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                             false),
                                         SwitchInt(
                                             FieldAccess(
-                                                LocalAccess("Local5", true, ConcreteTypeReference("MyUnion")),
+                                                LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 "_variantIdentifier",
                                                 "X",
                                                 true,
@@ -93,15 +92,15 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                             VariableDeclaration("Local6",
                                                                 FieldAccess(
                                                                     LocalAccess(
-                                                                        "Local5", true, ConcreteTypeReference("MyUnion")),
+                                                                        "Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                     "MyField",
                                                                     "X",
                                                                     true,
-                                                                    ConcreteTypeReference("OtherUnion")),
+                                                                    ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                 false),
                                                             SwitchInt(
                                                                 FieldAccess(
-                                                                    LocalAccess("Local6", true, ConcreteTypeReference("OtherUnion")),
+                                                                    LocalAccess("Local6", true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                     "_variantIdentifier",
                                                                     "A",
                                                                     true,
@@ -114,7 +113,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                             [
                                                                                 VariableDeclaration(
                                                                                     "something",
-                                                                                    LocalAccess("Local5", true, ConcreteTypeReference("MyUnion")),
+                                                                                    LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                                     false),
                                                                                 IntConstant(1, true)
                                                                             ],
@@ -126,13 +125,13 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                     [
                                                                         VariableDeclaration(
                                                                             "myField",
-                                                                            LocalAccess("Local6", true, ConcreteTypeReference("OtherUnion")),
+                                                                            LocalAccess("Local6", true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                             false),
                                                                         Block(
                                                                             [
                                                                                 VariableDeclaration(
                                                                                     "somethingElse",
-                                                                                    LocalAccess("Local5", true, ConcreteTypeReference("MyUnion")),
+                                                                                    LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                                     false),
                                                                                 IntConstant(2, true)
                                                                             ],
@@ -152,7 +151,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                 [
                                                     VariableDeclaration(
                                                         "myUnion",
-                                                        LocalAccess("Local5", true, ConcreteTypeReference("MyUnion")),
+                                                        LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                         false),
                                                     IntConstant(4, true)
                                                 ],
@@ -166,17 +165,17 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyUnion")),
-                                Local("something", ConcreteTypeReference("MyUnion")),
-                                Local("somethingElse", ConcreteTypeReference("MyUnion")),
-                                Local("myUnion", ConcreteTypeReference("MyUnion")),
-                                Local("myField", ConcreteTypeReference("OtherUnion")),
-                                Local("Local5", ConcreteTypeReference("MyUnion")),
-                                Local("Local6", ConcreteTypeReference("OtherUnion")),
+                                Local("a", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("something", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("somethingElse", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("myUnion", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("myField", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
+                                Local("Local5", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local6", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                             ])
                     ]);
 
-        var program = CreateProgram(source);
+        var program = CreateProgram(_moduleId, source);
         var loweredProgram = ProgramAbseil.Lower(program);
 
         PrintPrograms(
@@ -185,7 +184,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 false,
                 false);
         
-        loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
+        loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
 
     public static TheoryData<string, string, LoweredProgram> TestCases()
@@ -205,8 +204,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 """,
                 LoweredProgram(
                     types: [
-                        DataType(
-                            "MyUnion",
+                        DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant("A", [Field("_variantIdentifier", Int)]),
                                 Variant("B", [Field("_variantIdentifier", Int)]),
@@ -214,13 +212,12 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             ])
                     ],
                     methods: [
-                        Method(
-                            "_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("MyUnion"),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "A",
                                         true,
                                         new(){
@@ -231,11 +228,11 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     [
                                         VariableDeclaration(
                                             "Local1",
-                                            LocalAccess("a", true, ConcreteTypeReference("MyUnion")),
+                                            LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                             false),
                                         SwitchInt(
                                             FieldAccess(
-                                                LocalAccess("Local1", true, ConcreteTypeReference("MyUnion")),
+                                                LocalAccess("Local1", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 "_variantIdentifier",
                                                 "A",
                                                 true,
@@ -264,8 +261,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyUnion")),
-                                Local("Local1", ConcreteTypeReference("MyUnion"))
+                                Local("a", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local1", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")))
                             ])
                     ])
             },
@@ -281,8 +278,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 """,
                 LoweredProgram(
                     types: [
-                        DataType(
-                            "MyUnion",
+                        DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant("A", [Field("_variantIdentifier", Int)]),
                                 Variant("B", [Field("_variantIdentifier", Int)]),
@@ -290,13 +286,12 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             ])
                     ],
                     methods: [
-                        Method(
-                            "_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("MyUnion"),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "A",
                                         true,
                                         new(){
@@ -305,10 +300,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     false),
                                 Block(
                                     [
-                                        VariableDeclaration("Local1", LocalAccess("a", true, ConcreteTypeReference("MyUnion")), false),
+                                        VariableDeclaration("Local1", LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))), false),
                                         SwitchInt(
                                             FieldAccess(
-                                                LocalAccess("Local1", true, ConcreteTypeReference("MyUnion")),
+                                                LocalAccess("Local1", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 "_variantIdentifier",
                                                 "A",
                                                 true,
@@ -329,8 +324,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyUnion")),
-                                Local("Local1", ConcreteTypeReference("MyUnion"))
+                                Local("a", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local1", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")))
                             ])
                     ])
             },
@@ -351,40 +346,38 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 LoweredProgram(
                     types:
                     [
-                        DataType(
-                            "OtherUnion",
+                        DataType(_moduleId, "OtherUnion",
                             variants:
                             [
                                 Variant("A", [Field("_variantIdentifier", Int)]),
                                 Variant("B", [Field("_variantIdentifier", Int)]),
                                 Variant("C", [Field("_variantIdentifier", Int)]),
                             ]),
-                        DataType(
-                            "MyUnion",
+                        DataType(_moduleId, "MyUnion",
                             variants:
                             [
                                 Variant(
                                     "X",
                                     [
                                         Field("_variantIdentifier", Int),
-                                        Field("Item0", ConcreteTypeReference("OtherUnion"))
+                                        Field("Item0", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))
                                     ]),
                                 Variant("Y", [Field("_variantIdentifier", Int)]),
                             ]),
                     ],
                     methods:
                     [
-                        Method("MyUnion_Create_X",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__X"), "MyUnion__Create__X",
                             [
                                 MethodReturn(
                                     CreateObject(
-                                        ConcreteTypeReference("MyUnion"),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "X",
                                         true,
                                         new()
                                         {
                                             {
-                                                "Item0", LoadArgument(0, true, ConcreteTypeReference("OtherUnion"))
+                                                "Item0", LoadArgument(0, true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))
                                             },
                                             {
                                                 "_variantIdentifier",
@@ -392,15 +385,14 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             }
                                         }))
                             ],
-                            parameters: [ConcreteTypeReference("OtherUnion")],
-                            returnType: ConcreteTypeReference("MyUnion")),
-                        Method(
-                            "_Main",
+                            parameters: [ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))],
+                            returnType: ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("MyUnion"),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "Y",
                                         true,
                                         new()
@@ -412,11 +404,11 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     [
                                         VariableDeclaration(
                                             "Local1",
-                                            LocalAccess("a", true, ConcreteTypeReference("MyUnion")),
+                                            LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                             false),
                                         SwitchInt(
                                             FieldAccess(
-                                                LocalAccess("Local1", true, ConcreteTypeReference("MyUnion")),
+                                                LocalAccess("Local1", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 "_variantIdentifier",
                                                 "X",
                                                 true,
@@ -433,16 +425,16 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                     LocalAccess(
                                                                         "Local1",
                                                                         true,
-                                                                        ConcreteTypeReference("MyUnion")),
+                                                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                     "Item0",
                                                                     "X",
                                                                     true,
-                                                                    ConcreteTypeReference("OtherUnion")),
+                                                                    ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                 false),
                                                             SwitchInt(
                                                                 FieldAccess(
                                                                     LocalAccess("Local2", true,
-                                                                        ConcreteTypeReference("OtherUnion")),
+                                                                        ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                     "_variantIdentifier",
                                                                     "A",
                                                                     true,
@@ -484,9 +476,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             ],
                             locals:
                             [
-                                Local("a", ConcreteTypeReference("MyUnion")),
-                                Local("Local1", ConcreteTypeReference("MyUnion")),
-                                Local("Local2", ConcreteTypeReference("OtherUnion")),
+                                Local("a", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local1", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local2", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                             ])
                     ])
             },
@@ -505,48 +497,44 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 """,
                 LoweredProgram(
                     types: [
-                        DataType(
-                            "OtherUnion",
+                        DataType(_moduleId, "OtherUnion",
                             variants: [
                                 Variant("A", [Field("_variantIdentifier", Int)]),
                                 Variant("B", [Field("_variantIdentifier", Int)]),
                             ]),
-                        DataType(
-                            "MyUnion",
+                        DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant(
                                     "X",
                                     [
                                         Field("_variantIdentifier", Int),
-                                        Field("Item0", ConcreteTypeReference("OtherUnion")),
+                                        Field("Item0", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                     ]),
                                 Variant("Y", [Field("_variantIdentifier", Int)])
                             ])
                     ],
                     methods: [
-                        Method(
-                            "MyUnion_Create_X",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__X"), "MyUnion__Create__X",
                             [
                                 MethodReturn(
                                     CreateObject(
-                                        ConcreteTypeReference("MyUnion"),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "X",
                                         true,
                                         new()
                                         {
                                             {"_variantIdentifier", IntConstant(0, true)},
-                                            {"Item0", LoadArgument(0, true, ConcreteTypeReference("OtherUnion"))}
+                                            {"Item0", LoadArgument(0, true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))}
                                         }))
                             ],
-                            parameters: [ConcreteTypeReference("OtherUnion")],
-                            returnType: ConcreteTypeReference("MyUnion")),
-                        Method(
-                            "_Main",
+                            parameters: [ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))],
+                            returnType: ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("MyUnion"),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "Y",
                                         true,
                                         new(){{"_variantIdentifier", IntConstant(1, true)}}),
@@ -555,11 +543,11 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     [
                                         VariableDeclaration(
                                             "Local1",
-                                            LocalAccess("a", true, ConcreteTypeReference("MyUnion")),
+                                            LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                             false),
                                         SwitchInt(
                                             FieldAccess(
-                                                LocalAccess("Local1", true, ConcreteTypeReference("MyUnion")),
+                                                LocalAccess("Local1", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 "_variantIdentifier",
                                                 "X",
                                                 true,
@@ -573,15 +561,15 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                             VariableDeclaration(
                                                                 "Local2",
                                                                 FieldAccess(
-                                                                    LocalAccess("Local1", true, ConcreteTypeReference("MyUnion")),
+                                                                    LocalAccess("Local1", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                     "Item0",
                                                                     "X",
                                                                     true,
-                                                                    ConcreteTypeReference("OtherUnion")),
+                                                                    ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                 false),
                                                             SwitchInt(
                                                                 FieldAccess(
-                                                                    LocalAccess("Local2", true, ConcreteTypeReference("OtherUnion")),
+                                                                    LocalAccess("Local2", true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                     "_variantIdentifier",
                                                                     "A",
                                                                     true,
@@ -608,9 +596,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyUnion")),
-                                Local("Local1", ConcreteTypeReference("MyUnion")),
-                                Local("Local2", ConcreteTypeReference("OtherUnion")),
+                                Local("a", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local1", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local2", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                             ])
                     ])
             },
@@ -630,50 +618,46 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 """,
                 LoweredProgram(
                     types: [
-                        DataType(
-                            "OtherUnion",
+                        DataType(_moduleId, "OtherUnion",
                             variants: [
                                 Variant("A", [Field("_variantIdentifier", Int)]),
                                 Variant("B", [Field("_variantIdentifier", Int)]),
                                 Variant("C", [Field("_variantIdentifier", Int)]),
                                 Variant("D", [Field("_variantIdentifier", Int)]),
                             ]),
-                        DataType(
-                            "MyUnion",
+                        DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant(
                                     "X",
                                     [
                                         Field("_variantIdentifier", Int),
-                                        Field("Item0", ConcreteTypeReference("OtherUnion"))
+                                        Field("Item0", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))
                                     ]),
                                 Variant("Y", [Field("_variantIdentifier", Int)]),
                             ]),
                     ],
                     methods: [
-                        Method(
-                            "MyUnion_Create_X",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__X"), "MyUnion__Create__X",
                             [
                                 MethodReturn(
                                     CreateObject(
-                                        ConcreteTypeReference("MyUnion"),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "X",
                                         true,
                                         new()
                                         {
                                             {"_variantIdentifier",IntConstant(0, true)},
-                                            {"Item0", LoadArgument(0, true, ConcreteTypeReference("OtherUnion"))}
+                                            {"Item0", LoadArgument(0, true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))}
                                         }))
                             ],
-                            parameters: [ConcreteTypeReference("OtherUnion")],
-                            returnType: ConcreteTypeReference("MyUnion")),
-                        Method(
-                            "_Main",
+                            parameters: [ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))],
+                            returnType: ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("MyUnion"),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "Y",
                                         true,
                                         new(){
@@ -684,11 +668,11 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     [
                                         VariableDeclaration(
                                             "Local1",
-                                            LocalAccess("a", true, ConcreteTypeReference("MyUnion")),
+                                            LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                             false),
                                         SwitchInt(
                                             FieldAccess(
-                                                LocalAccess("Local1", true, ConcreteTypeReference("MyUnion")),
+                                                LocalAccess("Local1", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 "_variantIdentifier",
                                                 "X",
                                                 true,
@@ -702,15 +686,15 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                             VariableDeclaration(
                                                                 "Local2",
                                                                 FieldAccess(
-                                                                    LocalAccess("Local1", true, ConcreteTypeReference("MyUnion")),
+                                                                    LocalAccess("Local1", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                     "Item0",
                                                                     "X",
                                                                     true,
-                                                                    ConcreteTypeReference("OtherUnion")),
+                                                                    ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                 false),
                                                             SwitchInt(
                                                                 FieldAccess(
-                                                                    LocalAccess("Local2", true, ConcreteTypeReference("OtherUnion")),
+                                                                    LocalAccess("Local2", true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                     "_variantIdentifier",
                                                                     "A",
                                                                     true,
@@ -738,9 +722,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyUnion")),
-                                Local("Local1", ConcreteTypeReference("MyUnion")),
-                                Local("Local2", ConcreteTypeReference("OtherUnion"))
+                                Local("a", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local1", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local2", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))
                             ])
                     ])
             },
@@ -760,49 +744,46 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 """,
                 LoweredProgram(
                     types: [
-                        DataType(
-                            "OtherUnion",
+                        DataType(_moduleId, "OtherUnion",
                             variants: [
                                 Variant("A", [Field("_variantIdentifier", Int)]),
                                 Variant("B", [Field("_variantIdentifier", Int)]),
                             ]),
-                        DataType(
-                            "MyUnion",
+                        DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant(
                                     "X",
                                     [
                                         Field("_variantIdentifier", Int),
-                                        Field("Item0", ConcreteTypeReference("OtherUnion")),
-                                        Field("Item1", ConcreteTypeReference("OtherUnion")),
+                                        Field("Item0", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
+                                        Field("Item1", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                     ]),
                                 Variant("Y", [Field("_variantIdentifier", Int)])
                             ])
                     ],
                     methods: [
-                        Method("MyUnion_Create_X",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__X"), "MyUnion__Create__X",
                             [
                                 MethodReturn(
                                     CreateObject(
-                                        ConcreteTypeReference("MyUnion"),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "X",
                                         true,
                                         new()
                                         {
-                                            {"Item0", LoadArgument(0, true, ConcreteTypeReference("OtherUnion"))},
-                                            {"Item1", LoadArgument(1, true, ConcreteTypeReference("OtherUnion"))},
+                                            {"Item0", LoadArgument(0, true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))},
+                                            {"Item1", LoadArgument(1, true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))},
                                             {"_variantIdentifier", IntConstant(0, true)},
                                         }))
                             ],
-                            parameters: [ConcreteTypeReference("OtherUnion"), ConcreteTypeReference("OtherUnion")],
-                            returnType: ConcreteTypeReference("MyUnion")),
-                        Method(
-                            "_Main",
+                            parameters: [ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")), ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))],
+                            returnType: ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a", 
                                     CreateObject(
-                                        ConcreteTypeReference("MyUnion"),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "Y",
                                         true,
                                         new(){{"_variantIdentifier", IntConstant(1, true)}}),
@@ -811,11 +792,11 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     [
                                         VariableDeclaration(
                                             "Local1",
-                                            LocalAccess("a", true, ConcreteTypeReference("MyUnion")),
+                                            LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                             false),
                                         SwitchInt(
                                             FieldAccess(
-                                                LocalAccess("Local1", true, ConcreteTypeReference("MyUnion")),
+                                                LocalAccess("Local1", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 "_variantIdentifier",
                                                 "X",
                                                 true,
@@ -834,15 +815,15 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                 "Local4",
                                                                 FieldAccess(
                                                                     LocalAccess(
-                                                                        "Local1", true, ConcreteTypeReference("MyUnion")),
+                                                                        "Local1", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                     "Item0",
                                                                     "X",
                                                                     true,
-                                                                    ConcreteTypeReference("OtherUnion")),
+                                                                    ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                 false),
                                                             SwitchInt(
                                                                 FieldAccess(
-                                                                    LocalAccess("Local4", true, ConcreteTypeReference("OtherUnion")),
+                                                                    LocalAccess("Local4", true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                     "_variantIdentifier",
                                                                     "A",
                                                                     true,
@@ -857,15 +838,15 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                                     "Local2",
                                                                                     FieldAccess(
                                                                                         LocalAccess(
-                                                                                            "Local1", true, ConcreteTypeReference("MyUnion")),
+                                                                                            "Local1", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                                         "Item1",
                                                                                         "X",
                                                                                         true,
-                                                                                        ConcreteTypeReference("OtherUnion")),
+                                                                                        ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                                     false),
                                                                                 SwitchInt(
                                                                                     FieldAccess(
-                                                                                        LocalAccess("Local2", true, ConcreteTypeReference("OtherUnion")),
+                                                                                        LocalAccess("Local2", true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                                         "_variantIdentifier",
                                                                                         "A",
                                                                                         true,
@@ -896,15 +877,15 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                                     "Local3",
                                                                                     FieldAccess(
                                                                                         LocalAccess(
-                                                                                            "Local1", true, ConcreteTypeReference("MyUnion")),
+                                                                                            "Local1", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                                         "Item1",
                                                                                         "X",
                                                                                         true,
-                                                                                        ConcreteTypeReference("OtherUnion")),
+                                                                                        ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                                     false),
                                                                                 SwitchInt(
                                                                                     FieldAccess(
-                                                                                        LocalAccess("Local3", true, ConcreteTypeReference("OtherUnion")),
+                                                                                        LocalAccess("Local3", true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                                         "_variantIdentifier",
                                                                                         "A",
                                                                                         true,
@@ -945,11 +926,11 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyUnion")),
-                                Local("Local1", ConcreteTypeReference("MyUnion")),
-                                Local("Local2", ConcreteTypeReference("OtherUnion")),
-                                Local("Local3", ConcreteTypeReference("OtherUnion")),
-                                Local("Local4", ConcreteTypeReference("OtherUnion")),
+                                Local("a", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local1", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local2", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
+                                Local("Local3", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
+                                Local("Local4", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                             ])
                     ])
             },
@@ -968,34 +949,31 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 """,
                 LoweredProgram(
                     types: [
-                        DataType(
-                            "OtherUnion",
+                        DataType(_moduleId, "OtherUnion",
                             variants: [
                                 Variant("A", [Field("_variantIdentifier", Int)]),
                                 Variant("B", [Field("_variantIdentifier", Int)]),
                                 Variant("C", [Field("_variantIdentifier", Int)]),
                                 Variant("D", [Field("_variantIdentifier", Int)]),
                             ]),
-                        DataType(
-                            "MyUnion",
+                        DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant(
                                     "X",
                                     [
                                         Field("_variantIdentifier", Int),
-                                        Field("MyField", ConcreteTypeReference("OtherUnion"))
+                                        Field("MyField", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))
                                     ]),
                                 Variant("Y", [Field("_variantIdentifier", Int)]),
                             ]),
                     ],
                     methods: [
-                        Method(
-                            "_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("MyUnion"),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "Y",
                                         true,
                                         new(){
@@ -1006,11 +984,11 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     [
                                         VariableDeclaration(
                                             "Local5",
-                                            LocalAccess("a", true, ConcreteTypeReference("MyUnion")),
+                                            LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                             false),
                                         SwitchInt(
                                             FieldAccess(
-                                                LocalAccess("Local5", true, ConcreteTypeReference("MyUnion")),
+                                                LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 "_variantIdentifier",
                                                 "X",
                                                 true,
@@ -1024,15 +1002,15 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                             VariableDeclaration("Local6",
                                                                 FieldAccess(
                                                                     LocalAccess(
-                                                                        "Local5", true, ConcreteTypeReference("MyUnion")),
+                                                                        "Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                     "MyField",
                                                                     "X",
                                                                     true,
-                                                                    ConcreteTypeReference("OtherUnion")),
+                                                                    ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                 false),
                                                             SwitchInt(
                                                                 FieldAccess(
-                                                                    LocalAccess("Local6", true, ConcreteTypeReference("OtherUnion")),
+                                                                    LocalAccess("Local6", true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                     "_variantIdentifier",
                                                                     "A",
                                                                     true,
@@ -1045,7 +1023,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                             [
                                                                                 VariableDeclaration(
                                                                                     "something",
-                                                                                    LocalAccess("Local5", true, ConcreteTypeReference("MyUnion")),
+                                                                                    LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                                     false),
                                                                                 IntConstant(1, true)
                                                                             ],
@@ -1057,13 +1035,13 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                     [
                                                                         VariableDeclaration(
                                                                             "myField",
-                                                                            LocalAccess("Local6", true, ConcreteTypeReference("OtherUnion")),
+                                                                            LocalAccess("Local6", true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                                                             false),
                                                                         Block(
                                                                             [
                                                                                 VariableDeclaration(
                                                                                     "somethingElse",
-                                                                                    LocalAccess("Local5", true, ConcreteTypeReference("MyUnion")),
+                                                                                    LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                                     false),
                                                                                 IntConstant(2, true)
                                                                             ],
@@ -1083,7 +1061,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                 [
                                                     VariableDeclaration(
                                                         "myUnion",
-                                                        LocalAccess("Local5", true, ConcreteTypeReference("MyUnion")),
+                                                        LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                         false),
                                                     IntConstant(4, true)
                                                 ],
@@ -1097,13 +1075,13 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyUnion")),
-                                Local("something", ConcreteTypeReference("MyUnion")),
-                                Local("somethingElse", ConcreteTypeReference("MyUnion")),
-                                Local("myUnion", ConcreteTypeReference("MyUnion")),
-                                Local("myField", ConcreteTypeReference("OtherUnion")),
-                                Local("Local5", ConcreteTypeReference("MyUnion")),
-                                Local("Local6", ConcreteTypeReference("OtherUnion")),
+                                Local("a", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("something", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("somethingElse", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("myUnion", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("myField", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
+                                Local("Local5", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local6", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                             ])
                     ])
             },
@@ -1116,8 +1094,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 """,
                 LoweredProgram(
                     methods: [
-                        Method(
-                            "_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 Block(
                                     [
@@ -1147,24 +1124,22 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 """,
                 LoweredProgram(
                     types: [
-                        DataType(
-                            "MyUnion",
+                        DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant("A", [Field("_variantIdentifier", Int)]),
                                 Variant("B", [Field("_variantIdentifier", Int)])
                             ]),
-                        DataType(
-                            "MyClass",
+                        DataType(_moduleId, "MyClass",
                             variants: [
-                                Variant("_classVariant", [Field("MyField", ConcreteTypeReference("MyUnion"))])
+                                Variant("_classVariant", [Field("MyField", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")))])
                             ])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration("a",
                                     CreateObject(
-                                        ConcreteTypeReference("MyClass"),
+                                        ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass")),
                                         "_classVariant",
                                         true,
                                         new()
@@ -1172,7 +1147,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             {
                                                 "MyField",
                                                 CreateObject(
-                                                    ConcreteTypeReference("MyUnion"),
+                                                    ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                                     "A",
                                                     true,
                                                     new()
@@ -1185,22 +1160,22 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 Block(
                                     [
                                         VariableDeclaration("Local2",
-                                            LocalAccess("a", true, ConcreteTypeReference("MyClass")),
+                                            LocalAccess("a", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                             false),
                                         Block(
                                             [
                                                 VariableDeclaration(
                                                     "Local3",
                                                     FieldAccess(
-                                                        LocalAccess("Local2", true, ConcreteTypeReference("MyClass")),
+                                                        LocalAccess("Local2", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                                         "MyField",
                                                         "_classVariant",
                                                         true,
-                                                        ConcreteTypeReference("MyUnion")),
+                                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                     false),
                                                 SwitchInt(
                                                     FieldAccess(
-                                                        LocalAccess("Local3", true, ConcreteTypeReference("MyUnion")),
+                                                        LocalAccess("Local3", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                         "_variantIdentifier",
                                                         "A",
                                                         true,
@@ -1217,7 +1192,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                 [
                                                                     VariableDeclaration(
                                                                         "something",
-                                                                        LocalAccess("Local2", true, ConcreteTypeReference("MyClass")),
+                                                                        LocalAccess("Local2", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                                                         false),
                                                                     IntConstant(2, true)
                                                                 ],
@@ -1237,10 +1212,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyClass")),
-                                Local("something", ConcreteTypeReference("MyClass")),
-                                Local("Local2", ConcreteTypeReference("MyClass")),
-                                Local("Local3", ConcreteTypeReference("MyUnion"))
+                                Local("a", ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
+                                Local("something", ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
+                                Local("Local2", ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
+                                Local("Local3", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")))
                             ])
                     ])
             },
@@ -1258,24 +1233,22 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 """,
                 LoweredProgram(
                     types: [
-                        DataType(
-                            "MyUnion",
+                        DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant("A", [Field("_variantIdentifier", Int)]),
                                 Variant("B", [Field("_variantIdentifier", Int)])
                             ]),
-                        DataType(
-                            "MyClass",
+                        DataType(_moduleId, "MyClass",
                             variants: [
-                                Variant("_classVariant", [Field("MyField", ConcreteTypeReference("MyUnion"))])
+                                Variant("_classVariant", [Field("MyField", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")))])
                             ])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration("a",
                                     CreateObject(
-                                        ConcreteTypeReference("MyClass"),
+                                        ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass")),
                                         "_classVariant",
                                         true,
                                         new()
@@ -1283,7 +1256,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             {
                                                 "MyField",
                                                 CreateObject(
-                                                    ConcreteTypeReference("MyUnion"),
+                                                    ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                                     "A",
                                                     true,
                                                     new()
@@ -1297,22 +1270,22 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     [
                                         VariableDeclaration(
                                             "Local1",
-                                            LocalAccess("a", true, ConcreteTypeReference("MyClass")),
+                                            LocalAccess("a", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                             false),
                                         Block(
                                             [
                                                 VariableDeclaration(
                                                     "Local2",
                                                     FieldAccess(
-                                                        LocalAccess("Local1", true, ConcreteTypeReference("MyClass")),
+                                                        LocalAccess("Local1", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                                         "MyField",
                                                         "_classVariant",
                                                         true,
-                                                        ConcreteTypeReference("MyUnion")),
+                                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                     false),
                                                 SwitchInt(
                                                     FieldAccess(
-                                                        LocalAccess("Local2", true, ConcreteTypeReference("MyUnion")),
+                                                        LocalAccess("Local2", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                         "_variantIdentifier",
                                                         "A",
                                                         true,
@@ -1336,9 +1309,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyClass")),
-                                Local("Local1", ConcreteTypeReference("MyClass")),
-                                Local("Local2", ConcreteTypeReference("MyUnion")),
+                                Local("a", ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
+                                Local("Local1", ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
+                                Local("Local2", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                             ])
                     ])
             },
@@ -1361,30 +1334,28 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 """,
                 LoweredProgram(
                     types: [
-                        DataType(
-                            "MyUnion",
+                        DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant("A", [Field("_variantIdentifier", Int)]),
                                 Variant("B", [Field("_variantIdentifier", Int)]),
                                 Variant("C", [Field("_variantIdentifier", Int)])
                             ]),
-                        DataType(
-                            "MyClass",
+                        DataType(_moduleId, "MyClass",
                             variants: [
                                 Variant(
                                     "_classVariant",
                                     [
-                                        Field("MyField", ConcreteTypeReference("MyUnion")),
-                                        Field("SecondField", ConcreteTypeReference("MyUnion")),
+                                        Field("MyField", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                        Field("SecondField", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                     ])
                             ])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration("a",
                                     CreateObject(
-                                        ConcreteTypeReference("MyClass"),
+                                        ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass")),
                                         "_classVariant",
                                         true,
                                         new()
@@ -1392,7 +1363,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             {
                                                 "MyField",
                                                 CreateObject(
-                                                    ConcreteTypeReference("MyUnion"),
+                                                    ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                                     "A",
                                                     true,
                                                     new()
@@ -1403,7 +1374,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             {
                                                 "SecondField",
                                                 CreateObject(
-                                                    ConcreteTypeReference("MyUnion"),
+                                                    ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                                     "B",
                                                     true,
                                                     new()
@@ -1417,22 +1388,22 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     [
                                         VariableDeclaration(
                                             "Local1",
-                                            LocalAccess("a", true, ConcreteTypeReference("MyClass")),
+                                            LocalAccess("a", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                             false),
                                         Block(
                                             [
                                                 VariableDeclaration(
                                                     "Local5",
                                                     FieldAccess(
-                                                        LocalAccess("Local1", true, ConcreteTypeReference("MyClass")),
+                                                        LocalAccess("Local1", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                                         "MyField",
                                                         "_classVariant",
                                                         true,
-                                                        ConcreteTypeReference("MyUnion")),
+                                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                     false),
                                                 SwitchInt(
                                                     FieldAccess(
-                                                        LocalAccess("Local5", true, ConcreteTypeReference("MyUnion")),
+                                                        LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                         "_variantIdentifier",
                                                         "A",
                                                         true,
@@ -1446,15 +1417,15 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                     VariableDeclaration(
                                                                         "Local2",
                                                                         FieldAccess(
-                                                                            LocalAccess("Local1", true, ConcreteTypeReference("MyClass")),
+                                                                            LocalAccess("Local1", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                                                             "SecondField",
                                                                             "_classVariant",
                                                                             true,
-                                                                            ConcreteTypeReference("MyUnion")),
+                                                                            ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                         false),
                                                                     SwitchInt(
                                                                         FieldAccess(
-                                                                            LocalAccess("Local2", true, ConcreteTypeReference("MyUnion")),
+                                                                            LocalAccess("Local2", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                             "_variantIdentifier",
                                                                             "A",
                                                                             true,
@@ -1480,15 +1451,15 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                     VariableDeclaration(
                                                                         "Local3",
                                                                         FieldAccess(
-                                                                            LocalAccess("Local1", true, ConcreteTypeReference("MyClass")),
+                                                                            LocalAccess("Local1", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                                                             "SecondField",
                                                                             "_classVariant",
                                                                             true,
-                                                                            ConcreteTypeReference("MyUnion")),
+                                                                            ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                         false),
                                                                     SwitchInt(
                                                                         FieldAccess(
-                                                                            LocalAccess("Local3", true, ConcreteTypeReference("MyUnion")),
+                                                                            LocalAccess("Local3", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                             "_variantIdentifier",
                                                                             "A",
                                                                             true,
@@ -1514,15 +1485,15 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                     VariableDeclaration(
                                                                         "Local4",
                                                                         FieldAccess(
-                                                                            LocalAccess("Local1", true, ConcreteTypeReference("MyClass")),
+                                                                            LocalAccess("Local1", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                                                             "SecondField",
                                                                             "_classVariant",
                                                                             true,
-                                                                            ConcreteTypeReference("MyUnion")),
+                                                                            ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                         false),
                                                                     SwitchInt(
                                                                         FieldAccess(
-                                                                            LocalAccess("Local4", true, ConcreteTypeReference("MyUnion")),
+                                                                            LocalAccess("Local4", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                             "_variantIdentifier",
                                                                             "A",
                                                                             true,
@@ -1554,12 +1525,12 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyClass")),
-                                Local("Local1", ConcreteTypeReference("MyClass")),
-                                Local("Local2", ConcreteTypeReference("MyUnion")),
-                                Local("Local3", ConcreteTypeReference("MyUnion")),
-                                Local("Local4", ConcreteTypeReference("MyUnion")),
-                                Local("Local5", ConcreteTypeReference("MyUnion")),
+                                Local("a", ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
+                                Local("Local1", ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
+                                Local("Local2", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local3", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local4", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local5", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                             ])
                     ])
             },
@@ -1583,31 +1554,29 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 """,
                 LoweredProgram(
                     types: [
-                        DataType(
-                            "MyUnion",
+                        DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant("A", [Field("_variantIdentifier", Int)]),
                                 Variant("B", [Field("_variantIdentifier", Int)]),
                                 Variant("C", [Field("_variantIdentifier", Int)]),
                             ]),
-                        DataType(
-                            "MyClass",
+                        DataType(_moduleId, "MyClass",
                             variants: [
                                 Variant(
                                     "_classVariant",
                                     [
-                                        Field("MyField", ConcreteTypeReference("MyUnion")),
-                                        Field("SecondField", ConcreteTypeReference("MyUnion"))
+                                        Field("MyField", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                        Field("SecondField", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")))
                                     ])
                             ])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("MyClass"),
+                                        ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass")),
                                         "_classVariant",
                                         true,
                                         new()
@@ -1615,7 +1584,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             {
                                                 "MyField",
                                                 CreateObject(
-                                                    ConcreteTypeReference("MyUnion"),
+                                                    ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                                     "A",
                                                     true,
                                                     new(){{"_variantIdentifier", IntConstant(0, true)}})
@@ -1623,7 +1592,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             {
                                                 "SecondField",
                                                 CreateObject(
-                                                    ConcreteTypeReference("MyUnion"),
+                                                    ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                                     "B",
                                                     true,
                                                     new(){{"_variantIdentifier", IntConstant(1, true)}})
@@ -1632,20 +1601,20 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     false),
                                 Block(
                                     [
-                                        VariableDeclaration("Local1", LocalAccess("a", true, ConcreteTypeReference("MyClass")), false),
+                                        VariableDeclaration("Local1", LocalAccess("a", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))), false),
                                         Block(
                                             [
                                                 VariableDeclaration("Local5", 
                                                     FieldAccess(
-                                                        LocalAccess("Local1", true, ConcreteTypeReference("MyClass")),
+                                                        LocalAccess("Local1", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                                         "MyField",
                                                         "_classVariant",
                                                         true,
-                                                        ConcreteTypeReference("MyUnion")),
+                                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                     false),
                                                 SwitchInt(
                                                     FieldAccess(
-                                                        LocalAccess("Local5", true, ConcreteTypeReference("MyUnion")),
+                                                        LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                         "_variantIdentifier",
                                                         "A",
                                                         true,
@@ -1658,15 +1627,15 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                 [
                                                                     VariableDeclaration(
                                                                         "Local2",
-                                                                        FieldAccess(LocalAccess("Local1", true, ConcreteTypeReference("MyClass")),
+                                                                        FieldAccess(LocalAccess("Local1", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                                                             "SecondField",
                                                                             "_classVariant",
                                                                             true,
-                                                                            ConcreteTypeReference("MyUnion")),
+                                                                            ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                         false),
                                                                     SwitchInt(
                                                                         FieldAccess(
-                                                                            LocalAccess("Local2", true, ConcreteTypeReference("MyUnion")),
+                                                                            LocalAccess("Local2", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                             "_variantIdentifier",
                                                                             "A",
                                                                             true,
@@ -1691,15 +1660,15 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                 [
                                                                     VariableDeclaration(
                                                                         "Local3",
-                                                                        FieldAccess(LocalAccess("Local1", true, ConcreteTypeReference("MyClass")),
+                                                                        FieldAccess(LocalAccess("Local1", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                                                             "SecondField",
                                                                             "_classVariant",
                                                                             true,
-                                                                            ConcreteTypeReference("MyUnion")),
+                                                                            ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                         false),
                                                                     SwitchInt(
                                                                         FieldAccess(
-                                                                            LocalAccess("Local3", true, ConcreteTypeReference("MyUnion")),
+                                                                            LocalAccess("Local3", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                             "_variantIdentifier",
                                                                             "A",
                                                                             true,
@@ -1724,15 +1693,15 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                 [
                                                                     VariableDeclaration(
                                                                         "Local4",
-                                                                        FieldAccess(LocalAccess("Local1", true, ConcreteTypeReference("MyClass")),
+                                                                        FieldAccess(LocalAccess("Local1", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                                                             "SecondField",
                                                                             "_classVariant",
                                                                             true,
-                                                                            ConcreteTypeReference("MyUnion")),
+                                                                            ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                         false),
                                                                     SwitchInt(
                                                                         FieldAccess(
-                                                                            LocalAccess("Local4", true, ConcreteTypeReference("MyUnion")),
+                                                                            LocalAccess("Local4", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                             "_variantIdentifier",
                                                                             "A",
                                                                             true,
@@ -1765,14 +1734,14 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyClass")),
-                                Local("Local1", ConcreteTypeReference("MyClass")),
+                                Local("a", ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
+                                Local("Local1", ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                 // MyField 
-                                Local("Local5", ConcreteTypeReference("MyUnion")),
+                                Local("Local5", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                 // SecondField
-                                Local("Local2", ConcreteTypeReference("MyUnion")),
-                                Local("Local3", ConcreteTypeReference("MyUnion")),
-                                Local("Local4", ConcreteTypeReference("MyUnion")),
+                                Local("Local2", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local3", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                                Local("Local4", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                             ])
                     ])
             }

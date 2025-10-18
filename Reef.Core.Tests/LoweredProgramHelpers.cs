@@ -1,3 +1,4 @@
+using System.Xml;
 using Reef.Core.LoweredExpressions;
 
 namespace Reef.Core.Tests;
@@ -16,15 +17,18 @@ public static class LoweredProgramHelpers
     }
 
     public static DataType DataType(
-            string name,
-            IReadOnlyList<string>? typeParameters = null,
-            IReadOnlyList<DataTypeVariant>? variants = null,
-            IReadOnlyList<StaticDataTypeField>? staticFields = null)
+        string moduleId,
+        string name,
+        IReadOnlyList<string>? typeParameters = null,
+        IReadOnlyList<DataTypeVariant>? variants = null,
+        IReadOnlyList<StaticDataTypeField>? staticFields = null)
     {
+        var defId = new DefId(moduleId, $"{moduleId}.{name}");
+
         return new(
-                Guid.Empty,
+                defId,
                 name,
-                typeParameters?.Select(x => new LoweredGenericPlaceholder(Guid.Empty, x)).ToArray() ?? [],
+                typeParameters?.Select(x => new LoweredGenericPlaceholder(defId, x)).ToArray() ?? [],
                 variants ?? [],
                 staticFields ?? []);
     }
@@ -62,17 +66,18 @@ public static class LoweredProgramHelpers
     }
 
     public static LoweredMethod Method(
+        DefId defId,
             string name,
             IReadOnlyList<ILoweredExpression> expressions,
-            IReadOnlyList<string>? typeParameters = null,
+            IReadOnlyList<(DefId, string)>? typeParameters = null,
             IReadOnlyList<ILoweredTypeReference>? parameters = null,
             ILoweredTypeReference? returnType = null,
             List<MethodLocal>? locals = null)
     {
         return new(
-                Guid.Empty,
+                defId,
                 name,
-                typeParameters?.Select(x => new LoweredGenericPlaceholder(Guid.Empty, x)).ToArray() ?? [],
+                typeParameters?.Select(x => new LoweredGenericPlaceholder(x.Item1, x.Item2)).ToArray() ?? [],
                 parameters ?? [],
                 returnType ?? Unit,
                 expressions ?? [],
@@ -260,10 +265,11 @@ public static class LoweredProgramHelpers
     }
 
     public static LoweredFunctionReference FunctionReference(
+        DefId defId,
             string name,
             IReadOnlyList<ILoweredTypeReference>? typeArguments = null)
     {
-        return new(name, Guid.Empty, typeArguments ?? []);
+        return new(name, defId, typeArguments ?? []);
     }
 
 
@@ -342,9 +348,9 @@ public static class LoweredProgramHelpers
                 []);
 
     public static LoweredConcreteTypeReference ConcreteTypeReference(
-        string name, IReadOnlyList<ILoweredTypeReference>? typeArguments = null
-    ) => new(name, Guid.Empty, typeArguments ?? []);
+        string name, DefId defId, IReadOnlyList<ILoweredTypeReference>? typeArguments = null
+    ) => new(name, defId, typeArguments ?? []);
 
-    public static LoweredGenericPlaceholder GenericPlaceholder(string name)
-        => new(Guid.Empty, name);
+    public static LoweredGenericPlaceholder GenericPlaceholder(DefId ownerDefId, string name)
+        => new(ownerDefId, name);
 }

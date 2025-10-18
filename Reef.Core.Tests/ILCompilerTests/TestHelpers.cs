@@ -1,4 +1,4 @@
-﻿using Reef.IL;
+﻿using Reef.Core.IL;
 
 namespace Reef.Core.Tests.ILCompilerTests;
 
@@ -9,11 +9,11 @@ public static class TestHelpers
         return new ReefMethod.Local { DisplayName = name, Type = type };
     }
 
-    public static FunctionDefinitionReference FunctionDefinitionReference(string name, IReadOnlyList<IReefTypeReference>? typeArguments = null) => new()
+    public static FunctionDefinitionReference FunctionDefinitionReference(DefId defId, string name, IReadOnlyList<IReefTypeReference>? typeArguments = null) => new()
     {
         Name = name,
         TypeArguments = typeArguments ?? [],
-        DefinitionId = Guid.Empty
+        DefinitionId = defId
     };
     
     public static StaticReefField StaticField(string name, IReefTypeReference type,
@@ -36,12 +36,12 @@ public static class TestHelpers
         };
     }
 
-    public static IReefTypeReference GenericTypeReference(string typeParameterName)
+    public static IReefTypeReference GenericTypeReference(DefId ownerDefId, string typeParameterName)
     {
         return new GenericReefTypeReference
         {
             TypeParameterName = typeParameterName,
-            DefinitionId = Guid.Empty
+            DefinitionId = ownerDefId
         };
     }
 
@@ -61,17 +61,18 @@ public static class TestHelpers
         };
     }
 
-    public static ConcreteReefTypeReference ConcreteTypeReference(string name, IReadOnlyList<IReefTypeReference>? typeArguments = null)
+    public static ConcreteReefTypeReference ConcreteTypeReference(DefId defId, string name, IReadOnlyList<IReefTypeReference>? typeArguments = null)
     {
         return new ConcreteReefTypeReference
         {
             Name = name,
-            DefinitionId = Guid.Empty,
+            DefinitionId = defId,
             TypeArguments = typeArguments ?? []
         };
     }
 
     public static ReefMethod Method(
+        DefId defId,
         string name,
         IEnumerable<IInstruction> instructions,
         IEnumerable<InstructionLabel>? labels = null,
@@ -87,8 +88,8 @@ public static class TestHelpers
             Instructions = new InstructionList([..instructions], [..labels ?? []]),
             Locals = locals ?? [],
             Parameters = parameters ?? [],
-            ReturnType = returnType ?? ConcreteTypeReference("Unit"),
-            Id = Guid.Empty
+            ReturnType = returnType ?? ConcreteTypeReference(new DefId("Reef.Core", "System.Unit"), "Unit"),
+            Id = defId
         };
     }
 
@@ -103,6 +104,7 @@ public static class TestHelpers
     }
 
     public static ReefTypeDefinition DataType(
+        DefId defId,
         string name,
         IReadOnlyList<ReefVariant> variants,
         IReadOnlyList<StaticReefField>? staticFields = null,
@@ -111,7 +113,7 @@ public static class TestHelpers
         return new ReefTypeDefinition
         {
             DisplayName = name,
-            Id = Guid.Empty,
+            Id = defId,
             IsValueType = false,
             TypeParameters = typeParameters ?? [],
             Variants = variants,

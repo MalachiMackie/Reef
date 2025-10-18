@@ -1,5 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11111.16 d18.0
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Reef.Core", "Reef.Core\Reef.Core.csproj", "{9D0233C8-BE1D-4DA2-9882-E9862B7243AC}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Reef.Console", "Reef.Console\Reef.Console.csproj", "{9B6E7F9B-E78A-4634-9761-9455CADB4AED}"
@@ -13,8 +16,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionItems", "SolutionIt
 		.gitignore = .gitignore
 		readme.md = readme.md
 	EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Reef.IL", "Reef.IL\Reef.IL.csproj", "{903DB4DE-0AF2-4E12-B60A-B17745D5AC27}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -38,9 +39,8 @@ Global
 		{1821A122-DF8A-4390-8574-B70EE62CBC0B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1821A122-DF8A-4390-8574-B70EE62CBC0B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1821A122-DF8A-4390-8574-B70EE62CBC0B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{903DB4DE-0AF2-4E12-B60A-B17745D5AC27}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{903DB4DE-0AF2-4E12-B60A-B17745D5AC27}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{903DB4DE-0AF2-4E12-B60A-B17745D5AC27}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{903DB4DE-0AF2-4E12-B60A-B17745D5AC27}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 EndGlobal

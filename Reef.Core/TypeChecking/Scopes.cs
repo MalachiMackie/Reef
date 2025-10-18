@@ -77,7 +77,8 @@ public partial class TypeChecker
         ITypeSignature? currentTypeSignature = null,
         FunctionSignature? currentFunctionSignature = null,
         ITypeReference? expectedReturnType = null,
-        IEnumerable<GenericPlaceholder>? genericPlaceholders = null)
+        IEnumerable<GenericPlaceholder>? genericPlaceholders = null,
+        DefId? defId = null)
     {
         var currentScope = _typeCheckingScopes.Peek();
 
@@ -87,7 +88,8 @@ public partial class TypeChecker
             expectedReturnType ?? currentScope.ExpectedReturnType,
             currentTypeSignature ?? currentScope.CurrentTypeSignature,
             currentFunctionSignature ?? currentScope.CurrentFunctionSignature,
-            [.. currentScope.GenericPlaceholders, .. genericPlaceholders ?? []]));
+            [.. currentScope.GenericPlaceholders, .. genericPlaceholders ?? []],
+            defId ?? currentScope.CurrentDefId));
 
         return new ScopeDisposable(PopScope);
     }
@@ -100,7 +102,8 @@ public partial class TypeChecker
         ITypeReference ExpectedReturnType,
         ITypeSignature? CurrentTypeSignature,
         FunctionSignature? CurrentFunctionSignature,
-        HashSet<GenericPlaceholder> GenericPlaceholders)
+        HashSet<GenericPlaceholder> GenericPlaceholders,
+        DefId? CurrentDefId)
     {
         private Dictionary<string, IVariable> CurrentScopeVariables { get; } = new();
 

@@ -13,13 +13,15 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
     public void FunctionObjectAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
         description.Should().NotBeEmpty();
-        var program = CreateProgram(source);
+        var program = CreateProgram(_moduleId, source);
         var loweredProgram = ProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
-        loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
+        loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
+
+    private const string _moduleId = "FunctionObjectTests";
     
     
     [Fact]
@@ -33,7 +35,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
         var expectedProgram = LoweredProgram(
             types:
             [
-                DataType("MyUnion",
+                DataType(_moduleId, "MyUnion",
                     variants:
                     [
                         Variant(
@@ -46,11 +48,11 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
             ],
             methods:
             [
-                Method("MyUnion_Create_A",
+                Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__A"), "MyUnion__Create__A",
                     [
                         MethodReturn(
                             CreateObject(
-                                ConcreteTypeReference("MyUnion"),
+                                ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                 "A",
                                 true,
                                 new()
@@ -60,13 +62,13 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                 }))
                     ],
                     parameters: [StringType],
-                    returnType: ConcreteTypeReference("MyUnion")),
-                Method("_Main",
+                    returnType: ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                     [
                         VariableDeclaration(
                             "a",
                             CreateObject(
-                                ConcreteTypeReference("Function`2", [StringType, ConcreteTypeReference("MyUnion")]),
+                                ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))]),
                                 "_classVariant",
                                 true,
                                 new()
@@ -74,38 +76,38 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                     {
                                         "FunctionReference",
                                         FunctionReferenceConstant(
-                                            FunctionReference("MyUnion_Create_A"),
+                                            FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__A"), "MyUnion__Create__A"),
                                             true,
-                                            FunctionType([StringType], ConcreteTypeReference("MyUnion")))
+                                            FunctionType([StringType], ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))))
                                     }
                                 }),
                             false),
                         VariableDeclaration(
                             "b",
                             MethodCall(
-                                FunctionReference("Function`2__Call", [StringType, ConcreteTypeReference("MyUnion")]),
+                                FunctionReference(DefId.FunctionObject_Call(1), "Function`2__Call", [StringType, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))]),
                                 [
-                                    LocalAccess("a", true, ConcreteTypeReference("Function`2", [StringType, ConcreteTypeReference("MyUnion")])),
+                                    LocalAccess("a", true, ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))])),
                                     StringConstant("", true)
                                 ],
                                 true,
-                                ConcreteTypeReference("MyUnion")),
+                                ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                             false),
                         MethodReturnUnit()
                     ],
                     locals:
                     [
-                        Local("a", ConcreteTypeReference("Function`2", [StringType, ConcreteTypeReference("MyUnion")])),
-                        Local("b", ConcreteTypeReference("MyUnion"))
+                        Local("a", ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))])),
+                        Local("b", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")))
                     ])
             ]);
         
-        var program = CreateProgram(source);
+        var program = CreateProgram(_moduleId, source);
         var loweredProgram = ProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
-        loweredProgram.Should().BeEquivalentTo(expectedProgram, IgnoringGuids);
+        loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
     
     public static TheoryData<string, string, LoweredProgram> TestCases()
@@ -121,7 +123,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                 """,
                 LoweredProgram(
                     types: [
-                        DataType("MyUnion",
+                        DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant(
                                     "A",
@@ -132,11 +134,11 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                             ])
                     ],
                     methods: [
-                        Method("MyUnion_Create_A",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__A"), "MyUnion__Create__A",
                             [
                                 MethodReturn(
                                     CreateObject(
-                                        ConcreteTypeReference("MyUnion"),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "A",
                                         true,
                                         new()
@@ -146,13 +148,13 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                         }))
                             ],
                             parameters: [StringType],
-                            returnType: ConcreteTypeReference("MyUnion")),
-                        Method("_Main",
+                            returnType: ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("Function`2", [StringType, ConcreteTypeReference("MyUnion")]),
+                                        ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))]),
                                         "_classVariant",
                                         true,
                                         new()
@@ -160,25 +162,25 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                             {
                                                 "FunctionReference",
                                                 FunctionReferenceConstant(
-                                                    FunctionReference("MyUnion_Create_A"),
+                                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__A"), "MyUnion__Create__A"),
                                                     true,
-                                                    FunctionType([StringType], ConcreteTypeReference("MyUnion")))
+                                                    FunctionType([StringType], ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))))
                                             }
                                         }),
                                     false),
                                 VariableDeclaration(
                                     "b",
                                     MethodCall(
-                                        FunctionReference("Function`2__Call", [StringType, ConcreteTypeReference("MyUnion")]),
-                                        [LocalAccess("a", true, ConcreteTypeReference("Function`2", [StringType, ConcreteTypeReference("MyUnion")])), StringConstant("", true)],
+                                        FunctionReference(DefId.FunctionObject_Call(1), "Function`2__Call", [StringType, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))]),
+                                        [LocalAccess("a", true, ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))])), StringConstant("", true)],
                                         true,
-                                        ConcreteTypeReference("MyUnion")),
+                                        ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                     false),
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("Function`2", [StringType, ConcreteTypeReference("MyUnion")])),
-                                Local("b", ConcreteTypeReference("MyUnion"))
+                                Local("a", ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))])),
+                                Local("b", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")))
                             ])
                     ])
             },
@@ -190,23 +192,23 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                 """,
                 LoweredProgram(
                     methods: [
-                        Method("SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
                             [
                                 MethodReturnUnit()
                             ]),
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("Function`1", [Unit]),
+                                        ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]),
                                         "_classVariant",
                                         true,
                                         new() {
                                             {
                                                 "FunctionReference",
                                                 FunctionReferenceConstant(
-                                                    FunctionReference("SomeFn"),
+                                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn"),
                                                     true,
                                                     FunctionType([], Unit))
                                             }
@@ -215,7 +217,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("Function`1", [Unit]))
+                                Local("a", ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
                             ])
                     ])
             },
@@ -231,25 +233,25 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                 """,
                 LoweredProgram(
                     types: [
-                        DataType("MyClass",
+                        DataType(_moduleId, "MyClass",
                             variants: [Variant("_classVariant")])
                     ],
                     methods: [
-                        Method("MyClass__OtherFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__OtherFn"), "MyClass__OtherFn",
                             [MethodReturnUnit()]),
-                        Method("MyClass__MyFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("Function`1", [Unit]),
+                                        ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]),
                                         "_classVariant",
                                         true,
                                         new(){
                                             {
                                                 "FunctionReference",
                                                 FunctionReferenceConstant(
-                                                    FunctionReference("MyClass__OtherFn"),
+                                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__OtherFn"), "MyClass__OtherFn"),
                                                     true,
                                                     FunctionType([], Unit))
                                             }
@@ -258,7 +260,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("Function`1", [Unit]))
+                                Local("a", ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
                             ])
                     ])
             },
@@ -272,25 +274,25 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                 """,
                 LoweredProgram(
                     types: [
-                        DataType("MyClass",
+                        DataType(_moduleId, "MyClass",
                             variants: [Variant("_classVariant")])
                     ],
                     methods: [
-                        Method("MyClass__OtherFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__OtherFn"), "MyClass__OtherFn",
                             [MethodReturnUnit()]),
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("Function`1", [Unit]),
+                                        ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]),
                                         "_classVariant",
                                         true,
                                         new(){
                                             {
                                                 "FunctionReference",
                                                 FunctionReferenceConstant(
-                                                    FunctionReference("MyClass__OtherFn"),
+                                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__OtherFn"), "MyClass__OtherFn"),
                                                     true,
                                                     FunctionType([], Unit))
                                             }
@@ -299,7 +301,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("Function`1", [Unit]))
+                                Local("a", ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
                             ])
                     ])
             },
@@ -314,26 +316,25 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                 """,
                 LoweredProgram(
                     types: [
-                        DataType("MyClass", variants: [Variant("_classVariant")])
+                        DataType(_moduleId, "MyClass", variants: [Variant("_classVariant")])
                     ],
                     methods: [
-                        Method(
-                            "MyClass__MyFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn",
                             [MethodReturnUnit()],
-                            parameters: [ConcreteTypeReference("MyClass")]),
-                        Method("_Main",
+                            parameters: [ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))]),
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("MyClass"),
+                                        ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass")),
                                         "_classVariant",
                                         true),
                                     false),
                                 VariableDeclaration(
                                     "b",
                                     CreateObject(
-                                        ConcreteTypeReference("Function`1", [Unit]),
+                                        ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]),
                                         "_classVariant",
                                         true,
                                         new()
@@ -341,7 +342,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                             {
                                                 "FunctionReference",
                                                 FunctionReferenceConstant(
-                                                    FunctionReference("MyClass__MyFn"),
+                                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn"),
                                                     true,
                                                     FunctionType([], Unit))
                                             },
@@ -350,15 +351,15 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                 LocalAccess(
                                                     "a",
                                                     true,
-                                                    ConcreteTypeReference("MyClass"))
+                                                    ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass")))
                                             }
                                         }),
                                     false),
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("MyClass")),
-                                Local("b", ConcreteTypeReference("Function`1", [Unit]))
+                                Local("a", ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
+                                Local("b", ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
                             ])
                     ])
             },
@@ -384,13 +385,11 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                 """,
                 LoweredProgram(
                     types: [
-                        DataType(
-                            "MyClass",
+                        DataType(_moduleId, "MyClass",
                             variants: [
                                 Variant("_classVariant", [Field("MyField", StringType)])
                             ]),
-                        DataType(
-                            "MyClass__MyFn__Locals",
+                        DataType(_moduleId, "MyClass__MyFn__Locals",
                             variants: [
                                 Variant(
                                     "_classVariant",
@@ -399,33 +398,31 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                         Field("param", StringType)
                                     ])
                             ]),
-                        DataType(
-                            "MyClass__MyFn__InnerFn__Closure",
+                        DataType(_moduleId, "MyClass__MyFn__InnerFn__Closure",
                             variants: [
                                 Variant(
                                     "_classVariant",
                                     [
-                                        Field("this", ConcreteTypeReference("MyClass")),
+                                        Field("this", ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                         Field(
                                             "MyClass__MyFn__Locals",
-                                            ConcreteTypeReference("MyClass__MyFn__Locals"))
+                                            ConcreteTypeReference("MyClass__MyFn__Locals", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__Locals")))
                                     ])
                             ])
                     ],
                     methods: [
-                        Method(
-                            "MyClass__MyFn__InnerFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__InnerFn"), "MyClass__MyFn__InnerFn",
                             [
                                 VariableDeclaration(
                                     "_a",
                                     FieldAccess(
                                         FieldAccess(
                                             LoadArgument(
-                                                0, true, ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")),
+                                                0, true, ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__InnerFn__Closure"))),
                                             "MyClass__MyFn__Locals",
                                             "_classVariant",
                                             true,
-                                            ConcreteTypeReference("MyClass__MyFn__Locals")),
+                                            ConcreteTypeReference("MyClass__MyFn__Locals", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__Locals"))),
                                         "a",
                                         "_classVariant",
                                         true,
@@ -436,11 +433,11 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                     FieldAccess(
                                         FieldAccess(
                                             LoadArgument(
-                                                0, true, ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")),
+                                                0, true, ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__InnerFn__Closure"))),
                                             "MyClass__MyFn__Locals",
                                             "_classVariant",
                                             true,
-                                            ConcreteTypeReference("MyClass__MyFn__Locals")),
+                                            ConcreteTypeReference("MyClass__MyFn__Locals", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__Locals"))),
                                         "param",
                                         "_classVariant",
                                         true,
@@ -451,11 +448,11 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                     FieldAccess(
                                         FieldAccess(
                                             LoadArgument(
-                                                0, true, ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")),
+                                                0, true, ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__InnerFn__Closure"))),
                                             "this",
                                             "_classVariant",
                                             true,
-                                            ConcreteTypeReference("MyClass")),
+                                            ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                         "MyField",
                                         "_classVariant",
                                         true,
@@ -469,21 +466,20 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                 Local("_myField", StringType)
                             ],
                             parameters: [
-                                ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")
+                                ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__InnerFn__Closure"))
                             ]),
-                        Method(
-                            "MyClass__MyFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn",
                             [
                                 VariableDeclaration(
                                     "__locals",
                                     CreateObject(
-                                        ConcreteTypeReference("MyClass__MyFn__Locals"),
+                                        ConcreteTypeReference("MyClass__MyFn__Locals", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__Locals")),
                                         "_classVariant",
                                         true,
                                         new(){{"param", LoadArgument(1, true, StringType)}}),
                                     false),
                                 FieldAssignment(
-                                    LocalAccess("__locals", true, ConcreteTypeReference("MyClass__MyFn__Locals")),
+                                    LocalAccess("__locals", true, ConcreteTypeReference("MyClass__MyFn__Locals", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__Locals"))),
                                     "_classVariant",
                                     "a",
                                     StringConstant("", true),
@@ -492,7 +488,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                 VariableDeclaration(
                                     "b",
                                     CreateObject(
-                                        ConcreteTypeReference("Function`1", [Unit]),
+                                        ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]),
                                         "_classVariant",
                                         true,
                                         new()
@@ -500,30 +496,30 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                             {
                                                 "FunctionReference",
                                                 FunctionReferenceConstant(
-                                                    FunctionReference("MyClass__MyFn__InnerFn"),
+                                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__InnerFn"), "MyClass__MyFn__InnerFn"),
                                                     true,
                                                     FunctionType(
-                                                        [ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure")],
+                                                        [ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__InnerFn__Closure"))],
                                                         Unit))
                                             },
                                             {
                                                 "FunctionParameter",
                                                 CreateObject(
-                                                    ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure"),
+                                                    ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__InnerFn__Closure")),
                                                     "_classVariant",
                                                     true,
                                                     new()
                                                     {
                                                         {
                                                             "this",
-                                                            LoadArgument(0, true, ConcreteTypeReference("MyClass"))
+                                                            LoadArgument(0, true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass")))
                                                         },
                                                         {
                                                             "MyClass__MyFn__Locals",
                                                             LocalAccess(
                                                                 "__locals",
                                                                 true,
-                                                                ConcreteTypeReference("MyClass__MyFn__Locals"))
+                                                                ConcreteTypeReference("MyClass__MyFn__Locals", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__Locals")))
                                                         }
                                                     })
                                             }
@@ -531,10 +527,10 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                     false),
                                 MethodReturnUnit()
                             ],
-                            parameters: [ConcreteTypeReference("MyClass"), StringType],
+                            parameters: [ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass")), StringType],
                             locals: [
-                                Local("__locals", ConcreteTypeReference("MyClass__MyFn__Locals")),
-                                Local("b", ConcreteTypeReference("Function`1", [Unit]))
+                                Local("__locals", ConcreteTypeReference("MyClass__MyFn__Locals", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__Locals"))),
+                                Local("b", ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
                             ])
                     ])
             },
@@ -547,13 +543,13 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                 """,
                 LoweredProgram(
                     methods: [
-                        Method("SomeFn", [MethodReturnUnit()]),
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn", [MethodReturnUnit()]),
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("Function`1", [Unit]),
+                                        ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]),
                                         "_classVariant",
                                         true,
                                         new()
@@ -561,19 +557,19 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                             {
                                                 "FunctionReference",
                                                 FunctionReferenceConstant(
-                                                    FunctionReference("SomeFn"),
+                                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn"),
                                                     true,
                                                     FunctionType([], Unit))
                                             }
                                         }),
                                     false),
                                 MethodCall(
-                                    FunctionReference("Function`1__Call", [Unit]),
+                                    FunctionReference(DefId.FunctionObject_Call(0), "Function`1__Call", [Unit]),
                                     [
                                         LocalAccess(
                                             "a",
                                             true,
-                                            ConcreteTypeReference("Function`1", [Unit]))
+                                            ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
                                     ],
                                     false,
                                     Unit),
@@ -582,7 +578,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                             locals: [
                                 Local(
                                     "a",
-                                    ConcreteTypeReference("Function`1", [Unit]))
+                                    ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
                             ])
                     ])
             },
@@ -595,17 +591,16 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                 """,
                 LoweredProgram(
                     methods: [
-                        Method(
-                            "SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
                             [MethodReturn(IntConstant(1, true))],
                             parameters: [StringType],
                             returnType: Int),
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("Function`2", [StringType, Int]),
+                                        ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, Int]),
                                         "_classVariant",
                                         true,
                                         new()
@@ -613,7 +608,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                             {
                                                 "FunctionReference",
                                                 FunctionReferenceConstant(
-                                                    FunctionReference("SomeFn"),
+                                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn"),
                                                     true,
                                                     FunctionType([StringType], Int))
                                             }
@@ -622,12 +617,12 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                 VariableDeclaration(
                                     "b",
                                     MethodCall(
-                                        FunctionReference("Function`2__Call", [StringType, Int]),
+                                        FunctionReference(DefId.FunctionObject_Call(1), "Function`2__Call", [StringType, Int]),
                                         [
                                             LocalAccess(
                                                 "a",
                                                 true,
-                                                ConcreteTypeReference("Function`2", [StringType, Int])),
+                                                ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, Int])),
                                             StringConstant("", true)
                                         ],
                                         true,
@@ -638,7 +633,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                             locals: [
                                 Local(
                                     "a",
-                                    ConcreteTypeReference("Function`2", [StringType, Int])),
+                                    ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, Int])),
                                 Local("b", Int)
                             ])
                     ])
@@ -654,20 +649,18 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                 """,
                 LoweredProgram(
                     types: [
-                        DataType("MyClass", ["T"], [Variant("_classVariant")])
+                        DataType(_moduleId, "MyClass", ["T"], [Variant("_classVariant")])
                     ],
                     methods: [
-                        Method(
-                            "MyClass__SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn",
                             [MethodReturnUnit()],
-                            ["T", "T2"]),
-                        Method(
-                            "_Main",
+                            [(new DefId(_moduleId, $"{_moduleId}.MyClass"), "T"), (new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "T2")]),
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("Function`1", [Unit]),
+                                        ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]),
                                         "_classVariant",
                                         true,
                                         new()
@@ -675,7 +668,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                             {
                                                 "FunctionReference",
                                                 FunctionReferenceConstant(
-                                                    FunctionReference("MyClass__SomeFn", [StringType, Int]),
+                                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn", [StringType, Int]),
                                                     true,
                                                     FunctionType([], Unit))
                                             }
@@ -685,7 +678,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                             ],
                             locals: [
                                 Local("a",
-                                    ConcreteTypeReference("Function`1", [Unit]))
+                                    ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
                             ])
                     ])
             }

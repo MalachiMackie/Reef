@@ -5,6 +5,7 @@ using Reef.Core.TypeChecking;
 namespace Reef.Core;
 
 public record LangProgram(
+    string ModuleId,
     IReadOnlyList<IExpression> Expressions,
     IReadOnlyList<LangFunction> Functions,
     IReadOnlyCollection<ProgramClass> Classes,

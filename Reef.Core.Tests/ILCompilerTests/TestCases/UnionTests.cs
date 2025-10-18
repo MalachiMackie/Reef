@@ -1,8 +1,7 @@
 ﻿using FluentAssertions;
-using FluentAssertions.Equivalency;
 using Reef.Core.Abseil;
+using Reef.Core.IL;
 using Reef.Core.TypeChecking;
-using Reef.IL;
 using static Reef.Core.Tests.ILCompilerTests.TestHelpers;
 
 namespace Reef.Core.Tests.ILCompilerTests.TestCases;
@@ -14,7 +13,7 @@ public class UnionTests
     public void CompileToIL_Should_GenerateCorrectIL(string description, string source, ReefModule expectedModule)
     {
         var tokens = Tokenizer.Tokenize(source);
-        var program = Parser.Parse(tokens);
+        var program = Parser.Parse(_moduleId, tokens);
         program.Errors.Should().BeEmpty();
         var typeCheckErrors = TypeChecker.TypeCheck(program.ParsedProgram);
         typeCheckErrors.Should().BeEmpty();
@@ -24,15 +23,10 @@ public class UnionTests
         var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
             expectedModule,
-            ConfigureEquivalencyCheck,
             description);
     }
-    
-    private static EquivalencyOptions<T> ConfigureEquivalencyCheck<T>(EquivalencyOptions<T> options)
-    {
-        return options
-            .Excluding(memberInfo => memberInfo.Type == typeof(Guid));
-    }
+
+    private const string _moduleId = "UnionTests";
     
     public static TheoryData<string, string, ReefModule> TestCases()
     {
@@ -48,16 +42,15 @@ public class UnionTests
                 """,
                 Module(
                     types: [
-                        DataType(
-                            "MyUnion",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion",
                             variants: [
                                 Variant("A", [VariantIdentifierField])
                             ])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("MyUnion")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
                                 new LoadIntConstant(0),
                                 new StoreField(0, "_variantIdentifier"),
@@ -65,7 +58,7 @@ public class UnionTests
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", ConcreteTypeReference("MyUnion"))])
+                            locals: [Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion"))])
                     ])
             },
             {
@@ -79,17 +72,16 @@ public class UnionTests
                 """,
                 Module(
                     types: [
-                        DataType(
-                            "MyUnion",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion",
                             variants: [
                                 Variant("A", [VariantIdentifierField]),
                                 Variant("B", [VariantIdentifierField]),
                             ])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("MyUnion")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
                                 new LoadIntConstant(1),
                                 new StoreField(1, "_variantIdentifier"),
@@ -97,7 +89,7 @@ public class UnionTests
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", ConcreteTypeReference("MyUnion"))])
+                            locals: [Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion"))])
                     ])
             },
             {
@@ -115,8 +107,7 @@ public class UnionTests
                 """,
                 Module(
                     types: [
-                        DataType(
-                            "MyUnion",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion",
                             variants: [
                                 Variant("A", [VariantIdentifierField]),
                                 Variant("B", [VariantIdentifierField, Field("Item0", StringType)]),
@@ -124,12 +115,11 @@ public class UnionTests
                             ])
                     ],
                     methods: [
-                        Method("MyUnion__SomeFn",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__SomeFn"), "MyUnion__SomeFn",
                             [LoadUnit(), Return()]),
-                        Method(
-                            "MyUnion_Create_B",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__B"), "MyUnion__Create__B",
                             [
-                                new CreateObject(ConcreteTypeReference("MyUnion")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
                                 new LoadIntConstant(1),
                                 new StoreField(1, "_variantIdentifier"),
@@ -139,11 +129,10 @@ public class UnionTests
                                 Return()
                             ],
                             parameters: [StringType],
-                            returnType: ConcreteTypeReference("MyUnion")),
-                        Method(
-                            "MyUnion_Create_C",
+                            returnType: ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__C"), "MyUnion__Create__C",
                             [
-                                new CreateObject(ConcreteTypeReference("MyUnion")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
                                 new LoadIntConstant(2),
                                 new StoreField(2, "_variantIdentifier"),
@@ -156,18 +145,18 @@ public class UnionTests
                                 Return()
                             ],
                             parameters: [IntType, StringType],
-                            returnType: ConcreteTypeReference("MyUnion")),
-                        Method("_Main",
+                            returnType: ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadIntConstant(1),
                                 new LoadStringConstant(""),
-                                new LoadFunction(FunctionDefinitionReference("MyUnion_Create_C")),
+                                new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__C"), "MyUnion__Create__C")),
                                 new Call(2, 0, true),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", ConcreteTypeReference("MyUnion"))])
+                            locals: [Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion"))])
                     ])
             },
             {
@@ -183,16 +172,16 @@ public class UnionTests
                 """,
                 Module(
                     types: [
-                        DataType("MyUnion",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion",
                             variants: [
                                 Variant("A", [VariantIdentifierField]),
                                 Variant("B", [VariantIdentifierField, Field("Item0", StringType)]),
                             ])
                     ],
                     methods: [
-                        Method("MyUnion_Create_B",
+                        Method(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__B"), "MyUnion__Create__B",
                             [
-                                new CreateObject(ConcreteTypeReference("MyUnion")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
                                 new LoadIntConstant(1),
                                 new StoreField(1, "_variantIdentifier"),
@@ -202,25 +191,25 @@ public class UnionTests
                                 Return()
                             ],
                             parameters: [StringType],
-                            returnType: ConcreteTypeReference("MyUnion")),
-                        Method("_Main",
+                            returnType: ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("Function`2", [StringType, ConcreteTypeReference("MyUnion")])),
+                                new CreateObject(ConcreteTypeReference(DefId.FunctionObject(1), "Function`2", [StringType, ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")])),
                                 new CopyStack(),
-                                new LoadFunction(FunctionDefinitionReference("MyUnion_Create_B")),
+                                new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__B"), "MyUnion__Create__B")),
                                 new StoreField(0, "FunctionReference"),
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
                                 new LoadStringConstant(""),
-                                new LoadFunction(FunctionDefinitionReference("Function`2__Call", [StringType, ConcreteTypeReference("MyUnion")])),
+                                new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(1), "Function`2__Call", [StringType, ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")])),
                                 new Call(2, 0, true),
                                 new StoreLocal("b"),
                                 LoadUnit(),
                                 Return()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference("Function`2", [StringType, ConcreteTypeReference("MyUnion")])),
-                                Local("b", ConcreteTypeReference("MyUnion"))
+                                Local("a", ConcreteTypeReference(DefId.FunctionObject(1), "Function`2", [StringType, ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")])),
+                                Local("b", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion"))
                             ])
                     ])
             },
@@ -238,16 +227,16 @@ public class UnionTests
                 """,
                 Module(
                     types: [
-                        DataType("MyUnion",
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion",
                             variants: [
                                 Variant("A", [VariantIdentifierField]),
                                 Variant("B", [VariantIdentifierField, Field("Field1", IntType), Field("Field2", StringType)]),
                             ])
                     ],
                     methods: [
-                        Method("_Main",
+                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference("MyUnion")),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
                                 new LoadIntConstant(1),
                                 new StoreField(1, "_variantIdentifier"),
@@ -261,7 +250,7 @@ public class UnionTests
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", ConcreteTypeReference("MyUnion"))])
+                            locals: [Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion"))])
                     ])
             }
         };

@@ -116,6 +116,6 @@ public class ParserBenchmarks
     [Benchmark]
     public void BenchmarkParse()
     {
-        Parser.Parse(_tokens);
+        Parser.Parse("Benchmark", _tokens);
     }
 }

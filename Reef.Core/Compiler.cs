@@ -36,7 +36,7 @@ public class Compiler
         var tokens = Tokenizer.Tokenize(contents);
 
         Console.WriteLine("Parsing...");
-        var parsedProgram = Parser.Parse(tokens);
+        var parsedProgram = Parser.Parse(fileNameWithoutExtension, tokens);
         if (parsedProgram.Errors.Count > 0)
         {
             foreach (var error in parsedProgram.Errors)

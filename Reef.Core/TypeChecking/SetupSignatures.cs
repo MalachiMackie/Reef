@@ -19,6 +19,7 @@ public partial class TypeChecker
             var typeParameters = new List<GenericPlaceholder>(union.TypeParameters.Count);
             var unionSignature = new UnionSignature
             {
+                Id = new DefId(_program.ModuleId, $"{_program.ModuleId}.{union.Name.StringValue}"),
                 Name = union.Name.StringValue,
                 TypeParameters = typeParameters,
                 Functions = functions,
@@ -43,25 +44,26 @@ public partial class TypeChecker
             }
         }
 
-        foreach (var @class in _program.Classes)
+        foreach (var klass in _program.Classes)
         {
-            var name = @class.Name.StringValue;
-            var functions = new List<FunctionSignature>(@class.Functions.Count);
-            var fields = new List<TypeField>(@class.Fields.Count);
-            var typeParameters = new List<GenericPlaceholder>(@class.TypeParameters.Count);
+            var name = klass.Name.StringValue;
+            var functions = new List<FunctionSignature>(klass.Functions.Count);
+            var fields = new List<TypeField>(klass.Fields.Count);
+            var typeParameters = new List<GenericPlaceholder>(klass.TypeParameters.Count);
             var signature = new ClassSignature
             {
+                Id = new DefId(_program.ModuleId, $"{_program.ModuleId}.{klass.Name.StringValue}"),
                 Name = name,
                 TypeParameters = typeParameters,
                 Functions = functions,
                 Fields = fields,
             };
-            typeParameters.AddRange(@class.TypeParameters.Select(typeParameter => new GenericPlaceholder
+            typeParameters.AddRange(klass.TypeParameters.Select(typeParameter => new GenericPlaceholder
             { GenericName = typeParameter.StringValue, OwnerType = signature }));
 
-            @class.Signature = signature;
+            klass.Signature = signature;
 
-            var typeParametersLookup = @class.TypeParameters.ToLookup(x => x.StringValue);
+            var typeParametersLookup = klass.TypeParameters.ToLookup(x => x.StringValue);
 
             foreach (var grouping in typeParametersLookup)
             {
@@ -71,11 +73,11 @@ public partial class TypeChecker
                 }
             }
 
-            classes.Add((@class, signature, functions, fields));
+            classes.Add((klass, signature, functions, fields));
 
             if (!_types.TryAdd(name, signature))
             {
-                _errors.Add(TypeCheckerError.ConflictingTypeName(@class.Name));
+                _errors.Add(TypeCheckerError.ConflictingTypeName(klass.Name));
             }
         }
 
@@ -83,7 +85,8 @@ public partial class TypeChecker
         {
             using var _ = PushScope(
                 unionSignature,
-                genericPlaceholders: unionSignature.TypeParameters);
+                genericPlaceholders: unionSignature.TypeParameters,
+                defId: unionSignature.Id);
 
             foreach (var function in union.Functions)
             {
@@ -92,7 +95,7 @@ public partial class TypeChecker
                     _errors.Add(TypeCheckerError.ConflictingFunctionName(function.Name));
                 }
 
-                functions.Add(TypeCheckFunctionSignature(function, unionSignature));
+                functions.Add(TypeCheckFunctionSignature(new DefId(unionSignature.Id.ModuleId, unionSignature.Id.FullName + "__" + function.Name), function, unionSignature));
             }
 
             foreach (var variant in union.Variants)
@@ -123,7 +126,8 @@ public partial class TypeChecker
                     var createFunctionParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
 
                     var createFunction = new FunctionSignature(
-                        Token.Identifier($"{unionSignature.Name}_Create_{variant.Name.StringValue}",
+                        new DefId(unionSignature.Id.ModuleId, unionSignature.Id.FullName + $"__Create__{variant.Name.StringValue}"),
+                        Token.Identifier($"{unionSignature.Name}__Create__{variant.Name.StringValue}",
                             SourceSpan.Default),
                         [],
                         createFunctionParameters,
@@ -216,11 +220,11 @@ public partial class TypeChecker
             }
         }
 
-        foreach (var (@class, classSignature, functions, fields) in classes)
+        foreach (var (klass, classSignature, functions, fields) in classes)
         {
-            using var _ = PushScope(classSignature, genericPlaceholders: classSignature.TypeParameters);
+            using var _ = PushScope(classSignature, genericPlaceholders: classSignature.TypeParameters, defId: classSignature.Id);
 
-            foreach (var fn in @class.Functions)
+            foreach (var fn in klass.Functions)
             {
                 if (functions.Any(x => x.Name == fn.Name.StringValue))
                 {
@@ -228,10 +232,13 @@ public partial class TypeChecker
                 }
 
                 // todo: function overloading
-                functions.Add(TypeCheckFunctionSignature(fn, classSignature));
+                functions.Add(TypeCheckFunctionSignature(
+                    new DefId(classSignature.Id.ModuleId, classSignature.Id.FullName + $"__{fn.Name.StringValue}"),
+                    fn,
+                    classSignature));
             }
 
-            foreach (var field in @class.Fields)
+            foreach (var field in klass.Fields)
             {
                 var type = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type);
                 field.ResolvedType = type;
@@ -259,7 +266,7 @@ public partial class TypeChecker
             var name = fn.Name.StringValue;
 
             // todo: function overloading
-            if (!ScopedFunctions.TryAdd(name, TypeCheckFunctionSignature(fn, ownerType: null)))
+            if (!ScopedFunctions.TryAdd(name, TypeCheckFunctionSignature(new DefId(_program.ModuleId, $"{_program.ModuleId}.{fn.Name.StringValue}"), fn, ownerType: null)))
             {
                 _errors.Add(TypeCheckerError.ConflictingFunctionName(fn.Name));
             }
@@ -273,8 +280,8 @@ public partial class TypeChecker
         }
 
         return (
-            classes.Select(x => (x.Item1, x.Item2)).ToList(),
-            unions.Select(x => x.Item2).ToList()
+            [.. classes.Select(x => (x.Item1, x.Item2))],
+            [.. unions.Select(x => x.Item2)]
         );
     }
 }

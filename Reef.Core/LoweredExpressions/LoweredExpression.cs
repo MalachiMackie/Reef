@@ -251,7 +251,7 @@ public record LocalVariableAccessor(string LocalName, bool ValueUseful, ILowered
 }
 
 public record LoweredMethod(
-        Guid Id,
+        DefId Id,
         string Name,
         IReadOnlyList<LoweredGenericPlaceholder> TypeParameters,
         IReadOnlyList<ILoweredTypeReference> Parameters,
@@ -262,7 +262,7 @@ public record LoweredMethod(
 public record MethodLocal(string Name, ILoweredTypeReference Type);
 
 public record DataType(
-        Guid Id,
+        DefId Id,
         string Name,
         IReadOnlyList<LoweredGenericPlaceholder> TypeParameters,
         IReadOnlyList<DataTypeVariant> Variants,
@@ -286,7 +286,7 @@ public record FunctionReferenceConstantExpression(
 
 public record LoweredFunctionReference(
         string Name,
-        Guid DefinitionId,
+        DefId DefinitionId,
         IReadOnlyList<ILoweredTypeReference> TypeArguments)
 {}
 
@@ -299,8 +299,8 @@ public record LoweredFunctionPointer(
 public interface ILoweredTypeReference
 { }
 
-public record LoweredConcreteTypeReference(string Name, Guid DefinitionId, IReadOnlyList<ILoweredTypeReference> TypeArguments) : ILoweredTypeReference;
-public record LoweredGenericPlaceholder(Guid OwnerDefinitionId, string PlaceholderName) : ILoweredTypeReference;
+public record LoweredConcreteTypeReference(string Name, DefId DefinitionId, IReadOnlyList<ILoweredTypeReference> TypeArguments) : ILoweredTypeReference;
+public record LoweredGenericPlaceholder(DefId OwnerDefinitionId, string PlaceholderName) : ILoweredTypeReference;
 
 file static class SignatureExtensionMethods
 {
