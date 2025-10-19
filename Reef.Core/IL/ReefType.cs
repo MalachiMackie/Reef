@@ -1,6 +1,6 @@
 ﻿namespace Reef.Core.IL;
 
-public class ReefTypeDefinition
+public class ReefILTypeDefinition
 {
     public required DefId Id { get; set; }
     public required string DisplayName { get; set; }

@@ -12,7 +12,7 @@ public class ClassTests
     
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void CompileToIL_Should_GenerateCorrectIL(string description, string source, ReefModule expectedModule)
+    public void CompileToIL_Should_GenerateCorrectIL(string description, string source, ReefILModule expectedModule)
     {
         var tokens = Tokenizer.Tokenize(source);
         var program = Parser.Parse(_moduleId, tokens);
@@ -30,7 +30,7 @@ public class ClassTests
 
     private const string _moduleId = "ClassTests";
     
-    public static TheoryData<string, string, ReefModule> TestCases()
+    public static TheoryData<string, string, ReefILModule> TestCases()
     {
         return new()
         {

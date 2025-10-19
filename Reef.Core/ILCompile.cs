@@ -10,15 +10,15 @@ namespace Reef.Core;
 
 public class ILCompile(LoweredProgram program)
 {
-    public static (ReefModule, IReadOnlyList<ReefModule> importedModules) CompileToIL(LoweredProgram program)
+    public static (ReefILModule, IReadOnlyList<ReefILModule> importedModules) CompileToIL(LoweredProgram program)
     {
         var compiler = new ILCompile(program);
 
         return (compiler.CompileToILInner(), compiler._importedModules);
     }
 
-    private readonly List<ReefTypeDefinition> _types = [];
-    private readonly List<ReefModule> _importedModules = [GetImportedStdLibrary()];
+    private readonly List<ReefILTypeDefinition> _types = [];
+    private readonly List<ReefILModule> _importedModules = [GetImportedStdLibrary()];
     private readonly List<ReefMethod> _methods = [];
     private readonly Stack<Scope> _scopeStack = [];
     private readonly LoweredProgram _program = program;
@@ -36,15 +36,16 @@ public class ILCompile(LoweredProgram program)
         public uint StackSize { get; set; }
     }
 
-    private static ReefModule GetImportedStdLibrary()
+    private static ReefILModule GetImportedStdLibrary()
     {
-        var importedDataTypes = new List<ReefTypeDefinition>();
+        var importedDataTypes = new List<ReefILTypeDefinition>();
 
         var printf = TypeChecker.FunctionSignature.Printf;
         var importedMethods = new List<ReefMethod>()
         {
             new()
             {
+                Extern = true,
                 DisplayName = printf.Name,
                 Id = printf.Id,
                 Instructions = new([], []),
@@ -71,7 +72,7 @@ public class ILCompile(LoweredProgram program)
         {
             var tupleClass = TypeChecker.ClassSignature.Tuple(2);
             importedDataTypes.Add(
-                new ReefTypeDefinition
+                new ReefILTypeDefinition
                 {
                     Id = tupleClass.Id,
                     DisplayName = tupleClass.Name,
@@ -140,6 +141,7 @@ public class ILCompile(LoweredProgram program)
 
             importedMethods.Add(new ReefMethod()
             {
+                Extern = false,
                 Id = call.Id,
                 DisplayName = $"{fnClass.Name}__{call.Name}",
                 Instructions = new([], []),
@@ -163,7 +165,7 @@ public class ILCompile(LoweredProgram program)
         };
         var intRef = GetTypeReference(TypeChecker.InstantiatedClass.Int);
 
-        var resultDataType = new ReefTypeDefinition()
+        var resultDataType = new ReefILTypeDefinition()
         {
             Id = TypeChecker.UnionSignature.Result.Id,
             DisplayName = TypeChecker.UnionSignature.Result.Name,
@@ -194,6 +196,7 @@ public class ILCompile(LoweredProgram program)
         {
             importedMethods.Add(new()
             {
+                Extern = false,
                 Id = variant.CreateFunction.Id,
                 DisplayName = variant.CreateFunction.Name,
                 Instructions = new([], []),
@@ -213,7 +216,7 @@ public class ILCompile(LoweredProgram program)
             });
         }
 
-        return new ReefModule()
+        return new ReefILModule()
         {
             Methods = importedMethods,
             MainMethod = null,
@@ -222,12 +225,12 @@ public class ILCompile(LoweredProgram program)
 
     }
 
-    private ReefModule CompileToILInner()
+    private ReefILModule CompileToILInner()
     {
         _types.AddRange(_program.DataTypes.Select(CompileDataType));
         _methods.AddRange(_program.Methods.Select(CompileMethod));
 
-        return new ReefModule
+        return new ReefILModule
         {
             MainMethod = _methods.FirstOrDefault(x => x.DisplayName == "_Main"),
             Methods = _methods,
@@ -248,6 +251,7 @@ public class ILCompile(LoweredProgram program)
         
         return new ReefMethod
         {
+            Extern = false,
             Id = method.Id,
             DisplayName = method.Name,
             Parameters = [..method.Parameters.Select(GetTypeReference)],
@@ -258,7 +262,7 @@ public class ILCompile(LoweredProgram program)
         };
     }
 
-    private ReefTypeDefinition CompileDataType(DataType dataType)
+    private ReefILTypeDefinition CompileDataType(DataType dataType)
     {
         var variants = new List<ReefVariant>(dataType.Variants.Count);
         foreach (var variant in dataType.Variants)
@@ -274,7 +278,7 @@ public class ILCompile(LoweredProgram program)
             });
         }
 
-        return new ReefTypeDefinition
+        return new ReefILTypeDefinition
         {
             DisplayName = dataType.Name,
             Variants = variants,
@@ -336,7 +340,7 @@ public class ILCompile(LoweredProgram program)
         }
     }
 
-    private ReefTypeDefinition GetDataType(DefId definitionId)
+    private ReefILTypeDefinition GetDataType(DefId definitionId)
     {
         if (_types.FirstOrDefault(x => x.Id == definitionId) is { } foundType)
         {

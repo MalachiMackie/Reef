@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using Reef.Core.Abseil;
+using Reef.Core.IL;
 using Reef.Core.TypeChecking;
 
 namespace Reef.Core;
@@ -70,7 +71,12 @@ public class Compiler
         var (il, importedModules) = ILCompile.CompileToIL(loweredProgram);
 
         Console.WriteLine("Generating Assembly...");
-        var assembly = AssemblyLine.Process(il, importedModules);
+
+        IReadOnlyList<ReefILModule> allModules = [..importedModules.Append(il)];
+
+        var usefulMethodIds = new TreeShaker(allModules).Shake();
+
+        var assembly = AssemblyLine.Process(allModules, usefulMethodIds);
         var asmFile = $"{fileNameWithoutExtension}.asm";
         await File.WriteAllTextAsync(Path.Join(buildDirectory, asmFile), assembly);
 

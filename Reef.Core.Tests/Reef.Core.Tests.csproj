@@ -9,6 +9,7 @@
         <IsTestProject>true</IsTestProject>
         <WarningsAsErrors>true</WarningsAsErrors>
         <RootNamespace>Reef.Core.Tests</RootNamespace>
+        <RunAnalyzersDuringLiveAnalysis>False</RunAnalyzersDuringLiveAnalysis>
     </PropertyGroup>
 
     <ItemGroup>

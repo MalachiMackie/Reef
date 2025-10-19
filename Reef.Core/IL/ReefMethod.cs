@@ -9,6 +9,7 @@ public class ReefMethod
     public required IReadOnlyList<Local> Locals { get; set; }
     public required IReefTypeReference ReturnType { get; set; }
     public required IReadOnlyList<string> TypeParameters { get; set; }
+    public required bool Extern { get; set; }
 
     public class Local
     {

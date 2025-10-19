@@ -6,6 +6,8 @@ public record DefId(string ModuleId, string FullName)
 
     public static string CoreLibNamespace => "System";
 
+    public static DefId Printf { get; } = new(CoreLibModuleId, "printf");
+
     public static DefId Unit { get; } = new(CoreLibModuleId, CoreLibNamespace + ".Unit");
 
     public static DefId String { get; } = new(CoreLibModuleId, CoreLibNamespace + ".string");

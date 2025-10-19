@@ -3,10 +3,10 @@ using Reef.Core.IL;
 
 namespace Reef.Core;
 
-public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> importedModules)
+public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> usefulMethodIds)
 {
-    private readonly ReefModule _reefModule = reefModule;
-    private readonly IReadOnlyList<ReefModule> _importedModules = importedModules;
+    private readonly IReadOnlyList<ReefILModule> _modules = modules;
+    private readonly HashSet<DefId> _usefulMethodIds = usefulMethodIds;
     
     private const string AsmHeader = """
                                      bits 64
@@ -20,7 +20,6 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
                                                       segment .text
                                                       global main
                                                       extern ExitProcess
-                                                      extern printf
                                                       extern _CRT_INIT 
                                                       
                                                       """);
@@ -28,23 +27,39 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
     /// <summary>
     /// Dictionary of string constants to their data segment labels
     /// </summary>
-    private readonly Dictionary<string, string> _strings = new();
+    private readonly Dictionary<string, string> _strings = [];
     
-    public static string Process(ReefModule reefModule, IReadOnlyList<ReefModule> importedModules)
+    public static string Process(IReadOnlyList<ReefILModule> modules, HashSet<DefId> usefulMethodIds)
     {
-        var assemblyLine = new AssemblyLine(reefModule, importedModules);
+        var assemblyLine = new AssemblyLine(modules, usefulMethodIds);
         return assemblyLine.ProcessInner();
     }
 
     private string ProcessInner()
     {
-        CreateMain();
-        _codeSegment.AppendLine();
-        
-        foreach (var method in _reefModule.Methods)
+        var mainModule = _modules.Where(x => x.MainMethod is not null).ToArray();
+
+        if (mainModule is not [{ MainMethod: { } mainMethod }])
         {
-            ProcessMethod(method);
+            throw new InvalidOperationException("Expected a single module with a main method");
+        }
+
+        foreach (var externMethod in _modules.SelectMany(x => x.Methods).Where(x => x.Extern && _usefulMethodIds.Contains(x.Id)))
+        {
+            _codeSegment.AppendLine($"extern {externMethod.DisplayName}");
+        }
+
+        CreateMain(mainMethod);
+
+        foreach (var module in _modules)
+        {
             _codeSegment.AppendLine();
+
+            foreach (var method in module.Methods.Where(x => !x.Extern && _usefulMethodIds.Contains(x.Id)))
+            {
+                ProcessMethod(method);
+                _codeSegment.AppendLine();
+            }
         }
 
         return $"""
@@ -54,7 +69,13 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
                 """;
     }
 
-    private void CreateMain()
+    private ReefMethod? GetMethod(DefId defId)
+    {
+        return _modules.SelectMany(x => x.Methods)
+            .FirstOrDefault(x => x.Id == defId);
+    }
+
+    private void CreateMain(ReefMethod mainMethod)
     {
         _codeSegment.AppendLine("main:");
         
@@ -62,15 +83,15 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
         _codeSegment.AppendLine("    mov     rbp, rsp");
         // give CRT_INIT it's shadow space
         _codeSegment.AppendLine($"    sub     rsp, {_shadowSpaceBytes}");
-        // ensure stack is 16-byte aligned
-        //_codeSegment.AppendLine("    and     rsp, 0xFFFFFFFFFFFFFFF0");
+
         _codeSegment.AppendLine("    call    _CRT_INIT");
         // put rsp back
         _codeSegment.AppendLine($"    add     rsp, {_shadowSpaceBytes}");
 
+        // give main it's shadow space
         _codeSegment.AppendLine($"    sub     rsp, {_shadowSpaceBytes}");
+        _codeSegment.AppendLine($"    call    {mainMethod.Id.FullName}");
 
-        _codeSegment.AppendLine("    call    _Main");
         _codeSegment.AppendLine($"    add     rsp, {_shadowSpaceBytes}");
 
         // zero out rax as return value
@@ -83,6 +104,7 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
     private IReefTypeReference _returnType = null!;
     private IReadOnlyList<ReefMethod.Local> _locals = null!;
     private IReadOnlyList<IReefTypeReference> _parameters = null!;
+
     private void ProcessMethod(ReefMethod method)
     {
         _returnType = method.ReturnType;
@@ -92,7 +114,7 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
             throw new NotImplementedException();
         }
 
-        _codeSegment.AppendLine($"{method.DisplayName}:");
+        _codeSegment.AppendLine($"{method.Id.FullName}:");
         
         _codeSegment.AppendLine("    push    rbp");
         _codeSegment.AppendLine("    mov     rbp, rsp");
@@ -245,13 +267,12 @@ public class AssemblyLine(ReefModule reefModule, IReadOnlyList<ReefModule> impor
 
                     _codeSegment.AppendLine($"    sub     rsp, {(_shadowSpaceBytes + bytesToOffset).ToString("X")}h");
                     
-                    _codeSegment.AppendLine($"    call    {functionDefinition.Name}");
+                    _codeSegment.AppendLine($"    call    {functionDefinition.DefinitionId.FullName}");
                     
                     // move rsp back to where it was before we called the function
                     _codeSegment.AppendLine($"    add     rsp, {(_shadowSpaceBytes + bytesToOffset).ToString("X")}h");
 
-                    var method = _reefModule.Methods.FirstOrDefault(x => x.Id == functionDefinition.DefinitionId)
-                        ?? _importedModules.SelectMany(x => x.Methods).First(x => x.Id == functionDefinition.DefinitionId);
+                    var method = GetMethod(functionDefinition.DefinitionId) ?? throw new InvalidOperationException($"No method found with {functionDefinition.DefinitionId}");
 
                     if (call.ValueUseful && method.ReturnType is not ConcreteReefTypeReference { Name: "Unit" })
                     {

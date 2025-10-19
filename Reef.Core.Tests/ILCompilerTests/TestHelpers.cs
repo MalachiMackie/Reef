@@ -83,6 +83,7 @@ public static class TestHelpers
     {
         return new ReefMethod
         {
+            Extern = false,
             DisplayName = name,
             TypeParameters = typeParameters ?? [],
             Instructions = new InstructionList([..instructions], [..labels ?? []]),
@@ -103,14 +104,14 @@ public static class TestHelpers
         };
     }
 
-    public static ReefTypeDefinition DataType(
+    public static ReefILTypeDefinition DataType(
         DefId defId,
         string name,
         IReadOnlyList<ReefVariant> variants,
         IReadOnlyList<StaticReefField>? staticFields = null,
         IReadOnlyList<string>? typeParameters = null)
     {
-        return new ReefTypeDefinition
+        return new ReefILTypeDefinition
         {
             DisplayName = name,
             Id = defId,
@@ -121,10 +122,10 @@ public static class TestHelpers
         };
     }
 
-    public static ReefModule Module(IReadOnlyList<ReefTypeDefinition>? types = null,
+    public static ReefILModule Module(IReadOnlyList<ReefILTypeDefinition>? types = null,
         IReadOnlyList<ReefMethod>? methods = null)
     {
-        return new ReefModule
+        return new ReefILModule
         {
             MainMethod = methods?.FirstOrDefault(x => x.DisplayName == "_Main"),
             Methods = methods ?? [],

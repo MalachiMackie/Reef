@@ -323,7 +323,7 @@ public partial class TypeChecker
         {
             var parameters = new OrderedDictionary<string, FunctionSignatureParameter>();
             var signature = new FunctionSignature(
-                new DefId(DefId.CoreLibModuleId, DefId.CoreLibNamespace + ".printf"),
+                DefId.Printf,
                 Token.Identifier("printf", SourceSpan.Default),
                 [],
                 parameters,
