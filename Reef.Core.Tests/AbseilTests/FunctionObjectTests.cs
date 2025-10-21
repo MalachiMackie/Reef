@@ -41,7 +41,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                         Variant(
                             "A",
                             [
-                                Field("_variantIdentifier", Int),
+                                Field("_variantIdentifier", UInt16_t),
                                 Field("Item0", StringType)
                             ])
                     ])
@@ -58,7 +58,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                 new()
                                 {
                                     { "Item0", LoadArgument(0, true, StringType) },
-                                    { "_variantIdentifier", IntConstant(0, true) }
+                                    { "_variantIdentifier", UInt16Constant(0, true) }
                                 }))
                     ],
                     parameters: [StringType],
@@ -128,7 +128,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                 Variant(
                                     "A",
                                     [
-                                        Field("_variantIdentifier", Int),
+                                        Field("_variantIdentifier", UInt16_t),
                                         Field("Item0", StringType)
                                     ])
                             ])
@@ -144,7 +144,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                         new()
                                         {
                                             {"Item0", LoadArgument(0, true, StringType)},
-                                            {"_variantIdentifier", IntConstant(0, true)}
+                                            {"_variantIdentifier", UInt16Constant(0, true)}
                                         }))
                             ],
                             parameters: [StringType],
@@ -585,22 +585,22 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
             {
                 "call function object with parameters",
                 """
-                fn SomeFn(a: string): int { return 1; }
+                fn SomeFn(a: string): i64 { return 1; }
                 var a = SomeFn;
                 var b = a("");
                 """,
                 LoweredProgram(
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
-                            [MethodReturn(IntConstant(1, true))],
+                            [MethodReturn(Int64Constant(1, true))],
                             parameters: [StringType],
-                            returnType: Int),
+                            returnType: Int64_t),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
                                     "a",
                                     CreateObject(
-                                        ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, Int]),
+                                        ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, Int64_t]),
                                         "_classVariant",
                                         true,
                                         new()
@@ -610,31 +610,31 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                 FunctionReferenceConstant(
                                                     FunctionReference(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn"),
                                                     true,
-                                                    FunctionType([StringType], Int))
+                                                    FunctionType([StringType], Int64_t))
                                             }
                                         }),
                                     false),
                                 VariableDeclaration(
                                     "b",
                                     MethodCall(
-                                        FunctionReference(DefId.FunctionObject_Call(1), "Function`2__Call", [StringType, Int]),
+                                        FunctionReference(DefId.FunctionObject_Call(1), "Function`2__Call", [StringType, Int64_t]),
                                         [
                                             LocalAccess(
                                                 "a",
                                                 true,
-                                                ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, Int])),
+                                                ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, Int64_t])),
                                             StringConstant("", true)
                                         ],
                                         true,
-                                        Int),
+                                        Int64_t),
                                     false),
                                 MethodReturnUnit()
                             ],
                             locals: [
                                 Local(
                                     "a",
-                                    ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, Int])),
-                                Local("b", Int)
+                                    ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, Int64_t])),
+                                Local("b", Int64_t)
                             ])
                     ])
             },
@@ -645,7 +645,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                 {
                     pub static fn SomeFn<T2>(){}
                 }
-                var a = MyClass::<string>::SomeFn::<int>;
+                var a = MyClass::<string>::SomeFn::<i64>;
                 """,
                 LoweredProgram(
                     types: [
@@ -668,7 +668,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                             {
                                                 "FunctionReference",
                                                 FunctionReferenceConstant(
-                                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn", [StringType, Int]),
+                                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn", [StringType, Int64_t]),
                                                     true,
                                                     FunctionType([], Unit))
                                             }

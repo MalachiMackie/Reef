@@ -8,6 +8,32 @@ public class ReefILTypeDefinition
     public required IReadOnlyList<StaticReefField> StaticFields { get; set; }
     public required bool IsValueType { get; set; }
     public required IReadOnlyList<string> TypeParameters { get; set; }
+
+    public uint StackSize
+    {
+        get
+        {
+            if (Id == DefId.Int64 || Id == DefId.UInt64 || Id == DefId.String)
+            {
+                return 8;
+            }
+            if (Id == DefId.Int32 || Id == DefId.UInt32)
+            {
+                return 4;
+            }
+            if (Id == DefId.Int16 || Id == DefId.UInt16)
+            {
+                return 2;
+            }
+            if (Id == DefId.Int8 || Id == DefId.UInt8 || Id == DefId.Boolean)
+            {
+                return 1;
+            }
+
+            // assume it's a pointer
+            return 8;
+        }
+    }
 }
 
 public class FunctionDefinitionReference

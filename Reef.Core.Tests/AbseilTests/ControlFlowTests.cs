@@ -42,7 +42,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
-                                    "a", IntConstant(0, true), false),
+                                    "a", Int64Constant(0, true), false),
                                 SwitchInt(
                                     CastBoolToInt(BoolConstant(true, true), true),
                                     new()
@@ -58,17 +58,17 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                                         Noop()
                                                     }
                                                 },
-                                                Block([LocalValueAssignment("a", IntConstant(2, true), false, Int)], Unit, false),
+                                                Block([LocalValueAssignment("a", Int64Constant(2, true), false, Int64_t)], Unit, false),
                                                 false,
                                                 Unit)
                                         }
                                     },
-                                    Block([LocalValueAssignment("a", IntConstant(1, true), false, Int)], Unit, false),
+                                    Block([LocalValueAssignment("a", Int64Constant(1, true), false, Int64_t)], Unit, false),
                                     false,
                                     Unit),
                                 MethodReturnUnit()
                             ],
-                            locals: [Local("a", Int)])
+                            locals: [Local("a", Int64_t)])
                     ]);
 
         var program = CreateProgram(_moduleId, source);
@@ -86,12 +86,12 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
             {
                 "FallOut operator",
                 """
-                fn SomeFn(): result::<int, int>
+                fn SomeFn(): result::<i64, i64>
                 {
                     return error(1);
                 }
 
-                fn OtherFn(): result::<int, int>
+                fn OtherFn(): result::<i64, i64>
                 {
                     var a = SomeFn()?;
                     return ok(a);
@@ -103,12 +103,12 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                             [
                                 MethodReturn(
                                     MethodCall(
-                                        FunctionReference(DefId.Result_Create_Error, "result__Create__Error", [Int, Int]),
-                                        [IntConstant(1, true)],
+                                        FunctionReference(DefId.Result_Create_Error, "result__Create__Error", [Int64_t, Int64_t]),
+                                        [Int64Constant(1, true)],
                                         true,
-                                        ConcreteTypeReference("result", DefId.Result, [Int, Int])))
+                                        ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t])))
                             ],
-                            returnType: ConcreteTypeReference("result", DefId.Result, [Int, Int])),
+                            returnType: ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t])),
                         Method(new DefId(_moduleId, $"{_moduleId}.OtherFn"), "OtherFn",
                             [
                                 VariableDeclaration(
@@ -121,59 +121,59 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                                     FunctionReference(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn", []),
                                                     [],
                                                     true,
-                                                    ConcreteTypeReference("result", DefId.Result, [Int, Int])),
+                                                    ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t])),
                                                 false,
-                                                ConcreteTypeReference("result", DefId.Result, [Int, Int])),
+                                                ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t])),
                                             SwitchInt(
                                                 FieldAccess(
-                                                    LocalAccess("Local1", true, ConcreteTypeReference("result", DefId.Result, [Int, Int])),
+                                                    LocalAccess("Local1", true, ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t])),
                                                     "_variantIdentifier",
                                                     "Ok",
                                                     true,
-                                                    Int),
+                                                    Int64_t),
                                                 new()
                                                 {
                                                     {
                                                         0,
                                                         FieldAccess(
-                                                            LocalAccess("Local1", true, ConcreteTypeReference("result", DefId.Result, [Int, Int])),
+                                                            LocalAccess("Local1", true, ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t])),
                                                             "Item0",
                                                             "Ok",
                                                             true,
-                                                            Int)
+                                                            Int64_t)
                                                         }
                                                 },
                                                 MethodReturn(
                                                     MethodCall(
-                                                        FunctionReference(DefId.Result_Create_Error, "result__Create__Error", [Int, Int]),
+                                                        FunctionReference(DefId.Result_Create_Error, "result__Create__Error", [Int64_t, Int64_t]),
                                                         [
                                                             FieldAccess(
-                                                                LocalAccess("Local1", true, ConcreteTypeReference("result", DefId.Result, [Int, Int])),
+                                                                LocalAccess("Local1", true, ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t])),
                                                                 "Item0",
                                                                 "Error",
                                                                 true,
-                                                                Int)
+                                                                Int64_t)
                                                         ],
                                                         true,
-                                                        ConcreteTypeReference("result", DefId.Result, [Int, Int]))),
+                                                        ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t]))),
                                                 valueUseful: true,
-                                                resolvedType: Int)
+                                                resolvedType: Int64_t)
                                         ],
-                                        Int,
+                                        Int64_t,
                                         true),
                                     false),
                                 MethodReturn(
                                     MethodCall(
-                                        FunctionReference(DefId.Result_Create_Ok, "result__Create__Ok", [Int, Int]),
-                                        [LocalAccess("a", true, Int)],
+                                        FunctionReference(DefId.Result_Create_Ok, "result__Create__Ok", [Int64_t, Int64_t]),
+                                        [LocalAccess("a", true, Int64_t)],
                                         true,
-                                        ConcreteTypeReference("result", DefId.Result, [Int, Int])))
+                                        ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t])))
                             ],
                             locals: [
-                                Local("a", Int),
-                                Local("Local1", ConcreteTypeReference("result", DefId.Result, [Int, Int]))
+                                Local("a", Int64_t),
+                                Local("Local1", ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t]))
                             ],
-                            returnType: ConcreteTypeReference("result", DefId.Result, [Int, Int]))
+                            returnType: ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t]))
                     ])
             },
             {
@@ -186,18 +186,18 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                VariableDeclaration("a", IntConstant(0, true), false),
+                                VariableDeclaration("a", Int64Constant(0, true), false),
                                 SwitchInt(
                                     CastBoolToInt(BoolConstant(true, true), true),
                                     new() {
                                         {0, Noop()}
                                     },
-                                    LocalValueAssignment("a", IntConstant(1, true), false, Int),
+                                    LocalValueAssignment("a", Int64Constant(1, true), false, Int64_t),
                                     false,
                                     Unit),
                                 MethodReturnUnit(),
                             ],
-                            locals: [Local("a", Int)])
+                            locals: [Local("a", Int64_t)])
                     ])
             },
             {
@@ -211,23 +211,23 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                VariableDeclaration("a", IntConstant(0, true), false),
+                                VariableDeclaration("a", Int64Constant(0, true), false),
                                 SwitchInt(
                                     CastBoolToInt(BoolConstant(true, true), true),
                                     new(){
                                         {
                                             0,
                                             Block(
-                                                [LocalValueAssignment("a", IntConstant(2, true), false, Int)],
+                                                [LocalValueAssignment("a", Int64Constant(2, true), false, Int64_t)],
                                                 Unit,
                                                 false)},
                                     },
-                                    Block([LocalValueAssignment("a", IntConstant(1, true), false, Int)], Unit, false),
+                                    Block([LocalValueAssignment("a", Int64Constant(1, true), false, Int64_t)], Unit, false),
                                     false,
                                     Unit),
                                 MethodReturnUnit()
                             ],
-                            locals: [Local("a", Int)])
+                            locals: [Local("a", Int64_t)])
                     ])
             },
             {
@@ -242,7 +242,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
-                                    "a", IntConstant(1, true), false),
+                                    "a", Int64Constant(1, true), false),
                                 VariableDeclaration(
                                     "b",
                                     SwitchInt(
@@ -255,16 +255,16 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                                     [
                                                         LocalValueAssignment(
                                                             "a",
-                                                            IntConstant(3, true),
+                                                            Int64Constant(3, true),
                                                             true,
-                                                            Int)
+                                                            Int64_t)
                                                     ],
                                                     Unit,
                                                     true)
                                             }
                                         },
                                         Block(
-                                            [LocalValueAssignment("a", IntConstant(2, true), true, Int)],
+                                            [LocalValueAssignment("a", Int64Constant(2, true), true, Int64_t)],
                                             Unit,
                                             true),
                                         true,
@@ -273,7 +273,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", Int),
+                                Local("a", Int64_t),
                                 Local("b", Unit)
                             ])
                     ])
@@ -296,7 +296,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration(
-                                    "a", IntConstant(0, true), false),
+                                    "a", Int64Constant(0, true), false),
                                 SwitchInt(
                                     CastBoolToInt(BoolConstant(true, true), true),
                                     new()
@@ -312,17 +312,17 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                                         Noop()
                                                     }
                                                 },
-                                                Block([LocalValueAssignment("a", IntConstant(2, true), false, Int)], Unit, false),
+                                                Block([LocalValueAssignment("a", Int64Constant(2, true), false, Int64_t)], Unit, false),
                                                 false,
                                                 Unit)
                                         }
                                     },
-                                    Block([LocalValueAssignment("a", IntConstant(1, true), false, Int)], Unit, false),
+                                    Block([LocalValueAssignment("a", Int64Constant(1, true), false, Int64_t)], Unit, false),
                                     false,
                                     Unit),
                                 MethodReturnUnit()
                             ],
-                            locals: [Local("a", Int)])
+                            locals: [Local("a", Int64_t)])
                     ])
             },
             {
@@ -340,7 +340,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                VariableDeclaration("a", IntConstant(0, true), false),
+                                VariableDeclaration("a", Int64Constant(0, true), false),
                                 SwitchInt(
                                     CastBoolToInt(BoolConstant(true, true), true),
                                     new()
@@ -353,20 +353,20 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                                 {
                                                     {
                                                         0,
-                                                        Block([LocalValueAssignment("a", IntConstant(3, true), false, Int)], Unit, false)
+                                                        Block([LocalValueAssignment("a", Int64Constant(3, true), false, Int64_t)], Unit, false)
                                                     }
                                                 },
-                                                Block([LocalValueAssignment("a", IntConstant(2, true), false, Int)], Unit, false),
+                                                Block([LocalValueAssignment("a", Int64Constant(2, true), false, Int64_t)], Unit, false),
                                                 false,
                                                 Unit)
                                         }
                                     },
-                                    Block([LocalValueAssignment("a", IntConstant(1, true), false, Int)], Unit, false),
+                                    Block([LocalValueAssignment("a", Int64Constant(1, true), false, Int64_t)], Unit, false),
                                     false,
                                     Unit),
                                 MethodReturnUnit()
                             ],
-                            locals: [Local("a", Int)])
+                            locals: [Local("a", Int64_t)])
                     ])
             },
         };

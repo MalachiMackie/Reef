@@ -11,8 +11,7 @@ public partial class TypeChecker
     {
         var type = valueAccessorExpression.ValueAccessor switch
         {
-            { AccessType: ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral } } => InstantiatedClass
-                .Int,
+            { AccessType: ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral } } => InstantiatedClass.Int64,
             { AccessType: ValueAccessType.Literal, Token: StringToken { Type: TokenType.StringLiteral } } =>
                 InstantiatedClass.String,
             { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True or TokenType.False } => InstantiatedClass

@@ -41,20 +41,20 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     types: [
                         DataType(_moduleId, "OtherUnion",
                             variants: [
-                                Variant("A", [Field("_variantIdentifier", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)]),
-                                Variant("C", [Field("_variantIdentifier", Int)]),
-                                Variant("D", [Field("_variantIdentifier", Int)]),
+                                Variant("A", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("C", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("D", [Field("_variantIdentifier", UInt16_t)]),
                             ]),
                         DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant(
                                     "X",
                                     [
-                                        Field("_variantIdentifier", Int),
+                                        Field("_variantIdentifier", UInt16_t),
                                         Field("MyField", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))
                                     ]),
-                                Variant("Y", [Field("_variantIdentifier", Int)]),
+                                Variant("Y", [Field("_variantIdentifier", UInt16_t)]),
                             ]),
                     ],
                     methods: [
@@ -67,7 +67,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         "Y",
                                         true,
                                         new(){
-                                            {"_variantIdentifier", IntConstant(1, true)}
+                                            {"_variantIdentifier", UInt16Constant(1, true)}
                                         }),
                                     false),
                                 Block(
@@ -82,7 +82,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                 "_variantIdentifier",
                                                 "X",
                                                 true,
-                                                Int),
+                                                UInt16_t),
                                             new()
                                             {
                                                 {
@@ -104,7 +104,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                     "_variantIdentifier",
                                                                     "A",
                                                                     true,
-                                                                    Int),
+                                                                    UInt16_t),
                                                                 new()
                                                                 {
                                                                     {
@@ -115,9 +115,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                                     "something",
                                                                                     LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                                     false),
-                                                                                IntConstant(1, true)
+                                                                                Int64Constant(1, true)
                                                                             ],
-                                                                            Int,
+                                                                            Int64_t,
                                                                             true)
                                                                     }
                                                                 },
@@ -133,17 +133,17 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                                     "somethingElse",
                                                                                     LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                                     false),
-                                                                                IntConstant(2, true)
+                                                                                Int64Constant(2, true)
                                                                             ],
-                                                                            Int,
+                                                                            Int64_t,
                                                                             true),
                                                                     ],
-                                                                    Int,
+                                                                    Int64_t,
                                                                     true),
                                                                 true,
-                                                                Int)
+                                                                Int64_t)
                                                         ],
-                                                        Int,
+                                                        Int64_t,
                                                         true)
                                                 }
                                             },
@@ -153,14 +153,14 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                         "myUnion",
                                                         LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                         false),
-                                                    IntConstant(4, true)
+                                                    Int64Constant(4, true)
                                                 ],
-                                                Int,
+                                                Int64_t,
                                                 true),
                                             true,
-                                            Int)
+                                            Int64_t)
                                     ],
-                                    Int,
+                                    Int64_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -206,9 +206,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     types: [
                         DataType(_moduleId, "MyUnion",
                             variants: [
-                                Variant("A", [Field("_variantIdentifier", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)]),
-                                Variant("C", [Field("_variantIdentifier", Int)]),
+                                Variant("A", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("C", [Field("_variantIdentifier", UInt16_t)]),
                             ])
                     ],
                     methods: [
@@ -221,7 +221,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         "A",
                                         true,
                                         new(){
-                                            {"_variantIdentifier", IntConstant(0, true)}
+                                            {"_variantIdentifier", UInt16Constant(0, true)}
                                         }),
                                     false),
                                 Block(
@@ -236,27 +236,27 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                 "_variantIdentifier",
                                                 "A",
                                                 true,
-                                                Int),
+                                                UInt16_t),
                                             new()
                                             {
                                                 {
                                                     0,
-                                                    IntConstant(1, true)
+                                                    Int64Constant(1, true)
                                                 },
                                                 {
                                                     1,
-                                                    IntConstant(2, true)
+                                                    Int64Constant(2, true)
                                                 },
                                                 {
                                                     2,
-                                                    IntConstant(3, true)
+                                                    Int64Constant(3, true)
                                                 },
                                             },
                                             Unreachable(),
                                             true,
-                                            Int),
+                                            Int64_t),
                                     ],
-                                    Int,
+                                    Int64_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -280,9 +280,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     types: [
                         DataType(_moduleId, "MyUnion",
                             variants: [
-                                Variant("A", [Field("_variantIdentifier", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)]),
-                                Variant("C", [Field("_variantIdentifier", Int)]),
+                                Variant("A", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("C", [Field("_variantIdentifier", UInt16_t)]),
                             ])
                     ],
                     methods: [
@@ -295,7 +295,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         "A",
                                         true,
                                         new(){
-                                            {"_variantIdentifier", IntConstant(0, true)}
+                                            {"_variantIdentifier", UInt16Constant(0, true)}
                                         }),
                                     false),
                                 Block(
@@ -307,19 +307,19 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                 "_variantIdentifier",
                                                 "A",
                                                 true,
-                                                Int),
+                                                UInt16_t),
                                             new()
                                             {
                                                 {
                                                     0,
-                                                    IntConstant(1, true)
+                                                    Int64Constant(1, true)
                                                 }
                                             },
-                                            IntConstant(2, true),
+                                            Int64Constant(2, true),
                                             true,
-                                            Int),
+                                            Int64_t),
                                     ],
-                                    Int,
+                                    Int64_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -349,9 +349,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                         DataType(_moduleId, "OtherUnion",
                             variants:
                             [
-                                Variant("A", [Field("_variantIdentifier", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)]),
-                                Variant("C", [Field("_variantIdentifier", Int)]),
+                                Variant("A", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("C", [Field("_variantIdentifier", UInt16_t)]),
                             ]),
                         DataType(_moduleId, "MyUnion",
                             variants:
@@ -359,10 +359,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 Variant(
                                     "X",
                                     [
-                                        Field("_variantIdentifier", Int),
+                                        Field("_variantIdentifier", UInt16_t),
                                         Field("Item0", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))
                                     ]),
-                                Variant("Y", [Field("_variantIdentifier", Int)]),
+                                Variant("Y", [Field("_variantIdentifier", UInt16_t)]),
                             ]),
                     ],
                     methods:
@@ -381,7 +381,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             },
                                             {
                                                 "_variantIdentifier",
-                                                IntConstant(0, true)
+                                                UInt16Constant(0, true)
                                             }
                                         }))
                             ],
@@ -397,7 +397,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         true,
                                         new()
                                         {
-                                            { "_variantIdentifier", IntConstant(1, true) }
+                                            { "_variantIdentifier", UInt16Constant(1, true) }
                                         }),
                                     false),
                                 Block(
@@ -412,7 +412,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                 "_variantIdentifier",
                                                 "X",
                                                 true,
-                                                Int),
+                                                UInt16_t),
                                             new()
                                             {
                                                 {
@@ -438,39 +438,39 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                     "_variantIdentifier",
                                                                     "A",
                                                                     true,
-                                                                    Int),
+                                                                    UInt16_t),
                                                                 new()
                                                                 {
                                                                     {
                                                                         0,
-                                                                        IntConstant(1, true)
+                                                                        Int64Constant(1, true)
                                                                     },
                                                                     {
                                                                         1,
-                                                                        IntConstant(2, true)
+                                                                        Int64Constant(2, true)
                                                                     },
                                                                     {
                                                                         2,
-                                                                        IntConstant(3, true)
+                                                                        Int64Constant(3, true)
                                                                     },
                                                                 },
                                                                 Unreachable(),
                                                                 true,
-                                                                Int)
+                                                                Int64_t)
                                                         ],
-                                                        Int,
+                                                        Int64_t,
                                                         true)
                                                 },
                                                 {
                                                     1,
-                                                    IntConstant(4, true)
+                                                    Int64Constant(4, true)
                                                 }
                                             },
                                             Unreachable(),
                                             true,
-                                            Int)
+                                            Int64_t)
                                     ],
-                                    Int,
+                                    Int64_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -499,18 +499,18 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     types: [
                         DataType(_moduleId, "OtherUnion",
                             variants: [
-                                Variant("A", [Field("_variantIdentifier", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)]),
+                                Variant("A", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)]),
                             ]),
                         DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant(
                                     "X",
                                     [
-                                        Field("_variantIdentifier", Int),
+                                        Field("_variantIdentifier", UInt16_t),
                                         Field("Item0", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                     ]),
-                                Variant("Y", [Field("_variantIdentifier", Int)])
+                                Variant("Y", [Field("_variantIdentifier", UInt16_t)])
                             ])
                     ],
                     methods: [
@@ -523,7 +523,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         true,
                                         new()
                                         {
-                                            {"_variantIdentifier", IntConstant(0, true)},
+                                            {"_variantIdentifier", UInt16Constant(0, true)},
                                             {"Item0", LoadArgument(0, true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))}
                                         }))
                             ],
@@ -537,7 +537,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "Y",
                                         true,
-                                        new(){{"_variantIdentifier", IntConstant(1, true)}}),
+                                        new(){{"_variantIdentifier", UInt16Constant(1, true)}}),
                                     false),
                                 Block(
                                     [
@@ -551,7 +551,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                 "_variantIdentifier",
                                                 "X",
                                                 true,
-                                                Int),
+                                                UInt16_t),
                                             new()
                                             {
                                                 {
@@ -573,25 +573,25 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                     "_variantIdentifier",
                                                                     "A",
                                                                     true,
-                                                                    Int),
+                                                                    UInt16_t),
                                                                 new()
                                                                 {
-                                                                    {0, IntConstant(1, true)}
+                                                                    {0, Int64Constant(1, true)}
                                                                 },
-                                                                IntConstant(2, true),
+                                                                Int64Constant(2, true),
                                                                 true,
-                                                                Int)
+                                                                Int64_t)
                                                         ],
-                                                        Int,
+                                                        Int64_t,
                                                         true)
                                                 },
-                                                { 1, IntConstant(3, true) }
+                                                { 1, Int64Constant(3, true) }
                                             },
                                             Unreachable(),
                                             true,
-                                            Int)
+                                            Int64_t)
                                     ],
-                                    Int,
+                                    Int64_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -620,20 +620,20 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     types: [
                         DataType(_moduleId, "OtherUnion",
                             variants: [
-                                Variant("A", [Field("_variantIdentifier", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)]),
-                                Variant("C", [Field("_variantIdentifier", Int)]),
-                                Variant("D", [Field("_variantIdentifier", Int)]),
+                                Variant("A", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("C", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("D", [Field("_variantIdentifier", UInt16_t)]),
                             ]),
                         DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant(
                                     "X",
                                     [
-                                        Field("_variantIdentifier", Int),
+                                        Field("_variantIdentifier", UInt16_t),
                                         Field("Item0", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))
                                     ]),
-                                Variant("Y", [Field("_variantIdentifier", Int)]),
+                                Variant("Y", [Field("_variantIdentifier", UInt16_t)]),
                             ]),
                     ],
                     methods: [
@@ -646,7 +646,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         true,
                                         new()
                                         {
-                                            {"_variantIdentifier",IntConstant(0, true)},
+                                            {"_variantIdentifier", UInt16Constant(0, true)},
                                             {"Item0", LoadArgument(0, true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))}
                                         }))
                             ],
@@ -661,7 +661,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         "Y",
                                         true,
                                         new(){
-                                            {"_variantIdentifier", IntConstant(1, true)}
+                                            {"_variantIdentifier", UInt16Constant(1, true)}
                                         }),
                                     false),
                                 Block(
@@ -676,7 +676,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                 "_variantIdentifier",
                                                 "X",
                                                 true,
-                                                Int),
+                                                UInt16_t),
                                             new()
                                             {
                                                 {
@@ -698,26 +698,26 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                     "_variantIdentifier",
                                                                     "A",
                                                                     true,
-                                                                    Int),
+                                                                    UInt16_t),
                                                                 new()
                                                                 {
-                                                                    { 0, IntConstant(1, true) },
-                                                                    { 1, IntConstant(2, true) },
-                                                                    { 2, IntConstant(3, true) },
+                                                                    { 0, Int64Constant(1, true) },
+                                                                    { 1, Int64Constant(2, true) },
+                                                                    { 2, Int64Constant(3, true) },
                                                                 },
-                                                                IntConstant(4, true),
+                                                                Int64Constant(4, true),
                                                                 true,
-                                                                Int)
+                                                                Int64_t)
                                                         ],
-                                                        Int,
+                                                        Int64_t,
                                                         true)
                                                 }
                                             },
-                                            IntConstant(4, true),
+                                            Int64Constant(4, true),
                                             true,
-                                            Int)
+                                            Int64_t)
                                     ],
-                                    Int,
+                                    Int64_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -746,19 +746,19 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     types: [
                         DataType(_moduleId, "OtherUnion",
                             variants: [
-                                Variant("A", [Field("_variantIdentifier", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)]),
+                                Variant("A", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)]),
                             ]),
                         DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant(
                                     "X",
                                     [
-                                        Field("_variantIdentifier", Int),
+                                        Field("_variantIdentifier", UInt16_t),
                                         Field("Item0", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                         Field("Item1", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))),
                                     ]),
-                                Variant("Y", [Field("_variantIdentifier", Int)])
+                                Variant("Y", [Field("_variantIdentifier", UInt16_t)])
                             ])
                     ],
                     methods: [
@@ -773,7 +773,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         {
                                             {"Item0", LoadArgument(0, true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))},
                                             {"Item1", LoadArgument(1, true, ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))},
-                                            {"_variantIdentifier", IntConstant(0, true)},
+                                            {"_variantIdentifier", UInt16Constant(0, true)},
                                         }))
                             ],
                             parameters: [ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")), ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion"))],
@@ -786,7 +786,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "Y",
                                         true,
-                                        new(){{"_variantIdentifier", IntConstant(1, true)}}),
+                                        new(){{"_variantIdentifier", UInt16Constant(1, true)}}),
                                     false),
                                 Block(
                                     [
@@ -800,12 +800,12 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                 "_variantIdentifier",
                                                 "X",
                                                 true,
-                                                Int),
+                                                UInt16_t),
                                             new()
                                             {
                                                 {
                                                     1,
-                                                    IntConstant(0, true)
+                                                    Int64Constant(0, true)
                                                 },
                                                 {
                                                     0,
@@ -827,7 +827,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                     "_variantIdentifier",
                                                                     "A",
                                                                     true,
-                                                                    Int),
+                                                                    UInt16_t),
                                                                 new()
                                                                 {
                                                                     {
@@ -850,23 +850,23 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                                         "_variantIdentifier",
                                                                                         "A",
                                                                                         true,
-                                                                                        Int),
+                                                                                        UInt16_t),
                                                                                     new()
                                                                                     {
                                                                                         {
                                                                                             0,
-                                                                                            IntConstant(1, true)
+                                                                                            Int64Constant(1, true)
                                                                                         },
                                                                                         {
                                                                                             1,
-                                                                                            IntConstant(2, true)
+                                                                                            Int64Constant(2, true)
                                                                                         }
                                                                                     },
                                                                                     Unreachable(),
                                                                                     true,
-                                                                                    Int)
+                                                                                    Int64_t)
                                                                             ],
-                                                                            Int,
+                                                                            Int64_t,
                                                                             true)
                                                                     },
                                                                     {
@@ -889,39 +889,39 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                                         "_variantIdentifier",
                                                                                         "A",
                                                                                         true,
-                                                                                        Int),
+                                                                                        UInt16_t),
                                                                                     new()
                                                                                     {
                                                                                         {
                                                                                             0,
-                                                                                            IntConstant(3, true)
+                                                                                            Int64Constant(3, true)
                                                                                         },
                                                                                         {
                                                                                             1,
-                                                                                            IntConstant(4, true)
+                                                                                            Int64Constant(4, true)
                                                                                         }
                                                                                     },
                                                                                     Unreachable(),
                                                                                     true,
-                                                                                    Int)
+                                                                                    Int64_t)
                                                                             ],
-                                                                            Int,
+                                                                            Int64_t,
                                                                             true)
                                                                     }
                                                                 },
                                                                 Unreachable(),
                                                                 true,
-                                                                Int)
+                                                                Int64_t)
                                                         ],
-                                                        Int,
+                                                        Int64_t,
                                                         true)
                                                 }
                                             },
                                             Unreachable(),
                                             true,
-                                            Int)
+                                            Int64_t)
                                     ],
-                                    Int,
+                                    Int64_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -951,20 +951,20 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     types: [
                         DataType(_moduleId, "OtherUnion",
                             variants: [
-                                Variant("A", [Field("_variantIdentifier", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)]),
-                                Variant("C", [Field("_variantIdentifier", Int)]),
-                                Variant("D", [Field("_variantIdentifier", Int)]),
+                                Variant("A", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("C", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("D", [Field("_variantIdentifier", UInt16_t)]),
                             ]),
                         DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant(
                                     "X",
                                     [
-                                        Field("_variantIdentifier", Int),
+                                        Field("_variantIdentifier", UInt16_t),
                                         Field("MyField", ConcreteTypeReference("OtherUnion", new DefId(_moduleId, $"{_moduleId}.OtherUnion")))
                                     ]),
-                                Variant("Y", [Field("_variantIdentifier", Int)]),
+                                Variant("Y", [Field("_variantIdentifier", UInt16_t)]),
                             ]),
                     ],
                     methods: [
@@ -977,7 +977,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         "Y",
                                         true,
                                         new(){
-                                            {"_variantIdentifier", IntConstant(1, true)}
+                                            {"_variantIdentifier", UInt16Constant(1, true)}
                                         }),
                                     false),
                                 Block(
@@ -992,7 +992,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                 "_variantIdentifier",
                                                 "X",
                                                 true,
-                                                Int),
+                                                UInt16_t),
                                             new()
                                             {
                                                 {
@@ -1014,7 +1014,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                     "_variantIdentifier",
                                                                     "A",
                                                                     true,
-                                                                    Int),
+                                                                    UInt16_t),
                                                                 new()
                                                                 {
                                                                     {
@@ -1025,9 +1025,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                                     "something",
                                                                                     LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                                     false),
-                                                                                IntConstant(1, true)
+                                                                                Int64Constant(1, true)
                                                                             ],
-                                                                            Int,
+                                                                            Int64_t,
                                                                             true)
                                                                     }
                                                                 },
@@ -1043,17 +1043,17 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                                     "somethingElse",
                                                                                     LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                                     false),
-                                                                                IntConstant(2, true)
+                                                                                Int64Constant(2, true)
                                                                             ],
-                                                                            Int,
+                                                                            Int64_t,
                                                                             true),
                                                                     ],
-                                                                    Int,
+                                                                    Int64_t,
                                                                     true),
                                                                 true,
-                                                                Int)
+                                                                Int64_t)
                                                         ],
-                                                        Int,
+                                                        Int64_t,
                                                         true)
                                                 }
                                             },
@@ -1063,14 +1063,14 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                         "myUnion",
                                                         LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                         false),
-                                                    IntConstant(4, true)
+                                                    Int64Constant(4, true)
                                                 ],
-                                                Int,
+                                                Int64_t,
                                                 true),
                                             true,
-                                            Int)
+                                            Int64_t)
                                     ],
-                                    Int,
+                                    Int64_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -1089,7 +1089,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 "match type pattern",
                 """
                 match (1) {
-                    int => 1
+                    i64 => 1
                 }
                 """,
                 LoweredProgram(
@@ -1098,15 +1098,15 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             [
                                 Block(
                                     [
-                                        VariableDeclaration("Local0", IntConstant(1, true), false),
-                                        IntConstant(1, true)
+                                        VariableDeclaration("Local0", Int64Constant(1, true), false),
+                                        Int64Constant(1, true)
                                     ],
-                                    Int,
+                                    Int64_t,
                                     false),
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("Local0", Int)
+                                Local("Local0", Int64_t)
                             ])
                     ])
             },
@@ -1126,8 +1126,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     types: [
                         DataType(_moduleId, "MyUnion",
                             variants: [
-                                Variant("A", [Field("_variantIdentifier", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)])
+                                Variant("A", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)])
                             ]),
                         DataType(_moduleId, "MyClass",
                             variants: [
@@ -1152,7 +1152,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                     true,
                                                     new()
                                                     {
-                                                        {"_variantIdentifier", IntConstant(0, true)}
+                                                        {"_variantIdentifier", UInt16Constant(0, true)}
                                                     })
                                             }
                                         }),
@@ -1179,12 +1179,12 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                         "_variantIdentifier",
                                                         "A",
                                                         true,
-                                                        Int),
+                                                        UInt16_t),
                                                     new()
                                                     {
                                                         {
                                                             0,
-                                                            IntConstant(1, true)
+                                                            Int64Constant(1, true)
                                                         },
                                                         {
                                                             1,
@@ -1194,20 +1194,20 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                         "something",
                                                                         LocalAccess("Local2", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                                                         false),
-                                                                    IntConstant(2, true)
+                                                                    Int64Constant(2, true)
                                                                 ],
-                                                                Int,
+                                                                Int64_t,
                                                                 true)
                                                         }
                                                     },
                                                     Unreachable(),
                                                     true,
-                                                    Int)
+                                                    Int64_t)
                                             ],
-                                            Int,
+                                            Int64_t,
                                             true),
                                     ],
-                                    Int,
+                                    Int64_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -1235,8 +1235,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     types: [
                         DataType(_moduleId, "MyUnion",
                             variants: [
-                                Variant("A", [Field("_variantIdentifier", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)])
+                                Variant("A", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)])
                             ]),
                         DataType(_moduleId, "MyClass",
                             variants: [
@@ -1261,7 +1261,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                     true,
                                                     new()
                                                     {
-                                                        {"_variantIdentifier", IntConstant(0, true)}
+                                                        {"_variantIdentifier", UInt16Constant(0, true)}
                                                     })
                                             }
                                         }),
@@ -1289,22 +1289,22 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                         "_variantIdentifier",
                                                         "A",
                                                         true,
-                                                        Int),
+                                                        UInt16_t),
                                                     new()
                                                     {
                                                         {
                                                             0,
-                                                            IntConstant(1, true)
+                                                            Int64Constant(1, true)
                                                         }
                                                     },
-                                                    IntConstant(2, true),
+                                                    Int64Constant(2, true),
                                                     true,
-                                                    Int)
+                                                    Int64_t)
                                             ],
-                                            Int,
+                                            Int64_t,
                                             true)
                                     ],
-                                    Int,
+                                    Int64_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -1336,9 +1336,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     types: [
                         DataType(_moduleId, "MyUnion",
                             variants: [
-                                Variant("A", [Field("_variantIdentifier", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)]),
-                                Variant("C", [Field("_variantIdentifier", Int)])
+                                Variant("A", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("C", [Field("_variantIdentifier", UInt16_t)])
                             ]),
                         DataType(_moduleId, "MyClass",
                             variants: [
@@ -1368,7 +1368,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                     true,
                                                     new()
                                                     {
-                                                        {"_variantIdentifier", IntConstant(0, true)}
+                                                        {"_variantIdentifier", UInt16Constant(0, true)}
                                                     })
                                             },
                                             {
@@ -1379,7 +1379,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                     true,
                                                     new()
                                                     {
-                                                        {"_variantIdentifier", IntConstant(1, true)}
+                                                        {"_variantIdentifier", UInt16Constant(1, true)}
                                                     })
                                             }
                                         }),
@@ -1407,7 +1407,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                         "_variantIdentifier",
                                                         "A",
                                                         true,
-                                                        Int),
+                                                        UInt16_t),
                                                     new()
                                                     {
                                                         {
@@ -1429,19 +1429,19 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                             "_variantIdentifier",
                                                                             "A",
                                                                             true,
-                                                                            Int),
+                                                                            UInt16_t),
                                                                         new()
                                                                         {
                                                                             {
                                                                                 0,
-                                                                                IntConstant(1, true)
+                                                                                Int64Constant(1, true)
                                                                             }
                                                                         },
-                                                                        IntConstant(3, true),
+                                                                        Int64Constant(3, true),
                                                                         true,
-                                                                        Int)
+                                                                        Int64_t)
                                                                 ],
-                                                                Int,
+                                                                Int64_t,
                                                                 true)
                                                         },
                                                         {
@@ -1463,19 +1463,19 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                             "_variantIdentifier",
                                                                             "A",
                                                                             true,
-                                                                            Int),
+                                                                            UInt16_t),
                                                                         new()
                                                                         {
                                                                             {
                                                                                 0,
-                                                                                IntConstant(2, true)
+                                                                                Int64Constant(2, true)
                                                                             }
                                                                         },
-                                                                        IntConstant(3, true),
+                                                                        Int64Constant(3, true),
                                                                         true,
-                                                                        Int)
+                                                                        Int64_t)
                                                                 ],
-                                                                Int,
+                                                                Int64_t,
                                                                 true)
                                                         },
                                                         {
@@ -1497,30 +1497,30 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                             "_variantIdentifier",
                                                                             "A",
                                                                             true,
-                                                                            Int),
+                                                                            UInt16_t),
                                                                         new()
                                                                         {
                                                                             {
                                                                                 0,
-                                                                                IntConstant(4, true)
+                                                                                Int64Constant(4, true)
                                                                             }
                                                                         },
-                                                                        IntConstant(3, true),
+                                                                        Int64Constant(3, true),
                                                                         true,
-                                                                        Int)
+                                                                        Int64_t)
                                                                 ],
-                                                                Int,
+                                                                Int64_t,
                                                                 true)
                                                         }
                                                     },
-                                                    IntConstant(3, true),
+                                                    Int64Constant(3, true),
                                                     true,
-                                                    Int)
+                                                    Int64_t)
                                             ],
-                                            Int,
+                                            Int64_t,
                                             true)
                                     ],
-                                    Int,
+                                    Int64_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -1556,9 +1556,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     types: [
                         DataType(_moduleId, "MyUnion",
                             variants: [
-                                Variant("A", [Field("_variantIdentifier", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)]),
-                                Variant("C", [Field("_variantIdentifier", Int)]),
+                                Variant("A", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("C", [Field("_variantIdentifier", UInt16_t)]),
                             ]),
                         DataType(_moduleId, "MyClass",
                             variants: [
@@ -1587,7 +1587,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                     ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                                     "A",
                                                     true,
-                                                    new(){{"_variantIdentifier", IntConstant(0, true)}})
+                                                    new(){{"_variantIdentifier", UInt16Constant(0, true)}})
                                             },
                                             {
                                                 "SecondField",
@@ -1595,7 +1595,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                     ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                                     "B",
                                                     true,
-                                                    new(){{"_variantIdentifier", IntConstant(1, true)}})
+                                                    new(){{"_variantIdentifier", UInt16Constant(1, true)}})
                                             },
                                         }),
                                     false),
@@ -1618,7 +1618,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                         "_variantIdentifier",
                                                         "A",
                                                         true,
-                                                        Int),
+                                                        UInt16_t),
                                                     new()
                                                     {
                                                         {
@@ -1639,19 +1639,19 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                             "_variantIdentifier",
                                                                             "A",
                                                                             true,
-                                                                            Int),
+                                                                            UInt16_t),
                                                                         new()
                                                                         {
                                                                             {
                                                                                 0,
-                                                                                IntConstant(1, true)
+                                                                                Int64Constant(1, true)
                                                                             }
                                                                         },
-                                                                        IntConstant(2, true),
+                                                                        Int64Constant(2, true),
                                                                         true,
-                                                                        Int)
+                                                                        Int64_t)
                                                                 ],
-                                                                Int,
+                                                                Int64_t,
                                                                 true)
                                                         },
                                                         {
@@ -1672,19 +1672,19 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                             "_variantIdentifier",
                                                                             "A",
                                                                             true,
-                                                                            Int),
+                                                                            UInt16_t),
                                                                         new()
                                                                         {
                                                                             {
                                                                                 1,
-                                                                                IntConstant(3, true)
+                                                                                Int64Constant(3, true)
                                                                             }
                                                                         },
-                                                                        IntConstant(5, true),
+                                                                        Int64Constant(5, true),
                                                                         true,
-                                                                        Int)
+                                                                        Int64_t)
                                                                 ],
-                                                                Int,
+                                                                Int64_t,
                                                                 true)
                                                         },
                                                         {
@@ -1705,31 +1705,31 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                             "_variantIdentifier",
                                                                             "A",
                                                                             true,
-                                                                            Int),
+                                                                            UInt16_t),
                                                                         new()
                                                                         {
                                                                             {
                                                                                 0,
-                                                                                IntConstant(4, true)
+                                                                                Int64Constant(4, true)
                                                                             }
                                                                         },
-                                                                        IntConstant(5, true),
+                                                                        Int64Constant(5, true),
                                                                         true,
-                                                                        Int)
+                                                                        Int64_t)
                                                                 ],
-                                                                Int,
+                                                                Int64_t,
                                                                 true)
                                                         },
                                                     },
-                                                    IntConstant(5, true),
+                                                    Int64Constant(5, true),
                                                     true,
-                                                    Int)
+                                                    Int64_t)
                                             ],
-                                            Int,
+                                            Int64_t,
                                             true),
                                         
                                     ],
-                                    Int,
+                                    Int64_t,
                                     false),
                                 MethodReturnUnit()
                             ],

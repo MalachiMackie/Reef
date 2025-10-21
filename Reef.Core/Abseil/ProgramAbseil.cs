@@ -110,8 +110,8 @@ public partial class ProgramAbseil
                                     UnionSignature.Result.Id,
                                     "TValue");
         var intRef = new LoweredConcreteTypeReference(
-                                    ClassSignature.Int.Name,
-                                    ClassSignature.Int.Id,
+                                    ClassSignature.Int64.Name,
+                                    ClassSignature.Int64.Id,
                                     []);
         
         var resultDataType = new DataType(
@@ -287,7 +287,7 @@ public partial class ProgramAbseil
         {
             var variantIdentifierField = new DataTypeField(
                     "_variantIdentifier",
-                    GetTypeReference(InstantiatedClass.Int));
+                    GetTypeReference(InstantiatedClass.UInt16));
             var fields = new List<DataTypeField>() { variantIdentifierField };
             switch (variant)
             {
@@ -308,7 +308,7 @@ public partial class ProgramAbseil
                                         x)));
 
                         var createMethodFieldInitializations = fields.Skip(1).Index().ToDictionary(x => x.Item.Name, x => (ILoweredExpression)new LoadArgumentExpression((uint)x.Index, true, x.Item.Type));
-                        createMethodFieldInitializations["_variantIdentifier"] = new IntConstantExpression(true, variants.Count);
+                        createMethodFieldInitializations["_variantIdentifier"] = new UInt16ConstantExpression(true, (ushort)variants.Count);
 
                         List<ILoweredExpression> expressions = [
                                         new MethodReturnExpression(

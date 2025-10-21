@@ -23,22 +23,120 @@ public class ILCompile(LoweredProgram program)
     private readonly Stack<Scope> _scopeStack = [];
     private readonly LoweredProgram _program = program;
     private InstructionList Instructions => _scopeStack.Peek().InstructionList;
-    private uint StackSize
-    {
-        get => _scopeStack.Peek().StackSize;
-        set => _scopeStack.Peek().StackSize = value;
-    }
+    private Stack<IReefTypeReference> TypeStack => _scopeStack.Peek().TypeStack;
 
     private class Scope
     {
         public InstructionList InstructionList { get; init; } = new([], []);
         public HashSet<string> ReservedLabels { get; init; } = [];
-        public uint StackSize { get; set; }
+        public Stack<IReefTypeReference> TypeStack { get; set; } = [];
+        public required LoweredMethod? Method { get; init; }
     }
 
     private static ReefILModule GetImportedStdLibrary()
     {
-        var importedDataTypes = new List<ReefILTypeDefinition>();
+        var importedDataTypes = new List<ReefILTypeDefinition>()
+        {
+            new ReefILTypeDefinition
+            {
+                DisplayName = TypeChecker.ClassSignature.Int64.Name,
+                Id = DefId.Int64,
+                IsValueType = true,
+                Variants = [
+                    new(){DisplayName = "_classVariant", Fields = []}
+                ],
+                StaticFields = [],
+                TypeParameters = []
+            },
+            new ReefILTypeDefinition
+            {
+                DisplayName = TypeChecker.ClassSignature.Int32.Name,
+                Id = DefId.Int32,
+                IsValueType = true,
+                Variants = [
+                    new(){DisplayName = "_classVariant", Fields = []}
+                ],
+                StaticFields = [],
+                TypeParameters = []
+            },
+            new ReefILTypeDefinition
+            {
+                DisplayName = TypeChecker.ClassSignature.Int16.Name,
+                Id = DefId.Int16,
+                IsValueType = true,
+                Variants = [
+                    new(){DisplayName = "_classVariant", Fields = []}
+                ],
+                StaticFields = [],
+                TypeParameters = []
+            },
+            new ReefILTypeDefinition
+            {
+                DisplayName = TypeChecker.ClassSignature.Int8.Name,
+                Id = DefId.Int8,
+                IsValueType = true,
+                Variants = [
+                    new(){DisplayName = "_classVariant", Fields = []}
+                ],
+                StaticFields = [],
+                TypeParameters = []
+            },
+            new ReefILTypeDefinition
+            {
+                DisplayName = TypeChecker.ClassSignature.UInt64.Name,
+                Id = DefId.UInt64,
+                IsValueType = true,
+                Variants = [
+                    new(){DisplayName = "_classVariant", Fields = []}
+                ],
+                StaticFields = [],
+                TypeParameters = []
+            },
+            new ReefILTypeDefinition
+            {
+                DisplayName = TypeChecker.ClassSignature.UInt32.Name,
+                Id = DefId.UInt32,
+                IsValueType = true,
+                Variants = [
+                    new(){DisplayName = "_classVariant", Fields = []}
+                ],
+                StaticFields = [],
+                TypeParameters = []
+            },
+            new ReefILTypeDefinition
+            {
+                DisplayName = TypeChecker.ClassSignature.UInt16.Name,
+                Id = DefId.UInt16,
+                IsValueType = true,
+                Variants = [
+                    new(){DisplayName = "_classVariant", Fields = []}
+                ],
+                StaticFields = [],
+                TypeParameters = []
+            },
+            new ReefILTypeDefinition
+            {
+                DisplayName = TypeChecker.ClassSignature.UInt8.Name,
+                Id = DefId.UInt8,
+                IsValueType = true,
+                Variants = [
+                    new(){DisplayName = "_classVariant", Fields = []}
+                ],
+                StaticFields = [],
+                TypeParameters = []
+            },
+            new ReefILTypeDefinition
+            {
+                DisplayName = TypeChecker.ClassSignature.String.Name,
+                Id = DefId.String,
+                IsValueType = false,
+                Variants = [
+                    new(){DisplayName = "_classVariant", Fields = []}
+                ],
+                StaticFields = [],
+                TypeParameters = []
+            },
+        };
 
         var printf = TypeChecker.FunctionSignature.Printf;
         var importedMethods = new List<ReefMethod>()
@@ -163,7 +261,7 @@ public class ILCompile(LoweredProgram program)
             DefinitionId = resultSignature.Id,
             TypeParameterName = "TError"
         };
-        var intRef = GetTypeReference(TypeChecker.InstantiatedClass.Int);
+        var uint16Ref = GetTypeReference(TypeChecker.InstantiatedClass.UInt16);
 
         var resultDataType = new ReefILTypeDefinition()
         {
@@ -177,7 +275,7 @@ public class ILCompile(LoweredProgram program)
                 {
                     DisplayName = "Ok",
                     Fields = [
-                        new ReefField{DisplayName = "_variantIdentifier", Type = intRef},
+                        new ReefField{DisplayName = "_variantIdentifier", Type = uint16Ref},
                         new ReefField{DisplayName = "Item0", Type = valueGeneric}
                     ]
                 },
@@ -185,7 +283,7 @@ public class ILCompile(LoweredProgram program)
                 {
                     DisplayName = "Error",
                     Fields = [
-                        new ReefField{DisplayName = "_variantIdentifier", Type = intRef},
+                        new ReefField{DisplayName = "_variantIdentifier", Type = uint16Ref},
                         new ReefField{DisplayName = "Item0", Type = errorGeneric}
                     ]
                 }
@@ -240,7 +338,7 @@ public class ILCompile(LoweredProgram program)
 
     private ReefMethod CompileMethod(LoweredMethod method)
     {
-        _scopeStack.Push(new Scope());
+        _scopeStack.Push(new Scope() { Method = method });
 
         foreach (var expression in method.Expressions)
         {
@@ -287,7 +385,7 @@ public class ILCompile(LoweredProgram program)
             IsValueType = false, // todo
             StaticFields = [..dataType.StaticFields.Select(field =>
             {
-                _scopeStack.Push(new Scope());
+                _scopeStack.Push(new Scope(){Method = null});
                 CompileExpression(field.StaticInitializer);
                 var scope = _scopeStack.Pop();
                 
@@ -423,7 +521,7 @@ public class ILCompile(LoweredProgram program)
                 break;
             case BoolConstantExpression boolConstantExpression:
             {
-                    StackSize += 8;
+                    TypeStack.Push(GetTypeReference(boolConstantExpression.ResolvedType));
                 Instructions.Add(new LoadBoolConstant(boolConstantExpression.Value));
                 break;
             }
@@ -452,18 +550,19 @@ public class ILCompile(LoweredProgram program)
             {
                 var typeReference = GetTypeReference(createObjectExpression.Type);
                 Instructions.Add(new CreateObject(typeReference));
-                    StackSize += 8;
+                    TypeStack.Push(typeReference);
                 var (variantIndex, variant) = GetDataTypeVariant(typeReference, createObjectExpression.Variant);
                 foreach (var field in variant.Fields)
                 {
                     if (createObjectExpression.VariantFieldInitializers.TryGetValue(field.DisplayName,
                             out var fieldValue))
                     {
-                        StackSize += 8;
+                            TypeStack.Push(typeReference);
                         Instructions.Add(new CopyStack());
                         CompileExpression(fieldValue);
 
-                        StackSize -= 16;
+                        TypeStack.Pop();
+                        TypeStack.Pop();
                         Instructions.Add(new StoreField(variantIndex, field.DisplayName));
                     }
                     else
@@ -478,10 +577,12 @@ public class ILCompile(LoweredProgram program)
             {
                 CompileExpression(fieldAccessExpression.MemberOwner);
                 var typeReference = GetTypeReference(fieldAccessExpression.MemberOwner.ResolvedType);
-                var (variantIndex, _) = GetDataTypeVariant(typeReference, fieldAccessExpression.VariantName);
+                var (variantIndex, variant) = GetDataTypeVariant(typeReference, fieldAccessExpression.VariantName);
 
-                StackSize -= 8; // sizeof pointer
-                StackSize += 8; // assumed size of field
+                var field = variant.Fields.First(x => x.DisplayName == fieldAccessExpression.FieldName);
+
+                TypeStack.Pop();
+                    TypeStack.Push(field.Type);
                 Instructions.Add(new LoadField(variantIndex, fieldAccessExpression.FieldName));
                 break;
             }
@@ -496,13 +597,14 @@ public class ILCompile(LoweredProgram program)
                     type,
                     fieldAssignmentExpression.VariantName);
 
-                StackSize -= 16;
+                    TypeStack.Pop();
+                    TypeStack.Pop();
                 Instructions.Add(new StoreField(variantIndex, fieldAssignmentExpression.FieldName));
                 break;
             }
             case FunctionReferenceConstantExpression functionReferenceConstantExpression:
                 var functionReference = functionReferenceConstantExpression.FunctionReference;
-                StackSize += 8;
+                TypeStack.Push(GetTypeReference(functionReferenceConstantExpression.ResolvedType));
                 Instructions.Add(new LoadFunction(new FunctionDefinitionReference
                 {
                     DefinitionId = functionReference.DefinitionId,
@@ -510,97 +612,759 @@ public class ILCompile(LoweredProgram program)
                     TypeArguments = [..functionReference.TypeArguments.Select(GetTypeReference)]
                 }));
                 break;
-            case IntConstantExpression intConstantExpression:
-                StackSize += 8;
-                Instructions.Add(new LoadIntConstant(intConstantExpression.Value));
+            case Int64ConstantExpression intConstantExpression:
+                TypeStack.Push(GetTypeReference(intConstantExpression.ResolvedType));
+                Instructions.Add(new LoadInt64Constant(intConstantExpression.Value));
                 break;
-            case IntDivideExpression intDivideExpression:
+            case Int32ConstantExpression intConstantExpression:
+                TypeStack.Push(GetTypeReference(intConstantExpression.ResolvedType));
+                Instructions.Add(new LoadInt32Constant(intConstantExpression.Value));
+                break;
+            case Int16ConstantExpression intConstantExpression:
+                TypeStack.Push(GetTypeReference(intConstantExpression.ResolvedType));
+                Instructions.Add(new LoadInt16Constant(intConstantExpression.Value));
+                break;
+            case Int8ConstantExpression intConstantExpression:
+                TypeStack.Push(GetTypeReference(intConstantExpression.ResolvedType));
+                Instructions.Add(new LoadInt8Constant(intConstantExpression.Value));
+                break;
+            case UInt64ConstantExpression intConstantExpression:
+                TypeStack.Push(GetTypeReference(intConstantExpression.ResolvedType));
+                Instructions.Add(new LoadUInt64Constant(intConstantExpression.Value));
+                break;
+            case UInt32ConstantExpression intConstantExpression:
+                TypeStack.Push(GetTypeReference(intConstantExpression.ResolvedType));
+                Instructions.Add(new LoadUInt32Constant(intConstantExpression.Value));
+                break;
+            case UInt16ConstantExpression intConstantExpression:
+                TypeStack.Push(GetTypeReference(intConstantExpression.ResolvedType));
+                Instructions.Add(new LoadUInt16Constant(intConstantExpression.Value));
+                break;
+            case UInt8ConstantExpression intConstantExpression:
+                TypeStack.Push(GetTypeReference(intConstantExpression.ResolvedType));
+                Instructions.Add(new LoadUInt8Constant(intConstantExpression.Value));
+                break;
+            case Int64DivideExpression intDivideExpression:
             {
                 CompileExpression(intDivideExpression.Left);
                 CompileExpression(intDivideExpression.Right);
 
-                StackSize -= 8;
-                Instructions.Add(new IntDivide());
+                TypeStack.Pop();
+                TypeStack.Pop();
+                TypeStack.Push(GetTypeReference(intDivideExpression.ResolvedType));
+                Instructions.Add(new Int64Divide());
                 break;
             }
-            case IntNotEqualsExpression intNotEqualsExpression:
+            case Int32DivideExpression intDivideExpression:
+            {
+                CompileExpression(intDivideExpression.Left);
+                CompileExpression(intDivideExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                TypeStack.Push(GetTypeReference(intDivideExpression.ResolvedType));
+                Instructions.Add(new Int32Divide());
+                break;
+            }
+            case Int16DivideExpression intDivideExpression:
+            {
+                CompileExpression(intDivideExpression.Left);
+                CompileExpression(intDivideExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                TypeStack.Push(GetTypeReference(intDivideExpression.ResolvedType));
+                Instructions.Add(new Int16Divide());
+                break;
+            }
+            case Int8DivideExpression intDivideExpression:
+            {
+                CompileExpression(intDivideExpression.Left);
+                CompileExpression(intDivideExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                TypeStack.Push(GetTypeReference(intDivideExpression.ResolvedType));
+                Instructions.Add(new Int8Divide());
+                break;
+            }
+            case UInt64DivideExpression intDivideExpression:
+            {
+                CompileExpression(intDivideExpression.Left);
+                CompileExpression(intDivideExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                TypeStack.Push(GetTypeReference(intDivideExpression.ResolvedType));
+                Instructions.Add(new UInt64Divide());
+                break;
+            }
+            case UInt32DivideExpression intDivideExpression:
+            {
+                CompileExpression(intDivideExpression.Left);
+                CompileExpression(intDivideExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                TypeStack.Push(GetTypeReference(intDivideExpression.ResolvedType));
+                Instructions.Add(new UInt32Divide());
+                break;
+            }
+            case UInt16DivideExpression intDivideExpression:
+            {
+                CompileExpression(intDivideExpression.Left);
+                CompileExpression(intDivideExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                TypeStack.Push(GetTypeReference(intDivideExpression.ResolvedType));
+                Instructions.Add(new UInt16Divide());
+                break;
+            }
+            case UInt8DivideExpression intDivideExpression:
+            {
+                CompileExpression(intDivideExpression.Left);
+                CompileExpression(intDivideExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                TypeStack.Push(GetTypeReference(intDivideExpression.ResolvedType));
+                Instructions.Add(new UInt8Divide());
+                break;
+            }
+            case Int64NotEqualsExpression intNotEqualsExpression:
             {
                 CompileExpression(intNotEqualsExpression.Left);
                 CompileExpression(intNotEqualsExpression.Right);
 
-                    StackSize -= 8;
-                Instructions.Add(new CompareIntNotEqual());
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intNotEqualsExpression.ResolvedType));
+                Instructions.Add(new CompareInt64NotEqual());
                 break;
             }
-            case IntEqualsExpression intEqualsExpression:
+            case Int32NotEqualsExpression intNotEqualsExpression:
+            {
+                CompileExpression(intNotEqualsExpression.Left);
+                CompileExpression(intNotEqualsExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intNotEqualsExpression.ResolvedType));
+                Instructions.Add(new CompareInt32NotEqual());
+                break;
+            }
+            case Int16NotEqualsExpression intNotEqualsExpression:
+            {
+                CompileExpression(intNotEqualsExpression.Left);
+                CompileExpression(intNotEqualsExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intNotEqualsExpression.ResolvedType));
+                Instructions.Add(new CompareInt16NotEqual());
+                break;
+            }
+            case Int8NotEqualsExpression intNotEqualsExpression:
+            {
+                CompileExpression(intNotEqualsExpression.Left);
+                CompileExpression(intNotEqualsExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intNotEqualsExpression.ResolvedType));
+                Instructions.Add(new CompareInt8NotEqual());
+                break;
+            }
+            case UInt64NotEqualsExpression intNotEqualsExpression:
+            {
+                CompileExpression(intNotEqualsExpression.Left);
+                CompileExpression(intNotEqualsExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intNotEqualsExpression.ResolvedType));
+                Instructions.Add(new CompareUInt64NotEqual());
+                break;
+            }
+            case UInt32NotEqualsExpression intNotEqualsExpression:
+            {
+                CompileExpression(intNotEqualsExpression.Left);
+                CompileExpression(intNotEqualsExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intNotEqualsExpression.ResolvedType));
+                Instructions.Add(new CompareUInt32NotEqual());
+                break;
+            }
+            case UInt16NotEqualsExpression intNotEqualsExpression:
+            {
+                CompileExpression(intNotEqualsExpression.Left);
+                CompileExpression(intNotEqualsExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intNotEqualsExpression.ResolvedType));
+                Instructions.Add(new CompareUInt16NotEqual());
+                break;
+            }
+            case UInt8NotEqualsExpression intNotEqualsExpression:
+            {
+                CompileExpression(intNotEqualsExpression.Left);
+                CompileExpression(intNotEqualsExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intNotEqualsExpression.ResolvedType));
+                Instructions.Add(new CompareUInt8NotEqual());
+                break;
+            }
+            case Int64EqualsExpression intEqualsExpression:
             {
                 CompileExpression(intEqualsExpression.Left);
                 CompileExpression(intEqualsExpression.Right);
 
-                    StackSize -= 8;
-                Instructions.Add(new CompareIntEqual());
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intEqualsExpression.ResolvedType));
+                Instructions.Add(new CompareInt64Equal());
                 break;
             }
-            case IntGreaterThanExpression intGreaterThanExpression:
+            case Int32EqualsExpression intEqualsExpression:
+            {
+                CompileExpression(intEqualsExpression.Left);
+                CompileExpression(intEqualsExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intEqualsExpression.ResolvedType));
+                Instructions.Add(new CompareInt32Equal());
+                break;
+            }
+            case Int16EqualsExpression intEqualsExpression:
+            {
+                CompileExpression(intEqualsExpression.Left);
+                CompileExpression(intEqualsExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intEqualsExpression.ResolvedType));
+                Instructions.Add(new CompareInt16Equal());
+                break;
+            }
+            case Int8EqualsExpression intEqualsExpression:
+            {
+                CompileExpression(intEqualsExpression.Left);
+                CompileExpression(intEqualsExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intEqualsExpression.ResolvedType));
+                Instructions.Add(new CompareInt8Equal());
+                break;
+            }
+            case UInt64EqualsExpression intEqualsExpression:
+            {
+                CompileExpression(intEqualsExpression.Left);
+                CompileExpression(intEqualsExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intEqualsExpression.ResolvedType));
+                Instructions.Add(new CompareUInt64Equal());
+                break;
+            }
+            case UInt32EqualsExpression intEqualsExpression:
+            {
+                CompileExpression(intEqualsExpression.Left);
+                CompileExpression(intEqualsExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intEqualsExpression.ResolvedType));
+                Instructions.Add(new CompareUInt32Equal());
+                break;
+            }
+            case UInt16EqualsExpression intEqualsExpression:
+            {
+                CompileExpression(intEqualsExpression.Left);
+                CompileExpression(intEqualsExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intEqualsExpression.ResolvedType));
+                Instructions.Add(new CompareUInt16Equal());
+                break;
+            }
+            case UInt8EqualsExpression intEqualsExpression:
+            {
+                CompileExpression(intEqualsExpression.Left);
+                CompileExpression(intEqualsExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intEqualsExpression.ResolvedType));
+                Instructions.Add(new CompareUInt8Equal());
+                break;
+            }
+            case Int64GreaterThanExpression intGreaterThanExpression:
             {
                 CompileExpression(intGreaterThanExpression.Left);
                 CompileExpression(intGreaterThanExpression.Right);
 
-                    StackSize -= 8;
-                Instructions.Add(new CompareIntGreaterThan());
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intGreaterThanExpression.ResolvedType));
+                Instructions.Add(new CompareInt64GreaterThan());
                 break;
             }
-            case IntLessThanExpression intLessThanExpression:
+            case Int32GreaterThanExpression intGreaterThanExpression:
+            {
+                CompileExpression(intGreaterThanExpression.Left);
+                CompileExpression(intGreaterThanExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intGreaterThanExpression.ResolvedType));
+                Instructions.Add(new CompareInt32GreaterThan());
+                break;
+            }
+            case Int16GreaterThanExpression intGreaterThanExpression:
+            {
+                CompileExpression(intGreaterThanExpression.Left);
+                CompileExpression(intGreaterThanExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intGreaterThanExpression.ResolvedType));
+                Instructions.Add(new CompareInt16GreaterThan());
+                break;
+            }
+            case Int8GreaterThanExpression intGreaterThanExpression:
+            {
+                CompileExpression(intGreaterThanExpression.Left);
+                CompileExpression(intGreaterThanExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intGreaterThanExpression.ResolvedType));
+                Instructions.Add(new CompareInt8GreaterThan());
+                break;
+            }
+            case UInt64GreaterThanExpression intGreaterThanExpression:
+            {
+                CompileExpression(intGreaterThanExpression.Left);
+                CompileExpression(intGreaterThanExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intGreaterThanExpression.ResolvedType));
+                Instructions.Add(new CompareUInt64GreaterThan());
+                break;
+            }
+            case UInt32GreaterThanExpression intGreaterThanExpression:
+            {
+                CompileExpression(intGreaterThanExpression.Left);
+                CompileExpression(intGreaterThanExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intGreaterThanExpression.ResolvedType));
+                Instructions.Add(new CompareUInt32GreaterThan());
+                break;
+            }
+            case UInt16GreaterThanExpression intGreaterThanExpression:
+            {
+                CompileExpression(intGreaterThanExpression.Left);
+                CompileExpression(intGreaterThanExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intGreaterThanExpression.ResolvedType));
+                Instructions.Add(new CompareUInt16GreaterThan());
+                break;
+            }
+            case UInt8GreaterThanExpression intGreaterThanExpression:
+            {
+                CompileExpression(intGreaterThanExpression.Left);
+                CompileExpression(intGreaterThanExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intGreaterThanExpression.ResolvedType));
+                Instructions.Add(new CompareUInt8GreaterThan());
+                break;
+            }
+            case Int64LessThanExpression intLessThanExpression:
             {
                 CompileExpression(intLessThanExpression.Left);
                 CompileExpression(intLessThanExpression.Right);
 
-                    StackSize -= 8;
-                Instructions.Add(new CompareIntLessThan());
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intLessThanExpression.ResolvedType));
+                Instructions.Add(new CompareInt64LessThan());
                 break;
             }
-            case IntMinusExpression intMinusExpression:
+            case Int32LessThanExpression intLessThanExpression:
+            {
+                CompileExpression(intLessThanExpression.Left);
+                CompileExpression(intLessThanExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intLessThanExpression.ResolvedType));
+                Instructions.Add(new CompareInt32LessThan());
+                break;
+            }
+            case Int16LessThanExpression intLessThanExpression:
+            {
+                CompileExpression(intLessThanExpression.Left);
+                CompileExpression(intLessThanExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intLessThanExpression.ResolvedType));
+                Instructions.Add(new CompareInt16LessThan());
+                break;
+            }
+            case Int8LessThanExpression intLessThanExpression:
+            {
+                CompileExpression(intLessThanExpression.Left);
+                CompileExpression(intLessThanExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intLessThanExpression.ResolvedType));
+                Instructions.Add(new CompareInt8LessThan());
+                break;
+            }
+            case UInt64LessThanExpression intLessThanExpression:
+            {
+                CompileExpression(intLessThanExpression.Left);
+                CompileExpression(intLessThanExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intLessThanExpression.ResolvedType));
+                Instructions.Add(new CompareUInt64LessThan());
+                break;
+            }
+            case UInt32LessThanExpression intLessThanExpression:
+            {
+                CompileExpression(intLessThanExpression.Left);
+                CompileExpression(intLessThanExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intLessThanExpression.ResolvedType));
+                Instructions.Add(new CompareUInt32LessThan());
+                break;
+            }
+            case UInt16LessThanExpression intLessThanExpression:
+            {
+                CompileExpression(intLessThanExpression.Left);
+                CompileExpression(intLessThanExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intLessThanExpression.ResolvedType));
+                Instructions.Add(new CompareUInt16LessThan());
+                break;
+            }
+            case UInt8LessThanExpression intLessThanExpression:
+            {
+                CompileExpression(intLessThanExpression.Left);
+                CompileExpression(intLessThanExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intLessThanExpression.ResolvedType));
+                Instructions.Add(new CompareUInt8LessThan());
+                break;
+            }
+            case Int64MinusExpression intMinusExpression:
             {
                 CompileExpression(intMinusExpression.Left);
                 CompileExpression(intMinusExpression.Right);
 
-                    StackSize -= 8;
-                Instructions.Add(new IntMinus());
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intMinusExpression.ResolvedType));
+                Instructions.Add(new Int64Minus());
                 break;
             }
-            case IntMultiplyExpression intMultiplyExpression:
+            case Int32MinusExpression intMinusExpression:
+            {
+                CompileExpression(intMinusExpression.Left);
+                CompileExpression(intMinusExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intMinusExpression.ResolvedType));
+                Instructions.Add(new Int32Minus());
+                break;
+            }
+            case Int16MinusExpression intMinusExpression:
+            {
+                CompileExpression(intMinusExpression.Left);
+                CompileExpression(intMinusExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intMinusExpression.ResolvedType));
+                Instructions.Add(new Int16Minus());
+                break;
+            }
+            case Int8MinusExpression intMinusExpression:
+            {
+                CompileExpression(intMinusExpression.Left);
+                CompileExpression(intMinusExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intMinusExpression.ResolvedType));
+                Instructions.Add(new Int8Minus());
+                break;
+            }
+            case UInt64MinusExpression intMinusExpression:
+            {
+                CompileExpression(intMinusExpression.Left);
+                CompileExpression(intMinusExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intMinusExpression.ResolvedType));
+                Instructions.Add(new Int64Minus());
+                break;
+            }
+            case UInt32MinusExpression intMinusExpression:
+            {
+                CompileExpression(intMinusExpression.Left);
+                CompileExpression(intMinusExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intMinusExpression.ResolvedType));
+                Instructions.Add(new Int32Minus());
+                break;
+            }
+            case UInt16MinusExpression intMinusExpression:
+            {
+                CompileExpression(intMinusExpression.Left);
+                CompileExpression(intMinusExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intMinusExpression.ResolvedType));
+                Instructions.Add(new Int16Minus());
+                break;
+            }
+            case UInt8MinusExpression intMinusExpression:
+            {
+                CompileExpression(intMinusExpression.Left);
+                CompileExpression(intMinusExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intMinusExpression.ResolvedType));
+                Instructions.Add(new Int8Minus());
+                break;
+            }
+            case Int64MultiplyExpression intMultiplyExpression:
             {
                 CompileExpression(intMultiplyExpression.Left);
                 CompileExpression(intMultiplyExpression.Right);
 
-                    StackSize -= 8;
-                Instructions.Add(new IntMultiply());
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intMultiplyExpression.ResolvedType));
+                Instructions.Add(new Int64Multiply());
                 break;
             }
-            case IntPlusExpression intPlusExpression:
+            case Int32MultiplyExpression intMultiplyExpression:
+            {
+                CompileExpression(intMultiplyExpression.Left);
+                CompileExpression(intMultiplyExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intMultiplyExpression.ResolvedType));
+                Instructions.Add(new Int32Multiply());
+                break;
+            }
+            case Int16MultiplyExpression intMultiplyExpression:
+            {
+                CompileExpression(intMultiplyExpression.Left);
+                CompileExpression(intMultiplyExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intMultiplyExpression.ResolvedType));
+                Instructions.Add(new Int16Multiply());
+                break;
+            }
+            case Int8MultiplyExpression intMultiplyExpression:
+            {
+                CompileExpression(intMultiplyExpression.Left);
+                CompileExpression(intMultiplyExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intMultiplyExpression.ResolvedType));
+                Instructions.Add(new Int8Multiply());
+                break;
+            }
+            case UInt64MultiplyExpression intMultiplyExpression:
+            {
+                CompileExpression(intMultiplyExpression.Left);
+                CompileExpression(intMultiplyExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intMultiplyExpression.ResolvedType));
+                Instructions.Add(new Int64Multiply());
+                break;
+            }
+            case UInt32MultiplyExpression intMultiplyExpression:
+            {
+                CompileExpression(intMultiplyExpression.Left);
+                CompileExpression(intMultiplyExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intMultiplyExpression.ResolvedType));
+                Instructions.Add(new Int32Multiply());
+                break;
+            }
+            case UInt16MultiplyExpression intMultiplyExpression:
+            {
+                CompileExpression(intMultiplyExpression.Left);
+                CompileExpression(intMultiplyExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intMultiplyExpression.ResolvedType));
+                Instructions.Add(new Int16Multiply());
+                break;
+            }
+            case UInt8MultiplyExpression intMultiplyExpression:
+            {
+                CompileExpression(intMultiplyExpression.Left);
+                CompileExpression(intMultiplyExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intMultiplyExpression.ResolvedType));
+                Instructions.Add(new Int8Multiply());
+                break;
+            }
+            case Int64PlusExpression intPlusExpression:
             {
                 CompileExpression(intPlusExpression.Left);
                 CompileExpression(intPlusExpression.Right);
 
-                    StackSize -= 8;
-                Instructions.Add(new IntPlus());
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intPlusExpression.ResolvedType));
+                Instructions.Add(new Int64Plus());
+                break;
+            }
+            case Int32PlusExpression intPlusExpression:
+            {
+                CompileExpression(intPlusExpression.Left);
+                CompileExpression(intPlusExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intPlusExpression.ResolvedType));
+                Instructions.Add(new Int32Plus());
+                break;
+            }
+            case Int16PlusExpression intPlusExpression:
+            {
+                CompileExpression(intPlusExpression.Left);
+                CompileExpression(intPlusExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intPlusExpression.ResolvedType));
+                Instructions.Add(new Int16Plus());
+                break;
+            }
+            case Int8PlusExpression intPlusExpression:
+            {
+                CompileExpression(intPlusExpression.Left);
+                CompileExpression(intPlusExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intPlusExpression.ResolvedType));
+                Instructions.Add(new Int8Plus());
+                break;
+            }
+            case UInt64PlusExpression intPlusExpression:
+            {
+                CompileExpression(intPlusExpression.Left);
+                CompileExpression(intPlusExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intPlusExpression.ResolvedType));
+                Instructions.Add(new Int64Plus());
+                break;
+            }
+            case UInt32PlusExpression intPlusExpression:
+            {
+                CompileExpression(intPlusExpression.Left);
+                CompileExpression(intPlusExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intPlusExpression.ResolvedType));
+                Instructions.Add(new Int32Plus());
+                break;
+            }
+            case UInt16PlusExpression intPlusExpression:
+            {
+                CompileExpression(intPlusExpression.Left);
+                CompileExpression(intPlusExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intPlusExpression.ResolvedType));
+                Instructions.Add(new Int16Plus());
+                break;
+            }
+            case UInt8PlusExpression intPlusExpression:
+            {
+                CompileExpression(intPlusExpression.Left);
+                CompileExpression(intPlusExpression.Right);
+
+                    TypeStack.Pop();
+                    TypeStack.Pop();
+                    TypeStack.Push(GetTypeReference(intPlusExpression.ResolvedType));
+                Instructions.Add(new Int8Plus());
                 break;
             }
             case LoadArgumentExpression loadArgumentExpression:
-                StackSize += 8;
+                var argumentType = _scopeStack.Peek().Method.NotNull().Parameters[(int)loadArgumentExpression.ArgumentIndex];
+                TypeStack.Push(GetTypeReference(argumentType));
                 Instructions.Add(new LoadArgument(loadArgumentExpression.ArgumentIndex));
                 return;
             case LocalAssignmentExpression localAssignmentExpression:
             {
                 CompileExpression(localAssignmentExpression.Value);
+                    TypeStack.Pop();
 
-                    StackSize -= 8;
                 Instructions.Add(new StoreLocal(localAssignmentExpression.LocalName));
                 break;
             }
             case LocalVariableAccessor localVariableAccessor:
             {
-                    StackSize += 8;
+                var localType = _scopeStack.Peek().Method.NotNull().Locals.First(x => x.Name == localVariableAccessor.LocalName).Type;
+                    TypeStack.Push(GetTypeReference(localType));
                 Instructions.Add(new LoadLocal(localVariableAccessor.LocalName));
                 break;
             }
@@ -616,12 +1380,34 @@ public class ILCompile(LoweredProgram program)
                     Name = methodCallExpression.FunctionReference.Name,
                     TypeArguments = [..methodCallExpression.FunctionReference.TypeArguments.Select(GetTypeReference)]
                 }));
-                    StackSize -= (uint)(methodCallExpression.Arguments.Count * 8);
-                Instructions.Add(new Call((uint)methodCallExpression.Arguments.Count, StackSize, methodCallExpression.ValueUseful));
+                    for (var i = 0; i < methodCallExpression.Arguments.Count; i++)
+                    {
+                        TypeStack.Pop();
+                    }
+                    var copyStack = new Stack<IReefTypeReference>();
+                    foreach (var type in TypeStack)
+                    {
+                        copyStack.Push(type);
+                    }
+                Instructions.Add(new Call((uint)methodCallExpression.Arguments.Count, copyStack, methodCallExpression.ValueUseful));
 
                 if (methodCallExpression.ValueUseful)
                 {
-                    StackSize += 8;
+                        var importedMethod = _importedModules.SelectMany(x => x.Methods).FirstOrDefault(x => x.Id == methodCallExpression.FunctionReference.DefinitionId);
+
+                        IReefTypeReference returnType;
+
+                        if (importedMethod is not null)
+                        {
+                            returnType = importedMethod.ReturnType;
+                        }
+                        else
+                        {
+                            var method = _program.Methods.First(x => x.Id == methodCallExpression.FunctionReference.DefinitionId);
+                            returnType = GetTypeReference(method.ReturnType);
+                        }
+
+                        TypeStack.Push(returnType);
                 }
 
                 break;
@@ -633,7 +1419,10 @@ public class ILCompile(LoweredProgram program)
             case StaticFieldAccessExpression staticFieldAccessExpression:
             {
                 var typeReference = GetTypeReference(staticFieldAccessExpression.OwnerType);
-                    StackSize += 8;
+
+                var field = GetDataType(typeReference.DefinitionId).StaticFields.First(x => x.DisplayName == staticFieldAccessExpression.FieldName);
+
+                    TypeStack.Push(field.Type);
                 Instructions.Add(new LoadStaticField(typeReference, staticFieldAccessExpression.FieldName));
                 break;
             }
@@ -641,13 +1430,13 @@ public class ILCompile(LoweredProgram program)
             {
                 CompileExpression(staticFieldAssignmentExpression.FieldValue);
                 var typeReference = GetTypeReference(staticFieldAssignmentExpression.OwnerType);
-                    StackSize -= 8;
+                    TypeStack.Pop();
                 Instructions.Add(new StoreStaticField(typeReference, staticFieldAssignmentExpression.FieldName));
                 break;
             }
             case StringConstantExpression stringConstantExpression:
             {
-                    StackSize += 8;
+                    TypeStack.Push(GetTypeReference(stringConstantExpression.ResolvedType));
                 Instructions.Add(new LoadStringConstant(stringConstantExpression.Value));
                 break;
             }
@@ -664,7 +1453,7 @@ public class ILCompile(LoweredProgram program)
                 } while (!reservedLabels.Add(otherwiseLabel));
 
                 var branches = new Dictionary<int, string>();
-                    StackSize -= 8;
+                TypeStack.Pop();
                 Instructions.Add(new SwitchInt(branches, otherwiseLabel));
 
                 var afterLabel = $"switchInt_{switchIntIndex}_after";
@@ -678,8 +1467,14 @@ public class ILCompile(LoweredProgram program)
                     branches[intValue] = label;
                 }
 
-                uint? expectedStackSizeAfter = null;
-                var beginningStackSize = StackSize;
+                Stack<IReefTypeReference>? expectedStackSizeAfter = null;
+                    var beginningStack = new Stack<IReefTypeReference>();
+                var copyStack = new Stack<IReefTypeReference>();
+                    foreach (var size in TypeStack)
+                    {
+                        copyStack.Push(size);
+                        beginningStack.Push(size);
+                    }
 
                 var currentScope = _scopeStack.Peek();
 
@@ -689,14 +1484,15 @@ public class ILCompile(LoweredProgram program)
                     {
                         InstructionList = currentScope.InstructionList,
                         ReservedLabels = currentScope.ReservedLabels,
-                        StackSize = beginningStackSize
+                        Method = currentScope.Method,
+                        TypeStack = copyStack,
                     });
 
                     Instructions.Labels.Add(new InstructionLabel(otherwiseLabel, (uint)Instructions.Instructions.Count));
                     CompileExpression(switchIntExpression.Otherwise);
                     if (!switchIntExpression.Otherwise.Diverges)
                     {
-                        expectedStackSizeAfter = StackSize;
+                        expectedStackSizeAfter = copyStack;
                         Instructions.Add(new Branch(afterLabel));
                     }
 
@@ -705,14 +1501,22 @@ public class ILCompile(LoweredProgram program)
 
                 var lastBranch = switchIntExpression.Results.Keys.Max();
 
+
                 
                 foreach (var (intValue, branchExpression) in switchIntExpression.Results.OrderBy(x => x.Key))
                 {
+                    copyStack = [];
+                    foreach (var size in TypeStack)
+                    {
+                        copyStack.Push(size);
+                    }
+
                     _scopeStack.Push(new Scope()
                     {
                         InstructionList = currentScope.InstructionList,
                         ReservedLabels = currentScope.ReservedLabels,
-                        StackSize = beginningStackSize
+                        TypeStack = copyStack,
+                        Method = currentScope.Method
                     });
                     Instructions.Labels.Add(new InstructionLabel(branches[intValue], (uint)Instructions.Instructions.Count));
                     CompileExpression(branchExpression);
@@ -723,12 +1527,25 @@ public class ILCompile(LoweredProgram program)
 
                     if (!branchExpression.Diverges)
                     {
-                        expectedStackSizeAfter ??= StackSize;
-
-                        if (expectedStackSizeAfter.Value != StackSize)
-                        {
-                            throw new InvalidOperationException("Expected resulting stack size to be equivalent");
-                        }
+                            if (expectedStackSizeAfter is null)
+                            {
+                                expectedStackSizeAfter = [];
+                                foreach (var type in copyStack)
+                                {
+                                    expectedStackSizeAfter.Push(type);
+                                }
+                            }
+                            else
+                            {
+                                if (expectedStackSizeAfter.Count != copyStack.Count)
+                                {
+                                    throw new InvalidOperationException("Expected resulting type stack to be equivalent");
+                                }
+                                if (expectedStackSizeAfter.Zip(copyStack).Any(x => !AreTypesEquivalent(x.First, x.Second)))
+                                {
+                                    throw new InvalidOperationException("Expected resulting type stack to be equivalent");
+                                }
+                            }
                     }
 
                     _scopeStack.Pop();
@@ -739,7 +1556,7 @@ public class ILCompile(LoweredProgram program)
                     Instructions.Labels.Add(new InstructionLabel(afterLabel, (uint)Instructions.Instructions.Count));
                 }
 
-                StackSize = expectedStackSizeAfter ?? beginningStackSize;
+                currentScope.TypeStack = expectedStackSizeAfter ?? beginningStack;
                 break;
             }
             case UnitConstantExpression:
@@ -750,7 +1567,7 @@ public class ILCompile(LoweredProgram program)
                 throw new InvalidOperationException("Should not ever have to IL Compile unreachable");
             case VariableDeclarationAndAssignmentExpression variableDeclarationAndAssignmentExpression:
                 CompileExpression(variableDeclarationAndAssignmentExpression.Value);
-                StackSize -= 8;
+                TypeStack.Pop();
                 Instructions.Add(new StoreLocal(variableDeclarationAndAssignmentExpression.LocalName));
                 break;
             case VariableDeclarationExpression:
@@ -763,6 +1580,38 @@ public class ILCompile(LoweredProgram program)
         }
         
         // todo: push units and pop unneeded values
+    }
+
+    private bool AreTypesEquivalent(IReefTypeReference expected, IReefTypeReference actual)
+    {
+        switch (expected, actual)
+        {
+            case (ConcreteReefTypeReference expectedConcrete, ConcreteReefTypeReference actualConcrete):
+                {
+                    if (expectedConcrete.DefinitionId != actualConcrete.DefinitionId)
+                    {
+                        return false;
+                    }
+                    if (expectedConcrete.TypeArguments.Count != actualConcrete.TypeArguments.Count)
+                    {
+                        return false;
+                    }
+
+                    return expectedConcrete.TypeArguments.Count == 0
+                        || expectedConcrete.TypeArguments.Zip(actualConcrete.TypeArguments).All(x => AreTypesEquivalent(x.First, x.Second));
+                }
+            case (GenericReefTypeReference expectedGeneric, GenericReefTypeReference actualGeneric):
+                {
+                    return expectedGeneric.DefinitionId == actualGeneric.DefinitionId
+                        && expectedGeneric.TypeParameterName == actualGeneric.TypeParameterName;
+                }
+            case (FunctionPointerReefType expectedFunctionPointer, FunctionPointerReefType actualFunctionPointer):
+                {
+                    return true; // maybe?
+                }
+            default:
+                return false;
+        }
     }
 
     private (uint variantIndex, ReefVariant variant) GetDataTypeVariant(IReefTypeReference typeReference, string variantName)

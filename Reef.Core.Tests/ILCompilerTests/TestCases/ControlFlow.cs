@@ -25,6 +25,7 @@ public class ControlFlow
         var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
             expectedModule,
+            opts => opts.Excluding(x => x.Type == typeof(Stack<IReefTypeReference>)),
             description);
     }
 
@@ -34,7 +35,7 @@ public class ControlFlow
     public void SingleTest()
     {
         var source = """
-                fn SomeFn(param: int) {
+                fn SomeFn(param: i64) {
                 }
                 var a = SomeFn;
                 a(1);
@@ -43,23 +44,23 @@ public class ControlFlow
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
                             [LoadUnit(), Return()],
-                            parameters: [IntType]),
+                            parameters: [Int64Type]),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference(DefId.FunctionObject(1), "Function`2", [IntType, UnitType])),
+                                new CreateObject(ConcreteTypeReference(DefId.FunctionObject(1), "Function`2", [Int64Type, UnitType])),
                                 new CopyStack(),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn")),
                                 new StoreField(0, "FunctionReference"),
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
-                                new LoadIntConstant(1),
-                                new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(1), "Function`2__Call", [IntType, UnitType])),
-                                new Call(2, 0, false),
+                                new LoadInt64Constant(1),
+                                new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(1), "Function`2__Call", [Int64Type, UnitType])),
+                                new Call(2, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference(DefId.FunctionObject(1), "Function`2", [IntType, UnitType]))
+                                Local("a", ConcreteTypeReference(DefId.FunctionObject(1), "Function`2", [Int64Type, UnitType]))
                             ])
                     ]);
         var tokens = Tokenizer.Tokenize(source);
@@ -72,7 +73,8 @@ public class ControlFlow
 
         var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
-            expectedModule);
+            expectedModule,
+            opts => opts.Excluding(x => x.Type == typeof(Stack<IReefTypeReference>)));
     }
     
     public static TheoryData<string, string, ReefILModule> TestCases()
@@ -82,7 +84,7 @@ public class ControlFlow
             {
                 "Fallout operator with result",
                 """
-                static fn SomeFn(): result::<int, string> {
+                static fn SomeFn(): result::<i64, string> {
                     var a = ok(1)?;
                     return ok(1);
                 }
@@ -91,9 +93,9 @@ public class ControlFlow
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
                             [
-                                new LoadIntConstant(1),
-                                new LoadFunction(FunctionDefinitionReference(DefId.Result_Create_Ok, "result__Create__Ok", [IntType, StringType])),
-                                new Call(1, 0, true),
+                                new LoadInt64Constant(1),
+                                new LoadFunction(FunctionDefinitionReference(DefId.Result_Create_Ok, "result__Create__Ok", [Int64Type, StringType])),
+                                new Call(1, [], true),
                                 new StoreLocal("Local1"),
                                 new LoadLocal("Local1"),
                                 new LoadField(0, "_variantIdentifier"),
@@ -101,27 +103,27 @@ public class ControlFlow
                                 // switchInt_0_otherwise
                                 new LoadLocal("Local1"),
                                 new LoadField(1, "Item0"),
-                                new LoadFunction(FunctionDefinitionReference(DefId.Result_Create_Error, "result__Create__Error", [IntType, StringType])),
-                                new Call(1, 0, true),
+                                new LoadFunction(FunctionDefinitionReference(DefId.Result_Create_Error, "result__Create__Error", [Int64Type, StringType])),
+                                new Call(1, [], true),
                                 new Return(),
                                 // switchInt_0_branch_0
                                 new LoadLocal("Local1"),
                                 new LoadField(0, "Item0"),
                                 new StoreLocal("a"),
-                                new LoadIntConstant(1),
-                                new LoadFunction(FunctionDefinitionReference(DefId.Result_Create_Ok, "result__Create__Ok", [IntType, StringType])),
-                                new Call(1, 0, true),
+                                new LoadInt64Constant(1),
+                                new LoadFunction(FunctionDefinitionReference(DefId.Result_Create_Ok, "result__Create__Ok", [Int64Type, StringType])),
+                                new Call(1, [], true),
                                 new Return()
                             ],
                             locals: [
-                                Local("a", IntType),
-                                Local("Local1", ConcreteTypeReference(DefId.Result, "result", [IntType, StringType]))
+                                Local("a", Int64Type),
+                                Local("Local1", ConcreteTypeReference(DefId.Result, "result", [Int64Type, StringType]))
                             ],
                             labels: [
                                 new InstructionLabel("switchInt_0_otherwise", 7),
                                 new InstructionLabel("switchInt_0_branch_0", 12),
                             ],
-                            returnType: ConcreteTypeReference(DefId.Result, "result", [IntType, StringType]))
+                            returnType: ConcreteTypeReference(DefId.Result, "result", [Int64Type, StringType]))
                     ])
             },
             {
@@ -168,7 +170,7 @@ public class ControlFlow
                                         {0, "switchInt_0_branch_0"}
                                     }, "switchInt_0_otherwise"),
                                 // switchInt_0_otherwise
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_0_after"),
                                 // switchInt_0_branch_0
@@ -176,7 +178,7 @@ public class ControlFlow
                                 new LoadUnitConstant(),
                                 Return()
                             ],
-                            locals: [Local("a", IntType)],
+                            locals: [Local("a", Int64Type)],
                             labels: [
                                 new InstructionLabel("switchInt_0_otherwise", 3),
                                 new InstructionLabel("switchInt_0_branch_0", 6),
@@ -205,17 +207,17 @@ public class ControlFlow
                                         {0, "switchInt_0_branch_0"}
                                     }, "switchInt_0_otherwise"),
                                 // switchInt_0_otherwise
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_0_after"),
                                 // switchInt_0_branch_0
                                 // switchInt_0_after
-                                new LoadIntConstant(2),
+                                new LoadInt64Constant(2),
                                 new StoreLocal("a"),
                                 new LoadUnitConstant(),
                                 Return()
                             ],
-                            locals: [Local("a", IntType)],
+                            locals: [Local("a", Int64Type)],
                             labels: [
                                 new InstructionLabel("switchInt_0_otherwise", 3),
                                 new InstructionLabel("switchInt_0_branch_0", 6),
@@ -245,17 +247,17 @@ public class ControlFlow
                                         {0, "switchInt_0_branch_0"}
                                     }, "switchInt_0_otherwise"),
                                 // switchInt_0_otherwise
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_0_after"),
                                 // switchInt_0_branch_0
-                                new LoadIntConstant(2),
+                                new LoadInt64Constant(2),
                                 new StoreLocal("a"),
                                 // switchInt_0_after
                                 new LoadUnitConstant(),
                                 Return()
                             ],
-                            locals: [Local("a", IntType)],
+                            locals: [Local("a", Int64Type)],
                             labels: [
                                 new InstructionLabel("switchInt_0_otherwise", 3),
                                 new InstructionLabel("switchInt_0_branch_0", 6),
@@ -287,7 +289,7 @@ public class ControlFlow
                                         {0, "switchInt_0_branch_0"}
                                     }, "switchInt_0_otherwise"),
                                 // switchInt_0_otherwise
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_0_after"),
                                 // switchInt_0_branch_0
@@ -299,7 +301,7 @@ public class ControlFlow
                                         {0, "switchInt_1_branch_0"}
                                     }, "switchInt_1_otherwise"),
                                 // switchInt_1_otherwise
-                                new LoadIntConstant(2),
+                                new LoadInt64Constant(2),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_1_after"),
                                 // switchInt_1_branch_0
@@ -311,7 +313,7 @@ public class ControlFlow
                                         {0, "switchInt_2_branch_0"}
                                     }, "switchInt_2_otherwise"),
                                 // switchInt_2_otherwise
-                                new LoadIntConstant(3),
+                                new LoadInt64Constant(3),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_2_after"),
                                 // switchInt_2_branch_0
@@ -321,7 +323,7 @@ public class ControlFlow
                                 new LoadUnitConstant(),
                                 Return()
                             ],
-                            locals: [Local("a", IntType)],
+                            locals: [Local("a", Int64Type)],
                             labels: [
                                 new InstructionLabel("switchInt_0_otherwise", 3),
                                 new InstructionLabel("switchInt_0_branch_0", 6),
@@ -361,7 +363,7 @@ public class ControlFlow
                                         {0, "switchInt_0_branch_0"}
                                     }, "switchInt_0_otherwise"),
                                 // switchInt_0_otherwise
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_0_after"),
                                 // switchInt_0_branch_0
@@ -373,7 +375,7 @@ public class ControlFlow
                                         {0, "switchInt_1_branch_0"}
                                     }, "switchInt_1_otherwise"),
                                 // switchInt_1_otherwise
-                                new LoadIntConstant(2),
+                                new LoadInt64Constant(2),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_1_after"),
                                 // switchInt_1_branch_0
@@ -385,11 +387,11 @@ public class ControlFlow
                                         {0, "switchInt_2_branch_0"}
                                     }, "switchInt_2_otherwise"),
                                 // switchInt_2_otherwise
-                                new LoadIntConstant(3),
+                                new LoadInt64Constant(3),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_2_after"),
                                 // switchInt_2_branch_0
-                                new LoadIntConstant(4),
+                                new LoadInt64Constant(4),
                                 new StoreLocal("a"),
                                 // switchInt_2_after
                                 // switchInt_1_after
@@ -397,7 +399,7 @@ public class ControlFlow
                                 new LoadUnitConstant(),
                                 Return()
                             ],
-                            locals: [Local("a", IntType)],
+                            locals: [Local("a", Int64Type)],
                             labels: [
                                 new InstructionLabel("switchInt_0_otherwise", 3),
                                 new InstructionLabel("switchInt_0_branch_0", 6),
@@ -420,7 +422,7 @@ public class ControlFlow
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new StoreLocal("Local0"),
                                 new LoadBoolConstant(true),
                                 new CastBoolToInt(),
@@ -435,7 +437,7 @@ public class ControlFlow
                                 new LoadUnitConstant(),
                                 Return()
                             ],
-                            locals: [Local("Local0", IntType)],
+                            locals: [Local("Local0", Int64Type)],
                             labels: [
                                 new InstructionLabel("switchInt_0_otherwise", 5),
                                 new InstructionLabel("switchInt_0_branch_0", 6),
@@ -452,7 +454,7 @@ public class ControlFlow
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new StoreLocal("a"),
                                 new LoadBoolConstant(true),
                                 new CastBoolToInt(),
@@ -468,7 +470,7 @@ public class ControlFlow
                                 Return()
                             ],
                             locals: [
-                                Local("a", IntType),
+                                Local("a", Int64Type),
                             ],
                             labels: [
                                 new InstructionLabel("switchInt_0_otherwise", 5),
@@ -540,7 +542,7 @@ public class ControlFlow
                 class MyClass
                 {
                     pub field MyField: string,
-                    pub field SecondField: int,
+                    pub field SecondField: i64,
                 }
                 var a = new MyClass { MyField = "", SecondField = 2 };
                 if (a matches MyClass { MyField, SecondField }) {}
@@ -552,7 +554,7 @@ public class ControlFlow
                                 Variant("_classVariant",
                                     [
                                         Field("MyField", StringType),
-                                        Field("SecondField", IntType)
+                                        Field("SecondField", Int64Type)
                                     ])
                             ])
                     ],
@@ -564,7 +566,7 @@ public class ControlFlow
                                 new LoadStringConstant(""),
                                 new StoreField(0, "MyField"),
                                 new CopyStack(),
-                                new LoadIntConstant(2),
+                                new LoadInt64Constant(2),
                                 new StoreField(0, "SecondField"),
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
@@ -606,7 +608,7 @@ public class ControlFlow
                             locals: [
                                 Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 Local("MyField", StringType),
-                                Local("SecondField", IntType),
+                                Local("SecondField", Int64Type),
                                 Local("Local3", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"))
                             ])
                     ])
@@ -690,12 +692,12 @@ public class ControlFlow
                             variants: [
                                 Variant("A",
                                     [
-                                        Field("_variantIdentifier", IntType),
+                                        Field("_variantIdentifier", UInt16Type),
                                         Field("Item0", StringType)
                                     ]),
                                 Variant("B",
                                     [
-                                        Field("_variantIdentifier", IntType),
+                                        Field("_variantIdentifier", UInt16Type),
                                     ]),
                             ])
                     ],
@@ -704,7 +706,7 @@ public class ControlFlow
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
-                                new LoadIntConstant(0),
+                                new LoadUInt16Constant(0),
                                 new StoreField(0, "_variantIdentifier"),
                                 new CopyStack(),
                                 new LoadArgument(0),
@@ -717,7 +719,7 @@ public class ControlFlow
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
-                                new LoadIntConstant(1),
+                                new LoadUInt16Constant(1),
                                 new StoreField(1, "_variantIdentifier"),
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
@@ -734,10 +736,10 @@ public class ControlFlow
                                 new LoadLocal("Local2"),
                                 new LoadField(0, "Item0"),
                                 new StoreLocal("Local3"),
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new Branch("switchInt_0_after"),
                                 // switchInt_0_branch_1
-                                new LoadIntConstant(2),
+                                new LoadInt64Constant(2),
                                 // switchInt_0_after
                                 new StoreLocal("b"),
                                 LoadUnit(),
@@ -745,7 +747,7 @@ public class ControlFlow
                             ],
                             locals: [
                                 Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
-                                Local("b", IntType),
+                                Local("b", Int64Type),
                                 Local("Local2", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 Local("Local3", StringType)
                             ],

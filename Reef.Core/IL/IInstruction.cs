@@ -23,37 +23,289 @@ public record InstructionList(List<IInstruction> Instructions, List<InstructionL
 /// Compares two integer values. If the first is greater than the second, true is pushed
 /// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
 /// </summary>
-public record CompareIntGreaterThan : IInstruction;
+public record CompareInt64GreaterThan : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is greater than the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt32GreaterThan : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is greater than the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt16GreaterThan : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is greater than the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt8GreaterThan : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is greater than the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt64GreaterThan : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is greater than the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt32GreaterThan : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is greater than the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt16GreaterThan : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is greater than the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt8GreaterThan : IInstruction;
 
 /// <summary>
 /// Compares two integer values. If the first is less than the second, true is pushed
 /// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
 /// </summary>
-public record CompareIntLessThan : IInstruction;
+public record CompareInt64LessThan : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is less than the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt32LessThan : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is less than the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt16LessThan : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is less than the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt8LessThan : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is less than the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt64LessThan : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is less than the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt32LessThan : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is less than the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt16LessThan : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is less than the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt8LessThan : IInstruction;
 
 /// <summary>
 /// Compares two integer values. If the first is greater than or equal to the second, true is pushed
 /// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
 /// </summary>
-public record CompareIntGreaterOrEqualTo : IInstruction;
+public record CompareInt64GreaterOrEqualTo : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is greater than or equal to the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt32GreaterOrEqualTo : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is greater than or equal to the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt16GreaterOrEqualTo : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is greater than or equal to the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt8GreaterOrEqualTo : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is greater than or equal to the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt64GreaterOrEqualTo : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is greater than or equal to the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt32GreaterOrEqualTo : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is greater than or equal to the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt16GreaterOrEqualTo : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is greater than or equal to the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt8GreaterOrEqualTo : IInstruction;
 
 /// <summary>
 /// Compares two integer values. If the first is less than or equal to the second, true is pushed
 /// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
 /// </summary>
-public record CompareIntLessOrEqualTo : IInstruction;
+public record CompareInt64LessOrEqualTo : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is less than or equal to the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt32LessOrEqualTo : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is less than or equal to the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt16LessOrEqualTo : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is less than or equal to the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt8LessOrEqualTo : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is less than or equal to the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt64LessOrEqualTo : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is less than or equal to the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt32LessOrEqualTo : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is less than or equal to the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt16LessOrEqualTo : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If the first is less than or equal to the second, true is pushed
+/// onto the evaluation stack, otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt8LessOrEqualTo : IInstruction;
 
 /// <summary>
 /// Compares two integer values. If they are equal, true is pushed onto the stack,
 /// otherwise false is pushed onto the evaluation stack
 /// </summary>
-public record CompareIntEqual : IInstruction;
+public record CompareInt64Equal : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If they are equal, true is pushed onto the stack,
+/// otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt32Equal : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If they are equal, true is pushed onto the stack,
+/// otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt16Equal : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If they are equal, true is pushed onto the stack,
+/// otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt8Equal : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If they are equal, true is pushed onto the stack,
+/// otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt64Equal : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If they are equal, true is pushed onto the stack,
+/// otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt32Equal : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If they are equal, true is pushed onto the stack,
+/// otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt16Equal : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If they are equal, true is pushed onto the stack,
+/// otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt8Equal : IInstruction;
 
 /// <summary>
 /// Compares two integer values. If they are not equal, true is pushed onto the stack,
 /// otherwise false is pushed onto the evaluation stack
 /// </summary>
-public record CompareIntNotEqual : IInstruction;
+public record CompareInt64NotEqual : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If they are not equal, true is pushed onto the stack,
+/// otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt32NotEqual : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If they are not equal, true is pushed onto the stack,
+/// otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt16NotEqual : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If they are not equal, true is pushed onto the stack,
+/// otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareInt8NotEqual : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If they are not equal, true is pushed onto the stack,
+/// otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt64NotEqual : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If they are not equal, true is pushed onto the stack,
+/// otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt32NotEqual : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If they are not equal, true is pushed onto the stack,
+/// otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt16NotEqual : IInstruction;
+
+/// <summary>
+/// Compares two integer values. If they are not equal, true is pushed onto the stack,
+/// otherwise false is pushed onto the evaluation stack
+/// </summary>
+public record CompareUInt8NotEqual : IInstruction;
 
 /// <summary>
 /// Loads the local variable at specified index onto the evaluation stack
@@ -100,7 +352,7 @@ public record Return : IInstruction;
 /// on the top of the stack after the method. If the method is an instance method, a reference to the instance is passed
 /// as the first argument
 /// </summary>
-public record Call(uint Arity, uint StackSize, bool ValueUseful) : IInstruction;
+public record Call(uint Arity, Stack<IReefTypeReference> TypeStack, bool ValueUseful) : IInstruction;
 
 /// <summary>
 /// Loads a reference to the specified global function onto the evaluation stack
@@ -157,9 +409,44 @@ public record LoadStaticField(IReefTypeReference ReefType, string FieldName)
 public record LoadStringConstant(string Value) : IInstruction;
 
 /// <summary>
-/// Loads a constant int onto the evaluation stack
+/// Loads a constant i64 onto the evaluation stack
 /// </summary>
-public record LoadIntConstant(int Value) : IInstruction;
+public record LoadInt64Constant(long Value) : IInstruction;
+
+/// <summary>
+/// Loads a constant i32 onto the evaluation stack
+/// </summary>
+public record LoadInt32Constant(int Value) : IInstruction;
+
+/// <summary>
+/// Loads a constant i16 onto the evaluation stack
+/// </summary>
+public record LoadInt16Constant(short Value) : IInstruction;
+
+/// <summary>
+/// Loads a constant i8 onto the evaluation stack
+/// </summary>
+public record LoadInt8Constant(short Value) : IInstruction;
+
+/// <summary>
+/// Loads a constant u64 onto the evaluation stack
+/// </summary>
+public record LoadUInt64Constant(ulong Value) : IInstruction;
+
+/// <summary>
+/// Loads a constant u32 onto the evaluation stack
+/// </summary>
+public record LoadUInt32Constant(uint Value) : IInstruction;
+
+/// <summary>
+/// Loads a constant u16 onto the evaluation stack
+/// </summary>
+public record LoadUInt16Constant(ushort Value) : IInstruction;
+
+/// <summary>
+/// Loads a constant u8 onto the evaluation stack
+/// </summary>
+public record LoadUInt8Constant(byte Value) : IInstruction;
 
 /// <summary>
 /// Loads a constant bool onto the evaluation stack
@@ -180,22 +467,162 @@ public record LoadUnitConstant : IInstruction;
 /// <summary>
 /// Pulls two ints off the evaluation stack and puts the sum back on the evaluation stack
 /// </summary>
-public record IntPlus : IInstruction;
+public record Int64Plus : IInstruction;
 
 /// <summary>
-/// Pulls two ints off the evaluation stack and puts back the difference on the evaluation stack
+/// Pulls two ints off the evaluation stack and puts the sum back on the evaluation stack
 /// </summary>
-public record IntMinus : IInstruction;
+public record Int32Plus : IInstruction;
 
 /// <summary>
-/// Pulls two ints off the evaluation stack and puts back the product on the evaluation stack
+/// Pulls two ints off the evaluation stack and puts the sum back on the evaluation stack
 /// </summary>
-public record IntMultiply : IInstruction;
+public record Int16Plus : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the sum back on the evaluation stack
+/// </summary>
+public record Int8Plus : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the sum back on the evaluation stack
+/// </summary>
+public record UInt64Plus : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the sum back on the evaluation stack
+/// </summary>
+public record UInt32Plus : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the sum back on the evaluation stack
+/// </summary>
+public record UInt16Plus : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the sum back on the evaluation stack
+/// </summary>
+public record UInt8Plus : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the difference back on the evaluation stack
+/// </summary>
+public record Int64Minus : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the difference back on the evaluation stack
+/// </summary>
+public record Int32Minus : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the difference back on the evaluation stack
+/// </summary>
+public record Int16Minus : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the difference back on the evaluation stack
+/// </summary>
+public record Int8Minus : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the difference back on the evaluation stack
+/// </summary>
+public record UInt64Minus : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the difference back on the evaluation stack
+/// </summary>
+public record UInt32Minus : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the difference back on the evaluation stack
+/// </summary>
+public record UInt16Minus : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the difference back on the evaluation stack
+/// </summary>
+public record UInt8Minus : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the product back on the evaluation stack
+/// </summary>
+public record Int64Multiply : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the product back on the evaluation stack
+/// </summary>
+public record Int32Multiply : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the product back on the evaluation stack
+/// </summary>
+public record Int16Multiply : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the product back on the evaluation stack
+/// </summary>
+public record Int8Multiply : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the product back on the evaluation stack
+/// </summary>
+public record UInt64Multiply : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the product back on the evaluation stack
+/// </summary>
+public record UInt32Multiply : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the product back on the evaluation stack
+/// </summary>
+public record UInt16Multiply : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and puts the product back on the evaluation stack
+/// </summary>
+public record UInt8Multiply : IInstruction;
 
 /// <summary>
 /// Pulls two ints off the evaluation stack and divides the first by the second, putting the result on the stack
 /// </summary>
-public record IntDivide : IInstruction;
+public record Int64Divide : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and divides the first by the second, putting the result on the stack
+/// </summary>
+public record Int32Divide : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and divides the first by the second, putting the result on the stack
+/// </summary>
+public record Int16Divide : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and divides the first by the second, putting the result on the stack
+/// </summary>
+public record Int8Divide : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and divides the first by the second, putting the result on the stack
+/// </summary>
+public record UInt64Divide : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and divides the first by the second, putting the result on the stack
+/// </summary>
+public record UInt32Divide : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and divides the first by the second, putting the result on the stack
+/// </summary>
+public record UInt16Divide : IInstruction;
+
+/// <summary>
+/// Pulls two ints off the evaluation stack and divides the first by the second, putting the result on the stack
+/// </summary>
+public record UInt8Divide : IInstruction;
 
 /// <summary>
 /// Pulls the top boolean off the stack and inverts it, putting the result back on the stack

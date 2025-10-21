@@ -27,6 +27,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
         var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
             expectedModule,
+            opts => opts.Excluding(x => x.Type == typeof(Stack<IReefTypeReference>)),
             description);
     }
 
@@ -39,7 +40,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
             {
                 "access parameter",
                 """
-                static fn SomeFn(a: int, b: int) {
+                static fn SomeFn(a: i64, b: i64) {
                     var foo = a;
                     var bar = b;
                 }
@@ -55,10 +56,10 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                                 LoadUnit(),
                                 Return()
                             ],
-                            parameters: [IntType, IntType],
+                            parameters: [Int64Type, Int64Type],
                             locals: [
-                                Local("foo", IntType),
-                                Local("bar", IntType)
+                                Local("foo", Int64Type),
+                                Local("bar", Int64Type)
                             ])
                     ])
             },
@@ -75,7 +76,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"),"_Main",
                             [
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.FirstFn"), "FirstFn")),
-                                new Call(0, 0, false),
+                                new Call(0, [], false),
                                 Return(),
                                 LoadUnit()
                             ])
@@ -108,9 +109,9 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__InstanceFn"), "MyClass__InstanceFn")),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__StaticFn"), "MyClass__StaticFn")),
-                                new Call(0, 0, false),
+                                new Call(0, [], false),
                                 LoadUnit(),
                                 Return()
                             ])
@@ -134,7 +135,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                         Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
                             [
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.SomeFn__InnerFn"), "SomeFn__InnerFn")),
-                                new Call(0, 0, false),
+                                new Call(0, [], false),
                                 LoadUnit(),
                                 Return()
                             ])
@@ -143,7 +144,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
             {
                 "assign global function to variable",
                 """
-                fn SomeFn(param: int) {
+                fn SomeFn(param: i64) {
                 }
                 var a = SomeFn;
                 a(1);
@@ -152,23 +153,23 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"),"SomeFn",
                             [LoadUnit(), Return()],
-                            parameters: [IntType]),
+                            parameters: [Int64Type]),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"),"_Main",
                             [
-                                new CreateObject(ConcreteTypeReference(DefId.FunctionObject(1), "Function`2", [IntType, UnitType])),
+                                new CreateObject(ConcreteTypeReference(DefId.FunctionObject(1), "Function`2", [Int64Type, UnitType])),
                                 new CopyStack(),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn")),
                                 new StoreField(0, "FunctionReference"),
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
-                                new LoadIntConstant(1),
-                                new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(1), "Function`2__Call", [IntType, UnitType])),
-                                new Call(2, 0, false),
+                                new LoadInt64Constant(1),
+                                new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(1), "Function`2__Call", [Int64Type, UnitType])),
+                                new Call(2, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference(DefId.FunctionObject(1), "Function`2", [IntType, UnitType]))
+                                Local("a", ConcreteTypeReference(DefId.FunctionObject(1), "Function`2", [Int64Type, UnitType]))
                             ])
                     ])
             },
@@ -205,7 +206,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                                 new StoreLocal("b"),
                                 new LoadLocal("b"),
                                 new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(0), "Function`1__Call", [UnitType])),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -237,7 +238,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
                                 new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(0), "Function`1__Call", [UnitType])),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -250,7 +251,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                 "assign static type function with parameters and return type to variable",
                 """
                 class MyClass { 
-                    pub static fn MyFn(a: string, b: int): bool { return true; }
+                    pub static fn MyFn(a: string, b: i64): bool { return true; }
                 }
                 var a = MyClass::MyFn;
                 a("", 1);
@@ -260,25 +261,25 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn",
                             [new LoadBoolConstant(true), Return()],
-                            parameters: [StringType, IntType],
+                            parameters: [StringType, Int64Type],
                             returnType: BoolType),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference(DefId.FunctionObject(2), "Function`3", [StringType, IntType, BoolType])),
+                                new CreateObject(ConcreteTypeReference(DefId.FunctionObject(2), "Function`3", [StringType, Int64Type, BoolType])),
                                 new CopyStack(),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn")),
                                 new StoreField(0, "FunctionReference"),
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
                                 new LoadStringConstant(""),
-                                new LoadIntConstant(1),
-                                new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(2), "Function`3__Call", [StringType, IntType, BoolType])),
-                                new Call(3, 0, false),
+                                new LoadInt64Constant(1),
+                                new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(2), "Function`3__Call", [StringType, Int64Type, BoolType])),
+                                new Call(3, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
                             locals: [
-                                Local("a", ConcreteTypeReference(DefId.FunctionObject(2), "Function`3", [StringType, IntType, BoolType]))
+                                Local("a", ConcreteTypeReference(DefId.FunctionObject(2), "Function`3", [StringType, Int64Type, BoolType]))
                             ])
                     ])
             },
@@ -331,7 +332,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                             [
                                 new LoadArgument(0),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn")),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -385,7 +386,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn", [StringType])),
-                                new Call(0, 0, false),
+                                new Call(0, [], false),
                                 LoadUnit(),
                                 Return()
                             ])
@@ -424,7 +425,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                 class MyClass<T> {
                     pub static fn MyFn<T2>(){}
                 }
-                MyClass::<int>::MyFn::<string>();
+                MyClass::<i64>::MyFn::<string>();
                 """,
                 Module(
                     types: [
@@ -434,8 +435,8 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                         Method(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn", [LoadUnit(), Return()], typeParameters: ["T", "T2"]),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn", [IntType, StringType])),
-                                new Call(0, 0, false),
+                                new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn", [Int64Type, StringType])),
+                                new Call(0, [], false),
                                 LoadUnit(),
                                 Return()
                             ])
@@ -447,7 +448,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                 class MyClass<T> {
                     pub fn MyFn<T2>(){}
                 }
-                var a = new MyClass::<int>{};
+                var a = new MyClass::<i64>{};
                 a.MyFn::<string>();
                 """,
                 Module(
@@ -461,15 +462,15 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                             typeParameters: ["T", "T2"]),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", [IntType])),
+                                new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", [Int64Type])),
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
-                                new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn", [IntType, StringType])),
-                                new Call(1, 0, false),
+                                new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn", [Int64Type, StringType])),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", [IntType]))])
+                            locals: [Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", [Int64Type]))])
                     ])
             },
             {
@@ -495,7 +496,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                             [
                                 new LoadArgument(0),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn", [GenericTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "T"), StringType])),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ],

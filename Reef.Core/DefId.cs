@@ -12,7 +12,14 @@ public record DefId(string ModuleId, string FullName)
 
     public static DefId String { get; } = new(CoreLibModuleId, CoreLibNamespace + ".string");
 
-    public static DefId Int { get; } = new(CoreLibModuleId, CoreLibNamespace + ".int");
+    public static DefId Int64 { get; } = new(CoreLibModuleId, CoreLibNamespace + ".i64");
+    public static DefId Int32 { get; } = new(CoreLibModuleId, CoreLibNamespace + ".i32");
+    public static DefId Int16 { get; } = new(CoreLibModuleId, CoreLibNamespace + ".i16");
+    public static DefId Int8 { get; } = new(CoreLibModuleId, CoreLibNamespace + ".i8");
+    public static DefId UInt64 { get; } = new(CoreLibModuleId, CoreLibNamespace + ".u64");
+    public static DefId UInt32 { get; } = new(CoreLibModuleId, CoreLibNamespace + ".u32");
+    public static DefId UInt16 { get; } = new(CoreLibModuleId, CoreLibNamespace + ".u16");
+    public static DefId UInt8 { get; } = new(CoreLibModuleId, CoreLibNamespace + ".u8");
 
     public static DefId RawPointer { get; } = new(CoreLibModuleId, CoreLibNamespace + ".rawPointer");
 

@@ -700,7 +700,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                     fn MyFn(param: string)
                     {
                         var a = "";
-                        fn InnerFn(b: int)
+                        fn InnerFn(b: i64)
                         {
                             var _a = a;
                             var _param = param;
@@ -805,7 +805,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             ],
                             parameters: [
                                 ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__InnerFn__Closure")),
-                                Int
+                                Int64_t
                             ]),
                         Method(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn",
                             [
@@ -838,7 +838,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                 {"this", LoadArgument(0, true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass")))},
                                                 {"MyClass__MyFn__Locals", LocalAccess("__locals", true, ConcreteTypeReference("MyClass__MyFn__Locals", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__Locals")))}
                                             }),
-                                        IntConstant(3, true)
+                                        Int64Constant(3, true)
                                     ],
                                     false,
                                     Unit),
@@ -863,7 +863,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                     fn MyFn(param: string)
                     {
                         var a = "";
-                        fn MiddleFn(b: int)
+                        fn MiddleFn(b: i64)
                         {
                             fn InnerFn()
                             {
@@ -895,7 +895,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             ]),
                         DataType(_moduleId, "MyClass__MyFn__MiddleFn__Locals",
                             variants: [
-                                Variant("_classVariant", [Field("b", Int)])
+                                Variant("_classVariant", [Field("b", Int64_t)])
                             ]),
                         DataType(_moduleId, "MyClass__MyFn__MiddleFn__Closure",
                             variants: [
@@ -952,7 +952,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         "b",
                                         "_classVariant",
                                         true,
-                                        Int),
+                                        Int64_t),
                                     false),
                                 VariableDeclaration(
                                     "_param",
@@ -992,7 +992,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             ],
                             locals: [
                                 Local("_a", StringType),
-                                Local("_b", Int),
+                                Local("_b", Int64_t),
                                 Local("_param", StringType),
                                 Local("_myField", StringType)
                             ],
@@ -1007,7 +1007,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         ConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__MiddleFn__Locals")),
                                         "_classVariant",
                                         true,
-                                        new(){{"b", LoadArgument(1, true, Int)}}),
+                                        new(){{"b", LoadArgument(1, true, Int64_t)}}),
                                     false),
                                 MethodCall(
                                     FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__MiddleFn__InnerFn"), "MyClass__MyFn__MiddleFn__InnerFn"),
@@ -1048,7 +1048,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             ],
                             parameters: [
                                 ConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn__MiddleFn__Closure")),
-                                Int
+                                Int64_t
                             ]),
                         Method(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn",
                             [
@@ -1094,7 +1094,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                     LoadArgument(0, true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass")))
                                                 }
                                             }),
-                                        IntConstant(3, true)
+                                        Int64Constant(3, true)
                                     ],
                                     false,
                                     Unit),

@@ -238,56 +238,462 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
                 PrettyPrintExpression(e.Value);
                 break;
             }
-            case IntEqualsExpression e:
+            case Int64EqualsExpression e:
             {
                 PrettyPrintExpression(e.Left);
                 _stringBuilder.Append(" == ");
                 PrettyPrintExpression(e.Right);
                 break;
             }
-            case IntNotEqualsExpression e:
+            case Int32EqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" == ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int16EqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" == ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int8EqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" == ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt64EqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" == ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt32EqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" == ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt16EqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" == ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt8EqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" == ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case BoolEqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" == ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int64NotEqualsExpression e:
             {
                 PrettyPrintExpression(e.Left);
                 _stringBuilder.Append(" != ");
                 PrettyPrintExpression(e.Right);
                 break;
             }
-            case IntGreaterThanExpression e:
+            case Int32NotEqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" != ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int16NotEqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" != ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int8NotEqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" != ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt64NotEqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" != ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt32NotEqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" != ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt16NotEqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" != ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt8NotEqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" != ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case BoolNotEqualsExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" != ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int64GreaterThanExpression e:
             {
                 PrettyPrintExpression(e.Left);
                 _stringBuilder.Append(" > ");
                 PrettyPrintExpression(e.Right);
                 break;
             }
-            case IntLessThanExpression e:
+            case Int32GreaterThanExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" > ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int16GreaterThanExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" > ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int8GreaterThanExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" > ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt64GreaterThanExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" > ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt32GreaterThanExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" > ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt16GreaterThanExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" > ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt8GreaterThanExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" > ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int64LessThanExpression e:
             {
                 PrettyPrintExpression(e.Left);
                 _stringBuilder.Append(" < ");
                 PrettyPrintExpression(e.Right);
                 break;
             }
-            case IntDivideExpression e:
+            case Int32LessThanExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" < ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int16LessThanExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" < ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int8LessThanExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" < ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt64LessThanExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" < ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt32LessThanExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" < ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt16LessThanExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" < ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt8LessThanExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" < ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int64DivideExpression e:
             {
                 PrettyPrintExpression(e.Left);
                 _stringBuilder.Append(" / ");
                 PrettyPrintExpression(e.Right);
                 break;
             }
-            case IntMultiplyExpression e:
+            case Int32DivideExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" / ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int16DivideExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" / ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int8DivideExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" / ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt64DivideExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" / ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt32DivideExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" / ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt16DivideExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" / ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt8DivideExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" / ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int64MultiplyExpression e:
             {
                 PrettyPrintExpression(e.Left);
                 _stringBuilder.Append(" * ");
                 PrettyPrintExpression(e.Right);
                 break;
             }
-            case IntPlusExpression e:
+            case Int32MultiplyExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" * ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int16MultiplyExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" * ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int8MultiplyExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" * ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt64MultiplyExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" * ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt32MultiplyExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" * ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt16MultiplyExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" * ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt8MultiplyExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" * ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int64PlusExpression e:
             {
                 PrettyPrintExpression(e.Left);
                 _stringBuilder.Append(" + ");
                 PrettyPrintExpression(e.Right);
                 break;
             }
-            case IntMinusExpression e:
+            case Int32PlusExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" + ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int16PlusExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" + ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int8PlusExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" + ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt64PlusExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" + ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt32PlusExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" + ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt16PlusExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" + ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt8PlusExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" + ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int64MinusExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" - ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int32MinusExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" - ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int16MinusExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" - ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case Int8MinusExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" - ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt64MinusExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" - ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt32MinusExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" - ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt16MinusExpression e:
+            {
+                PrettyPrintExpression(e.Left);
+                _stringBuilder.Append(" - ");
+                PrettyPrintExpression(e.Right);
+                break;
+            }
+            case UInt8MinusExpression e:
             {
                 PrettyPrintExpression(e.Left);
                 _stringBuilder.Append(" - ");
@@ -350,7 +756,42 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
                 _stringBuilder.Append("()");
                 break;
             }
-            case IntConstantExpression e:
+            case Int64ConstantExpression e:
+            {
+                _stringBuilder.Append(e.Value);
+                break;
+            }
+            case Int32ConstantExpression e:
+            {
+                _stringBuilder.Append(e.Value);
+                break;
+            }
+            case Int16ConstantExpression e:
+            {
+                _stringBuilder.Append(e.Value);
+                break;
+            }
+            case Int8ConstantExpression e:
+            {
+                _stringBuilder.Append(e.Value);
+                break;
+            }
+            case UInt64ConstantExpression e:
+            {
+                _stringBuilder.Append(e.Value);
+                break;
+            }
+            case UInt32ConstantExpression e:
+            {
+                _stringBuilder.Append(e.Value);
+                break;
+            }
+            case UInt16ConstantExpression e:
+            {
+                _stringBuilder.Append(e.Value);
+                break;
+            }
+            case UInt8ConstantExpression e:
             {
                 _stringBuilder.Append(e.Value);
                 break;

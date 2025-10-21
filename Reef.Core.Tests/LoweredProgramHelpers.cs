@@ -87,7 +87,21 @@ public static class LoweredProgramHelpers
     public static StringConstantExpression StringConstant(string value, bool valueUseful) =>
         new(valueUseful, value);
 
-    public static IntConstantExpression IntConstant(int value, bool valueUseful) =>
+    public static Int64ConstantExpression Int64Constant(long value, bool valueUseful) =>
+        new(valueUseful, value);
+    public static Int32ConstantExpression Int32Constant(int value, bool valueUseful) =>
+        new(valueUseful, value);
+    public static Int16ConstantExpression Int16Constant(short value, bool valueUseful) =>
+        new(valueUseful, value);
+    public static Int8ConstantExpression Int8Constant(short value, bool valueUseful) =>
+        new(valueUseful, value);
+    public static UInt64ConstantExpression UInt64Constant(ulong value, bool valueUseful) =>
+        new(valueUseful, value);
+    public static UInt32ConstantExpression UInt32Constant(uint value, bool valueUseful) =>
+        new(valueUseful, value);
+    public static UInt16ConstantExpression UInt16Constant(ushort value, bool valueUseful) =>
+        new(valueUseful, value);
+    public static UInt8ConstantExpression UInt8Constant(byte value, bool valueUseful) =>
         new(valueUseful, value);
 
     public static UnitConstantExpression UnitConstant(bool valueUseful) => new(valueUseful);
@@ -137,44 +151,79 @@ public static class LoweredProgramHelpers
 
     public static NoopExpression Noop() => new();
 
-    public static IntPlusExpression IntPlus(
+    public static Int64PlusExpression Int64Plus(
             ILoweredExpression left, ILoweredExpression right, bool valueUseful)
     {
         return new(valueUseful, left, right);
     }
 
-    public static IntMinusExpression IntMinus(
+    public static Int64MinusExpression Int64Minus(
             ILoweredExpression left, ILoweredExpression right, bool valueUseful)
     {
         return new(valueUseful, left, right);
     }
-    public static IntMultiplyExpression IntMultiply(
+    public static Int64MultiplyExpression Int64Multiply(
             ILoweredExpression left, ILoweredExpression right, bool valueUseful)
     {
         return new(valueUseful, left, right);
     }
-    public static IntDivideExpression IntDivide(
+    public static Int64DivideExpression Int64Divide(
             ILoweredExpression left, ILoweredExpression right, bool valueUseful)
     {
         return new(valueUseful, left, right);
     }
-    public static IntGreaterThanExpression IntGreaterThan(
+    public static Int64GreaterThanExpression Int64GreaterThan(
             ILoweredExpression left, ILoweredExpression right, bool valueUseful)
     {
         return new(valueUseful, left, right);
     }
-    public static IntLessThanExpression IntLessThan(
+    public static Int64LessThanExpression Int64LessThan(
             ILoweredExpression left, ILoweredExpression right, bool valueUseful)
     {
         return new(valueUseful, left, right);
     }
-    public static IntEqualsExpression IntEquals(
+    public static Int64EqualsExpression Int64Equals(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+    public static Int32EqualsExpression Int32Equals(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+    public static Int16EqualsExpression Int16Equals(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+    public static Int8EqualsExpression Int8Equals(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+    public static UInt64EqualsExpression UInt64Equals(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+    public static UInt32EqualsExpression UInt32Equals(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+    public static UInt16EqualsExpression UInt16Equals(
+            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
+    {
+        return new(valueUseful, left, right);
+    }
+    public static UInt8EqualsExpression UInt8Equals(
             ILoweredExpression left, ILoweredExpression right, bool valueUseful)
     {
         return new(valueUseful, left, right);
     }
 
-    public static IntNotEqualsExpression IntNotEquals(
+    public static Int64NotEqualsExpression Int64NotEquals(
             ILoweredExpression left, ILoweredExpression right, bool valueUseful)
     {
         return new(valueUseful, left, right);
@@ -329,10 +378,45 @@ public static class LoweredProgramHelpers
                 TypeChecking.TypeChecker.ClassSignature.Boolean.Id,
                 []);
 
-    public static LoweredConcreteTypeReference Int { get; }
+    public static LoweredConcreteTypeReference Int64_t { get; }
         = new LoweredConcreteTypeReference(
-                TypeChecking.TypeChecker.ClassSignature.Int.Name,
-                TypeChecking.TypeChecker.ClassSignature.Int.Id,
+                TypeChecking.TypeChecker.ClassSignature.Int64.Name,
+                TypeChecking.TypeChecker.ClassSignature.Int64.Id,
+                []);
+    public static LoweredConcreteTypeReference Int32_t { get; }
+        = new LoweredConcreteTypeReference(
+                TypeChecking.TypeChecker.ClassSignature.Int32.Name,
+                TypeChecking.TypeChecker.ClassSignature.Int32.Id,
+                []);
+    public static LoweredConcreteTypeReference Int16_t { get; }
+        = new LoweredConcreteTypeReference(
+                TypeChecking.TypeChecker.ClassSignature.Int16.Name,
+                TypeChecking.TypeChecker.ClassSignature.Int16.Id,
+                []);
+    public static LoweredConcreteTypeReference Int8_t { get; }
+        = new LoweredConcreteTypeReference(
+                TypeChecking.TypeChecker.ClassSignature.Int8.Name,
+                TypeChecking.TypeChecker.ClassSignature.Int8.Id,
+                []);
+    public static LoweredConcreteTypeReference UInt64_t { get; }
+        = new LoweredConcreteTypeReference(
+                TypeChecking.TypeChecker.ClassSignature.UInt64.Name,
+                TypeChecking.TypeChecker.ClassSignature.UInt64.Id,
+                []);
+    public static LoweredConcreteTypeReference UInt32_t { get; }
+        = new LoweredConcreteTypeReference(
+                TypeChecking.TypeChecker.ClassSignature.UInt32.Name,
+                TypeChecking.TypeChecker.ClassSignature.UInt32.Id,
+                []);
+    public static LoweredConcreteTypeReference UInt16_t { get; }
+        = new LoweredConcreteTypeReference(
+                TypeChecking.TypeChecker.ClassSignature.UInt16.Name,
+                TypeChecking.TypeChecker.ClassSignature.UInt16.Id,
+                []);
+    public static LoweredConcreteTypeReference UInt8_t { get; }
+        = new LoweredConcreteTypeReference(
+                TypeChecking.TypeChecker.ClassSignature.UInt8.Name,
+                TypeChecking.TypeChecker.ClassSignature.UInt8.Id,
                 []);
 
     public static LoweredConcreteTypeReference Unit { get; }

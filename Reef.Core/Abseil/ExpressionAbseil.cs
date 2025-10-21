@@ -457,7 +457,7 @@ public partial class ProgramAbseil
                                 "_variantIdentifier",
                                 dataType.Variants[0].Name,
                                 true,
-                                GetTypeReference(InstantiatedClass.Int)),
+                                GetTypeReference(InstantiatedClass.UInt16)),
                             innerResults,
                             node.Otherwise ?? new UnreachableExpression(),
                             true,
@@ -785,7 +785,7 @@ public partial class ProgramAbseil
                             localName,
                             e,
                             false),
-                        new IntEqualsExpression(
+                        new UInt16EqualsExpression(
                             ValueUseful: true,
                             new FieldAccessExpression(
                                 new LocalVariableAccessor(
@@ -795,10 +795,10 @@ public partial class ProgramAbseil
                                 "_variantIdentifier",
                                 variantName!.StringValue,
                                 true,
-                                GetTypeReference(InstantiatedClass.Int)),
-                            new IntConstantExpression(
+                                GetTypeReference(InstantiatedClass.UInt16)),
+                            new UInt16ConstantExpression(
                                 true,
-                                variantIndex))
+                                (ushort)variantIndex))
                     ],
                     boolType,
                     valueUseful);
@@ -830,7 +830,7 @@ public partial class ProgramAbseil
                 // type checker should have checked there's at least tuple member
                 Debug.Assert(tupleParamPatterns.Count > 0);
 
-                var variantIdentifierCheck = new IntEqualsExpression(
+                var variantIdentifierCheck = new UInt16EqualsExpression(
                             ValueUseful: true,
                             new FieldAccessExpression(
                                 new LocalVariableAccessor(
@@ -840,10 +840,10 @@ public partial class ProgramAbseil
                                 "_variantIdentifier",
                                 variantName.StringValue,
                                 true,
-                                GetTypeReference(InstantiatedClass.Int)),
-                            new IntConstantExpression(
+                                GetTypeReference(InstantiatedClass.UInt16)),
+                            new UInt16ConstantExpression(
                                 true,
-                                variantIndex));
+                                (ushort)variantIndex));
 
                 var localAccessor = new LocalVariableAccessor(localName, true, operandType);
 
@@ -909,7 +909,7 @@ public partial class ProgramAbseil
                 var (variantIndex, variant) = dataType.Variants.Index()
                     .First(x => x.Item.Name == variantName.NotNull().StringValue);
 
-                var variantIdentifierCheck = new IntEqualsExpression(
+                var variantIdentifierCheck = new UInt16EqualsExpression(
                             ValueUseful: true,
                             new FieldAccessExpression(
                                 new LocalVariableAccessor(
@@ -919,10 +919,10 @@ public partial class ProgramAbseil
                                 "_variantIdentifier",
                                 variantName.StringValue,
                                 true,
-                                GetTypeReference(InstantiatedClass.Int)),
-                            new IntConstantExpression(
+                                GetTypeReference(InstantiatedClass.UInt16)),
+                            new UInt16ConstantExpression(
                                 true,
-                                variantIndex));
+                                (ushort)variantIndex));
 
                 var localAccessor = new LocalVariableAccessor(localName, true, operandType);
 
@@ -1463,9 +1463,9 @@ public partial class ProgramAbseil
                 x => x.FieldName.StringValue,
                 x => LowerExpression(x.Value.NotNull()));
 
-        fieldInitializers["_variantIdentifier"] = new IntConstantExpression(
+        fieldInitializers["_variantIdentifier"] = new UInt16ConstantExpression(
                 ValueUseful: true,
-                variantIdentifier);
+                (ushort)variantIdentifier);
 
         return new(
                 concreteTypeReference,
@@ -1529,9 +1529,9 @@ public partial class ProgramAbseil
             {
                 {
                     "_variantIdentifier",
-                    new IntConstantExpression(
+                    new UInt16ConstantExpression(
                         ValueUseful: true,
-                        variantIdentifier)
+                        (ushort)variantIdentifier)
                 }
             };
 
@@ -1731,8 +1731,8 @@ public partial class ProgramAbseil
                         "Ok",
                         true,
                         new LoweredConcreteTypeReference(
-                            ClassSignature.Int.Name,
-                            ClassSignature.Int.Id,
+                            ClassSignature.Int64.Name,
+                            ClassSignature.Int64.Id,
                             [])),
                     new()
                     {
@@ -1775,7 +1775,7 @@ public partial class ProgramAbseil
         return e switch
         {
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: StringToken { StringValue: var stringLiteral } } } => new StringConstantExpression(e.ValueUseful, stringLiteral),
-            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue} }} => new IntConstantExpression(e.ValueUseful, intValue),
+            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue} }} => new Int64ConstantExpression(e.ValueUseful, intValue),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.True }} => new BoolConstantExpression(e.ValueUseful, true),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.False }} => new BoolConstantExpression(e.ValueUseful, false),
             { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, ReferencedVariable: {} variable} => VariableAccess(variable, e.ValueUseful),
@@ -2064,25 +2064,143 @@ public partial class ProgramAbseil
         var left = LowerExpression(e.BinaryOperator.Left.NotNull());
         var right = LowerExpression(e.BinaryOperator.Right.NotNull());
 
+        var leftType = (left.ResolvedType as LoweredConcreteTypeReference).NotNull();
+
         return e.BinaryOperator.OperatorType switch
         {
-            Expressions.BinaryOperatorType.LessThan
-                => new IntLessThanExpression(e.ValueUseful, left, right),
-            Expressions.BinaryOperatorType.GreaterThan
-                => new IntGreaterThanExpression(e.ValueUseful, left, right),
-            Expressions.BinaryOperatorType.Plus
-                => new IntPlusExpression(e.ValueUseful, left, right),
-            Expressions.BinaryOperatorType.Minus
-                => new IntMinusExpression(e.ValueUseful, left, right),
-            Expressions.BinaryOperatorType.Multiply
-                => new IntMultiplyExpression(e.ValueUseful, left, right),
-            Expressions.BinaryOperatorType.Divide
-                => new IntDivideExpression(e.ValueUseful, left, right),
-            Expressions.BinaryOperatorType.EqualityCheck
+            Expressions.BinaryOperatorType.LessThan when leftType.DefinitionId == DefId.Int64
+                => new Int64LessThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.LessThan when leftType.DefinitionId == DefId.Int32
+                => new Int32LessThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.LessThan when leftType.DefinitionId == DefId.Int16
+                => new Int16LessThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.LessThan when leftType.DefinitionId == DefId.Int8
+                => new Int8LessThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.LessThan when leftType.DefinitionId == DefId.UInt64
+                => new UInt64LessThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.LessThan when leftType.DefinitionId == DefId.UInt32
+                => new UInt32LessThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.LessThan when leftType.DefinitionId == DefId.UInt16
+                => new UInt16LessThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.LessThan when leftType.DefinitionId == DefId.UInt8
+                => new UInt8LessThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.GreaterThan when leftType.DefinitionId == DefId.Int64
+                => new Int64GreaterThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.GreaterThan when leftType.DefinitionId == DefId.Int32
+                => new Int32GreaterThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.GreaterThan when leftType.DefinitionId == DefId.Int16
+                => new Int16GreaterThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.GreaterThan when leftType.DefinitionId == DefId.Int8
+                => new Int8GreaterThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.GreaterThan when leftType.DefinitionId == DefId.UInt64
+                => new UInt64GreaterThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.GreaterThan when leftType.DefinitionId == DefId.UInt32
+                => new UInt32GreaterThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.GreaterThan when leftType.DefinitionId == DefId.UInt16
+                => new UInt16GreaterThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.GreaterThan when leftType.DefinitionId == DefId.UInt8
+                => new UInt8GreaterThanExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Plus when leftType.DefinitionId == DefId.Int64
+                => new Int64PlusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Plus when leftType.DefinitionId == DefId.Int32
+                => new Int32PlusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Plus when leftType.DefinitionId == DefId.Int16
+                => new Int16PlusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Plus when leftType.DefinitionId == DefId.Int8
+                => new Int8PlusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Plus when leftType.DefinitionId == DefId.UInt64
+                => new UInt64PlusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Plus when leftType.DefinitionId == DefId.UInt32
+                => new UInt32PlusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Plus when leftType.DefinitionId == DefId.UInt16
+                => new UInt16PlusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Plus when leftType.DefinitionId == DefId.UInt8
+                => new UInt8PlusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Minus when leftType.DefinitionId == DefId.Int64
+                => new Int64MinusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Minus when leftType.DefinitionId == DefId.Int32
+                => new Int32MinusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Minus when leftType.DefinitionId == DefId.Int16
+                => new Int16MinusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Minus when leftType.DefinitionId == DefId.Int8
+                => new Int8MinusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Minus when leftType.DefinitionId == DefId.UInt64
+                => new UInt64MinusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Minus when leftType.DefinitionId == DefId.UInt32
+                => new UInt32MinusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Minus when leftType.DefinitionId == DefId.UInt16
+                => new UInt16MinusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Minus when leftType.DefinitionId == DefId.UInt8
+                => new UInt8MinusExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Multiply when leftType.DefinitionId == DefId.Int64
+                => new Int64MultiplyExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Multiply when leftType.DefinitionId == DefId.Int32
+                => new Int32MultiplyExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Multiply when leftType.DefinitionId == DefId.Int16
+                => new Int16MultiplyExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Multiply when leftType.DefinitionId == DefId.Int8
+                => new Int8MultiplyExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Multiply when leftType.DefinitionId == DefId.UInt64
+                => new UInt64MultiplyExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Multiply when leftType.DefinitionId == DefId.UInt32
+                => new UInt32MultiplyExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Multiply when leftType.DefinitionId == DefId.UInt16
+                => new UInt16MultiplyExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Multiply when leftType.DefinitionId == DefId.UInt8
+                => new UInt8MultiplyExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Divide when leftType.DefinitionId == DefId.Int64
+                => new Int64DivideExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Divide when leftType.DefinitionId == DefId.Int32
+                => new Int32DivideExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Divide when leftType.DefinitionId == DefId.Int16
+                => new Int16DivideExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Divide when leftType.DefinitionId == DefId.Int8
+                => new Int8DivideExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Divide when leftType.DefinitionId == DefId.UInt64
+                => new UInt64DivideExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Divide when leftType.DefinitionId == DefId.UInt32
+                => new UInt32DivideExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Divide when leftType.DefinitionId == DefId.UInt16
+                => new UInt16DivideExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.Divide when leftType.DefinitionId == DefId.UInt8
+                => new UInt8DivideExpression(e.ValueUseful, left, right),
                 // todo: handle more types of equality checks 
-                => new IntEqualsExpression(e.ValueUseful, left, right),
-            Expressions.BinaryOperatorType.NegativeEqualityCheck
-                => new IntNotEqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.EqualityCheck when leftType.DefinitionId == DefId.Int64
+                => new Int64EqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.EqualityCheck when leftType.DefinitionId == DefId.Int32
+                => new Int32EqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.EqualityCheck when leftType.DefinitionId == DefId.Int16
+                => new Int16EqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.EqualityCheck when leftType.DefinitionId == DefId.Int8
+                => new Int8EqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.EqualityCheck when leftType.DefinitionId == DefId.UInt64
+                => new UInt64EqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.EqualityCheck when leftType.DefinitionId == DefId.UInt32
+                => new UInt32EqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.EqualityCheck when leftType.DefinitionId == DefId.UInt16
+                => new UInt16EqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.EqualityCheck when leftType.DefinitionId == DefId.UInt8
+                => new UInt8EqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.EqualityCheck when leftType.DefinitionId == DefId.Boolean
+                => new BoolEqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.NegativeEqualityCheck when leftType.DefinitionId == DefId.Int64
+                => new Int64NotEqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.NegativeEqualityCheck when leftType.DefinitionId == DefId.Int32
+                => new Int32NotEqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.NegativeEqualityCheck when leftType.DefinitionId == DefId.Int16
+                => new Int16NotEqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.NegativeEqualityCheck when leftType.DefinitionId == DefId.Int8
+                => new Int8NotEqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.NegativeEqualityCheck when leftType.DefinitionId == DefId.UInt64
+                => new UInt64NotEqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.NegativeEqualityCheck when leftType.DefinitionId == DefId.UInt32
+                => new UInt32NotEqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.NegativeEqualityCheck when leftType.DefinitionId == DefId.UInt16
+                => new UInt16NotEqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.NegativeEqualityCheck when leftType.DefinitionId == DefId.UInt8
+                => new UInt8NotEqualsExpression(e.ValueUseful, left, right),
+            Expressions.BinaryOperatorType.NegativeEqualityCheck when leftType.DefinitionId == DefId.Boolean
+                => new BoolNotEqualsExpression(e.ValueUseful, left, right),
             Expressions.BinaryOperatorType.BooleanAnd
                 => new BoolAndExpression(e.ValueUseful, left, right),
             Expressions.BinaryOperatorType.BooleanOr

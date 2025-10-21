@@ -333,6 +333,51 @@ public partial class TypeChecker
         return UnknownType.Instance;
     }
 
+    private bool ExpectExpressionType(IReadOnlyList<ITypeReference> expected, IExpression? actual)
+    {
+        if (actual is null)
+        {
+            return false;
+        }
+        if (actual.ResolvedType is null)
+        {
+            throw new InvalidOperationException("Expected should have been type checked first before expecting it's value type");
+        }
+
+        return actual switch
+        {
+            MatchExpression matchExpression => ExpectMatchExpressionType(matchExpression),
+            BlockExpression blockExpression => ExpectBlockExpressionType(blockExpression),
+            IfExpressionExpression ifExpressionExpression => ExpectIfExpressionType(ifExpressionExpression),
+            // these expression types are considered to provide their own types, rather than deferring to inner expressions
+            BinaryOperatorExpression or MatchesExpression or MemberAccessExpression or MethodCallExpression
+                or MethodReturnExpression or ObjectInitializerExpression or StaticMemberAccessExpression
+                or TupleExpression or UnaryOperatorExpression or UnionClassVariantInitializerExpression
+                or ValueAccessorExpression or VariableDeclarationExpression => ExpectType(actual.ResolvedType!,
+                    expected, actual.SourceRange),
+            _ => throw new UnreachableException(actual.GetType().ToString())
+        };
+
+        bool ExpectIfExpressionType(IfExpressionExpression ifExpression)
+        {
+            return ExpectType(ifExpression.ResolvedType!, expected, SourceRange.Default);
+            // todo: tail expression
+        }
+
+        bool ExpectBlockExpressionType(BlockExpression blockExpression)
+        {
+            return ExpectType(blockExpression.ResolvedType!, expected, SourceRange.Default);
+            // todo: tail expression
+        }
+
+        bool ExpectMatchExpressionType(MatchExpression matchExpression)
+        {
+            return ExpectType(matchExpression.ResolvedType!, expected, SourceRange.Default);
+            // todo: tail expression
+        }
+
+    }
+
     private void ExpectExpressionType(ITypeReference expected, IExpression? actual)
     {
         if (actual is null)
@@ -380,8 +425,165 @@ public partial class TypeChecker
         }
     }
 
-    private bool ExpectType(ITypeReference actual, ITypeReference expected,
+    private bool ExpectType(ITypeReference actual, IReadOnlyList<ITypeReference> expectedTypes,
         SourceRange actualSourceRange, bool reportError = true)
+    {
+        if ((actual is InstantiatedClass x && x.IsSameSignature(InstantiatedClass.Never))
+            || (expectedTypes.Any(x => x is InstantiatedClass y && y.IsSameSignature(InstantiatedClass.Never))))
+        {
+            return true;
+        }
+
+        foreach (var expected in expectedTypes)
+        {
+            var result = true;
+            switch (actual, expected)
+            {
+                case (GenericPlaceholder placeholder1, GenericTypeReference reference2):
+                    {
+                        if (reference2.ResolvedType is not null)
+                        {
+                            result = ExpectType(placeholder1, reference2.ResolvedType, actualSourceRange, reportError: false, assignInferredTypes: false);
+                        }
+
+                        break;
+                    }
+                case (GenericTypeReference reference1, GenericPlaceholder placeholder2):
+                    {
+                        if (reference1.ResolvedType is not null)
+                        {
+                            result = ExpectType(placeholder2, reference1.ResolvedType, actualSourceRange, reportError: false, assignInferredTypes: false);
+                        }
+
+                        break;
+                    }
+                case (GenericPlaceholder placeholder1, GenericPlaceholder placeholder2):
+                    {
+                        result = placeholder1 == placeholder2;
+                        break;
+                    }
+                case (GenericPlaceholder, _):
+                case (_, GenericPlaceholder):
+                    {
+                        result = false;
+                        break;
+                    }
+                case (InstantiatedClass actualClass, InstantiatedClass expectedClass):
+                    {
+                        if (!actualClass.IsSameSignature(expectedClass))
+                        {
+                            result = false;
+                            break;
+                        }
+
+                        var argumentsPassed = true;
+
+                        for (var i = 0; i < actualClass.TypeArguments.Count; i++)
+                        {
+                            argumentsPassed &= ExpectType(actualClass.TypeArguments[i], expectedClass.TypeArguments[i], actualSourceRange, reportError: false, assignInferredTypes: false);
+                        }
+
+                        result &= argumentsPassed;
+
+                        break;
+                    }
+                case (InstantiatedUnion actualUnion, InstantiatedUnion expectedUnion):
+                    {
+                        if (!actualUnion.IsSameSignature(expectedUnion))
+                        {
+                            result = false;
+                            break;
+                        }
+
+                        var argumentsPassed = true;
+
+                        for (var i = 0; i < actualUnion.TypeArguments.Count; i++)
+                        {
+                            argumentsPassed &= ExpectType(actualUnion.TypeArguments[i], expectedUnion.TypeArguments[i],
+                                actualSourceRange, reportError: false, assignInferredTypes: false);
+                        }
+
+                        result &= argumentsPassed;
+
+                        break;
+                    }
+                case (InstantiatedUnion union, GenericTypeReference generic):
+                    {
+                        if (generic.ResolvedType is not null)
+                        {
+                            result &= ExpectType(union, generic.ResolvedType, actualSourceRange, reportError: false, assignInferredTypes: false);
+                        }
+
+                        break;
+                    }
+                case (GenericTypeReference generic, InstantiatedUnion union):
+                    {
+                        if (generic.ResolvedType is not null)
+                        {
+                            result &= ExpectType(union, generic.ResolvedType, actualSourceRange, reportError: false, assignInferredTypes: false);
+                        }
+
+                        break;
+                    }
+                case (InstantiatedClass @class, GenericTypeReference generic):
+                    {
+                        if (generic.ResolvedType is not null)
+                        {
+                            result &= ExpectType(@class, generic.ResolvedType, actualSourceRange, reportError: false, assignInferredTypes: false);
+                        }
+
+                        break;
+                    }
+                case (GenericTypeReference generic, InstantiatedClass @class):
+                    {
+                        if (generic.ResolvedType is not null)
+                        {
+                            result &= ExpectType(@class, generic.ResolvedType, actualSourceRange, reportError: false, assignInferredTypes: false);
+                        }
+
+                        break;
+                    }
+                case (GenericTypeReference genericTypeReference, GenericTypeReference expectedGeneric):
+                    {
+                        if (genericTypeReference.ResolvedType is not null && expectedGeneric.ResolvedType is not null)
+                        {
+                            result &= ExpectType(genericTypeReference.ResolvedType, expectedGeneric.ResolvedType, actualSourceRange, reportError: false, assignInferredTypes: false);
+                        }
+
+                        break;
+                    }
+                case (FunctionObject functionObject1, FunctionObject functionObject2):
+                    {
+                        result &= ExpectType(functionObject1.ReturnType, functionObject2.ReturnType, actualSourceRange,
+                            reportError: false, assignInferredTypes: false);
+                        result &= functionObject1.Parameters.Count == functionObject2.Parameters.Count;
+                        result &= functionObject1.Parameters.Zip(functionObject2.Parameters)
+                            .All(z => z.First.Mutable == z.Second.Mutable
+                                      && ExpectType(z.First.Type, z.Second.Type, actualSourceRange, reportError: false, assignInferredTypes: false));
+
+                        break;
+                    }
+            }
+
+            if (result)
+            {
+                return true;
+            }
+        }
+
+        if (reportError)
+        {
+            _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expectedTypes, actual));
+        }
+
+        return false;
+    }
+
+    private bool ExpectType(ITypeReference actual,
+        ITypeReference expected,
+        SourceRange actualSourceRange,
+        bool reportError = true,
+        bool assignInferredTypes = true)
     {
         if ((actual is InstantiatedClass x && x.IsSameSignature(InstantiatedClass.Never))
             || (expected is InstantiatedClass y && y.IsSameSignature(InstantiatedClass.Never)))
@@ -397,9 +599,9 @@ public partial class TypeChecker
                 {
                     if (reference2.ResolvedType is not null)
                     {
-                        result = ExpectType(placeholder1, reference2.ResolvedType, actualSourceRange, reportError);
+                        result = ExpectType(placeholder1, reference2.ResolvedType, actualSourceRange, reportError, assignInferredTypes);
                     }
-                    else
+                    else if (assignInferredTypes)
                     {
                         reference2.ResolvedType = placeholder1;
                     }
@@ -410,9 +612,9 @@ public partial class TypeChecker
                 {
                     if (reference1.ResolvedType is not null)
                     {
-                        result = ExpectType(placeholder2, reference1.ResolvedType, actualSourceRange, reportError);
+                        result = ExpectType(placeholder2, reference1.ResolvedType, actualSourceRange, reportError, assignInferredTypes);
                     }
-                    else
+                    else if (assignInferredTypes)
                     {
                         reference1.ResolvedType = placeholder2;
                     }
@@ -428,8 +630,8 @@ public partial class TypeChecker
                     }
                     break;
                 }
-            case (GenericPlaceholder, not null):
-            case (not null, GenericPlaceholder):
+            case (GenericPlaceholder, _):
+            case (_, GenericPlaceholder):
                 {
                     result = false;
                     if (reportError)
@@ -452,7 +654,7 @@ public partial class TypeChecker
 
                     for (var i = 0; i < actualClass.TypeArguments.Count; i++)
                     {
-                        argumentsPassed &= ExpectType(actualClass.TypeArguments[i], expectedClass.TypeArguments[i], actualSourceRange, reportError: false);
+                        argumentsPassed &= ExpectType(actualClass.TypeArguments[i], expectedClass.TypeArguments[i], actualSourceRange, reportError: false, assignInferredTypes);
                     }
 
                     if (!argumentsPassed && reportError)
@@ -479,7 +681,7 @@ public partial class TypeChecker
                     for (var i = 0; i < actualUnion.TypeArguments.Count; i++)
                     {
                         argumentsPassed &= ExpectType(actualUnion.TypeArguments[i], expectedUnion.TypeArguments[i],
-                            actualSourceRange, reportError: false);
+                            actualSourceRange, reportError: false, assignInferredTypes);
                     }
 
                     if (!argumentsPassed && reportError)
@@ -494,9 +696,9 @@ public partial class TypeChecker
                 {
                     if (generic.ResolvedType is not null)
                     {
-                        result &= ExpectType(union, generic.ResolvedType, actualSourceRange, reportError);
+                        result &= ExpectType(union, generic.ResolvedType, actualSourceRange, reportError, assignInferredTypes);
                     }
-                    else
+                    else if (assignInferredTypes)
                     {
                         generic.ResolvedType = union;
                     }
@@ -507,9 +709,9 @@ public partial class TypeChecker
                 {
                     if (generic.ResolvedType is not null)
                     {
-                        result &= ExpectType(union, generic.ResolvedType, actualSourceRange, reportError);
+                        result &= ExpectType(union, generic.ResolvedType, actualSourceRange, reportError, assignInferredTypes);
                     }
-                    else
+                    else if (assignInferredTypes)
                     {
                         generic.ResolvedType = union;
                     }
@@ -520,9 +722,9 @@ public partial class TypeChecker
                 {
                     if (generic.ResolvedType is not null)
                     {
-                        result &= ExpectType(@class, generic.ResolvedType, actualSourceRange, reportError);
+                        result &= ExpectType(@class, generic.ResolvedType, actualSourceRange, reportError, assignInferredTypes);
                     }
-                    else
+                    else if (assignInferredTypes)
                     {
                         generic.ResolvedType = @class;
                     }
@@ -533,9 +735,9 @@ public partial class TypeChecker
                 {
                     if (generic.ResolvedType is not null)
                     {
-                        result &= ExpectType(@class, generic.ResolvedType, actualSourceRange, reportError);
+                        result &= ExpectType(@class, generic.ResolvedType, actualSourceRange, reportError, assignInferredTypes);
                     }
-                    else
+                    else if (assignInferredTypes)
                     {
                         generic.ResolvedType = @class;
                     }
@@ -546,22 +748,25 @@ public partial class TypeChecker
                 {
                     if (genericTypeReference.ResolvedType is not null && expectedGeneric.ResolvedType is not null)
                     {
-                        result &= ExpectType(genericTypeReference.ResolvedType, expectedGeneric.ResolvedType, actualSourceRange, reportError);
+                        result &= ExpectType(genericTypeReference.ResolvedType, expectedGeneric.ResolvedType, actualSourceRange, reportError, assignInferredTypes);
                     }
-                    else if (genericTypeReference.ResolvedType is null && expectedGeneric.ResolvedType is not null)
+                    else if (assignInferredTypes)
                     {
-                        genericTypeReference.ResolvedType = expectedGeneric.ResolvedType;
-                    }
-                    else if (genericTypeReference.ResolvedType is not null && expectedGeneric.ResolvedType is null)
-                    {
-                        expectedGeneric.ResolvedType = genericTypeReference.ResolvedType;
-                    }
-                    else
-                    {
-                        genericTypeReference.Link(expectedGeneric);
-                        if (expectedGeneric != genericTypeReference)
+                        if (genericTypeReference.ResolvedType is null && expectedGeneric.ResolvedType is not null)
                         {
-                            expectedGeneric.ResolvedType = genericTypeReference;
+                            genericTypeReference.ResolvedType = expectedGeneric.ResolvedType;
+                        }
+                        else if (genericTypeReference.ResolvedType is not null && expectedGeneric.ResolvedType is null)
+                        {
+                            expectedGeneric.ResolvedType = genericTypeReference.ResolvedType;
+                        }
+                        else
+                        {
+                            genericTypeReference.Link(expectedGeneric);
+                            if (expectedGeneric != genericTypeReference)
+                            {
+                                expectedGeneric.ResolvedType = genericTypeReference;
+                            }
                         }
                     }
 
@@ -570,11 +775,11 @@ public partial class TypeChecker
             case (FunctionObject functionObject1, FunctionObject functionObject2):
                 {
                     result &= ExpectType(functionObject1.ReturnType, functionObject2.ReturnType, actualSourceRange,
-                        reportError: false);
+                        reportError: false, assignInferredTypes);
                     result &= functionObject1.Parameters.Count == functionObject2.Parameters.Count;
                     result &= functionObject1.Parameters.Zip(functionObject2.Parameters)
                         .All(z => z.First.Mutable == z.Second.Mutable
-                                  && ExpectType(z.First.Type, z.Second.Type, actualSourceRange, reportError: false));
+                                  && ExpectType(z.First.Type, z.Second.Type, actualSourceRange, reportError: false, assignInferredTypes));
 
                     if (!result && reportError)
                     {

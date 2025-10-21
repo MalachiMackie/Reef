@@ -53,11 +53,11 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 VariableDeclaration("a", false),
-                                LocalValueAssignment("a", IntConstant(2, true), false, Int),
+                                LocalValueAssignment("a", Int64Constant(2, true), false, Int64_t),
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", Int)
+                                Local("a", Int64_t)
                             ])
                     ])
             },
@@ -68,7 +68,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                IntPlus(IntConstant(1, true), IntConstant(2, true), false),
+                                Int64Plus(Int64Constant(1, true), Int64Constant(2, true), false),
                                 MethodReturnUnit()
                             ])
                     ])
@@ -80,7 +80,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                IntMinus(IntConstant(1, true), IntConstant(2, true), false),
+                                Int64Minus(Int64Constant(1, true), Int64Constant(2, true), false),
                                 MethodReturnUnit()
                             ])
                     ])
@@ -92,7 +92,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                IntMultiply(IntConstant(1, true), IntConstant(2, true), false),
+                                Int64Multiply(Int64Constant(1, true), Int64Constant(2, true), false),
                                 MethodReturnUnit()
                             ])
                     ])
@@ -104,7 +104,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                IntDivide(IntConstant(1, true), IntConstant(2, true), false),
+                                Int64Divide(Int64Constant(1, true), Int64Constant(2, true), false),
                                 MethodReturnUnit()
                             ])
                     ])
@@ -116,7 +116,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                IntNotEquals(IntConstant(1, true), IntConstant(2, true), false),
+                                Int64NotEquals(Int64Constant(1, true), Int64Constant(2, true), false),
                                 MethodReturnUnit()
                             ])
                     ])
@@ -128,7 +128,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                IntEquals(IntConstant(1, true), IntConstant(2, true), false),
+                                Int64Equals(Int64Constant(1, true), Int64Constant(2, true), false),
                                 MethodReturnUnit()
                             ])
                     ])
@@ -140,7 +140,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                IntGreaterThan(IntConstant(1, true), IntConstant(2, true), false),
+                                Int64GreaterThan(Int64Constant(1, true), Int64Constant(2, true), false),
                                 MethodReturnUnit()
                             ])
                     ])
@@ -152,7 +152,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                IntLessThan(IntConstant(1, true), IntConstant(2, true), false),
+                                Int64LessThan(Int64Constant(1, true), Int64Constant(2, true), false),
                                 MethodReturnUnit()
                             ])
                     ])
@@ -226,7 +226,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                             [
                                 Block([
                                     BoolConstant(true, false),
-                                    IntConstant(1, false),
+                                    Int64Constant(1, false),
                                 ], Unit, false),
                                 MethodReturnUnit()
                             ])
@@ -239,13 +239,13 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                VariableDeclaration("a", IntConstant(1, true), valueUseful: false),
-                                VariableDeclaration("b", LocalAccess("a", true, Int), valueUseful: false),
+                                VariableDeclaration("a", Int64Constant(1, true), valueUseful: false),
+                                VariableDeclaration("b", LocalAccess("a", true, Int64_t), valueUseful: false),
                                 MethodReturnUnit()
                             ],
                             locals: [
-                                Local("a", Int),
-                                Local("b", Int),
+                                Local("a", Int64_t),
+                                Local("b", Int64_t),
                             ])
                     ])
             },
@@ -266,7 +266,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 """
                 fn MyFn<T>(){}
                 MyFn::<string>();
-                MyFn::<int>();
+                MyFn::<i64>();
                 """,
                 LoweredProgram(
                     methods: [
@@ -279,7 +279,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                                     false,
                                     Unit),
                                 MethodCall(
-                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn", [Int]),
+                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn", [Int64_t]),
                                     [],
                                     false,
                                     Unit),
@@ -308,7 +308,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                IntConstant(1, false),
+                                Int64Constant(1, false),
                                 MethodReturnUnit()
                             ])
                     ])
@@ -321,12 +321,12 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 CreateObject(
-                                    ConcreteTypeReference("Tuple`2", DefId.Tuple(2), [Int, StringType]),
+                                    ConcreteTypeReference("Tuple`2", DefId.Tuple(2), [Int64_t, StringType]),
                                     "_classVariant",
                                     false,
                                     new()
                                     {
-                                        {"Item0", IntConstant(1, true)},
+                                        {"Item0", Int64Constant(1, true)},
                                         {"Item1", StringConstant("", true)},
                                     }),
                                 MethodReturnUnit()

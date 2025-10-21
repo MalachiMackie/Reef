@@ -73,8 +73,8 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 LoweredProgram(types: [
                     DataType(_moduleId, "MyUnion",
                         variants: [
-                            Variant("A", [Field("_variantIdentifier", Int)]),
-                            Variant("B", [Field("_variantIdentifier", Int)]),
+                            Variant("A", [Field("_variantIdentifier", UInt16_t)]),
+                            Variant("B", [Field("_variantIdentifier", UInt16_t)]),
                         ])
                 ])
             },
@@ -94,14 +94,14 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             },
             {
                 "union with tuple variant",
-                "union MyUnion { A(string, int) }",
+                "union MyUnion { A(string, i64) }",
                 LoweredProgram(types: [
                     DataType(_moduleId, "MyUnion",
                         variants: [
                             Variant("A", [
-                                Field("_variantIdentifier", Int),
+                                Field("_variantIdentifier", UInt16_t),
                                 Field("Item0", StringType),
-                                Field("Item1", Int),
+                                Field("Item1", Int64_t),
                             ])
                         ])
                 ], methods: [
@@ -113,12 +113,12 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         true,
                                         new()
                                         {
-                                            {"_variantIdentifier", IntConstant(0, true)},
+                                            {"_variantIdentifier", UInt16Constant(0, true)},
                                             {"Item0", LoadArgument(0, true, StringType)},
-                                            {"Item1", LoadArgument(1, true, Int)},
+                                            {"Item1", LoadArgument(1, true, Int64_t)},
                                         }))
                                 ],
-                                parameters: [StringType, Int],
+                                parameters: [StringType, Int64_t],
                                 returnType: ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")))
                         ])
             },
@@ -131,7 +131,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                         [
                             Variant("A",
                                 [
-                                    Field("_variantIdentifier", Int),
+                                    Field("_variantIdentifier", UInt16_t),
                                     Field("Item0", GenericPlaceholder(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "T"))
                                 ])
                         ])
@@ -144,7 +144,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         true,
                                         new()
                                         {
-                                            {"_variantIdentifier", IntConstant(0, true)},
+                                            {"_variantIdentifier", UInt16Constant(0, true)},
                                             {"Item0", LoadArgument(0, true, GenericPlaceholder(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "T"))},
                                         }))
                                 ],
@@ -155,15 +155,15 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             },
             {
                 "union with class variant",
-                "union MyUnion { A { field MyField: string, field OtherField: int } }",
+                "union MyUnion { A { field MyField: string, field OtherField: i64 } }",
                 LoweredProgram(types: [
                     DataType(_moduleId, "MyUnion",
                         variants: [
                             Variant("A",
                                 fields: [
-                                    Field("_variantIdentifier", Int),
+                                    Field("_variantIdentifier", UInt16_t),
                                     Field("MyField", StringType),
-                                    Field("OtherField", Int),
+                                    Field("OtherField", Int64_t),
                                 ])
                         ])
                 ])
@@ -188,13 +188,13 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             Variant(
                                 "A",
                                 [
-                                    Field("_variantIdentifier", Int),
+                                    Field("_variantIdentifier", UInt16_t),
                                     Field("Item0", StringType),
                                 ]),
                             Variant(
                                 "B",
                                 [
-                                    Field("_variantIdentifier", Int),
+                                    Field("_variantIdentifier", UInt16_t),
                                     Field("Item0", StringType),
                                 ]),
                         ])
@@ -209,7 +209,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         true,
                                         new()
                                         {
-                                            {"_variantIdentifier", IntConstant(0, true)},
+                                            {"_variantIdentifier", UInt16Constant(0, true)},
                                             {"Item0", LoadArgument(0, true, StringType)},
                                         }))
                                 ],
@@ -223,7 +223,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         true,
                                         new()
                                         {
-                                            {"_variantIdentifier", IntConstant(1, true)},
+                                            {"_variantIdentifier", UInt16Constant(1, true)},
                                             {"Item0", LoadArgument(0, true, StringType)},
                                         }))
                                 ],

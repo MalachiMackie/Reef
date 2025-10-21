@@ -23,6 +23,7 @@ public class ModuleStructure
         var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
             expectedModule,
+            opts => opts.Excluding(x => x.Type == typeof(Stack<IReefTypeReference>)),
             description);
     }
 
@@ -42,8 +43,8 @@ public class ModuleStructure
                     types: [
                         DataType(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion",
                             variants: [
-                                Variant("A", fields: [Field("_variantIdentifier", IntType)]),
-                                Variant("B", fields: [Field("_variantIdentifier", IntType)]),
+                                Variant("A", fields: [Field("_variantIdentifier", UInt16Type)]),
+                                Variant("B", fields: [Field("_variantIdentifier", UInt16Type)]),
                             ])
                     ])
             },
@@ -85,25 +86,25 @@ public class ModuleStructure
             },
             {
                 "method with parameters",
-                "static fn SomeFn(a: int, b: string){}",
+                "static fn SomeFn(a: i64, b: string){}",
                 Module(
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
                             [LoadUnit(), Return()],
-                            parameters: [IntType, StringType])
+                            parameters: [Int64Type, StringType])
                     ])
             },
             {
                 "method with return type",
-                "static fn SomeFn(): int {return 1;}",
+                "static fn SomeFn(): i64 {return 1;}",
                 Module(
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
                             [
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 Return()
                             ],
-                            returnType: IntType)
+                            returnType: Int64Type)
                     ])
             },
             {
@@ -211,7 +212,7 @@ public class ModuleStructure
             },
             {
                 "class fields",
-                "class MyClass { pub field MyField: string, static field OtherField: int = 1}",
+                "class MyClass { pub field MyField: string, static field OtherField: i64 = 1}",
                 Module(
                     types: [
                         DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass",
@@ -222,30 +223,30 @@ public class ModuleStructure
                                     ])
                             ],
                             staticFields: [
-                                StaticField("OtherField", IntType, [new LoadIntConstant(1)])
+                                StaticField("OtherField", Int64Type, [new LoadInt64Constant(1)])
                             ])
                     ])
             },
             {
                 "union variant fields",
-                "union MyUnion { A, B(string, int), C { field MyField: bool } }",
+                "union MyUnion { A, B(string, i64), C { field MyField: bool } }",
                 Module(
                     types: [
                         DataType(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion",
                             variants: [
                                 Variant(
                                     "A",
-                                    fields: [Field("_variantIdentifier", IntType)]),
+                                    fields: [Field("_variantIdentifier", UInt16Type)]),
                                 Variant(
                                     "B",
                                     fields: [
-                                        Field("_variantIdentifier", IntType),
+                                        Field("_variantIdentifier", UInt16Type),
                                         Field("Item0", StringType),
-                                        Field("Item1", IntType)
+                                        Field("Item1", Int64Type)
                                     ]),
                                 Variant("C",
                                     fields: [
-                                        Field("_variantIdentifier", IntType),
+                                        Field("_variantIdentifier", UInt16Type),
                                         Field("MyField", BoolType)
                                     ])
                             ])
@@ -256,7 +257,7 @@ public class ModuleStructure
                                 new CreateObject(
                                     ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
-                                new LoadIntConstant(1),
+                                new LoadUInt16Constant(1),
                                 new StoreField(1, "_variantIdentifier"),
                                 new CopyStack(),
                                 new LoadArgument(0),
@@ -266,7 +267,7 @@ public class ModuleStructure
                                 new StoreField(1, "Item1"),
                                 Return()
                             ],
-                            parameters: [StringType, IntType],
+                            parameters: [StringType, Int64Type],
                             returnType: ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion"))
                     ])
             },

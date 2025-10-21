@@ -24,7 +24,7 @@ public class FunctionTests : IntegrationTestBase
     public async Task CallFunctionWithArguments()
     {
         await SetupTest("""
-            fn SomeFn(a: int, b: string, c: bool) {
+            fn SomeFn(a: i64, b: string, c: bool) {
                 if (a == 0) {
                     printf("a == 0. ");
                 }

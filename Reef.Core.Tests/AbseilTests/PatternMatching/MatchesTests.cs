@@ -27,7 +27,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
     public void SingleTest()
     {
         var source = """
-                union MyUnion{A(int), B}
+                union MyUnion{A(i64), B}
                 var a = MyUnion::B;
                 var b = a matches MyUnion::A(_);
                 """;
@@ -35,8 +35,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                     types: [
                         DataType(_moduleId, "MyUnion",
                             variants: [
-                                Variant("A", [Field("_variantIdentifier", Int), Field("Item0", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)])
+                                Variant("A", [Field("_variantIdentifier", UInt16_t), Field("Item0", Int64_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)])
                             ])
                     ],
                     methods: [
@@ -48,11 +48,11 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         "A",
                                         true,
                                         new() {
-                                            {"Item0", LoadArgument(0, true, Int)},
-                                            {"_variantIdentifier", IntConstant(0, true)},
+                                            {"Item0", LoadArgument(0, true, Int64_t)},
+                                            {"_variantIdentifier", UInt16Constant(0, true)},
                                         }))
                             ],
-                            parameters: [Int],
+                            parameters: [Int64_t],
                             returnType: ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
@@ -62,7 +62,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "B",
                                         true,
-                                        new(){{"_variantIdentifier", IntConstant(1, true)}}),
+                                        new(){{"_variantIdentifier", UInt16Constant(1, true)}}),
                                     false),
                                 VariableDeclaration(
                                     "b",
@@ -73,7 +73,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                 LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 false),
                                             BoolAnd(
-                                                IntEquals(
+                                                UInt16Equals(
                                                     FieldAccess(
                                                         LocalAccess(
                                                             "Local2",
@@ -82,8 +82,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                         "_variantIdentifier",
                                                         "A",
                                                         true,
-                                                        Int),
-                                                    IntConstant(0, true),
+                                                        UInt16_t),
+                                                    UInt16Constant(0, true),
                                                     true),
                                                 Block(
                                                     [
@@ -96,7 +96,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                                 "Item0",
                                                                 "A",
                                                                 true,
-                                                                Int),
+                                                                Int64_t),
                                                             false),
                                                         BoolConstant(true, true)
                                                     ],
@@ -113,7 +113,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                 Local("a", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                 Local("b", BooleanType),
                                 Local("Local2", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
-                                Local("Local3", Int)
+                                Local("Local3", Int64_t)
                             ])
                     ]);
 
@@ -146,7 +146,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                     "b",
                                     Block(
                                         [
-                                            VariableDeclaration("Local1", IntConstant(1, true) ,false),
+                                            VariableDeclaration("Local1", Int64Constant(1, true) ,false),
                                             BoolConstant(true, true)
                                         ],
                                         BooleanType,
@@ -156,7 +156,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             ],
                             locals: [
                                 Local("b", BooleanType),
-                                Local("Local1", Int)
+                                Local("Local1", Int64_t)
                             ])
                     ])
             },
@@ -174,7 +174,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                     Block(
                                         [
                                             VariableDeclaration("a",
-                                                IntConstant(1, true),
+                                                Int64Constant(1, true),
                                                 false),
                                             BoolConstant(true, true)
                                         ],
@@ -185,14 +185,14 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             ],
                             locals: [
                                 Local("b", BooleanType),
-                                Local("a", Int)
+                                Local("a", Int64_t)
                             ])
                     ])
             },
             {
                 "matches - type pattern",
                 """
-                var b = 1 matches int;
+                var b = 1 matches i64;
                 """,
                 LoweredProgram(
                     methods: [
@@ -202,7 +202,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                     "b",
                                     Block(
                                         [
-                                            VariableDeclaration("Local1", IntConstant(1, true) ,false),
+                                            VariableDeclaration("Local1", Int64Constant(1, true) ,false),
                                             // TODO: for now, type patterns always evaluate to true.
                                             // In the future,this will only be true when the operands concrete
                                             // type is known.When the operand is some dynamic dispatch
@@ -217,14 +217,14 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             ],
                             locals: [
                                 Local("b", BooleanType),
-                                Local("Local1", Int)
+                                Local("Local1", Int64_t)
                             ])
                     ])
             },
             {
                 "matches - type pattern with variable declaration",
                 """
-                var b = 1 matches int var a;
+                var b = 1 matches i64 var a;
                 """,
                 LoweredProgram(
                     methods: [
@@ -234,7 +234,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                     "b",
                                     Block(
                                         [
-                                            VariableDeclaration("a", IntConstant(1, true) ,false),
+                                            VariableDeclaration("a", Int64Constant(1, true) ,false),
                                             BoolConstant(true, true)
                                         ],
                                         BooleanType,
@@ -244,7 +244,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             ],
                             locals: [
                                 Local("b", BooleanType),
-                                Local("a", Int)
+                                Local("a", Int64_t)
                             ])
                     ])
             },
@@ -259,8 +259,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                     types: [
                         DataType(_moduleId, "MyUnion",
                             variants: [
-                                Variant("A", [Field("_variantIdentifier", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)])
+                                Variant("A", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)])
                             ])
                     ],
                     methods: [
@@ -272,7 +272,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "A",
                                         true,
-                                        new(){{"_variantIdentifier", IntConstant(0, true)}}),
+                                        new(){{"_variantIdentifier", UInt16Constant(0, true)}}),
                                     false),
                                 VariableDeclaration(
                                     "b",
@@ -282,7 +282,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                 "Local2",
                                                 LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 false),
-                                            IntEquals(
+                                            UInt16Equals(
                                                 FieldAccess(
                                                     LocalAccess(
                                                         "Local2",
@@ -291,8 +291,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                     "_variantIdentifier",
                                                     "B",
                                                     true,
-                                                    Int),
-                                                IntConstant(1, true),
+                                                    UInt16_t),
+                                                UInt16Constant(1, true),
                                                 true)
                                         ],
                                         BooleanType,
@@ -318,8 +318,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                     types: [
                         DataType(_moduleId, "MyUnion",
                             variants: [
-                                Variant("A", [Field("_variantIdentifier", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)])
+                                Variant("A", [Field("_variantIdentifier", UInt16_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)])
                             ])
                     ],
                     methods: [
@@ -331,7 +331,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "A",
                                         true,
-                                        new(){{"_variantIdentifier", IntConstant(0, true)}}),
+                                        new(){{"_variantIdentifier", UInt16Constant(0, true)}}),
                                     false),
                                 VariableDeclaration(
                                     "b",
@@ -341,7 +341,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                 "c",
                                                 LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 false),
-                                            IntEquals(
+                                            UInt16Equals(
                                                 FieldAccess(
                                                     LocalAccess(
                                                         "c",
@@ -350,8 +350,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                     "_variantIdentifier",
                                                     "B",
                                                     true,
-                                                    Int),
-                                                IntConstant(1, true),
+                                                    UInt16_t),
+                                                UInt16Constant(1, true),
                                                 true)
                                         ],
                                         BooleanType,
@@ -369,7 +369,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
             {
                 "matches - union tuple pattern",
                 """
-                union MyUnion{A(int), B}
+                union MyUnion{A(i64), B}
                 var a = MyUnion::B;
                 var b = a matches MyUnion::A(_);
                 """,
@@ -377,8 +377,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                     types: [
                         DataType(_moduleId, "MyUnion",
                             variants: [
-                                Variant("A", [Field("_variantIdentifier", Int), Field("Item0", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)])
+                                Variant("A", [Field("_variantIdentifier", UInt16_t), Field("Item0", Int64_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)])
                             ])
                     ],
                     methods: [
@@ -389,9 +389,9 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "A",
                                         true,
-                                        new(){{"_variantIdentifier", IntConstant(0, true)}, {"Item0", LoadArgument(0, true, Int)}}))
+                                        new(){{"_variantIdentifier", UInt16Constant(0, true)}, {"Item0", LoadArgument(0, true, Int64_t)}}))
                             ],
-                            parameters: [Int],
+                            parameters: [Int64_t],
                             returnType: ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
@@ -401,7 +401,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "B",
                                         true,
-                                        new(){{"_variantIdentifier", IntConstant(1, true)}}),
+                                        new(){{"_variantIdentifier", UInt16Constant(1, true)}}),
                                     false),
                                 VariableDeclaration(
                                     "b",
@@ -412,7 +412,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                 LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 false),
                                             BoolAnd(
-                                                IntEquals(
+                                                UInt16Equals(
                                                     FieldAccess(
                                                         LocalAccess(
                                                             "Local2",
@@ -421,8 +421,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                         "_variantIdentifier",
                                                         "A",
                                                         true,
-                                                        Int),
-                                                    IntConstant(0, true),
+                                                        UInt16_t),
+                                                    UInt16Constant(0, true),
                                                     true),
                                                 Block(
                                                     [
@@ -435,7 +435,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                                 "Item0",
                                                                 "A",
                                                                 true,
-                                                                Int),
+                                                                Int64_t),
                                                             false),
                                                         BoolConstant(true, true)
                                                     ],
@@ -452,14 +452,14 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                 Local("a", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                 Local("b", BooleanType),
                                 Local("Local2", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
-                                Local("Local3", Int)
+                                Local("Local3", Int64_t)
                             ])
                     ])
             },
             {
                 "matches - union tuple pattern with variable declaration",
                 """
-                union MyUnion{A(int), B}
+                union MyUnion{A(i64), B}
                 var a = MyUnion::B;
                 var b = a matches MyUnion::A(_) var c;
                 """,
@@ -467,8 +467,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                     types: [
                         DataType(_moduleId, "MyUnion",
                             variants: [
-                                Variant("A", [Field("_variantIdentifier", Int), Field("Item0", Int)]),
-                                Variant("B", [Field("_variantIdentifier", Int)])
+                                Variant("A", [Field("_variantIdentifier", UInt16_t), Field("Item0", Int64_t)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)])
                             ])
                     ],
                     methods: [
@@ -479,9 +479,9 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "A",
                                         true,
-                                        new(){{"_variantIdentifier", IntConstant(0, true)}, {"Item0", LoadArgument(0, true, Int)}}))
+                                        new(){{"_variantIdentifier", UInt16Constant(0, true)}, {"Item0", LoadArgument(0, true, Int64_t)}}))
                             ],
-                            parameters: [Int],
+                            parameters: [Int64_t],
                             returnType: ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
@@ -491,7 +491,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "B",
                                         true,
-                                        new(){{"_variantIdentifier", IntConstant(1, true)}}),
+                                        new(){{"_variantIdentifier", UInt16Constant(1, true)}}),
                                     false),
                                 VariableDeclaration(
                                     "b",
@@ -502,7 +502,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                 LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 false),
                                             BoolAnd(
-                                                IntEquals(
+                                                UInt16Equals(
                                                     FieldAccess(
                                                         LocalAccess(
                                                             "c",
@@ -511,8 +511,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                         "_variantIdentifier",
                                                         "A",
                                                         true,
-                                                        Int),
-                                                    IntConstant(0, true),
+                                                        UInt16_t),
+                                                    UInt16Constant(0, true),
                                                     true),
                                                 Block(
                                                     [
@@ -525,7 +525,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                                 "Item0",
                                                                 "A",
                                                                 true,
-                                                                Int),
+                                                                Int64_t),
                                                             false),
                                                         BoolConstant(true, true)
                                                     ],
@@ -542,14 +542,14 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                 Local("a", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                 Local("b", BooleanType),
                                 Local("c", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
-                                Local("Local3", Int)
+                                Local("Local3", Int64_t)
                             ])
                     ])
             },
             {
                 "matches - union tuple pattern with multiple members ",
                 """
-                union MyUnion{A(int, string, bool), B}
+                union MyUnion{A(i64, string, bool), B}
                 var a = MyUnion::B;
                 var b = a matches MyUnion::A(_, var c, _);
                 """,
@@ -560,12 +560,12 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                 Variant(
                                     "A",
                                     [
-                                        Field("_variantIdentifier", Int),
-                                        Field("Item0", Int),
+                                        Field("_variantIdentifier", UInt16_t),
+                                        Field("Item0", Int64_t),
                                         Field("Item1", StringType),
                                         Field("Item2", BooleanType),
                                     ]),
-                                Variant("B", [Field("_variantIdentifier", Int)])
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)])
                             ])
                     ],
                     methods: [
@@ -577,13 +577,13 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         "A",
                                         true,
                                         new() {
-                                            {"Item0", LoadArgument(0, true, Int)},
+                                            {"Item0", LoadArgument(0, true, Int64_t)},
                                             {"Item1", LoadArgument(1, true, StringType)},
                                             {"Item2", LoadArgument(2, true, BooleanType)},
-                                            {"_variantIdentifier", IntConstant(0, true)},
+                                            {"_variantIdentifier", UInt16Constant(0, true)},
                                         }))
                             ],
-                            parameters: [Int, StringType, BooleanType],
+                            parameters: [Int64_t, StringType, BooleanType],
                             returnType: ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
@@ -593,7 +593,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "B",
                                         true,
-                                        new(){{"_variantIdentifier", IntConstant(1, true)}}),
+                                        new(){{"_variantIdentifier", UInt16Constant(1, true)}}),
                                     false),
                                 VariableDeclaration(
                                     "b",
@@ -604,7 +604,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                 LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 false),
                                             BoolAnd(
-                                                IntEquals(
+                                                UInt16Equals(
                                                     FieldAccess(
                                                         LocalAccess(
                                                             "Local3",
@@ -613,8 +613,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                         "_variantIdentifier",
                                                         "A",
                                                         true,
-                                                        Int),
-                                                    IntConstant(0, true),
+                                                        UInt16_t),
+                                                    UInt16Constant(0, true),
                                                     true),
                                                 BoolAnd(
                                                     Block(
@@ -628,7 +628,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                                     "Item0",
                                                                     "A",
                                                                     true,
-                                                                    Int),
+                                                                    Int64_t),
                                                                 false),
                                                             BoolConstant(true, true)
                                                         ],
@@ -684,7 +684,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                 Local("b", BooleanType),
                                 Local("c", StringType),
                                 Local("Local3", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
-                                Local("Local4", Int),
+                                Local("Local4", Int64_t),
                                 Local("Local5", BooleanType),
                             ])
                     ])
@@ -693,7 +693,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 "matches - union class variant pattern",
                 """
                 union MyUnion{
-                    A {field FieldA: int},
+                    A {field FieldA: i64},
                     B
                 }
                 var a = MyUnion::B;
@@ -706,10 +706,10 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                 Variant(
                                     "A",
                                     [
-                                        Field("_variantIdentifier", Int),
-                                        Field("FieldA", Int)
+                                        Field("_variantIdentifier", UInt16_t),
+                                        Field("FieldA", Int64_t)
                                     ]),
-                                Variant("B", [Field("_variantIdentifier", Int)])
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)])
                             ])
                     ],
                     methods: [
@@ -720,7 +720,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                     CreateObject(ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "B",
                                         true,
-                                        new(){{"_variantIdentifier", IntConstant(1, true)}}),
+                                        new(){{"_variantIdentifier", UInt16Constant(1, true)}}),
                                     false),
                                 VariableDeclaration(
                                     "b",
@@ -731,7 +731,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                 LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 false),
                                             BoolAnd(
-                                                IntEquals(
+                                                UInt16Equals(
                                                     FieldAccess(
                                                         LocalAccess(
                                                             "Local2",
@@ -740,8 +740,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                         "_variantIdentifier",
                                                         "A",
                                                         true,
-                                                        Int),
-                                                    IntConstant(0, true),
+                                                        UInt16_t),
+                                                    UInt16Constant(0, true),
                                                     true),
                                                 Block(
                                                     [
@@ -754,7 +754,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                                 "FieldA",
                                                                 "A",
                                                                 true,
-                                                                Int),
+                                                                Int64_t),
                                                             false),
                                                         BoolConstant(true, true)
                                                     ],
@@ -771,7 +771,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                 Local("a", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                 Local("b", BooleanType),
                                 Local("Local2", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
-                                Local("Local3", Int)
+                                Local("Local3", Int64_t)
                             ])
                     ])
             },
@@ -779,7 +779,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 "matches - union class variant pattern with discarded fields",
                 """
                 union MyUnion{
-                    A {field FieldA: int},
+                    A {field FieldA: i64},
                     B
                 }
                 var a = MyUnion::B;
@@ -792,10 +792,10 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                 Variant(
                                     "A",
                                     [
-                                        Field("_variantIdentifier", Int),
-                                        Field("FieldA", Int)
+                                        Field("_variantIdentifier", UInt16_t),
+                                        Field("FieldA", Int64_t)
                                     ]),
-                                Variant("B", [Field("_variantIdentifier", Int)])
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)])
                             ])
                     ],
                     methods: [
@@ -806,7 +806,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                     CreateObject(ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "B",
                                         true,
-                                        new(){{"_variantIdentifier", IntConstant(1, true)}}),
+                                        new(){{"_variantIdentifier", UInt16Constant(1, true)}}),
                                     false),
                                 VariableDeclaration(
                                     "b",
@@ -816,7 +816,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                 "Local2",
                                                 LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 false),
-                                            IntEquals(
+                                            UInt16Equals(
                                                 FieldAccess(
                                                     LocalAccess(
                                                         "Local2",
@@ -825,8 +825,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                     "_variantIdentifier",
                                                     "A",
                                                     true,
-                                                    Int),
-                                                IntConstant(0, true),
+                                                    UInt16_t),
+                                                UInt16Constant(0, true),
                                                 true),
                                         ],
                                         BooleanType,
@@ -845,7 +845,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 "matches - union class variant pattern multiple fields",
                 """
                 union MyUnion{
-                    A {field FieldA: int, field FieldB: string, field FieldC: bool},
+                    A {field FieldA: i64, field FieldB: string, field FieldC: bool},
                     B
                 }
                 var a = MyUnion::B;
@@ -858,12 +858,12 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                 Variant(
                                     "A",
                                     [
-                                        Field("_variantIdentifier", Int),
-                                        Field("FieldA", Int),
+                                        Field("_variantIdentifier", UInt16_t),
+                                        Field("FieldA", Int64_t),
                                         Field("FieldB", StringType),
                                         Field("FieldC", BooleanType)
                                     ]),
-                                Variant("B", [Field("_variantIdentifier", Int)])
+                                Variant("B", [Field("_variantIdentifier", UInt16_t)])
                             ])
                     ],
                     methods: [
@@ -874,7 +874,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                     CreateObject(ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                         "B",
                                         true,
-                                        new(){{"_variantIdentifier", IntConstant(1, true)}}),
+                                        new(){{"_variantIdentifier", UInt16Constant(1, true)}}),
                                     false),
                                 VariableDeclaration(
                                     "b",
@@ -885,7 +885,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                 LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                 false),
                                             BoolAnd(
-                                                IntEquals(
+                                                UInt16Equals(
                                                     FieldAccess(
                                                         LocalAccess(
                                                             "Local4",
@@ -894,8 +894,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                         "_variantIdentifier",
                                                         "A",
                                                         true,
-                                                        Int),
-                                                    IntConstant(0, true),
+                                                        UInt16_t),
+                                                    UInt16Constant(0, true),
                                                     true),
                                                 BoolAnd(
                                                     Block(
@@ -909,7 +909,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                                     "FieldA",
                                                                     "A",
                                                                     true,
-                                                                    Int),
+                                                                    Int64_t),
                                                                 false),
                                                             BoolConstant(true, true)
                                                         ],
@@ -963,7 +963,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             locals: [
                                 Local("a", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                 Local("b", BooleanType),
-                                Local("c", Int),
+                                Local("c", Int64_t),
                                 Local("FieldB", StringType),
                                 Local("Local4", ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                 Local("Local5", BooleanType)
@@ -973,7 +973,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
             {
                 "matches - class pattern",
                 """
-                class MyClass { pub field Field0: int, pub field Field1: int, pub field Field2: bool }
+                class MyClass { pub field Field0: i64, pub field Field1: i64, pub field Field2: bool }
                 var a = new MyClass{Field0 = 0, Field1 = 1, Field2 = true };
                 var b = a matches MyClass {Field0: var c, Field1: _, Field2: _};
                 """,
@@ -983,8 +983,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             variants: [
                                 Variant("_classVariant",
                                     [
-                                        Field("Field0", Int),
-                                        Field("Field1", Int),
+                                        Field("Field0", Int64_t),
+                                        Field("Field1", Int64_t),
                                         Field("Field2", BooleanType)
                                     ])
                             ])
@@ -1000,8 +1000,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         true,
                                         new()
                                         {
-                                            {"Field0", IntConstant(0, true)},
-                                            {"Field1", IntConstant(1, true)},
+                                            {"Field0", Int64Constant(0, true)},
+                                            {"Field1", Int64Constant(1, true)},
                                             {"Field2", BoolConstant(true, true)},
                                         }),
                                     false),
@@ -1025,7 +1025,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                                 "Field0",
                                                                 "_classVariant",
                                                                 true,
-                                                                Int),
+                                                                Int64_t),
                                                             false),
                                                         BoolConstant(true, true)
                                                     ],
@@ -1044,7 +1044,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                                                     "Field1",
                                                                     "_classVariant",
                                                                     true,
-                                                                    Int),
+                                                                    Int64_t),
                                                                 false),
                                                             BoolConstant(true, true)
                                                         ],
@@ -1079,9 +1079,9 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             locals: [
                                 Local("a", ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                 Local("b", BooleanType),
-                                Local("c", Int),
+                                Local("c", Int64_t),
                                 Local("Local3", ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
-                                Local("Local4", Int),
+                                Local("Local4", Int64_t),
                                 Local("Local5", BooleanType),
                             ])
                     ])

@@ -25,6 +25,7 @@ public class ClassTests
         var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
             expectedModule,
+            opts => opts.Excluding(x => x.Type == typeof(Stack<IReefTypeReference>)),
             description);
     }
 
@@ -124,7 +125,7 @@ public class ClassTests
                 "access parameter in instance method",
                 """
                 class MyClass {
-                    fn SomeFn(param: int) {
+                    fn SomeFn(param: i64) {
                         var a = param;
                     }
                 }
@@ -141,8 +142,8 @@ public class ClassTests
                                 LoadUnit(),
                                 Return()
                             ],
-                            parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"), IntType],
-                            locals: [Local("a", IntType)])
+                            parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"), Int64Type],
+                            locals: [Local("a", Int64Type)])
                     ])
             },
             {
@@ -171,7 +172,7 @@ public class ClassTests
             {
                 "create object with fields",
                 """
-                class MyClass{ pub field Field1: int, pub field Field2: string}
+                class MyClass{ pub field Field1: i64, pub field Field2: string}
                 var a = new MyClass{Field2 = "", Field1 = 2};
                 """,
                 Module(
@@ -180,7 +181,7 @@ public class ClassTests
                             variants: [
                                 Variant("_classVariant",
                                     fields: [
-                                        Field("Field1", IntType),
+                                        Field("Field1", Int64Type),
                                         Field("Field2", StringType)
                                     ])
                             ])
@@ -190,7 +191,7 @@ public class ClassTests
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 new CopyStack(),
-                                new LoadIntConstant(2),
+                                new LoadInt64Constant(2),
                                 new StoreField(0, "Field1"),
                                 new CopyStack(),
                                 new LoadStringConstant(""),
@@ -230,7 +231,7 @@ public class ClassTests
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn")),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -241,7 +242,7 @@ public class ClassTests
                 "call instance method with parameters",
                 """
                 class MyClass {
-                    pub fn SomeFn(a: int, b: string){}
+                    pub fn SomeFn(a: i64, b: string){}
                 }
                 var a = new MyClass {};
                 a.SomeFn(1, ""); 
@@ -256,16 +257,16 @@ public class ClassTests
                                 LoadUnit(),
                                 Return()
                             ],
-                            parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"), IntType, StringType]),
+                            parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass"), Int64Type, StringType]),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new LoadStringConstant(""),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn")),
-                                new Call(3, 0, false),
+                                new Call(3, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -276,7 +277,7 @@ public class ClassTests
                 "call static class method",
                 """
                 class MyClass {
-                    pub static fn MyFn(a: int) {
+                    pub static fn MyFn(a: i64) {
                     }
                 }
                 MyClass::MyFn(1);
@@ -291,12 +292,12 @@ public class ClassTests
                                 LoadUnit(),
                                 Return()
                             ],
-                            parameters: [IntType]),
+                            parameters: [Int64Type]),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn")),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ])
@@ -305,14 +306,14 @@ public class ClassTests
             {
                 "get static field",
                 """
-                class MyClass { pub static field A: int = 1 }
+                class MyClass { pub static field A: i64 = 1 }
                 var a = MyClass::A;
                 """,
                 Module(
                     types: [
                         DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass",
                             variants: [Variant("_classVariant")],
-                            staticFields: [StaticField("A", IntType, [new LoadIntConstant(1)])])
+                            staticFields: [StaticField("A", Int64Type, [new LoadInt64Constant(1)])])
                     ],
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
@@ -322,26 +323,26 @@ public class ClassTests
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", IntType)])
+                            locals: [Local("a", Int64Type)])
                     ])
             },
             {
                 "get instance field",
                 """
-                class MyClass { pub field MyField: int }
+                class MyClass { pub field MyField: i64 }
                 var a = new MyClass { MyField = 1 };
                 var b = a.MyField;
                 """,
                 Module(
                     types: [
-                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", variants: [Variant("_classVariant", fields: [Field("MyField", IntType)])])
+                        DataType(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass", variants: [Variant("_classVariant", fields: [Field("MyField", Int64Type)])])
                     ],
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 new CopyStack(),
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new StoreField(0, "MyField"),
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
@@ -352,14 +353,14 @@ public class ClassTests
                             ],
                             locals: [
                                 Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
-                                Local("b", IntType)
+                                Local("b", Int64Type)
                             ])
                     ])
             },
             {
                 "get instance and static field",
                 """
-                class MyClass { pub field Ignore: int, pub field InstanceField: string, pub static field StaticField: int = 2 }
+                class MyClass { pub field Ignore: i64, pub field InstanceField: string, pub static field StaticField: i64 = 2 }
                 var a = new MyClass { Ignore = 1, InstanceField = "" };
                 var b = a.InstanceField;
                 var c = MyClass::StaticField;
@@ -370,12 +371,12 @@ public class ClassTests
                             variants: [
                                 Variant("_classVariant",
                                     fields: [
-                                        Field("Ignore", IntType),
+                                        Field("Ignore", Int64Type),
                                         Field("InstanceField", StringType),
                                     ])
                             ],
                             staticFields: [
-                                StaticField("StaticField", IntType, [new LoadIntConstant(2)])
+                                StaticField("StaticField", Int64Type, [new LoadInt64Constant(2)])
                             ])
                     ],
                     methods: [
@@ -383,7 +384,7 @@ public class ClassTests
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 new CopyStack(),
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new StoreField(0, "Ignore"),
                                 new CopyStack(),
                                 new LoadStringConstant(""),
@@ -400,7 +401,7 @@ public class ClassTests
                             locals: [
                                 Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 Local("b", StringType),
-                                Local("c", IntType)
+                                Local("c", Int64Type)
                             ])
                     ])
             }

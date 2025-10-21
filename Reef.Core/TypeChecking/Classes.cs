@@ -16,8 +16,22 @@ public partial class TypeChecker
         public static ClassSignature String { get; } = new()
         { Id = DefId.String, TypeParameters = [], Name = "string", Fields = [], Functions = [] };
 
-        public static ClassSignature Int { get; } = new()
-        { Id = DefId.Int, TypeParameters = [], Name = "int", Fields = [], Functions = [] };
+        public static ClassSignature Int64 { get; } = new()
+        { Id = DefId.Int64, TypeParameters = [], Name = "i64", Fields = [], Functions = [] };
+        public static ClassSignature Int32 { get; } = new()
+        { Id = DefId.Int64, TypeParameters = [], Name = "i32", Fields = [], Functions = [] };
+        public static ClassSignature Int16 { get; } = new()
+        { Id = DefId.Int64, TypeParameters = [], Name = "i16", Fields = [], Functions = [] };
+        public static ClassSignature Int8 { get; } = new()
+        { Id = DefId.Int64, TypeParameters = [], Name = "i8", Fields = [], Functions = [] };
+        public static ClassSignature UInt64 { get; } = new()
+        { Id = DefId.Int64, TypeParameters = [], Name = "u64", Fields = [], Functions = [] };
+        public static ClassSignature UInt32 { get; } = new()
+        { Id = DefId.Int64, TypeParameters = [], Name = "u32", Fields = [], Functions = [] };
+        public static ClassSignature UInt16 { get; } = new()
+        { Id = DefId.Int64, TypeParameters = [], Name = "u16", Fields = [], Functions = [] };
+        public static ClassSignature UInt8 { get; } = new()
+        { Id = DefId.Int64, TypeParameters = [], Name = "u8", Fields = [], Functions = [] };
 
         public static ClassSignature RawPointer { get; } = new()
         { Id = DefId.RawPointer, TypeParameters = [], Name = "rawPointer", Fields = [], Functions = [] };
@@ -28,7 +42,7 @@ public partial class TypeChecker
         public static ClassSignature Never { get; } = new()
         { Id = DefId.Never, TypeParameters = [], Name = "!", Fields = [], Functions = [] };
 
-        public static IEnumerable<ITypeSignature> BuiltInTypes { get; } = [Unit, String, Int, Never, Boolean];
+        public static IEnumerable<ITypeSignature> BuiltInTypes { get; } = [Unit, String, Int64, Never, Boolean];
 
         public required IReadOnlyList<GenericPlaceholder> TypeParameters { get; init; }
         public required IReadOnlyList<TypeField> Fields { get; init; }
@@ -265,7 +279,27 @@ public partial class TypeChecker
         public static InstantiatedClass String { get; } = new(ClassSignature.String, []);
         public static InstantiatedClass Boolean { get; } = new(ClassSignature.Boolean, []);
 
-        public static InstantiatedClass Int { get; } = new(ClassSignature.Int, []);
+        public static InstantiatedClass Int64 { get; } = new(ClassSignature.Int64, []);
+        public static InstantiatedClass Int32 { get; } = new(ClassSignature.Int32, []);
+        public static InstantiatedClass Int16 { get; } = new(ClassSignature.Int16, []);
+        public static InstantiatedClass Int8 { get; } = new(ClassSignature.Int8, []);
+        public static InstantiatedClass UInt64 { get; } = new(ClassSignature.UInt64, []);
+        public static InstantiatedClass UInt32 { get; } = new(ClassSignature.UInt32, []);
+        public static InstantiatedClass UInt16 { get; } = new(ClassSignature.UInt16, []);
+        public static InstantiatedClass UInt8 { get; } = new(ClassSignature.UInt8, []);
+
+        // todo: need some sort of inferred int type
+
+        public static IReadOnlyList<InstantiatedClass> IntTypes { get; } = [
+            Int64,
+            Int32,
+            Int16,
+            Int8,
+            UInt64,
+            UInt32,
+            UInt16,
+            UInt8,
+        ];
 
         public static InstantiatedClass Unit { get; } = new(ClassSignature.Unit, []);
 

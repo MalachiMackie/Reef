@@ -23,6 +23,7 @@ public class UnionTests
         var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
             expectedModule,
+            opts => opts.Excluding(x => x.Type == typeof(Stack<IReefTypeReference>)),
             description);
     }
 
@@ -52,7 +53,7 @@ public class UnionTests
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
-                                new LoadIntConstant(0),
+                                new LoadUInt16Constant(0),
                                 new StoreField(0, "_variantIdentifier"),
                                 new StoreLocal("a"),
                                 LoadUnit(),
@@ -83,7 +84,7 @@ public class UnionTests
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
-                                new LoadIntConstant(1),
+                                new LoadUInt16Constant(1),
                                 new StoreField(1, "_variantIdentifier"),
                                 new StoreLocal("a"),
                                 LoadUnit(),
@@ -98,7 +99,7 @@ public class UnionTests
                 union MyUnion {
                     A,
                     B(string),
-                    C(int, string),
+                    C(i64, string),
                     
                     pub static fn SomeFn(){}
                 }
@@ -111,7 +112,7 @@ public class UnionTests
                             variants: [
                                 Variant("A", [VariantIdentifierField]),
                                 Variant("B", [VariantIdentifierField, Field("Item0", StringType)]),
-                                Variant("C", [VariantIdentifierField, Field("Item0", IntType), Field("Item1", StringType)]),
+                                Variant("C", [VariantIdentifierField, Field("Item0", Int64Type), Field("Item1", StringType)]),
                             ])
                     ],
                     methods: [
@@ -121,7 +122,7 @@ public class UnionTests
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
-                                new LoadIntConstant(1),
+                                new LoadUInt16Constant(1),
                                 new StoreField(1, "_variantIdentifier"),
                                 new CopyStack(),
                                 new LoadArgument(0),
@@ -134,7 +135,7 @@ public class UnionTests
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
-                                new LoadIntConstant(2),
+                                new LoadUInt16Constant(2),
                                 new StoreField(2, "_variantIdentifier"),
                                 new CopyStack(),
                                 new LoadArgument(0),
@@ -144,14 +145,14 @@ public class UnionTests
                                 new StoreField(2, "Item1"),
                                 Return()
                             ],
-                            parameters: [IntType, StringType],
+                            parameters: [Int64Type, StringType],
                             returnType: ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new LoadStringConstant(""),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__C"), "MyUnion__Create__C")),
-                                new Call(2, 0, true),
+                                new Call(2, [], true),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
@@ -183,7 +184,7 @@ public class UnionTests
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
-                                new LoadIntConstant(1),
+                                new LoadUInt16Constant(1),
                                 new StoreField(1, "_variantIdentifier"),
                                 new CopyStack(),
                                 new LoadArgument(0),
@@ -202,7 +203,7 @@ public class UnionTests
                                 new LoadLocal("a"),
                                 new LoadStringConstant(""),
                                 new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(1), "Function`2__Call", [StringType, ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")])),
-                                new Call(2, 0, true),
+                                new Call(2, [], true),
                                 new StoreLocal("b"),
                                 LoadUnit(),
                                 Return()
@@ -218,7 +219,7 @@ public class UnionTests
                 """
                 union MyUnion {
                     A,
-                    B { field Field1: int, field Field2: string }
+                    B { field Field1: i64, field Field2: string }
                 }
                 var a = new MyUnion::B {
                     Field1 = 1,
@@ -230,7 +231,7 @@ public class UnionTests
                         DataType(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion",
                             variants: [
                                 Variant("A", [VariantIdentifierField]),
-                                Variant("B", [VariantIdentifierField, Field("Field1", IntType), Field("Field2", StringType)]),
+                                Variant("B", [VariantIdentifierField, Field("Field1", Int64Type), Field("Field2", StringType)]),
                             ])
                     ],
                     methods: [
@@ -238,10 +239,10 @@ public class UnionTests
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 new CopyStack(),
-                                new LoadIntConstant(1),
+                                new LoadUInt16Constant(1),
                                 new StoreField(1, "_variantIdentifier"),
                                 new CopyStack(),
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new StoreField(1, "Field1"),
                                 new CopyStack(),
                                 new LoadStringConstant(""),

@@ -19,6 +19,9 @@ public record TypeCheckerError
     public static TypeCheckerError MismatchedTypes(SourceRange range, TypeChecker.ITypeReference expected, TypeChecker.ITypeReference actual) =>
         new(TypeCheckerErrorType.MismatchedTypes, range, $"Expected {expected}, but found {actual}");
 
+    public static TypeCheckerError MismatchedTypes(SourceRange range, IReadOnlyList<TypeChecker.ITypeReference> expected, TypeChecker.ITypeReference actual) =>
+        new(TypeCheckerErrorType.MismatchedTypes, range, $"Expected one of [{string.Join(",", expected)}], but found {actual}");
+
     public static TypeCheckerError ExpressionNotAssignable(IExpression expression) =>
         new(TypeCheckerErrorType.ExpressionNotAssignable, expression.SourceRange, $"Expression {expression} is not assignable");
 

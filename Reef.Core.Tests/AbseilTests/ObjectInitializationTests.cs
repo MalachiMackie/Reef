@@ -77,7 +77,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                 LoweredProgram(
                     types: [
                         DataType(_moduleId, "MyUnion",
-                            variants: [Variant("A", [Field("_variantIdentifier", Int)])])
+                            variants: [Variant("A", [Field("_variantIdentifier", UInt16_t)])])
                     ],
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
@@ -86,7 +86,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                     ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion")),
                                     "A",
                                     false,
-                                    new(){{"_variantIdentifier", IntConstant(0, true)}}),
+                                    new(){{"_variantIdentifier", UInt16Constant(0, true)}}),
                                 MethodReturnUnit()
                             ])
                     ])
@@ -99,7 +99,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                         DataType(_moduleId, "MyUnion",
                             variants: [
                                 Variant("A", [
-                                    Field("_variantIdentifier", Int),
+                                    Field("_variantIdentifier", UInt16_t),
                                     Field("a", StringType),
                                 ])
                             ])
@@ -113,7 +113,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                     false,
                                     new()
                                     {
-                                        {"_variantIdentifier", IntConstant(0, true)},
+                                        {"_variantIdentifier", UInt16Constant(0, true)},
                                         {"a", StringConstant("hi", true)},
                                     }),
                                 MethodReturnUnit()

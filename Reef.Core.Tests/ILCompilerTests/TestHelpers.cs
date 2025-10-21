@@ -46,10 +46,17 @@ public static class TestHelpers
     }
 
     public static ConcreteReefTypeReference StringType => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.String);
-    public static ConcreteReefTypeReference IntType => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.Int);
+    public static ConcreteReefTypeReference Int64Type => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.Int64);
+    public static ConcreteReefTypeReference Int32Type => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.Int32);
+    public static ConcreteReefTypeReference Int16Type => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.Int16);
+    public static ConcreteReefTypeReference Int8Type => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.Int8);
+    public static ConcreteReefTypeReference UInt64Type => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.UInt64);
+    public static ConcreteReefTypeReference UInt32Type => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.UInt32);
+    public static ConcreteReefTypeReference UInt16Type => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.UInt16);
+    public static ConcreteReefTypeReference UInt8Type => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.UInt8);
     public static ConcreteReefTypeReference UnitType => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.Unit);
     public static ConcreteReefTypeReference BoolType => GetTypeReference(TypeChecking.TypeChecker.ClassSignature.Boolean);
-    public static ReefField VariantIdentifierField => Field("_variantIdentifier", IntType);
+    public static ReefField VariantIdentifierField => Field("_variantIdentifier", UInt16Type);
     
     private static ConcreteReefTypeReference GetTypeReference(TypeChecking.TypeChecker.ClassSignature klass)
     {

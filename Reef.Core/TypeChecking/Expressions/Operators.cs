@@ -15,6 +15,7 @@ public partial class TypeChecker
         if (@operator.Right is not null)
             @operator.Right.ValueUseful = true;
 
+
         switch (@operator.OperatorType)
         {
             case BinaryOperatorType.LessThan:
@@ -24,8 +25,11 @@ public partial class TypeChecker
                         TypeCheckExpression(@operator.Left);
                     if (@operator.Right is not null)
                         TypeCheckExpression(@operator.Right);
-                    ExpectExpressionType(InstantiatedClass.Int, @operator.Left);
-                    ExpectExpressionType(InstantiatedClass.Int, @operator.Right);
+
+                    if (ExpectExpressionType(InstantiatedClass.IntTypes, @operator.Left))
+                    {
+                        ExpectExpressionType(@operator.Left.NotNull().ResolvedType.NotNull(), @operator.Right);
+                    }
 
                     return InstantiatedClass.Boolean;
                 }
@@ -39,22 +43,26 @@ public partial class TypeChecker
                     if (@operator.Right is not null)
                         TypeCheckExpression(@operator.Right);
 
-                    ExpectExpressionType(InstantiatedClass.Int, @operator.Left);
-                    ExpectExpressionType(InstantiatedClass.Int, @operator.Right);
+                    if (ExpectExpressionType(InstantiatedClass.IntTypes, @operator.Left))
+                    {
+                        ExpectExpressionType(@operator.Left.NotNull().ResolvedType.NotNull(), @operator.Right);
+                        return @operator.Left.NotNull().ResolvedType.NotNull();
+                    }
 
-                    return InstantiatedClass.Int;
+                    return InstantiatedClass.Int32;
                 }
             case BinaryOperatorType.NegativeEqualityCheck:
             case BinaryOperatorType.EqualityCheck:
                 {
                     // todo: use interface. left and right implements IEquals<T>
                     if (@operator.Left is not null)
-                    {
-                        ExpectType(TypeCheckExpression(@operator.Left), InstantiatedClass.Int, @operator.Left.SourceRange);
-                    }
+                        TypeCheckExpression(@operator.Left);
                     if (@operator.Right is not null)
+                        TypeCheckExpression(@operator.Right);
+
+                    if (ExpectExpressionType([..InstantiatedClass.IntTypes, InstantiatedClass.Boolean], @operator.Left))
                     {
-                        ExpectType(TypeCheckExpression(@operator.Right), InstantiatedClass.Int, @operator.Right.SourceRange);
+                        ExpectExpressionType(@operator.Left.NotNull().ResolvedType.NotNull(), @operator.Right);
                     }
 
                     return InstantiatedClass.Boolean;

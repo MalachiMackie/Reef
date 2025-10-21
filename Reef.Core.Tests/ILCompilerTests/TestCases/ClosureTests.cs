@@ -28,6 +28,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
         var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
             expectedModule,
+            opts => opts.Excluding(x => x.Type == typeof(Stack<IReefTypeReference>)),
             description);
     }
 
@@ -80,7 +81,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "_Main__Locals"),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn")),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -99,7 +100,8 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
         
         var (module, _) = ILCompile.CompileToIL(loweredProgram);
         module.Should().BeEquivalentTo(
-            expectedModule);
+            expectedModule,
+            opts => opts.Excluding(x => x.Type == typeof(Stack<IReefTypeReference>)));
     }
     
     public static TheoryData<string, string, ReefILModule> TestCases()
@@ -109,8 +111,8 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
             {
                 "fn closure",
                 """
-                static fn SomeFn(param: int, param2: string) {
-                    fn InnerFn(): int {
+                static fn SomeFn(param: i64, param2: string) {
+                    fn InnerFn(): i64 {
                         var a = param2;
                         return param;
                     }
@@ -122,7 +124,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                             variants: [
                                 Variant("_classVariant",
                                     [
-                                        Field("param", IntType),
+                                        Field("param", Int64Type),
                                         Field("param2", StringType)
                                     ])
                             ]),
@@ -148,7 +150,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                             ],
                             parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.SomeFn__InnerFn__Closure"), "SomeFn__InnerFn__Closure")],
                             locals: [Local("a", StringType)],
-                            returnType: IntType),
+                            returnType: Int64Type),
                         Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.SomeFn__Locals"), "SomeFn__Locals")),
@@ -165,13 +167,13 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                             locals: [
                                 Local("__locals", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.SomeFn__Locals"), "SomeFn__Locals"))
                             ],
-                            parameters: [IntType, StringType])
+                            parameters: [Int64Type, StringType])
                     ])
             },
             {
                 "access parameter in closure",
                 """
-                var a: int;
+                var a: i64;
                 fn SomeMethod(param: string) {
                     var b = param;
                     var c = a;
@@ -181,7 +183,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                     types: [
                         DataType(new DefId(_moduleId, $"{_moduleId}._Main__Locals"), "_Main__Locals",
                             variants: [
-                                Variant("_classVariant", [Field("a", IntType)])
+                                Variant("_classVariant", [Field("a", Int64Type)])
                             ]),
                         DataType(new DefId(_moduleId, $"{_moduleId}.SomeMethod__Closure"), "SomeMethod__Closure",
                             variants: [
@@ -201,7 +203,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("b", StringType), Local("c", IntType)],
+                            locals: [Local("b", StringType), Local("c", Int64Type)],
                             parameters: [
                                 ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.SomeMethod__Closure"), "SomeMethod__Closure"),
                                 StringType
@@ -309,7 +311,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "_Main__Locals"),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn")),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -363,7 +365,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "Outer__Locals"),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.Outer__SomeFn"), "Outer__SomeFn")),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -377,7 +379,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                 var a = "";
                 SomeFn(1);
 
-                fn SomeFn(c: int) {
+                fn SomeFn(c: i64) {
                     var b = a;
                 }
                 """,
@@ -403,7 +405,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 Return()
                             ],
                             locals: [Local("b", StringType)],
-                            parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.SomeFn__Closure"), "SomeFn__Closure"), IntType]),
+                            parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.SomeFn__Closure"), "SomeFn__Closure"), Int64Type]),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}._Main__Locals"), "_Main__Locals")),
@@ -415,9 +417,9 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new CopyStack(),
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "_Main__Locals"),
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn")),
-                                new Call(2, 0, false),
+                                new Call(2, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -458,7 +460,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                     DataType(new DefId(_moduleId, $"{_moduleId}.First__Second__Third__Locals"), "First__Second__Third__Locals",
                         variants: [
                             Variant("_classVariant",
-                                [Field("c", IntType)])
+                                [Field("c", Int64Type)])
                         ]),
                     DataType(new DefId(_moduleId, $"{_moduleId}.First__Second__Third__Closure"), "First__Second__Third__Closure",
                         variants: [
@@ -488,14 +490,14 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                             LoadUnit(),
                             Return()
                         ],
-                        locals: [Local("b", StringType), Local("d", IntType)],
+                        locals: [Local("b", StringType), Local("d", Int64Type)],
                         parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.First__Second__Third__Fourth__Closure"), "First__Second__Third__Fourth__Closure")]),
                     Method(new DefId(_moduleId, $"{_moduleId}.First__Second__Third"), "First__Second__Third",
                         [
                             new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.First__Second__Third__Locals"), "First__Second__Third__Locals")),
                             new StoreLocal("__locals"),
                             new LoadLocal("__locals"),
-                            new LoadIntConstant(1),
+                            new LoadInt64Constant(1),
                             new StoreField(0, "c"),
                             new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.First__Second__Third__Fourth__Closure"), "First__Second__Third__Fourth__Closure")),
                             new CopyStack(),
@@ -506,7 +508,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                             new LoadLocal("__locals"),
                             new StoreField(0, "First__Second__Third__Locals"),
                             new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.First__Second__Third__Fourth"), "First__Second__Third__Fourth")),
-                            new Call(1, 0, false),
+                            new Call(1, [], false),
                             LoadUnit(),
                             Return()
                         ],
@@ -520,7 +522,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                             new LoadField(0, "First__Locals"),
                             new StoreField(0, "First__Locals"),
                             new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.First__Second__Third"), "First__Second__Third")),
-                            new Call(1, 0, false),
+                            new Call(1, [], false),
                             LoadUnit(),
                             Return()
                         ],
@@ -537,7 +539,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                             new LoadLocal("__locals"),
                             new StoreField(0, "First__Locals"),
                             new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.First__Second"), "First__Second")),
-                            new Call(1, 0, false),
+                            new Call(1, [], false),
                             LoadUnit(),
                             Return()
                         ],
@@ -561,7 +563,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                             variants: [
                                 Variant("_classVariant",
                                     [
-                                        Field("a", IntType)
+                                        Field("a", Int64Type)
                                     ])
                             ]),
                         DataType(new DefId(_moduleId, $"{_moduleId}.InnerFn__Closure"), "InnerFn__Closure",
@@ -581,13 +583,13 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 Return()
                             ],
                             parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.InnerFn__Closure"), "InnerFn__Closure")],
-                            locals: [Local("b", IntType)]),
+                            locals: [Local("b", Int64Type)]),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}._Main__Locals"), "_Main__Locals")),
                                 new StoreLocal("__locals"),
                                 new LoadLocal("__locals"),
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new StoreField(0, "a"),
                                 new LoadLocal("__locals"),
                                 new LoadField(0, "a"),
@@ -597,13 +599,13 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "_Main__Locals"),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.InnerFn"), "InnerFn")),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
                             locals: [
                                 Local("__locals", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}._Main__Locals"), "_Main__Locals")),
-                                Local("c", IntType)
+                                Local("c", Int64Type)
                             ])
                     ])
             },
@@ -631,8 +633,8 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                             variants: [
                                 Variant("_classVariant", 
                                     [
-                                        Field("a", IntType),
-                                        Field("b", IntType)
+                                        Field("a", Int64Type),
+                                        Field("b", Int64Type)
                                     ])
                             ]),
                         DataType(new DefId(_moduleId, $"{_moduleId}.InnerFn1__Closure"), "InnerFn1__Closure",
@@ -656,7 +658,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("d", IntType)],
+                            locals: [Local("d", Int64Type)],
                             parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.InnerFn1__Closure"), "InnerFn1__Closure")]),
                         Method(new DefId(_moduleId, $"{_moduleId}.InnerFn2"), "InnerFn2",
                             [
@@ -667,51 +669,51 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("e", IntType)],
+                            locals: [Local("e", Int64Type)],
                             parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.InnerFn2__Closure"), "InnerFn2__Closure")]),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}._Main__Locals"), "_Main__Locals")),
                                 new StoreLocal("__locals"),
                                 new LoadLocal("__locals"),
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new StoreField(0, "a"),
                                 new LoadLocal("__locals"),
-                                new LoadIntConstant(2),
+                                new LoadInt64Constant(2),
                                 new StoreField(0, "b"),
-                                new LoadIntConstant(3),
+                                new LoadInt64Constant(3),
                                 new StoreLocal("c"),
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.InnerFn1__Closure"), "InnerFn1__Closure")),
                                 new CopyStack(),
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "_Main__Locals"),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.InnerFn1"), "InnerFn1")),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.InnerFn1__Closure"), "InnerFn1__Closure")),
                                 new CopyStack(),
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "_Main__Locals"),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.InnerFn1"), "InnerFn1")),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.InnerFn2__Closure"), "InnerFn2__Closure")),
                                 new CopyStack(),
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "_Main__Locals"),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.InnerFn2"), "InnerFn2")),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
                             locals: [
                                 Local("__locals", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}._Main__Locals"), "_Main__Locals")),
-                                Local("c", IntType)
+                                Local("c", Int64Type)
                             ])
                     ])
             },
             {
                 "parameter referenced in closure",
                 """
-                static fn SomeFn(a: int) { 
+                static fn SomeFn(a: i64) { 
                     fn InnerFn() {
                         var b = a;
                     }
@@ -725,7 +727,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                         DataType(new DefId(_moduleId, $"{_moduleId}.SomeFn__Locals"), "SomeFn__Locals",
                             variants: [
                                 Variant("_classVariant",
-                                    [Field("a", IntType)])
+                                    [Field("a", Int64Type)])
                             ]),
                         DataType(new DefId(_moduleId, $"{_moduleId}.SomeFn__InnerFn__Closure"), "SomeFn__InnerFn__Closure",
                             variants: [
@@ -743,7 +745,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("b", IntType)],
+                            locals: [Local("b", Int64Type)],
                             parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.SomeFn__InnerFn__Closure"), "SomeFn__InnerFn__Closure")]),
                         Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
                             [
@@ -752,14 +754,14 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadArgument(0),
                                 new StoreField(0, "a"),
                                 new StoreLocal("__locals"),
-                                new LoadIntConstant(2),
+                                new LoadInt64Constant(2),
                                 new StoreLocal("c"),
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.SomeFn__InnerFn__Closure"), "SomeFn__InnerFn__Closure")),
                                 new CopyStack(),
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "SomeFn__Locals"),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.SomeFn__InnerFn"), "SomeFn__InnerFn")),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 new LoadLocal("__locals"),
                                 new LoadField(0, "a"),
                                 new StoreLocal("d"),
@@ -768,16 +770,16 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                             ],
                             locals: [
                                 Local("__locals", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.SomeFn__Locals"), "SomeFn__Locals")),
-                                Local("c", IntType),
-                                Local("d", IntType)
+                                Local("c", Int64Type),
+                                Local("d", Int64Type)
                             ],
-                            parameters: [IntType])
+                            parameters: [Int64Type])
                     ])
             },
             {
                 "closure references variables from multiple functions",
                 """
-                static fn Outer(a: int) {
+                static fn Outer(a: i64) {
                     var d = a;
                     Inner1();
                     fn Inner1() {
@@ -796,12 +798,12 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                         DataType(new DefId(_moduleId, $"{_moduleId}.Outer__Locals"), "Outer__Locals",
                             variants: [
                                 Variant("_classVariant",
-                                    [Field("a", IntType)])
+                                    [Field("a", Int64Type)])
                             ]),
                         DataType(new DefId(_moduleId, $"{_moduleId}.Outer__Inner1__Locals"), "Outer__Inner1__Locals",
                             variants: [
                                 Variant("_classVariant",
-                                    [Field("b", IntType)])
+                                    [Field("b", Int64Type)])
                             ]),
                         DataType(new DefId(_moduleId, $"{_moduleId}.Outer__Inner1__Closure"), "Outer__Inner1__Closure",
                             variants: [
@@ -833,15 +835,15 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                             ],
                             parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.Outer__Inner1__Inner2__Closure"), "Outer__Inner1__Inner2__Closure")],
                             locals: [
-                                Local("aa", IntType),
-                                Local("bb", IntType)
+                                Local("aa", Int64Type),
+                                Local("bb", Int64Type)
                             ]),
                         Method(new DefId(_moduleId, $"{_moduleId}.Outer__Inner1"), "Outer__Inner1",
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.Outer__Inner1__Locals"), "Outer__Inner1__Locals")),
                                 new StoreLocal("__locals"),
                                 new LoadLocal("__locals"),
-                                new LoadIntConstant(2),
+                                new LoadInt64Constant(2),
                                 new StoreField(0, "b"),
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.Outer__Inner1__Inner2__Closure"), "Outer__Inner1__Inner2__Closure")),
                                 new CopyStack(),
@@ -852,7 +854,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "Outer__Inner1__Locals"),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.Outer__Inner1__Inner2"), "Outer__Inner1__Inner2")),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -875,14 +877,14 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("__locals"),
                                 new StoreField(0, "Outer__Locals"),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.Outer__Inner1"), "Outer__Inner1")),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
-                            parameters: [IntType],
+                            parameters: [Int64Type],
                             locals: [
                                 Local("__locals", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.Outer__Locals"), "Outer__Locals")),
-                                Local("d", IntType)
+                                Local("d", Int64Type)
                             ])
                     ])
             },
@@ -900,7 +902,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                         DataType(new DefId(_moduleId, $"{_moduleId}._Main__Locals"), "_Main__Locals",
                             variants: [
                                 Variant("_classVariant",
-                                    [Field("a", IntType)])
+                                    [Field("a", Int64Type)])
                             ]),
                         DataType(new DefId(_moduleId, $"{_moduleId}.InnerFn__Closure"), "InnerFn__Closure",
                             variants: [
@@ -917,19 +919,19 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new StoreLocal("b"),
                                 new LoadArgument(0),
                                 new LoadField(0, "_Main__Locals"),
-                                new LoadIntConstant(2),
+                                new LoadInt64Constant(2),
                                 new StoreField(0, "a"),
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("b", IntType)],
+                            locals: [Local("b", Int64Type)],
                             parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.InnerFn__Closure"), "InnerFn__Closure")]),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}._Main__Locals"), "_Main__Locals")),
                                 new StoreLocal("__locals"),
                                 new LoadLocal("__locals"),
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new StoreField(0, "a"),
                                 LoadUnit(),
                                 Return()
@@ -952,7 +954,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                 Module(
                     types: [
                         DataType(new DefId(_moduleId, $"{_moduleId}._Main__Locals"), "_Main__Locals",
-                            variants: [Variant("_classVariant", [Field("a", IntType)])]),
+                            variants: [Variant("_classVariant", [Field("a", Int64Type)])]),
                         DataType(new DefId(_moduleId, $"{_moduleId}.Inner__Closure"), "Inner__Closure",
                             variants: [
                                 Variant("_classVariant",
@@ -970,13 +972,13 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 Return()
                             ],
                             parameters: [ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.Inner__Closure"), "Inner__Closure")],
-                            locals: [Local("b", IntType)]),
+                            locals: [Local("b", Int64Type)]),
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}._Main__Locals"), "_Main__Locals")),
                                 new StoreLocal("__locals"),
                                 new LoadLocal("__locals"),
-                                new LoadIntConstant(1),
+                                new LoadInt64Constant(1),
                                 new StoreField(0, "a"),
                                 new CreateObject(ConcreteTypeReference(DefId.FunctionObject(0), "Function`1", [UnitType])),
                                 new CopyStack(),
@@ -991,7 +993,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new StoreLocal("c"),
                                 new LoadLocal("c"),
                                 new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(0), "Function`1__Call", [UnitType])),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -1028,7 +1030,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadField(0, "_Main__Locals"),
                                 new LoadField(0, "a"),
                                 new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(0), "Function`1__Call", [UnitType])),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -1143,7 +1145,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("__locals"),
                                 new LoadField(0, "a"),
                                 new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(0), "Function`1__Call", [UnitType])),
-                                new Call(1, 0, false),
+                                new Call(1, [], false),
                                 LoadUnit(),
                                 Return()
                             ],

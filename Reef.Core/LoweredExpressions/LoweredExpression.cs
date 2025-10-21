@@ -29,7 +29,7 @@ public record CastBoolToIntExpression(
         ILoweredExpression BoolExpression,
         bool ValueUseful) : ILoweredExpression
 {
-    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int64.ToLoweredTypeReference();
     public bool Diverges => false;
 }
 
@@ -49,11 +49,47 @@ public record UnitConstantExpression(bool ValueUseful) : ILoweredExpression
     public bool Diverges => false;
 }
 
-public record IntConstantExpression(bool ValueUseful, int Value) : ILoweredExpression
+public record Int64ConstantExpression(bool ValueUseful, long Value) : ILoweredExpression
 {
-    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int64.ToLoweredTypeReference();
     public bool Diverges => false;
 }
+public record Int32ConstantExpression(bool ValueUseful, int Value) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int32.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int16ConstantExpression(bool ValueUseful, short Value) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int16.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int8ConstantExpression(bool ValueUseful, short Value) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int8.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt64ConstantExpression(bool ValueUseful, ulong Value) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt64.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt32ConstantExpression(bool ValueUseful, uint Value) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt32.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt16ConstantExpression(bool ValueUseful, ushort Value) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt16.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt8ConstantExpression(bool ValueUseful, byte Value) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt8.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
 
 public record MethodReturnExpression(ILoweredExpression ReturnValue) : ILoweredExpression
 {
@@ -166,15 +202,368 @@ public record BlockExpression(
     public bool Diverges => Expressions.Count > 0 && Expressions.Reverse().Any(x => x.Diverges);
 }
 
-public record IntPlusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+public record Int64PlusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
 {
-    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int64.ToLoweredTypeReference();
     public bool Diverges => false;
 }
 
-public record IntMinusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+public record Int32PlusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
 {
-    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int32.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int16PlusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int16.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int8PlusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int8.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record UInt64PlusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt64.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record UInt32PlusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt32.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt16PlusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt16.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt8PlusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt8.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+
+public record Int64MinusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int64.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record Int32MinusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int32.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int16MinusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int16.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int8MinusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int8.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record UInt64MinusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt64.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record UInt32MinusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt32.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt16MinusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt16.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt8MinusExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt8.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record Int64MultiplyExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int64.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record Int32MultiplyExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int32.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int16MultiplyExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int16.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int8MultiplyExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int8.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record UInt64MultiplyExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt64.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record UInt32MultiplyExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt32.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt16MultiplyExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt16.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt8MultiplyExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt8.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record Int64DivideExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int64.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record Int32DivideExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int32.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int16DivideExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int16.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int8DivideExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int8.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record UInt64DivideExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt64.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record UInt32DivideExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt32.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt16DivideExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt16.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt8DivideExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.UInt8.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record Int64LessThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record Int32LessThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int16LessThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int8LessThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record UInt64LessThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record UInt32LessThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt16LessThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt8LessThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record Int64GreaterThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record Int32GreaterThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int16GreaterThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int8GreaterThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record UInt64GreaterThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record UInt32GreaterThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt16GreaterThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt8GreaterThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record Int64EqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record Int32EqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int16EqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int8EqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record UInt64EqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record UInt32EqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt16EqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt8EqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record Int64NotEqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record Int32NotEqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int16NotEqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record Int8NotEqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record UInt64NotEqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record UInt32NotEqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt16NotEqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+public record UInt8NotEqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record BoolNotEqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
+    public bool Diverges => false;
+}
+
+public record BoolEqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
+{
+    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
     public bool Diverges => false;
 }
 
@@ -183,42 +572,6 @@ public record UnreachableExpression : ILoweredExpression
     public bool ValueUseful => false;
     public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Never.ToLoweredTypeReference();
     public bool Diverges => true;
-}
-
-public record IntMultiplyExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
-{
-    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
-    public bool Diverges => false;
-}
-
-public record IntDivideExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
-{
-    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Int.ToLoweredTypeReference();
-    public bool Diverges => false;
-}
-
-public record IntLessThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
-{
-    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
-    public bool Diverges => false;
-}
-
-public record IntGreaterThanExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
-{
-    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
-    public bool Diverges => false;
-}
-
-public record IntEqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
-{
-    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
-    public bool Diverges => false;
-}
-
-public record IntNotEqualsExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression
-{
-    public ILoweredTypeReference ResolvedType { get; } = ClassSignature.Boolean.ToLoweredTypeReference();
-    public bool Diverges => false;
 }
 
 public record BoolAndExpression(bool ValueUseful, ILoweredExpression Left, ILoweredExpression Right) : ILoweredExpression

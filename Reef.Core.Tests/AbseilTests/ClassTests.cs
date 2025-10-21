@@ -64,7 +64,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             },
             {
                 "class with instance fields",
-                "class MyClass { pub field MyField: string, pub field OtherField: int}",
+                "class MyClass { pub field MyField: string, pub field OtherField: i64}",
                 LoweredProgram(types: [
                     DataType(_moduleId, "MyClass",
                         variants: [
@@ -72,7 +72,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 "_classVariant",
                                 [
                                     Field("MyField", StringType),
-                                    Field("OtherField", Int),
+                                    Field("OtherField", Int64_t),
                                 ])
                         ])
                 ])
@@ -725,7 +725,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 {
                     pub static fn SomeFn<T1>(){}
                 }
-                MyClass::<string>::SomeFn::<int>()
+                MyClass::<string>::SomeFn::<i64>()
                 """,
                 LoweredProgram(
                     types: [
@@ -739,7 +739,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     FunctionReference(
                                         new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"),
                                         "MyClass__SomeFn",
-                                        [StringType, Int]),
+                                        [StringType, Int64_t]),
                                     [],
                                     false,
                                     Unit),
@@ -755,7 +755,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     pub fn SomeFn<T2>(){}
                 }
                 var a = new MyClass::<string>{};
-                a.SomeFn::<int>();
+                a.SomeFn::<i64>();
                 """,
                 LoweredProgram(
                     types: [
@@ -777,7 +777,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         true),
                                     false),
                                 MethodCall(
-                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn", [StringType, Int]),
+                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn", [StringType, Int64_t]),
                                     [LocalAccess("a", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"), [StringType]))],
                                     false,
                                     Unit),
