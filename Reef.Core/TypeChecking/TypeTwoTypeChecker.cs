@@ -482,6 +482,22 @@ public class TypeTwoTypeChecker
 
                     break;
                 }
+            case TypeChecker.UnspecifiedSizedIntType unspecifiedIntType:
+                {
+                    if (unspecifiedIntType.ResolvedIntType is null)
+                    {
+                        unspecifiedIntType.ResolvedIntType = TypeChecker.InstantiatedClass.Int32;
+                    }
+                    break;
+                }
+            case TypeChecker.UnknownInferredType unknownInferredType:
+                {
+                    if (unknownInferredType.ResolvedType is null)
+                    {
+                        _errors.Add(TypeCheckerError.UnresolvedInferredVariableType(Token.Identifier("Bob", SourceSpan.Default)));
+                    }
+                    break;
+                }
         }
     }
 

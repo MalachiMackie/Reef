@@ -181,10 +181,17 @@ public partial class TypeChecker
         // }
         var synthesizedReturnType = InstantiateUnion(union.Signature);
         synthesizedReturnType.TypeArguments.First(x => x.GenericName == "TError")
-            .ResolvedType = expectedErrorType;
+            .SetResolvedType(expectedErrorType, SourceRange.Default);
 
         ExpectExpressionType(synthesizedReturnType, expression);
 
+        // if everything type checked correctly, this path should be taken
+        if (expression is { ResolvedType: InstantiatedUnion { Name: "result", TypeArguments: [{ GenericName: "TValue" } valueGeneric, ..] } })
+        {
+            return valueGeneric;
+        }
+
+        // if expression is null or it's type is incorrect, then return the value type from the return type
         if (union.Name == UnionSignature.Result.Name)
         {
             return union.TypeArguments.First(x => x.GenericName == "TValue");

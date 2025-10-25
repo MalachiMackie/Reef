@@ -621,6 +621,7 @@ public partial class ProgramAbseil
                 g.GenericName),
             UnknownInferredType i => GetTypeReference(i.ResolvedType.NotNull()),
             FunctionObject f => FunctionObjectCase(f),
+            UnspecifiedSizedIntType i => GetTypeReference(i.ResolvedIntType.NotNull()),
             _ => throw new InvalidOperationException($"Type reference {typeReference.GetType()} is not supported")
         };
 

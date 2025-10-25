@@ -1775,13 +1775,57 @@ public partial class ProgramAbseil
         return e switch
         {
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: StringToken { StringValue: var stringLiteral } } } => new StringConstantExpression(e.ValueUseful, stringLiteral),
-            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue} }} => new Int64ConstantExpression(e.ValueUseful, intValue),
+            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue} }} => IntCase(intValue),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.True }} => new BoolConstantExpression(e.ValueUseful, true),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.False }} => new BoolConstantExpression(e.ValueUseful, false),
             { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, ReferencedVariable: {} variable} => VariableAccess(variable, e.ValueUseful),
             { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, FunctionInstantiation: {} fn} => FunctionAccess(fn, (e.ResolvedType as FunctionObject).NotNull(), e.ValueUseful),
             _ => throw new UnreachableException($"{e}")
         };
+
+        ILoweredExpression IntCase(int intValue)
+        {
+            var type = GetTypeReference(e.ResolvedType.NotNull());
+            if (type is not LoweredConcreteTypeReference concrete)
+            {
+                throw new InvalidOperationException("Int expression must have a concrete type");
+            }
+
+            if (concrete.DefinitionId == DefId.Int64)
+            {
+                return new Int64ConstantExpression(e.ValueUseful, intValue);
+            }
+            if (concrete.DefinitionId == DefId.Int32)
+            {
+                return new Int32ConstantExpression(e.ValueUseful, intValue);
+            }
+            if (concrete.DefinitionId == DefId.Int16)
+            {
+                return new Int16ConstantExpression(e.ValueUseful, (short)intValue);
+            }
+            if (concrete.DefinitionId == DefId.Int8)
+            {
+                return new Int8ConstantExpression(e.ValueUseful, (short)intValue);
+            }
+            if (concrete.DefinitionId == DefId.UInt64)
+            {
+                return new UInt64ConstantExpression(e.ValueUseful, (ulong)intValue);
+            }
+            if (concrete.DefinitionId == DefId.UInt32)
+            {
+                return new UInt32ConstantExpression(e.ValueUseful, (uint)intValue);
+            }
+            if (concrete.DefinitionId == DefId.UInt16)
+            {
+                return new UInt16ConstantExpression(e.ValueUseful, (ushort)intValue);
+            }
+            if (concrete.DefinitionId == DefId.UInt8)
+            {
+                return new UInt8ConstantExpression(e.ValueUseful, (byte)intValue);
+            }
+
+            throw new InvalidOperationException("int constant type must be an int");
+        }
 
         ILoweredExpression FunctionAccess(
                 InstantiatedFunction fn,

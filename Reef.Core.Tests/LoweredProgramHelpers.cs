@@ -151,37 +151,60 @@ public static class LoweredProgramHelpers
 
     public static NoopExpression Noop() => new();
 
-    public static Int64PlusExpression Int64Plus(
-            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
-    {
-        return new(valueUseful, left, right);
-    }
+    public static Int64PlusExpression Int64Plus(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int32PlusExpression Int32Plus(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int16PlusExpression Int16Plus(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int8PlusExpression Int8Plus(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt64PlusExpression UInt64Plus(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt32PlusExpression UInt32Plus(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt16PlusExpression UInt16Plus(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt8PlusExpression UInt8Plus(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
 
-    public static Int64MinusExpression Int64Minus(
-            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
-    {
-        return new(valueUseful, left, right);
-    }
-    public static Int64MultiplyExpression Int64Multiply(
-            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
-    {
-        return new(valueUseful, left, right);
-    }
-    public static Int64DivideExpression Int64Divide(
-            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
-    {
-        return new(valueUseful, left, right);
-    }
-    public static Int64GreaterThanExpression Int64GreaterThan(
-            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
-    {
-        return new(valueUseful, left, right);
-    }
-    public static Int64LessThanExpression Int64LessThan(
-            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
-    {
-        return new(valueUseful, left, right);
-    }
+    public static Int64MinusExpression Int64Minus(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int32MinusExpression Int32Minus(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int16MinusExpression Int16Minus(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int8MinusExpression Int8Minus(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt64MinusExpression UInt64Minus(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt32MinusExpression UInt32Minus(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt16MinusExpression UInt16Minus(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt8MinusExpression UInt8Minus(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+
+    public static Int64DivideExpression Int64Divide(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int32DivideExpression Int32Divide(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int16DivideExpression Int16Divide(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int8DivideExpression Int8Divide(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt64DivideExpression UInt64Divide(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt32DivideExpression UInt32Divide(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt16DivideExpression UInt16Divide(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt8DivideExpression UInt8Divide(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+
+    public static Int64MultiplyExpression Int64Multiply(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int32MultiplyExpression Int32Multiply(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int16MultiplyExpression Int16Multiply(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int8MultiplyExpression Int8Multiply(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt64MultiplyExpression UInt64Multiply(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt32MultiplyExpression UInt32Multiply(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt16MultiplyExpression UInt16Multiply(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt8MultiplyExpression UInt8Multiply(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+
+    public static Int64GreaterThanExpression Int64GreaterThan(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int32GreaterThanExpression Int32GreaterThan(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int16GreaterThanExpression Int16GreaterThan(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int8GreaterThanExpression Int8GreaterThan(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt64GreaterThanExpression UInt64GreaterThan(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt32GreaterThanExpression UInt32GreaterThan(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt16GreaterThanExpression UInt16GreaterThan(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt8GreaterThanExpression UInt8GreaterThan(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    
+    public static Int64LessThanExpression Int64LessThan(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int32LessThanExpression Int32LessThan(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int16LessThanExpression Int16LessThan(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int8LessThanExpression Int8LessThan(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt64LessThanExpression UInt64LessThan(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt32LessThanExpression UInt32LessThan(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt16LessThanExpression UInt16LessThan(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt8LessThanExpression UInt8LessThan(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    
     public static Int64EqualsExpression Int64Equals(
             ILoweredExpression left, ILoweredExpression right, bool valueUseful)
     {
@@ -223,11 +246,14 @@ public static class LoweredProgramHelpers
         return new(valueUseful, left, right);
     }
 
-    public static Int64NotEqualsExpression Int64NotEquals(
-            ILoweredExpression left, ILoweredExpression right, bool valueUseful)
-    {
-        return new(valueUseful, left, right);
-    }
+    public static Int64NotEqualsExpression Int64NotEquals(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int32NotEqualsExpression Int32NotEquals(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int16NotEqualsExpression Int16NotEquals(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static Int8NotEqualsExpression Int8NotEquals(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt64NotEqualsExpression UInt64NotEquals(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt32NotEqualsExpression UInt32NotEquals(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt16NotEqualsExpression UInt16NotEquals(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
+    public static UInt8NotEqualsExpression UInt8NotEquals(ILoweredExpression left, ILoweredExpression right, bool valueUseful) => new(valueUseful, left, right);
 
     public static BoolAndExpression BoolAnd(
             ILoweredExpression left, ILoweredExpression right, bool valueUseful)

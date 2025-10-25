@@ -86,17 +86,19 @@ public interface IConstructor
             return new VariantsConstructorSet(variants, NonExhaustive: false);
         }
 
-        if (type is not TypeChecker.InstantiatedClass @class)
+        var klass = type switch
         {
-            throw new InvalidOperationException("Unexpected type");
-        }
+            TypeChecker.InstantiatedClass x => x,
+            TypeChecker.UnspecifiedSizedIntType x => x.ResolvedIntType.NotNull(),
+            _ => throw new InvalidOperationException("Unexpected type")
+        };
 
-        if (@class.MatchesSignature(TypeChecker.ClassSignature.Boolean))
+        if (klass.MatchesSignature(TypeChecker.ClassSignature.Boolean))
         {
             return new BooleanConstructorSet();
         }
 
-        if (@class.MatchesSignature(TypeChecker.ClassSignature.Never))
+        if (klass.MatchesSignature(TypeChecker.ClassSignature.Never))
         {
             return new NoConstructorsConstructorSet();
         }

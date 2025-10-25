@@ -407,6 +407,7 @@ public class Tokenizer
                 break;
             case 'u':
                 tokens[i++] = TokenType.Union;
+                tokens[i++] = TokenType.Identifier;
                 break;
             case '?':
                 tokens[i++] = TokenType.QuestionMark;

@@ -86,7 +86,7 @@ public class ControlFlow
                 """
                 static fn SomeFn(): result::<i64, string> {
                     var a = ok(1)?;
-                    return ok(1);
+                    return ok(a);
                 }
                 """,
                 Module(
@@ -110,7 +110,7 @@ public class ControlFlow
                                 new LoadLocal("Local1"),
                                 new LoadField(0, "Item0"),
                                 new StoreLocal("a"),
-                                new LoadInt64Constant(1),
+                                new LoadLocal("a"),
                                 new LoadFunction(FunctionDefinitionReference(DefId.Result_Create_Ok, "result__Create__Ok", [Int64Type, StringType])),
                                 new Call(1, [], true),
                                 new Return()
@@ -170,7 +170,7 @@ public class ControlFlow
                                         {0, "switchInt_0_branch_0"}
                                     }, "switchInt_0_otherwise"),
                                 // switchInt_0_otherwise
-                                new LoadInt64Constant(1),
+                                new LoadInt32Constant(1),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_0_after"),
                                 // switchInt_0_branch_0
@@ -178,7 +178,7 @@ public class ControlFlow
                                 new LoadUnitConstant(),
                                 Return()
                             ],
-                            locals: [Local("a", Int64Type)],
+                            locals: [Local("a", Int32Type)],
                             labels: [
                                 new InstructionLabel("switchInt_0_otherwise", 3),
                                 new InstructionLabel("switchInt_0_branch_0", 6),
@@ -207,17 +207,17 @@ public class ControlFlow
                                         {0, "switchInt_0_branch_0"}
                                     }, "switchInt_0_otherwise"),
                                 // switchInt_0_otherwise
-                                new LoadInt64Constant(1),
+                                new LoadInt32Constant(1),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_0_after"),
                                 // switchInt_0_branch_0
                                 // switchInt_0_after
-                                new LoadInt64Constant(2),
+                                new LoadInt32Constant(2),
                                 new StoreLocal("a"),
                                 new LoadUnitConstant(),
                                 Return()
                             ],
-                            locals: [Local("a", Int64Type)],
+                            locals: [Local("a", Int32Type)],
                             labels: [
                                 new InstructionLabel("switchInt_0_otherwise", 3),
                                 new InstructionLabel("switchInt_0_branch_0", 6),
@@ -247,17 +247,17 @@ public class ControlFlow
                                         {0, "switchInt_0_branch_0"}
                                     }, "switchInt_0_otherwise"),
                                 // switchInt_0_otherwise
-                                new LoadInt64Constant(1),
+                                new LoadInt32Constant(1),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_0_after"),
                                 // switchInt_0_branch_0
-                                new LoadInt64Constant(2),
+                                new LoadInt32Constant(2),
                                 new StoreLocal("a"),
                                 // switchInt_0_after
                                 new LoadUnitConstant(),
                                 Return()
                             ],
-                            locals: [Local("a", Int64Type)],
+                            locals: [Local("a", Int32Type)],
                             labels: [
                                 new InstructionLabel("switchInt_0_otherwise", 3),
                                 new InstructionLabel("switchInt_0_branch_0", 6),
@@ -289,7 +289,7 @@ public class ControlFlow
                                         {0, "switchInt_0_branch_0"}
                                     }, "switchInt_0_otherwise"),
                                 // switchInt_0_otherwise
-                                new LoadInt64Constant(1),
+                                new LoadInt32Constant(1),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_0_after"),
                                 // switchInt_0_branch_0
@@ -301,7 +301,7 @@ public class ControlFlow
                                         {0, "switchInt_1_branch_0"}
                                     }, "switchInt_1_otherwise"),
                                 // switchInt_1_otherwise
-                                new LoadInt64Constant(2),
+                                new LoadInt32Constant(2),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_1_after"),
                                 // switchInt_1_branch_0
@@ -313,7 +313,7 @@ public class ControlFlow
                                         {0, "switchInt_2_branch_0"}
                                     }, "switchInt_2_otherwise"),
                                 // switchInt_2_otherwise
-                                new LoadInt64Constant(3),
+                                new LoadInt32Constant(3),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_2_after"),
                                 // switchInt_2_branch_0
@@ -323,7 +323,7 @@ public class ControlFlow
                                 new LoadUnitConstant(),
                                 Return()
                             ],
-                            locals: [Local("a", Int64Type)],
+                            locals: [Local("a", Int32Type)],
                             labels: [
                                 new InstructionLabel("switchInt_0_otherwise", 3),
                                 new InstructionLabel("switchInt_0_branch_0", 6),
@@ -363,7 +363,7 @@ public class ControlFlow
                                         {0, "switchInt_0_branch_0"}
                                     }, "switchInt_0_otherwise"),
                                 // switchInt_0_otherwise
-                                new LoadInt64Constant(1),
+                                new LoadInt32Constant(1),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_0_after"),
                                 // switchInt_0_branch_0
@@ -375,7 +375,7 @@ public class ControlFlow
                                         {0, "switchInt_1_branch_0"}
                                     }, "switchInt_1_otherwise"),
                                 // switchInt_1_otherwise
-                                new LoadInt64Constant(2),
+                                new LoadInt32Constant(2),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_1_after"),
                                 // switchInt_1_branch_0
@@ -387,11 +387,11 @@ public class ControlFlow
                                         {0, "switchInt_2_branch_0"}
                                     }, "switchInt_2_otherwise"),
                                 // switchInt_2_otherwise
-                                new LoadInt64Constant(3),
+                                new LoadInt32Constant(3),
                                 new StoreLocal("a"),
                                 new Branch("switchInt_2_after"),
                                 // switchInt_2_branch_0
-                                new LoadInt64Constant(4),
+                                new LoadInt32Constant(4),
                                 new StoreLocal("a"),
                                 // switchInt_2_after
                                 // switchInt_1_after
@@ -399,7 +399,7 @@ public class ControlFlow
                                 new LoadUnitConstant(),
                                 Return()
                             ],
-                            locals: [Local("a", Int64Type)],
+                            locals: [Local("a", Int32Type)],
                             labels: [
                                 new InstructionLabel("switchInt_0_otherwise", 3),
                                 new InstructionLabel("switchInt_0_branch_0", 6),
@@ -422,7 +422,7 @@ public class ControlFlow
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadInt64Constant(1),
+                                new LoadInt32Constant(1),
                                 new StoreLocal("Local0"),
                                 new LoadBoolConstant(true),
                                 new CastBoolToInt(),
@@ -437,7 +437,7 @@ public class ControlFlow
                                 new LoadUnitConstant(),
                                 Return()
                             ],
-                            locals: [Local("Local0", Int64Type)],
+                            locals: [Local("Local0", Int32Type)],
                             labels: [
                                 new InstructionLabel("switchInt_0_otherwise", 5),
                                 new InstructionLabel("switchInt_0_branch_0", 6),
@@ -454,7 +454,7 @@ public class ControlFlow
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadInt64Constant(1),
+                                new LoadInt32Constant(1),
                                 new StoreLocal("a"),
                                 new LoadBoolConstant(true),
                                 new CastBoolToInt(),
@@ -470,7 +470,7 @@ public class ControlFlow
                                 Return()
                             ],
                             locals: [
-                                Local("a", Int64Type),
+                                Local("a", Int32Type),
                             ],
                             labels: [
                                 new InstructionLabel("switchInt_0_otherwise", 5),
@@ -736,10 +736,10 @@ public class ControlFlow
                                 new LoadLocal("Local2"),
                                 new LoadField(0, "Item0"),
                                 new StoreLocal("Local3"),
-                                new LoadInt64Constant(1),
+                                new LoadInt32Constant(1),
                                 new Branch("switchInt_0_after"),
                                 // switchInt_0_branch_1
-                                new LoadInt64Constant(2),
+                                new LoadInt32Constant(2),
                                 // switchInt_0_after
                                 new StoreLocal("b"),
                                 LoadUnit(),
@@ -747,7 +747,7 @@ public class ControlFlow
                             ],
                             locals: [
                                 Local("a", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
-                                Local("b", Int64Type),
+                                Local("b", Int32Type),
                                 Local("Local2", ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")),
                                 Local("Local3", StringType)
                             ],

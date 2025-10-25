@@ -40,7 +40,7 @@ public class SimpleExpressions
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadInt64Constant(1),
+                                new LoadInt32Constant(1),
                                 LoadUnit(),
                                 Return()
                             ])
@@ -118,13 +118,13 @@ public class SimpleExpressions
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadInt64Constant(1),
+                                new LoadInt32Constant(1),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
                             ],
                             locals: [
-                                Local("a", Int64Type)
+                                Local("a", Int32Type)
                             ])
                     ])
             },
@@ -135,7 +135,7 @@ public class SimpleExpressions
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadInt64Constant(1),
+                                new LoadInt32Constant(1),
                                 new StoreLocal("a"),
                                 new LoadStringConstant("hello"),
                                 new StoreLocal("b"),
@@ -143,7 +143,7 @@ public class SimpleExpressions
                                 Return()
                             ],
                             locals: [
-                                Local("a", Int64Type),
+                                Local("a", Int32Type),
                                 Local("b", StringType)
                             ])
                     ])
@@ -155,9 +155,9 @@ public class SimpleExpressions
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadInt64Constant(1),
-                                new LoadInt64Constant(2),
-                                new CompareInt64LessThan(),
+                                new LoadInt32Constant(1),
+                                new LoadInt32Constant(2),
+                                new CompareInt32LessThan(),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
@@ -172,9 +172,9 @@ public class SimpleExpressions
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadInt64Constant(1),
-                                new LoadInt64Constant(2),
-                                new CompareInt64GreaterThan(),
+                                new LoadInt32Constant(1),
+                                new LoadInt32Constant(2),
+                                new CompareInt32GreaterThan(),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
@@ -193,7 +193,7 @@ public class SimpleExpressions
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadInt64Constant(1),
+                                new LoadInt32Constant(1),
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
                                 new StoreLocal("b"),
@@ -203,9 +203,9 @@ public class SimpleExpressions
                                 Return()
                             ],
                             locals: [
-                                Local("a", Int64Type),
-                                Local("b", Int64Type),
-                                Local("c", Int64Type)
+                                Local("a", Int32Type),
+                                Local("b", Int32Type),
+                                Local("c", Int32Type)
                             ])
                     ])
             },
@@ -216,14 +216,14 @@ public class SimpleExpressions
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadInt64Constant(1),
-                                new LoadInt64Constant(2),
-                                new Int64Plus(),
+                                new LoadInt32Constant(1),
+                                new LoadInt32Constant(2),
+                                new Int32Plus(),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", Int64Type)])
+                            locals: [Local("a", Int32Type)])
                     ])
             },
             {
@@ -233,14 +233,14 @@ public class SimpleExpressions
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadInt64Constant(1),
-                                new LoadInt64Constant(2),
-                                new Int64Minus(),
+                                new LoadInt32Constant(1),
+                                new LoadInt32Constant(2),
+                                new Int32Minus(),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", Int64Type)])
+                            locals: [Local("a", Int32Type)])
                     ])
             },
             {
@@ -250,14 +250,14 @@ public class SimpleExpressions
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadInt64Constant(1),
-                                new LoadInt64Constant(2),
-                                new Int64Multiply(),
+                                new LoadInt32Constant(1),
+                                new LoadInt32Constant(2),
+                                new Int32Multiply(),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", Int64Type)])
+                            locals: [Local("a", Int32Type)])
                     ])
             },
             {
@@ -267,14 +267,14 @@ public class SimpleExpressions
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadInt64Constant(1),
-                                new LoadInt64Constant(2),
-                                new Int64Divide(),
+                                new LoadInt32Constant(1),
+                                new LoadInt32Constant(2),
+                                new Int32Divide(),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", Int64Type)])
+                            locals: [Local("a", Int32Type)])
                     ])
             },
             {
@@ -284,9 +284,9 @@ public class SimpleExpressions
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadInt64Constant(1),
-                                new LoadInt64Constant(2),
-                                new CompareInt64NotEqual(),
+                                new LoadInt32Constant(1),
+                                new LoadInt32Constant(2),
+                                new CompareInt32NotEqual(),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
@@ -301,9 +301,9 @@ public class SimpleExpressions
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadInt64Constant(1),
-                                new LoadInt64Constant(2),
-                                new CompareInt64Equal(),
+                                new LoadInt32Constant(1),
+                                new LoadInt32Constant(2),
+                                new CompareInt32Equal(),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
@@ -321,12 +321,12 @@ public class SimpleExpressions
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadInt64Constant(1),
+                                new LoadInt32Constant(1),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", Int64Type)])
+                            locals: [Local("a", Int32Type)])
                     ])
             },
             {
@@ -390,12 +390,12 @@ public class SimpleExpressions
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new LoadInt64Constant(1),
+                                new LoadInt32Constant(1),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", Int64Type)])
+                            locals: [Local("a", Int32Type)])
                     ])
             },
             {
@@ -405,9 +405,9 @@ public class SimpleExpressions
                     methods: [
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
-                                new CreateObject(ConcreteTypeReference(DefId.Tuple(2), "Tuple`2", [Int64Type, BoolType])),
+                                new CreateObject(ConcreteTypeReference(DefId.Tuple(2), "Tuple`2", [Int32Type, BoolType])),
                                 new CopyStack(),
-                                new LoadInt64Constant(1),
+                                new LoadInt32Constant(1),
                                 new StoreField(0, "Item0"),
                                 new CopyStack(),
                                 new LoadBoolConstant(true),
@@ -416,7 +416,7 @@ public class SimpleExpressions
                                 LoadUnit(),
                                 Return()
                             ],
-                            locals: [Local("a", ConcreteTypeReference(DefId.Tuple(2), "Tuple`2", [Int64Type, BoolType]))])
+                            locals: [Local("a", ConcreteTypeReference(DefId.Tuple(2), "Tuple`2", [Int32Type, BoolType]))])
                     ])
             },
             {

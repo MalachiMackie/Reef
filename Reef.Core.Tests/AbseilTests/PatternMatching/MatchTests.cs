@@ -115,9 +115,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                                     "something",
                                                                                     LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                                     false),
-                                                                                Int64Constant(1, true)
+                                                                                Int32Constant(1, true)
                                                                             ],
-                                                                            Int64_t,
+                                                                            Int32_t,
                                                                             true)
                                                                     }
                                                                 },
@@ -133,17 +133,17 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                                     "somethingElse",
                                                                                     LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                                     false),
-                                                                                Int64Constant(2, true)
+                                                                                Int32Constant(2, true)
                                                                             ],
-                                                                            Int64_t,
+                                                                            Int32_t,
                                                                             true),
                                                                     ],
-                                                                    Int64_t,
+                                                                    Int32_t,
                                                                     true),
                                                                 true,
-                                                                Int64_t)
+                                                                Int32_t)
                                                         ],
-                                                        Int64_t,
+                                                        Int32_t,
                                                         true)
                                                 }
                                             },
@@ -153,14 +153,14 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                         "myUnion",
                                                         LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                         false),
-                                                    Int64Constant(4, true)
+                                                    Int32Constant(4, true)
                                                 ],
-                                                Int64_t,
+                                                Int32_t,
                                                 true),
                                             true,
-                                            Int64_t)
+                                            Int32_t)
                                     ],
-                                    Int64_t,
+                                    Int32_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -241,22 +241,22 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             {
                                                 {
                                                     0,
-                                                    Int64Constant(1, true)
+                                                    Int32Constant(1, true)
                                                 },
                                                 {
                                                     1,
-                                                    Int64Constant(2, true)
+                                                    Int32Constant(2, true)
                                                 },
                                                 {
                                                     2,
-                                                    Int64Constant(3, true)
+                                                    Int32Constant(3, true)
                                                 },
                                             },
                                             Unreachable(),
                                             true,
-                                            Int64_t),
+                                            Int32_t),
                                     ],
-                                    Int64_t,
+                                    Int32_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -312,14 +312,14 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             {
                                                 {
                                                     0,
-                                                    Int64Constant(1, true)
+                                                    Int32Constant(1, true)
                                                 }
                                             },
-                                            Int64Constant(2, true),
+                                            Int32Constant(2, true),
                                             true,
-                                            Int64_t),
+                                            Int32_t),
                                     ],
-                                    Int64_t,
+                                    Int32_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -443,34 +443,34 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                 {
                                                                     {
                                                                         0,
-                                                                        Int64Constant(1, true)
+                                                                        Int32Constant(1, true)
                                                                     },
                                                                     {
                                                                         1,
-                                                                        Int64Constant(2, true)
+                                                                        Int32Constant(2, true)
                                                                     },
                                                                     {
                                                                         2,
-                                                                        Int64Constant(3, true)
+                                                                        Int32Constant(3, true)
                                                                     },
                                                                 },
                                                                 Unreachable(),
                                                                 true,
-                                                                Int64_t)
+                                                                Int32_t)
                                                         ],
-                                                        Int64_t,
+                                                        Int32_t,
                                                         true)
                                                 },
                                                 {
                                                     1,
-                                                    Int64Constant(4, true)
+                                                    Int32Constant(4, true)
                                                 }
                                             },
                                             Unreachable(),
                                             true,
-                                            Int64_t)
+                                            Int32_t)
                                     ],
-                                    Int64_t,
+                                    Int32_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -576,22 +576,22 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                     UInt16_t),
                                                                 new()
                                                                 {
-                                                                    {0, Int64Constant(1, true)}
+                                                                    {0, Int32Constant(1, true)}
                                                                 },
-                                                                Int64Constant(2, true),
+                                                                Int32Constant(2, true),
                                                                 true,
-                                                                Int64_t)
+                                                                Int32_t)
                                                         ],
-                                                        Int64_t,
+                                                        Int32_t,
                                                         true)
                                                 },
-                                                { 1, Int64Constant(3, true) }
+                                                { 1, Int32Constant(3, true) }
                                             },
                                             Unreachable(),
                                             true,
-                                            Int64_t)
+                                            Int32_t)
                                     ],
-                                    Int64_t,
+                                    Int32_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -701,23 +701,23 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                     UInt16_t),
                                                                 new()
                                                                 {
-                                                                    { 0, Int64Constant(1, true) },
-                                                                    { 1, Int64Constant(2, true) },
-                                                                    { 2, Int64Constant(3, true) },
+                                                                    { 0, Int32Constant(1, true) },
+                                                                    { 1, Int32Constant(2, true) },
+                                                                    { 2, Int32Constant(3, true) },
                                                                 },
-                                                                Int64Constant(4, true),
+                                                                Int32Constant(4, true),
                                                                 true,
-                                                                Int64_t)
+                                                                Int32_t)
                                                         ],
-                                                        Int64_t,
+                                                        Int32_t,
                                                         true)
                                                 }
                                             },
-                                            Int64Constant(4, true),
+                                            Int32Constant(4, true),
                                             true,
-                                            Int64_t)
+                                            Int32_t)
                                     ],
-                                    Int64_t,
+                                    Int32_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -805,7 +805,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             {
                                                 {
                                                     1,
-                                                    Int64Constant(0, true)
+                                                    Int32Constant(0, true)
                                                 },
                                                 {
                                                     0,
@@ -855,18 +855,18 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                                     {
                                                                                         {
                                                                                             0,
-                                                                                            Int64Constant(1, true)
+                                                                                            Int32Constant(1, true)
                                                                                         },
                                                                                         {
                                                                                             1,
-                                                                                            Int64Constant(2, true)
+                                                                                            Int32Constant(2, true)
                                                                                         }
                                                                                     },
                                                                                     Unreachable(),
                                                                                     true,
-                                                                                    Int64_t)
+                                                                                    Int32_t)
                                                                             ],
-                                                                            Int64_t,
+                                                                            Int32_t,
                                                                             true)
                                                                     },
                                                                     {
@@ -894,34 +894,34 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                                     {
                                                                                         {
                                                                                             0,
-                                                                                            Int64Constant(3, true)
+                                                                                            Int32Constant(3, true)
                                                                                         },
                                                                                         {
                                                                                             1,
-                                                                                            Int64Constant(4, true)
+                                                                                            Int32Constant(4, true)
                                                                                         }
                                                                                     },
                                                                                     Unreachable(),
                                                                                     true,
-                                                                                    Int64_t)
+                                                                                    Int32_t)
                                                                             ],
-                                                                            Int64_t,
+                                                                            Int32_t,
                                                                             true)
                                                                     }
                                                                 },
                                                                 Unreachable(),
                                                                 true,
-                                                                Int64_t)
+                                                                Int32_t)
                                                         ],
-                                                        Int64_t,
+                                                        Int32_t,
                                                         true)
                                                 }
                                             },
                                             Unreachable(),
                                             true,
-                                            Int64_t)
+                                            Int32_t)
                                     ],
-                                    Int64_t,
+                                    Int32_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -1025,9 +1025,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                                     "something",
                                                                                     LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                                     false),
-                                                                                Int64Constant(1, true)
+                                                                                Int32Constant(1, true)
                                                                             ],
-                                                                            Int64_t,
+                                                                            Int32_t,
                                                                             true)
                                                                     }
                                                                 },
@@ -1043,17 +1043,17 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                                     "somethingElse",
                                                                                     LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                                                     false),
-                                                                                Int64Constant(2, true)
+                                                                                Int32Constant(2, true)
                                                                             ],
-                                                                            Int64_t,
+                                                                            Int32_t,
                                                                             true),
                                                                     ],
-                                                                    Int64_t,
+                                                                    Int32_t,
                                                                     true),
                                                                 true,
-                                                                Int64_t)
+                                                                Int32_t)
                                                         ],
-                                                        Int64_t,
+                                                        Int32_t,
                                                         true)
                                                 }
                                             },
@@ -1063,14 +1063,14 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                         "myUnion",
                                                         LocalAccess("Local5", true, ConcreteTypeReference("MyUnion", new DefId(_moduleId, $"{_moduleId}.MyUnion"))),
                                                         false),
-                                                    Int64Constant(4, true)
+                                                    Int32Constant(4, true)
                                                 ],
-                                                Int64_t,
+                                                Int32_t,
                                                 true),
                                             true,
-                                            Int64_t)
+                                            Int32_t)
                                     ],
-                                    Int64_t,
+                                    Int32_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -1089,7 +1089,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 "match type pattern",
                 """
                 match (1) {
-                    i64 => 1
+                    i64 => 2
                 }
                 """,
                 LoweredProgram(
@@ -1099,9 +1099,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 Block(
                                     [
                                         VariableDeclaration("Local0", Int64Constant(1, true), false),
-                                        Int64Constant(1, true)
+                                        Int32Constant(2, true)
                                     ],
-                                    Int64_t,
+                                    Int32_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -1184,7 +1184,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                     {
                                                         {
                                                             0,
-                                                            Int64Constant(1, true)
+                                                            Int32Constant(1, true)
                                                         },
                                                         {
                                                             1,
@@ -1194,20 +1194,20 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                         "something",
                                                                         LocalAccess("Local2", true, ConcreteTypeReference("MyClass", new DefId(_moduleId, $"{_moduleId}.MyClass"))),
                                                                         false),
-                                                                    Int64Constant(2, true)
+                                                                    Int32Constant(2, true)
                                                                 ],
-                                                                Int64_t,
+                                                                Int32_t,
                                                                 true)
                                                         }
                                                     },
                                                     Unreachable(),
                                                     true,
-                                                    Int64_t)
+                                                    Int32_t)
                                             ],
-                                            Int64_t,
+                                            Int32_t,
                                             true),
                                     ],
-                                    Int64_t,
+                                    Int32_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -1294,17 +1294,17 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                     {
                                                         {
                                                             0,
-                                                            Int64Constant(1, true)
+                                                            Int32Constant(1, true)
                                                         }
                                                     },
-                                                    Int64Constant(2, true),
+                                                    Int32Constant(2, true),
                                                     true,
-                                                    Int64_t)
+                                                    Int32_t)
                                             ],
-                                            Int64_t,
+                                            Int32_t,
                                             true)
                                     ],
-                                    Int64_t,
+                                    Int32_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -1434,14 +1434,14 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                         {
                                                                             {
                                                                                 0,
-                                                                                Int64Constant(1, true)
+                                                                                Int32Constant(1, true)
                                                                             }
                                                                         },
-                                                                        Int64Constant(3, true),
+                                                                        Int32Constant(3, true),
                                                                         true,
-                                                                        Int64_t)
+                                                                        Int32_t)
                                                                 ],
-                                                                Int64_t,
+                                                                Int32_t,
                                                                 true)
                                                         },
                                                         {
@@ -1468,14 +1468,14 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                         {
                                                                             {
                                                                                 0,
-                                                                                Int64Constant(2, true)
+                                                                                Int32Constant(2, true)
                                                                             }
                                                                         },
-                                                                        Int64Constant(3, true),
+                                                                        Int32Constant(3, true),
                                                                         true,
-                                                                        Int64_t)
+                                                                        Int32_t)
                                                                 ],
-                                                                Int64_t,
+                                                                Int32_t,
                                                                 true)
                                                         },
                                                         {
@@ -1502,25 +1502,25 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                         {
                                                                             {
                                                                                 0,
-                                                                                Int64Constant(4, true)
+                                                                                Int32Constant(4, true)
                                                                             }
                                                                         },
-                                                                        Int64Constant(3, true),
+                                                                        Int32Constant(3, true),
                                                                         true,
-                                                                        Int64_t)
+                                                                        Int32_t)
                                                                 ],
-                                                                Int64_t,
+                                                                Int32_t,
                                                                 true)
                                                         }
                                                     },
-                                                    Int64Constant(3, true),
+                                                    Int32Constant(3, true),
                                                     true,
-                                                    Int64_t)
+                                                    Int32_t)
                                             ],
-                                            Int64_t,
+                                            Int32_t,
                                             true)
                                     ],
-                                    Int64_t,
+                                    Int32_t,
                                     false),
                                 MethodReturnUnit()
                             ],
@@ -1644,14 +1644,14 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                         {
                                                                             {
                                                                                 0,
-                                                                                Int64Constant(1, true)
+                                                                                Int32Constant(1, true)
                                                                             }
                                                                         },
-                                                                        Int64Constant(2, true),
+                                                                        Int32Constant(2, true),
                                                                         true,
-                                                                        Int64_t)
+                                                                        Int32_t)
                                                                 ],
-                                                                Int64_t,
+                                                                Int32_t,
                                                                 true)
                                                         },
                                                         {
@@ -1677,14 +1677,14 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                         {
                                                                             {
                                                                                 1,
-                                                                                Int64Constant(3, true)
+                                                                                Int32Constant(3, true)
                                                                             }
                                                                         },
-                                                                        Int64Constant(5, true),
+                                                                        Int32Constant(5, true),
                                                                         true,
-                                                                        Int64_t)
+                                                                        Int32_t)
                                                                 ],
-                                                                Int64_t,
+                                                                Int32_t,
                                                                 true)
                                                         },
                                                         {
@@ -1710,26 +1710,26 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                                         {
                                                                             {
                                                                                 0,
-                                                                                Int64Constant(4, true)
+                                                                                Int32Constant(4, true)
                                                                             }
                                                                         },
-                                                                        Int64Constant(5, true),
+                                                                        Int32Constant(5, true),
                                                                         true,
-                                                                        Int64_t)
+                                                                        Int32_t)
                                                                 ],
-                                                                Int64_t,
+                                                                Int32_t,
                                                                 true)
                                                         },
                                                     },
-                                                    Int64Constant(5, true),
+                                                    Int32Constant(5, true),
                                                     true,
-                                                    Int64_t)
+                                                    Int32_t)
                                             ],
-                                            Int64_t,
+                                            Int32_t,
                                             true),
                                         
                                     ],
-                                    Int64_t,
+                                    Int32_t,
                                     false),
                                 MethodReturnUnit()
                             ],

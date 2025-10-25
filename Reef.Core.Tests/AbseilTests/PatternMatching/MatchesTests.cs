@@ -146,7 +146,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                     "b",
                                     Block(
                                         [
-                                            VariableDeclaration("Local1", Int64Constant(1, true) ,false),
+                                            VariableDeclaration("Local1", Int32Constant(1, true) ,false),
                                             BoolConstant(true, true)
                                         ],
                                         BooleanType,
@@ -156,7 +156,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             ],
                             locals: [
                                 Local("b", BooleanType),
-                                Local("Local1", Int64_t)
+                                Local("Local1", Int32_t)
                             ])
                     ])
             },
@@ -174,7 +174,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                     Block(
                                         [
                                             VariableDeclaration("a",
-                                                Int64Constant(1, true),
+                                                Int32Constant(1, true),
                                                 false),
                                             BoolConstant(true, true)
                                         ],
@@ -185,7 +185,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             ],
                             locals: [
                                 Local("b", BooleanType),
-                                Local("a", Int64_t)
+                                Local("a", Int32_t)
                             ])
                     ])
             },

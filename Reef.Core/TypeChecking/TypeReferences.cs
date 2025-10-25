@@ -10,6 +10,54 @@ public partial class TypeChecker
         public ITypeReference? ResolvedType { get; set; }
     }
 
+    public class UnspecifiedSizedIntType : ITypeReference
+    {
+        private InstantiatedClass? _resolvedIntType;
+        public InstantiatedClass? ResolvedIntType
+        {
+            get => _resolvedIntType;
+            set
+            {
+                if (ReferenceEquals(value, this))
+                {
+                    return;
+                }
+
+                _resolvedIntType = value.NotNull();
+                foreach (var link in _links)
+                {
+                    link.ResolvedIntType ??= value;
+                }
+                foreach (var link in _genericLinks.Where(x => x.ResolvedType is null))
+                {
+                    link.SetResolvedType(_resolvedIntType, SourceRange.Default);
+                }
+            }
+        }
+
+        private readonly HashSet<UnspecifiedSizedIntType> _links = [];
+        private readonly HashSet<GenericTypeReference> _genericLinks = [];
+
+        internal void Link(UnspecifiedSizedIntType other)
+        {
+            _links.Add(other);
+            other._links.Add(this);
+        }
+
+        //internal void Link(GenericTypeReference other)
+        //{
+        //    if (_genericLinks.Add(other))
+        //    {
+        //        other.Link(this);
+        //    }
+        //}
+
+        public override string ToString()
+        {
+            return "UnknownSizedInt";
+        }
+    }
+
     public class UnknownType : ITypeReference
     {
         public static UnknownType Instance { get; } = new();
@@ -45,28 +93,57 @@ public partial class TypeChecker
         public ITypeReference? ResolvedType
         {
             get => _resolvedType;
-            set
+            init => _resolvedType = value;
+        }
+
+        public TypeCheckerError? SetResolvedType(ITypeReference value, SourceRange sourceRange)
+        {
+            if (ReferenceEquals(value, this))
             {
-                if (ReferenceEquals(value, this))
+                return null;
+            }
+
+            _resolvedType = value;
+            foreach (var link in _links.Where(x => x._resolvedType is null))
+            {
+                link.SetResolvedType(_resolvedType, sourceRange);
+            }
+            if (value is InstantiatedClass klass)
+            {
+                if (_intLinks.Count > 0 && InstantiatedClass.IntTypes.All(x => !x.IsSameSignature(klass)))
                 {
-                    return;
+                    return TypeCheckerError.MismatchedTypes(sourceRange, InstantiatedClass.IntTypes, value);
                 }
 
-                _resolvedType = value;
-                foreach (var link in _links)
+                foreach (var link in _intLinks.Where(x => x.ResolvedIntType is null))
                 {
-                    link.ResolvedType ??= _resolvedType;
+                    link.ResolvedIntType = klass;
                 }
             }
+            else if (_intLinks.Count > 0)
+            {
+                return TypeCheckerError.MismatchedTypes(sourceRange, InstantiatedClass.IntTypes, value);
+            }
+
+            return null;
         }
 
         private readonly HashSet<GenericTypeReference> _links = [];
+        private readonly HashSet<UnspecifiedSizedIntType> _intLinks = [];
 
         public void Link(GenericTypeReference other)
         {
             _links.Add(other);
             other._links.Add(this);
         }
+
+        //public void Link(UnspecifiedSizedIntType other)
+        //{
+        //    if (_intLinks.Add(other))
+        //    {
+        //        other.Link(this);
+        //    }
+        //}
 
         public bool Equals(GenericTypeReference? other)
         {

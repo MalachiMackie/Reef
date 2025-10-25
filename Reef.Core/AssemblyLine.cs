@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Reef.Core.IL;
 
 namespace Reef.Core;
@@ -7,11 +7,11 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
 {
     private readonly IReadOnlyList<ReefILModule> _modules = modules;
     private readonly HashSet<DefId> _usefulMethodIds = usefulMethodIds;
-    
+
     private const string AsmHeader = """
                                      bits 64
                                      default rel
-                                     
+
                                      """;
 
     private readonly StringBuilder _dataSegment = new("segment .data\n");
@@ -20,15 +20,15 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                                                       segment .text
                                                       global main
                                                       extern ExitProcess
-                                                      extern _CRT_INIT 
-                                                      
+                                                      extern _CRT_INIT
+
                                                       """);
 
     /// <summary>
     /// Dictionary of string constants to their data segment labels
     /// </summary>
     private readonly Dictionary<string, string> _strings = [];
-    
+
     public static string Process(IReadOnlyList<ReefILModule> modules, HashSet<DefId> usefulMethodIds)
     {
         var assemblyLine = new AssemblyLine(modules, usefulMethodIds);
@@ -84,7 +84,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
     private void CreateMain(ReefMethod mainMethod)
     {
         _codeSegment.AppendLine("main:");
-        
+
         _codeSegment.AppendLine("    push    rbp");
         _codeSegment.AppendLine("    mov     rbp, rsp");
         // give CRT_INIT it's shadow space
@@ -108,49 +108,73 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
     }
 
     private IReefTypeReference _returnType = null!;
-    private IReadOnlyList<ReefMethod.Local> _locals = null!;
-    private IReadOnlyList<IReefTypeReference> _parameters = null!;
+    private Dictionary<string, (ReefMethod.Local, uint stackOffset, uint stackSize)> _locals = null!;
+    private Dictionary<uint, (IReefTypeReference, uint stackOffset, uint stackSize)> _parameters = null!;
 
     private void ProcessMethod(ReefMethod method)
     {
-        _returnType = method.ReturnType;
-        _locals = method.Locals;
         if (method.TypeParameters.Count > 0)
         {
             throw new NotImplementedException();
         }
 
+        _returnType = method.ReturnType;
+        _locals = [];
+        var stackOffset = 0u;
+        foreach (var local in method.Locals)
+        {
+            var definitionId = (local.Type as ConcreteReefTypeReference).NotNull().DefinitionId;
+            var stackSize = GetDataType(definitionId).NotNull("", $"Expected {definitionId.FullName} to exist").StackSize;
+            if (stackSize > 8)
+            {
+                throw new NotImplementedException();
+            }
+
+            // ensure local is placed on the stack aligned to the natural boundry of the type
+            // stackOffset += 8;
+            _locals[local.DisplayName] = (local, stackOffset, stackSize);
+            stackOffset += 8;
+        }
+
         _codeSegment.AppendLine($"{method.Id.FullName}:");
-        
+
         _codeSegment.AppendLine("    push    rbp");
         _codeSegment.AppendLine("    mov     rbp, rsp");
 
-        _parameters = method.Parameters;
+        _parameters = [];
+        foreach (var (index, parameter) in method.Parameters.Index())
+        {
+            var parameterSize = GetDataType((parameter as ConcreteReefTypeReference).NotNull().DefinitionId).NotNull().StackSize;
 
-        var stackSpaceNeeded = (_locals.Count + _parameters.Count) * 8;
+            if (parameterSize > 8)
+            {
+                throw new NotImplementedException("Parameters greater than 8 bytes");
+            }
+
+            _parameters[(uint)index] = (parameter, stackOffset, parameterSize);
+            stackOffset += 8;
+        }
+
         // ensure stack space is 16 byte aligned
-        stackSpaceNeeded += stackSpaceNeeded % 16;
-        _codeSegment.AppendLine($"; Allocate stack space for local variables");
-        _codeSegment.AppendLine($"    sub     rsp, {stackSpaceNeeded}");
+        stackOffset += stackOffset % 16;
+        _codeSegment.AppendLine($"; Allocate stack space for local variables and parameters");
+        _codeSegment.AppendLine($"    sub     rsp, {stackOffset}");
 
-        // todo: support non integer and non 8 byte parameters
+        // todo: support non integer parameters
         for (var i = method.Parameters.Count - 1; i >= 0; i--)
         {
+            var (parameter, parameterStackOffset, parameterSize) = _parameters[(uint)i];
+
             var sourceRegister = i switch
             {
                 0 => "rcx",
                 1 => "rdx",
                 2 => "r8",
                 3 => "r9",
-                _ => null
+                _ => throw new NotImplementedException()
             };
 
-            if (sourceRegister is null)
-            {
-                throw new NotImplementedException();
-            }
-
-            _codeSegment.AppendLine($"    mov    [rbp-{(i + 1)*8}], {sourceRegister}");
+            _codeSegment.AppendLine($"    mov    [rbp-{parameterStackOffset + 8}], {sourceRegister}");
         }
 
         var labels = method.Instructions.Labels.ToLookup(x => x.ReferencesInstructionIndex, x => x.Name);
@@ -188,7 +212,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
        s - AF                                         -┘   │   │
        s - PF                                             -┘   │
        s - CF                                                 -┘
-      
+
        Legend:
        s - Status flag
        c - control flag
@@ -236,10 +260,19 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 throw new NotImplementedException();
             case Call call:
                 {
+                    var functionDefinition = _functionStack.Pop();
+                    if (functionDefinition.TypeArguments.Count > 0)
+                    {
+                        throw new NotImplementedException();
+                    }
+
                     _codeSegment.AppendLine($"; CALL({call.Arity})");
-                    // loop through backwards because the last argument is on the top of the stack 
+                    // loop through backwards because the last argument is on the top of the stack
                     for (var i = ((int)call.Arity) - 1; i >= 0; i--)
                     {
+                        var methodToCall = GetMethod(functionDefinition.DefinitionId).NotNull();
+                        var parameterDataType = GetDataType((methodToCall.Parameters[i] as ConcreteReefTypeReference).NotNull().DefinitionId).NotNull();
+
                         // todo: this does not account for non integers or values larger than 8 bytes
                         var destinationRegister = i switch
                         {
@@ -247,42 +280,30 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                             1 => "rdx",
                             2 => "r8",
                             3 => "r9",
-                            _ => null
+                            _ => throw new NotImplementedException("Functions with more than 4 arguments")
                         };
 
-                        if (destinationRegister is not null)
-                        {
-                            _codeSegment.AppendLine($"    pop     {destinationRegister}");
-                        }
-                        else
-                        {
-                            throw new NotImplementedException("Functions with more than 4 arguments");
-                        }
-
-                    }
-
-                    var functionDefinition = _functionStack.Pop();
-
-                    if (functionDefinition.TypeArguments.Count > 0)
-                    {
-                        throw new NotImplementedException();
+                        _codeSegment.AppendLine($"    pop     {destinationRegister}");
+                        // _codeSegment.AppendLine($"    mov     {destinationRegister}, [rsp]");
+                        // _codeSegment.AppendLine($"    sub     rsb, {parameterDataType.StackSize:X}h");
                     }
 
                     // calculate how many bytes we need to offset to be byte aligned by 16
-                    var stackSize = call.TypeStack.Select(x => x switch
-                    {
-                        ConcreteReefTypeReference concrete => GetDataType(concrete.DefinitionId).NotNull().StackSize,
-                        _ => throw new NotImplementedException()
-                    }).DefaultIfEmpty().Aggregate((a, b) => a + b);
+                    var stackSize = call.TypeStack.Count * 8;
+                    // var stackSize = call.TypeStack.Select(x => x switch
+                    // {
+                    //     ConcreteReefTypeReference concrete => GetDataType(concrete.DefinitionId).NotNull().StackSize,
+                    //     _ => throw new NotImplementedException()
+                    // }).DefaultIfEmpty().Aggregate((a, b) => a + b);
 
                     var bytesToOffset = stackSize % 16;
 
-                    _codeSegment.AppendLine($"    sub     rsp, {(_shadowSpaceBytes + bytesToOffset).ToString("X")}h");
-                    
+                    _codeSegment.AppendLine($"    sub     rsp, {(_shadowSpaceBytes + bytesToOffset):X}h");
+
                     _codeSegment.AppendLine($"    call    {functionDefinition.DefinitionId.FullName}");
-                    
+
                     // move rsp back to where it was before we called the function
-                    _codeSegment.AppendLine($"    add     rsp, {(_shadowSpaceBytes + bytesToOffset).ToString("X")}h");
+                    _codeSegment.AppendLine($"    add     rsp, {(_shadowSpaceBytes + bytesToOffset):X}h");
 
                     var method = GetMethod(functionDefinition.DefinitionId) ?? throw new InvalidOperationException($"No method found with {functionDefinition.DefinitionId}");
 
@@ -299,21 +320,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                     // noop
                     break;
                 }
-            case CompareInt64Equal compareIntEqual:
-                {
-                    _codeSegment.AppendLine($"; COMPARE_INT_EQUAL");
-
-                    _codeSegment.AppendLine("    pop    rax");
-                    _codeSegment.AppendLine("    cmp    rax, [rsp]");
-                    _codeSegment.AppendLine("    pop    rax");
-                    _codeSegment.AppendLine("    pushf");
-                    _codeSegment.AppendLine("    pop    rax");
-                    _codeSegment.AppendLine("    and    rax, 1000000b"); // zero flag
-                    _codeSegment.AppendLine("    shr    rax, 6");
-                    _codeSegment.AppendLine("    push   rax");
-
-                    break;
-                }
+            case CompareInt64Equal:
             case CompareInt32Equal:
             case CompareInt16Equal:
             case CompareInt8Equal:
@@ -321,22 +328,21 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case CompareUInt32Equal:
             case CompareUInt16Equal:
             case CompareUInt8Equal:
-                throw new NotImplementedException();
-            case CompareInt64NotEqual compareIntNotEqual:
-                {
-                    _codeSegment.AppendLine($"; COMPARE_INT_NOT_EQUAL");
+            {
+                _codeSegment.AppendLine($"; COMPARE_INT_EQUAL");
 
-                    _codeSegment.AppendLine("    pop    rax");
-                    _codeSegment.AppendLine("    cmp    rax, [rsp]");
-                    _codeSegment.AppendLine("    pop    rax");
-                    _codeSegment.AppendLine("    pushf");
-                    _codeSegment.AppendLine("    pop    rax");
-                    _codeSegment.AppendLine("    and    rax, 1000000b"); // zero flag
-                    _codeSegment.AppendLine("    shr    rax, 6");
-                    _codeSegment.AppendLine("    xor    rax, 1b");
-                    _codeSegment.AppendLine("    push   rax");
-                    break;
-                }
+                _codeSegment.AppendLine("    pop    rax");
+                _codeSegment.AppendLine("    cmp    rax, [rsp]");
+                _codeSegment.AppendLine("    pop    rax");
+                _codeSegment.AppendLine("    pushf");
+                _codeSegment.AppendLine("    pop    rax");
+                _codeSegment.AppendLine("    and    rax, 1000000b"); // zero flag
+                _codeSegment.AppendLine("    shr    rax, 6");
+                _codeSegment.AppendLine("    push   rax");
+
+                break;
+            }
+            case CompareInt64NotEqual compareIntNotEqual:
             case CompareInt32NotEqual:
             case CompareInt16NotEqual:
             case CompareInt8NotEqual:
@@ -344,7 +350,20 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case CompareUInt32NotEqual:
             case CompareUInt16NotEqual:
             case CompareUInt8NotEqual:
-                throw new NotImplementedException();
+            {
+                _codeSegment.AppendLine($"; COMPARE_INT_NOT_EQUAL");
+
+                _codeSegment.AppendLine("    pop    rax");
+                _codeSegment.AppendLine("    cmp    rax, [rsp]");
+                _codeSegment.AppendLine("    pop    rax");
+                _codeSegment.AppendLine("    pushf");
+                _codeSegment.AppendLine("    pop    rax");
+                _codeSegment.AppendLine("    and    rax, 1000000b"); // zero flag
+                _codeSegment.AppendLine("    shr    rax, 6");
+                _codeSegment.AppendLine("    xor    rax, 1b");
+                _codeSegment.AppendLine("    push   rax");
+                break;
+            }
             case CompareInt64GreaterOrEqualTo compareIntGreaterOrEqualTo:
             case CompareInt32GreaterOrEqualTo:
             case CompareInt16GreaterOrEqualTo:
@@ -355,27 +374,27 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case CompareUInt8GreaterOrEqualTo:
                 _codeSegment.AppendLine($"; COMPARE_INT_GREATER_OR_EQUAL");
                 throw new NotImplementedException();
-            case CompareInt64GreaterThan compareIntGreaterThan:
-                {
-                    _codeSegment.AppendLine($"; COMPARE_INT_GREATER");
-                    _codeSegment.AppendLine("    POP     rax");
-                    _codeSegment.AppendLine("    CMP     rax, [rsp]");
-                    _codeSegment.AppendLine("    POP     rax");
-                    _codeSegment.AppendLine("    PUSHF");
-                    _codeSegment.AppendLine("    POP     rax");
-                    _codeSegment.AppendLine("    AND     rax, 10000000b"); // sign flag
-                    _codeSegment.AppendLine("    SHR     rax, 7");
-                    _codeSegment.AppendLine("    PUSH    rax");
-                    break;
-                }
-            case CompareInt32GreaterThan:
-            case CompareInt16GreaterThan:
-            case CompareInt8GreaterThan:
             case CompareUInt64GreaterThan:
             case CompareUInt32GreaterThan:
             case CompareUInt16GreaterThan:
             case CompareUInt8GreaterThan:
                 throw new NotImplementedException();
+            case CompareInt64GreaterThan:
+            case CompareInt32GreaterThan:
+            case CompareInt16GreaterThan:
+            case CompareInt8GreaterThan:
+            {
+                _codeSegment.AppendLine($"; COMPARE_INT_GREATER");
+                _codeSegment.AppendLine("    POP     rax");
+                _codeSegment.AppendLine("    CMP     rax, [rsp]");
+                _codeSegment.AppendLine("    POP     rax");
+                _codeSegment.AppendLine("    PUSHF");
+                _codeSegment.AppendLine("    POP     rax");
+                _codeSegment.AppendLine("    AND     rax, 10000000b"); // sign flag
+                _codeSegment.AppendLine("    SHR     rax, 7");
+                _codeSegment.AppendLine("    PUSH    rax");
+                break;
+            }
             case CompareInt64LessOrEqualTo compareIntLessOrEqualTo:
                 _codeSegment.AppendLine($"; COMPARE_INT_LESS_OR_EQUAL");
                 throw new NotImplementedException();
@@ -387,22 +406,22 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case CompareUInt16LessOrEqualTo:
             case CompareUInt8LessOrEqualTo:
                 throw new NotImplementedException();
-            case CompareInt64LessThan compareIntLessThan:
-                {
-                    _codeSegment.AppendLine($"; COMPARE_INT_LESS");
-                    _codeSegment.AppendLine("    POP     rax");
-                    _codeSegment.AppendLine("    CMP     [rsp], rax");
-                    _codeSegment.AppendLine("    POP     rax");
-                    _codeSegment.AppendLine("    PUSHF");
-                    _codeSegment.AppendLine("    POP     rax");
-                    _codeSegment.AppendLine("    AND     rax, 10000000b"); // sign flag
-                    _codeSegment.AppendLine("    SHR     rax, 7");
-                    _codeSegment.AppendLine("    PUSH    rax");
-                    break;
-                }
+            case CompareInt64LessThan:
             case CompareInt32LessThan:
             case CompareInt16LessThan:
             case CompareInt8LessThan:
+            {
+                _codeSegment.AppendLine($"; COMPARE_INT_LESS");
+                _codeSegment.AppendLine("    POP     rax");
+                _codeSegment.AppendLine("    CMP     [rsp], rax");
+                _codeSegment.AppendLine("    POP     rax");
+                _codeSegment.AppendLine("    PUSHF");
+                _codeSegment.AppendLine("    POP     rax");
+                _codeSegment.AppendLine("    AND     rax, 10000000b"); // sign flag
+                _codeSegment.AppendLine("    SHR     rax, 7");
+                _codeSegment.AppendLine("    PUSH    rax");
+                break;
+            }
             case CompareUInt64LessThan:
             case CompareUInt32LessThan:
             case CompareUInt16LessThan:
@@ -417,77 +436,76 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case Drop drop:
                 _codeSegment.AppendLine($"; DROP");
                 throw new NotImplementedException();
-            case Int64Divide intDivide:
-                {
-                    _codeSegment.AppendLine($"; INT_DIVIDE");
-
-                    _codeSegment.AppendLine("    pop     rcx");
-                    _codeSegment.AppendLine("    pop     rax");
-
-                    // extend rax to double quad word for divide operation
-                    _codeSegment.AppendLine("    cqo");
-                    _codeSegment.AppendLine("    idiv    rcx");
-                    _codeSegment.AppendLine("    mov     [rsp], rax");
-
-                    // todo: panic/throw when dividing by zero
-
-                    break;
-                }
+            case Int64Divide:
             case Int32Divide:
             case Int16Divide:
             case Int8Divide:
+            {
+                _codeSegment.AppendLine($"; INT_DIVIDE");
+
+                _codeSegment.AppendLine("    pop     rcx");
+                _codeSegment.AppendLine("    pop     rax");
+
+                // extend rax to double quad word for divide operation
+                _codeSegment.AppendLine("    cqo");
+                _codeSegment.AppendLine("    idiv    rcx");
+                _codeSegment.AppendLine("    push     rax");
+
+                // todo: panic/throw when dividing by zero
+                break;
+            }
             case UInt64Divide:
             case UInt32Divide:
             case UInt16Divide:
             case UInt8Divide:
                 throw new NotImplementedException();
-            case Int64Minus intMinus:
-                {
-                    _codeSegment.AppendLine($"; INT_MINUS");
-
-                    _codeSegment.AppendLine("    POP    rax");
-                    _codeSegment.AppendLine("    SUB    [rsp], rax");
-                    break;
-                }
+            case Int64Minus:
             case Int32Minus:
             case Int16Minus:
             case Int8Minus:
+            {
+                _codeSegment.AppendLine($"; INT_MINUS");
+
+                _codeSegment.AppendLine("    POP    rax");
+                _codeSegment.AppendLine("    SUB    [rsp], rax");
+                break;
+            }
             case UInt64Minus:
             case UInt32Minus:
             case UInt16Minus:
             case UInt8Minus:
                 throw new NotImplementedException();
-            case Int64Multiply intMultiply:
-                {
-                    _codeSegment.AppendLine($"; INT_MULTIPLY");
-
-                    _codeSegment.AppendLine("    pop     rax");
-                    _codeSegment.AppendLine("    pop     rbx");
-                    // imul requires both arguments to be in registers (I think)
-                    _codeSegment.AppendLine("    imul    rax, rbx");
-                    _codeSegment.AppendLine("    mov     [rsp], rax");
-                    // todo: panic/throw on overflow
-                    break;
-                }
+            case Int64Multiply:
             case Int32Multiply:
             case Int16Multiply:
+            {
+                _codeSegment.AppendLine($"; INT_MULTIPLY");
+
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    pop     rbx");
+                // imul requires both arguments to be in registers (I think)
+                _codeSegment.AppendLine("    imul    rax, rbx");
+                _codeSegment.AppendLine("    push     rax");
+                // todo: panic/throw on overflow
+                break;
+            }
             case Int8Multiply:
             case UInt64Multiply:
             case UInt32Multiply:
             case UInt16Multiply:
             case UInt8Multiply:
                 throw new NotImplementedException();
-            case Int64Plus intPlus:
-                {
-                    _codeSegment.AppendLine($"; INT_PLUS");
-
-                    _codeSegment.AppendLine($"    POP     rax");
-                    _codeSegment.AppendLine("    ADD    [rsp], rax");
-                    break;
-                }
+            case Int64Plus:
             case Int32Plus:
             case Int16Plus:
             case Int8Plus:
+            {
+                _codeSegment.AppendLine($"; INT_PLUS");
+
+                _codeSegment.AppendLine($"    POP     rax");
+                _codeSegment.AppendLine("    ADD    [rsp], rax");
+                break;
+            }
             case UInt64Plus:
             case UInt32Plus:
             case UInt16Plus:
@@ -497,7 +515,9 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 {
                     _codeSegment.AppendLine($"; LOAD_ARGUMENT({loadArgument.ArgumentIndex})");
 
-                    _codeSegment.AppendLine($"    push    [rbp-{(loadArgument.ArgumentIndex + 1)*8}]");
+                    var (argumentType, stackOffset, stackSize) = _parameters[loadArgument.ArgumentIndex];
+
+                    _codeSegment.AppendLine($"    push    [rbp-{stackOffset + 8}]");
 
                     break;
                 }
@@ -513,54 +533,92 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 _codeSegment.AppendLine($"; LOAD_FIELD({loadField.VariantIndex}:{loadField.FieldName})");
                 throw new NotImplementedException();
             case LoadFunction loadFunction:
-            {
-                _codeSegment.AppendLine($"; LOAD_FUNCTION({loadFunction.FunctionDefinitionReference.Name})");
-                _functionStack.Push(loadFunction.FunctionDefinitionReference);
-                break;
-            }
-            case LoadInt64Constant loadIntConstant:
                 {
-                _codeSegment.AppendLine($"; LOAD_INT_CONSTANT({loadIntConstant.Value})");
-                    if (loadIntConstant.Value < 0) throw new NotImplementedException();
-                    
-                    var binaryFormatted = loadIntConstant.Value.ToString("x");
-                    _codeSegment.AppendLine($"    push    {binaryFormatted}");
+                    _codeSegment.AppendLine($"; LOAD_FUNCTION({loadFunction.FunctionDefinitionReference.Name})");
+                    _functionStack.Push(loadFunction.FunctionDefinitionReference);
                     break;
                 }
-            case LoadInt32Constant:
-            case LoadInt16Constant:
-            case LoadInt8Constant:
-            case LoadUInt64Constant:
-            case LoadUInt32Constant:
-            case LoadUInt16Constant:
-            case LoadUInt8Constant:
-                throw new NotImplementedException();
-            case LoadLocal loadLocal:
+            case LoadInt64Constant loadIntConstant:
+                {
+                    _codeSegment.AppendLine($"; LOAD_INT64_CONSTANT({loadIntConstant.Value})");
+                    if (loadIntConstant.Value < 0) throw new NotImplementedException();
+                    _codeSegment.AppendLine($"    push    {loadIntConstant.Value:X}h");
+                    break;
+                }
+            case LoadInt32Constant loadIntConstant:
             {
-                _codeSegment.AppendLine($"; LOAD_LOCAL({loadLocal.LocalName})");
-                var localIndex = _locals.Index().First(x => x.Item.DisplayName == loadLocal.LocalName).Index;
-                _codeSegment.AppendLine($"    push     [rbp-{(localIndex + _parameters.Count + 1)*8}]");
+                _codeSegment.AppendLine($"; LOAD_INT32_CONSTANT({loadIntConstant.Value})");
+                if (loadIntConstant.Value < 0) throw new NotImplementedException();
+                _codeSegment.AppendLine($"    push    {loadIntConstant.Value:X}h");
                 break;
             }
+            case LoadInt16Constant loadIntConstant:
+            {
+                _codeSegment.AppendLine($"; LOAD_INT16_CONSTANT({loadIntConstant.Value})");
+                if (loadIntConstant.Value < 0) throw new NotImplementedException();
+                _codeSegment.AppendLine($"    push    {loadIntConstant.Value:X}h");
+                break;
+            }
+            case LoadInt8Constant loadIntConstant:
+            {
+                _codeSegment.AppendLine($"; LOAD_INT8_CONSTANT({loadIntConstant.Value})");
+                if (loadIntConstant.Value < 0) throw new NotImplementedException();
+                _codeSegment.AppendLine($"    push    {loadIntConstant.Value:X}h");
+                break;
+            }
+            case LoadUInt64Constant loadIntConstant:
+            {
+                _codeSegment.AppendLine($"; LOAD_UINT64_CONSTANT({loadIntConstant.Value})");
+                _codeSegment.AppendLine($"    push    {loadIntConstant.Value:X}h");
+                break;
+            }
+            case LoadUInt32Constant loadIntConstant:
+            {
+                _codeSegment.AppendLine($"; LOAD_UINT32_CONSTANT({loadIntConstant.Value})");
+                _codeSegment.AppendLine($"    push    {loadIntConstant.Value:X}h");
+                break;
+            }
+            case LoadUInt16Constant loadIntConstant:
+            {
+                _codeSegment.AppendLine($"; LOAD_UINT16_CONSTANT({loadIntConstant.Value})");
+                _codeSegment.AppendLine($"    push    {loadIntConstant.Value:X}h");
+                break;
+            }
+            case LoadUInt8Constant loadIntConstant:
+            {
+                _codeSegment.AppendLine($"; LOAD_UINT8_CONSTANT({loadIntConstant.Value})");
+                _codeSegment.AppendLine($"    push    {loadIntConstant.Value:X}h");
+                break;
+            }
+            case LoadLocal loadLocal:
+                {
+                    _codeSegment.AppendLine($"; LOAD_LOCAL({loadLocal.LocalName})");
+                    //var localIndex = _locals.Index().First(x => x.Item.DisplayName == loadLocal.LocalName).Index;
+                    var (_, stackOffset, stackSize) = _locals[loadLocal.LocalName];
+                    _codeSegment.AppendLine($"    push    [rbp-{stackOffset + 8 }]");
+                    // _codeSegment.AppendLine($"    mov     [rbp-{stackOffset}],  rsp");
+                    //_codeSegment.AppendLine($"    push     [rbp-{stackOffset + stackSize}]");
+                    break;
+                }
             case LoadStaticField loadStaticField:
                 _codeSegment.AppendLine($"; LOAD_STATIC_FIELD({loadStaticField})");
                 throw new NotImplementedException();
             case LoadStringConstant loadStringConstant:
-            {
-                _codeSegment.AppendLine($"; LOAD_STRING_CONSTANT(\"{loadStringConstant.Value}\")");
-                if (!_strings.TryGetValue(loadStringConstant.Value, out var stringName))
                 {
-                    stringName = $"_str_{_strings.Count}";
-                    _strings[loadStringConstant.Value] = stringName;
-                    // todo: no null terminated strings
-                    _dataSegment.AppendLine(
-                        $"    {stringName} db \"{loadStringConstant.Value}\", 0");
-                }
+                    _codeSegment.AppendLine($"; LOAD_STRING_CONSTANT(\"{loadStringConstant.Value}\")");
+                    if (!_strings.TryGetValue(loadStringConstant.Value, out var stringName))
+                    {
+                        stringName = $"_str_{_strings.Count}";
+                        _strings[loadStringConstant.Value] = stringName;
+                        // todo: no null terminated strings
+                        _dataSegment.AppendLine(
+                            $"    {stringName} db \"{loadStringConstant.Value}\", 0");
+                    }
 
-                _codeSegment.AppendLine($"    lea     rax, [{stringName}]");
-                _codeSegment.AppendLine("    push    rax");
-                break;
-            }
+                    _codeSegment.AppendLine($"    lea     rax, [{stringName}]");
+                    _codeSegment.AppendLine("    push    rax");
+                    break;
+                }
             case LoadType loadType:
                 _codeSegment.AppendLine($"; LOAD_TYPE({loadType.ReefType})");
                 throw new NotImplementedException();
@@ -589,22 +647,23 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 _codeSegment.AppendLine($"; STORE_FIELD({storeField.VariantIndex}:{storeField.FieldName})");
                 throw new NotImplementedException();
             case StoreLocal storeLocal:
-            {
-                _codeSegment.AppendLine($"; STORE_LOCAL({storeLocal.LocalName})");
-                var localIndex = _locals.Index().First(x => x.Item.DisplayName == storeLocal.LocalName).Index;
-                // pop the value on the stack into rax
-                _codeSegment.AppendLine("    pop     rax");
-                
-                // move rax into the local's dedicated stack space
-                _codeSegment.AppendLine($"    mov     [rbp-{(localIndex + _parameters.Count + 1)*8}], rax");
-                break;
-            }
+                {
+                    _codeSegment.AppendLine($"; STORE_LOCAL({storeLocal.LocalName})");
+                    var (local, stackOffset, stackSize) = _locals[storeLocal.LocalName];
+                    // var localIndex = _locals.Index().First(x => x.Item.DisplayName == storeLocal.LocalName).Index;
+                    // pop the value on the stack into rax
+                    _codeSegment.AppendLine("    pop     rax");
+
+                    // move rax into the local's dedicated stack space
+                    _codeSegment.AppendLine($"    mov     [rbp-{stackOffset + 8}], rax");
+                    break;
+                }
             case StoreStaticField storeStaticField:
                 _codeSegment.AppendLine($"; STORE_STATIC_FIELD({storeStaticField.StaticFieldName})");
                 throw new NotImplementedException();
             case SwitchInt switchInt:
                 {
-                _codeSegment.AppendLine($"; SWITCH_INT");
+                    _codeSegment.AppendLine($"; SWITCH_INT");
                     foreach (var branch in switchInt.BranchLabels)
                     {
                         _codeSegment.AppendLine("    pop     rax");

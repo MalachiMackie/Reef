@@ -10,6 +10,21 @@ public static class ParseTestCases
         return new (string Source, LangProgram ExpectedProgram)[]
         {
             (
+                """
+                var a: u8 = 3;
+                """,
+                new("ParseTestCases",
+                [
+                    VariableDeclaration("a",
+                        new ValueAccessorExpression(new ValueAccessor(
+                            ValueAccessType.Literal, IntToken.IntLiteral(3, SourceSpan.Default), null)),
+                        NamedTypeIdentifier("u8"))
+                ],
+                [],
+                [],
+                [])
+            ),
+            (
              """
              var a = if (true) {} else {};
              """,

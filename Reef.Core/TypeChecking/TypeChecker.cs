@@ -603,7 +603,7 @@ public partial class TypeChecker
                     }
                     else if (assignInferredTypes)
                     {
-                        reference2.ResolvedType = placeholder1;
+                        reference2.SetResolvedType(placeholder1, actualSourceRange);
                     }
 
                     break;
@@ -616,7 +616,7 @@ public partial class TypeChecker
                     }
                     else if (assignInferredTypes)
                     {
-                        reference1.ResolvedType = placeholder2;
+                        reference1.SetResolvedType(placeholder2, actualSourceRange);
                     }
 
                     break;
@@ -634,6 +634,112 @@ public partial class TypeChecker
             case (_, GenericPlaceholder):
                 {
                     result = false;
+                    if (reportError)
+                    {
+                        _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
+                    }
+                    break;
+                }
+            case (UnspecifiedSizedIntType actualIntType, UnspecifiedSizedIntType expectedIntType):
+                {
+                    if (actualIntType.ResolvedIntType is not null && expectedIntType.ResolvedIntType is not null)
+                    {
+                        result &= ExpectType(actualIntType.ResolvedIntType, expectedIntType.ResolvedIntType, actualSourceRange, reportError, assignInferredTypes);
+                    }
+                    else if (assignInferredTypes)
+                    {
+                        if (actualIntType.ResolvedIntType is null && expectedIntType.ResolvedIntType is not null)
+                        {
+                            actualIntType.ResolvedIntType = expectedIntType.ResolvedIntType;
+                        }
+                        else if (actualIntType.ResolvedIntType is not null && expectedIntType.ResolvedIntType is null)
+                        {
+                            expectedIntType.ResolvedIntType = actualIntType.ResolvedIntType;
+                        }
+                        else
+                        {
+                            actualIntType.Link(expectedIntType);
+                        }
+                    }
+                    break;
+                }
+            case (UnspecifiedSizedIntType actualIntType, InstantiatedClass expectedClass):
+                {
+                    if (!InstantiatedClass.IntTypes.Any(x => x.IsSameSignature(expectedClass)))
+                    {
+                        result = false;
+                        if (reportError)
+                        {
+                            _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expectedClass, actualIntType));
+                        }
+                        break;
+                    }
+
+                    if (actualIntType.ResolvedIntType is not null)
+                    {
+                        result &= ExpectType(actualIntType.ResolvedIntType, expectedClass, actualSourceRange, reportError, assignInferredTypes);
+                        break;
+                    }
+
+                    if (assignInferredTypes)
+                    {
+                        actualIntType.ResolvedIntType = expectedClass;
+                    }
+
+                    break;
+                }
+            case (InstantiatedClass actualClass, UnspecifiedSizedIntType expectedIntType):
+                {
+                    if (!InstantiatedClass.IntTypes.Any(x => x.IsSameSignature(actualClass)))
+                    {
+                        result = false;
+                        if (reportError)
+                        {
+                            _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expectedIntType, actualClass));
+                        }
+                        break;
+                    }
+
+                    if (expectedIntType.ResolvedIntType is not null)
+                    {
+                        result &= ExpectType(actualClass, expectedIntType.ResolvedIntType, actualSourceRange, reportError, assignInferredTypes);
+                        break;
+                    }
+
+                    if (assignInferredTypes)
+                    {
+                        expectedIntType.ResolvedIntType = actualClass;
+                    }
+
+                    break;
+                }
+            case (UnspecifiedSizedIntType actualIntType, GenericTypeReference expectedGeneric):
+                {
+                    if (expectedGeneric.ResolvedType is not null)
+                    {
+                        result &= ExpectType(actualIntType, expectedGeneric.ResolvedType, actualSourceRange, reportError, assignInferredTypes);
+                    }
+                    else if (assignInferredTypes)
+                    {
+                        expectedGeneric.SetResolvedType(actualIntType, actualSourceRange);
+                    }
+                    break;
+                }
+            case (GenericTypeReference actualGeneric, UnspecifiedSizedIntType expectedIntType):
+                {
+                    if (actualGeneric.ResolvedType is not null)
+                    {
+                        result &= ExpectType(expectedIntType, actualGeneric.ResolvedType, actualSourceRange, reportError, assignInferredTypes);
+                    }
+                    else if (assignInferredTypes)
+                    {
+                        actualGeneric.SetResolvedType(expectedIntType, actualSourceRange);
+                    }
+                    break;
+                }
+            case (UnspecifiedSizedIntType, not (UnknownType or UnknownInferredType)):
+            case (not (UnknownType or UnknownInferredType), UnspecifiedSizedIntType):
+                {
                     if (reportError)
                     {
                         _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
@@ -700,7 +806,7 @@ public partial class TypeChecker
                     }
                     else if (assignInferredTypes)
                     {
-                        generic.ResolvedType = union;
+                        generic.SetResolvedType(union, actualSourceRange);
                     }
 
                     break;
@@ -713,7 +819,7 @@ public partial class TypeChecker
                     }
                     else if (assignInferredTypes)
                     {
-                        generic.ResolvedType = union;
+                        generic.SetResolvedType(union, actualSourceRange);
                     }
 
                     break;
@@ -726,7 +832,7 @@ public partial class TypeChecker
                     }
                     else if (assignInferredTypes)
                     {
-                        generic.ResolvedType = @class;
+                        generic.SetResolvedType(@class, actualSourceRange);
                     }
 
                     break;
@@ -739,11 +845,12 @@ public partial class TypeChecker
                     }
                     else if (assignInferredTypes)
                     {
-                        generic.ResolvedType = @class;
+                        generic.SetResolvedType(@class, actualSourceRange);
                     }
 
                     break;
                 }
+            
             case (GenericTypeReference genericTypeReference, GenericTypeReference expectedGeneric):
                 {
                     if (genericTypeReference.ResolvedType is not null && expectedGeneric.ResolvedType is not null)
@@ -754,18 +861,18 @@ public partial class TypeChecker
                     {
                         if (genericTypeReference.ResolvedType is null && expectedGeneric.ResolvedType is not null)
                         {
-                            genericTypeReference.ResolvedType = expectedGeneric.ResolvedType;
+                            genericTypeReference.SetResolvedType(expectedGeneric.ResolvedType, actualSourceRange);
                         }
                         else if (genericTypeReference.ResolvedType is not null && expectedGeneric.ResolvedType is null)
                         {
-                            expectedGeneric.ResolvedType = genericTypeReference.ResolvedType;
+                            expectedGeneric.SetResolvedType(genericTypeReference.ResolvedType, actualSourceRange);
                         }
                         else
                         {
                             genericTypeReference.Link(expectedGeneric);
                             if (expectedGeneric != genericTypeReference)
                             {
-                                expectedGeneric.ResolvedType = genericTypeReference;
+                                expectedGeneric.SetResolvedType(genericTypeReference, actualSourceRange);
                             }
                         }
                     }
@@ -786,6 +893,41 @@ public partial class TypeChecker
                         _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
                     }
 
+                    break;
+                }
+            case (UnknownInferredType inferred, _):
+                {
+                    if (inferred.ResolvedType is not null)
+                    {
+                        ExpectType(inferred.ResolvedType, expected, actualSourceRange, reportError, assignInferredTypes);
+                    }
+                    else if (assignInferredTypes)
+                    {
+                        inferred.ResolvedType = expected;
+                    }
+                    break;
+                }
+            case (_, UnknownInferredType inferred):
+                {
+                    if (inferred.ResolvedType is not null)
+                    {
+                        ExpectType(expected, inferred.ResolvedType, actualSourceRange, reportError, assignInferredTypes);
+                    }
+                    else if (assignInferredTypes)
+                    {
+                        inferred.ResolvedType = actual;
+                    }
+                    break;
+                }
+            case (UnknownType, _):
+            case (_, UnknownType):
+            {
+                    // just bail out
+                    break;
+            }
+            default:
+                {
+                    _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
                     break;
                 }
         }

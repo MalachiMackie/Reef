@@ -136,6 +136,17 @@ public class ILCompile(LoweredProgram program)
                 StaticFields = [],
                 TypeParameters = []
             },
+            new ReefILTypeDefinition
+            {
+                DisplayName = TypeChecker.ClassSignature.Boolean.Name,
+                Id = DefId.Boolean,
+                IsValueType = true,
+                Variants = [
+                    new(){DisplayName = "_classVariant", Fields = []}
+                ],
+                StaticFields = [],
+                TypeParameters = []
+            },
         };
 
         var printf = TypeChecker.FunctionSignature.Printf;

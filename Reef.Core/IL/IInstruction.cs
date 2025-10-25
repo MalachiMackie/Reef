@@ -1,8 +1,6 @@
-﻿namespace Reef.Core.IL;
+namespace Reef.Core.IL;
 
-public interface IInstruction
-{
-}
+public interface IInstruction;
 
 public record InstructionLabel(string Name, uint ReferencesInstructionIndex);
 

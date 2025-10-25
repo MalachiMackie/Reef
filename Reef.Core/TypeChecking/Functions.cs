@@ -189,34 +189,12 @@ public partial class TypeChecker
         public InstantiatedFunction(
             ITypeReference? ownerType,
             FunctionSignature signature,
-            IReadOnlyList<ITypeReference> typeArguments,
             IReadOnlyCollection<GenericPlaceholder> inScopeTypeParameters)
         {
             OwnerType = ownerType;
             Signature = signature;
 
             var instantiatedTypeArguments = signature.TypeParameters.Select(x => x.Instantiate()).ToArray();
-            if (typeArguments.Count > 0)
-            {
-                foreach (var (genericTypeReference, typeArgument) in instantiatedTypeArguments.Zip(typeArguments))
-                {
-                    if (typeArgument is GenericTypeReference genericTypeArgument)
-                    {
-                        if (genericTypeArgument.ResolvedType is not null)
-                        {
-                            genericTypeReference.ResolvedType = genericTypeArgument.ResolvedType;
-                        }
-                        else
-                        {
-                            genericTypeReference.Link(genericTypeArgument);
-                        }
-                    }
-                    else
-                    {
-                        genericTypeReference.ResolvedType = typeArgument;
-                    }
-                }
-            }
 
             TypeArguments = instantiatedTypeArguments;
             var parametersList = new List<FunctionParameter>();
@@ -274,7 +252,7 @@ public partial class TypeChecker
         SourceRange typeArgumentsSourceRange,
         IReadOnlyCollection<GenericPlaceholder> inScopeTypeParameters)
     {
-        var instantiatedFunction = new InstantiatedFunction(ownerType, signature, [], inScopeTypeParameters);
+        var instantiatedFunction = new InstantiatedFunction(ownerType, signature, inScopeTypeParameters);
         if (typeArguments.Count > 0)
         {
             if (typeArguments.Count != instantiatedFunction.TypeArguments.Count)
