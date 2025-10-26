@@ -284,17 +284,10 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                         };
 
                         _codeSegment.AppendLine($"    pop     {destinationRegister}");
-                        // _codeSegment.AppendLine($"    mov     {destinationRegister}, [rsp]");
-                        // _codeSegment.AppendLine($"    sub     rsb, {parameterDataType.StackSize:X}h");
                     }
 
                     // calculate how many bytes we need to offset to be byte aligned by 16
                     var stackSize = call.TypeStack.Count * 8;
-                    // var stackSize = call.TypeStack.Select(x => x switch
-                    // {
-                    //     ConcreteReefTypeReference concrete => GetDataType(concrete.DefinitionId).NotNull().StackSize,
-                    //     _ => throw new NotImplementedException()
-                    // }).DefaultIfEmpty().Aggregate((a, b) => a + b);
 
                     var bytesToOffset = stackSize % 16;
 
@@ -364,7 +357,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 _codeSegment.AppendLine("    push   rax");
                 break;
             }
-            case CompareInt64GreaterOrEqualTo compareIntGreaterOrEqualTo:
+            case CompareInt64GreaterOrEqualTo:
             case CompareInt32GreaterOrEqualTo:
             case CompareInt16GreaterOrEqualTo:
             case CompareInt8GreaterOrEqualTo:
@@ -458,11 +451,28 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case UInt32Divide:
             case UInt16Divide:
             case UInt8Divide:
-                throw new NotImplementedException();
+            {
+                _codeSegment.AppendLine($"; INT_DIVIDE");
+
+                _codeSegment.AppendLine("    pop     rcx");
+                _codeSegment.AppendLine("    pop     rax");
+
+                // extend rax to double quad word for divide operation
+                _codeSegment.AppendLine("    cqo");
+                _codeSegment.AppendLine("    div    rcx");
+                _codeSegment.AppendLine("    push     rax");
+
+                // todo: panic/throw when dividing by zero
+                break;
+            }
             case Int64Minus:
             case Int32Minus:
             case Int16Minus:
             case Int8Minus:
+            case UInt64Minus:
+            case UInt32Minus:
+            case UInt16Minus:
+            case UInt8Minus:
             {
                 _codeSegment.AppendLine($"; INT_MINUS");
 
@@ -470,14 +480,10 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 _codeSegment.AppendLine("    SUB    [rsp], rax");
                 break;
             }
-            case UInt64Minus:
-            case UInt32Minus:
-            case UInt16Minus:
-            case UInt8Minus:
-                throw new NotImplementedException();
             case Int64Multiply:
             case Int32Multiply:
             case Int16Multiply:
+            case Int8Multiply:
             {
                 _codeSegment.AppendLine($"; INT_MULTIPLY");
 
@@ -489,16 +495,29 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 // todo: panic/throw on overflow
                 break;
             }
-            case Int8Multiply:
             case UInt64Multiply:
             case UInt32Multiply:
             case UInt16Multiply:
             case UInt8Multiply:
-                throw new NotImplementedException();
+            {
+                _codeSegment.AppendLine($"; INT_MULTIPLY");
+
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    pop     rbx");
+                // mul requires both arguments to be in registers (I think)
+                _codeSegment.AppendLine("    mul    rax, rbx");
+                _codeSegment.AppendLine("    push     rax");
+                // todo: panic/throw on overflow
+                break;
+            }
             case Int64Plus:
             case Int32Plus:
             case Int16Plus:
             case Int8Plus:
+            case UInt64Plus:
+            case UInt32Plus:
+            case UInt16Plus:
+            case UInt8Plus:
             {
                 _codeSegment.AppendLine($"; INT_PLUS");
 
@@ -506,11 +525,6 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 _codeSegment.AppendLine("    ADD    [rsp], rax");
                 break;
             }
-            case UInt64Plus:
-            case UInt32Plus:
-            case UInt16Plus:
-            case UInt8Plus:
-                throw new NotImplementedException();
             case LoadArgument loadArgument:
                 {
                     _codeSegment.AppendLine($"; LOAD_ARGUMENT({loadArgument.ArgumentIndex})");

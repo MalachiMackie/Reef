@@ -1147,7 +1147,7 @@ public class ILCompile(LoweredProgram program)
                     TypeStack.Pop();
                     TypeStack.Pop();
                     TypeStack.Push(GetTypeReference(intMinusExpression.ResolvedType));
-                Instructions.Add(new Int64Minus());
+                Instructions.Add(new UInt64Minus());
                 break;
             }
             case UInt32MinusExpression intMinusExpression:
@@ -1158,7 +1158,7 @@ public class ILCompile(LoweredProgram program)
                     TypeStack.Pop();
                     TypeStack.Pop();
                     TypeStack.Push(GetTypeReference(intMinusExpression.ResolvedType));
-                Instructions.Add(new Int32Minus());
+                Instructions.Add(new UInt32Minus());
                 break;
             }
             case UInt16MinusExpression intMinusExpression:
@@ -1169,7 +1169,7 @@ public class ILCompile(LoweredProgram program)
                     TypeStack.Pop();
                     TypeStack.Pop();
                     TypeStack.Push(GetTypeReference(intMinusExpression.ResolvedType));
-                Instructions.Add(new Int16Minus());
+                Instructions.Add(new UInt16Minus());
                 break;
             }
             case UInt8MinusExpression intMinusExpression:
@@ -1180,7 +1180,7 @@ public class ILCompile(LoweredProgram program)
                     TypeStack.Pop();
                     TypeStack.Pop();
                     TypeStack.Push(GetTypeReference(intMinusExpression.ResolvedType));
-                Instructions.Add(new Int8Minus());
+                Instructions.Add(new UInt8Minus());
                 break;
             }
             case Int64MultiplyExpression intMultiplyExpression:
@@ -1235,7 +1235,7 @@ public class ILCompile(LoweredProgram program)
                     TypeStack.Pop();
                     TypeStack.Pop();
                     TypeStack.Push(GetTypeReference(intMultiplyExpression.ResolvedType));
-                Instructions.Add(new Int64Multiply());
+                Instructions.Add(new UInt64Multiply());
                 break;
             }
             case UInt32MultiplyExpression intMultiplyExpression:
@@ -1246,7 +1246,7 @@ public class ILCompile(LoweredProgram program)
                     TypeStack.Pop();
                     TypeStack.Pop();
                     TypeStack.Push(GetTypeReference(intMultiplyExpression.ResolvedType));
-                Instructions.Add(new Int32Multiply());
+                Instructions.Add(new UInt32Multiply());
                 break;
             }
             case UInt16MultiplyExpression intMultiplyExpression:
@@ -1257,7 +1257,7 @@ public class ILCompile(LoweredProgram program)
                     TypeStack.Pop();
                     TypeStack.Pop();
                     TypeStack.Push(GetTypeReference(intMultiplyExpression.ResolvedType));
-                Instructions.Add(new Int16Multiply());
+                Instructions.Add(new UInt16Multiply());
                 break;
             }
             case UInt8MultiplyExpression intMultiplyExpression:
@@ -1268,7 +1268,7 @@ public class ILCompile(LoweredProgram program)
                     TypeStack.Pop();
                     TypeStack.Pop();
                     TypeStack.Push(GetTypeReference(intMultiplyExpression.ResolvedType));
-                Instructions.Add(new Int8Multiply());
+                Instructions.Add(new UInt8Multiply());
                 break;
             }
             case Int64PlusExpression intPlusExpression:
@@ -1323,7 +1323,7 @@ public class ILCompile(LoweredProgram program)
                     TypeStack.Pop();
                     TypeStack.Pop();
                     TypeStack.Push(GetTypeReference(intPlusExpression.ResolvedType));
-                Instructions.Add(new Int64Plus());
+                Instructions.Add(new UInt64Plus());
                 break;
             }
             case UInt32PlusExpression intPlusExpression:
@@ -1334,7 +1334,7 @@ public class ILCompile(LoweredProgram program)
                     TypeStack.Pop();
                     TypeStack.Pop();
                     TypeStack.Push(GetTypeReference(intPlusExpression.ResolvedType));
-                Instructions.Add(new Int32Plus());
+                Instructions.Add(new UInt32Plus());
                 break;
             }
             case UInt16PlusExpression intPlusExpression:
@@ -1345,7 +1345,7 @@ public class ILCompile(LoweredProgram program)
                     TypeStack.Pop();
                     TypeStack.Pop();
                     TypeStack.Push(GetTypeReference(intPlusExpression.ResolvedType));
-                Instructions.Add(new Int16Plus());
+                Instructions.Add(new UInt16Plus());
                 break;
             }
             case UInt8PlusExpression intPlusExpression:
@@ -1356,7 +1356,7 @@ public class ILCompile(LoweredProgram program)
                     TypeStack.Pop();
                     TypeStack.Pop();
                     TypeStack.Push(GetTypeReference(intPlusExpression.ResolvedType));
-                Instructions.Add(new Int8Plus());
+                Instructions.Add(new UInt8Plus());
                 break;
             }
             case LoadArgumentExpression loadArgumentExpression:

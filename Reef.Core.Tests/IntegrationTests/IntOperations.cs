@@ -9,122 +9,155 @@ namespace Reef.Core.Tests.IntegrationTests;
 
 public class IntOperations : IntegrationTestBase
 {
-    [Fact]
-    public async Task IntEquals()
+    public static readonly TheoryData<string> IntTypes = new(){
+        "i64",
+        "i32",
+        "i16",
+        "i8",
+        "u64",
+        "u32",
+        "u16",
+        "u8",
+    };
+    
+    [Theory]
+    [MemberData(nameof(IntTypes))]
+    public async Task IntEquals(string typeSpecifier)
     {
-        await SetupTest("""
-            if (1 == 1) {
+        await SetupTest($$"""
+            var one: {{typeSpecifier}} = 1;
+            var two: {{typeSpecifier}} = 2;
+            if (one == one) {
                 printf("1 == 1");
             }
-            if (1 == 2) {
+            if (one == two) {
                 printf("1 == 2");
             }
-            """);
+            """,
+            typeSpecifier);
 
-        var output = await Run();
+        var output = await Run(typeSpecifier);
         output.ExitCode.Should().Be(0);
         output.StandardOutput.Should().Be("1 == 1");
     }
 
-    [Fact]
-    public async Task IntNotEquals()
+    [Theory]
+    [MemberData(nameof(IntTypes))]
+    public async Task IntNotEquals(string typeSpecifier)
     {
-        await SetupTest("""
-            if (1 != 0) {
+        await SetupTest($$"""
+            var one: {{typeSpecifier}} = 1;
+            var zero: {{typeSpecifier}} = 0;
+            if (one != zero) {
                 printf("1 != 0");
             }
-            if (1 != 1) {
+            if (one != one) {
                 printf("1 != 1");
             }
-            """);
+            """, typeSpecifier);
 
-        var output = await Run();
+        var output = await Run(typeSpecifier);
         output.ExitCode.Should().Be(0);
         output.StandardOutput.Should().Be("1 != 0");
     }
 
-    [Fact]
-    public async Task Add()
+    [Theory]
+    [MemberData(nameof(IntTypes))]
+    public async Task Add(string typeSpecifier)
     {
         await SetupTest(
-            """
-            var a = 1 + 2;
+            $$"""
+            var one: {{typeSpecifier}} = 1;
+            var two: {{typeSpecifier}} = 2;
+            var a = one + two;
             if (a == 3) {
                 printf("a == 3");
             } else {
                 printf("a != 3");
             }
-            """);
+            """, typeSpecifier);
 
-        var output = await Run();
+        var output = await Run(typeSpecifier);
 
         output.ExitCode.Should().Be(0);
         output.StandardOutput.Should().Be("a == 3");
     }
 
-    [Fact]
-    public async Task Subtract()
+    [Theory]
+    [MemberData(nameof(IntTypes))]
+    public async Task Subtract(string typeSpecifier)
     {
         await SetupTest(
-            """
-            var a = 4 - 1;
+            $$"""
+            var four: {{typeSpecifier}} = 4;
+            var one: {{typeSpecifier}} = 1;
+            var a = four - one;
             if (a == 3) {
                 printf("a == 3");
             } else {
                 printf("a != 3");
             }
-            """);
+            """, typeSpecifier);
 
-        var output = await Run();
+        var output = await Run(typeSpecifier);
 
         output.ExitCode.Should().Be(0);
         output.StandardOutput.Should().Be("a == 3");
     }
 
-    [Fact]
-    public async Task Multiply()
+    [Theory]
+    [MemberData(nameof(IntTypes))]
+    public async Task Multiply(string typeSpecifier)
     {
         await SetupTest(
-            """
-            var a = 4 * 2;
+            $$"""
+            var four: {{typeSpecifier}} = 4;
+            var two: {{typeSpecifier}} = 2;
+            var a = four * two;
             if (a == 8) {
                 printf("a == 8");
             } else {
                 printf("a != 8");
             }
-            """);
+            """, typeSpecifier);
 
-        var output = await Run();
+        var output = await Run(typeSpecifier);
 
         output.ExitCode.Should().Be(0);
         output.StandardOutput.Should().Be("a == 8");
     }
 
-    [Fact]
-    public async Task Divide()
+    [Theory]
+    [MemberData(nameof(IntTypes))]
+    public async Task Divide(string typeSpecifier)
     {
         await SetupTest(
-            """
-            var a = 4 / 2;
+            $$"""
+            var four: {{typeSpecifier}} = 4;
+            var two: {{typeSpecifier}} = 2;
+            var a = four / two;
             if (a == 2) {
                 printf("a == 2");
             } else {
                 printf("a != 2");
             }
-            """);
+            """, typeSpecifier);
 
-        var output = await Run();
+        var output = await Run(typeSpecifier);
 
         output.ExitCode.Should().Be(0);
         output.StandardOutput.Should().Be("a == 2");
     }
 
-    [Fact]
-    public async Task DivideNonEvenly()
+    [Theory]
+    [MemberData(nameof(IntTypes))]
+    public async Task DivideNonEvenly(string typeSpecifier)
     {
         await SetupTest(
-            """
-            var a = 4 / 3;
+            $$"""
+            var four: {{typeSpecifier}} = 4;
+            var three: {{typeSpecifier}} = 3;
+            var a = four / three;
             if (a == 1) {
                 printf("a == 1");
             } else {
