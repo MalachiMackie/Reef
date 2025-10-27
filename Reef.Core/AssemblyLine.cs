@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using Reef.Core.IL;
 
@@ -240,18 +241,18 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
         switch (instruction)
         {
             case BoolNot:
-                {
-                    _codeSegment.AppendLine($"; BOOL_NOT");
+            {
+                _codeSegment.AppendLine($"; BOOL_NOT");
 
-                    _codeSegment.AppendLine("    xor    [rsp], 1h");
-                    break;
-                }
+                _codeSegment.AppendLine("    xor    [rsp], 1h");
+                break;
+            }
             case Branch branch:
-                {
-                    _codeSegment.AppendLine($"; BRANCH({branch.BranchToLabelName})");
-                    _codeSegment.AppendLine($"    jmp     {branch.BranchToLabelName}");
-                    break;
-                }
+            {
+                _codeSegment.AppendLine($"; BRANCH({branch.BranchToLabelName})");
+                _codeSegment.AppendLine($"    jmp     {branch.BranchToLabelName}");
+                break;
+            }
             case BranchIfFalse branchIfFalse:
             {
                 _codeSegment.AppendLine($"; BRANCH_IF_FALSE({branchIfFalse.BranchToLabelName})");
@@ -349,7 +350,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
 
                 break;
             }
-            case CompareInt64NotEqual compareIntNotEqual:
+            case CompareInt64NotEqual:
             case CompareInt32NotEqual:
             case CompareInt16NotEqual:
             case CompareInt8NotEqual:
@@ -385,7 +386,6 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case CompareUInt32GreaterThan:
             case CompareUInt16GreaterThan:
             case CompareUInt8GreaterThan:
-                throw new NotImplementedException();
             case CompareInt64GreaterThan:
             case CompareInt32GreaterThan:
             case CompareInt16GreaterThan:
@@ -402,9 +402,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 _codeSegment.AppendLine("    PUSH    rax");
                 break;
             }
-            case CompareInt64LessOrEqualTo compareIntLessOrEqualTo:
-                _codeSegment.AppendLine($"; COMPARE_INT_LESS_OR_EQUAL");
-                throw new NotImplementedException();
+            case CompareInt64LessOrEqualTo:
             case CompareInt32LessOrEqualTo:
             case CompareInt16LessOrEqualTo:
             case CompareInt8LessOrEqualTo:
@@ -417,11 +415,15 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case CompareInt32LessThan:
             case CompareInt16LessThan:
             case CompareInt8LessThan:
+            case CompareUInt64LessThan:
+            case CompareUInt32LessThan:
+            case CompareUInt16LessThan:
+            case CompareUInt8LessThan:
             {
                 _codeSegment.AppendLine($"; COMPARE_INT_LESS");
                 _codeSegment.AppendLine("    POP     rax");
-                _codeSegment.AppendLine("    CMP     [rsp], rax");
-                _codeSegment.AppendLine("    POP     rax");
+                _codeSegment.AppendLine("    POP     rdx");
+                _codeSegment.AppendLine("    CMP     rdx, rax");
                 _codeSegment.AppendLine("    PUSHF");
                 _codeSegment.AppendLine("    POP     rax");
                 _codeSegment.AppendLine("    AND     rax, 10000000b"); // sign flag
@@ -429,11 +431,6 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 _codeSegment.AppendLine("    PUSH    rax");
                 break;
             }
-            case CompareUInt64LessThan:
-            case CompareUInt32LessThan:
-            case CompareUInt16LessThan:
-            case CompareUInt8LessThan:
-                throw new NotImplementedException();
             case CopyStack copyStack:
                 _codeSegment.AppendLine($"; COPY_STACK");
                 throw new NotImplementedException();

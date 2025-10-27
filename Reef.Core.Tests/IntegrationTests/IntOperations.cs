@@ -170,4 +170,54 @@ public class IntOperations : IntegrationTestBase
         output.ExitCode.Should().Be(0);
         output.StandardOutput.Should().Be("a == 1");
     }
+
+    [Theory]
+    [MemberData(nameof(IntTypes))]
+    public async Task GreaterThan(string typeSpecifier)
+    {
+        await SetupTest(
+            $$"""
+            var one: {{typeSpecifier}} = 1;
+            var two: {{typeSpecifier}} = 2;
+            if (one > two) {
+                printf("1 > 2");
+            }
+            if (two > one) {
+                printf("2 > 1");
+            }
+            if (two > two) {
+                printf("2 > 2");
+            }
+            """, typeSpecifier
+        );
+
+        var result = await Run(typeSpecifier);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("2 > 1", result.StandardOutput);
+    }
+    
+    [Theory]
+    [MemberData(nameof(IntTypes))]
+    public async Task LessThan(string typeSpecifier)
+    {
+        await SetupTest(
+            $$"""
+              var one: {{typeSpecifier}} = 1;
+              var two: {{typeSpecifier}} = 2;
+              if (one < two) {
+                  printf("1 < 2");
+              }
+              if (two < one) {
+                  printf("2 < 1");
+              }
+              if (two < two) {
+                  printf("2 > 2");
+              }
+              """, typeSpecifier
+        );
+
+        var result = await Run(typeSpecifier);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("1 < 2", result.StandardOutput);
+    }
 }
