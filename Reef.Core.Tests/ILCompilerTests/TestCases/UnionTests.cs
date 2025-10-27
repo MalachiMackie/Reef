@@ -152,7 +152,7 @@ public class UnionTests
                                 new LoadInt64Constant(1),
                                 new LoadStringConstant(""),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyUnion__Create__C"), "MyUnion__Create__C")),
-                                new Call(2, [], true),
+                                new Call(2, true),
                                 new StoreLocal("a"),
                                 LoadUnit(),
                                 Return()
@@ -203,7 +203,7 @@ public class UnionTests
                                 new LoadLocal("a"),
                                 new LoadStringConstant(""),
                                 new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(1), "Function`2__Call", [StringType, ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyUnion"), "MyUnion")])),
-                                new Call(2, [], true),
+                                new Call(2, true),
                                 new StoreLocal("b"),
                                 LoadUnit(),
                                 Return()

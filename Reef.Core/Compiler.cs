@@ -42,7 +42,7 @@ public class Compiler
         {
             foreach (var error in parsedProgram.Errors)
             {
-                Console.Error.Write("Error: ");
+                await Console.Error.WriteAsync("Error: ");
                 Console.Error.WriteLine(error);
             }
 
@@ -55,9 +55,9 @@ public class Compiler
         {
             foreach (var error in typeCheckErrors)
             {
-                Console.Error.Write("Error: ");
-                Console.Error.WriteLine(error.Message);
-                Console.Error.WriteLine(contents[(int)error.Range.Start.Position.Start..(int)(error.Range.End.Position.Start + error.Range.End.Length)]);
+                await Console.Error.WriteAsync("Error: ");
+                await Console.Error.WriteLineAsync(error.Message);
+                await Console.Error.WriteLineAsync(contents[(int)error.Range.Start.Position.Start..(int)(error.Range.End.Position.Start + error.Range.End.Length)]);
             }
 
             return;

@@ -239,7 +239,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
     {
         switch (instruction)
         {
-            case BoolNot boolNot:
+            case BoolNot:
                 {
                     _codeSegment.AppendLine($"; BOOL_NOT");
 
@@ -253,11 +253,23 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                     break;
                 }
             case BranchIfFalse branchIfFalse:
+            {
                 _codeSegment.AppendLine($"; BRANCH_IF_FALSE({branchIfFalse.BranchToLabelName})");
-                throw new NotImplementedException();
+
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    cmp     rax, 0");
+                _codeSegment.AppendLine($"    je     {branchIfFalse.BranchToLabelName}");
+                break;
+            }
             case BranchIfTrue branchIfTrue:
+            {
                 _codeSegment.AppendLine($"; BRANCH_IF_TRUE({branchIfTrue.BranchToLabelName})");
-                throw new NotImplementedException();
+                
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    cmp     rax, 1");
+                _codeSegment.AppendLine($"    je     {branchIfTrue.BranchToLabelName}");
+                break;
+            }
             case Call call:
                 {
                     var functionDefinition = _functionStack.Pop();
@@ -286,17 +298,19 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                         _codeSegment.AppendLine($"    pop     {destinationRegister}");
                     }
 
-                    // calculate how many bytes we need to offset to be byte aligned by 16
-                    var stackSize = call.TypeStack.Count * 8;
+                    // store the current rbp, and align rsp to 16 bytes
+                    _codeSegment.AppendLine("     push    rbp");
+                    _codeSegment.AppendLine("     mov     rbp, rsp");
+                    _codeSegment.AppendLine("     and     rsp, 0xFFFFFFFFFFFFFF00");
 
-                    var bytesToOffset = stackSize % 16;
-
-                    _codeSegment.AppendLine($"    sub     rsp, {(_shadowSpaceBytes + bytesToOffset):X}h");
+                    // give the function we're calling its shadow space
+                    _codeSegment.AppendLine($"    sub     rsp, {_shadowSpaceBytes:X}h");
 
                     _codeSegment.AppendLine($"    call    {functionDefinition.DefinitionId.FullName}");
 
                     // move rsp back to where it was before we called the function
-                    _codeSegment.AppendLine($"    add     rsp, {(_shadowSpaceBytes + bytesToOffset):X}h");
+                    _codeSegment.AppendLine("     mov     rsp, rbp");
+                    _codeSegment.AppendLine("     pop     rbp");
 
                     var method = GetMethod(functionDefinition.DefinitionId) ?? throw new InvalidOperationException($"No method found with {functionDefinition.DefinitionId}");
 

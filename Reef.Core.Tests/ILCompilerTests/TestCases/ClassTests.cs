@@ -231,7 +231,7 @@ public class ClassTests
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn")),
-                                new Call(1, [], false),
+                                new Call(1, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -266,7 +266,7 @@ public class ClassTests
                                 new LoadInt64Constant(1),
                                 new LoadStringConstant(""),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__SomeFn"), "MyClass__SomeFn")),
-                                new Call(3, [], false),
+                                new Call(3, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -297,7 +297,7 @@ public class ClassTests
                             [
                                 new LoadInt64Constant(1),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn")),
-                                new Call(1, [], false),
+                                new Call(1, false),
                                 LoadUnit(),
                                 Return()
                             ])

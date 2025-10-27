@@ -55,7 +55,7 @@ public class ControlFlow
                                 new LoadLocal("a"),
                                 new LoadInt64Constant(1),
                                 new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(1), "Function`2__Call", [Int64Type, UnitType])),
-                                new Call(2, [], false),
+                                new Call(2, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -95,7 +95,7 @@ public class ControlFlow
                             [
                                 new LoadInt64Constant(1),
                                 new LoadFunction(FunctionDefinitionReference(DefId.Result_Create_Ok, "result__Create__Ok", [Int64Type, StringType])),
-                                new Call(1, [], true),
+                                new Call(1, true),
                                 new StoreLocal("Local1"),
                                 new LoadLocal("Local1"),
                                 new LoadField(0, "_variantIdentifier"),
@@ -104,7 +104,7 @@ public class ControlFlow
                                 new LoadLocal("Local1"),
                                 new LoadField(1, "Item0"),
                                 new LoadFunction(FunctionDefinitionReference(DefId.Result_Create_Error, "result__Create__Error", [Int64Type, StringType])),
-                                new Call(1, [], true),
+                                new Call(1, true),
                                 new Return(),
                                 // switchInt_0_branch_0
                                 new LoadLocal("Local1"),
@@ -112,7 +112,7 @@ public class ControlFlow
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
                                 new LoadFunction(FunctionDefinitionReference(DefId.Result_Create_Ok, "result__Create__Ok", [Int64Type, StringType])),
-                                new Call(1, [], true),
+                                new Call(1, true),
                                 new Return()
                             ],
                             locals: [

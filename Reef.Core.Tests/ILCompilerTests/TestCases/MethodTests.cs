@@ -76,7 +76,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"),"_Main",
                             [
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.FirstFn"), "FirstFn")),
-                                new Call(0, [], false),
+                                new Call(0, false),
                                 Return(),
                                 LoadUnit()
                             ])
@@ -109,9 +109,9 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                             [
                                 new CreateObject(ConcreteTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "MyClass")),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__InstanceFn"), "MyClass__InstanceFn")),
-                                new Call(1, [], false),
+                                new Call(1, false),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__StaticFn"), "MyClass__StaticFn")),
-                                new Call(0, [], false),
+                                new Call(0, false),
                                 LoadUnit(),
                                 Return()
                             ])
@@ -135,7 +135,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                         Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
                             [
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.SomeFn__InnerFn"), "SomeFn__InnerFn")),
-                                new Call(0, [], false),
+                                new Call(0, false),
                                 LoadUnit(),
                                 Return()
                             ])
@@ -164,7 +164,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                                 new LoadLocal("a"),
                                 new LoadInt64Constant(1),
                                 new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(1), "Function`2__Call", [Int64Type, UnitType])),
-                                new Call(2, [], false),
+                                new Call(2, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -206,7 +206,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                                 new StoreLocal("b"),
                                 new LoadLocal("b"),
                                 new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(0), "Function`1__Call", [UnitType])),
-                                new Call(1, [], false),
+                                new Call(1, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -238,7 +238,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
                                 new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(0), "Function`1__Call", [UnitType])),
-                                new Call(1, [], false),
+                                new Call(1, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -274,7 +274,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                                 new LoadStringConstant(""),
                                 new LoadInt64Constant(1),
                                 new LoadFunction(FunctionDefinitionReference(DefId.FunctionObject_Call(2), "Function`3__Call", [StringType, Int64Type, BoolType])),
-                                new Call(3, [], false),
+                                new Call(3, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -332,7 +332,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                             [
                                 new LoadArgument(0),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn")),
-                                new Call(1, [], false),
+                                new Call(1, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -386,7 +386,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn", [StringType])),
-                                new Call(0, [], false),
+                                new Call(0, false),
                                 LoadUnit(),
                                 Return()
                             ])
@@ -436,7 +436,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                         Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
                             [
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn", [Int64Type, StringType])),
-                                new Call(0, [], false),
+                                new Call(0, false),
                                 LoadUnit(),
                                 Return()
                             ])
@@ -466,7 +466,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                                 new StoreLocal("a"),
                                 new LoadLocal("a"),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn", [Int64Type, StringType])),
-                                new Call(1, [], false),
+                                new Call(1, false),
                                 LoadUnit(),
                                 Return()
                             ],
@@ -496,7 +496,7 @@ public class MethodTests(ITestOutputHelper testOutputHelper)
                             [
                                 new LoadArgument(0),
                                 new LoadFunction(FunctionDefinitionReference(new DefId(_moduleId, $"{_moduleId}.MyClass__MyFn"), "MyClass__MyFn", [GenericTypeReference(new DefId(_moduleId, $"{_moduleId}.MyClass"), "T"), StringType])),
-                                new Call(1, [], false),
+                                new Call(1, false),
                                 LoadUnit(),
                                 Return()
                             ],

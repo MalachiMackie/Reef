@@ -1391,16 +1391,11 @@ public class ILCompile(LoweredProgram program)
                     Name = methodCallExpression.FunctionReference.Name,
                     TypeArguments = [..methodCallExpression.FunctionReference.TypeArguments.Select(GetTypeReference)]
                 }));
-                    for (var i = 0; i < methodCallExpression.Arguments.Count; i++)
-                    {
-                        TypeStack.Pop();
-                    }
-                    var copyStack = new Stack<IReefTypeReference>();
-                    foreach (var type in TypeStack)
-                    {
-                        copyStack.Push(type);
-                    }
-                Instructions.Add(new Call((uint)methodCallExpression.Arguments.Count, copyStack, methodCallExpression.ValueUseful));
+                for (var i = 0; i < methodCallExpression.Arguments.Count; i++)
+                {
+                    TypeStack.Pop();
+                }
+                Instructions.Add(new Call((uint)methodCallExpression.Arguments.Count, methodCallExpression.ValueUseful));
 
                 if (methodCallExpression.ValueUseful)
                 {
