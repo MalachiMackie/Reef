@@ -87,4 +87,29 @@ public class FunctionTests : IntegrationTestBase
         output.ExitCode.Should().Be(0);
         output.StandardOutput.Should().Be("Hello World. Good Bye");
     }
+
+    [Fact]
+    public async Task CallFunctionWithMoreThan4Arguments()
+    {
+        await SetupTest(
+            """
+            fn SomeFn(a: string, b: string, c: string, d: string, e: string, f: string, g: string, h: string) {
+                printf(a);
+                printf(b);
+                printf(c);
+                printf(d);
+                printf(e);
+                printf(f);
+                printf(g);
+                printf(h);
+            }
+            
+            SomeFn("a", "b", "c", "d", "e", "f", "g", "h");
+            """
+        );
+
+        var result = await Run();
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("abcdefgh", result.StandardOutput);
+    }
 }

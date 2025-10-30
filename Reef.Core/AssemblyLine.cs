@@ -121,7 +121,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
 
         _returnType = method.ReturnType;
         _locals = [];
-        var stackOffset = 0u;
+        var stackOffset = 8u; // start with offset by 8 because return address is on the top of the stack 
         foreach (var local in method.Locals)
         {
             var definitionId = (local.Type as ConcreteReefTypeReference).NotNull().DefinitionId;
@@ -139,9 +139,6 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
 
         _codeSegment.AppendLine($"{method.Id.FullName}:");
 
-        _codeSegment.AppendLine("    push    rbp");
-        _codeSegment.AppendLine("    mov     rbp, rsp");
-
         _parameters = [];
         foreach (var (index, parameter) in method.Parameters.Index())
         {
@@ -152,32 +149,32 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 throw new NotImplementedException("Parameters greater than 8 bytes");
             }
 
-            _parameters[(uint)index] = (parameter, stackOffset, parameterSize);
-            stackOffset += 8;
-        }
-
-        // ensure stack space is 16 byte aligned
-        stackOffset += stackOffset % 16;
-        _codeSegment.AppendLine($"; Allocate stack space for local variables and parameters");
-        _codeSegment.AppendLine($"    sub     rsp, {stackOffset}");
-
-        // todo: support non integer parameters
-        for (var i = method.Parameters.Count - 1; i >= 0; i--)
-        {
-            var (parameter, parameterStackOffset, parameterSize) = _parameters[(uint)i];
-
-            var sourceRegister = i switch
+            var parameterOffset = (uint)(index + 1) * 8;
+            _parameters[(uint)index] = (parameter, parameterOffset, parameterSize);
+            
+            var sourceRegister = index switch
             {
                 0 => "rcx",
                 1 => "rdx",
                 2 => "r8",
                 3 => "r9",
-                _ => throw new NotImplementedException()
+                _ => null
             };
 
-            _codeSegment.AppendLine($"    mov    [rbp-{parameterStackOffset + 8}], {sourceRegister}");
+            if (sourceRegister is not null)
+            {
+                _codeSegment.AppendLine($"    mov    [rsp+{parameterOffset}], {sourceRegister}");
+            }
         }
+        
+        _codeSegment.AppendLine("    push    rbp");
+        _codeSegment.AppendLine("    mov     rbp, rsp");
 
+        // ensure stack space is 16 byte aligned
+        stackOffset += stackOffset % 16;
+        _codeSegment.AppendLine($"; Allocate stack space for local variables and parameters");
+        _codeSegment.AppendLine($"    sub     rsp, {stackOffset}");
+        
         var labels = method.Instructions.Labels.ToLookup(x => x.ReferencesInstructionIndex, x => x.Name);
         for (var i = 0; i < method.Instructions.Instructions.Count; i++)
         {
@@ -273,45 +270,81 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             }
             case Call call:
                 {
+                    _codeSegment.AppendLine($"; CALL({call.Arity})");
                     var functionDefinition = _functionStack.Pop();
                     if (functionDefinition.TypeArguments.Count > 0)
                     {
                         throw new NotImplementedException();
                     }
+                    
+                    // store the current rbp, and align rsp to 16 bytes
+                    _codeSegment.AppendLine("; store previous rbp and rsp, then align stack to 16 bytes");
+                    _codeSegment.AppendLine("     push    rbp");
+                    _codeSegment.AppendLine("     mov     rbp, rsp");
+                    _codeSegment.AppendLine("     and     rsp, 0xFFFFFFFFFFFFFFF0");
 
-                    _codeSegment.AppendLine($"; CALL({call.Arity})");
-                    // loop through backwards because the last argument is on the top of the stack
-                    for (var i = ((int)call.Arity) - 1; i >= 0; i--)
+                    var parametersSpaceNeeded = Math.Max(_shadowSpaceBytes, call.Arity * 8);
+                    parametersSpaceNeeded += parametersSpaceNeeded % 16;
+                    _codeSegment.AppendLine($"     sub     rsp, {parametersSpaceNeeded}");
+                    
+                    // current      target
+                    // -----------------------
+                    // 1            1
+                    // 2            2
+                    // 3            3
+                    // 4            4
+                    // 5            5
+                    // 6            6
+                    // 7            7
+                    // <-- rsp      previous rbp <-- rbp
+                    //              [maybe space]
+                    //              7
+                    //              6
+                    //              5
+                    //              [empty]
+                    //              [empty]
+                    //              [empty]
+                    //              [empty]
+                    //              <-- rsp
+
+                    // move first four arguments into registers as specified by win 64 calling convention, then
+                    // shift the remaining arguments up by four so that the 'top' 32 bytes are free and can act as
+                    // the callee's shadow space 
+                    for (var i = 0; i < call.Arity; i++)
                     {
-                        var methodToCall = GetMethod(functionDefinition.DefinitionId).NotNull();
-                        var parameterDataType = GetDataType((methodToCall.Parameters[i] as ConcreteReefTypeReference).NotNull().DefinitionId).NotNull();
-
-                        // todo: this does not account for non integers or values larger than 8 bytes
-                        var destinationRegister = i switch
+                        var source = $"[rbp+{(call.Arity - i) * 8}]";
+                        var destination = i switch
                         {
                             0 => "rcx",
                             1 => "rdx",
                             2 => "r8",
                             3 => "r9",
-                            _ => throw new NotImplementedException("Functions with more than 4 arguments")
+                            _ => null
                         };
 
-                        _codeSegment.AppendLine($"    pop     {destinationRegister}");
+                        if (destination is null)
+                        {
+                            _codeSegment.AppendLine($"    mov     rax, {source}");
+                            _codeSegment.AppendLine($"    mov     [rsp+{i * 8}], rax");
+                        }
+                        else
+                        {
+                            _codeSegment.AppendLine($"    mov     {destination}, {source}");
+                        }
                     }
 
-                    // store the current rbp, and align rsp to 16 bytes
-                    _codeSegment.AppendLine("     push    rbp");
-                    _codeSegment.AppendLine("     mov     rbp, rsp");
-                    _codeSegment.AppendLine("     and     rsp, 0xFFFFFFFFFFFFFF00");
-
                     // give the function we're calling its shadow space
-                    _codeSegment.AppendLine($"    sub     rsp, {_shadowSpaceBytes:X}h");
+                    // _codeSegment.AppendLine($"    sub     rsp, {_shadowSpaceBytes:X}h");
 
                     _codeSegment.AppendLine($"    call    {functionDefinition.DefinitionId.FullName}");
 
                     // move rsp back to where it was before we called the function
                     _codeSegment.AppendLine("     mov     rsp, rbp");
                     _codeSegment.AppendLine("     pop     rbp");
+                    if (call.Arity > 0)
+                    {
+                        _codeSegment.AppendLine($"     add    rsp, {(call.Arity * 8):X}");
+                    }
 
                     var method = GetMethod(functionDefinition.DefinitionId) ?? throw new InvalidOperationException($"No method found with {functionDefinition.DefinitionId}");
 
@@ -542,7 +575,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
 
                     var (argumentType, stackOffset, stackSize) = _parameters[loadArgument.ArgumentIndex];
 
-                    _codeSegment.AppendLine($"    push    [rbp-{stackOffset + 8}]");
+                    _codeSegment.AppendLine($"    push    [rbp+{stackOffset + 8}]");
 
                     break;
                 }

@@ -129,7 +129,8 @@ public class Compiler
                     @"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\lib\x64\vcruntime.lib",
                     @"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\lib\x64\msvcrt.lib",
                     @"C:\Program Files (x86)\Windows Kits\10\Lib\10.0.22621.0\ucrt\x64\ucrt.lib",
-                    "/debug"
+                    "/debug:full",
+                    "/incremental:no"
                 ])
             {
                 CreateNoWindow = true,
