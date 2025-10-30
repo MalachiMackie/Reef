@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using Reef.Core.IL;
 
@@ -26,6 +27,20 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
     /// </summary>
     private readonly Dictionary<string, string> _strings = [];
 
+    private readonly Queue<(ReefMethod Method, IReadOnlyList<ConcreteReefTypeReference> TypeArguments)>
+        _methodProcessingQueue = [];
+
+    private readonly HashSet<string> _queuedMethodLabels = [];
+
+    private void TryEnqueueMethodForProcessing(ReefMethod method, IReadOnlyList<ConcreteReefTypeReference> typeArguments)
+    {
+        var label = GetMethodLabel(method, typeArguments);
+        if (!method.Extern && _queuedMethodLabels.Add(label))
+        {
+            _methodProcessingQueue.Enqueue((method, typeArguments));
+        }
+    }
+
     public static string Process(IReadOnlyList<ReefILModule> modules, HashSet<DefId> usefulMethodIds)
     {
         var assemblyLine = new AssemblyLine(modules, usefulMethodIds);
@@ -52,11 +67,21 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
         {
             _codeSegment.AppendLine();
 
-            foreach (var method in module.Methods.Where(x => !x.Extern && usefulMethodIds.Contains(x.Id)))
+            foreach (var method in module.Methods.Where(x =>
+                         !x.Extern
+                         && usefulMethodIds.Contains(x.Id)
+                         && x.TypeParameters.Count == 0))
             {
-                ProcessMethod(method);
-                _codeSegment.AppendLine();
+                TryEnqueueMethodForProcessing(method, []);
             }
+        }
+
+        while (_methodProcessingQueue.TryDequeue(out var item))
+        {
+            var (method, typeArguments) = item;
+            ProcessMethod(method, typeArguments);
+            
+            _codeSegment.AppendLine();
         }
 
         return $"""
@@ -98,18 +123,18 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
         _codeSegment.AppendLine("    call    ExitProcess");
     }
 
-    private IReefTypeReference _returnType = null!;
     private Dictionary<string, uint> _locals = null!;
     private Dictionary<uint, uint> _parameters = null!;
 
-    private void ProcessMethod(ReefMethod method)
+    private static string GetMethodLabel(ReefMethod method, IReadOnlyList<ConcreteReefTypeReference> typeArguments)
     {
-        if (method.TypeParameters.Count > 0)
-        {
-            throw new NotImplementedException();
-        }
-
-        _returnType = method.ReturnType;
+        return typeArguments.Count == 0
+            ? method.Id.FullName
+            : $"{method.Id.FullName}_{string.Join("_", typeArguments.Select(x => x.DefinitionId.FullName))}";
+    }
+    
+    private void ProcessMethod(ReefMethod method, IReadOnlyList<ConcreteReefTypeReference> typeArguments)
+    {
         _locals = [];
         var stackOffset = 8u; // start with offset by 8 because return address is on the top of the stack 
         foreach (var local in method.Locals)
@@ -117,8 +142,8 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             _locals[local.DisplayName] = stackOffset;
             stackOffset += 8;
         }
-
-        _codeSegment.AppendLine($"{method.Id.FullName}:");
+        
+        _codeSegment.AppendLine($"{GetMethodLabel(method, typeArguments)}:");
 
         _parameters = [];
         for (var index = 0; index < method.Parameters.Count; index++)
@@ -156,7 +181,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             {
                 _codeSegment.AppendLine($"{label}:");
             }
-            ProcessInstruction(method.Instructions.Instructions[i]);
+            ProcessInstruction(method.Instructions.Instructions[i], method, typeArguments);
         }
     }
 
@@ -207,7 +232,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
     */
 
 
-    private void ProcessInstruction(IInstruction instruction)
+    private void ProcessInstruction(IInstruction instruction, ReefMethod method, IReadOnlyList<ConcreteReefTypeReference> typeArguments)
     {
         switch (instruction)
         {
@@ -246,10 +271,29 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 {
                     _codeSegment.AppendLine($"; CALL({call.Arity})");
                     var functionDefinition = _functionStack.Pop();
-                    if (functionDefinition.TypeArguments.Count > 0)
-                    {
-                        throw new NotImplementedException();
-                    }
+                    var calleeMethod = GetMethod(functionDefinition.DefinitionId).NotNull();
+                    IReadOnlyList<ConcreteReefTypeReference> calleeTypeArguments =
+                        [..functionDefinition.TypeArguments.Select(x =>
+                        {
+                            switch (x)
+                            {
+                                case ConcreteReefTypeReference concreteArgument:
+                                    return concreteArgument;
+                                case GenericReefTypeReference genericReefTypeReference:
+                                {
+                                    Debug.Assert(genericReefTypeReference.DefinitionId == method.Id);
+                                    var typeArgumentIndex = method.TypeParameters.Index()
+                                        .First(y => y.Item == genericReefTypeReference.TypeParameterName).Index;
+                                    return typeArguments[typeArgumentIndex];
+                                }
+                                default:
+                                    throw new NotImplementedException();
+                            }
+                        })];
+                    
+                    TryEnqueueMethodForProcessing(calleeMethod, calleeTypeArguments);
+                    
+                    var functionLabel = GetMethodLabel(calleeMethod, calleeTypeArguments);
                     
                     // store the current rbp, and align rsp to 16 bytes
                     _codeSegment.AppendLine("; store previous rbp and rsp, then align stack to 16 bytes");
@@ -308,7 +352,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                     }
 
                     // give the function we're calling its shadow space
-                    _codeSegment.AppendLine($"    call    {functionDefinition.DefinitionId.FullName}");
+                    _codeSegment.AppendLine($"    call    {functionLabel}");
 
                     // move rsp back to where it was before we called the function
                     _codeSegment.AppendLine("    mov     rsp, rbp");
@@ -318,9 +362,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                         _codeSegment.AppendLine($"    add     rsp, {(call.Arity * 8):X}");
                     }
 
-                    var method = GetMethod(functionDefinition.DefinitionId) ?? throw new InvalidOperationException($"No method found with {functionDefinition.DefinitionId}");
-
-                    if (call.ValueUseful && method.ReturnType is not ConcreteReefTypeReference { Name: "Unit" })
+                    if (call.ValueUseful && (calleeMethod.ReturnType is not ConcreteReefTypeReference concrete || concrete.DefinitionId != DefId.Unit))
                     {
                         _codeSegment.AppendLine("    push    rax");
                     }
@@ -657,7 +699,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 {
                     _codeSegment.AppendLine("; RETURN");
                     // zero out return value for null return
-                    _codeSegment.AppendLine(_returnType is ConcreteReefTypeReference reference && reference.DefinitionId == DefId.Unit
+                    _codeSegment.AppendLine(method.ReturnType is ConcreteReefTypeReference reference && reference.DefinitionId == DefId.Unit
                         ? "    xor     rax, rax"
                         : "    pop     rax");
 

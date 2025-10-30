@@ -112,4 +112,55 @@ public class FunctionTests : IntegrationTestBase
         Assert.Equal(0, result.ExitCode);
         Assert.Equal("abcdefgh", result.StandardOutput);
     }
+    
+    [Fact]
+    public async Task GenericFunction()
+    {
+        await SetupTest(
+            """
+            fn SomeFn<T>(param: T): T {
+                return param;
+            }
+            
+            var a = SomeFn(1);
+            var b = SomeFn("hi");
+            
+            if (a == 1) {
+                printf("a == 1. ");
+            }
+            printf(b);
+            """);
+
+        var result = await Run();
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("a == 1. hi", result.StandardOutput);
+    }
+
+    [Fact]
+    public async Task GenericFunctionCallingAnotherGenericFunction()
+    {
+        await SetupTest(
+            """
+            fn Fn1<T>(param: T): T {
+                return param;
+            }
+            
+            fn Fn2<T>(param: T): T {
+                return Fn1(param);
+            }
+            
+            var a = Fn2(1);
+            var b = Fn2("hi");
+            
+            if (a == 1) {
+                printf("a == 1. ");
+            }
+            printf(b);
+            """
+        );
+        
+        var result = await Run();
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("a == 1. hi", result.StandardOutput);
+    }
 }
