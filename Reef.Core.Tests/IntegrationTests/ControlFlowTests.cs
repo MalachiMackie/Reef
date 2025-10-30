@@ -76,4 +76,22 @@ public class ControlFlowTests : IntegrationTestBase
         Assert.Equal(0, output.ExitCode);
         Assert.Equal("Greater than 2. ", output.StandardOutput);
     }
+
+    [Fact]
+    public async Task WhileLoop()
+    {
+        await SetupTest(
+            """
+            var a = 10;
+            while (a > 0) {
+                printf("hi. ");
+                a = a - 1;
+            }
+            """);
+
+        var output = await Run();
+
+        Assert.Equal(0, output.ExitCode);
+        Assert.Equal("hi. hi. hi. hi. hi. hi. hi. hi. hi. hi. ", output.StandardOutput);
+    }
 }
