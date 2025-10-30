@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text;
 using Reef.Core.IL;
 
@@ -6,9 +5,6 @@ namespace Reef.Core;
 
 public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> usefulMethodIds)
 {
-    private readonly IReadOnlyList<ReefILModule> _modules = modules;
-    private readonly HashSet<DefId> _usefulMethodIds = usefulMethodIds;
-
     private const string AsmHeader = """
                                      bits 64
                                      default rel
@@ -38,25 +34,25 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
 
     private string ProcessInner()
     {
-        var mainModule = _modules.Where(x => x.MainMethod is not null).ToArray();
+        var mainModule = modules.Where(x => x.MainMethod is not null).ToArray();
 
         if (mainModule is not [{ MainMethod: { } mainMethod }])
         {
             throw new InvalidOperationException("Expected a single module with a main method");
         }
 
-        foreach (var externMethod in _modules.SelectMany(x => x.Methods).Where(x => x.Extern && _usefulMethodIds.Contains(x.Id)))
+        foreach (var externMethod in modules.SelectMany(x => x.Methods).Where(x => x.Extern && usefulMethodIds.Contains(x.Id)))
         {
             _codeSegment.AppendLine($"extern {externMethod.DisplayName}");
         }
 
         CreateMain(mainMethod);
 
-        foreach (var module in _modules)
+        foreach (var module in modules)
         {
             _codeSegment.AppendLine();
 
-            foreach (var method in module.Methods.Where(x => !x.Extern && _usefulMethodIds.Contains(x.Id)))
+            foreach (var method in module.Methods.Where(x => !x.Extern && usefulMethodIds.Contains(x.Id)))
             {
                 ProcessMethod(method);
                 _codeSegment.AppendLine();
@@ -72,13 +68,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
 
     private ReefMethod? GetMethod(DefId defId)
     {
-        return _modules.SelectMany(x => x.Methods)
-            .FirstOrDefault(x => x.Id == defId);
-    }
-
-    private ReefILTypeDefinition? GetDataType(DefId defId)
-    {
-        return _modules.SelectMany(x => x.Types)
+        return modules.SelectMany(x => x.Methods)
             .FirstOrDefault(x => x.Id == defId);
     }
 
@@ -89,17 +79,17 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
         _codeSegment.AppendLine("    push    rbp");
         _codeSegment.AppendLine("    mov     rbp, rsp");
         // give CRT_INIT it's shadow space
-        _codeSegment.AppendLine($"    sub     rsp, {_shadowSpaceBytes}");
+        _codeSegment.AppendLine($"    sub     rsp, {ShadowSpaceBytes}");
 
         _codeSegment.AppendLine("    call    _CRT_INIT");
         // put rsp back
-        _codeSegment.AppendLine($"    add     rsp, {_shadowSpaceBytes}");
+        _codeSegment.AppendLine($"    add     rsp, {ShadowSpaceBytes}");
 
         // give main it's shadow space
-        _codeSegment.AppendLine($"    sub     rsp, {_shadowSpaceBytes}");
+        _codeSegment.AppendLine($"    sub     rsp, {ShadowSpaceBytes}");
         _codeSegment.AppendLine($"    call    {mainMethod.Id.FullName}");
 
-        _codeSegment.AppendLine($"    add     rsp, {_shadowSpaceBytes}");
+        _codeSegment.AppendLine($"    add     rsp, {ShadowSpaceBytes}");
 
         // zero out rax as return value
         _codeSegment.AppendLine("    xor     rax, rax");
@@ -109,8 +99,8 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
     }
 
     private IReefTypeReference _returnType = null!;
-    private Dictionary<string, (ReefMethod.Local, uint stackOffset, uint stackSize)> _locals = null!;
-    private Dictionary<uint, (IReefTypeReference, uint stackOffset, uint stackSize)> _parameters = null!;
+    private Dictionary<string, uint> _locals = null!;
+    private Dictionary<uint, uint> _parameters = null!;
 
     private void ProcessMethod(ReefMethod method)
     {
@@ -124,33 +114,17 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
         var stackOffset = 8u; // start with offset by 8 because return address is on the top of the stack 
         foreach (var local in method.Locals)
         {
-            var definitionId = (local.Type as ConcreteReefTypeReference).NotNull().DefinitionId;
-            var stackSize = GetDataType(definitionId).NotNull("", $"Expected {definitionId.FullName} to exist").StackSize;
-            if (stackSize > 8)
-            {
-                throw new NotImplementedException();
-            }
-
-            // ensure local is placed on the stack aligned to the natural boundry of the type
-            // stackOffset += 8;
-            _locals[local.DisplayName] = (local, stackOffset, stackSize);
+            _locals[local.DisplayName] = stackOffset;
             stackOffset += 8;
         }
 
         _codeSegment.AppendLine($"{method.Id.FullName}:");
 
         _parameters = [];
-        foreach (var (index, parameter) in method.Parameters.Index())
+        for (var index = 0; index < method.Parameters.Count; index++)
         {
-            var parameterSize = GetDataType((parameter as ConcreteReefTypeReference).NotNull().DefinitionId).NotNull().StackSize;
-
-            if (parameterSize > 8)
-            {
-                throw new NotImplementedException("Parameters greater than 8 bytes");
-            }
-
             var parameterOffset = (uint)(index + 1) * 8;
-            _parameters[(uint)index] = (parameter, parameterOffset, parameterSize);
+            _parameters[(uint)index] = parameterOffset;
             
             var sourceRegister = index switch
             {
@@ -172,7 +146,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
 
         // ensure stack space is 16 byte aligned
         stackOffset += stackOffset % 16;
-        _codeSegment.AppendLine($"; Allocate stack space for local variables and parameters");
+        _codeSegment.AppendLine("; Allocate stack space for local variables and parameters");
         _codeSegment.AppendLine($"    sub     rsp, {stackOffset}");
         
         var labels = method.Instructions.Labels.ToLookup(x => x.ReferencesInstructionIndex, x => x.Name);
@@ -187,7 +161,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
     }
 
     private readonly Stack<FunctionDefinitionReference> _functionStack = [];
-    private const uint _shadowSpaceBytes = 32;
+    private const uint ShadowSpaceBytes = 32;
 
     /*
        Flags
@@ -239,7 +213,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
         {
             case BoolNot:
             {
-                _codeSegment.AppendLine($"; BOOL_NOT");
+                _codeSegment.AppendLine("; BOOL_NOT");
 
                 _codeSegment.AppendLine("    xor    [rsp], 1h");
                 break;
@@ -279,13 +253,13 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                     
                     // store the current rbp, and align rsp to 16 bytes
                     _codeSegment.AppendLine("; store previous rbp and rsp, then align stack to 16 bytes");
-                    _codeSegment.AppendLine("     push    rbp");
-                    _codeSegment.AppendLine("     mov     rbp, rsp");
-                    _codeSegment.AppendLine("     and     rsp, 0xFFFFFFFFFFFFFFF0");
+                    _codeSegment.AppendLine("    push    rbp");
+                    _codeSegment.AppendLine("    mov     rbp, rsp");
+                    _codeSegment.AppendLine("    and     rsp, 0xFFFFFFFFFFFFFFF0");
 
-                    var parametersSpaceNeeded = Math.Max(_shadowSpaceBytes, call.Arity * 8);
+                    var parametersSpaceNeeded = Math.Max(ShadowSpaceBytes, call.Arity * 8);
                     parametersSpaceNeeded += parametersSpaceNeeded % 16;
-                    _codeSegment.AppendLine($"     sub     rsp, {parametersSpaceNeeded}");
+                    _codeSegment.AppendLine($"    sub     rsp, {parametersSpaceNeeded}");
                     
                     // current      target
                     // -----------------------
@@ -334,16 +308,14 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                     }
 
                     // give the function we're calling its shadow space
-                    // _codeSegment.AppendLine($"    sub     rsp, {_shadowSpaceBytes:X}h");
-
                     _codeSegment.AppendLine($"    call    {functionDefinition.DefinitionId.FullName}");
 
                     // move rsp back to where it was before we called the function
-                    _codeSegment.AppendLine("     mov     rsp, rbp");
-                    _codeSegment.AppendLine("     pop     rbp");
+                    _codeSegment.AppendLine("    mov     rsp, rbp");
+                    _codeSegment.AppendLine("    pop     rbp");
                     if (call.Arity > 0)
                     {
-                        _codeSegment.AppendLine($"     add    rsp, {(call.Arity * 8):X}");
+                        _codeSegment.AppendLine($"    add     rsp, {(call.Arity * 8):X}");
                     }
 
                     var method = GetMethod(functionDefinition.DefinitionId) ?? throw new InvalidOperationException($"No method found with {functionDefinition.DefinitionId}");
@@ -355,9 +327,9 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
 
                     break;
                 }
-            case CastBoolToInt castBoolToInt:
+            case CastBoolToInt:
                 {
-                    _codeSegment.AppendLine($"; CAST_BOOL_TO_INT");
+                    _codeSegment.AppendLine("; CAST_BOOL_TO_INT");
                     // noop
                     break;
                 }
@@ -370,16 +342,16 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case CompareUInt16Equal:
             case CompareUInt8Equal:
             {
-                _codeSegment.AppendLine($"; COMPARE_INT_EQUAL");
+                _codeSegment.AppendLine("; COMPARE_INT_EQUAL");
 
-                _codeSegment.AppendLine("    pop    rax");
-                _codeSegment.AppendLine("    cmp    rax, [rsp]");
-                _codeSegment.AppendLine("    pop    rax");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    cmp     rax, [rsp]");
+                _codeSegment.AppendLine("    pop     rax");
                 _codeSegment.AppendLine("    pushf");
-                _codeSegment.AppendLine("    pop    rax");
-                _codeSegment.AppendLine("    and    rax, 1000000b"); // zero flag
-                _codeSegment.AppendLine("    shr    rax, 6");
-                _codeSegment.AppendLine("    push   rax");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    and     rax, 1000000b"); // zero flag
+                _codeSegment.AppendLine("    shr     rax, 6");
+                _codeSegment.AppendLine("    push    rax");
 
                 break;
             }
@@ -392,17 +364,17 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case CompareUInt16NotEqual:
             case CompareUInt8NotEqual:
             {
-                _codeSegment.AppendLine($"; COMPARE_INT_NOT_EQUAL");
+                _codeSegment.AppendLine("; COMPARE_INT_NOT_EQUAL");
 
-                _codeSegment.AppendLine("    pop    rax");
-                _codeSegment.AppendLine("    cmp    rax, [rsp]");
-                _codeSegment.AppendLine("    pop    rax");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    cmp     rax, [rsp]");
+                _codeSegment.AppendLine("    pop     rax");
                 _codeSegment.AppendLine("    pushf");
-                _codeSegment.AppendLine("    pop    rax");
-                _codeSegment.AppendLine("    and    rax, 1000000b"); // zero flag
-                _codeSegment.AppendLine("    shr    rax, 6");
-                _codeSegment.AppendLine("    xor    rax, 1b");
-                _codeSegment.AppendLine("    push   rax");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    and     rax, 1000000b"); // zero flag
+                _codeSegment.AppendLine("    shr     rax, 6");
+                _codeSegment.AppendLine("    xor     rax, 1b");
+                _codeSegment.AppendLine("    push    rax");
                 break;
             }
             case CompareInt64GreaterOrEqualTo:
@@ -413,7 +385,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case CompareUInt32GreaterOrEqualTo:
             case CompareUInt16GreaterOrEqualTo:
             case CompareUInt8GreaterOrEqualTo:
-                _codeSegment.AppendLine($"; COMPARE_INT_GREATER_OR_EQUAL");
+                _codeSegment.AppendLine("; COMPARE_INT_GREATER_OR_EQUAL");
                 throw new NotImplementedException();
             case CompareUInt64GreaterThan:
             case CompareUInt32GreaterThan:
@@ -424,15 +396,15 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case CompareInt16GreaterThan:
             case CompareInt8GreaterThan:
             {
-                _codeSegment.AppendLine($"; COMPARE_INT_GREATER");
-                _codeSegment.AppendLine("    POP     rax");
-                _codeSegment.AppendLine("    CMP     rax, [rsp]");
-                _codeSegment.AppendLine("    POP     rax");
-                _codeSegment.AppendLine("    PUSHF");
-                _codeSegment.AppendLine("    POP     rax");
-                _codeSegment.AppendLine("    AND     rax, 10000000b"); // sign flag
-                _codeSegment.AppendLine("    SHR     rax, 7");
-                _codeSegment.AppendLine("    PUSH    rax");
+                _codeSegment.AppendLine("; COMPARE_INT_GREATER");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    cmp     rax, [rsp]");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    pushf");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    and     rax, 10000000b"); // sign flag
+                _codeSegment.AppendLine("    shr     rax, 7");
+                _codeSegment.AppendLine("    push    rax");
                 break;
             }
             case CompareInt64LessOrEqualTo:
@@ -453,32 +425,32 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case CompareUInt16LessThan:
             case CompareUInt8LessThan:
             {
-                _codeSegment.AppendLine($"; COMPARE_INT_LESS");
-                _codeSegment.AppendLine("    POP     rax");
-                _codeSegment.AppendLine("    POP     rdx");
-                _codeSegment.AppendLine("    CMP     rdx, rax");
-                _codeSegment.AppendLine("    PUSHF");
-                _codeSegment.AppendLine("    POP     rax");
-                _codeSegment.AppendLine("    AND     rax, 10000000b"); // sign flag
-                _codeSegment.AppendLine("    SHR     rax, 7");
-                _codeSegment.AppendLine("    PUSH    rax");
+                _codeSegment.AppendLine("; COMPARE_INT_LESS");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    pop     rdx");
+                _codeSegment.AppendLine("    cmp     rdx, rax");
+                _codeSegment.AppendLine("    pushf");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    and     rax, 10000000b"); // sign flag
+                _codeSegment.AppendLine("    shr     rax, 7");
+                _codeSegment.AppendLine("    push    rax");
                 break;
             }
-            case CopyStack copyStack:
-                _codeSegment.AppendLine($"; COPY_STACK");
+            case CopyStack:
+                _codeSegment.AppendLine("; COPY_STACK");
                 throw new NotImplementedException();
             case CreateObject createObject:
                 _codeSegment.AppendLine($"; CREATE_OBJECT({createObject.ReefType.Name}:<{string.Join(",", createObject.ReefType.TypeArguments)}>)");
                 throw new NotImplementedException();
-            case Drop drop:
-                _codeSegment.AppendLine($"; DROP");
+            case Drop:
+                _codeSegment.AppendLine("; DROP");
                 throw new NotImplementedException();
             case Int64Divide:
             case Int32Divide:
             case Int16Divide:
             case Int8Divide:
             {
-                _codeSegment.AppendLine($"; INT_DIVIDE");
+                _codeSegment.AppendLine("; INT_DIVIDE");
 
                 _codeSegment.AppendLine("    pop     rcx");
                 _codeSegment.AppendLine("    pop     rax");
@@ -486,7 +458,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 // extend rax to double quad word for divide operation
                 _codeSegment.AppendLine("    cqo");
                 _codeSegment.AppendLine("    idiv    rcx");
-                _codeSegment.AppendLine("    push     rax");
+                _codeSegment.AppendLine("    push    rax");
 
                 // todo: panic/throw when dividing by zero
                 break;
@@ -496,15 +468,15 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case UInt16Divide:
             case UInt8Divide:
             {
-                _codeSegment.AppendLine($"; INT_DIVIDE");
+                _codeSegment.AppendLine("; INT_DIVIDE");
 
                 _codeSegment.AppendLine("    pop     rcx");
                 _codeSegment.AppendLine("    pop     rax");
 
                 // extend rax to double quad word for divide operation
                 _codeSegment.AppendLine("    cqo");
-                _codeSegment.AppendLine("    div    rcx");
-                _codeSegment.AppendLine("    push     rax");
+                _codeSegment.AppendLine("    div     rcx");
+                _codeSegment.AppendLine("    push    rax");
 
                 // todo: panic/throw when dividing by zero
                 break;
@@ -518,10 +490,10 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case UInt16Minus:
             case UInt8Minus:
             {
-                _codeSegment.AppendLine($"; INT_MINUS");
+                _codeSegment.AppendLine("; INT_MINUS");
 
-                _codeSegment.AppendLine("    POP    rax");
-                _codeSegment.AppendLine("    SUB    [rsp], rax");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    sub     [rsp], rax");
                 break;
             }
             case Int64Multiply:
@@ -529,13 +501,13 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case Int16Multiply:
             case Int8Multiply:
             {
-                _codeSegment.AppendLine($"; INT_MULTIPLY");
+                _codeSegment.AppendLine("; INT_MULTIPLY");
 
                 _codeSegment.AppendLine("    pop     rax");
                 _codeSegment.AppendLine("    pop     rbx");
                 // imul requires both arguments to be in registers (I think)
                 _codeSegment.AppendLine("    imul    rax, rbx");
-                _codeSegment.AppendLine("    push     rax");
+                _codeSegment.AppendLine("    push    rax");
                 // todo: panic/throw on overflow
                 break;
             }
@@ -544,13 +516,13 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case UInt16Multiply:
             case UInt8Multiply:
             {
-                _codeSegment.AppendLine($"; INT_MULTIPLY");
+                _codeSegment.AppendLine("; INT_MULTIPLY");
 
                 _codeSegment.AppendLine("    pop     rax");
                 _codeSegment.AppendLine("    pop     rbx");
                 // mul requires both arguments to be in registers (I think)
-                _codeSegment.AppendLine("    mul    rax, rbx");
-                _codeSegment.AppendLine("    push     rax");
+                _codeSegment.AppendLine("    mul     rax, rbx");
+                _codeSegment.AppendLine("    push    rax");
                 // todo: panic/throw on overflow
                 break;
             }
@@ -563,17 +535,17 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case UInt16Plus:
             case UInt8Plus:
             {
-                _codeSegment.AppendLine($"; INT_PLUS");
+                _codeSegment.AppendLine("; INT_PLUS");
 
-                _codeSegment.AppendLine($"    POP     rax");
-                _codeSegment.AppendLine("    ADD    [rsp], rax");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    add    [rsp], rax");
                 break;
             }
             case LoadArgument loadArgument:
                 {
                     _codeSegment.AppendLine($"; LOAD_ARGUMENT({loadArgument.ArgumentIndex})");
 
-                    var (argumentType, stackOffset, stackSize) = _parameters[loadArgument.ArgumentIndex];
+                    var stackOffset = _parameters[loadArgument.ArgumentIndex];
 
                     _codeSegment.AppendLine($"    push    [rbp+{stackOffset + 8}]");
 
@@ -583,7 +555,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 {
                     _codeSegment.AppendLine($"; LOAD_BOOL_CONSTANT({loadBoolConstant.Value})");
 
-                    _codeSegment.AppendLine($"    PUSH    {(loadBoolConstant.Value ? 1 : 0)}h");
+                    _codeSegment.AppendLine($"    push    {(loadBoolConstant.Value ? 1 : 0)}h");
 
                     break;
                 }
@@ -651,11 +623,8 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case LoadLocal loadLocal:
                 {
                     _codeSegment.AppendLine($"; LOAD_LOCAL({loadLocal.LocalName})");
-                    //var localIndex = _locals.Index().First(x => x.Item.DisplayName == loadLocal.LocalName).Index;
-                    var (_, stackOffset, stackSize) = _locals[loadLocal.LocalName];
+                    var stackOffset = _locals[loadLocal.LocalName];
                     _codeSegment.AppendLine($"    push    [rbp-{stackOffset + 8 }]");
-                    // _codeSegment.AppendLine($"    mov     [rbp-{stackOffset}],  rsp");
-                    //_codeSegment.AppendLine($"    push     [rbp-{stackOffset + stackSize}]");
                     break;
                 }
             case LoadStaticField loadStaticField:
@@ -680,22 +649,17 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case LoadType loadType:
                 _codeSegment.AppendLine($"; LOAD_TYPE({loadType.ReefType})");
                 throw new NotImplementedException();
-            case LoadUnitConstant loadUnitConstant:
-                _codeSegment.AppendLine($"; LOAD_UNIT_CONSTANT");
+            case LoadUnitConstant:
+                _codeSegment.AppendLine("; LOAD_UNIT_CONSTANT");
                 // noop
                 break;
             case Return:
                 {
-                    _codeSegment.AppendLine($"; RETURN");
-                    if (_returnType is ConcreteReefTypeReference { Name: "Unit" })
-                    {
-                        // zero out return value for null return
-                        _codeSegment.AppendLine("    xor     rax, rax");
-                    }
-                    else
-                    {
-                        _codeSegment.AppendLine("    pop     rax");
-                    }
+                    _codeSegment.AppendLine("; RETURN");
+                    // zero out return value for null return
+                    _codeSegment.AppendLine(_returnType is ConcreteReefTypeReference reference && reference.DefinitionId == DefId.Unit
+                        ? "    xor     rax, rax"
+                        : "    pop     rax");
 
                     _codeSegment.AppendLine("    leave");
                     _codeSegment.AppendLine("    ret");
@@ -707,8 +671,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             case StoreLocal storeLocal:
                 {
                     _codeSegment.AppendLine($"; STORE_LOCAL({storeLocal.LocalName})");
-                    var (local, stackOffset, stackSize) = _locals[storeLocal.LocalName];
-                    // var localIndex = _locals.Index().First(x => x.Item.DisplayName == storeLocal.LocalName).Index;
+                    var stackOffset = _locals[storeLocal.LocalName];
                     // pop the value on the stack into rax
                     _codeSegment.AppendLine("    pop     rax");
 
@@ -721,7 +684,7 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 throw new NotImplementedException();
             case SwitchInt switchInt:
                 {
-                    _codeSegment.AppendLine($"; SWITCH_INT");
+                    _codeSegment.AppendLine("; SWITCH_INT");
                     foreach (var branch in switchInt.BranchLabels)
                     {
                         _codeSegment.AppendLine("    pop     rax");
