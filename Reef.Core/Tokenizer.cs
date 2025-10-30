@@ -245,6 +245,9 @@ public class Tokenizer
                 Token.Identifier(GetString(source), new SourceSpan(position, (ushort)source.Length)),
             TokenType.If when source is "if" => Token.If(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Mut when source is "mut" => Token.Mut(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.While when source is "while" => Token.While(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Break when source is "break" => Token.Break(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Continue when source is "continue" => Token.Continue(new SourceSpan(position, (ushort)source.Length)),
             TokenType.DoubleColon when source is "::" => Token.DoubleColon(new SourceSpan(position,
                 (ushort)source.Length)),
             TokenType.Class when source is "class" => Token.Class(new SourceSpan(position, (ushort)source.Length)),
@@ -400,6 +403,7 @@ public class Tokenizer
                 tokens[i++] = TokenType.Identifier;
                 break;
             case 'b':
+                tokens[i++] = TokenType.Break;
                 tokens[i++] = TokenType.Identifier;
                 break;
             case 'o':
@@ -431,7 +435,11 @@ public class Tokenizer
             case '-':
                 tokens[i++] = TokenType.Dash;
                 break;
+            case 'w':
+                tokens[i++] = TokenType.While;
+                break;
             case 'c':
+                tokens[i++] = TokenType.Continue;
                 tokens[i++] = TokenType.Class;
                 tokens[i++] = TokenType.Identifier;
                 break;
@@ -483,6 +491,9 @@ public class Tokenizer
             TokenType.LeftBrace => Matches(source, "{"),
             TokenType.Union => Matches(source, "union"),
             TokenType.Mut => Matches(source, "mut"),
+            TokenType.While => Matches(source, "while"),
+            TokenType.Break => Matches(source, "break"),
+            TokenType.Continue => Matches(source, "continue"),
             TokenType.Match => Matches(source, "match"),
             TokenType.Matches => Matches(source, "matches"),
             TokenType.New => Matches(source, "new"),

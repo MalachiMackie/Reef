@@ -92,6 +92,9 @@ public record Token
             TokenType.EqualsArrow => "=>",
             TokenType.DoubleAmpersand => "&&",
             TokenType.DoubleBar => "||",
+            TokenType.While => "while",
+            TokenType.Break => "break",
+            TokenType.Continue => "continue",
             _ => throw new UnreachableException(Type.ToString())
         };
     }
@@ -118,10 +121,10 @@ public record Token
         return new Token { Type = TokenType.Matches, SourceSpan = sourceSpan };
     }
 
-    public static Token Match(SourceSpan sourceSpan)
-    {
-        return new Token { Type = TokenType.Match, SourceSpan = sourceSpan };
-    }
+    public static Token Match(SourceSpan sourceSpan) => new() { Type = TokenType.Match, SourceSpan = sourceSpan };
+    public static Token While(SourceSpan sourceSpan) => new() { Type = TokenType.While, SourceSpan = sourceSpan };
+    public static Token Break(SourceSpan sourceSpan) => new() { Type = TokenType.Break, SourceSpan = sourceSpan };
+    public static Token Continue(SourceSpan sourceSpan) => new() { Type = TokenType.Continue, SourceSpan = sourceSpan };
 
     public static Token Underscore(SourceSpan sourceSpan)
     {

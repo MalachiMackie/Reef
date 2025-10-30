@@ -82,7 +82,7 @@ public class ControlFlowTests : IntegrationTestBase
     {
         await SetupTest(
             """
-            var a = 10;
+            var mut a = 10;
             while (a > 0) {
                 printf("hi. ");
                 a = a - 1;
@@ -93,5 +93,31 @@ public class ControlFlowTests : IntegrationTestBase
 
         Assert.Equal(0, output.ExitCode);
         Assert.Equal("hi. hi. hi. hi. hi. hi. hi. hi. hi. hi. ", output.StandardOutput);
+    }
+    
+    [Fact]
+    public async Task WhileWithBreakAndContinue()
+    {
+        await SetupTest(
+            """
+            var mut a = 0;
+            while (true) {
+                if (a == 0) {
+                    continue;
+                }
+                
+                if (a == 5) {
+                    break;
+                }
+                
+                printf("hi. ");
+                a = a + 1;
+            }
+            """);
+
+        var output = await Run();
+
+        Assert.Equal(0, output.ExitCode);
+        Assert.Equal("hi. hi. hi. hi", output.StandardOutput);
     }
 }
