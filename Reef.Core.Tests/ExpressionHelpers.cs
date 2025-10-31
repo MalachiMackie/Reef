@@ -69,6 +69,21 @@ public static class ExpressionHelpers
             unions ?? []);
     }
 
+    public static BreakExpression Break()
+    {
+        return new(SourceRange.Default);
+    }
+    
+    public static WhileExpression While(IExpression? check = null, IExpression? body = null)
+    {
+        return new(check, body, SourceRange.Default);
+    }
+    
+    public static ContinueExpression Continue()
+    {
+        return new(SourceRange.Default);
+    }
+
     public static VariableDeclarationExpression VariableDeclaration(
         string name,
         IExpression? value = null,
@@ -88,6 +103,9 @@ public static class ExpressionHelpers
     {
         return new NamedTypeIdentifier(Identifier("int"), [], SourceRange.Default);
     }
+
+    public static ValueAccessorExpression True() =>
+        new(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default), null));
 
     public static NamedTypeIdentifier StringType()
     {

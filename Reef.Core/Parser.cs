@@ -1111,6 +1111,9 @@ public sealed class Parser : IDisposable
             TokenType.Var => GetVariableDeclaration(),
             TokenType.LeftBrace => GetBlockExpression(),
             TokenType.If => GetIfExpression(),
+            TokenType.While => GetWhile(),
+            TokenType.Break => GetBreak(),
+            TokenType.Continue => GetContinue(),
             TokenType.LeftParenthesis => GetParenthesizedExpression(previousExpression),
             TokenType.Return => GetMethodReturn(),
             TokenType.New => GetInitializer(),
@@ -1907,6 +1910,36 @@ public sealed class Parser : IDisposable
         return new MethodCallExpression(new MethodCall(method, argumentList),
             method.SourceRange with { End = lastToken?.SourceSpan ?? leftParenthesis.SourceSpan });
     }
+    
+    private WhileExpression? GetWhile()
+    {
+        var start = Current.SourceSpan;
+        if (!ExpectNextToken(TokenType.LeftParenthesis))
+        {
+            MoveNext();
+            return null;
+        }
+
+        if (!ExpectNextExpression(out var checkExpression))
+        {
+            MoveNext();
+            return null;
+        }
+
+        if (!ExpectCurrentToken(TokenType.RightParenthesis))
+        {
+            return new WhileExpression(checkExpression, null, checkExpression.SourceRange with { Start = start });
+        }
+
+        var rightParenthesis = Current;
+
+        if (!ExpectNextExpression(out var body))
+        {
+            return new WhileExpression(checkExpression, null, new SourceRange(start, rightParenthesis.SourceSpan));
+        }
+
+        return new(checkExpression, body, body.SourceRange with {Start = start});
+    }
 
     private IfExpressionExpression? GetIfExpression()
     {
@@ -1996,6 +2029,24 @@ public sealed class Parser : IDisposable
         var scope = GetScope(TokenType.RightBrace, [Scope.ScopeType.Expression, Scope.ScopeType.Function]);
 
         return new BlockExpression(new Block(scope.Expressions, scope.Functions), scope.SourceRange);
+    }
+    
+    private BreakExpression GetBreak()
+    {
+        var start = Current.SourceSpan;
+
+        MoveNext();
+        
+        return new BreakExpression(new SourceRange(start, start));
+    }
+    
+    private ContinueExpression GetContinue()
+    {
+        var start = Current.SourceSpan;
+
+        MoveNext();
+        
+        return new ContinueExpression(new SourceRange(start, start));
     }
 
     private VariableDeclarationExpression? GetVariableDeclaration()

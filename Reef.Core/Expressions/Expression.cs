@@ -153,6 +153,47 @@ public record BinaryOperatorExpression(BinaryOperator BinaryOperator) : IExpress
     }
 }
 
+public record WhileExpression(IExpression? Check, IExpression? Body, SourceRange SourceRange) : IExpression
+{
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
+    public ExpressionType ExpressionType => ExpressionType.While;
+    
+    public bool Diverges => Check is { Diverges: true } || Body is { Diverges: true };
+    
+    public bool ValueUseful { get; set; }
+    
+    public override string ToString()
+    {
+        return $"while ({Check}) {Body}";
+    }
+}
+
+public record BreakExpression(SourceRange SourceRange) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.Break;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
+    public bool Diverges => false;
+    public bool ValueUseful { get; set; }
+
+    public override string ToString()
+    {
+        return "break";
+    }
+}
+
+public record ContinueExpression(SourceRange SourceRange) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.Continue;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
+    public bool Diverges => false;
+    public bool ValueUseful { get; set; }
+
+    public override string ToString()
+    {
+        return "continue";
+    }
+}
+
 public record VariableDeclarationExpression(VariableDeclaration VariableDeclaration, SourceRange SourceRange)
     : IExpression
 {
@@ -554,5 +595,8 @@ public enum ExpressionType
     UnionClassVariantInitializer,
     Matches,
     Match,
-    Tuple
+    Tuple,
+    While,
+    Break,
+    Continue
 }

@@ -1930,6 +1930,30 @@ public static class ParseErrorTestCases
                 ]),
                 [ParserError.ExpectedToken(null, TokenType.Identifier)]
             ),
+            (
+                "while",
+                Program("ParseErrorTestCases"),
+                [ParserError.ExpectedToken(null, TokenType.LeftParenthesis)]
+            ),
+            (
+                "while(",
+                Program("ParseErrorTestCases"),
+                [ParserError.ExpectedExpression(null)]
+            ),
+            (
+                "while(true",
+                Program("ParseErrorTestCases", [
+                    While(True())
+                ]),
+                [ParserError.ExpectedToken(null, TokenType.RightParenthesis)]
+            ),
+            (
+                "while(true)",
+                Program("ParseErrorTestCases", [
+                    While(True())
+                ]),
+                [ParserError.ExpectedExpression(null)]
+            ),
         ];
 
         var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();

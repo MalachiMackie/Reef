@@ -1,6 +1,6 @@
 ﻿namespace Reef.Core.Tests.ParserTests.TestCases;
 
-using Reef.Core.Expressions;
+using Expressions;
 using static ExpressionHelpers;
 
 public static class ParseTestCases
@@ -10,6 +10,36 @@ public static class ParseTestCases
         return new (string Source, LangProgram ExpectedProgram)[]
         {
             (
+                "break",
+                new("ParseTestCases",
+                    [
+                        Break(),
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "continue",
+                new("ParseTestCases",
+                    [
+                        Continue(),
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "while (true) true",
+                new("ParseTestCases",
+                    [
+                        While(True(), True())
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
                 """
                 var a: u8 = 3;
                 """,
@@ -17,7 +47,7 @@ public static class ParseTestCases
                 [
                     VariableDeclaration("a",
                         new ValueAccessorExpression(new ValueAccessor(
-                            ValueAccessType.Literal, IntToken.IntLiteral(3, SourceSpan.Default), null)),
+                            ValueAccessType.Literal, Token.IntLiteral(3, SourceSpan.Default), null)),
                         NamedTypeIdentifier("u8"))
                 ],
                 [],
