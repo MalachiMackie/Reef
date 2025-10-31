@@ -61,6 +61,30 @@ public class TypeCheckerTests
         return new TheoryData<string>
         {
             """
+            while (true) {
+                continue;
+                break;
+            }
+            """,
+            """
+            while (true) {
+                if (true) {
+                    continue;
+                    break;
+                }
+            }
+            """,
+            """
+            while (true) {
+                while (true) {
+                    if (true) {
+                        continue;
+                        break;
+                    }
+                }
+            }
+            """,
+            """
             fn SomeFn<T>(param: T): T { return param; }
             var a: i64 = SomeFn(1);
             """,
@@ -1492,6 +1516,24 @@ public class TypeCheckerTests
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
             {
+                "incorrect while loop check expression type",
+                """
+                while (1) {
+                }
+                """,
+                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
+            },
+            {
+                "break outside of loop",
+                "break; ",
+                [TypeCheckerError.BreakUsedOutsideOfLoop(new BreakExpression(SourceRange.Default))]
+            },
+            {
+                "continue outside of loop",
+                "continue; ",
+                [TypeCheckerError.ContinueUsedOutsideOfLoop(new ContinueExpression(SourceRange.Default))]
+            },
+            {
                 "incompatible int types",
                 """
                 var a: i64 = 1;
@@ -1548,7 +1590,7 @@ public class TypeCheckerTests
                 var a = MyUnion::A;
                 var b = a(1);
                 """,
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, String, unspecifiedSizedIntType)]
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, String, UnspecifiedSizedIntType)]
             },
             {
                 "union tuple variant with no members",
@@ -1821,22 +1863,22 @@ public class TypeCheckerTests
             {
                 "non bool used in or",
                 "var a = 1 || true",
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, unspecifiedSizedIntType)]
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)]
             },
             {
                 "non bool used in or",
                 "var a = true || 1",
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, unspecifiedSizedIntType)]
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)]
             },
             {
                 "non bool used in and",
                 "var a = 1 && true",
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, unspecifiedSizedIntType)]
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)]
             },
             {
                 "non bool used in and",
                 "var a = true && 1",
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, unspecifiedSizedIntType)]
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)]
             },
             {
                 "missing field in instance method",
@@ -2024,28 +2066,28 @@ public class TypeCheckerTests
             {
                 "assigning value to unit type",
                 "var a: () = 1;",
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Unit, unspecifiedSizedIntType)]
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Unit, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect tuple types",
                 """
                 var a: (i64, string) = ("", 1);
                 """,
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(Int64, String), TupleType(String, unspecifiedSizedIntType))]
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(Int64, String), TupleType(String, UnspecifiedSizedIntType))]
             },
             {
                 "too many tuple members",
                 """
                 var a: (i64, string) = (1, "", 2);
                 """,
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(Int64, String), TupleType(unspecifiedSizedIntType, String, unspecifiedSizedIntType))]
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(Int64, String), TupleType(UnspecifiedSizedIntType, String, UnspecifiedSizedIntType))]
             },
             {
                 "not enough tuple members",
                 """
                 var a: (i64, string, string) = (1, "");
                 """,
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(Int64, String, String), TupleType(unspecifiedSizedIntType, String))]
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(Int64, String, String), TupleType(UnspecifiedSizedIntType, String))]
             },
             {
                 "function type too many parameters",
@@ -2501,12 +2543,12 @@ public class TypeCheckerTests
                 a = ok(true);
                 a = error("");
                 """,
-                [MismatchedTypes(Result(unspecifiedSizedIntType, GenericTypeReference("TError")), Result(Boolean, GenericTypeReference("TError")))]
+                [MismatchedTypes(Result(UnspecifiedSizedIntType, GenericTypeReference("TError")), Result(Boolean, GenericTypeReference("TError")))]
             },
             {
                 "incompatible inferred result type",
                 "var a: result::<i64, string> = error(1);",
-                [MismatchedTypes(Result(Int64, String), Result(Int64, unspecifiedSizedIntType))]
+                [MismatchedTypes(Result(Int64, String), Result(Int64, UnspecifiedSizedIntType))]
             },
             {
                 "this used outside of class instance",
@@ -2613,7 +2655,7 @@ public class TypeCheckerTests
                     MyUnion::B => "" // mismatched arm expression types
                 }
                 """,
-                [MismatchedTypes(unspecifiedSizedIntType, String)]
+                [MismatchedTypes(UnspecifiedSizedIntType, String)]
             },
             {
                 "matches pattern variable used outside of true if check",
@@ -2826,12 +2868,12 @@ public class TypeCheckerTests
                     }
                 }
                 """,
-                [MismatchedTypes(Boolean, unspecifiedSizedIntType)]
+                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect not operator expression type",
                 "var a = !1",
-                [MismatchedTypes(Boolean, unspecifiedSizedIntType)]
+                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
             },
             {
                 "missing type in pattern",
@@ -3093,7 +3135,7 @@ public class TypeCheckerTests
                     MyField = 2
                 };
                 """,
-                [MismatchedTypes(String, unspecifiedSizedIntType)]
+                [MismatchedTypes(String, UnspecifiedSizedIntType)]
             },
             {
                 "unknown field assigned in class variant initializer",
@@ -3135,7 +3177,7 @@ public class TypeCheckerTests
                     MyField = 2
                 };
                 """,
-                [MismatchedTypes(String, unspecifiedSizedIntType)]
+                [MismatchedTypes(String, UnspecifiedSizedIntType)]
             },
             {
                 "Union class variant initializer used for tuple union variant",
@@ -3161,7 +3203,7 @@ public class TypeCheckerTests
                     MyField = 2
                 };
                 """,
-                [MismatchedTypes(String, unspecifiedSizedIntType)]
+                [MismatchedTypes(String, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect expression type used in union tuple",
@@ -3171,7 +3213,7 @@ public class TypeCheckerTests
                 }
                 var a = MyUnion::A(1);
                 """,
-                [MismatchedTypes(String, unspecifiedSizedIntType)]
+                [MismatchedTypes(String, UnspecifiedSizedIntType)]
             },
             {
                 "duplicate union variant name in union declaration",
@@ -3254,7 +3296,7 @@ public class TypeCheckerTests
             {
                 "incorrect expression type for generic type in union tuple variant",
                 "var a = result::<string, i64>::Ok(1);",
-                [MismatchedTypes(String, unspecifiedSizedIntType)]
+                [MismatchedTypes(String, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect expression type for generic type in generic class and generic method call",
@@ -3267,7 +3309,7 @@ public class TypeCheckerTests
                 var a = new MyClass::<i64>{};
                 a.MyFn::<string>("", 1);
                 """,
-                [MismatchedTypes(Int64, String), MismatchedTypes(String, unspecifiedSizedIntType)]
+                [MismatchedTypes(Int64, String), MismatchedTypes(String, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect type used in generic class and generic method call",
@@ -3293,12 +3335,12 @@ public class TypeCheckerTests
                 var a = new MyClass::<i64>{};
                 a.MyFn::<string>(1, 1);
                 """,
-                [MismatchedTypes(String, unspecifiedSizedIntType)]
+                [MismatchedTypes(String, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect expression type in variable assignment",
                 "var a: string = 2",
-                [MismatchedTypes(String, unspecifiedSizedIntType)]
+                [MismatchedTypes(String, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect expression type in variable assignment",
@@ -3356,7 +3398,7 @@ public class TypeCheckerTests
             {
                 "return value for function without return type",
                 "fn MyFn() { return 1; }",
-                [MismatchedTypes(Unit, unspecifiedSizedIntType)]
+                [MismatchedTypes(Unit, UnspecifiedSizedIntType)]
             },
             {
                 "duplicate function declaration",
@@ -3395,7 +3437,7 @@ public class TypeCheckerTests
             {
                 "incorrect expression type in variable assignment",
                 "var a = 2; var b: string = a",
-                [MismatchedTypes(String, unspecifiedSizedIntType)]
+                [MismatchedTypes(String, UnspecifiedSizedIntType)]
             },
             {
                 "variable used before initialization",
@@ -3431,7 +3473,7 @@ public class TypeCheckerTests
             {
                 "incorrect expression types in method call",
                 "fn MyFn(param1: string, param2: i64) {} MyFn(3, \"value\");",
-                [MismatchedTypes(String, unspecifiedSizedIntType), MismatchedTypes(Int64, String)]
+                [MismatchedTypes(String, UnspecifiedSizedIntType), MismatchedTypes(Int64, String)]
             },
             {
                 "missing function arguments",
@@ -3482,32 +3524,32 @@ public class TypeCheckerTests
             {
                 "incorrect type in if check",
                 "if (1) {}",
-                [MismatchedTypes(Boolean, unspecifiedSizedIntType)]
+                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect type in else if check",
                 "if (true) {} else if (1) {}",
-                [MismatchedTypes(Boolean, unspecifiedSizedIntType)]
+                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect type in variable declaration in if body",
                 "if (true) {var a: string = 1;}",
-                [MismatchedTypes(String, unspecifiedSizedIntType)]
+                [MismatchedTypes(String, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect type in variable declaration in else if body",
                 "if (true) {} else if (true) {var a: string = 1}",
-                [MismatchedTypes(String, unspecifiedSizedIntType)]
+                [MismatchedTypes(String, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect type in variable declaration in else body",
                 "if (true) {} else if (true) {} else {var a: string = 1}",
-                [MismatchedTypes(String, unspecifiedSizedIntType)]
+                [MismatchedTypes(String, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect type in second else if body",
                 "if (true) {} else if (true) {} else if (true) {var a: string = 1}",
-                [MismatchedTypes(String, unspecifiedSizedIntType)]
+                [MismatchedTypes(String, UnspecifiedSizedIntType)]
             },
             {
                 "unresolved inferred types",
@@ -3606,7 +3648,7 @@ public class TypeCheckerTests
                 }
                 var a = new MyClass { someField = 1 };
                 """,
-                [MismatchedTypes(String, unspecifiedSizedIntType)]
+                [MismatchedTypes(String, UnspecifiedSizedIntType)]
             },
             {
                 "field assigned twice in object initializer",
@@ -3643,7 +3685,7 @@ public class TypeCheckerTests
             {
                 "incorrect expression type in static field initializer",
                 "class MyClass { static field someField: string = 1, }",
-                [MismatchedTypes(String, unspecifiedSizedIntType)]
+                [MismatchedTypes(String, UnspecifiedSizedIntType)]
             },
             {
                 "function generic type conflict with parent class",
@@ -3753,7 +3795,7 @@ public class TypeCheckerTests
             {
                 "incorrect type for less than",
                 "var a = 1 < true;",
-                [MismatchedTypes(unspecifiedSizedIntType, Boolean)]
+                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
             },
             {
                 "incorrect type for less than",
@@ -3774,7 +3816,7 @@ public class TypeCheckerTests
             {
                 "incorrect type for greater than",
                 "var a = 2 > true",
-                [MismatchedTypes(unspecifiedSizedIntType, Boolean)]
+                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
             },
             {
                 "incorrect type for greater than in variable declaration",
@@ -3790,12 +3832,12 @@ public class TypeCheckerTests
             {
                 "incorrect type for plus",
                 "var a = 2 + true",
-                [MismatchedTypes(unspecifiedSizedIntType, Boolean)]
+                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
             },
             {
                 "incorrect type for plus in variable declaration",
                 "var a: bool = 2 + 2",
-                [MismatchedTypes(Boolean, unspecifiedSizedIntType)]
+                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect type for minus",
@@ -3806,12 +3848,12 @@ public class TypeCheckerTests
             {
                 "incorrect type for minus",
                 "var a = 2 - true",
-                [MismatchedTypes(unspecifiedSizedIntType, Boolean)]
+                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
             },
             {
                 "incorrect type for minus in variable declaration",
                 "var a: bool = 2 - 2",
-                [MismatchedTypes(Boolean, unspecifiedSizedIntType)]
+                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
             },
             {
                 // Multiply,
@@ -3822,12 +3864,12 @@ public class TypeCheckerTests
             {
                 "incorrect type for multiply",
                 "var a = 2 * true",
-                [MismatchedTypes(unspecifiedSizedIntType, Boolean)]
+                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
             },
             {
                 "incorrect type for multiply in variable declaration",
                 "var a: bool = 2 * 2",
-                [MismatchedTypes(Boolean, unspecifiedSizedIntType)]
+                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect type for divide",
@@ -3838,33 +3880,33 @@ public class TypeCheckerTests
             {
                 "incorrect type for divide",
                 "var a = 2 / true",
-                [MismatchedTypes(unspecifiedSizedIntType, Boolean)]
+                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
             },
             {
                 "incorrect type for divide in variable declaration",
                 "var a: bool = 2 / 2",
-                [MismatchedTypes(Boolean, unspecifiedSizedIntType)]
+                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect type for equality check",
                 // Equality Check
                 "var a = true == 1;",
-                [MismatchedTypes(Boolean, unspecifiedSizedIntType)]
+                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect type for negative equality check",
                 "var a = true != 1;",
-                [MismatchedTypes(Boolean, unspecifiedSizedIntType)]
+                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
             },
             {
                 "incorrect type for equality check",
                 "var a = 2 == true",
-                [MismatchedTypes(unspecifiedSizedIntType, Boolean)]
+                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
             },
             {
                 "incorrect type for negative equality check",
                 "var a = 2 != true",
-                [MismatchedTypes(unspecifiedSizedIntType, Boolean)]
+                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
             },
             {
                 "incorrect type for equality check in variable declaration",
@@ -3880,7 +3922,7 @@ public class TypeCheckerTests
                 // ValueAssignment,
                 "incompatible type used for variable assignment",
                 "var mut a = 2; a = true",
-                [MismatchedTypes(unspecifiedSizedIntType, Boolean)]
+                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
             },
             {
                 "assignment to literal",
@@ -4096,7 +4138,7 @@ public class TypeCheckerTests
     private static readonly InstantiatedClass UInt16 = InstantiatedClass.UInt16;
     private static readonly InstantiatedClass UInt8 = InstantiatedClass.UInt8;
 
-    private static readonly UnspecifiedSizedIntType unspecifiedSizedIntType = new();
+    private static readonly UnspecifiedSizedIntType UnspecifiedSizedIntType = new();
     private static readonly InstantiatedClass String = InstantiatedClass.String;
     private static readonly InstantiatedClass Boolean = InstantiatedClass.Boolean;
     private static readonly InstantiatedClass Unit = InstantiatedClass.Unit;

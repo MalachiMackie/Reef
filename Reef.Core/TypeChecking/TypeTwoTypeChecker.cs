@@ -136,10 +136,8 @@ public class TypeTwoTypeChecker
                 CheckVariableDeclaration(variableDeclarationExpression);
                 break;
             case ValueAccessorExpression valueAccessorExpression:
-                {
-                    CheckValueAccessor(valueAccessorExpression);
-                    break;
-                }
+                CheckValueAccessor(valueAccessorExpression);
+                break;
             case MethodReturnExpression methodReturnExpression:
                 CheckMethodReturn(methodReturnExpression);
                 break;
@@ -179,8 +177,26 @@ public class TypeTwoTypeChecker
             case MatchExpression matchExpression:
                 CheckMatchExpression(matchExpression);
                 break;
+            case WhileExpression whileExpression:
+                CheckWhileExpression(whileExpression);
+                break;
+            case ContinueExpression:
+            case BreakExpression:
+                break;
             default:
                 throw new NotImplementedException($"{expression.ExpressionType}");
+        }
+    }
+
+    private void CheckWhileExpression(WhileExpression whileExpression)
+    {
+        if (whileExpression.Check is not null)
+        {
+            CheckExpression(whileExpression.Check);
+        }
+        if (whileExpression.Body is not null)
+        {
+            CheckExpression(whileExpression.Body);
         }
     }
 
@@ -483,13 +499,10 @@ public class TypeTwoTypeChecker
                     break;
                 }
             case TypeChecker.UnspecifiedSizedIntType unspecifiedIntType:
-                {
-                    if (unspecifiedIntType.ResolvedIntType is null)
-                    {
-                        unspecifiedIntType.ResolvedIntType = TypeChecker.InstantiatedClass.Int32;
-                    }
-                    break;
-                }
+            {
+                unspecifiedIntType.ResolvedIntType ??= TypeChecker.InstantiatedClass.Int32;
+                break;
+            }
             case TypeChecker.UnknownInferredType unknownInferredType:
                 {
                     if (unknownInferredType.ResolvedType is null)

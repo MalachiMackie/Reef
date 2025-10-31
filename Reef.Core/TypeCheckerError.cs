@@ -16,6 +16,12 @@ public record TypeCheckerError
         Message = message;
     }
 
+    public static TypeCheckerError ContinueUsedOutsideOfLoop(ContinueExpression expression) =>
+        new(TypeCheckerErrorType.ContinueUsedOutsideOfLoop, expression.SourceRange, "continue used outside of a loop");
+    
+    public static TypeCheckerError BreakUsedOutsideOfLoop(BreakExpression expression) =>
+        new(TypeCheckerErrorType.BreakUsedOutsideOfLoop, expression.SourceRange, "break used outside of a loop");
+
     public static TypeCheckerError MismatchedTypes(SourceRange range, TypeChecker.ITypeReference expected, TypeChecker.ITypeReference actual) =>
         new(TypeCheckerErrorType.MismatchedTypes, range, $"Expected {expected}, but found {actual}");
 
@@ -395,5 +401,7 @@ public enum TypeCheckerErrorType
     StaticFieldInClassPattern,
     DuplicateVariableDeclaration,
     IfExpressionValueUsedWithoutElseBranch,
-    EmptyUnionTupleVariant
+    EmptyUnionTupleVariant,
+    BreakUsedOutsideOfLoop,
+    ContinueUsedOutsideOfLoop
 }

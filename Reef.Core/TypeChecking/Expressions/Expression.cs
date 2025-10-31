@@ -36,12 +36,60 @@ public partial class TypeChecker
                 matchesExpression),
             TupleExpression tupleExpression => TypeCheckTupleExpression(tupleExpression),
             MatchExpression matchExpression => TypeCheckMatchExpression(matchExpression),
+            ContinueExpression continueExpression => TypeCheckContinueExpression(continueExpression),
+            BreakExpression breakExpression => TypeCheckBreakExpression(breakExpression),
+            WhileExpression whileExpression => TypeCheckWhileExpression(whileExpression),
             _ => throw new UnreachableException($"{expression.ExpressionType}")
         };
 
         expression.ResolvedType = expressionType;
 
         return expressionType;
+    }
+
+    private uint _loopDepth;
+    
+    private InstantiatedClass TypeCheckContinueExpression(ContinueExpression continueExpression)
+    {
+        if (_loopDepth == 0)
+        {
+            _errors.Add(TypeCheckerError.ContinueUsedOutsideOfLoop(continueExpression));
+        }
+
+        return InstantiatedClass.Never;
+    }
+    
+    private InstantiatedClass TypeCheckBreakExpression(BreakExpression breakExpression)
+    {
+        if (_loopDepth == 0)
+        {
+            _errors.Add(TypeCheckerError.BreakUsedOutsideOfLoop(breakExpression));
+        }
+
+        return InstantiatedClass.Never;
+    }
+
+    private InstantiatedClass TypeCheckWhileExpression(WhileExpression whileExpression)
+    {
+        if (whileExpression.Check is not null)
+        {
+            TypeCheckExpression(whileExpression.Check);
+            whileExpression.Check.ValueUseful = true;
+            ExpectExpressionType(InstantiatedClass.Boolean, whileExpression.Check);
+        }
+
+        _loopDepth++;
+
+        if (whileExpression.Body is not null)
+        {
+            TypeCheckExpression(whileExpression.Body);
+
+            ExpectExpressionType(InstantiatedClass.Unit, whileExpression.Body);
+        }
+
+        _loopDepth--;
+        
+        return InstantiatedClass.Unit;
     }
 
     private bool ExpectAssignableExpression(IExpression expression, bool report = true)
