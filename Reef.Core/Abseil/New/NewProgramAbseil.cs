@@ -9,6 +9,7 @@ public partial class NewProgramAbseil
 {
     private const string ReturnValueLocalName = "_returnValue";
     private const string LocalsObjectLocalName = "_localsObject";
+    private const string ClassVariantName = "_classVariant";
     private static string ParameterLocalName(uint parameterIndex) => $"_param{parameterIndex}";
     private static string UserDefinedLocalName(uint localIndex) => $"_local{localIndex}";
         
@@ -250,14 +251,35 @@ public partial class NewProgramAbseil
         {
             NewLowerExpression(expression);
         }
+
+        if (_basicBlockStatements.Count > 0)
+        {
+            _basicBlocks.Add(new BasicBlock(new BasicBlockId($"bb{_basicBlocks.Count}"), _basicBlockStatements)
+            {
+                Terminator = new TempGoToNextBasicBlock()
+            });
+            _basicBlockStatements = [];
+        }
+
+        var returnBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+
+        for (var i = 0; i < _basicBlocks.Count; i++)
+        {
+            var basicBlock = _basicBlocks[i];
+            if (basicBlock.Terminator is TempGoToReturn)
+            {
+                basicBlock.Terminator = new GoTo(returnBasicBlockId);
+            }
+            else if (basicBlock.Terminator is TempGoToNextBasicBlock)
+            {
+                basicBlock.Terminator = new GoTo(new BasicBlockId($"bb{i + 1}"));
+            }
+        }
         
-        // loweredExpressions.AddRange(expressions.Select(LowerExpression));
-        //
-        // if (expressions.Count == 0 || !expressions[^1].Diverges)
-        // {
-        //     loweredExpressions.Add(new MethodReturnExpression(
-        //                 new UnitConstantExpression(true)));
-        // }
+        _basicBlocks.Add(new BasicBlock(returnBasicBlockId, [])
+        {
+            Terminator = new Return()
+        });
     }
 
     private NewDataType LowerClass(ClassSignature klass)
@@ -594,8 +616,8 @@ public partial class NewProgramAbseil
                 ],
                 basicBlocks,
                 new NewMethodLocal(ReturnValueLocalName, null, GetTypeReference(fnSignature.ReturnType)),
-                locals,
-                [.. parameters.Select((x, i) => new NewMethodLocal(ParameterLocalName((uint)i), x.userGivenName, x.paramType))]),
+                [.. parameters.Select((x, i) => new NewMethodLocal(ParameterLocalName((uint)i), x.userGivenName, x.paramType))],
+                locals),
             basicBlocks,
             locals,
             fnSignature.Expressions);

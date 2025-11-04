@@ -197,10 +197,13 @@ public class NewPrettyPrinter
                 },
                 "\n");
 
+            if (basicBlock.Statements.Count > 0)
+            {
+                _stringBuilder.AppendLine();
+            }
             Indent();
             PrettyPrintTerminator(basicBlock.Terminator);
             _stringBuilder.AppendLine();
-            
             _indentationLevel--;
             Indent();
             _stringBuilder.AppendLine("}");
@@ -219,7 +222,8 @@ public class NewPrettyPrinter
         {
             case MethodCall methodCall:
             {
-                _stringBuilder.Append($"{methodCall.LocalDestination} = ");
+                PrettyPrintPlace(methodCall.PlaceDestination);
+                _stringBuilder.Append(" = ");
                 PrettyPrintFunctionReference(methodCall.Function);
                 _stringBuilder.Append('(');
                 PrettyPrintJoin(methodCall.Arguments, PrettyPrintOperand, ", ");
@@ -229,7 +233,7 @@ public class NewPrettyPrinter
             }
             case Return:
             {
-                _stringBuilder.AppendLine("return;");
+                _stringBuilder.Append("return;");
                 break;
             }
             case SwitchInt switchInt:
@@ -244,8 +248,32 @@ public class NewPrettyPrinter
                 _stringBuilder.Append($", otherwise {switchInt.Otherwise.Id}];");
                 break;
             }
+            case GoTo goTo:
+            {
+                _stringBuilder.Append($"goto -> {goTo.BasicBlockId.Id};");
+                break;
+            }
             default:
                 throw new ArgumentOutOfRangeException(nameof(terminator));
+        }
+    }
+
+    private void PrettyPrintPlace(IPlace place)
+    {
+        switch (place)
+        {
+            case Field field:
+            {
+                _stringBuilder.Append($"({field.LocalName} as {field.VariantName}).{field.VariantName}");
+                break;
+            }
+            case Local local:
+            {
+                _stringBuilder.Append(local.LocalName);
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(place));
         }
     }
 
@@ -267,7 +295,8 @@ public class NewPrettyPrinter
         {
             case Assign assign:
             {
-                _stringBuilder.Append($"{assign.Local} = ");
+                PrettyPrintPlace(assign.Place);
+                _stringBuilder.Append(" = ");
                 PrettyPrintRValue(assign.RValue);
                 _stringBuilder.Append(';');
                 break;
@@ -306,12 +335,6 @@ public class NewPrettyPrinter
                 _stringBuilder.Append(')');
                 break;
             }
-            case FieldAccess fieldAccess:
-                _stringBuilder.Append('(');
-                PrettyPrintOperand(fieldAccess.FieldOwner);
-                _stringBuilder.Append($"as variant: {fieldAccess.VariantName})");
-                _stringBuilder.Append($".{fieldAccess.FieldName}");
-                break;
             case UnaryOperation unaryOperation:
                 _stringBuilder.Append(unaryOperation.Kind switch
                 {
@@ -337,7 +360,7 @@ public class NewPrettyPrinter
                 _stringBuilder.Append($"{intConstant.Value}_int{intConstant.ByteSize * 8}");
                 break;
             case StringConstant stringConstant:
-                _stringBuilder.Append($"\"{stringConstant}\"");
+                _stringBuilder.Append($"\"{stringConstant.Value}\"");
                 break;
             case UIntConstant uIntConstant:
                 _stringBuilder.Append($"{uIntConstant.Value}_uint{uIntConstant.ByteSize * 8}");
@@ -346,7 +369,7 @@ public class NewPrettyPrinter
                 _stringBuilder.Append("()");
                 break;
             default:
-                throw new ArgumentOutOfRangeException(nameof(operand));
+                throw new ArgumentOutOfRangeException(operand.ToString());
         }
     }
 

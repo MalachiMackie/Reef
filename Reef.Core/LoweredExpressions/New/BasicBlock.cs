@@ -12,25 +12,42 @@ public interface IRValue
 {
 }
 
-public record FieldAccess(IOperand FieldOwner, string FieldName, string VariantName) : IRValue;
+// public record FieldAccess(IOperand FieldOwner, string FieldName, string VariantName) : IRValue;
 
 public interface ITerminator;
 
 public record BasicBlockId(string Id);
-public record BasicBlock(BasicBlockId Id, IReadOnlyList<IStatement> Statements, ITerminator? Terminator);
+
+public record BasicBlock(BasicBlockId Id, IReadOnlyList<IStatement> Statements)
+{
+    public ITerminator? Terminator { get; set; }
+}
+
+public record TempGoToReturn : ITerminator;
+
+public record TempGoToNextBasicBlock : ITerminator;
 
 public record SwitchInt(
     IOperand Operand,
     Dictionary<int, BasicBlockId> Cases,
     BasicBlockId Otherwise) : ITerminator;
 
-public record MethodCall(NewLoweredFunctionReference Function, IReadOnlyList<IOperand> Arguments, string LocalDestination, BasicBlockId GoToAfter) : ITerminator;
+public record MethodCall(NewLoweredFunctionReference Function, IReadOnlyList<IOperand> Arguments, IPlace PlaceDestination, BasicBlockId GoToAfter) : ITerminator;
 
 public record Return : ITerminator;
 
+public record GoTo(BasicBlockId BasicBlockId) : ITerminator;
+
 public record LocalAlive(string Local) : IStatement;
 public record LocalDead(string Local) : IStatement;
-public record Assign(string Local, IRValue RValue) : IStatement;
+
+public record Assign(IPlace Place, IRValue RValue) : IStatement;
+
+public interface IPlace;
+
+public record Local(string LocalName) : IPlace;
+
+public record Field(string LocalName, string FieldName, string VariantName) : IPlace;
 
 public record BinaryOperation(IOperand LeftOperand, IOperand RightOperand, BinaryOperationKind Kind) : IRValue;
 
@@ -38,13 +55,17 @@ public record UnaryOperation(IOperand Operand, UnaryOperationKind Kind) : IRValu
 
 public record Use(IOperand Operand) : IRValue;
 
+public record Copy(IPlace Place) : IOperand;
+
 public record StringConstant(string Value) : IOperand;
 
 public record IntConstant(long Value, byte ByteSize) : IOperand;
 
-public record UnitConstant : IOperand;
-
 public record UIntConstant(ulong Value, byte ByteSize) : IOperand;
+
+public record BoolConstant(bool Value) : IOperand;
+
+public record UnitConstant : IOperand;
 
 public enum BinaryOperationKind
 {

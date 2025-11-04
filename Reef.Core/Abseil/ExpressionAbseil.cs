@@ -1771,7 +1771,6 @@ public partial class ProgramAbseil
     private ILoweredExpression LowerValueAccessorExpression(
             Expressions.ValueAccessorExpression e)
     {
-
         return e switch
         {
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: StringToken { StringValue: var stringLiteral } } } => new StringConstantExpression(e.ValueUseful, stringLiteral),

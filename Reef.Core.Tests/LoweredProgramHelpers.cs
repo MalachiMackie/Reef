@@ -1,4 +1,3 @@
-using System.Xml;
 using Reef.Core.LoweredExpressions;
 
 namespace Reef.Core.Tests;
