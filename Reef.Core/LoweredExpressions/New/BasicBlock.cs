@@ -12,9 +12,7 @@ public interface IRValue
 {
 }
 
-public record Local(string Name, INewLoweredTypeReference Type) : IRValue;
-
-public record FieldAccess(string LocalName, string FieldName, string VariantName) : IRValue;
+public record FieldAccess(IOperand FieldOwner, string FieldName, string VariantName) : IRValue;
 
 public interface ITerminator;
 
@@ -26,7 +24,7 @@ public record SwitchInt(
     Dictionary<int, BasicBlockId> Cases,
     BasicBlockId Otherwise) : ITerminator;
 
-public record MethodCall(NewLoweredFunctionReference Function, IReadOnlyList<IOperand> Arguments) : ITerminator;
+public record MethodCall(NewLoweredFunctionReference Function, IReadOnlyList<IOperand> Arguments, string LocalDestination, BasicBlockId GoToAfter) : ITerminator;
 
 public record Return : ITerminator;
 
@@ -36,7 +34,7 @@ public record Assign(string Local, IRValue RValue) : IStatement;
 
 public record BinaryOperation(IOperand LeftOperand, IOperand RightOperand, BinaryOperationKind Kind) : IRValue;
 
-public record UnaryOperation(IOperand LeftOperand, UnaryOperationKind Kind) : IRValue;
+public record UnaryOperation(IOperand Operand, UnaryOperationKind Kind) : IRValue;
 
 public record Use(IOperand Operand) : IRValue;
 
@@ -121,7 +119,12 @@ public record NewDataTypeVariant(string Name, IReadOnlyList<NewDataTypeField> Fi
 
 public record NewDataTypeField(string Name, INewLoweredTypeReference Type);
 
-public record NewStaticDataTypeField(string Name, INewLoweredTypeReference Type, IReadOnlyList<BasicBlock> InitializerBasicBlocks, IReadOnlyList<MethodLocal> InitializerLocals);
+public record NewStaticDataTypeField(
+    string Name,
+    INewLoweredTypeReference Type,
+    IReadOnlyList<BasicBlock> InitializerBasicBlocks,
+    IReadOnlyList<NewMethodLocal> InitializerLocals,
+    NewMethodLocal ReturnValueLocal);
 
 
 public class NewLoweredProgram

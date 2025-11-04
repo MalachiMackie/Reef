@@ -28,6 +28,9 @@ public partial class NewProgramAbseil
     private (NewLoweredMethod LoweredMethod, FunctionSignature FunctionSignature)? _currentFunction;
 
     private readonly IReadOnlyList<NewLoweredProgram> _importedPrograms;
+    private List<BasicBlock> _basicBlocks = [];
+    private List<IStatement> _basicBlockStatements = [];
+    private List<NewMethodLocal> _locals = [];
 
     public static NewLoweredProgram Lower(LangProgram program)
     {
@@ -170,6 +173,7 @@ public partial class NewProgramAbseil
             }
         ];
         _program = program;
+        var a = _currentFunction;
     }
 
     private NewLoweredProgram LowerInner()
@@ -217,17 +221,8 @@ public partial class NewProgramAbseil
 
         foreach (var (method, (fnSignature, basicBlocks, locals, expressions, ownerTypeReference, _)) in _methods.Where(x => x.Value.needsLowering))
         {
-            _currentType = ownerTypeReference;
-            _currentFunction = (method, fnSignature);
+            LowerMethod(method, fnSignature, basicBlocks, locals, expressions, ownerTypeReference);
 
-            throw new NotImplementedException();
-            // loweredExpressions.AddRange(expressions.Select(LowerExpression));
-            //
-            // if (expressions.Count == 0 || !expressions[^1].Diverges)
-            // {
-            //     loweredExpressions.Add(new MethodReturnExpression(
-            //                 new UnitConstantExpression(true)));
-            // }
         }
 
         return new NewLoweredProgram()
@@ -235,6 +230,34 @@ public partial class NewProgramAbseil
             DataTypes = [.._types.Values],
             Methods = [.._methods.Keys]
         };
+    }
+
+    private void LowerMethod(
+        NewLoweredMethod method,
+        FunctionSignature fnSignature,
+        List<BasicBlock> basicBlocks,
+        List<NewMethodLocal> locals,
+        IReadOnlyList<Expressions.IExpression> expressions,
+        NewLoweredConcreteTypeReference? ownerTypeReference)
+    {
+        _currentType = ownerTypeReference;
+        _currentFunction = (method, fnSignature);
+        _basicBlocks = basicBlocks;
+        _locals = locals;
+        _basicBlockStatements = [];
+
+        foreach (var expression in expressions)
+        {
+            NewLowerExpression(expression);
+        }
+        
+        // loweredExpressions.AddRange(expressions.Select(LowerExpression));
+        //
+        // if (expressions.Count == 0 || !expressions[^1].Diverges)
+        // {
+        //     loweredExpressions.Add(new MethodReturnExpression(
+        //                 new UnitConstantExpression(true)));
+        // }
     }
 
     private NewDataType LowerClass(ClassSignature klass)
