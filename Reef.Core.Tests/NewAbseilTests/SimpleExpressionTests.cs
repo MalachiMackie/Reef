@@ -58,22 +58,31 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                         locals: [new NewMethodLocal("_local0", "a", StringT)])
                 ])
             },
-            // {
-            //     "local assignment",
-            //     "var a;a = 2;",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-            //                 [
-            //                     VariableDeclaration("a", false),
-            //                     LocalValueAssignment("a", Int32Constant(2, true), false, Int32_t),
-            //                     MethodReturnUnit()
-            //                 ],
-            //                 locals: [
-            //                     Local("a", Int32_t)
-            //                 ])
-            //         ])
-            // },
+            {
+                "local assignment",
+                "var a;a = 2;",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(
+                            new DefId(_moduleId, $"{_moduleId}._Main"),
+                            "_Main",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(new Local("_local0"), new Use(new IntConstant(2, 4)))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", "a", Int32T)])
+                    ])
+            },
             // {
             //     "int plus",
             //     "1 + 2;",

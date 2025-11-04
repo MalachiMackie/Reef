@@ -54,7 +54,7 @@ public partial class TypeChecker
 
         public override string ToString()
         {
-            return "UnknownSizedInt";
+            return "UnspecifiedSizedInt";
         }
     }
 

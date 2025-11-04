@@ -46,4 +46,10 @@ public static class NewLoweredProgramHelpers
             TypeChecking.TypeChecker.ClassSignature.String.Name,
             TypeChecking.TypeChecker.ClassSignature.String.Id,
             []);
+    
+    public static NewLoweredConcreteTypeReference Int32T { get; }
+        = new (
+            TypeChecking.TypeChecker.ClassSignature.Int32.Name,
+            TypeChecking.TypeChecker.ClassSignature.Int32.Id,
+            []);
 }

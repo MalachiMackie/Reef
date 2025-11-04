@@ -10,6 +10,7 @@ public partial class NewProgramAbseil
     private const string ReturnValueLocalName = "_returnValue";
     private const string LocalsObjectLocalName = "_localsObject";
     private const string ClassVariantName = "_classVariant";
+    private const string ClosureThisFieldName = "this";
     private static string ParameterLocalName(uint parameterIndex) => $"_param{parameterIndex}";
     private static string UserDefinedLocalName(uint localIndex) => $"_local{localIndex}";
         

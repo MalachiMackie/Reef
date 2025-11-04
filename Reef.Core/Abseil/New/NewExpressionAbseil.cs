@@ -6,12 +6,12 @@ namespace Reef.Core.Abseil.New;
 
 public partial class NewProgramAbseil
 {
-    private IOperand NewLowerExpression(Expressions.IExpression expression)
+    private IOperand? NewLowerExpression(Expressions.IExpression expression)
     {
         switch (expression)
         {
             case Expressions.BinaryOperatorExpression binaryOperatorExpression:
-                throw new NotImplementedException();
+                return LowerBinaryExpression(binaryOperatorExpression);
             case Expressions.BlockExpression blockExpression:
                 throw new NotImplementedException();
             case Expressions.BreakExpression breakExpression:
@@ -62,7 +62,7 @@ public partial class NewProgramAbseil
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue} }, ResolvedType: var resolvedType} =>
                 IsIntSigned(resolvedType.NotNull())
                     ? new IntConstant(intValue, GetIntSize(resolvedType.NotNull()))
-                    : new UIntConstant((ulong)intValue, GetIntSize(resolvedType.NotNull())),// IntCase(intValue),
+                    : new UIntConstant((ulong)intValue, GetIntSize(resolvedType.NotNull())),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.True }} => new BoolConstant(true),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.False }} => new BoolConstant(false),
             { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, ReferencedVariable: {} variable} => VariableAccess(variable, e.ValueUseful),
@@ -348,6 +348,10 @@ public partial class NewProgramAbseil
 
     private static byte GetIntSize(TypeChecking.TypeChecker.ITypeReference type)
     {
+        if (type is TypeChecking.TypeChecker.UnspecifiedSizedIntType unspecifiedSizedIntType)
+        {
+            type = unspecifiedSizedIntType.ResolvedIntType.NotNull();
+        }
         if (type is not TypeChecking.TypeChecker.InstantiatedClass klass)
         {
             throw new InvalidOperationException($"{type} must be instantiated class");
@@ -378,6 +382,11 @@ public partial class NewProgramAbseil
     
     private static bool IsIntSigned(TypeChecking.TypeChecker.ITypeReference type)
     {
+        if (type is TypeChecking.TypeChecker.UnspecifiedSizedIntType unspecifiedSizedIntType)
+        {
+            type = unspecifiedSizedIntType.ResolvedIntType.NotNull();
+        }
+        
         if (type is not TypeChecking.TypeChecker.InstantiatedClass klass)
         {
             throw new InvalidOperationException($"{type} must be instantiated class");
@@ -385,11 +394,11 @@ public partial class NewProgramAbseil
         var typeId = klass.Signature.Id;
         if (new[] { DefId.Int8, DefId.Int16, DefId.Int32, DefId.Int64 }.Contains(typeId))
         {
-            return false;
+            return true;
         }
         if (new[] { DefId.UInt8, DefId.UInt16, DefId.UInt32, DefId.UInt64 }.Contains(typeId))
         {
-            return true;
+            return false;
         }
 
         throw new UnreachableException();
@@ -442,8 +451,15 @@ public partial class NewProgramAbseil
         //     loweredValue.ResolvedType);
     }
     
-    private IOperand LowerBinaryExpression(Expressions.BinaryOperatorExpression binaryOperatorExpression)
+    private IOperand? LowerBinaryExpression(Expressions.BinaryOperatorExpression binaryOperatorExpression)
     {
+        if (binaryOperatorExpression.BinaryOperator.OperatorType == BinaryOperatorType.ValueAssignment)
+        {
+            return LowerValueAssignment(
+                binaryOperatorExpression.BinaryOperator.Left.NotNull(),
+                binaryOperatorExpression.BinaryOperator.Right.NotNull());
+        }
+        
         var leftOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull());
         var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull());
 
@@ -478,5 +494,166 @@ public partial class NewProgramAbseil
         }
 
         return null!;
+    }
+    
+    private IOperand? LowerValueAssignment(
+            Expressions.IExpression left,
+            Expressions.IExpression right)
+    {
+        var valueOperand = NewLowerExpression(right).NotNull();
+        if (left is Expressions.ValueAccessorExpression valueAccessor)
+        {
+            var variable = valueAccessor.ReferencedVariable.NotNull();
+            if (variable is TypeChecking.TypeChecker.LocalVariable localVariable)
+            {
+                if (localVariable.ReferencedInClosure)
+                {
+                    var containingFunction = localVariable.ContainingFunction;
+                    Debug.Assert(_currentFunction.HasValue);
+                    Debug.Assert(containingFunction is not null);
+                    Debug.Assert(containingFunction.LocalsTypeId is not null);
+                    var localsType = _types[containingFunction.LocalsTypeId];
+                    var localsTypeReference = new NewLoweredConcreteTypeReference(
+                        localsType.Name,
+                        localsType.Id,
+                        []);
+
+                    if (_currentFunction.Value.FunctionSignature == containingFunction)
+                    {
+                        _basicBlockStatements.Add(new Assign(
+                            new Field(LocalsObjectLocalName, localVariable.Name.StringValue, ClassVariantName),
+                            new Use(valueOperand)));
+                        
+                        return valueOperand;
+                    }
+
+                    Debug.Assert(_currentFunction.Value.FunctionSignature.ClosureTypeId is not null);
+                    var closureType = _types[_currentFunction.Value.FunctionSignature.ClosureTypeId];
+                    var closureTypeReference = new NewLoweredConcreteTypeReference(
+                            closureType.Name,
+                            closureType.Id,
+                            []);
+
+                    Debug.Assert(_currentFunction.Value.LoweredMethod.ParameterLocals.Count > 0);
+                    Debug.Assert(EqualTypeReferences(
+                            closureTypeReference,
+                            _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type));
+
+                    var localsLocal = new NewMethodLocal($"_local{_locals.Count}", null, localsTypeReference);
+                    _locals.Add(localsLocal);
+                    _basicBlockStatements.Add(
+                        new Assign(
+                            new Local(localsLocal.CompilerGivenName),
+                            new Use(new Copy(new Field(_currentFunction.Value.LoweredMethod.ParameterLocals[0].CompilerGivenName, localsType.Name, ClassVariantName)))));
+                    _basicBlockStatements.Add(
+                        new Assign(
+                            new Field(localsLocal.CompilerGivenName, localVariable.Name.StringValue, ClassVariantName),
+                            new Use(valueOperand)));
+
+                    return valueOperand;
+                }
+
+                var local = _locals.First(x => x.UserGivenName == localVariable.Name.StringValue);
+
+                _basicBlockStatements.Add(
+                    new Assign(
+                        new Local(local.CompilerGivenName),
+                        new Use(valueOperand)));
+
+                return valueOperand;
+            }
+
+            if (variable is TypeChecking.TypeChecker.FieldVariable fieldVariable)
+            {
+                Debug.Assert(_currentType is not null);
+                if (fieldVariable.IsStaticField)
+                {
+                    throw new NotImplementedException();
+                    // return new StaticFieldAssignmentExpression(
+                    //     _currentType,
+                    //     fieldVariable.Name.StringValue,
+                    //     LowerExpression(right),
+                    //     valueUseful,
+                    //     resolvedType);
+                }
+
+                if (fieldVariable.ReferencedInClosure
+                    && _currentFunction is
+                    {
+                        FunctionSignature: { ClosureTypeId: not null} functionSignature
+                    })
+                {
+                    var closureType = _types[functionSignature.ClosureTypeId];
+                    var closureTypeReference = new NewLoweredConcreteTypeReference(
+                            closureType.Name,
+                            closureType.Id,
+                            []);
+                    
+                    var thisLocal = new NewMethodLocal($"_local{_locals.Count}", null, _currentType);
+                    _basicBlockStatements.Add(
+                        new Assign(
+                            new Local(thisLocal.CompilerGivenName),
+                            new Use(new Copy(new Field(_currentFunction.NotNull().LoweredMethod.ParameterLocals[0].CompilerGivenName, ClosureThisFieldName, ClassVariantName)))));
+                    _basicBlockStatements.Add(
+                        new Assign(
+                            new Field(thisLocal.CompilerGivenName, fieldVariable.Name.StringValue, ClassVariantName),
+                            new Use(valueOperand)));
+
+                    return valueOperand;
+                }
+
+                Debug.Assert(fieldVariable.ContainingSignature.Id == _currentType.DefinitionId);
+                Debug.Assert(_currentFunction is not null);
+                Debug.Assert(_currentFunction.Value.LoweredMethod.ParameterLocals.Count > 0);
+                Debug.Assert(EqualTypeReferences(
+                            _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
+                            _currentType));
+
+                _basicBlockStatements.Add(
+                    new Assign(
+                        new Field(_currentFunction.Value.LoweredMethod.ParameterLocals[0].CompilerGivenName, fieldVariable.Name.StringValue, ClassVariantName),
+                        new Use(valueOperand)));
+
+                return valueOperand;
+            }
+
+            throw new UnreachableException(variable.ToString());
+        }
+
+        if (left is Expressions.MemberAccessExpression memberAccess)
+        {
+            throw new NotImplementedException();
+            // var memberOwner = NewLowerExpression(memberAccess.MemberAccess.Owner).NotNull();
+            //
+            // _basicBlockStatements.Add(new Assign(
+            //     new Field()));
+            //
+            // return new FieldAssignmentExpression(
+            //     memberOwner,
+            //     "_classVariant",
+            //     memberAccess.MemberAccess.MemberName.NotNull().StringValue,
+            //     LowerExpression(right),
+            //     valueUseful,
+            //     resolvedType);
+        }
+
+        if (left is Expressions.StaticMemberAccessExpression staticMemberAccess)
+        {
+            throw new NotImplementedException();
+            // if (GetTypeReference(staticMemberAccess.OwnerType.NotNull())
+            //         is not LoweredConcreteTypeReference concreteType)
+            // {
+            //     throw new InvalidOperationException("Expected type to be concrete");
+            // }
+            //
+            // return new StaticFieldAssignmentExpression(
+            //     concreteType,
+            //     staticMemberAccess.StaticMemberAccess.MemberName.NotNull().StringValue,
+            //     LowerExpression(right),
+            //     valueUseful,
+            //     resolvedType);
+        }
+
+        throw new UnreachableException();
     }
 }
