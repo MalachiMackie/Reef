@@ -460,8 +460,8 @@ public partial class NewProgramAbseil
                 binaryOperatorExpression.BinaryOperator.Right.NotNull());
         }
         
-        var leftOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull());
-        var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull());
+        var leftOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull()).NotNull();
+        var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull()).NotNull();
 
         switch (binaryOperatorExpression.BinaryOperator.OperatorType)
         {
@@ -485,10 +485,12 @@ public partial class NewProgramAbseil
                     BinaryOperatorType.NegativeEqualityCheck => BinaryOperationKind.NotEqual,
                     _ => throw new ArgumentOutOfRangeException()
                 };
-                
-                // _basicBlockStatements.Add(new Assign(,
-                //     new Local(),
-                //     new BinaryOperation(leftOperand, rightOperand, BinaryOperationKind.LessThan)));
+
+                var localName = $"_local{_locals.Count}";
+                _locals.Add(new NewMethodLocal(localName, null, GetTypeReference(binaryOperatorExpression.ResolvedType.NotNull())));
+                _basicBlockStatements.Add(new Assign(
+                    new Local(localName),
+                    new BinaryOperation(leftOperand, rightOperand, binaryOperatorKind)));
                 break;
             }
         }

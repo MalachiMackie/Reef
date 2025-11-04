@@ -17,7 +17,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
     public void SimpleExpressionAbseilTest(string description, string source, NewLoweredProgram expectedProgram)
     {
         description.Should().NotBeEmpty();
-        var program = CreateProgram(_moduleId, source);
+        var program = CreateProgram(ModuleId, source);
         var loweredProgram = NewProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
@@ -25,7 +25,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
 
-    private const string _moduleId = "SimpleExpressionTests";
+    private const string ModuleId = "SimpleExpressionTests";
 
     public static TheoryData<string, string, NewLoweredProgram> TestCases()
     {
@@ -36,7 +36,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                 "var a = \"\";",
                 NewLoweredProgram(methods: [
                     NewMethod(
-                        new DefId(_moduleId, $"{_moduleId}._Main"),
+                        new DefId(ModuleId, $"{ModuleId}._Main"),
                         "_Main",
                         [
                             new BasicBlock(
@@ -64,7 +64,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                 NewLoweredProgram(
                     methods: [
                         NewMethod(
-                            new DefId(_moduleId, $"{_moduleId}._Main"),
+                            new DefId(ModuleId, $"{ModuleId}._Main"),
                             "_Main",
                             [
                                 new BasicBlock(new BasicBlockId("bb0"),
@@ -83,102 +83,254 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                             locals: [new NewMethodLocal("_local0", "a", Int32T)])
                     ])
             },
-            // {
-            //     "int plus",
-            //     "1 + 2;",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-            //                 [
-            //                     Int32Plus(Int32Constant(1, true), Int32Constant(2, true), false),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
-            // {
-            //     "int minus",
-            //     "1 - 2;",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-            //                 [
-            //                     Int32Minus(Int32Constant(1, true), Int32Constant(2, true), false),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
-            // {
-            //     "int multiply",
-            //     "1 * 2;",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-            //                 [
-            //                     Int32Multiply(Int32Constant(1, true), Int32Constant(2, true), false),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
-            // {
-            //     "int divide",
-            //     "1 / 2;",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-            //                 [
-            //                     Int32Divide(Int32Constant(1, true), Int32Constant(2, true), false),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
-            // {
-            //     "int not equals",
-            //     "1 != 2;",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-            //                 [
-            //                     Int32NotEquals(Int32Constant(1, true), Int32Constant(2, true), false),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
-            // {
-            //     "int equals",
-            //     "1 == 2;",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-            //                 [
-            //                     Int32Equals(Int32Constant(1, true), Int32Constant(2, true), false),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
-            // {
-            //     "int greater than",
-            //     "1 > 2;",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-            //                 [
-            //                     Int32GreaterThan(Int32Constant(1, true), Int32Constant(2, true), false),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
-            // {
-            //     "int less than",
-            //     "1 < 2;",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-            //                 [
-            //                     Int32LessThan(Int32Constant(1, true), Int32Constant(2, true), false),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
+            {
+                "int plus",
+                "1 + 2;",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.Add))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", null, Int32T)])
+                    ])
+            },
+            {
+                "int minus",
+                "1 - 2;",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.Subtract))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", null, Int32T)])
+                    ])
+            },
+            {
+                "int divide",
+                "1 / 2;",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.Divide))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", null, Int32T)])
+                    ])
+            },
+            {
+                "int multiply",
+                "1 * 2;",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.Multiply))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", null, Int32T)])
+                    ])
+            },
+            {
+                "int not equals",
+                "1 != 2;",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.NotEqual))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", null, BooleanT)])
+                    ])
+            },
+            {
+                "int equals",
+                "1 == 2;",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.Equal))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", null, BooleanT)])
+                    ])
+            },
+            {
+                "int greater than",
+                "1 > 2;",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.GreaterThan))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", null, BooleanT)])
+                    ])
+            },
+            {
+                "int less than",
+                "1 < 2;",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.LessThan))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", null, BooleanT)])
+                    ])
+            }
             // {
             //     "bool or",
             //     "true || true",

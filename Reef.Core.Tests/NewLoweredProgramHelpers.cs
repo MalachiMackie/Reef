@@ -34,6 +34,11 @@ public static class NewLoweredProgramHelpers
             locals ?? []);
     }
     
+    public static NewLoweredConcreteTypeReference BooleanT { get; }
+        = new (
+            TypeChecking.TypeChecker.ClassSignature.Boolean.Name,
+            TypeChecking.TypeChecker.ClassSignature.Boolean.Id,
+            []);
     
     public static NewLoweredConcreteTypeReference Unit { get; }
         = new (
