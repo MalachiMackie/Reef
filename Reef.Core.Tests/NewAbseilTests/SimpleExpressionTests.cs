@@ -330,37 +330,105 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                             Unit,
                             locals: [new NewMethodLocal("_local0", null, BooleanT)])
                     ])
-            }
-            // {
-            //     "bool or",
-            //     "true || true",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-            //                 [
-            //                     BoolOr(BoolConstant(true, true), BoolConstant(true, true), false),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
-            // {
-            //     "bool and",
-            //     "true && true",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-            //                 [
-            //                     BoolAnd(BoolConstant(true, true), BoolConstant(true, true), false),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
+            },
+            {
+                "bool or",
+                "false || false",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [])
+                                {
+                                    Terminator = new SwitchInt(
+                                        new BoolConstant(false),
+                                        new Dictionary<int, BasicBlockId>
+                                        {
+                                            { 0, new BasicBlockId("bb1") }
+                                        },
+                                        new BasicBlockId("bb2"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [
+                                        new Assign(new Local("_local0"), new Use(new BoolConstant(false)))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb3"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb2"),
+                                    [
+                                        new Assign(new Local("_local0"), new Use(new BoolConstant(true)))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb3"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb3"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", null, BooleanT)])
+                    ])
+            },
+            {
+                "bool and",
+                "false && false",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [])
+                                {
+                                    Terminator = new SwitchInt(
+                                        new BoolConstant(false),
+                                        new Dictionary<int, BasicBlockId>
+                                        {
+                                            { 0, new BasicBlockId("bb2") }
+                                        },
+                                        new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [
+                                        new Assign(new Local("_local0"), new Use(new BoolConstant(false)))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb3"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb2"),
+                                    [
+                                        new Assign(new Local("_local0"), new Use(new BoolConstant(false)))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb3"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb3"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", null, BooleanT)])
+                    ])
+            },
             // {
             //     "bool not",
             //     "!true",
             //     LoweredProgram(
             //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
             //                 [
             //                     BoolNot(BoolConstant(true, true), false),
             //                     MethodReturnUnit()
@@ -372,7 +440,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
             //     "{}",
             //     LoweredProgram(
             //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
             //                 [
             //                     Block([], Unit, false),
             //                     MethodReturnUnit()
@@ -384,7 +452,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
             //     "{true;}",
             //     LoweredProgram(
             //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
             //                 [
             //                     Block([BoolConstant(true, false)], Unit, false),
             //                     MethodReturnUnit()
@@ -396,7 +464,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
             //     "{true; 1;}",
             //     LoweredProgram(
             //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
             //                 [
             //                     Block([
             //                         BoolConstant(true, false),
@@ -411,7 +479,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
             //     "var a = 1; var b = a;",
             //     LoweredProgram(
             //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
             //                 [
             //                     VariableDeclaration("a", Int32Constant(1, true), valueUseful: false),
             //                     VariableDeclaration("b", LocalAccess("a", true, Int32_t), valueUseful: false),
@@ -428,9 +496,9 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
             //     "fn MyFn(){} MyFn();",
             //     LoweredProgram(
             //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn", [MethodReturnUnit()]),
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main", [
-            //                 MethodCall(FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn"), [], false, Unit),
+            //             Method(new DefId(ModuleId, $"{ModuleId}.MyFn"), "MyFn", [MethodReturnUnit()]),
+            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main", [
+            //                 MethodCall(FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyFn"), "MyFn"), [], false, Unit),
             //                 MethodReturnUnit()
             //             ])
             //         ])
@@ -444,16 +512,16 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
             //     """,
             //     LoweredProgram(
             //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn", [MethodReturnUnit()], typeParameters: [(new DefId(_moduleId, $"{_moduleId}.MyFn"), "T")]),
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+            //             Method(new DefId(ModuleId, $"{ModuleId}.MyFn"), "MyFn", [MethodReturnUnit()], typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyFn"), "T")]),
+            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
             //                 [
             //                     MethodCall(
-            //                         FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn", [StringType]),
+            //                         FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyFn"), "MyFn", [StringType]),
             //                         [],
             //                         false,
             //                         Unit),
             //                     MethodCall(
-            //                         FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn", [Int64_t]),
+            //                         FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyFn"), "MyFn", [Int64_t]),
             //                         [],
             //                         false,
             //                         Unit),
@@ -466,7 +534,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
             //     "fn MyFn(a: string): string { return a; }",
             //     LoweredProgram(
             //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn",
+            //             Method(new DefId(ModuleId, $"{ModuleId}.MyFn"), "MyFn",
             //                 [
             //                     MethodReturn(
             //                         LoadArgument(0, true, StringType))
@@ -480,7 +548,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
             //     "(1)",
             //     LoweredProgram(
             //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
             //                 [
             //                     Int32Constant(1, false),
             //                     MethodReturnUnit()
@@ -492,7 +560,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
             //     "(1, \"\")",
             //     LoweredProgram(
             //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
             //                 [
             //                     CreateObject(
             //                         ConcreteTypeReference("Tuple`2", DefId.Tuple(2), [Int32_t, StringType]),
@@ -516,9 +584,9 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
             //     """,
             //     LoweredProgram(
             //         methods: [
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main__SomeFn"), "_Main__SomeFn",
+            //             Method(new DefId(ModuleId, $"{ModuleId}._Main__SomeFn"), "_Main__SomeFn",
             //                 [MethodReturnUnit()]),
-            //             Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
             //                 [
             //                     Block([], Unit, false),
             //                     MethodReturnUnit()

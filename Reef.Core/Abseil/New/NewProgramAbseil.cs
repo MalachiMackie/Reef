@@ -262,7 +262,12 @@ public partial class NewProgramAbseil
             _basicBlockStatements = [];
         }
 
-        var returnBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+        var lastBasicBlock = _basicBlocks[^1];
+        var isLastBasicBlockEmpty = lastBasicBlock.Statements.Count == 0 && lastBasicBlock.Terminator is null;
+
+        var returnBasicBlockId = isLastBasicBlockEmpty
+            ? lastBasicBlock.Id
+            : new BasicBlockId($"bb{_basicBlocks.Count}");
 
         for (var i = 0; i < _basicBlocks.Count; i++)
         {
@@ -276,11 +281,18 @@ public partial class NewProgramAbseil
                 basicBlock.Terminator = new GoTo(new BasicBlockId($"bb{i + 1}"));
             }
         }
-        
-        _basicBlocks.Add(new BasicBlock(returnBasicBlockId, [])
+
+        if (!isLastBasicBlockEmpty)
         {
-            Terminator = new Return()
-        });
+            _basicBlocks.Add(new BasicBlock(returnBasicBlockId, [])
+            {
+                Terminator = new Return()
+            });
+        }
+        else
+        {
+            lastBasicBlock.Terminator = new Return();
+        }
     }
 
     private NewDataType LowerClass(ClassSignature klass)

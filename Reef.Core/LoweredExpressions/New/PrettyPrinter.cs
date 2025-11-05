@@ -368,6 +368,9 @@ public class NewPrettyPrinter
             case UnitConstant:
                 _stringBuilder.Append("()");
                 break;
+            case BoolConstant{Value: var boolValue}:
+                _stringBuilder.Append(boolValue ? "true" : "false");
+                break;
             default:
                 throw new ArgumentOutOfRangeException(operand.ToString());
         }

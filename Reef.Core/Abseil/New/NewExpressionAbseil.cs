@@ -460,19 +460,108 @@ public partial class NewProgramAbseil
                 binaryOperatorExpression.BinaryOperator.Right.NotNull());
         }
         
-        var leftOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull()).NotNull();
-        var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull()).NotNull();
 
         switch (binaryOperatorExpression.BinaryOperator.OperatorType)
         {
-            case BinaryOperatorType.ValueAssignment:
-                // return;
             case BinaryOperatorType.BooleanAnd:
-                // return;
+            {
+                var leftOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull()).NotNull();
+
+                if (_basicBlocks.Count == 0)
+                {
+                    _basicBlocks.Add(new BasicBlock(new BasicBlockId("bb0"), _basicBlockStatements));
+                }
+                var previousBasicBlock = _basicBlocks[^1];
+
+                var trueBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+                var falseBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count + 1}");
+                var afterBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count + 2}");
+                
+                previousBasicBlock.Terminator = new SwitchInt(
+                    leftOperand,
+                    new Dictionary<int, BasicBlockId>
+                    {
+                        { 0, falseBasicBlockId }
+                    },
+                    trueBasicBlockId);
+                
+                _basicBlockStatements = [];
+                var trueBasicBlock = new BasicBlock(trueBasicBlockId, _basicBlockStatements)
+                {
+                    Terminator = new GoTo(afterBasicBlockId)
+                };
+                _basicBlocks.Add(trueBasicBlock);
+
+                var localName = $"_local{_locals.Count}";
+                _locals.Add(new NewMethodLocal(localName, null, GetTypeReference(binaryOperatorExpression.ResolvedType.NotNull())));
+                
+                var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull())
+                    .NotNull();
+                _basicBlockStatements.Add(new Assign(new Local(localName), new Use(rightOperand)));
+                
+                _basicBlockStatements = [new Assign(new Local(localName), new Use(new BoolConstant(false)))];
+                var falseBasicBlock = new BasicBlock(falseBasicBlockId, _basicBlockStatements)
+                {
+                    Terminator = new GoTo(afterBasicBlockId)
+                };
+                _basicBlocks.Add(falseBasicBlock);
+
+                _basicBlockStatements = [];
+                _basicBlocks.Add(new BasicBlock(afterBasicBlockId, _basicBlockStatements));
+                break;
+            }
             case BinaryOperatorType.BooleanOr:
-                // return;
+            {
+                var leftOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull()).NotNull();
+
+                if (_basicBlocks.Count == 0)
+                {
+                    _basicBlocks.Add(new BasicBlock(new BasicBlockId("bb0"), _basicBlockStatements));
+                }
+                var previousBasicBlock = _basicBlocks[^1];
+
+                var falseBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+                var trueBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count + 1}");
+                var afterBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count + 2}");
+                
+                previousBasicBlock.Terminator = new SwitchInt(
+                    leftOperand,
+                    new Dictionary<int, BasicBlockId>
+                    {
+                        { 0, falseBasicBlockId }
+                    },
+                    trueBasicBlockId);
+                
+                _basicBlockStatements = [];
+                var falseBasicBlock = new BasicBlock(falseBasicBlockId, _basicBlockStatements)
+                {
+                    Terminator = new GoTo(afterBasicBlockId)
+                };
+                _basicBlocks.Add(falseBasicBlock);
+
+                var localName = $"_local{_locals.Count}";
+                _locals.Add(new NewMethodLocal(localName, null, GetTypeReference(binaryOperatorExpression.ResolvedType.NotNull())));
+                
+                var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull())
+                    .NotNull();
+                _basicBlockStatements.Add(new Assign(new Local(localName), new Use(rightOperand)));
+                
+                _basicBlockStatements = [new Assign(new Local(localName), new Use(new BoolConstant(true)))];
+                var trueBasicBlock = new BasicBlock(trueBasicBlockId, _basicBlockStatements)
+                {
+                    Terminator = new GoTo(afterBasicBlockId)
+                };
+                _basicBlocks.Add(trueBasicBlock);
+
+                _basicBlockStatements = [];
+                _basicBlocks.Add(new BasicBlock(afterBasicBlockId, _basicBlockStatements));
+                break;
+            }
             default:
             {
+                var leftOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull()).NotNull();
+                var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull()).NotNull();
+                
                 var binaryOperatorKind = binaryOperatorExpression.BinaryOperator.OperatorType switch
                 {
                     BinaryOperatorType.LessThan => BinaryOperationKind.LessThan,
