@@ -23,10 +23,6 @@ public record BasicBlock(BasicBlockId Id, IReadOnlyList<IStatement> Statements)
     public ITerminator? Terminator { get; set; }
 }
 
-public record TempGoToReturn : ITerminator;
-
-public record TempGoToNextBasicBlock : ITerminator;
-
 public record SwitchInt(
     IOperand Operand,
     Dictionary<int, BasicBlockId> Cases,

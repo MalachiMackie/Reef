@@ -247,25 +247,14 @@ public partial class NewProgramAbseil
         _basicBlocks = basicBlocks;
         _locals = locals;
         _basicBlockStatements = [];
+        
+        basicBlocks.Add(new BasicBlock(new BasicBlockId("bb0"), _basicBlockStatements));
 
         foreach (var expression in expressions)
         {
             NewLowerExpression(expression, destination: null);
         }
 
-        if (_basicBlockStatements.Count > 0)
-        {
-            _basicBlocks.Add(new BasicBlock(new BasicBlockId($"bb{_basicBlocks.Count}"), _basicBlockStatements)
-            {
-                Terminator = new TempGoToNextBasicBlock()
-            });
-            _basicBlockStatements = [];
-        }
-        else if (_basicBlocks.Count == 0)
-        {
-            _basicBlocks.Add(new BasicBlock(new BasicBlockId("bb0"), []));
-        }
-        
         var lastBasicBlock = _basicBlocks[^1];
         var isLastBasicBlockEmpty = lastBasicBlock.Statements.Count == 0 && lastBasicBlock.Terminator is null;
 
@@ -276,14 +265,7 @@ public partial class NewProgramAbseil
         for (var i = 0; i < _basicBlocks.Count; i++)
         {
             var basicBlock = _basicBlocks[i];
-            if (basicBlock.Terminator is TempGoToReturn)
-            {
-                basicBlock.Terminator = new GoTo(returnBasicBlockId);
-            }
-            else if (basicBlock.Terminator is TempGoToNextBasicBlock)
-            {
-                basicBlock.Terminator = new GoTo(new BasicBlockId($"bb{i + 1}"));
-            }
+            basicBlock.Terminator ??= new GoTo(new BasicBlockId($"bb{i + 1}"));
         }
 
         if (!isLastBasicBlockEmpty)

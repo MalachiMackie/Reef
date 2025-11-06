@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using Reef.Core.Expressions;
 using Reef.Core.LoweredExpressions.New;
+using MethodCall = Reef.Core.LoweredExpressions.New.MethodCall;
 
 namespace Reef.Core.Abseil.New;
 
@@ -27,7 +28,7 @@ public partial class NewProgramAbseil
             case Expressions.MemberAccessExpression memberAccessExpression:
                 throw new NotImplementedException();
             case Expressions.MethodCallExpression methodCallExpression:
-                throw new NotImplementedException();
+                return LowerMethodCall(methodCallExpression, destination);
             case Expressions.MethodReturnExpression methodReturnExpression:
                 throw new NotImplementedException();
             case Expressions.ObjectInitializerExpression objectInitializerExpression:
@@ -52,6 +53,132 @@ public partial class NewProgramAbseil
         }
 
         return null!;
+    }
+
+    private IOperand LowerMethodCall(MethodCallExpression e, IPlace? destination)
+    {
+        var returnType = GetTypeReference(e.ResolvedType.NotNull());
+        if (destination is null)
+        {
+            var localName = $"_local{_locals.Count}";
+            var local = new NewMethodLocal(localName, null, returnType);
+            _locals.Add(local);
+            
+            destination = new Local(localName);
+        }
+        
+        var instantiatedFunction = e.MethodCall.Method switch
+        {
+            MemberAccessExpression { MemberAccess.InstantiatedFunction: var fn } => fn,
+            StaticMemberAccessExpression { StaticMemberAccess.InstantiatedFunction: var fn } => fn,
+            ValueAccessorExpression { FunctionInstantiation: var fn } => fn,
+            _ => null
+        };
+
+        IReadOnlyList<IOperand> originalArguments = [..e.MethodCall.ArgumentList.Select(x => NewLowerExpression(x, destination: null))];
+
+        var arguments = new List<IOperand>(e.MethodCall.ArgumentList.Count);
+        NewLoweredFunctionReference functionReference;
+
+        // calling function object instead of normal function
+        if (instantiatedFunction is null)
+        {
+            var functionObjectOperand = NewLowerExpression(e.MethodCall.Method, destination: null);
+            
+            var methodType = (GetTypeReference(e.MethodCall.Method.ResolvedType.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
+
+            var fn = _importedPrograms.SelectMany(x =>
+                x.Methods.Where(y => y.Name == $"Function`{e.MethodCall.ArgumentList.Count + 1}__Call"))
+                .First();
+            
+            functionReference = GetFunctionReference(
+                    fn.Id,
+                    [],
+                    methodType.TypeArguments);
+
+            arguments.Add(functionObjectOperand);
+            
+            arguments.AddRange(originalArguments);
+
+            var lastBasicBlock = _basicBlocks[^1];
+            _basicBlockStatements = [];
+            var newBasicBlock = new BasicBlock(new BasicBlockId($"bb{_basicBlocks.Count}"), _basicBlockStatements);
+            _basicBlocks.Add(newBasicBlock);
+
+            lastBasicBlock.Terminator = new MethodCall(functionReference, arguments, destination, newBasicBlock.Id);
+
+            return new Copy(destination);
+        }
+        
+        IReadOnlyList<INewLoweredTypeReference> ownerTypeArguments = [];
+        if (e.MethodCall.Method is MemberAccessExpression memberAccess)
+        {
+            var owner = NewLowerExpression(memberAccess.MemberAccess.Owner, null);
+            arguments.Add(owner);
+            ownerTypeArguments = GetTypeReference(memberAccess.MemberAccess.Owner.ResolvedType.NotNull()).NotNull() is NewLoweredConcreteTypeReference concrete
+                ? concrete.TypeArguments
+                : throw new UnreachableException("Shouldn't ever be able to call a method on a generic parameter");
+        }
+        else if (instantiatedFunction.ClosureTypeId is not null)
+        {
+            var createClosure = CreateClosureObject(instantiatedFunction);
+            arguments.Add(createClosure);
+        }
+        else if (instantiatedFunction is { IsStatic: false, OwnerType: not null }
+                 && _currentType is not null
+                 && EqualTypeReferences(GetTypeReference(instantiatedFunction.OwnerType), _currentType)
+                 && _currentFunction is not null
+                 && EqualTypeReferences(_currentFunction.Value.LoweredMethod.ParameterLocals[0].Type, _currentType))
+        {
+            arguments.Add(new Copy(new Local(ParameterLocalName(parameterIndex: 0))));
+        }
+
+        if (e.MethodCall.Method is Expressions.StaticMemberAccessExpression staticMemberAccess)
+        {
+            ownerTypeArguments = (GetTypeReference(staticMemberAccess.OwnerType.NotNull())
+                as NewLoweredConcreteTypeReference).NotNull().TypeArguments;
+        }
+        else if (e.MethodCall.Method is Expressions.ValueAccessorExpression valueAccessor)
+        {
+            if (_currentType is not null)
+            {
+                ownerTypeArguments = _currentType.TypeArguments;
+            }
+            else if (valueAccessor.FunctionInstantiation.NotNull()
+                    .OwnerType is {} ownerType)
+            {
+                var ownerTypeReference = GetTypeReference(ownerType);
+                if (ownerTypeReference is NewLoweredConcreteTypeReference
+                    {
+                        TypeArguments: var ownerReferenceTypeArguments
+                    })
+                {
+                    ownerTypeArguments = ownerReferenceTypeArguments;
+                }
+            }
+        }
+
+        functionReference = GetFunctionReference(instantiatedFunction.FunctionId,
+            [..instantiatedFunction.TypeArguments.Select(GetTypeReference)],
+            ownerTypeArguments);
+
+        arguments.AddRange(originalArguments);
+
+        {
+            var lastBasicBlock = _basicBlocks[^1];
+            _basicBlockStatements = [];
+            var newBasicBlock = new BasicBlock(new BasicBlockId($"bb{_basicBlocks.Count}"), _basicBlockStatements);
+            _basicBlocks.Add(newBasicBlock);
+
+            lastBasicBlock.Terminator = new MethodCall(functionReference, arguments, destination, newBasicBlock.Id);
+
+            return new Copy(destination);
+        }
+    }
+
+    private IOperand CreateClosureObject(TypeChecking.TypeChecker.InstantiatedFunction fn)
+    {
+        throw new NotImplementedException();
     }
 
     private IOperand LowerBlock(BlockExpression blockExpression)

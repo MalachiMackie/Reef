@@ -580,18 +580,44 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                             ])
                     ])
             },
-            // {
-            //     "method call",
-            //     "fn MyFn(){} MyFn();",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(ModuleId, $"{ModuleId}.MyFn"), "MyFn", [MethodReturnUnit()]),
-            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main", [
-            //                 MethodCall(FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyFn"), "MyFn"), [], false, Unit),
-            //                 MethodReturnUnit()
-            //             ])
-            //         ])
-            // },
+            {
+                "method call",
+                "fn MyFn(){} MyFn();",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(
+                            new DefId(ModuleId, $"{ModuleId}.MyFn"),
+                            "MyFn",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit),
+                        NewMethod(
+                            new DefId(ModuleId, $"{ModuleId}._Main"),
+                            "_Main",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [])
+                                {
+                                    Terminator = new MethodCall(
+                                        new NewLoweredFunctionReference("MyFn", new DefId(ModuleId, $"{ModuleId}.MyFn"), []),
+                                        [],
+                                        new Local("_local0"),
+                                        new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [
+                                new NewMethodLocal("_local0", null, Unit)
+                            ])
+                    ])
+            },
             // {
             //     "generic method call",
             //     """
