@@ -1,8 +1,6 @@
 using Reef.Core.Abseil.New;
 using Reef.Core.LoweredExpressions.New;
 using FluentAssertions;
-using Reef.Core.Abseil;
-using Reef.Core.LoweredExpressions;
 using Xunit.Abstractions;
 using static Reef.Core.Tests.NewLoweredProgramHelpers;
 
@@ -85,7 +83,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
             },
             {
                 "int plus",
-                "1 + 2;",
+                "var a = 1 + 2;",
                 NewLoweredProgram(
                     methods: [
                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
@@ -111,12 +109,12 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                                 }
                             ],
                             Unit,
-                            locals: [new NewMethodLocal("_local0", null, Int32T)])
+                            locals: [new NewMethodLocal("_local0", "a", Int32T)])
                     ])
             },
             {
                 "int minus",
-                "1 - 2;",
+                "var a = 1 - 2;",
                 NewLoweredProgram(
                     methods: [
                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
@@ -142,12 +140,12 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                                 }
                             ],
                             Unit,
-                            locals: [new NewMethodLocal("_local0", null, Int32T)])
+                            locals: [new NewMethodLocal("_local0", "a", Int32T)])
                     ])
             },
             {
                 "int divide",
-                "1 / 2;",
+                "var a = 1 / 2;",
                 NewLoweredProgram(
                     methods: [
                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
@@ -173,12 +171,12 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                                 }
                             ],
                             Unit,
-                            locals: [new NewMethodLocal("_local0", null, Int32T)])
+                            locals: [new NewMethodLocal("_local0", "a", Int32T)])
                     ])
             },
             {
                 "int multiply",
-                "1 * 2;",
+                "var a = 1 * 2;",
                 NewLoweredProgram(
                     methods: [
                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
@@ -204,12 +202,12 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                                 }
                             ],
                             Unit,
-                            locals: [new NewMethodLocal("_local0", null, Int32T)])
+                            locals: [new NewMethodLocal("_local0", "a", Int32T)])
                     ])
             },
             {
                 "int not equals",
-                "1 != 2;",
+                "var a = 1 != 2;",
                 NewLoweredProgram(
                     methods: [
                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
@@ -235,12 +233,12 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                                 }
                             ],
                             Unit,
-                            locals: [new NewMethodLocal("_local0", null, BooleanT)])
+                            locals: [new NewMethodLocal("_local0", "a", BooleanT)])
                     ])
             },
             {
                 "int equals",
-                "1 == 2;",
+                "var a = 1 == 2;",
                 NewLoweredProgram(
                     methods: [
                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
@@ -266,12 +264,12 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                                 }
                             ],
                             Unit,
-                            locals: [new NewMethodLocal("_local0", null, BooleanT)])
+                            locals: [new NewMethodLocal("_local0", "a", BooleanT)])
                     ])
             },
             {
                 "int greater than",
-                "1 > 2;",
+                "var a = 1 > 2;",
                 NewLoweredProgram(
                     methods: [
                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
@@ -297,12 +295,12 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                                 }
                             ],
                             Unit,
-                            locals: [new NewMethodLocal("_local0", null, BooleanT)])
+                            locals: [new NewMethodLocal("_local0", "a", BooleanT)])
                     ])
             },
             {
                 "int less than",
-                "1 < 2;",
+                "var a = 1 < 2;",
                 NewLoweredProgram(
                     methods: [
                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
@@ -328,12 +326,12 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                                 }
                             ],
                             Unit,
-                            locals: [new NewMethodLocal("_local0", null, BooleanT)])
+                            locals: [new NewMethodLocal("_local0", "a", BooleanT)])
                     ])
             },
             {
                 "bool or",
-                "false || false",
+                "var a = false || false",
                 NewLoweredProgram(
                     methods: [
                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
@@ -374,12 +372,12 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                                 }
                             ],
                             Unit,
-                            locals: [new NewMethodLocal("_local0", null, BooleanT)])
+                            locals: [new NewMethodLocal("_local0", "a", BooleanT)])
                     ])
             },
             {
                 "bool and",
-                "false && false",
+                "var a = false && false",
                 NewLoweredProgram(
                     methods: [
                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
@@ -420,45 +418,114 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                                 }
                             ],
                             Unit,
-                            locals: [new NewMethodLocal("_local0", null, BooleanT)])
+                            locals: [new NewMethodLocal("_local0", "a", BooleanT)])
                     ])
             },
-            // {
-            //     "bool not",
-            //     "!true",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     BoolNot(BoolConstant(true, true), false),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
-            // {
-            //     "empty block",
-            //     "{}",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     Block([], Unit, false),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
-            // {
-            //     "block with one expression",
-            //     "{true;}",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     Block([BoolConstant(true, false)], Unit, false),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
+            {
+                "bool not",
+                "var a = !true",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(new Local("_local0"), new UnaryOperation(new BoolConstant(true), UnaryOperationKind.Not))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [
+                                new NewMethodLocal("_local0", "a", BooleanT)
+                            ])
+                    ])
+            },
+            {
+                "chain operations",
+                "var a = 1 + 2 + 3",
+                NewLoweredProgram(methods: [
+                    NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                        [
+                            new BasicBlock(new BasicBlockId("bb0"), [
+                                new Assign(
+                                    new Local("_local1"),
+                                    new BinaryOperation(new IntConstant(1, 4), new IntConstant(2, 4), BinaryOperationKind.Add)),
+                                new Assign(
+                                    new Local("_local0"),
+                                    new BinaryOperation(new Copy(new Local("_local1")), new IntConstant(3, 4), BinaryOperationKind.Add)),
+                            ])
+                            {
+                                Terminator = new GoTo(new BasicBlockId("bb1"))
+                            },
+                            new BasicBlock(new BasicBlockId("bb1"), [])
+                            {
+                                Terminator = new Return()
+                            }
+                        ],
+                        Unit,
+                        locals: [
+                            new NewMethodLocal("_local0", "a", Int32T),
+                            new NewMethodLocal("_local1", null, Int32T),
+                        ])
+                ])
+            },
+            {
+                "dead expression",
+                "1",
+                NewLoweredProgram(methods: [
+                    NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                        [
+                            new BasicBlock(new BasicBlockId("bb0"), [])
+                            {
+                                Terminator = new Return()
+                            }
+                        ],
+                        Unit)
+                ])
+            },
+            {
+                "empty block",
+                "{}",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit)
+                    ])
+            },
+            {
+                "block with one expression",
+                "{var a = true;}",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(new Local("_local0"), new Use(new BoolConstant(true)))
+                                ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", "a", BooleanT)])
+                    ])
+            },
             // {
             //     "block with multiple expressions",
             //     "{true; 1;}",

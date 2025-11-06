@@ -250,7 +250,7 @@ public partial class NewProgramAbseil
 
         foreach (var expression in expressions)
         {
-            NewLowerExpression(expression);
+            NewLowerExpression(expression, destination: null);
         }
 
         if (_basicBlockStatements.Count > 0)
@@ -261,7 +261,11 @@ public partial class NewProgramAbseil
             });
             _basicBlockStatements = [];
         }
-
+        else if (_basicBlocks.Count == 0)
+        {
+            _basicBlocks.Add(new BasicBlock(new BasicBlockId("bb0"), []));
+        }
+        
         var lastBasicBlock = _basicBlocks[^1];
         var isLastBasicBlockEmpty = lastBasicBlock.Statements.Count == 0 && lastBasicBlock.Terminator is null;
 

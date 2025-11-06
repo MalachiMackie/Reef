@@ -371,6 +371,12 @@ public class NewPrettyPrinter
             case BoolConstant{Value: var boolValue}:
                 _stringBuilder.Append(boolValue ? "true" : "false");
                 break;
+            case Copy{Place: var place}:
+            {
+                _stringBuilder.Append("copy ");
+                PrettyPrintPlace(place);
+                break;
+            }
             default:
                 throw new ArgumentOutOfRangeException(operand.ToString());
         }

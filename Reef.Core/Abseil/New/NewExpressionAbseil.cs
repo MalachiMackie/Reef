@@ -6,14 +6,14 @@ namespace Reef.Core.Abseil.New;
 
 public partial class NewProgramAbseil
 {
-    private IOperand? NewLowerExpression(Expressions.IExpression expression)
+    private IOperand NewLowerExpression(Expressions.IExpression expression, IPlace? destination)
     {
         switch (expression)
         {
             case Expressions.BinaryOperatorExpression binaryOperatorExpression:
-                return LowerBinaryExpression(binaryOperatorExpression);
+                return LowerBinaryExpression(binaryOperatorExpression, destination);
             case Expressions.BlockExpression blockExpression:
-                throw new NotImplementedException();
+                return LowerBlock(blockExpression);
             case Expressions.BreakExpression breakExpression:
                 throw new NotImplementedException();
             case Expressions.ContinueExpression continueExpression:
@@ -37,11 +37,11 @@ public partial class NewProgramAbseil
             case Expressions.TupleExpression tupleExpression:
                 throw new NotImplementedException();
             case Expressions.UnaryOperatorExpression unaryOperatorExpression:
-                throw new NotImplementedException();
+                return LowerUnaryOperator(unaryOperatorExpression, destination);
             case Expressions.UnionClassVariantInitializerExpression unionClassVariantInitializerExpression:
                 throw new NotImplementedException();
             case Expressions.ValueAccessorExpression valueAccessorExpression:
-                return LowerValueAccessor(valueAccessorExpression);
+                return LowerValueAccessor(valueAccessorExpression, destination);
             case Expressions.VariableDeclarationExpression variableDeclarationExpression:
                 LowerVariableDeclaration(variableDeclarationExpression);
                 break;
@@ -54,9 +54,49 @@ public partial class NewProgramAbseil
         return null!;
     }
 
-    private IOperand LowerValueAccessor(ValueAccessorExpression e)
+    private IOperand LowerBlock(BlockExpression blockExpression)
     {
-        return e switch
+        IOperand? result = null;
+        foreach (var innerExpression in blockExpression.Block.Expressions)
+        {
+            result = NewLowerExpression(innerExpression, destination: null);
+        }
+
+        // if no result, then it must just be a unit constant
+        return result ?? new UnitConstant();
+    }
+
+    private IOperand LowerUnaryOperator(UnaryOperatorExpression unaryOperatorExpression, IPlace? destination)
+    {
+        if (unaryOperatorExpression.UnaryOperator.OperatorType == UnaryOperatorType.FallOut)
+        {
+            throw new NotImplementedException();
+        }
+        
+        var valueOperand = NewLowerExpression(unaryOperatorExpression.UnaryOperator.Operand.NotNull(), destination: null).NotNull();
+
+        if (destination is null)
+        {
+            var localName = $"_local{_locals.Count}";
+            _locals.Add(new NewMethodLocal(localName, null, GetTypeReference(unaryOperatorExpression.ResolvedType.NotNull())));
+            destination = new Local(localName);
+        }
+
+        _basicBlockStatements.Add(
+            new Assign(
+                destination,
+                new UnaryOperation(valueOperand, unaryOperatorExpression.UnaryOperator.OperatorType switch
+                {
+                    UnaryOperatorType.Not => UnaryOperationKind.Not,
+                    _ => throw new NotImplementedException()
+                })));
+
+        return new Copy(destination);
+    }
+
+    private IOperand LowerValueAccessor(ValueAccessorExpression e, IPlace? destination)
+    {
+        var operand = e switch
         {
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: StringToken { StringValue: var stringLiteral } } } => new StringConstant(stringLiteral),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue} }, ResolvedType: var resolvedType} =>
@@ -70,6 +110,13 @@ public partial class NewProgramAbseil
             _ => throw new UnreachableException($"{e}")
         };
 
+        if (destination is not null)
+        {
+            _basicBlockStatements.Add(new Assign(destination, new Use(operand)));
+        }
+
+        return operand;
+        
         IOperand FunctionAccess(
                 TypeChecking.TypeChecker.InstantiatedFunction fn,
                 TypeChecking.TypeChecker.FunctionObject typeReference,
@@ -417,14 +464,13 @@ public partial class NewProgramAbseil
             return;
         }
 
-        var loweredValueOperand = NewLowerExpression(e.VariableDeclaration.Value).NotNull();
+        // var loweredValueOperand = NewLowerExpression(e.VariableDeclaration.Value).NotNull();
 
         if (!referencedInClosure)
         {
-            
             var variable = _locals.First(x =>
                 x.UserGivenName == e.VariableDeclaration.Variable.NotNull().Name.StringValue);
-            _basicBlockStatements.Add(new Assign(new Local(variable.CompilerGivenName), new Use(loweredValueOperand)));
+            NewLowerExpression(e.VariableDeclaration.Value, destination: new Local(variable.CompilerGivenName));
             return;
         }
 
@@ -433,7 +479,7 @@ public partial class NewProgramAbseil
         var localsType = _types[localsTypeId];
 
         // _basicBlockStatements.Add(new Assign(, new FieldAccess(new Local(LocalsObjectLocalName), variableName, ClassVariantName)));
-        _basicBlockStatements.Add(new Assign(new Field(LocalsObjectLocalName, FieldName: variableName, ClassVariantName), new Use(loweredValueOperand)));
+        NewLowerExpression(e.VariableDeclaration.Value, destination: new Field(LocalsObjectLocalName, FieldName: variableName, ClassVariantName));
         
         // var localsFieldAssignment = new FieldAssignmentExpression(
         //     new LocalVariableAccessor("__locals",
@@ -451,21 +497,37 @@ public partial class NewProgramAbseil
         //     loweredValue.ResolvedType);
     }
     
-    private IOperand? LowerBinaryExpression(Expressions.BinaryOperatorExpression binaryOperatorExpression)
+    private IOperand LowerBinaryExpression(BinaryOperatorExpression binaryOperatorExpression, IPlace? destination)
     {
+        IOperand resultOperand;
         if (binaryOperatorExpression.BinaryOperator.OperatorType == BinaryOperatorType.ValueAssignment)
         {
-            return LowerValueAssignment(
+            resultOperand = LowerValueAssignment(
                 binaryOperatorExpression.BinaryOperator.Left.NotNull(),
                 binaryOperatorExpression.BinaryOperator.Right.NotNull());
+            
+            if (destination is not null)
+            {
+                _basicBlockStatements.Add(new Assign(destination, new Use(resultOperand)));
+            }
+
+            return resultOperand;
         }
         
+        if (destination is null)
+        {
+            var localName = $"_local{_locals.Count}";
+            _locals.Add(new NewMethodLocal(localName, null, GetTypeReference(binaryOperatorExpression.ResolvedType.NotNull())));
+            destination = new Local(localName);
+        }
+        
+        resultOperand = new Copy(destination);
 
         switch (binaryOperatorExpression.BinaryOperator.OperatorType)
         {
             case BinaryOperatorType.BooleanAnd:
             {
-                var leftOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull()).NotNull();
+                var leftOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull(), null).NotNull();
 
                 if (_basicBlocks.Count == 0)
                 {
@@ -492,14 +554,12 @@ public partial class NewProgramAbseil
                 };
                 _basicBlocks.Add(trueBasicBlock);
 
-                var localName = $"_local{_locals.Count}";
-                _locals.Add(new NewMethodLocal(localName, null, GetTypeReference(binaryOperatorExpression.ResolvedType.NotNull())));
-                
-                var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull())
+                var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull(), destination: null)
                     .NotNull();
-                _basicBlockStatements.Add(new Assign(new Local(localName), new Use(rightOperand)));
                 
-                _basicBlockStatements = [new Assign(new Local(localName), new Use(new BoolConstant(false)))];
+                _basicBlockStatements.Add(new Assign(destination, new Use(rightOperand)));
+                
+                _basicBlockStatements = [new Assign(destination, new Use(new BoolConstant(false)))];
                 var falseBasicBlock = new BasicBlock(falseBasicBlockId, _basicBlockStatements)
                 {
                     Terminator = new GoTo(afterBasicBlockId)
@@ -512,7 +572,7 @@ public partial class NewProgramAbseil
             }
             case BinaryOperatorType.BooleanOr:
             {
-                var leftOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull()).NotNull();
+                var leftOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull(), destination: null).NotNull();
 
                 if (_basicBlocks.Count == 0)
                 {
@@ -539,14 +599,11 @@ public partial class NewProgramAbseil
                 };
                 _basicBlocks.Add(falseBasicBlock);
 
-                var localName = $"_local{_locals.Count}";
-                _locals.Add(new NewMethodLocal(localName, null, GetTypeReference(binaryOperatorExpression.ResolvedType.NotNull())));
-                
-                var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull())
+                var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull(), destination: null)
                     .NotNull();
-                _basicBlockStatements.Add(new Assign(new Local(localName), new Use(rightOperand)));
+                _basicBlockStatements.Add(new Assign(destination, new Use(rightOperand)));
                 
-                _basicBlockStatements = [new Assign(new Local(localName), new Use(new BoolConstant(true)))];
+                _basicBlockStatements = [new Assign(destination, new Use(new BoolConstant(true)))];
                 var trueBasicBlock = new BasicBlock(trueBasicBlockId, _basicBlockStatements)
                 {
                     Terminator = new GoTo(afterBasicBlockId)
@@ -559,8 +616,8 @@ public partial class NewProgramAbseil
             }
             default:
             {
-                var leftOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull()).NotNull();
-                var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull()).NotNull();
+                var leftOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull(), destination: null).NotNull();
+                var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull(), destination: null).NotNull();
                 
                 var binaryOperatorKind = binaryOperatorExpression.BinaryOperator.OperatorType switch
                 {
@@ -575,23 +632,21 @@ public partial class NewProgramAbseil
                     _ => throw new ArgumentOutOfRangeException()
                 };
 
-                var localName = $"_local{_locals.Count}";
-                _locals.Add(new NewMethodLocal(localName, null, GetTypeReference(binaryOperatorExpression.ResolvedType.NotNull())));
                 _basicBlockStatements.Add(new Assign(
-                    new Local(localName),
+                    destination,
                     new BinaryOperation(leftOperand, rightOperand, binaryOperatorKind)));
                 break;
             }
         }
 
-        return null!;
+        return resultOperand;
     }
     
-    private IOperand? LowerValueAssignment(
-            Expressions.IExpression left,
-            Expressions.IExpression right)
+    private IOperand LowerValueAssignment(
+            IExpression left,
+            IExpression right)
     {
-        var valueOperand = NewLowerExpression(right).NotNull();
+        var valueOperand = NewLowerExpression(right, null).NotNull();
         if (left is Expressions.ValueAccessorExpression valueAccessor)
         {
             var variable = valueAccessor.ReferencedVariable.NotNull();
