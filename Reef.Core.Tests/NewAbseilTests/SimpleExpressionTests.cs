@@ -526,38 +526,60 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                             locals: [new NewMethodLocal("_local0", "a", BooleanT)])
                     ])
             },
-            // {
-            //     "block with multiple expressions",
-            //     "{true; 1;}",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     Block([
-            //                         BoolConstant(true, false),
-            //                         Int32Constant(1, false),
-            //                     ], Unit, false),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
-            // {
-            //     "local access",
-            //     "var a = 1; var b = a;",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     VariableDeclaration("a", Int32Constant(1, true), valueUseful: false),
-            //                     VariableDeclaration("b", LocalAccess("a", true, Int32_t), valueUseful: false),
-            //                     MethodReturnUnit()
-            //                 ],
-            //                 locals: [
-            //                     Local("a", Int32_t),
-            //                     Local("b", Int32_t),
-            //                 ])
-            //         ])
-            // },
+            {
+                "block with multiple expressions",
+                "{var a = true; var b = 1;}",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(new Local("_local0"), new Use(new BoolConstant(true))),
+                                    new Assign(new Local("_local1"), new Use(new IntConstant(1, 4))),
+                                ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [
+                                new NewMethodLocal("_local0", "a", BooleanT),
+                                new NewMethodLocal("_local1", "b", Int32T),
+                            ])
+                    ])
+            },
+            {
+                "local access",
+                "var a = 1; var b = a;",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(new Local("_local0"), new Use(new IntConstant(1, 4))),
+                                        new Assign(new Local("_local1"), new Use(new Copy(new Local("_local0"))))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [
+                                new NewMethodLocal("_local0", "a", Int32T),
+                                new NewMethodLocal("_local1", "b", Int32T),
+                            ])
+                    ])
+            },
             // {
             //     "method call",
             //     "fn MyFn(){} MyFn();",
