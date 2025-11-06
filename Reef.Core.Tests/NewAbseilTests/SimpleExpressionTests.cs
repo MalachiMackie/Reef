@@ -618,32 +618,53 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                             ])
                     ])
             },
-            // {
-            //     "generic method call",
-            //     """
-            //     fn MyFn<T>(){}
-            //     MyFn::<string>();
-            //     MyFn::<i64>();
-            //     """,
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(ModuleId, $"{ModuleId}.MyFn"), "MyFn", [MethodReturnUnit()], typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyFn"), "T")]),
-            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     MethodCall(
-            //                         FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyFn"), "MyFn", [StringType]),
-            //                         [],
-            //                         false,
-            //                         Unit),
-            //                     MethodCall(
-            //                         FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyFn"), "MyFn", [Int64_t]),
-            //                         [],
-            //                         false,
-            //                         Unit),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
+            {
+                "generic method call",
+                """
+                fn MyFn<T>(){}
+                MyFn::<string>();
+                MyFn::<i64>();
+                """,
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(
+                            new DefId(ModuleId, $"{ModuleId}.MyFn"),
+                            "MyFn",
+                            [new BasicBlock(new BasicBlockId("bb0"), []) { Terminator = new Return()}],
+                            Unit,
+                            typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyFn"), "T")]),
+                        NewMethod(
+                            new DefId(ModuleId, $"{ModuleId}._Main"),
+                            "_Main",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [])
+                                {
+                                    Terminator = new MethodCall(
+                                        new NewLoweredFunctionReference("MyFn", new DefId(ModuleId, $"{ModuleId}.MyFn"), [StringT]),
+                                        [],
+                                        new Local("_local0"),
+                                        new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new MethodCall(
+                                        new NewLoweredFunctionReference("MyFn", new DefId(ModuleId, $"{ModuleId}.MyFn"), [Int64T]),
+                                        [],
+                                        new Local("_local1"),
+                                        new BasicBlockId("bb2"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb2"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [
+                                new NewMethodLocal("_local0", null, Unit),
+                                new NewMethodLocal("_local1", null, Unit),
+                            ])
+                    ])
+            },
             // {
             //     "function parameter access",
             //     "fn MyFn(a: string): string { return a; }",
