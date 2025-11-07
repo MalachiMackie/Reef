@@ -46,37 +46,38 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                                  variants: [NewVariant("_classVariant")])
                          ])
              },
-//             {
-//                 "generic class with instance function",
-//                 "class MyClass<T>{pub fn SomeFn(){}}",
-//                 LoweredProgram(
-//                         types: [
-//                             DataType(ModuleId, "MyClass",
-//                                 ["T"],
-//                                 [Variant("_classVariant")])
-//                         ], methods: [
-//                                     Method(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), 
-//                                         "MyClass__SomeFn",
-//                                         [MethodReturn(UnitConstant(true))],
-//                                         typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")],
-//                                         parameters: [ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [GenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")])])
-//                                 ])
-//             },
-//             {
-//                 "class with instance fields",
-//                 "class MyClass { pub field MyField: string, pub field OtherField: i64}",
-//                 LoweredProgram(types: [
-//                     DataType(ModuleId, "MyClass",
-//                         variants: [
-//                             Variant(
-//                                 "_classVariant",
-//                                 [
-//                                     Field("MyField", StringType),
-//                                     Field("OtherField", Int64_t),
-//                                 ])
-//                         ])
-//                 ])
-//             },
+             {
+                 "generic class with instance function",
+                 "class MyClass<T>{pub fn SomeFn(){}}",
+                 NewLoweredProgram(
+                         types: [
+                             NewDataType(ModuleId, "MyClass",
+                                 ["T"],
+                                 [NewVariant("_classVariant")])
+                         ], methods: [
+                                     NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), 
+                                         "MyClass__SomeFn",
+                                         [new BasicBlock(new BasicBlockId("bb0"), []) {Terminator = new Return()}],
+                                         Unit,
+                                         typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")],
+                                         parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [new NewLoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")]))])
+                                 ])
+             },
+             {
+                 "class with instance fields",
+                 "class MyClass { pub field MyField: string, pub field OtherField: i64}",
+                 NewLoweredProgram(types: [
+                     NewDataType(ModuleId, "MyClass",
+                         variants: [
+                             NewVariant(
+                                 "_classVariant",
+                                 [
+                                     NewField("MyField", StringT),
+                                     NewField("OtherField", Int64T),
+                                 ])
+                         ])
+                 ])
+             },
 //             {
 //                 "class with static fields",
 //                 """class MyClass { pub static field MyField: string = ""}""",
