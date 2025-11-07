@@ -58,14 +58,14 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                     NewDataType(ModuleId, "MyUnion")
                 ])
             },
-            // {
-            //     "generic union",
-            //     "union MyUnion<T>{}",
-            //     LoweredProgram(types: [
-            //             DataType(ModuleId, "MyUnion",
-            //                 ["T"])
-            //     ])
-            // },
+            {
+                "generic union",
+                "union MyUnion<T>{}",
+                NewLoweredProgram(types: [
+                        NewDataType(ModuleId, "MyUnion",
+                            ["T"])
+                ])
+            },
             // {
             //     "union with unit variants",
             //     "union MyUnion{A, B}",

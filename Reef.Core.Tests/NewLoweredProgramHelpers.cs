@@ -15,12 +15,13 @@ public static class NewLoweredProgramHelpers
         };
     }
 
-    public static NewDataType NewDataType(string moduleId, string name)
+    public static NewDataType NewDataType(string moduleId, string name, IReadOnlyList<string>? typeParameters = null)
     {
+        var defId = new DefId(moduleId, $"{moduleId}.{name}");
         return new NewDataType(
-            new DefId(moduleId, $"{moduleId}.{name}"),
+            defId,
             name,
-            [],
+            [..(typeParameters ?? []).Select(x => new NewLoweredGenericPlaceholder(defId, x))],
             [],
             []);
     }
