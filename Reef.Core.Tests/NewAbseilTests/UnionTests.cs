@@ -26,25 +26,15 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
     [Fact]
     public void SingleTest()
     {
-        // const string source = 
-        //         "class MyClass<T>{pub fn SomeFn(){}}";
-        // var expectedProgram = NewLoweredProgram(
-        //     types:
-        //     [
-        //         DataType(ModuleId, "MyClass",
-        //             ["T"],
-        //             [Variant("_classVariant")])
-        //     ], methods:
-        //     [
-        //         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
-        //             [MethodReturn(UnitConstant(true))],
-        //             parameters: [ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [GenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")])],
-        //             typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")])
-        //     ]);
-        //
-        // var program = CreateProgram(ModuleId, source);
-        // var loweredProgram = ProgramAbseil.Lower(program);
-        // loweredProgram.Should().BeEquivalentTo(expectedProgram);
+        const string source = 
+                "union MyUnion{}";
+        var expectedProgram = NewLoweredProgram(types: [
+            NewDataType(ModuleId, "MyUnion")
+        ]);
+        
+        var program = CreateProgram(ModuleId, source);
+        var loweredProgram = NewProgramAbseil.Lower(program);
+        loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
 
     public static TheoryData<string, string, NewLoweredProgram> TestCases()
