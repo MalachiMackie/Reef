@@ -1,5 +1,4 @@
-﻿using FluentAssertions;
-using FluentAssertions.Equivalency;
+﻿using FluentAssertions.Equivalency;
 using Reef.Core.Abseil;
 using Reef.Core.IL;
 using Reef.Core.TypeChecking;

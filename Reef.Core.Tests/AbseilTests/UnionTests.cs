@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Reef.Core.LoweredExpressions;
 using Reef.Core.Abseil;
 

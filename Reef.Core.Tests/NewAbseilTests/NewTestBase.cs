@@ -1,4 +1,3 @@
-using FluentAssertions;
 using FluentAssertions.Equivalency;
 using Reef.Core.LoweredExpressions;
 using Reef.Core.LoweredExpressions.New;

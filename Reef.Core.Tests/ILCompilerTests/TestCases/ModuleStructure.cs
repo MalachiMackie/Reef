@@ -1,5 +1,4 @@
-﻿using FluentAssertions;
-using Reef.Core.Abseil;
+﻿using Reef.Core.Abseil;
 using Reef.Core.IL;
 using Reef.Core.TypeChecking;
 using static Reef.Core.Tests.ILCompilerTests.TestHelpers;

@@ -1,6 +1,4 @@
-﻿using FluentAssertions;
-
-namespace Reef.Core.Tests.IntegrationTests;
+﻿namespace Reef.Core.Tests.IntegrationTests;
 
 public class BoolOperations : IntegrationTestBase
 {

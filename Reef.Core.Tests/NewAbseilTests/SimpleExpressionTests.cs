@@ -1,6 +1,5 @@
 using Reef.Core.Abseil.New;
 using Reef.Core.LoweredExpressions.New;
-using FluentAssertions;
 using Xunit.Abstractions;
 using static Reef.Core.Tests.NewLoweredProgramHelpers;
 

@@ -5,14 +5,24 @@ namespace Reef.Core.Tests;
 public static class NewLoweredProgramHelpers
 {
     public static NewLoweredProgram NewLoweredProgram(
-        IReadOnlyList<NewLoweredMethod> methods,
-        IReadOnlyList<NewDataType>? dataTypes = null)
+        IReadOnlyList<NewLoweredMethod>? methods = null,
+        IReadOnlyList<NewDataType>? types = null)
     {
         return new()
         {
-            Methods = methods,
-            DataTypes = dataTypes ?? []
+            Methods = methods ?? [],
+            DataTypes = types ?? []
         };
+    }
+
+    public static NewDataType NewDataType(string moduleId, string name)
+    {
+        return new NewDataType(
+            new DefId(moduleId, $"{moduleId}.{name}"),
+            name,
+            [],
+            [],
+            []);
     }
 
     public static NewLoweredMethod NewMethod(

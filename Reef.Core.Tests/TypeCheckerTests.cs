@@ -1,5 +1,4 @@
-﻿using FluentAssertions;
-using Reef.Core.TypeChecking;
+﻿using Reef.Core.TypeChecking;
 
 using static Reef.Core.TypeChecking.TypeChecker;
 using static Reef.Core.Tests.ExpressionHelpers;

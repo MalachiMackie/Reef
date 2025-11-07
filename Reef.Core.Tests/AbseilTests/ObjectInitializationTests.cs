@@ -1,6 +1,5 @@
 namespace Reef.Core.Tests.AbseilTests;
 
-using FluentAssertions;
 using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
 using Xunit.Abstractions;

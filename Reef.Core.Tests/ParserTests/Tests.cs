@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using FluentAssertions;
 using Reef.Core.Expressions;
 using Xunit.Abstractions;
 

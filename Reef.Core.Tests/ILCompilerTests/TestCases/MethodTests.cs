@@ -1,5 +1,4 @@
-﻿using FluentAssertions;
-using Reef.Core.Abseil;
+﻿using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
 using Reef.Core.TypeChecking;
 using Reef.Core.IL;
