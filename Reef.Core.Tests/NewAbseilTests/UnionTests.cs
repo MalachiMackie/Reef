@@ -176,84 +176,103 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                         parameters: [("Item0", new NewLoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T"))])
                 ])
             },
-            // {
-            //     "union with class variant",
-            //     "union MyUnion { A { field MyField: string, field OtherField: i64 } }",
-            //     LoweredProgram(types: [
-            //         DataType(ModuleId, "MyUnion",
-            //             variants: [
-            //                 Variant("A",
-            //                     fields: [
-            //                         Field("_variantIdentifier", UInt16_t),
-            //                         Field("MyField", StringType),
-            //                         Field("OtherField", Int64_t),
-            //                     ])
-            //             ])
-            //     ])
-            // },
-            // {
-            //     "union with method",
-            //     "union MyUnion { pub fn MyFn(){} }",
-            //     LoweredProgram(types: [
-            //         DataType(ModuleId, "MyUnion")
-            //     ], [
-            //                 Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__MyFn"), "MyUnion__MyFn",
-            //                     [MethodReturn(UnitConstant(valueUseful: true))],
-            //                     parameters: [ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))])
-            //             ])
-            // },
-            // {
-            //     "union with method and tuple variants",
-            //     "union MyUnion { A(string), pub static fn MyFn() {}, B(string) }",
-            //     LoweredProgram(types: [
-            //         DataType(ModuleId, "MyUnion",
-            //             variants: [
-            //                 Variant(
-            //                     "A",
-            //                     [
-            //                         Field("_variantIdentifier", UInt16_t),
-            //                         Field("Item0", StringType),
-            //                     ]),
-            //                 Variant(
-            //                     "B",
-            //                     [
-            //                         Field("_variantIdentifier", UInt16_t),
-            //                         Field("Item0", StringType),
-            //                     ]),
-            //             ])
-            //     ], methods: [
-            //                 Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__MyFn"), "MyUnion__MyFn",
-            //                     [MethodReturn(UnitConstant(true))]),
-            //                 Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
-            //                     [
-            //                         MethodReturn(CreateObject(
-            //                             ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion")),
-            //                             "A",
-            //                             true,
-            //                             new()
-            //                             {
-            //                                 {"_variantIdentifier", UInt16Constant(0, true)},
-            //                                 {"Item0", LoadArgument(0, true, StringType)},
-            //                             }))
-            //                     ],
-            //                     parameters: [StringType],
-            //                     returnType: ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                 Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__B"), "MyUnion__Create__B",
-            //                     [
-            //                         MethodReturn(CreateObject(
-            //                             ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion")),
-            //                             "B",
-            //                             true,
-            //                             new()
-            //                             {
-            //                                 {"_variantIdentifier", UInt16Constant(1, true)},
-            //                                 {"Item0", LoadArgument(0, true, StringType)},
-            //                             }))
-            //                     ],
-            //                     parameters: [StringType],
-            //                     returnType: ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //             ])
-            // }
+            {
+                "union with class variant",
+                "union MyUnion { A { field MyField: string, field OtherField: i64 } }",
+                NewLoweredProgram(types: [
+                    NewDataType(ModuleId, "MyUnion",
+                        variants: [
+                            NewVariant("A",
+                                fields: [
+                                    NewField("_variantIdentifier", UInt16T),
+                                    NewField("MyField", StringT),
+                                    NewField("OtherField", Int64T),
+                                ])
+                        ])
+                ])
+            },
+            {
+                "union with method",
+                "union MyUnion { pub fn MyFn(){} }",
+                NewLoweredProgram(
+                [
+                            NewMethod(new DefId(ModuleId, $"{ModuleId}.MyUnion__MyFn"), "MyUnion__MyFn",
+                                [new BasicBlock(new BasicBlockId("bb0"), []) {Terminator = new Return()}],
+                                Unit,
+                                parameters: [("this", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))])
+                        ], types: [
+                    NewDataType(ModuleId, "MyUnion")
+                ])
+            },
+            {
+                "union with method and tuple variants",
+                "union MyUnion { A(string), pub static fn MyFn() {}, B(string) }",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyUnion__MyFn"), "MyUnion__MyFn",
+                            [new BasicBlock(new BasicBlockId("bb0"), []){Terminator = new Return()}],
+                            Unit),
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_returnValue"),
+                                            new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                        new Assign(
+                                            new Field("_returnValue", "_variantIdentifier", "A"),
+                                            new Use(new UIntConstant(0, 2))),
+                                        new Assign(
+                                            new Field("_returnValue", "Item0", "A"),
+                                            new Use(new Copy(new Local("_param0"))))
+                                    ])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []),
+                            parameters: [("Item0", StringT)]),
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__B"), "MyUnion__Create__B",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_returnValue"),
+                                            new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                        new Assign(
+                                            new Field("_returnValue", "_variantIdentifier", "B"),
+                                            new Use(new UIntConstant(1, 2))),
+                                        new Assign(
+                                            new Field("_returnValue", "Item0", "B"),
+                                            new Use(new Copy(new Local("_param0"))))
+                                    ])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []),
+                            parameters: [("Item0", StringT)]),
+                    ],
+                    types: [
+                        NewDataType(ModuleId, "MyUnion",
+                            variants: [
+                                NewVariant(
+                                    "A",
+                                    [
+                                        NewField("_variantIdentifier", UInt16T),
+                                        NewField("Item0", StringT),
+                                    ]),
+                                NewVariant(
+                                    "B",
+                                    [
+                                        NewField("_variantIdentifier", UInt16T),
+                                        NewField("Item0", StringT),
+                                    ]),
+                            ])
+                    ])
+            }
         };
     }
 }
