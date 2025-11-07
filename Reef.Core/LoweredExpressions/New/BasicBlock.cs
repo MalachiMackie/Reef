@@ -53,6 +53,8 @@ public record UnaryOperation(IOperand Operand, UnaryOperationKind Kind) : IRValu
 
 public record Use(IOperand Operand) : IRValue;
 
+public record CreateObject(NewLoweredConcreteTypeReference Type) : IRValue;
+
 public record Copy(IPlace Place) : IOperand;
 
 public record StringConstant(string Value) : IOperand;

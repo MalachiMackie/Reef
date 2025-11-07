@@ -715,38 +715,62 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                             parameters: [("a", StringT)])
                     ])
             },
-            // {
-            //     "single element tuple",
-            //     "(1)",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     Int32Constant(1, false),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
-            // {
-            //     "two element tuple",
-            //     "(1, \"\")",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     CreateObject(
-            //                         ConcreteTypeReference("Tuple`2", DefId.Tuple(2), [Int32_t, StringType]),
-            //                         "_classVariant",
-            //                         false,
-            //                         new()
-            //                         {
-            //                             {"Item0", Int32Constant(1, true)},
-            //                             {"Item1", StringConstant("", true)},
-            //                         }),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
+            {
+                "single element tuple",
+                "var a = (1);",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(
+                                        new Local("_local0"),
+                                        new Use(new IntConstant(1, 4)))
+                                ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", "a", Int32T)])
+                    ])
+            },
+            {
+                "two element tuple",
+                """var a = (1, "");""",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(
+                                        new Local("_local0"),
+                                        new CreateObject(Tuple(Int32T, StringT))),
+                                    new Assign(
+                                        new Field("_local0", "Item0", "_classVariant"),
+                                        new Use(new IntConstant(1, 4))),
+                                    new Assign(
+                                        new Field("_local0", "Item1", "_classVariant"),
+                                        new Use(new StringConstant(""))),
+                                ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [
+                                new NewMethodLocal("_local0", "a", Tuple(Int32T, StringT))
+                            ])
+                    ])
+            },
             // {
             //     "local function in block",
             //     """

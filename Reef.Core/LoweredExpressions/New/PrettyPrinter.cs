@@ -347,6 +347,12 @@ public class NewPrettyPrinter
             case Use use:
                 PrettyPrintOperand(use.Operand);
                 break;
+            case CreateObject createObject:
+            {
+                _stringBuilder.Append("new ");
+                PrettyPrintTypeReference(createObject.Type);
+                break;
+            }
             default:
                 throw new ArgumentOutOfRangeException(nameof(rValue));
         }

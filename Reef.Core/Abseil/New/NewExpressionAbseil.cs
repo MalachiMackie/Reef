@@ -39,7 +39,7 @@ public partial class NewProgramAbseil
             case Expressions.StaticMemberAccessExpression staticMemberAccessExpression:
                 throw new NotImplementedException();
             case Expressions.TupleExpression tupleExpression:
-                throw new NotImplementedException();
+                return LowerTuple(tupleExpression, destination);
             case Expressions.UnaryOperatorExpression unaryOperatorExpression:
                 return LowerUnaryOperator(unaryOperatorExpression, destination);
             case Expressions.UnionClassVariantInitializerExpression unionClassVariantInitializerExpression:
@@ -54,6 +54,46 @@ public partial class NewProgramAbseil
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }
+    }
+
+    private IOperand LowerTuple(TupleExpression tupleExpression, IPlace? destination)
+    {
+        if (tupleExpression.Values.Count == 1)
+        {
+            return NewLowerExpression(tupleExpression.Values[0], destination);
+        }
+
+        var typeReference = (GetTypeReference(tupleExpression.ResolvedType.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
+
+        var localDestination = destination as Local ?? new Local(LocalName((ushort)_locals.Count));
+        
+        if (destination is not Local)
+        {
+            var local = new NewMethodLocal(localDestination.LocalName, null, typeReference);
+            _locals.Add(local);
+        }
+
+        var values = tupleExpression.Values.Select(x => NewLowerExpression(x, destination: null)).ToArray();
+        
+        // always assign to a local, so fields get assign within the stack, then if needed, copy to it's destination
+        _basicBlockStatements.Add(new Assign(
+            localDestination,
+            new CreateObject(typeReference)));
+
+        for (var index = 0; index < values.Length; index++)
+        {
+            var value = values[index];
+            _basicBlockStatements.Add(new Assign(
+                new Field(localDestination.LocalName, $"Item{index}", ClassVariantName),
+                new Use(value)));
+        }
+
+        if (destination is not (Local or null))
+        {
+            _basicBlockStatements.Add(new Assign(destination, new Use(new Copy(localDestination))));
+        }
+
+        return new Copy(destination ?? localDestination);
     }
 
     private void LowerReturn(MethodReturnExpression methodReturnExpression)

@@ -63,4 +63,13 @@ public static class NewLoweredProgramHelpers
             TypeChecking.TypeChecker.ClassSignature.Int64.Name,
             TypeChecking.TypeChecker.ClassSignature.Int64.Id,
             []);
+
+    public static NewLoweredConcreteTypeReference Tuple(params IReadOnlyList<INewLoweredTypeReference> types)
+    {
+        var signature = TypeChecking.TypeChecker.ClassSignature.Tuple((ushort)types.Count);
+        return new NewLoweredConcreteTypeReference(
+            signature.Name,
+            signature.Id,
+            types);
+    }
 }
