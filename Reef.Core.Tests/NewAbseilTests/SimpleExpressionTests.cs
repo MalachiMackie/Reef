@@ -771,24 +771,33 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                             ])
                     ])
             },
-            // {
-            //     "local function in block",
-            //     """
-            //     {
-            //         fn SomeFn(){}
-            //     }
-            //     """,
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(ModuleId, $"{ModuleId}._Main__SomeFn"), "_Main__SomeFn",
-            //                 [MethodReturnUnit()]),
-            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     Block([], Unit, false),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
+            {
+                "local function in block",
+                """
+                {
+                    fn SomeFn(){}
+                }
+                """,
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main__SomeFn"), "_Main__SomeFn",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit),
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit)
+                    ])
+            },
         };
     }
 }
