@@ -77,20 +77,32 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                         ])
                 ])
             },
-            // {
-            //     "generic union with instance function",
-            //     "union MyUnion<T>{pub fn SomeFn(){}}",
-            //     LoweredProgram(types: [
-            //         DataType(ModuleId, "MyUnion",
-            //             ["T"],
-            //             [])
-            //     ], methods: [
-            //                 Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__SomeFn"), "MyUnion__SomeFn",
-            //                     [MethodReturn(UnitConstant(true))],
-            //                     parameters: [ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [GenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")])],
-            //                     typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")])
-            //             ])
-            // },
+            {
+                "generic union with instance function",
+                "union MyUnion<T>{pub fn SomeFn(){}}",
+                NewLoweredProgram(types: [
+                    NewDataType(ModuleId, "MyUnion",
+                        ["T"])
+                ], methods: [
+                    NewMethod(new DefId(ModuleId, $"{ModuleId}.MyUnion__SomeFn"), "MyUnion__SomeFn",
+                        [
+                            new BasicBlock(new BasicBlockId("bb0"), [])
+                            {
+                                Terminator = new Return()
+                            }
+                        ],
+                        Unit,
+                        parameters: [
+                            (
+                                "this",
+                                new NewLoweredConcreteTypeReference(
+                                    "MyUnion",
+                                    new DefId(ModuleId, $"{ModuleId}.MyUnion"),
+                                    [new NewLoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")])
+                            )],
+                        typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")])
+                ])
+            },
             // {
             //     "union with tuple variant",
             //     "union MyUnion { A(string, i64) }",

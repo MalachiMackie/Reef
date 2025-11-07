@@ -11,6 +11,8 @@ public partial class NewProgramAbseil
     private const string LocalsObjectLocalName = "_localsObject";
     private const string ClassVariantName = "_classVariant";
     private const string ClosureThisFieldName = "this";
+    private const string ThisParameterName = "this";
+    private const string ClosureParameterName = "closure";
     private static string ParameterLocalName(uint parameterIndex) => $"_param{parameterIndex}";
     private static string LocalName(uint localIndex) => $"_local{localIndex}";
         
@@ -508,16 +510,16 @@ public partial class NewProgramAbseil
 
                             fields.TryAdd(
                                 signature.Id,
-                                new NewDataTypeField("this", typeReference));
+                                new NewDataTypeField(ClosureThisFieldName, typeReference));
 
                             break;
                         }
-                    case ThisVariable thisVariable:
+                    case ThisVariable:
                         {
                             Debug.Assert(parentTypeReference is not null);
                             fields.TryAdd(
                                 parentTypeReference.DefinitionId,
-                                new NewDataTypeField("this", parentTypeReference));
+                                new NewDataTypeField(ClosureThisFieldName, parentTypeReference));
                             break;
                         }
                 }
@@ -603,11 +605,11 @@ public partial class NewProgramAbseil
 
         if (!fnSignature.IsStatic && ownerTypeReference is not null)
         {
-            parameters = parameters.Prepend((null, ownerTypeReference));
+            parameters = parameters.Prepend((ThisParameterName, ownerTypeReference));
         }
         else if (closureType is not null)
         {
-            parameters = parameters.Prepend((null, new NewLoweredConcreteTypeReference(
+            parameters = parameters.Prepend((ClosureParameterName, new NewLoweredConcreteTypeReference(
                 closureType.Name,
                 closureType.Id,
                 [])));
