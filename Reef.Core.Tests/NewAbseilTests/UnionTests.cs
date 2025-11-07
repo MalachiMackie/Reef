@@ -140,37 +140,42 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                         parameters: [("Item0", StringT), ("Item1", Int64T)])
                 ])
             },
-            // {
-            //     "generic union with tuple variant",
-            //     "union MyUnion<T>{ A(T) }",
-            //     LoweredProgram(types: [
-            //         DataType(ModuleId, "MyUnion",
-            //             ["T"],
-            //             [
-            //                 Variant("A",
-            //                     [
-            //                         Field("_variantIdentifier", UInt16_t),
-            //                         Field("Item0", GenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T"))
-            //                     ])
-            //             ])
-            //     ], methods: [
-            //                 Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
-            //                     [
-            //                         MethodReturn(CreateObject(
-            //                             ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [GenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")]),
-            //                             "A",
-            //                             true,
-            //                             new()
-            //                             {
-            //                                 {"_variantIdentifier", UInt16Constant(0, true)},
-            //                                 {"Item0", LoadArgument(0, true, GenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T"))},
-            //                             }))
-            //                     ],
-            //                     typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")],
-            //                     parameters: [GenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")],
-            //                     returnType: ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [GenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")]))
-            //             ])
-            // },
+            {
+                "generic union with tuple variant",
+                "union MyUnion<T>{ A(T) }",
+                NewLoweredProgram(types: [
+                    NewDataType(ModuleId, "MyUnion",
+                        ["T"],
+                        [
+                            NewVariant("A",
+                                [
+                                    NewField("_variantIdentifier", UInt16T),
+                                    NewField("Item0", new NewLoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T"))
+                                ])
+                        ])
+                ], methods: [
+                    NewMethod(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
+                        [
+                            new BasicBlock(new BasicBlockId("bb0"), [
+                                new Assign(
+                                    new Local("_returnValue"),
+                                    new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [new NewLoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")]))),
+                                new Assign(
+                                    new Field("_returnValue", "_variantIdentifier", "A"),
+                                    new Use(new UIntConstant(0, 2))),
+                                new Assign(
+                                    new Field("_returnValue", "Item0", "A"),
+                                    new Use(new Copy(new Local("_param0"))))
+                            ])
+                            {
+                                Terminator = new Return()
+                            }
+                        ],
+                        new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [new NewLoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")]),
+                        typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")],
+                        parameters: [("Item0", new NewLoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T"))])
+                ])
+            },
             // {
             //     "union with class variant",
             //     "union MyUnion { A { field MyField: string, field OtherField: i64 } }",
