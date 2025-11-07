@@ -66,17 +66,17 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                             ["T"])
                 ])
             },
-            // {
-            //     "union with unit variants",
-            //     "union MyUnion{A, B}",
-            //     LoweredProgram(types: [
-            //         DataType(ModuleId, "MyUnion",
-            //             variants: [
-            //                 Variant("A", [Field("_variantIdentifier", UInt16_t)]),
-            //                 Variant("B", [Field("_variantIdentifier", UInt16_t)]),
-            //             ])
-            //     ])
-            // },
+            {
+                "union with unit variants",
+                "union MyUnion{A, B}",
+                NewLoweredProgram(types: [
+                    NewDataType(ModuleId, "MyUnion",
+                        variants: [
+                            NewVariant("A", [NewField("_variantIdentifier", UInt16T)]),
+                            NewVariant("B", [NewField("_variantIdentifier", UInt16T)]),
+                        ])
+                ])
+            },
             // {
             //     "generic union with instance function",
             //     "union MyUnion<T>{pub fn SomeFn(){}}",

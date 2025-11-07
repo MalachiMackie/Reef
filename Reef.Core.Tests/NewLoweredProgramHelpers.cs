@@ -15,15 +15,31 @@ public static class NewLoweredProgramHelpers
         };
     }
 
-    public static NewDataType NewDataType(string moduleId, string name, IReadOnlyList<string>? typeParameters = null)
+    public static NewDataType NewDataType(
+        string moduleId,
+        string name,
+        IReadOnlyList<string>? typeParameters = null,
+        IReadOnlyList<NewDataTypeVariant>? variants = null)
     {
         var defId = new DefId(moduleId, $"{moduleId}.{name}");
         return new NewDataType(
             defId,
             name,
             [..(typeParameters ?? []).Select(x => new NewLoweredGenericPlaceholder(defId, x))],
-            [],
+            variants ?? [],
             []);
+    }
+
+    public static NewDataTypeVariant NewVariant(string name, IReadOnlyList<NewDataTypeField>? fields = null)
+    {
+        return new NewDataTypeVariant(
+            name,
+            fields ?? []);
+    }
+
+    public static NewDataTypeField NewField(string name, INewLoweredTypeReference type)
+    {
+        return new NewDataTypeField(name, type);
     }
 
     public static NewLoweredMethod NewMethod(
@@ -73,6 +89,12 @@ public static class NewLoweredProgramHelpers
         = new (
             TypeChecking.TypeChecker.ClassSignature.Int64.Name,
             TypeChecking.TypeChecker.ClassSignature.Int64.Id,
+            []);
+    
+    public static NewLoweredConcreteTypeReference UInt16T { get; }
+        = new (
+            TypeChecking.TypeChecker.ClassSignature.UInt16.Name,
+            TypeChecking.TypeChecker.ClassSignature.UInt16.Id,
             []);
 
     public static NewLoweredConcreteTypeReference Tuple(params IReadOnlyList<INewLoweredTypeReference> types)
