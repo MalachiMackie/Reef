@@ -10,6 +10,36 @@ namespace Reef.Core.Tests.NewAbseilTests;
 public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOutputHelper)
 {
 
+    [Fact]
+    public void SingleTest()
+    {
+        var source = "fn MyFn(a: string): string { return a; }";
+        var expectedProgram = NewLoweredProgram(
+            methods:
+            [
+                NewMethod(
+                    new DefId(ModuleId, $"{ModuleId}.MyFn"),
+                    "MyFn",
+                    [
+                        new BasicBlock(new BasicBlockId("bb0"), [
+                            new Assign(new Local("_returnValue"), new Use(new Copy(new Local("_param0"))))
+                        ])
+                        {
+                            Terminator = new Return()
+                        }
+                    ],
+                    StringT,
+                    parameters: [("a", StringT)])
+            ]);
+        
+        var program = CreateProgram(ModuleId, source);
+        var loweredProgram = NewProgramAbseil.Lower(program);
+
+        PrintPrograms(expectedProgram, loweredProgram);
+
+        loweredProgram.Should().BeEquivalentTo(expectedProgram);
+    }
+    
     [Theory]
     [MemberData(nameof(TestCases))]
     public void SimpleExpressionAbseilTest(string description, string source, NewLoweredProgram expectedProgram)
@@ -665,20 +695,26 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                             ])
                     ])
             },
-            // {
-            //     "function parameter access",
-            //     "fn MyFn(a: string): string { return a; }",
-            //     LoweredProgram(
-            //         methods: [
-            //             Method(new DefId(ModuleId, $"{ModuleId}.MyFn"), "MyFn",
-            //                 [
-            //                     MethodReturn(
-            //                         LoadArgument(0, true, StringType))
-            //                 ],
-            //                 parameters: [StringType],
-            //                 returnType: StringType)
-            //         ])
-            // },
+            {
+                "function parameter access",
+                "fn MyFn(a: string): string { return a; }",
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(
+                            new DefId(ModuleId, $"{ModuleId}.MyFn"),
+                            "MyFn",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(new Local("_returnValue"), new Use(new Copy(new Local("_param0"))))
+                                ])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            StringT,
+                            parameters: [("a", StringT)])
+                    ])
+            },
             // {
             //     "single element tuple",
             //     "(1)",

@@ -12,7 +12,7 @@ public partial class NewProgramAbseil
     private const string ClassVariantName = "_classVariant";
     private const string ClosureThisFieldName = "this";
     private static string ParameterLocalName(uint parameterIndex) => $"_param{parameterIndex}";
-    private static string UserDefinedLocalName(uint localIndex) => $"_local{localIndex}";
+    private static string LocalName(uint localIndex) => $"_local{localIndex}";
         
     private readonly Dictionary<
         NewLoweredMethod,
@@ -257,8 +257,8 @@ public partial class NewProgramAbseil
 
         var lastBasicBlock = _basicBlocks[^1];
         var isLastBasicBlockEmpty = lastBasicBlock.Statements.Count == 0 && lastBasicBlock.Terminator is null;
-
-        var returnBasicBlockId = isLastBasicBlockEmpty
+        
+        var returnBasicBlockId = (isLastBasicBlockEmpty || lastBasicBlock.Terminator is Return)
             ? lastBasicBlock.Id
             : new BasicBlockId($"bb{_basicBlocks.Count}");
 
@@ -266,14 +266,22 @@ public partial class NewProgramAbseil
         {
             var basicBlock = _basicBlocks[i];
             basicBlock.Terminator ??= new GoTo(new BasicBlockId($"bb{i + 1}"));
+
+            if (basicBlock.Terminator is TempGoToReturn)
+            {
+                basicBlock.Terminator = new GoTo(returnBasicBlockId);
+            }
         }
 
         if (!isLastBasicBlockEmpty)
         {
-            _basicBlocks.Add(new BasicBlock(returnBasicBlockId, [])
+            if (lastBasicBlock.Terminator is not Return)
             {
-                Terminator = new Return()
-            });
+                _basicBlocks.Add(new BasicBlock(returnBasicBlockId, [])
+                {
+                    Terminator = new Return()
+                });
+            }
         }
         else
         {
@@ -588,7 +596,7 @@ public partial class NewProgramAbseil
         }
 
         locals.AddRange(fnSignature.LocalVariables.Where(x => !x.ReferencedInClosure)
-                .Select((x, i) => new NewMethodLocal(UserDefinedLocalName((uint)i), x.Name.StringValue, GetTypeReference(x.Type))));
+                .Select((x, i) => new NewMethodLocal(LocalName((uint)i), x.Name.StringValue, GetTypeReference(x.Type))));
 
         var parameters = fnSignature.Parameters.Select(y =>
             (userGivenName: (string?)y.Key, paramType: GetTypeReference(y.Value.Type)));

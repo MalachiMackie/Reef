@@ -7,6 +7,8 @@ namespace Reef.Core.Abseil.New;
 
 public partial class NewProgramAbseil
 {
+    private uint _controlFlowDepth = 0;
+    
     private IOperand NewLowerExpression(Expressions.IExpression expression, IPlace? destination)
     {
         switch (expression)
@@ -30,7 +32,8 @@ public partial class NewProgramAbseil
             case Expressions.MethodCallExpression methodCallExpression:
                 return LowerMethodCall(methodCallExpression, destination);
             case Expressions.MethodReturnExpression methodReturnExpression:
-                throw new NotImplementedException();
+                LowerReturn(methodReturnExpression);
+                return new UnitConstant();
             case Expressions.ObjectInitializerExpression objectInitializerExpression:
                 throw new NotImplementedException();
             case Expressions.StaticMemberAccessExpression staticMemberAccessExpression:
@@ -45,14 +48,31 @@ public partial class NewProgramAbseil
                 return LowerValueAccessor(valueAccessorExpression, destination);
             case Expressions.VariableDeclarationExpression variableDeclarationExpression:
                 LowerVariableDeclaration(variableDeclarationExpression);
-                break;
+                return new UnitConstant();
             case Expressions.WhileExpression whileExpression:
                 throw new NotImplementedException();
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }
+    }
 
-        return null!;
+    private void LowerReturn(MethodReturnExpression methodReturnExpression)
+    {
+        if (methodReturnExpression.MethodReturn.Expression is not null)
+        {
+            NewLowerExpression(methodReturnExpression.MethodReturn.Expression, new Local(ReturnValueLocalName));
+        }
+
+        if (_controlFlowDepth > 0)
+        {
+            _basicBlocks[^1].Terminator = new TempGoToReturn();
+            _basicBlockStatements = [];
+            _basicBlocks.Add(new BasicBlock(new BasicBlockId($"bb{_basicBlocks.Count}"), _basicBlockStatements));
+        }
+        else
+        {
+            _basicBlocks[^1].Terminator = new Return();
+        }
     }
 
     private IOperand LowerMethodCall(MethodCallExpression e, IPlace? destination)
@@ -457,63 +477,44 @@ public partial class NewProgramAbseil
                     }
                 case TypeChecking.TypeChecker.FunctionSignatureParameter argument:
                 {
-                    throw new NotImplementedException();
-                        // Debug.Assert(_currentFunction is not null);
-                        //
-                        // var argumentIndex = argument.ParameterIndex;
-                        // if (!argument.ReferencedInClosure)
-                        // {
-                        //     if (argument.ContainingFunction.AccessedOuterVariables.Count > 0
-                        //             || (argument.ContainingFunction.OwnerType is not null
-                        //                 && !argument.ContainingFunction.IsStatic))
-                        //     {
-                        //         argumentIndex++;
-                        //     }
-                        //
-                        //     return new LoadArgumentExpression(argumentIndex, valueUseful, resolvedType);
-                        // }
-                        //
-                        // var currentFunction = _currentFunction.NotNull();
-                        // var containingFunction = argument.ContainingFunction.NotNull();
-                        // var containingFunctionLocals = _types[containingFunction.LocalsTypeId.NotNull()];
-                        // var localsTypeReference = new LoweredConcreteTypeReference(
-                        //                 containingFunctionLocals.Name,
-                        //                 containingFunctionLocals.Id,
-                        //                 []);
-                        // if (containingFunction.Id == currentFunction.FunctionSignature.Id)
-                        // {
-                        //     return new FieldAccessExpression(
-                        //         new LocalVariableAccessor(
-                        //             "__locals",
-                        //             true,
-                        //             localsTypeReference),
-                        //         argument.Name.StringValue,
-                        //         "_classVariant",
-                        //         e.ValueUseful,
-                        //         resolvedType);
-                        // }
-                        // var closureTypeId = _currentFunction.NotNull()
-                        //         .FunctionSignature.ClosureTypeId.NotNull();
-                        // var closureType = _types[closureTypeId];
-                        //
-                        // return new FieldAccessExpression(
-                        //     new FieldAccessExpression(
-                        //         new LoadArgumentExpression(
-                        //             0,
-                        //             true,
-                        //             new LoweredConcreteTypeReference(
-                        //                 closureType.Name,
-                        //                 closureTypeId,
-                        //                 [])),
-                        //         containingFunctionLocals.Name,
-                        //         "_classVariant",
-                        //         true,
-                        //         localsTypeReference),
-                        //     argument.Name.StringValue,
-                        //     "_classVariant",
-                        //     e.ValueUseful,
-                        //     resolvedType);
+                    Debug.Assert(_currentFunction is not null);
+                    
+                    var argumentIndex = argument.ParameterIndex;
+                    if (!argument.ReferencedInClosure)
+                    {
+                        if (argument.ContainingFunction.AccessedOuterVariables.Count > 0
+                                || (argument.ContainingFunction.OwnerType is not null
+                                    && !argument.ContainingFunction.IsStatic))
+                        {
+                            argumentIndex++;
+                        }
+
+                        return new Copy(new Local(ParameterLocalName(argumentIndex)));
                     }
+                    
+                    var currentFunction = _currentFunction.NotNull();
+                    var containingFunction = argument.ContainingFunction.NotNull();
+                    var containingFunctionLocals = _types[containingFunction.LocalsTypeId.NotNull()];
+                    var localsTypeReference = new NewLoweredConcreteTypeReference(
+                                    containingFunctionLocals.Name,
+                                    containingFunctionLocals.Id,
+                                    []);
+                    if (containingFunction.Id == currentFunction.FunctionSignature.Id)
+                    {
+                        return new Copy(new Field(LocalsObjectLocalName, argument.Name.StringValue, ClassVariantName));
+                    }
+                    var closureTypeId = _currentFunction.NotNull()
+                            .FunctionSignature.ClosureTypeId.NotNull();
+                    var closureType = _types[closureTypeId];
+
+                    var referencedLocalsObjectLocalName = LocalName((uint)_locals.Count);
+                    _locals.Add(new NewMethodLocal(referencedLocalsObjectLocalName, null, localsTypeReference));
+                    _basicBlockStatements.Add(new Assign(
+                        new Local(referencedLocalsObjectLocalName),
+                        new Use(new Copy(new Field(ParameterLocalName(0), containingFunctionLocals.Name, ClassVariantName)))));
+
+                    return new Copy(new Field(referencedLocalsObjectLocalName, argument.Name.StringValue, ClassVariantName));
+                }
             }
 
             throw new UnreachableException($"{variable.GetType()}");
@@ -681,8 +682,10 @@ public partial class NewProgramAbseil
                 };
                 _basicBlocks.Add(trueBasicBlock);
 
+                _controlFlowDepth++;
                 var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull(), destination: null)
                     .NotNull();
+                _controlFlowDepth--;
                 
                 _basicBlockStatements.Add(new Assign(destination, new Use(rightOperand)));
                 
@@ -726,8 +729,10 @@ public partial class NewProgramAbseil
                 };
                 _basicBlocks.Add(falseBasicBlock);
 
+                _controlFlowDepth++;
                 var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull(), destination: null)
                     .NotNull();
+                _controlFlowDepth--;
                 _basicBlockStatements.Add(new Assign(destination, new Use(rightOperand)));
                 
                 _basicBlockStatements = [new Assign(destination, new Use(new BoolConstant(true)))];

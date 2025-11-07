@@ -30,6 +30,8 @@ public record SwitchInt(
 
 public record MethodCall(NewLoweredFunctionReference Function, IReadOnlyList<IOperand> Arguments, IPlace PlaceDestination, BasicBlockId GoToAfter) : ITerminator;
 
+public record TempGoToReturn : ITerminator;
+
 public record Return : ITerminator;
 
 public record GoTo(BasicBlockId BasicBlockId) : ITerminator;
