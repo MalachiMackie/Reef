@@ -13,6 +13,7 @@ public partial class NewProgramAbseil
     private const string ClosureThisFieldName = "this";
     private const string ThisParameterName = "this";
     private const string ClosureParameterName = "closure";
+    private const string VariantIdentifierFieldName = "_variantIdentifier";
     private static string ParameterLocalName(uint parameterIndex) => $"_param{parameterIndex}";
     private static string LocalName(uint localIndex) => $"_local{localIndex}";
         
@@ -137,7 +138,7 @@ public partial class NewProgramAbseil
                     "Ok",
                     [
                         new NewDataTypeField(
-                            "_variantIdentifier",
+                            VariantIdentifierFieldName,
                             intRef),
                         new NewDataTypeField(
                             "Item0",
@@ -147,7 +148,7 @@ public partial class NewProgramAbseil
                     "Error",
                     [
                         new NewDataTypeField(
-                            "_variantIdentifier",
+                            VariantIdentifierFieldName,
                             intRef),
                         new NewDataTypeField(
                             "Item0",
@@ -345,7 +346,7 @@ public partial class NewProgramAbseil
         foreach (var variant in union.Variants)
         {
             var variantIdentifierField = new NewDataTypeField(
-                    "_variantIdentifier",
+                    VariantIdentifierFieldName,
                     GetTypeReference(InstantiatedClass.UInt16));
             var fields = new List<NewDataTypeField>() { variantIdentifierField };
             switch (variant)
@@ -366,36 +367,36 @@ public partial class NewProgramAbseil
                                         $"Item{i}",
                                         x)));
 
-                        throw new NotImplementedException();
+                        var createMethodFieldInitializations = fields.Skip(1)
+                            .Select(
+                                (IOperand operand, string fieldName) (x, i) => (new Copy(new Local($"_param{i}")), $"Item{i}"));
+                        createMethodFieldInitializations = createMethodFieldInitializations.Prepend((new UIntConstant((ulong)variants.Count, 2), VariantIdentifierFieldName));
 
-                        // var createMethodFieldInitializations = fields.Skip(1).Index().ToDictionary(x => x.Item.Name, x => (ILoweredExpression)new LoadArgumentExpression((uint)x.Index, true, x.Item.Type));
-                        // createMethodFieldInitializations["_variantIdentifier"] = new UInt16ConstantExpression(true, (ushort)variants.Count);
-
-                        // List<ILoweredExpression> expressions = [
-                        //                 new MethodReturnExpression(
-                        //                     new CreateObjectExpression(
-                        //                         unionTypeReference,
-                        //                         variant.Name,
-                        //                         true,
-                        //                         createMethodFieldInitializations
-                        //                         ))
-                        //             ];
-                        //
-                        // var method = new LoweredMethod(
-                        //             u.CreateFunction.Id,
-                        //             u.CreateFunction.Name,
-                        //             typeParameters,
-                        //             memberTypes,
-                        //             unionTypeReference,
-                        //             expressions,
-                        //             []);
-                        //
-                        // // add the tuple variant as a method
-                        // _methods.Add(
-                        //         method,
-                        //         // pass null as the signature because it's never used as the current function
-                        //         (null!, expressions, [], unionTypeReference, false));
-                        // break;
+                        var method = new NewLoweredMethod(
+                                    u.CreateFunction.Id,
+                                    u.CreateFunction.Name,
+                                    typeParameters,
+                                    [
+                                        new BasicBlock(new BasicBlockId("bb0"), [
+                                            new Assign(new Local(ReturnValueLocalName), new CreateObject(unionTypeReference)),
+                                            ..createMethodFieldInitializations.Select(x => new Assign(
+                                                new Field(ReturnValueLocalName, x.fieldName, u.Name),
+                                                new Use(x.operand)))
+                                        ])
+                                        {
+                                            Terminator = new Return()
+                                        },
+                                    ],
+                                    new NewMethodLocal(ReturnValueLocalName, null, unionTypeReference),
+                                    [..memberTypes.Select((x, i) => new NewMethodLocal(ParameterLocalName((uint)i), $"Item{i}", x))],
+                                    []);
+                        
+                        // add the tuple variant as a method
+                        _methods.Add(
+                                method,
+                                // pass null as the signature because it's never used as the current function
+                                (null!, [], [], [], unionTypeReference, false));
+                        break;
                     }
                 default:
                     throw new InvalidOperationException($"Invalid union variant {variant}");

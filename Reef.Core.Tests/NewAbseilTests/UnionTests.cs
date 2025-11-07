@@ -103,36 +103,43 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                         typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")])
                 ])
             },
-            // {
-            //     "union with tuple variant",
-            //     "union MyUnion { A(string, i64) }",
-            //     LoweredProgram(types: [
-            //         DataType(ModuleId, "MyUnion",
-            //             variants: [
-            //                 Variant("A", [
-            //                     Field("_variantIdentifier", UInt16_t),
-            //                     Field("Item0", StringType),
-            //                     Field("Item1", Int64_t),
-            //                 ])
-            //             ])
-            //     ], methods: [
-            //                 Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
-            //                     [
-            //                         MethodReturn(CreateObject(
-            //                             ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion")),
-            //                             "A",
-            //                             true,
-            //                             new()
-            //                             {
-            //                                 {"_variantIdentifier", UInt16Constant(0, true)},
-            //                                 {"Item0", LoadArgument(0, true, StringType)},
-            //                                 {"Item1", LoadArgument(1, true, Int64_t)},
-            //                             }))
-            //                     ],
-            //                     parameters: [StringType, Int64_t],
-            //                     returnType: ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion")))
-            //             ])
-            // },
+            {
+                "union with tuple variant",
+                "union MyUnion { A(string, i64) }",
+                NewLoweredProgram(types: [
+                    NewDataType(ModuleId, "MyUnion",
+                        variants: [
+                            NewVariant("A", [
+                                NewField("_variantIdentifier", UInt16T),
+                                NewField("Item0", StringT),
+                                NewField("Item1", Int64T),
+                            ])
+                        ])
+                ], methods: [
+                    NewMethod(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
+                        [
+                            new BasicBlock(new BasicBlockId("bb0"), [
+                                new Assign(
+                                    new Local("_returnValue"),
+                                    new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                new Assign(
+                                    new Field("_returnValue", "_variantIdentifier", "A"),
+                                    new Use(new UIntConstant(0, 2))),
+                                new Assign(
+                                    new Field("_returnValue", "Item0", "A"),
+                                    new Use(new Copy(new Local("_param0")))),
+                                new Assign(
+                                    new Field("_returnValue", "Item1", "A"),
+                                    new Use(new Copy(new Local("_param1")))),
+                            ])
+                            {
+                                Terminator = new Return()
+                            }
+                        ],
+                        new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []),
+                        parameters: [("Item0", StringT), ("Item1", Int64T)])
+                ])
+            },
             // {
             //     "generic union with tuple variant",
             //     "union MyUnion<T>{ A(T) }",
