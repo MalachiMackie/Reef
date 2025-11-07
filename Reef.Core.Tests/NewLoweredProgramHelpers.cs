@@ -19,7 +19,8 @@ public static class NewLoweredProgramHelpers
         string moduleId,
         string name,
         IReadOnlyList<string>? typeParameters = null,
-        IReadOnlyList<NewDataTypeVariant>? variants = null)
+        IReadOnlyList<NewDataTypeVariant>? variants = null,
+        IReadOnlyList<NewStaticDataTypeField>? staticFields = null)
     {
         var defId = new DefId(moduleId, $"{moduleId}.{name}");
         return new NewDataType(
@@ -27,7 +28,7 @@ public static class NewLoweredProgramHelpers
             name,
             [..(typeParameters ?? []).Select(x => new NewLoweredGenericPlaceholder(defId, x))],
             variants ?? [],
-            []);
+            staticFields ?? []);
     }
 
     public static NewDataTypeVariant NewVariant(string name, IReadOnlyList<NewDataTypeField>? fields = null)
@@ -40,6 +41,17 @@ public static class NewLoweredProgramHelpers
     public static NewDataTypeField NewField(string name, INewLoweredTypeReference type)
     {
         return new NewDataTypeField(name, type);
+    }
+
+    public static NewStaticDataTypeField NewStaticField(
+        string name,
+        INewLoweredTypeReference type,
+        IReadOnlyList<BasicBlock> initializerBasicBlocks,
+        IReadOnlyList<NewMethodLocal> initializerLocals,
+        NewMethodLocal initializerReturnValueLocal)
+    {
+        return new NewStaticDataTypeField(name, type, initializerBasicBlocks, initializerLocals,
+            initializerReturnValueLocal);
     }
 
     public static NewLoweredMethod NewMethod(

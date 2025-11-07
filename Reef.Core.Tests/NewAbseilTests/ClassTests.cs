@@ -78,17 +78,35 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                          ])
                  ])
              },
-//             {
-//                 "class with static fields",
-//                 """class MyClass { pub static field MyField: string = ""}""",
-//                 LoweredProgram(types: [
-//                     DataType(ModuleId, "MyClass",
-//                         variants: [Variant("_classVariant")],
-//                         staticFields: [
-//                             StaticField("MyField", StringType, StringConstant("", true))
-//                         ])
-//                 ])
-//             },
+             {
+                 "class with static fields",
+                 """class MyClass { pub static field MyField: string = ""}""",
+                 NewLoweredProgram(types: [
+                     NewDataType(ModuleId, "MyClass",
+                         variants: [NewVariant("_classVariant")],
+                         staticFields: [
+                             NewStaticField(
+                                 "MyField",
+                                 StringT,
+                                 [
+                                     new BasicBlock(new BasicBlockId("bb0"), [
+                                         new Assign(
+                                             new Local("_returnValue"),
+                                             new Use(new StringConstant("")))
+                                     ])
+                                     {
+                                         Terminator = new GoTo(new BasicBlockId("bb1"))
+                                     },
+                                     new BasicBlock(new BasicBlockId("bb1"), [])
+                                     {
+                                         Terminator = new Return()
+                                     }
+                                 ],
+                                 [],
+                                 new NewMethodLocal("_returnValue", null, StringT))
+                         ])
+                 ])
+             },
 //             {
 //                 "access class field",
 //                 """

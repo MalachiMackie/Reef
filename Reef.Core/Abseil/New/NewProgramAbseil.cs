@@ -257,7 +257,12 @@ public partial class NewProgramAbseil
         {
             NewLowerExpression(expression, destination: null);
         }
+        
+        TerminateBasicBlocks();
+    }
 
+    private void TerminateBasicBlocks()
+    {
         var lastBasicBlock = _basicBlocks[^1];
         var isLastBasicBlockEmpty = lastBasicBlock.Statements.Count == 0 && lastBasicBlock.Terminator is null;
         
@@ -303,12 +308,26 @@ public partial class NewProgramAbseil
         var staticFields = klass.Fields.Where(x => x.IsStatic)
             .Select<TypeField, NewStaticDataTypeField>(x =>
             {
-                throw new NotImplementedException();
-                // return new NewStaticDataTypeField(
-                    // x.Name,
-                    // GetTypeReference(x.Type),
-                    // NewLowerExpression(x.StaticInitializer.NotNull()));
-            });
+                _currentFunction = null;
+                _currentType = classTypeReference;
+                _basicBlockStatements = [];
+                _basicBlocks = [new BasicBlock(new BasicBlockId("bb0"), _basicBlockStatements)];
+                _locals = [];
+                
+                NewLowerExpression(x.StaticInitializer.NotNull(), destination: new Local(ReturnValueLocalName));
+                
+                TerminateBasicBlocks();
+
+                var type = GetTypeReference(x.Type);
+
+
+                return new NewStaticDataTypeField(
+                    x.Name,
+                    type,
+                    _basicBlocks,
+                    _locals,
+                    new NewMethodLocal(ReturnValueLocalName, null, type));
+            }).ToArray();
 
         var fields = klass.Fields.Where(x => !x.IsStatic)
             .Select(x => new NewDataTypeField(x.Name, GetTypeReference(x.Type)));
