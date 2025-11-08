@@ -631,7 +631,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                                 new BasicBlock(new BasicBlockId("bb0"), [])
                                 {
                                     Terminator = new MethodCall(
-                                        new NewLoweredFunctionReference("MyFn", new DefId(ModuleId, $"{ModuleId}.MyFn"), []),
+                                        new NewLoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyFn"), []),
                                         [],
                                         new Local("_local0"),
                                         new BasicBlockId("bb1"))
@@ -669,7 +669,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                                 new BasicBlock(new BasicBlockId("bb0"), [])
                                 {
                                     Terminator = new MethodCall(
-                                        new NewLoweredFunctionReference("MyFn", new DefId(ModuleId, $"{ModuleId}.MyFn"), [StringT]),
+                                        new NewLoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyFn"), [StringT]),
                                         [],
                                         new Local("_local0"),
                                         new BasicBlockId("bb1"))
@@ -677,7 +677,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                                 new BasicBlock(new BasicBlockId("bb1"), [])
                                 {
                                     Terminator = new MethodCall(
-                                        new NewLoweredFunctionReference("MyFn", new DefId(ModuleId, $"{ModuleId}.MyFn"), [Int64T]),
+                                        new NewLoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyFn"), [Int64T]),
                                         [],
                                         new Local("_local1"),
                                         new BasicBlockId("bb2"))

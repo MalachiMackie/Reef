@@ -107,48 +107,50 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                          ])
                  ])
              },
-//             {
-//                 "access class field",
-//                 """
-//                 class MyClass {pub field A: string}
-//                 var a = new MyClass{A = ""};
-//                 var b = a.A;
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, "MyClass",
-//                             variants: [
-//                                 Variant("_classVariant", [Field("A", StringType)])
-//                             ])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration(
-//                                     "a",
-//                                     CreateObject(
-//                                         ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")),
-//                                         "_classVariant",
-//                                         valueUseful: true,
-//                                         new(){{"A", StringConstant("", valueUseful: true)}}),
-//                                     valueUseful: false),
-//                                 VariableDeclaration(
-//                                     "b",
-//                                     FieldAccess(
-//                                         LocalAccess("a", true, ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
-//                                         "A",
-//                                         "_classVariant",
-//                                         valueUseful: true,
-//                                         resolvedType: StringType),
-//                                     valueUseful: false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 Local("a", ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
-//                                 Local("b", StringType),
-//                             ])
-//                     ])
-//             },
+             {
+                 "access class field",
+                 """
+                 class MyClass {pub field A: string}
+                 var a = new MyClass{A = ""};
+                 var b = a.A;
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "MyClass",
+                             variants: [
+                                 NewVariant("_classVariant", [NewField("A", StringT)])
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(new BasicBlockId("bb0"), [
+                                     new Assign(
+                                         new Local("_local0"),
+                                         new CreateObject(new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                     new Assign(
+                                         new Field("_local0", "A", "_classVariant"),
+                                         new Use(new StringConstant(""))),
+                                     new Assign(
+                                         new Local("_local2"),
+                                         new Use(new Copy(new Local("_local0")))),
+                                     new Assign(
+                                         new Local("_local1"),
+                                         new Use(new Copy(new Field("_local2", "A", "_classVariant"))))
+                                 ])
+                                 {
+                                     Terminator = new GoTo(new BasicBlockId("bb1"))
+                                 },
+                                 new BasicBlock(new BasicBlockId("bb1"), []) {Terminator = new Return()}
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                 new NewMethodLocal("_local1", "b", StringT),
+                                 new NewMethodLocal("_local2", null, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                             ])
+                     ])
+             },
 //             {
 //                 "access static field",
 //                 """

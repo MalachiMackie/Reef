@@ -78,9 +78,9 @@ public partial class NewProgramAbseil
                             [
                                 new NewDataTypeField(
                                     "FunctionReference",
-                                    new NewLoweredFunctionPointer(
-                                        [..fnClass.TypeParameters.SkipLast(1).Select(GetGenericPlaceholder)],
-                                        GetTypeReference(fnClass.TypeParameters[^1]))),
+                                    new NewLoweredFunctionReference(
+                                        fnClass.Id,
+                                        [..fnClass.TypeParameters.SkipLast(1).Select(GetGenericPlaceholder)])),
                                 new NewDataTypeField(
                                     "FunctionParameter",
                                     rawPointerType)
@@ -682,8 +682,7 @@ public partial class NewProgramAbseil
         
         Debug.Assert(resultingTypeArguments.Count == loweredMethod.TypeParameters.Count);
 
-        return new(
-                loweredMethod.Name,
+        return new NewLoweredFunctionReference(
                 functionId,
                 resultingTypeArguments);
     }

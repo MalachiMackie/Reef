@@ -65,6 +65,8 @@ public record UIntConstant(ulong Value, byte ByteSize) : IOperand;
 
 public record BoolConstant(bool Value) : IOperand;
 
+public record FunctionPointerConstant(NewLoweredFunctionReference Value) : IOperand;
+
 public record UnitConstant : IOperand;
 
 public enum BinaryOperationKind
@@ -100,16 +102,9 @@ public record NewLoweredMethod(
 public record NewMethodLocal(string CompilerGivenName, string? UserGivenName, INewLoweredTypeReference Type);
 
 public record NewLoweredFunctionReference(
-    string Name,
     DefId DefinitionId,
-    IReadOnlyList<INewLoweredTypeReference> TypeArguments)
+    IReadOnlyList<INewLoweredTypeReference> TypeArguments) : INewLoweredTypeReference
 {}
-
-public record NewLoweredFunctionPointer(
-    IReadOnlyList<INewLoweredTypeReference> ParameterTypes,
-    INewLoweredTypeReference ReturnType) : INewLoweredTypeReference
-{
-}
 
 public interface INewLoweredTypeReference
 { }

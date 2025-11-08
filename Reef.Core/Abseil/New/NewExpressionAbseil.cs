@@ -7,7 +7,7 @@ namespace Reef.Core.Abseil.New;
 
 public partial class NewProgramAbseil
 {
-    private uint _controlFlowDepth = 0;
+    private uint _controlFlowDepth;
     
     private IOperand NewLowerExpression(Expressions.IExpression expression, IPlace? destination)
     {
@@ -28,14 +28,14 @@ public partial class NewProgramAbseil
             case Expressions.MatchExpression matchExpression:
                 throw new NotImplementedException();
             case Expressions.MemberAccessExpression memberAccessExpression:
-                throw new NotImplementedException();
+                return LowerMemberAccess(memberAccessExpression, destination);
             case Expressions.MethodCallExpression methodCallExpression:
                 return LowerMethodCall(methodCallExpression, destination);
             case Expressions.MethodReturnExpression methodReturnExpression:
                 LowerReturn(methodReturnExpression);
                 return new UnitConstant();
             case Expressions.ObjectInitializerExpression objectInitializerExpression:
-                throw new NotImplementedException();
+                return LowerObjectInitializer(objectInitializerExpression, destination); 
             case Expressions.StaticMemberAccessExpression staticMemberAccessExpression:
                 throw new NotImplementedException();
             case Expressions.TupleExpression tupleExpression:
@@ -55,6 +55,138 @@ public partial class NewProgramAbseil
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }
     }
+    
+    private IOperand LowerMemberAccess(
+            MemberAccessExpression e, IPlace? destination)
+    {
+        var ownerType = GetTypeReference(e.MemberAccess.OwnerType.NotNull());
+        
+        var localName = LocalName((uint)_locals.Count);
+        _locals.Add(new NewMethodLocal(localName, null, ownerType));
+
+        var ownerOperand = NewLowerExpression(e.MemberAccess.Owner, destination: new Local(localName));
+        
+        switch (e.MemberAccess.MemberType.NotNull())
+        {
+            case Expressions.MemberType.Field:
+            {
+                var field = new Field(localName, e.MemberAccess.MemberName.NotNull().StringValue, ClassVariantName);
+                    if (destination is not null)
+                    {
+                        _basicBlockStatements.Add(new Assign(
+                            destination,
+                            new Use(new Copy(field))));
+                    }
+
+                    return new Copy(field);
+                }
+            case Expressions.MemberType.Function:
+                {
+                    var ownerTypeArguments = (GetTypeReference(e.MemberAccess.OwnerType.NotNull()) as NewLoweredConcreteTypeReference)
+                        .NotNull().TypeArguments;
+
+                    var fn = e.MemberAccess.InstantiatedFunction.NotNull();
+
+                    var functionObjectType =
+                        (GetTypeReference(e.ResolvedType.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
+
+                    return CreateObject(
+                        functionObjectType,
+                        [
+                            new CreateObjectField("FunctionReference", new FunctionPointerConstant(
+                                    GetFunctionReference(
+                                        fn.FunctionId,
+                                        [..fn.TypeArguments.Select(GetTypeReference)],
+                                        ownerTypeArguments))),
+                            new CreateObjectField("FunctionParameter", ownerOperand)
+                        ], destination);
+                }
+            case Expressions.MemberType.Variant:
+                throw new InvalidOperationException("Can never access a variant through instance member access");
+            default:
+                throw new UnreachableException($"{e.MemberAccess.MemberType}");
+        }
+    }
+
+    // private IOperand LowerMemberAccess(MemberAccessExpression memberAccessExpression, IPlace destination)
+    // {
+    //     
+    // }
+
+    private IOperand LowerObjectInitializer(ObjectInitializerExpression objectInitializerExpression, IPlace? destination)
+    {
+        var typeReference = (GetTypeReference(objectInitializerExpression.ResolvedType.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
+
+        return CreateObject(
+            typeReference,
+            objectInitializerExpression.ObjectInitializer.FieldInitializers.Select(x =>
+                new CreateObjectField(x.FieldName.StringValue, x.Value)),
+            destination);
+    }
+
+    private sealed class CreateObjectField
+    {
+        public string FieldName { get; }
+        public IExpression? Expression { get; }
+        public IOperand? Operand { get; }
+
+        public CreateObjectField(string fieldName, IExpression? expression)
+        {
+            FieldName = fieldName;
+            Expression = expression;
+            Operand = null;
+        }
+        
+        public CreateObjectField(string fieldName, IOperand? operand)
+        {
+            FieldName = fieldName;
+            Operand = operand;
+            Expression = null;
+        }
+    }
+
+    private IOperand CreateObject(
+        NewLoweredConcreteTypeReference type,
+        IEnumerable<CreateObjectField> fields,
+        IPlace? destination)
+    {
+        var localDestination = destination as Local ?? new Local(LocalName((ushort)_locals.Count));
+        
+        if (destination is not Local)
+        {
+            var local = new NewMethodLocal(localDestination.LocalName, null, type);
+            _locals.Add(local);
+        }
+        
+        // always assign to a local, so fields get assign within the stack, then if needed, copy to it's destination
+        _basicBlockStatements.Add(new Assign(
+            localDestination,
+            new CreateObject(type)));
+
+        foreach (var createObjectField in fields)
+        {
+            var field = new Field(localDestination.LocalName, createObjectField.FieldName, ClassVariantName);
+            if (createObjectField.Expression is {} expression)
+            {
+                NewLowerExpression(
+                    expression,
+                    destination: field);
+            }
+            else if (createObjectField.Operand is {} operand)
+            {
+                _basicBlockStatements.Add(new Assign(
+                    field,
+                    new Use(operand)));
+            }
+        }
+            
+        if (destination is not (Local or null))
+        {
+            _basicBlockStatements.Add(new Assign(destination, new Use(new Copy(localDestination))));
+        }
+
+        return new Copy(destination ?? localDestination);
+    }
 
     private IOperand LowerTuple(TupleExpression tupleExpression, IPlace? destination)
     {
@@ -65,35 +197,10 @@ public partial class NewProgramAbseil
 
         var typeReference = (GetTypeReference(tupleExpression.ResolvedType.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
 
-        var localDestination = destination as Local ?? new Local(LocalName((ushort)_locals.Count));
-        
-        if (destination is not Local)
-        {
-            var local = new NewMethodLocal(localDestination.LocalName, null, typeReference);
-            _locals.Add(local);
-        }
-
-        var values = tupleExpression.Values.Select(x => NewLowerExpression(x, destination: null)).ToArray();
-        
-        // always assign to a local, so fields get assign within the stack, then if needed, copy to it's destination
-        _basicBlockStatements.Add(new Assign(
-            localDestination,
-            new CreateObject(typeReference)));
-
-        for (var index = 0; index < values.Length; index++)
-        {
-            var value = values[index];
-            _basicBlockStatements.Add(new Assign(
-                new Field(localDestination.LocalName, $"Item{index}", ClassVariantName),
-                new Use(value)));
-        }
-
-        if (destination is not (Local or null))
-        {
-            _basicBlockStatements.Add(new Assign(destination, new Use(new Copy(localDestination))));
-        }
-
-        return new Copy(destination ?? localDestination);
+        return CreateObject(
+            typeReference,
+            tupleExpression.Values.Select((x, i) => new CreateObjectField($"Item{i}", x)),
+            destination);
     }
 
     private void LowerReturn(MethodReturnExpression methodReturnExpression)

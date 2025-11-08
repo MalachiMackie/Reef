@@ -390,7 +390,7 @@ public class NewPrettyPrinter
 
     private void PrettyPrintFunctionReference(NewLoweredFunctionReference functionReference)
     {
-        _stringBuilder.Append(functionReference.Name);
+        _stringBuilder.Append(functionReference.DefinitionId.FullName);
         if (functionReference.TypeArguments.Count > 0)
         {
             _stringBuilder.Append("::<");
