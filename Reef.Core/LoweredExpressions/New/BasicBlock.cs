@@ -47,6 +47,8 @@ public record Local(string LocalName) : IPlace;
 
 public record Field(string LocalName, string FieldName, string VariantName) : IPlace;
 
+public record StaticField(NewLoweredConcreteTypeReference Type, string FieldName) : IPlace;
+
 public record BinaryOperation(IOperand LeftOperand, IOperand RightOperand, BinaryOperationKind Kind) : IRValue;
 
 public record UnaryOperation(IOperand Operand, UnaryOperationKind Kind) : IRValue;

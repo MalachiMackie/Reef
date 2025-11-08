@@ -20,6 +20,71 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
 
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
+    
+    [Fact]
+    public void SingleTest()
+    {
+        const string source = """
+                 class MyClass{pub static field MyField: string = ""}
+                 var a = MyClass::MyField;
+                 """; 
+        var expectedProgram = NewLoweredProgram(
+            types:
+            [
+                NewDataType(ModuleId,
+                    "MyClass",
+                    variants: [NewVariant("_classVariant")],
+                    staticFields:
+                    [
+                        NewStaticField(
+                            "MyField",
+                            StringT,
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(new Local("_returnValue"), new Use(new StringConstant("")))
+                                ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            [],
+                            new NewMethodLocal("_returnValue", null, StringT))
+                    ])
+            ],
+            methods:
+            [
+                NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                    [
+                        new BasicBlock(new BasicBlockId("bb0"), [
+                            new Assign(
+                                new Local("_local0"),
+                                new Use(new Copy(new StaticField(
+                                    new NewLoweredConcreteTypeReference("MyClass",
+                                        new DefId(ModuleId, $"{ModuleId}.MyClass"), []),
+                                    "MyField"))))
+                        ])
+                        {
+                            Terminator = new GoTo(new BasicBlockId("bb1"))
+                        },
+                        new BasicBlock(new BasicBlockId("bb1"), [])
+                        {
+                            Terminator = new Return()
+                        }
+                    ],
+                    Unit,
+                    locals: [new NewMethodLocal("_local0", "a", StringT)])
+            ]);
+        var program = CreateProgram(ModuleId, source);
+        var loweredProgram = NewProgramAbseil.Lower(program);
+
+        PrintPrograms(expectedProgram, loweredProgram);
+
+        loweredProgram.Should().BeEquivalentTo(expectedProgram);
+    }
 
     private const string ModuleId = "ClassTests";
 
@@ -151,35 +216,59 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                              ])
                      ])
              },
-//             {
-//                 "access static field",
-//                 """
-//                 class MyClass{pub static field MyField: string = ""}
-//                 var a = MyClass::MyField;
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, 
-//                             "MyClass",
-//                             variants: [Variant("_classVariant")],
-//                             staticFields: [StaticField("MyField", StringType, StringConstant("", true))])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration(
-//                                     "a",
-//                                     StaticFieldAccess(
-//                                         ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")),
-//                                         "MyField",
-//                                         true,
-//                                         StringType),
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [Local("a", StringType)])
-//                     ])
-//             },
+             {
+                 "access static field",
+                 """
+                 class MyClass{pub static field MyField: string = ""}
+                 var a = MyClass::MyField;
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, 
+                             "MyClass",
+                             variants: [NewVariant("_classVariant")],
+                             staticFields: [
+                                 NewStaticField(
+                                     "MyField",
+                                     StringT,
+                                     [
+                                         new BasicBlock(new BasicBlockId("bb0"), [
+                                             new Assign(new Local("_returnValue"), new Use(new StringConstant("")))
+                                         ])
+                                         {
+                                             Terminator = new GoTo(new BasicBlockId("bb1"))
+                                         },
+                                         new BasicBlock(new BasicBlockId("bb1"), [])
+                                         {
+                                             Terminator = new Return()
+                                         }
+                                     ],
+                                     [],
+                                     new NewMethodLocal("_returnValue", null, StringT))
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(new BasicBlockId("bb0"), [
+                                     new Assign(
+                                         new Local("_local0"),
+                                         new Use(new Copy(new StaticField(
+                                             new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []),
+                                             "MyField"))))
+                                 ])
+                                 {
+                                     Terminator = new GoTo(new BasicBlockId("bb1"))
+                                 },
+                                 new BasicBlock(new BasicBlockId("bb1"), [])
+                                 {
+                                     Terminator = new Return()
+                                 }
+                             ],
+                             Unit,
+                             locals: [new NewMethodLocal("_local0", "a", StringT)])
+                     ])
+             },
 //             {
 //                 "call static method",
 //                 """

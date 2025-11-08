@@ -37,7 +37,7 @@ public partial class NewProgramAbseil
             case Expressions.ObjectInitializerExpression objectInitializerExpression:
                 return LowerObjectInitializer(objectInitializerExpression, destination); 
             case Expressions.StaticMemberAccessExpression staticMemberAccessExpression:
-                throw new NotImplementedException();
+                return LowerStaticMemberAccess(staticMemberAccessExpression, destination);
             case Expressions.TupleExpression tupleExpression:
                 return LowerTuple(tupleExpression, destination);
             case Expressions.UnaryOperatorExpression unaryOperatorExpression:
@@ -53,6 +53,93 @@ public partial class NewProgramAbseil
                 throw new NotImplementedException();
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
+        }
+    }
+    
+    private IOperand LowerStaticMemberAccess(
+            StaticMemberAccessExpression e, IPlace? destination)
+    {
+        switch (e.StaticMemberAccess.MemberType)
+        {
+            case MemberType.Variant:
+            {
+                var unionType = GetTypeReference(e.OwnerType.NotNull())
+                    as NewLoweredConcreteTypeReference ?? throw new UnreachableException();
+
+                var dataType = _types[unionType.DefinitionId];
+                var variantName = e.StaticMemberAccess.MemberName.NotNull().StringValue;
+                var (variantIdentifier, variant) = dataType.Variants.Index()
+                    .First(x => x.Item.Name == variantName);
+
+                if (variant.Fields is [{ Name: VariantIdentifierFieldName }])
+                {
+                    return CreateObject(
+                        unionType,
+                        variantName: e.StaticMemberAccess.MemberName.NotNull().StringValue,
+                        [
+                            new CreateObjectField(VariantIdentifierFieldName,
+                                new UIntConstant((ulong)variantIdentifier, 2))
+                        ],
+                        destination);
+                }
+                
+                // we're statically accessing this variant, and there's at least one field. It must be a tuple variant
+                // because you can't access a class variant directly outside creating it. We're returning a 
+                // function object for this tuple create function
+
+                if (e.ResolvedType is not TypeChecking.TypeChecker.FunctionObject)
+                {
+                    throw new InvalidOperationException($"Expected a function object, got a {e.ResolvedType?.GetType()}");
+                }
+                
+                var ownerTypeArguments = unionType.TypeArguments;
+
+                var fn = e.StaticMemberAccess.InstantiatedFunction.NotNull();
+
+                var functionObjectType =
+                    (GetTypeReference(e.ResolvedType.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
+
+                return CreateObject(
+                    functionObjectType,
+                    ClassVariantName,
+                    [
+                        new CreateObjectField("FunctionReference", new FunctionPointerConstant(
+                            GetFunctionReference(
+                                fn.FunctionId,
+                                [..fn.TypeArguments.Select(GetTypeReference)],
+                                ownerTypeArguments))),
+                    ], destination);
+
+            }
+            case MemberType.Function:
+            {
+                var ownerTypeArguments = (GetTypeReference(e.OwnerType.NotNull()) as NewLoweredConcreteTypeReference).NotNull().TypeArguments;
+                var fn = e.StaticMemberAccess.InstantiatedFunction.NotNull();
+
+                return CreateObject(
+                    (GetTypeReference(e.ResolvedType.NotNull()) as NewLoweredConcreteTypeReference).NotNull(),
+                    ClassVariantName,
+                    [new CreateObjectField("FunctionReference", new FunctionPointerConstant(
+                        GetFunctionReference(fn.FunctionId,
+                            [..fn.TypeArguments.Select(GetTypeReference)],
+                            ownerTypeArguments)))],
+                    destination);
+            }
+            case MemberType.Field:
+            {
+                var operand = new Copy(new StaticField(
+                    (GetTypeReference(e.OwnerType.NotNull()) as NewLoweredConcreteTypeReference).NotNull(),
+                    e.StaticMemberAccess.MemberName.NotNull().StringValue));
+                if (destination is not null)
+                {
+                    _basicBlockStatements.Add(
+                        new Assign(destination, new Use(operand)));
+                }
+                
+                return operand;
+            }
+            default:
+                throw new UnreachableException();
         }
     }
     
@@ -92,6 +179,7 @@ public partial class NewProgramAbseil
 
                     return CreateObject(
                         functionObjectType,
+                        ClassVariantName,
                         [
                             new CreateObjectField("FunctionReference", new FunctionPointerConstant(
                                     GetFunctionReference(
@@ -119,6 +207,7 @@ public partial class NewProgramAbseil
 
         return CreateObject(
             typeReference,
+            ClassVariantName,
             objectInitializerExpression.ObjectInitializer.FieldInitializers.Select(x =>
                 new CreateObjectField(x.FieldName.StringValue, x.Value)),
             destination);
@@ -147,6 +236,7 @@ public partial class NewProgramAbseil
 
     private IOperand CreateObject(
         NewLoweredConcreteTypeReference type,
+        string variantName,
         IEnumerable<CreateObjectField> fields,
         IPlace? destination)
     {
@@ -165,7 +255,7 @@ public partial class NewProgramAbseil
 
         foreach (var createObjectField in fields)
         {
-            var field = new Field(localDestination.LocalName, createObjectField.FieldName, ClassVariantName);
+            var field = new Field(localDestination.LocalName, createObjectField.FieldName, variantName);
             if (createObjectField.Expression is {} expression)
             {
                 NewLowerExpression(
@@ -199,6 +289,7 @@ public partial class NewProgramAbseil
 
         return CreateObject(
             typeReference,
+            ClassVariantName,
             tupleExpression.Values.Select((x, i) => new CreateObjectField($"Item{i}", x)),
             destination);
     }

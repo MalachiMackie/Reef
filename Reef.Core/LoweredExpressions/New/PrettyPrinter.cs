@@ -272,6 +272,12 @@ public class NewPrettyPrinter
                 _stringBuilder.Append(local.LocalName);
                 break;
             }
+            case StaticField staticField:
+            {
+                PrettyPrintTypeReference(staticField.Type);
+                _stringBuilder.Append($"::{staticField.FieldName}");
+                break;
+            }
             default:
                 throw new ArgumentOutOfRangeException(nameof(place));
         }
