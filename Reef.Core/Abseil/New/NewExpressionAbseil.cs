@@ -196,11 +196,6 @@ public partial class NewProgramAbseil
         }
     }
 
-    // private IOperand LowerMemberAccess(MemberAccessExpression memberAccessExpression, IPlace destination)
-    // {
-    //     
-    // }
-
     private IOperand LowerObjectInitializer(ObjectInitializerExpression objectInitializerExpression, IPlace? destination)
     {
         var typeReference = (GetTypeReference(objectInitializerExpression.ResolvedType.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
@@ -558,10 +553,6 @@ public partial class NewProgramAbseil
                         {
                             var local = _locals.First(x => x.UserGivenName == variable.Name.StringValue);
                             return new Copy(new Local(local.CompilerGivenName));
-                            // return new LocalVariableAccessor(
-                            //         variable.Name.StringValue,
-                            //         valueUseful,
-                            //         resolvedType);
                         }
 
                         throw new NotImplementedException();
@@ -649,66 +640,53 @@ public partial class NewProgramAbseil
                     when fieldVariable.ContainingSignature.Id == _currentType?.DefinitionId
                         && _currentFunction is not null:
                 {
-                    throw new NotImplementedException();
-                        // if (fieldVariable.IsStaticField)
-                        // {
-                        //     return new StaticFieldAccessExpression(
-                        //             _currentType,
-                        //             fieldVariable.Name.StringValue,
-                        //             valueUseful,
-                        //             resolvedType);
-                        // }
-                        //
-                        // if (_currentFunction.Value.FunctionSignature.ClosureTypeId is not null)
-                        // {
-                        //     var loweredMethod = _currentFunction.Value.LoweredMethod;
-                        //     var fnSignature = _currentFunction.Value.FunctionSignature;
-                        //     var closureType = _types[fnSignature.ClosureTypeId];
-                        //     var closureTypeReference = new LoweredConcreteTypeReference(closureType.Name, closureType.Id, []);
-                        //
-                        //     // we're a closure, so reference the value through the "this" field
-                        //     // of the closure type
-                        //     Debug.Assert(loweredMethod.Parameters.Count > 0);
-                        //     Debug.Assert(
-                        //             EqualTypeReferences(
-                        //                 loweredMethod.Parameters[0],
-                        //                 closureTypeReference));
-                        //     return new FieldAccessExpression(
-                        //         new FieldAccessExpression(
-                        //             new LoadArgumentExpression(
-                        //                 0,
-                        //                 true,
-                        //                 closureTypeReference),
-                        //             "this",
-                        //             "_classVariant",
-                        //             true,
-                        //             _currentType),
-                        //         fieldVariable.Name.StringValue,
-                        //         "_classVariant",
-                        //         valueUseful,
-                        //         resolvedType);
-                        // }
-                        //
-                        // if (_currentFunction.Value.LoweredMethod.Parameters.Count == 0
-                        //         || !EqualTypeReferences(
-                        //             _currentFunction.Value.LoweredMethod.Parameters[0],
-                        //             _currentType))
-                        // {
-                        //     throw new InvalidOperationException("Expected to be in instance function");
-                        // }
-                        //
-                        // // todo: assert we're in a class and have _classVariant
-                        //
-                        // return new FieldAccessExpression(
-                        //     new LoadArgumentExpression(
-                        //         0,
-                        //         true,
-                        //         _currentType),
-                        //     fieldVariable.Name.StringValue,
-                        //     "_classVariant",
-                        //     valueUseful,
-                        //     resolvedType);
+                    if (fieldVariable.IsStaticField)
+                    {
+                        return new Copy(new StaticField(_currentType, fieldVariable.Name.StringValue));
                     }
+                    
+                    if (_currentFunction.Value.FunctionSignature.ClosureTypeId is not null)
+                    {
+                        var loweredMethod = _currentFunction.Value.LoweredMethod;
+                        var fnSignature = _currentFunction.Value.FunctionSignature;
+                        var closureType = _types[fnSignature.ClosureTypeId];
+                        var closureTypeReference = new NewLoweredConcreteTypeReference(closureType.Name, closureType.Id, []);
+                    
+                        // we're a closure, so reference the value through the "this" field
+                        // of the closure type
+                        Debug.Assert(loweredMethod.ParameterLocals.Count > 0);
+                        Debug.Assert(
+                                EqualTypeReferences(
+                                    loweredMethod.ParameterLocals[0].Type,
+                                    closureTypeReference));
+
+                        var thisLocalName = LocalName((uint)_locals.Count);
+                        _locals.Add(new NewMethodLocal(thisLocalName, null, _currentType));
+                        _basicBlockStatements.Add(new Assign(
+                            new Local(thisLocalName),
+                            new Use(new Copy(new Field(ParameterLocalName(0), ClosureThisFieldName, ClassVariantName)))));
+
+                        return new Copy(new Field(
+                            thisLocalName,
+                            fieldVariable.Name.StringValue,
+                            ClassVariantName));
+                    }
+                    
+                    if (_currentFunction.Value.LoweredMethod.ParameterLocals.Count == 0
+                            || !EqualTypeReferences(
+                                _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
+                                _currentType))
+                    {
+                        throw new InvalidOperationException("Expected to be in instance function");
+                    }
+                    
+                    // todo: assert we're in a class and have _classVariant
+
+                    return new Copy(new Field(
+                        ParameterLocalName(0),
+                        fieldVariable.Name.StringValue,
+                        ClassVariantName));
+                }
                 case TypeChecking.TypeChecker.FunctionSignatureParameter argument:
                 {
                     Debug.Assert(_currentFunction is not null);
@@ -737,9 +715,6 @@ public partial class NewProgramAbseil
                     {
                         return new Copy(new Field(LocalsObjectLocalName, argument.Name.StringValue, ClassVariantName));
                     }
-                    var closureTypeId = _currentFunction.NotNull()
-                            .FunctionSignature.ClosureTypeId.NotNull();
-                    var closureType = _types[closureTypeId];
 
                     var referencedLocalsObjectLocalName = LocalName((uint)_locals.Count);
                     _locals.Add(new NewMethodLocal(referencedLocalsObjectLocalName, null, localsTypeReference));

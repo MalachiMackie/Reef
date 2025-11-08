@@ -493,44 +493,49 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                              locals: [new NewMethodLocal("_local0", null, Unit)])
                      ])
              },
-//             {
-//                 "access instance field inside function",
-//                 """
-//                 class MyClass
-//                 {
-//                     field MyField: string,
-//                     pub fn MyFn()
-//                     {
-//                         var a = MyField;
-//                     }
-//                 }
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, 
-//                             "MyClass",
-//                             variants: [
-//                                 Variant("_classVariant", [Field("MyField", StringType)])
-//                             ])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
-//                             [
-//                                 VariableDeclaration(
-//                                     "a",
-//                                     FieldAccess(
-//                                         LoadArgument(0, true, ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
-//                                         "MyField",
-//                                         "_classVariant",
-//                                         true,
-//                                         StringType),
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [Local("a", StringType)],
-//                             parameters: [ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))])
-//                     ])
-//             },
+             {
+                 "access instance field inside function",
+                 """
+                 class MyClass
+                 {
+                     field MyField: string,
+                     pub fn MyFn()
+                     {
+                         var a = MyField;
+                     }
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, 
+                             "MyClass",
+                             variants: [
+                                 NewVariant("_classVariant", [NewField("MyField", StringT)])
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
+                             [
+                                 new BasicBlock(new BasicBlockId("bb0"), [
+                                     new Assign(
+                                         new Local("_local0"),
+                                         new Use(new Copy(new Field("_param0", "MyField", "_classVariant"))))
+                                 ])
+                                 {
+                                     Terminator = new GoTo(new BasicBlockId("bb1"))
+                                 },
+                                 new BasicBlock(new BasicBlockId("bb1"), [])
+                                 {
+                                     Terminator = new Return()
+                                 }
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", "a", StringT),
+                             ],
+                             parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))])
+                     ])
+             },
 //             {
 //                 "access static field inside function",
 //                 """
