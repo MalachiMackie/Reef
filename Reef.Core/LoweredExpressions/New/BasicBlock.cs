@@ -1,6 +1,4 @@
-﻿using Reef.Core.TypeChecking;
-
-namespace Reef.Core.LoweredExpressions.New;
+﻿namespace Reef.Core.LoweredExpressions.New;
 
 public interface IStatement;
 
@@ -105,25 +103,12 @@ public record NewMethodLocal(string CompilerGivenName, string? UserGivenName, IN
 
 public record NewLoweredFunctionReference(
     DefId DefinitionId,
-    IReadOnlyList<INewLoweredTypeReference> TypeArguments) : INewLoweredTypeReference
-{}
+    IReadOnlyList<INewLoweredTypeReference> TypeArguments) : INewLoweredTypeReference;
 
-public interface INewLoweredTypeReference
-{ }
+public interface INewLoweredTypeReference;
 
 public record NewLoweredConcreteTypeReference(string Name, DefId DefinitionId, IReadOnlyList<INewLoweredTypeReference> TypeArguments) : INewLoweredTypeReference;
 public record NewLoweredGenericPlaceholder(DefId OwnerDefinitionId, string PlaceholderName) : INewLoweredTypeReference;
-
-file static class SignatureExtensionMethods
-{
-    public static NewLoweredConcreteTypeReference ToLoweredTypeReference(this TypeChecker.ClassSignature signature)
-    {
-        return new NewLoweredConcreteTypeReference(
-            signature.Name,
-            signature.Id,
-            []);
-    }
-}
 
 public record NewDataType(
     DefId Id,
