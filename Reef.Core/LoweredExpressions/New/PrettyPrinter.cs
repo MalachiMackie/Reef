@@ -264,7 +264,7 @@ public class NewPrettyPrinter
         {
             case Field field:
             {
-                _stringBuilder.Append($"({field.LocalName} as {field.VariantName}).{field.VariantName}");
+                _stringBuilder.Append($"({field.LocalName} as {field.VariantName}).{field.FieldName}");
                 break;
             }
             case Local local:
@@ -368,6 +368,10 @@ public class NewPrettyPrinter
     {
         switch (operand)
         {
+            case FunctionPointerConstant functionPointerConstant:
+                _stringBuilder.Append('*');
+                PrettyPrintFunctionReference(functionPointerConstant.Value);
+                break;
             case IntConstant intConstant:
                 _stringBuilder.Append($"{intConstant.Value}_int{intConstant.ByteSize * 8}");
                 break;

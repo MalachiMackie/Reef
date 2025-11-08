@@ -481,6 +481,13 @@ public partial class NewProgramAbseil
 
     private IOperand LowerValueAccessor(ValueAccessorExpression e, IPlace? destination)
     {
+        if (e is { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, FunctionInstantiation: { } fn })
+        {
+            // function access already assigns the value to destination, so handle it separately
+            return FunctionAccess(fn, (e.ResolvedType as TypeChecking.TypeChecker.FunctionObject).NotNull(),
+                e.ValueUseful);
+        }
+        
         var operand = e switch
         {
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: StringToken { StringValue: var stringLiteral } } } => new StringConstant(stringLiteral),
@@ -491,7 +498,6 @@ public partial class NewProgramAbseil
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.True }} => new BoolConstant(true),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.False }} => new BoolConstant(false),
             { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, ReferencedVariable: {} variable} => VariableAccess(variable, e.ValueUseful),
-            { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, FunctionInstantiation: {} fn} => FunctionAccess(fn, (e.ResolvedType as TypeChecking.TypeChecker.FunctionObject).NotNull(), e.ValueUseful),
             _ => throw new UnreachableException($"{e}")
         };
 
@@ -503,50 +509,40 @@ public partial class NewProgramAbseil
         return operand;
         
         IOperand FunctionAccess(
-                TypeChecking.TypeChecker.InstantiatedFunction fn,
+                TypeChecking.TypeChecker.InstantiatedFunction innerFn,
                 TypeChecking.TypeChecker.FunctionObject typeReference,
                 bool valueUseful)
         {
-            var method = _methods.Keys.First(x => x.Id == fn.FunctionId);
-
             var ownerTypeArguments = _currentType?.TypeArguments ?? [];
 
-            throw new NotImplementedException();
+            var functionObjectParameters = new List<CreateObjectField>
+            {
+                new ("FunctionReference",
+                    new FunctionPointerConstant(
+                        GetFunctionReference(
+                            innerFn.FunctionId,
+                            [..innerFn.TypeArguments.Select(GetTypeReference)],
+                            ownerTypeArguments)))
+            };
+            
+            if (innerFn.ClosureTypeId is not null)
+            {
+                functionObjectParameters.Add(new CreateObjectField("FunctionParameter", CreateClosureObject(innerFn)));
+            }
+            else if (innerFn is { IsStatic: false, OwnerType: not null }
+                     && _currentType is not null
+                     && EqualTypeReferences(GetTypeReference(innerFn.OwnerType), _currentType)
+                     && _currentFunction is not null
+                     && EqualTypeReferences(_currentFunction.Value.LoweredMethod.ParameterLocals[0].Type, _currentType))
+            {
+                functionObjectParameters.Add(new CreateObjectField("FunctionParameter", new Copy(new Local(ParameterLocalName(0)))));
+            }
 
-            // var functionObjectParameters = new Dictionary<string, ILoweredExpression>
-            // {
-            //     {
-            //         "FunctionReference",
-            //         new FunctionReferenceConstantExpression(
-            //                 GetFunctionReference(
-            //                     fn.FunctionId,
-            //                     [..fn.TypeArguments.Select(GetTypeReference)],
-            //                     ownerTypeArguments),
-            //                 true,
-            //                 new LoweredFunctionPointer(
-            //                     method.Parameters,
-            //                     method.ReturnType))
-            //     }
-            // };
-            //
-            // if (fn.ClosureTypeId is not null)
-            // {
-            //     functionObjectParameters.Add("FunctionParameter", CreateClosureObject(fn));
-            // }
-            // else if (fn is { IsStatic: false, OwnerType: not null }
-            //          && _currentType is not null
-            //          && EqualTypeReferences(GetTypeReference(fn.OwnerType), _currentType)
-            //          && _currentFunction is not null
-            //          && EqualTypeReferences(_currentFunction.Value.LoweredMethod.Parameters[0], _currentType))
-            // {
-            //     functionObjectParameters.Add("FunctionParameter", new LoadArgumentExpression(0, true, _currentType));
-            // }
-            //
-            // return new CreateObjectExpression(
-            //     (GetTypeReference(typeReference) as LoweredConcreteTypeReference).NotNull(),
-            //     "_classVariant",
-            //     valueUseful,
-            //     functionObjectParameters);
+            return CreateObject(
+                (GetTypeReference(typeReference) as NewLoweredConcreteTypeReference).NotNull(),
+                ClassVariantName,
+                functionObjectParameters,
+                destination);
         }
 
         IOperand VariableAccess(

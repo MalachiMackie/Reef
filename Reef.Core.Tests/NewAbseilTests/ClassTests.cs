@@ -269,81 +269,98 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                              locals: [new NewMethodLocal("_local0", "a", StringT)])
                      ])
              },
-//             {
-//                 "call static method",
-//                 """
-//                 MyClass::MyFn();
-//                 class MyClass
-//                 {
-//                     pub static fn MyFn(){}
-//                 }
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, "MyClass", variants: [Variant("_classVariant")]),
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn", [MethodReturnUnit()]),
-//                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 MethodCall(
-//                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn") ,"MyClass__MyFn"),
-//                                     [],
-//                                     false,
-//                                     Unit),
-//                                 MethodReturnUnit()
-//                             ])
-//                     ])
-//             },
-//             {
-//                 "assign instance method to function variable from within type but different method",
-//                 """
-//                 class MyClass {
-//                     pub fn OtherFn(){}
-//                     pub fn MyFn() {
-//                         var a = OtherFn; 
-//                     }
-//                 }
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, "MyClass",
-//                             variants: [
-//                                 Variant("_classVariant")
-//                             ])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn",
-//                             [MethodReturnUnit()],
-//                             parameters: [ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))]),
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
-//                             [
-//                                 VariableDeclaration("a",
-//                                     CreateObject(
-//                                         ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]),
-//                                         "_classVariant",
-//                                         true,
-//                                         new()
-//                                         {
-//                                             {
-//                                                 "FunctionReference",
-//                                                 FunctionReferenceConstant(
-//                                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn"),
-//                                                     true,
-//                                                     new LoweredFunctionPointer([ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))], Unit))
-//                                             },
-//                                             {
-//                                                 "FunctionParameter",
-//                                                 LoadArgument(0, true, ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")))
-//                                             }
-//                                         }),
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [Local("a", ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))],
-//                             parameters: [ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))])
-//                     ])
-//             },
+             {
+                 "call static method",
+                 """
+                 MyClass::MyFn();
+                 class MyClass
+                 {
+                     pub static fn MyFn(){}
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "MyClass", variants: [NewVariant("_classVariant")]),
+                     ],
+                     methods: [
+                         NewMethod(
+                             new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"),
+                             "MyClass__MyFn",
+                             [new BasicBlock(new BasicBlockId("bb0"), []) { Terminator = new Return() }],
+                             Unit),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(new BasicBlockId("bb0"), [])
+                                 {
+                                     Terminator = new MethodCall(
+                                         new NewLoweredFunctionReference(
+                                             new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), []),
+                                         [],
+                                         new Local("_local0"),
+                                         new BasicBlockId("bb1"))
+                                 },
+                                 new BasicBlock(new BasicBlockId("bb1"), [])
+                                 {
+                                     Terminator = new Return()
+                                 }
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", null, Unit)
+                             ])
+                     ])
+             },
+             {
+                 "assign instance method to function variable from within type but different method",
+                 """
+                 class MyClass {
+                     pub fn OtherFn(){}
+                     pub fn MyFn() {
+                         var a = OtherFn; 
+                     }
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "MyClass",
+                             variants: [
+                                 NewVariant("_classVariant")
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn",
+                             [new BasicBlock(new BasicBlockId("bb0"), []) {Terminator = new Return()}],
+                             Unit,
+                             parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))]),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
+                             [
+                                 new BasicBlock(new BasicBlockId("bb0"), [
+                                     new Assign(
+                                         new Local("_local0"),
+                                         new CreateObject(
+                                             new NewLoweredConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))),
+                                     new Assign(
+                                         new Field("_local0", "FunctionReference", "_classVariant"),
+                                         new Use(new FunctionPointerConstant(
+                                             new NewLoweredFunctionReference(
+                                                 new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"),
+                                                 [])))),
+                                     new Assign(
+                                         new Field("_local0", "FunctionParameter", "_classVariant"),
+                                         new Use(new Copy(new Local("_param0"))))
+                                 ])
+                                 {
+                                     Terminator = new GoTo(new BasicBlockId("bb1"))
+                                 },
+                                 new BasicBlock(new BasicBlockId("bb1"), []) { Terminator = new Return() }
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit])),
+                             ],
+                             parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))])
+                     ])
+             },
 //             {
 //                 "assign instance method to function variable from within type",
 //                 """
