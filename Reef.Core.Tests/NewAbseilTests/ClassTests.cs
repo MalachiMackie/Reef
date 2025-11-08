@@ -536,42 +536,60 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                              parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))])
                      ])
              },
-//             {
-//                 "access static field inside function",
-//                 """
-//                 class MyClass
-//                 {
-//                     static field MyField: string = "",
-//                     pub fn MyFn()
-//                     {
-//                         var a = MyField;
-//                     }
-//                 }
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, 
-//                             "MyClass",
-//                             variants: [Variant("_classVariant")],
-//                             staticFields: [StaticField("MyField", StringType, StringConstant("", true))])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
-//                             [
-//                                 VariableDeclaration(
-//                                     "a",
-//                                     StaticFieldAccess(
-//                                         ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")),
-//                                         "MyField",
-//                                         true,
-//                                         StringType),
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [Local("a", StringType)],
-//                             parameters: [ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))])
-//                     ])
-//             },
+             {
+                 "access static field inside function",
+                 """
+                 class MyClass
+                 {
+                     static field MyField: string = "",
+                     pub fn MyFn()
+                     {
+                         var a = MyField;
+                     }
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, 
+                             "MyClass",
+                             variants: [NewVariant("_classVariant")],
+                             staticFields: [
+                                 NewStaticField(
+                                     "MyField",
+                                     StringT,
+                                     [
+                                         new BasicBlock(new BasicBlockId("bb0"), [
+                                             new Assign(new Local("_returnValue"), new Use(new StringConstant("")))
+                                         ])
+                                         {
+                                             Terminator = new GoTo(new BasicBlockId("bb1"))
+                                         },
+                                         new BasicBlock(new BasicBlockId("bb1"), []) { Terminator = new Return() }
+                                     ],
+                                     [],
+                                     new NewMethodLocal("_returnValue", null, StringT))
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
+                             [
+                                 new BasicBlock(new BasicBlockId("bb0"), [
+                                     new Assign(
+                                         new Local("_local0"),
+                                         new Use(new Copy(new StaticField(
+                                             new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []),
+                                             "MyField"))))
+                                 ])
+                                 {
+                                     Terminator = new GoTo(new BasicBlockId("bb1"))
+                                 },
+                                 new BasicBlock(new BasicBlockId("bb1"), []) { Terminator = new Return() }
+                             ],
+                             Unit,
+                             locals: [new NewMethodLocal("_local0", "a", StringT)],
+                             parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))])
+                     ])
+             },
 //             {
 //                 "call instance function inside instance function",
 //                 """
