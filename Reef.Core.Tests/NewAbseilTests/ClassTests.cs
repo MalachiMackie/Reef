@@ -1,7 +1,6 @@
 using Reef.Core.Abseil.New;
 using Reef.Core.LoweredExpressions.New;
 using Xunit.Abstractions;
-
 using static Reef.Core.Tests.NewLoweredProgramHelpers;
 
 namespace Reef.Core.Tests.NewAbseilTests;
@@ -20,14 +19,14 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
 
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
-    
+
     [Fact]
     public void SingleTest()
     {
         const string source = """
-                 class MyClass{pub static field MyField: string = ""}
-                 var a = MyClass::MyField;
-                 """; 
+                              class MyClass{pub static field MyField: string = ""}
+                              var a = MyClass::MyField;
+                              """;
         var expectedProgram = NewLoweredProgram(
             types:
             [
@@ -42,14 +41,8 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                             [
                                 new BasicBlock(new BasicBlockId("bb0"), [
                                     new Assign(new Local("_returnValue"), new Use(new StringConstant("")))
-                                ])
-                                {
-                                    Terminator = new GoTo(new BasicBlockId("bb1"))
-                                },
-                                new BasicBlock(new BasicBlockId("bb1"), [])
-                                {
-                                    Terminator = new Return()
-                                }
+                                ], new GoTo(new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
                             ],
                             [],
                             new NewMethodLocal("_returnValue", null, StringT))
@@ -66,14 +59,8 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                                     new NewLoweredConcreteTypeReference("MyClass",
                                         new DefId(ModuleId, $"{ModuleId}.MyClass"), []),
                                     "MyField"))))
-                        ])
-                        {
-                            Terminator = new GoTo(new BasicBlockId("bb1"))
-                        },
-                        new BasicBlock(new BasicBlockId("bb1"), [])
-                        {
-                            Terminator = new Return()
-                        }
+                        ], new GoTo(new BasicBlockId("bb1"))),
+                        new BasicBlock(new BasicBlockId("bb1"), [], new Return())
                     ],
                     Unit,
                     locals: [new NewMethodLocal("_local0", "a", StringT)])
@@ -92,539 +79,594 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
     {
         return new()
         {
-             {
-                 "empty class",
-                 "class MyClass{}",
-                 NewLoweredProgram(
-                         types: [
-                             NewDataType(ModuleId, "MyClass",
-                                 variants: [NewVariant("_classVariant")])
-                         ])
-             },
-             {
-                 "generic class",
-                 "class MyClass<T>{}",
-                 NewLoweredProgram(
-                         types: [
-                             NewDataType(ModuleId, "MyClass",
-                                 ["T"],
-                                 variants: [NewVariant("_classVariant")])
-                         ])
-             },
-             {
-                 "generic class with instance function",
-                 "class MyClass<T>{pub fn SomeFn(){}}",
-                 NewLoweredProgram(
-                         types: [
-                             NewDataType(ModuleId, "MyClass",
-                                 ["T"],
-                                 [NewVariant("_classVariant")])
-                         ], methods: [
-                                     NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), 
-                                         "MyClass__SomeFn",
-                                         [new BasicBlock(new BasicBlockId("bb0"), []) {Terminator = new Return()}],
-                                         Unit,
-                                         typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")],
-                                         parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [new NewLoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")]))])
-                                 ])
-             },
-             {
-                 "class with instance fields",
-                 "class MyClass { pub field MyField: string, pub field OtherField: i64}",
-                 NewLoweredProgram(types: [
-                     NewDataType(ModuleId, "MyClass",
-                         variants: [
-                             NewVariant(
-                                 "_classVariant",
-                                 [
-                                     NewField("MyField", StringT),
-                                     NewField("OtherField", Int64T),
-                                 ])
-                         ])
-                 ])
-             },
-             {
-                 "class with static fields",
-                 """class MyClass { pub static field MyField: string = ""}""",
-                 NewLoweredProgram(types: [
-                     NewDataType(ModuleId, "MyClass",
-                         variants: [NewVariant("_classVariant")],
-                         staticFields: [
-                             NewStaticField(
-                                 "MyField",
-                                 StringT,
-                                 [
-                                     new BasicBlock(new BasicBlockId("bb0"), [
-                                         new Assign(
-                                             new Local("_returnValue"),
-                                             new Use(new StringConstant("")))
-                                     ])
-                                     {
-                                         Terminator = new GoTo(new BasicBlockId("bb1"))
-                                     },
-                                     new BasicBlock(new BasicBlockId("bb1"), [])
-                                     {
-                                         Terminator = new Return()
-                                     }
-                                 ],
-                                 [],
-                                 new NewMethodLocal("_returnValue", null, StringT))
-                         ])
-                 ])
-             },
-             {
-                 "access class field",
-                 """
-                 class MyClass {pub field A: string}
-                 var a = new MyClass{A = ""};
-                 var b = a.A;
-                 """,
-                 NewLoweredProgram(
-                     types: [
-                         NewDataType(ModuleId, "MyClass",
-                             variants: [
-                                 NewVariant("_classVariant", [NewField("A", StringT)])
-                             ])
-                     ],
-                     methods: [
-                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-                             [
-                                 new BasicBlock(new BasicBlockId("bb0"), [
-                                     new Assign(
-                                         new Local("_local0"),
-                                         new CreateObject(new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
-                                     new Assign(
-                                         new Field("_local0", "A", "_classVariant"),
-                                         new Use(new StringConstant(""))),
-                                     new Assign(
-                                         new Local("_local2"),
-                                         new Use(new Copy(new Local("_local0")))),
-                                     new Assign(
-                                         new Local("_local1"),
-                                         new Use(new Copy(new Field("_local2", "A", "_classVariant"))))
-                                 ])
-                                 {
-                                     Terminator = new GoTo(new BasicBlockId("bb1"))
-                                 },
-                                 new BasicBlock(new BasicBlockId("bb1"), []) {Terminator = new Return()}
-                             ],
-                             Unit,
-                             locals: [
-                                 new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-                                 new NewMethodLocal("_local1", "b", StringT),
-                                 new NewMethodLocal("_local2", null, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-                             ])
-                     ])
-             },
-             {
-                 "access static field",
-                 """
-                 class MyClass{pub static field MyField: string = ""}
-                 var a = MyClass::MyField;
-                 """,
-                 NewLoweredProgram(
-                     types: [
-                         NewDataType(ModuleId, 
-                             "MyClass",
-                             variants: [NewVariant("_classVariant")],
-                             staticFields: [
-                                 NewStaticField(
-                                     "MyField",
-                                     StringT,
-                                     [
-                                         new BasicBlock(new BasicBlockId("bb0"), [
-                                             new Assign(new Local("_returnValue"), new Use(new StringConstant("")))
-                                         ])
-                                         {
-                                             Terminator = new GoTo(new BasicBlockId("bb1"))
-                                         },
-                                         new BasicBlock(new BasicBlockId("bb1"), [])
-                                         {
-                                             Terminator = new Return()
-                                         }
-                                     ],
-                                     [],
-                                     new NewMethodLocal("_returnValue", null, StringT))
-                             ])
-                     ],
-                     methods: [
-                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-                             [
-                                 new BasicBlock(new BasicBlockId("bb0"), [
-                                     new Assign(
-                                         new Local("_local0"),
-                                         new Use(new Copy(new StaticField(
-                                             new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []),
-                                             "MyField"))))
-                                 ])
-                                 {
-                                     Terminator = new GoTo(new BasicBlockId("bb1"))
-                                 },
-                                 new BasicBlock(new BasicBlockId("bb1"), [])
-                                 {
-                                     Terminator = new Return()
-                                 }
-                             ],
-                             Unit,
-                             locals: [new NewMethodLocal("_local0", "a", StringT)])
-                     ])
-             },
-             {
-                 "call static method",
-                 """
-                 MyClass::MyFn();
-                 class MyClass
-                 {
-                     pub static fn MyFn(){}
-                 }
-                 """,
-                 NewLoweredProgram(
-                     types: [
-                         NewDataType(ModuleId, "MyClass", variants: [NewVariant("_classVariant")]),
-                     ],
-                     methods: [
-                         NewMethod(
-                             new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"),
-                             "MyClass__MyFn",
-                             [new BasicBlock(new BasicBlockId("bb0"), []) { Terminator = new Return() }],
-                             Unit),
-                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-                             [
-                                 new BasicBlock(new BasicBlockId("bb0"), [])
-                                 {
-                                     Terminator = new MethodCall(
-                                         new NewLoweredFunctionReference(
-                                             new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), []),
-                                         [],
-                                         new Local("_local0"),
-                                         new BasicBlockId("bb1"))
-                                 },
-                                 new BasicBlock(new BasicBlockId("bb1"), [])
-                                 {
-                                     Terminator = new Return()
-                                 }
-                             ],
-                             Unit,
-                             locals: [
-                                 new NewMethodLocal("_local0", null, Unit)
-                             ])
-                     ])
-             },
-             {
-                 "assign instance method to function variable from within type but different method",
-                 """
-                 class MyClass {
-                     pub fn OtherFn(){}
-                     pub fn MyFn() {
-                         var a = OtherFn; 
-                     }
-                 }
-                 """,
-                 NewLoweredProgram(
-                     types: [
-                         NewDataType(ModuleId, "MyClass",
-                             variants: [
-                                 NewVariant("_classVariant")
-                             ])
-                     ],
-                     methods: [
-                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn",
-                             [new BasicBlock(new BasicBlockId("bb0"), []) {Terminator = new Return()}],
-                             Unit,
-                             parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))]),
-                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
-                             [
-                                 new BasicBlock(new BasicBlockId("bb0"), [
-                                     new Assign(
-                                         new Local("_local0"),
-                                         new CreateObject(
-                                             new NewLoweredConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))),
-                                     new Assign(
-                                         new Field("_local0", "FunctionReference", "_classVariant"),
-                                         new Use(new FunctionPointerConstant(
-                                             new NewLoweredFunctionReference(
-                                                 new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"),
-                                                 [])))),
-                                     new Assign(
-                                         new Field("_local0", "FunctionParameter", "_classVariant"),
-                                         new Use(new Copy(new Local("_param0"))))
-                                 ])
-                                 {
-                                     Terminator = new GoTo(new BasicBlockId("bb1"))
-                                 },
-                                 new BasicBlock(new BasicBlockId("bb1"), []) { Terminator = new Return() }
-                             ],
-                             Unit,
-                             locals: [
-                                 new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit])),
-                             ],
-                             parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))])
-                     ])
-             },
-             {
-                 "assign instance method to function variable from within type",
-                 """
-                 class MyClass {
-                     pub fn MyFn() {
-                         var a = MyFn; 
-                     }
-                 }
-                 """,
-                 NewLoweredProgram(
-                     types: [
-                         NewDataType(ModuleId, "MyClass",
-                             variants: [
-                                 NewVariant("_classVariant")
-                             ])
-                     ],
-                     methods: [
-                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
-                             [
-                                 new BasicBlock(new BasicBlockId("bb0"), [
-                                     new Assign(
-                                         new Local("_local0"),
-                                         new CreateObject(
-                                             new NewLoweredConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))),
-                                     new Assign(
-                                         new Field("_local0", "FunctionReference", "_classVariant"),
-                                         new Use(new FunctionPointerConstant(
-                                             new NewLoweredFunctionReference(
-                                                 new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), [])))),
-                                     new Assign(
-                                         new Field("_local0", "FunctionParameter", "_classVariant"),
-                                         new Use(new Copy(new Local("_param0"))))
-                                 ])
-                                 {
-                                     Terminator = new GoTo(new BasicBlockId("bb1"))
-                                 },
-                                 new BasicBlock(new BasicBlockId("bb1"), [])
-                                 {
-                                     Terminator = new Return()
-                                 }
-                             ],
-                             Unit,
-                             locals: [new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))],
-                             parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))])
-                     ])
-             },
-             {
-                 "call instance method",
-                 """
-                 class MyClass
-                 {
-                     pub fn MyFn(){}
-                 }
-                 var a = new MyClass{};
-                 a.MyFn();
-                 """,
-                 NewLoweredProgram(
-                     types: [
-                         NewDataType(ModuleId, "MyClass", variants: [NewVariant("_classVariant")])
-                     ],
-                     methods: [
-                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), 
-                             "MyClass__MyFn",
-                             [new BasicBlock(new BasicBlockId("bb0"), []) {Terminator = new Return()}],
-                             Unit,
-                             parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))]),
-                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), 
-                             "_Main",
-                             [
-                                 new BasicBlock(new BasicBlockId("bb0"), [
-                                     new Assign(
-                                         new Local("_local0"),
-                                         new CreateObject(
-                                             new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
-                                 ])
-                                 {
-                                     Terminator = new MethodCall(
-                                         new NewLoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), []),
-                                         [new Copy(new Local("_local0"))],
-                                         new Local("_local1"),
-                                         new BasicBlockId("bb1"))
-                                 },
-                                 new BasicBlock(new BasicBlockId("bb1"), [])
-                                 {
-                                     Terminator = new Return()
-                                 }
-                             ],
-                             Unit,
-                             locals: [
-                                 new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-                                 new NewMethodLocal("_local1", null, Unit)
-                             ])
-                     ])
-             },
-             {
-                 "call static method inside function",
-                 """
-                 class MyClass
-                 {
-                     pub static fn MyFn(){}
-                     pub static fn OtherFn()
-                     {
-                         MyFn();
-                     }
-                 }
-                 """,
-                 NewLoweredProgram(
-                     types: [
-                         NewDataType(ModuleId, "MyClass",
-                             variants: [NewVariant("_classVariant")])
-                     ],
-                     methods: [
-                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn", [
-                             new BasicBlock(new BasicBlockId("bb0"), []) { Terminator = new Return() }
-                         ], Unit),
-                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn",
-                             [
-                                 new BasicBlock(new BasicBlockId("bb0"), [])
-                                 {
-                                     Terminator = new MethodCall(
-                                         new NewLoweredFunctionReference(
-                                             new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), []),
-                                         [],
-                                         new Local("_local0"),
-                                         new BasicBlockId("bb1"))
-                                 },
-                                 new BasicBlock(new BasicBlockId("bb1"), []) { Terminator = new Return() }
-                             ],
-                             Unit,
-                             locals: [new NewMethodLocal("_local0", null, Unit)])
-                     ])
-             },
-             {
-                 "access instance field inside function",
-                 """
-                 class MyClass
-                 {
-                     field MyField: string,
-                     pub fn MyFn()
-                     {
-                         var a = MyField;
-                     }
-                 }
-                 """,
-                 NewLoweredProgram(
-                     types: [
-                         NewDataType(ModuleId, 
-                             "MyClass",
-                             variants: [
-                                 NewVariant("_classVariant", [NewField("MyField", StringT)])
-                             ])
-                     ],
-                     methods: [
-                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
-                             [
-                                 new BasicBlock(new BasicBlockId("bb0"), [
-                                     new Assign(
-                                         new Local("_local0"),
-                                         new Use(new Copy(new Field("_param0", "MyField", "_classVariant"))))
-                                 ])
-                                 {
-                                     Terminator = new GoTo(new BasicBlockId("bb1"))
-                                 },
-                                 new BasicBlock(new BasicBlockId("bb1"), [])
-                                 {
-                                     Terminator = new Return()
-                                 }
-                             ],
-                             Unit,
-                             locals: [
-                                 new NewMethodLocal("_local0", "a", StringT),
-                             ],
-                             parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))])
-                     ])
-             },
-             {
-                 "access static field inside function",
-                 """
-                 class MyClass
-                 {
-                     static field MyField: string = "",
-                     pub fn MyFn()
-                     {
-                         var a = MyField;
-                     }
-                 }
-                 """,
-                 NewLoweredProgram(
-                     types: [
-                         NewDataType(ModuleId, 
-                             "MyClass",
-                             variants: [NewVariant("_classVariant")],
-                             staticFields: [
-                                 NewStaticField(
-                                     "MyField",
-                                     StringT,
-                                     [
-                                         new BasicBlock(new BasicBlockId("bb0"), [
-                                             new Assign(new Local("_returnValue"), new Use(new StringConstant("")))
-                                         ])
-                                         {
-                                             Terminator = new GoTo(new BasicBlockId("bb1"))
-                                         },
-                                         new BasicBlock(new BasicBlockId("bb1"), []) { Terminator = new Return() }
-                                     ],
-                                     [],
-                                     new NewMethodLocal("_returnValue", null, StringT))
-                             ])
-                     ],
-                     methods: [
-                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
-                             [
-                                 new BasicBlock(new BasicBlockId("bb0"), [
-                                     new Assign(
-                                         new Local("_local0"),
-                                         new Use(new Copy(new StaticField(
-                                             new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []),
-                                             "MyField"))))
-                                 ])
-                                 {
-                                     Terminator = new GoTo(new BasicBlockId("bb1"))
-                                 },
-                                 new BasicBlock(new BasicBlockId("bb1"), []) { Terminator = new Return() }
-                             ],
-                             Unit,
-                             locals: [new NewMethodLocal("_local0", "a", StringT)],
-                             parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))])
-                     ])
-             },
-//             {
-//                 "call instance function inside instance function",
-//                 """
-//                 class MyClass
-//                 {
-//                     fn MyFn()
-//                     {
-//                         OtherFn();
-//                     }
-//                     fn OtherFn(){}
-//                 }
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, 
-//                             "MyClass",
-//                             variants: [Variant("_classVariant")])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
-//                             [
-//                                 MethodCall(
-//                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn"),
-//                                     [LoadArgument(0, true, ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")))],
-//                                     false,
-//                                     Unit),
-//                                 MethodReturnUnit()
-//                             ],
-//                             parameters: [ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))]),
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), 
-//                             "MyClass__OtherFn",
-//                             [MethodReturnUnit()],
-//                             parameters: [ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))])
-//                     ])
-//             },
+            {
+                "empty class",
+                "class MyClass{}",
+                NewLoweredProgram(
+                    types:
+                    [
+                        NewDataType(ModuleId, "MyClass",
+                            variants: [NewVariant("_classVariant")])
+                    ])
+            },
+            {
+                "generic class",
+                "class MyClass<T>{}",
+                NewLoweredProgram(
+                    types:
+                    [
+                        NewDataType(ModuleId, "MyClass",
+                            ["T"],
+                            variants: [NewVariant("_classVariant")])
+                    ])
+            },
+            {
+                "generic class with instance function",
+                "class MyClass<T>{pub fn SomeFn(){}}",
+                NewLoweredProgram(
+                    types:
+                    [
+                        NewDataType(ModuleId, "MyClass",
+                            ["T"],
+                            [NewVariant("_classVariant")])
+                    ], methods:
+                    [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"),
+                            "MyClass__SomeFn",
+                            [new BasicBlock(new BasicBlockId("bb0"), [], new Return())],
+                            Unit,
+                            typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")],
+                            parameters:
+                            [
+                                ("this",
+                                    new NewLoweredConcreteTypeReference("MyClass",
+                                        new DefId(ModuleId, $"{ModuleId}.MyClass"),
+                                        [
+                                            new NewLoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyClass"),
+                                                "T")
+                                        ]))
+                            ])
+                    ])
+            },
+            {
+                "class with instance fields",
+                "class MyClass { pub field MyField: string, pub field OtherField: i64}",
+                NewLoweredProgram(types:
+                [
+                    NewDataType(ModuleId, "MyClass",
+                        variants:
+                        [
+                            NewVariant(
+                                "_classVariant",
+                                [
+                                    NewField("MyField", StringT),
+                                    NewField("OtherField", Int64T),
+                                ])
+                        ])
+                ])
+            },
+            {
+                "class with static fields",
+                """class MyClass { pub static field MyField: string = ""}""",
+                NewLoweredProgram(types:
+                [
+                    NewDataType(ModuleId, "MyClass",
+                        variants: [NewVariant("_classVariant")],
+                        staticFields:
+                        [
+                            NewStaticField(
+                                "MyField",
+                                StringT,
+                                [
+                                    new BasicBlock(new BasicBlockId("bb0"), [
+                                        new Assign(
+                                            new Local("_returnValue"),
+                                            new Use(new StringConstant("")))
+                                    ], new GoTo(new BasicBlockId("bb1"))),
+                                    new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                ],
+                                [],
+                                new NewMethodLocal("_returnValue", null, StringT))
+                        ])
+                ])
+            },
+            {
+                "access class field",
+                """
+                class MyClass {pub field A: string}
+                var a = new MyClass{A = ""};
+                var b = a.A;
+                """,
+                NewLoweredProgram(
+                    types:
+                    [
+                        NewDataType(ModuleId, "MyClass",
+                            variants:
+                            [
+                                NewVariant("_classVariant", [NewField("A", StringT)])
+                            ])
+                    ],
+                    methods:
+                    [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(
+                                        new Local("_local0"),
+                                        new CreateObject(new NewLoweredConcreteTypeReference("MyClass",
+                                            new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                    new Assign(
+                                        new Field("_local0", "A", "_classVariant"),
+                                        new Use(new StringConstant(""))),
+                                    new Assign(
+                                        new Local("_local2"),
+                                        new Use(new Copy(new Local("_local0")))),
+                                    new Assign(
+                                        new Local("_local1"),
+                                        new Use(new Copy(new Field("_local2", "A", "_classVariant"))))
+                                ], new GoTo(new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                            ],
+                            Unit,
+                            locals:
+                            [
+                                new NewMethodLocal("_local0", "a",
+                                    new NewLoweredConcreteTypeReference("MyClass",
+                                        new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                new NewMethodLocal("_local1", "b", StringT),
+                                new NewMethodLocal("_local2", null,
+                                    new NewLoweredConcreteTypeReference("MyClass",
+                                        new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                            ])
+                    ])
+            },
+            {
+                "access static field",
+                """
+                class MyClass{pub static field MyField: string = ""}
+                var a = MyClass::MyField;
+                """,
+                NewLoweredProgram(
+                    types:
+                    [
+                        NewDataType(ModuleId,
+                            "MyClass",
+                            variants: [NewVariant("_classVariant")],
+                            staticFields:
+                            [
+                                NewStaticField(
+                                    "MyField",
+                                    StringT,
+                                    [
+                                        new BasicBlock(new BasicBlockId("bb0"), [
+                                            new Assign(new Local("_returnValue"), new Use(new StringConstant("")))
+                                        ], new GoTo(new BasicBlockId("bb1"))),
+                                        new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                    ],
+                                    [],
+                                    new NewMethodLocal("_returnValue", null, StringT))
+                            ])
+                    ],
+                    methods:
+                    [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(
+                                        new Local("_local0"),
+                                        new Use(new Copy(new StaticField(
+                                            new NewLoweredConcreteTypeReference("MyClass",
+                                                new DefId(ModuleId, $"{ModuleId}.MyClass"), []),
+                                            "MyField"))))
+                                ], new GoTo(new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", "a", StringT)])
+                    ])
+            },
+            {
+                "call static method",
+                """
+                MyClass::MyFn();
+                class MyClass
+                {
+                    pub static fn MyFn(){}
+                }
+                """,
+                NewLoweredProgram(
+                    types:
+                    [
+                        NewDataType(ModuleId, "MyClass", variants: [NewVariant("_classVariant")]),
+                    ],
+                    methods:
+                    [
+                        NewMethod(
+                            new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"),
+                            "MyClass__MyFn",
+                            [new BasicBlock(new BasicBlockId("bb0"), [], new Return())],
+                            Unit),
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [], new MethodCall(
+                                    new NewLoweredFunctionReference(
+                                        new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), []),
+                                    [],
+                                    new Local("_local0"),
+                                    new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                            ],
+                            Unit,
+                            locals:
+                            [
+                                new NewMethodLocal("_local0", null, Unit)
+                            ])
+                    ])
+            },
+            {
+                "assign instance method to function variable from within type but different method",
+                """
+                class MyClass {
+                    pub fn OtherFn(){}
+                    pub fn MyFn() {
+                        var a = OtherFn; 
+                    }
+                }
+                """,
+                NewLoweredProgram(
+                    types:
+                    [
+                        NewDataType(ModuleId, "MyClass",
+                            variants:
+                            [
+                                NewVariant("_classVariant")
+                            ])
+                    ],
+                    methods:
+                    [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn",
+                            [new BasicBlock(new BasicBlockId("bb0"), [], new Return())],
+                            Unit,
+                            parameters:
+                            [
+                                ("this",
+                                    new NewLoweredConcreteTypeReference("MyClass",
+                                        new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
+                            ]),
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(
+                                        new Local("_local0"),
+                                        new CreateObject(
+                                            new NewLoweredConcreteTypeReference("Function`1", DefId.FunctionObject(0),
+                                                [Unit]))),
+                                    new Assign(
+                                        new Field("_local0", "FunctionReference", "_classVariant"),
+                                        new Use(new FunctionPointerConstant(
+                                            new NewLoweredFunctionReference(
+                                                new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"),
+                                                [])))),
+                                    new Assign(
+                                        new Field("_local0", "FunctionParameter", "_classVariant"),
+                                        new Use(new Copy(new Local("_param0"))))
+                                ], new GoTo(new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                            ],
+                            Unit,
+                            locals:
+                            [
+                                new NewMethodLocal("_local0", "a",
+                                    new NewLoweredConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit])),
+                            ],
+                            parameters:
+                            [
+                                ("this",
+                                    new NewLoweredConcreteTypeReference("MyClass",
+                                        new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
+                            ])
+                    ])
+            },
+            {
+                "assign instance method to function variable from within type",
+                """
+                class MyClass {
+                    pub fn MyFn() {
+                        var a = MyFn; 
+                    }
+                }
+                """,
+                NewLoweredProgram(
+                    types:
+                    [
+                        NewDataType(ModuleId, "MyClass",
+                            variants:
+                            [
+                                NewVariant("_classVariant")
+                            ])
+                    ],
+                    methods:
+                    [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(
+                                        new Local("_local0"),
+                                        new CreateObject(
+                                            new NewLoweredConcreteTypeReference("Function`1", DefId.FunctionObject(0),
+                                                [Unit]))),
+                                    new Assign(
+                                        new Field("_local0", "FunctionReference", "_classVariant"),
+                                        new Use(new FunctionPointerConstant(
+                                            new NewLoweredFunctionReference(
+                                                new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), [])))),
+                                    new Assign(
+                                        new Field("_local0", "FunctionParameter", "_classVariant"),
+                                        new Use(new Copy(new Local("_param0"))))
+                                ], new GoTo(new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                            ],
+                            Unit,
+                            locals:
+                            [
+                                new NewMethodLocal("_local0", "a",
+                                    new NewLoweredConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
+                            ],
+                            parameters:
+                            [
+                                ("this",
+                                    new NewLoweredConcreteTypeReference("MyClass",
+                                        new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
+                            ])
+                    ])
+            },
+            {
+                "call instance method",
+                """
+                class MyClass
+                {
+                    pub fn MyFn(){}
+                }
+                var a = new MyClass{};
+                a.MyFn();
+                """,
+                NewLoweredProgram(
+                    types:
+                    [
+                        NewDataType(ModuleId, "MyClass", variants: [NewVariant("_classVariant")])
+                    ],
+                    methods:
+                    [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"),
+                            "MyClass__MyFn",
+                            [new BasicBlock(new BasicBlockId("bb0"), [], new Return())],
+                            Unit,
+                            parameters:
+                            [
+                                ("this",
+                                    new NewLoweredConcreteTypeReference("MyClass",
+                                        new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
+                            ]),
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"),
+                            "_Main",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(
+                                        new Local("_local0"),
+                                        new CreateObject(
+                                            new NewLoweredConcreteTypeReference("MyClass",
+                                                new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                ], new MethodCall(
+                                    new NewLoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"),
+                                        []),
+                                    [new Copy(new Local("_local0"))],
+                                    new Local("_local1"),
+                                    new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                            ],
+                            Unit,
+                            locals:
+                            [
+                                new NewMethodLocal("_local0", "a",
+                                    new NewLoweredConcreteTypeReference("MyClass",
+                                        new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                new NewMethodLocal("_local1", null, Unit)
+                            ])
+                    ])
+            },
+            {
+                "call static method inside function",
+                """
+                class MyClass
+                {
+                    pub static fn MyFn(){}
+                    pub static fn OtherFn()
+                    {
+                        MyFn();
+                    }
+                }
+                """,
+                NewLoweredProgram(
+                    types:
+                    [
+                        NewDataType(ModuleId, "MyClass",
+                            variants: [NewVariant("_classVariant")])
+                    ],
+                    methods:
+                    [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn", [
+                            new BasicBlock(new BasicBlockId("bb0"), [], new Return())
+                        ], Unit),
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [], new MethodCall(
+                                    new NewLoweredFunctionReference(
+                                        new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), []),
+                                    [],
+                                    new Local("_local0"),
+                                    new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", null, Unit)])
+                    ])
+            },
+            {
+                "access instance field inside function",
+                """
+                class MyClass
+                {
+                    field MyField: string,
+                    pub fn MyFn()
+                    {
+                        var a = MyField;
+                    }
+                }
+                """,
+                NewLoweredProgram(
+                    types:
+                    [
+                        NewDataType(ModuleId,
+                            "MyClass",
+                            variants:
+                            [
+                                NewVariant("_classVariant", [NewField("MyField", StringT)])
+                            ])
+                    ],
+                    methods:
+                    [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(
+                                        new Local("_local0"),
+                                        new Use(new Copy(new Field("_param0", "MyField", "_classVariant"))))
+                                ], new GoTo(new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                            ],
+                            Unit,
+                            locals:
+                            [
+                                new NewMethodLocal("_local0", "a", StringT),
+                            ],
+                            parameters:
+                            [
+                                ("this",
+                                    new NewLoweredConcreteTypeReference("MyClass",
+                                        new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
+                            ])
+                    ])
+            },
+            {
+                "access static field inside function",
+                """
+                class MyClass
+                {
+                    static field MyField: string = "",
+                    pub fn MyFn()
+                    {
+                        var a = MyField;
+                    }
+                }
+                """,
+                NewLoweredProgram(
+                    types:
+                    [
+                        NewDataType(ModuleId,
+                            "MyClass",
+                            variants: [NewVariant("_classVariant")],
+                            staticFields:
+                            [
+                                NewStaticField(
+                                    "MyField",
+                                    StringT,
+                                    [
+                                        new BasicBlock(new BasicBlockId("bb0"), [
+                                            new Assign(new Local("_returnValue"), new Use(new StringConstant("")))
+                                        ], new GoTo(new BasicBlockId("bb1"))),
+                                        new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                    ],
+                                    [],
+                                    new NewMethodLocal("_returnValue", null, StringT))
+                            ])
+                    ],
+                    methods:
+                    [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(
+                                        new Local("_local0"),
+                                        new Use(new Copy(new StaticField(
+                                            new NewLoweredConcreteTypeReference("MyClass",
+                                                new DefId(ModuleId, $"{ModuleId}.MyClass"), []),
+                                            "MyField"))))
+                                ], new GoTo(new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", "a", StringT)],
+                            parameters:
+                            [
+                                ("this",
+                                    new NewLoweredConcreteTypeReference("MyClass",
+                                        new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
+                            ])
+                    ])
+            },
+            {
+                "call instance function inside instance function",
+                """
+                class MyClass
+                {
+                    fn MyFn()
+                    {
+                        OtherFn();
+                    }
+                    fn OtherFn(){}
+                }
+                """,
+                NewLoweredProgram(
+                    types:
+                    [
+                        NewDataType(ModuleId,
+                            "MyClass",
+                            variants: [NewVariant("_classVariant")])
+                    ],
+                    methods:
+                    [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [], new MethodCall(
+                                    new NewLoweredFunctionReference(
+                                        new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), []),
+                                    [new Copy(new Local("_param0"))],
+                                    new Local("_local0"),
+                                    new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal("_local0", null, Unit)],
+                            parameters:
+                            [
+                                ("this",
+                                    new NewLoweredConcreteTypeReference("MyClass",
+                                        new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
+                            ]),
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"),
+                            "MyClass__OtherFn",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [], new Return())
+                            ],
+                            Unit,
+                            parameters:
+                            [
+                                ("this",
+                                    new NewLoweredConcreteTypeReference("MyClass",
+                                        new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
+                            ])
+                    ])
+            },
 //             {
 //                 "assign to field through member access",
 //                 """

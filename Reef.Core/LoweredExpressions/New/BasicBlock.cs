@@ -16,9 +16,9 @@ public interface ITerminator;
 
 public record BasicBlockId(string Id);
 
-public record BasicBlock(BasicBlockId Id, IReadOnlyList<IStatement> Statements)
+public record BasicBlock(BasicBlockId Id, IReadOnlyList<IStatement> Statements, ITerminator? Terminator = null)
 {
-    public ITerminator? Terminator { get; set; }
+    public ITerminator? Terminator { get; set; } = Terminator;
 }
 
 public record SwitchInt(
