@@ -43,7 +43,7 @@ public interface IPlace;
 
 public record Local(string LocalName) : IPlace;
 
-public record Field(string LocalName, string FieldName, string VariantName) : IPlace;
+public record Field(IPlace FieldOwner, string FieldName, string VariantName) : IPlace;
 
 public record StaticField(NewLoweredConcreteTypeReference Type, string FieldName) : IPlace;
 

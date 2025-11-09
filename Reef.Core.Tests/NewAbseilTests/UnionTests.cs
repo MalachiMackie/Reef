@@ -113,13 +113,13 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                                     new Local("_returnValue"),
                                     new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                 new Assign(
-                                    new Field("_returnValue", "_variantIdentifier", "A"),
+                                    new Field(new Local("_returnValue"), "_variantIdentifier", "A"),
                                     new Use(new UIntConstant(0, 2))),
                                 new Assign(
-                                    new Field("_returnValue", "Item0", "A"),
+                                    new Field(new Local("_returnValue"), "Item0", "A"),
                                     new Use(new Copy(new Local("_param0")))),
                                 new Assign(
-                                    new Field("_returnValue", "Item1", "A"),
+                                    new Field(new Local("_returnValue"), "Item1", "A"),
                                     new Use(new Copy(new Local("_param1")))),
                             ])
                             {
@@ -151,10 +151,10 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                                     new Local("_returnValue"),
                                     new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [new NewLoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")]))),
                                 new Assign(
-                                    new Field("_returnValue", "_variantIdentifier", "A"),
+                                    new Field(new Local("_returnValue"), "_variantIdentifier", "A"),
                                     new Use(new UIntConstant(0, 2))),
                                 new Assign(
-                                    new Field("_returnValue", "Item0", "A"),
+                                    new Field(new Local("_returnValue"), "Item0", "A"),
                                     new Use(new Copy(new Local("_param0"))))
                             ])
                             {
@@ -211,10 +211,10 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                                             new Local("_returnValue"),
                                             new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                         new Assign(
-                                            new Field("_returnValue", "_variantIdentifier", "A"),
+                                            new Field(new Local("_returnValue"), "_variantIdentifier", "A"),
                                             new Use(new UIntConstant(0, 2))),
                                         new Assign(
-                                            new Field("_returnValue", "Item0", "A"),
+                                            new Field(new Local("_returnValue"), "Item0", "A"),
                                             new Use(new Copy(new Local("_param0"))))
                                     ])
                                 {
@@ -232,10 +232,10 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                                             new Local("_returnValue"),
                                             new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                         new Assign(
-                                            new Field("_returnValue", "_variantIdentifier", "B"),
+                                            new Field(new Local("_returnValue"), "_variantIdentifier", "B"),
                                             new Use(new UIntConstant(1, 2))),
                                         new Assign(
-                                            new Field("_returnValue", "Item0", "B"),
+                                            new Field(new Local("_returnValue"), "Item0", "B"),
                                             new Use(new Copy(new Local("_param0"))))
                                     ])
                                 {

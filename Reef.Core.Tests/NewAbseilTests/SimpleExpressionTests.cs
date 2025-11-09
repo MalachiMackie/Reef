@@ -750,10 +750,10 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : NewTest
                                         new Local("_local0"),
                                         new CreateObject(Tuple(Int32T, StringT))),
                                     new Assign(
-                                        new Field("_local0", "Item0", "_classVariant"),
+                                        new Field(new Local("_local0"), "Item0", "_classVariant"),
                                         new Use(new IntConstant(1, 4))),
                                     new Assign(
-                                        new Field("_local0", "Item1", "_classVariant"),
+                                        new Field(new Local("_local0"), "Item1", "_classVariant"),
                                         new Use(new StringConstant(""))),
                                 ])
                                 {

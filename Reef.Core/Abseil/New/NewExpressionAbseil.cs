@@ -8,15 +8,30 @@ namespace Reef.Core.Abseil.New;
 public partial class NewProgramAbseil
 {
     private uint _controlFlowDepth;
+
+    private interface IExpressionResult
+    {
+        IOperand ToOperand();
+    }
+
+    private sealed record OperandResult(IOperand Value) : IExpressionResult
+    {
+        public IOperand ToOperand() => Value;
+    }
+
+    private sealed record PlaceResult(IPlace Value) : IExpressionResult
+    {
+        public IOperand ToOperand() => new Copy(Value);
+    }
     
-    private IOperand NewLowerExpression(Expressions.IExpression expression, IPlace? destination)
+    private IExpressionResult NewLowerExpression(Expressions.IExpression expression, IPlace? destination)
     {
         switch (expression)
         {
             case Expressions.BinaryOperatorExpression binaryOperatorExpression:
                 return LowerBinaryExpression(binaryOperatorExpression, destination);
             case Expressions.BlockExpression blockExpression:
-                return LowerBlock(blockExpression);
+                return LowerBlock(blockExpression, destination);
             case Expressions.BreakExpression breakExpression:
                 throw new NotImplementedException();
             case Expressions.ContinueExpression continueExpression:
@@ -33,7 +48,7 @@ public partial class NewProgramAbseil
                 return LowerMethodCall(methodCallExpression, destination);
             case Expressions.MethodReturnExpression methodReturnExpression:
                 LowerReturn(methodReturnExpression);
-                return new UnitConstant();
+                return new OperandResult(new UnitConstant());
             case Expressions.ObjectInitializerExpression objectInitializerExpression:
                 return LowerObjectInitializer(objectInitializerExpression, destination); 
             case Expressions.StaticMemberAccessExpression staticMemberAccessExpression:
@@ -48,7 +63,7 @@ public partial class NewProgramAbseil
                 return LowerValueAccessor(valueAccessorExpression, destination);
             case Expressions.VariableDeclarationExpression variableDeclarationExpression:
                 LowerVariableDeclaration(variableDeclarationExpression);
-                return new UnitConstant();
+                return new OperandResult(new UnitConstant());
             case Expressions.WhileExpression whileExpression:
                 throw new NotImplementedException();
             default:
@@ -56,8 +71,9 @@ public partial class NewProgramAbseil
         }
     }
     
-    private IOperand LowerStaticMemberAccess(
-            StaticMemberAccessExpression e, IPlace? destination)
+    private IExpressionResult LowerStaticMemberAccess(
+            StaticMemberAccessExpression e,
+            IPlace? destination)
     {
         switch (e.StaticMemberAccess.MemberType)
         {
@@ -108,7 +124,8 @@ public partial class NewProgramAbseil
                                 fn.FunctionId,
                                 [..fn.TypeArguments.Select(GetTypeReference)],
                                 ownerTypeArguments))),
-                    ], destination);
+                    ],
+                    destination);
 
             }
             case MemberType.Function:
@@ -127,46 +144,70 @@ public partial class NewProgramAbseil
             }
             case MemberType.Field:
             {
-                var operand = new Copy(new StaticField(
+                var staticField = new StaticField(
                     (GetTypeReference(e.OwnerType.NotNull()) as NewLoweredConcreteTypeReference).NotNull(),
-                    e.StaticMemberAccess.MemberName.NotNull().StringValue));
+                    e.StaticMemberAccess.MemberName.NotNull().StringValue);
+
                 if (destination is not null)
                 {
-                    _basicBlockStatements.Add(
-                        new Assign(destination, new Use(operand)));
+                    _basicBlockStatements.Add(new Assign(
+                        destination,
+                        new Use(new Copy(staticField))));
                 }
                 
-                return operand;
+                return new PlaceResult(destination ?? staticField);
             }
             default:
                 throw new UnreachableException();
         }
     }
     
-    private IOperand LowerMemberAccess(
-            MemberAccessExpression e, IPlace? destination)
+    private IExpressionResult LowerMemberAccess(
+            MemberAccessExpression e,
+            IPlace? destination)
     {
         var ownerType = GetTypeReference(e.MemberAccess.OwnerType.NotNull());
         
-        var localName = LocalName((uint)_locals.Count);
-        _locals.Add(new NewMethodLocal(localName, null, ownerType));
-
-        var ownerOperand = NewLowerExpression(e.MemberAccess.Owner, destination: new Local(localName));
+        var ownerResult = NewLowerExpression(e.MemberAccess.Owner, null);
         
         switch (e.MemberAccess.MemberType.NotNull())
         {
             case Expressions.MemberType.Field:
             {
-                var field = new Field(localName, e.MemberAccess.MemberName.NotNull().StringValue, ClassVariantName);
-                    if (destination is not null)
-                    {
-                        _basicBlockStatements.Add(new Assign(
-                            destination,
-                            new Use(new Copy(field))));
-                    }
+                IPlace ownerPlace;
 
-                    return new Copy(field);
+                switch (ownerResult)
+                {
+                    case OperandResult{Value: var operand}:
+                    {
+                        var localName = LocalName((uint)_locals.Count);
+                        _locals.Add(new NewMethodLocal(localName, null, GetTypeReference(e.MemberAccess.OwnerType.NotNull())));
+            
+                        ownerPlace = new Local(localName);
+            
+                        _basicBlockStatements.Add(new Assign(
+                            ownerPlace,
+                            new Use(operand)));
+                        break;
+                    }
+                    case PlaceResult{Value: var place}:
+                        ownerPlace = place;
+                        break;
+                    default:
+                        throw new UnreachableException();
                 }
+                
+                var field = new Field(ownerPlace, e.MemberAccess.MemberName.NotNull().StringValue, ClassVariantName);
+
+                if (destination is not null)
+                {
+                    _basicBlockStatements.Add(new Assign(
+                        destination,
+                        new Use(new Copy(field))));
+                }
+                
+                return new PlaceResult(destination ?? field);
+            }
             case Expressions.MemberType.Function:
                 {
                     var ownerTypeArguments = (GetTypeReference(e.MemberAccess.OwnerType.NotNull()) as NewLoweredConcreteTypeReference)
@@ -186,8 +227,9 @@ public partial class NewProgramAbseil
                                         fn.FunctionId,
                                         [..fn.TypeArguments.Select(GetTypeReference)],
                                         ownerTypeArguments))),
-                            new CreateObjectField("FunctionParameter", ownerOperand)
-                        ], destination);
+                            new CreateObjectField("FunctionParameter", ownerResult.ToOperand())
+                        ],
+                        destination);
                 }
             case Expressions.MemberType.Variant:
                 throw new InvalidOperationException("Can never access a variant through instance member access");
@@ -196,7 +238,7 @@ public partial class NewProgramAbseil
         }
     }
 
-    private IOperand LowerObjectInitializer(ObjectInitializerExpression objectInitializerExpression, IPlace? destination)
+    private IExpressionResult LowerObjectInitializer(ObjectInitializerExpression objectInitializerExpression, IPlace? destination)
     {
         var typeReference = (GetTypeReference(objectInitializerExpression.ResolvedType.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
 
@@ -229,33 +271,32 @@ public partial class NewProgramAbseil
         }
     }
 
-    private IOperand CreateObject(
+    private IExpressionResult CreateObject(
         NewLoweredConcreteTypeReference type,
         string variantName,
         IEnumerable<CreateObjectField> fields,
         IPlace? destination)
     {
-        var localDestination = destination as Local ?? new Local(LocalName((ushort)_locals.Count));
+        // always assign to a local, so fields get assign within the stack, then if needed, copy to it's destination
         
+        var localName = LocalName((uint)_locals.Count);
+        var localDestination = destination as Local ?? new Local(localName);
+
         if (destination is not Local)
         {
-            var local = new NewMethodLocal(localDestination.LocalName, null, type);
-            _locals.Add(local);
+            _locals.Add(new NewMethodLocal(localName, null, type));
         }
         
-        // always assign to a local, so fields get assign within the stack, then if needed, copy to it's destination
         _basicBlockStatements.Add(new Assign(
             localDestination,
             new CreateObject(type)));
 
         foreach (var createObjectField in fields)
         {
-            var field = new Field(localDestination.LocalName, createObjectField.FieldName, variantName);
+            var field = new Field(localDestination, createObjectField.FieldName, variantName);
             if (createObjectField.Expression is {} expression)
             {
-                NewLowerExpression(
-                    expression,
-                    destination: field);
+                NewLowerExpression(expression, field);
             }
             else if (createObjectField.Operand is {} operand)
             {
@@ -264,16 +305,23 @@ public partial class NewProgramAbseil
                     new Use(operand)));
             }
         }
-            
-        if (destination is not (Local or null))
+
+        if (destination is Local)
         {
-            _basicBlockStatements.Add(new Assign(destination, new Use(new Copy(localDestination))));
+            return new PlaceResult(destination);
         }
 
-        return new Copy(destination ?? localDestination);
+        if (destination is not null)
+        {
+            _basicBlockStatements.Add(new Assign(
+                destination,
+                new Use(new Copy(localDestination))));
+        }
+
+        return new PlaceResult(destination ?? localDestination);
     }
 
-    private IOperand LowerTuple(TupleExpression tupleExpression, IPlace? destination)
+    private IExpressionResult LowerTuple(TupleExpression tupleExpression, IPlace? destination)
     {
         if (tupleExpression.Values.Count == 1)
         {
@@ -308,7 +356,7 @@ public partial class NewProgramAbseil
         }
     }
 
-    private IOperand LowerMethodCall(MethodCallExpression e, IPlace? destination)
+    private IExpressionResult LowerMethodCall(MethodCallExpression e, IPlace? destination)
     {
         var returnType = GetTypeReference(e.ResolvedType.NotNull());
         if (destination is null)
@@ -328,7 +376,7 @@ public partial class NewProgramAbseil
             _ => null
         };
 
-        IReadOnlyList<IOperand> originalArguments = [..e.MethodCall.ArgumentList.Select(x => NewLowerExpression(x, destination: null))];
+        IReadOnlyList<IOperand> originalArguments = [..e.MethodCall.ArgumentList.Select(x => NewLowerExpression(x, destination: null).ToOperand())];
 
         var arguments = new List<IOperand>(e.MethodCall.ArgumentList.Count);
         NewLoweredFunctionReference functionReference;
@@ -336,7 +384,7 @@ public partial class NewProgramAbseil
         // calling function object instead of normal function
         if (instantiatedFunction is null)
         {
-            var functionObjectOperand = NewLowerExpression(e.MethodCall.Method, destination: null);
+            var functionObjectResult = NewLowerExpression(e.MethodCall.Method, destination: null);
             
             var methodType = (GetTypeReference(e.MethodCall.Method.ResolvedType.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
 
@@ -349,7 +397,7 @@ public partial class NewProgramAbseil
                     [],
                     methodType.TypeArguments);
 
-            arguments.Add(functionObjectOperand);
+            arguments.Add(functionObjectResult.ToOperand());
             
             arguments.AddRange(originalArguments);
 
@@ -360,14 +408,14 @@ public partial class NewProgramAbseil
 
             lastBasicBlock.Terminator = new MethodCall(functionReference, arguments, destination, newBasicBlock.Id);
 
-            return new Copy(destination);
+            return new PlaceResult(destination);
         }
         
         IReadOnlyList<INewLoweredTypeReference> ownerTypeArguments = [];
         if (e.MethodCall.Method is MemberAccessExpression memberAccess)
         {
             var owner = NewLowerExpression(memberAccess.MemberAccess.Owner, null);
-            arguments.Add(owner);
+            arguments.Add(owner.ToOperand());
             ownerTypeArguments = GetTypeReference(memberAccess.MemberAccess.Owner.ResolvedType.NotNull()).NotNull() is NewLoweredConcreteTypeReference concrete
                 ? concrete.TypeArguments
                 : throw new UnreachableException("Shouldn't ever be able to call a method on a generic parameter");
@@ -375,7 +423,7 @@ public partial class NewProgramAbseil
         else if (instantiatedFunction.ClosureTypeId is not null)
         {
             var createClosure = CreateClosureObject(instantiatedFunction);
-            arguments.Add(createClosure);
+            arguments.Add(createClosure.ToOperand());
         }
         else if (instantiatedFunction is { IsStatic: false, OwnerType: not null }
                  && _currentType is not null
@@ -425,28 +473,37 @@ public partial class NewProgramAbseil
 
             lastBasicBlock.Terminator = new MethodCall(functionReference, arguments, destination, newBasicBlock.Id);
 
-            return new Copy(destination);
+            return new PlaceResult(destination);
         }
     }
 
-    private IOperand CreateClosureObject(TypeChecking.TypeChecker.InstantiatedFunction fn)
+    private IExpressionResult CreateClosureObject(TypeChecking.TypeChecker.InstantiatedFunction fn)
     {
         throw new NotImplementedException();
     }
 
-    private IOperand LowerBlock(BlockExpression blockExpression)
+    private IExpressionResult LowerBlock(BlockExpression blockExpression, IPlace? destination)
     {
-        IOperand? result = null;
+        IExpressionResult? result = null;
         foreach (var innerExpression in blockExpression.Block.Expressions)
         {
             result = NewLowerExpression(innerExpression, destination: null);
         }
 
         // if no result, then it must just be a unit constant
-        return result ?? new UnitConstant();
+        result ??= new OperandResult(new UnitConstant());
+
+        if (destination is not null)
+        {
+            _basicBlockStatements.Add(new Assign(
+                destination,
+                new Use(result.ToOperand())));
+        }
+
+        return result;
     }
 
-    private IOperand LowerUnaryOperator(UnaryOperatorExpression unaryOperatorExpression, IPlace? destination)
+    private IExpressionResult LowerUnaryOperator(UnaryOperatorExpression unaryOperatorExpression, IPlace? destination)
     {
         if (unaryOperatorExpression.UnaryOperator.OperatorType == UnaryOperatorType.FallOut)
         {
@@ -465,48 +522,48 @@ public partial class NewProgramAbseil
         _basicBlockStatements.Add(
             new Assign(
                 destination,
-                new UnaryOperation(valueOperand, unaryOperatorExpression.UnaryOperator.OperatorType switch
+                new UnaryOperation(valueOperand.ToOperand(), unaryOperatorExpression.UnaryOperator.OperatorType switch
                 {
                     UnaryOperatorType.Not => UnaryOperationKind.Not,
-                    _ => throw new NotImplementedException()
+                    _ => throw new UnreachableException()
                 })));
 
-        return new Copy(destination);
+        return new PlaceResult(destination);
     }
 
-    private IOperand LowerValueAccessor(ValueAccessorExpression e, IPlace? destination)
+    private IExpressionResult LowerValueAccessor(ValueAccessorExpression e, IPlace? destination)
     {
         if (e is { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, FunctionInstantiation: { } fn })
         {
             // function access already assigns the value to destination, so handle it separately
             return FunctionAccess(fn, (e.ResolvedType as TypeChecking.TypeChecker.FunctionObject).NotNull(),
-                e.ValueUseful);
+                destination);
         }
         
         var operand = e switch
         {
-            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: StringToken { StringValue: var stringLiteral } } } => new StringConstant(stringLiteral),
+            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: StringToken { StringValue: var stringLiteral } } } => new OperandResult(new StringConstant(stringLiteral)),
             { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue} }, ResolvedType: var resolvedType} =>
-                IsIntSigned(resolvedType.NotNull())
+                new OperandResult(IsIntSigned(resolvedType.NotNull())
                     ? new IntConstant(intValue, GetIntSize(resolvedType.NotNull()))
-                    : new UIntConstant((ulong)intValue, GetIntSize(resolvedType.NotNull())),
-            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.True }} => new BoolConstant(true),
-            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.False }} => new BoolConstant(false),
+                    : new UIntConstant((ulong)intValue, GetIntSize(resolvedType.NotNull()))),
+            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.True }} => new OperandResult(new BoolConstant(true)),
+            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.False }} => new OperandResult(new BoolConstant(false)),
             { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, ReferencedVariable: {} variable} => VariableAccess(variable, e.ValueUseful),
             _ => throw new UnreachableException($"{e}")
         };
 
         if (destination is not null)
         {
-            _basicBlockStatements.Add(new Assign(destination, new Use(operand)));
+            _basicBlockStatements.Add(new Assign(destination, new Use(operand.ToOperand())));
         }
 
         return operand;
         
-        IOperand FunctionAccess(
+        IExpressionResult FunctionAccess(
                 TypeChecking.TypeChecker.InstantiatedFunction innerFn,
                 TypeChecking.TypeChecker.FunctionObject typeReference,
-                bool valueUseful)
+                IPlace? innerDestination)
         {
             var ownerTypeArguments = _currentType?.TypeArguments ?? [];
 
@@ -522,7 +579,7 @@ public partial class NewProgramAbseil
             
             if (innerFn.ClosureTypeId is not null)
             {
-                functionObjectParameters.Add(new CreateObjectField("FunctionParameter", CreateClosureObject(innerFn)));
+                functionObjectParameters.Add(new CreateObjectField("FunctionParameter", CreateClosureObject(innerFn).ToOperand()));
             }
             else if (innerFn is { IsStatic: false, OwnerType: not null }
                      && _currentType is not null
@@ -537,10 +594,10 @@ public partial class NewProgramAbseil
                 (GetTypeReference(typeReference) as NewLoweredConcreteTypeReference).NotNull(),
                 ClassVariantName,
                 functionObjectParameters,
-                destination);
+                innerDestination);
         }
 
-        IOperand VariableAccess(
+        IExpressionResult VariableAccess(
             TypeChecking.TypeChecker.IVariable variable,
             bool valueUseful)
         {
@@ -552,7 +609,7 @@ public partial class NewProgramAbseil
                         if (!localVariable.ReferencedInClosure)
                         {
                             var local = _locals.First(x => x.UserGivenName == variable.Name.StringValue);
-                            return new Copy(new Local(local.CompilerGivenName));
+                            return new PlaceResult(new Local(local.CompilerGivenName));
                         }
 
                         throw new NotImplementedException();
@@ -642,7 +699,7 @@ public partial class NewProgramAbseil
                 {
                     if (fieldVariable.IsStaticField)
                     {
-                        return new Copy(new StaticField(_currentType, fieldVariable.Name.StringValue));
+                        return new PlaceResult(new StaticField(_currentType, fieldVariable.Name.StringValue));
                     }
                     
                     if (_currentFunction.Value.FunctionSignature.ClosureTypeId is not null)
@@ -660,16 +717,14 @@ public partial class NewProgramAbseil
                                     loweredMethod.ParameterLocals[0].Type,
                                     closureTypeReference));
 
-                        var thisLocalName = LocalName((uint)_locals.Count);
-                        _locals.Add(new NewMethodLocal(thisLocalName, null, _currentType));
-                        _basicBlockStatements.Add(new Assign(
-                            new Local(thisLocalName),
-                            new Use(new Copy(new Field(ParameterLocalName(0), ClosureThisFieldName, ClassVariantName)))));
-
-                        return new Copy(new Field(
-                            thisLocalName,
+                        return new PlaceResult(new Field(
+                            new Field(
+                                new Local(ParameterLocalName(0)),
+                                ClosureThisFieldName,
+                                ClassVariantName),
                             fieldVariable.Name.StringValue,
-                            ClassVariantName));
+                            ClassVariantName)
+                        );
                     }
                     
                     if (_currentFunction.Value.LoweredMethod.ParameterLocals.Count == 0
@@ -682,10 +737,11 @@ public partial class NewProgramAbseil
                     
                     // todo: assert we're in a class and have _classVariant
 
-                    return new Copy(new Field(
-                        ParameterLocalName(0),
-                        fieldVariable.Name.StringValue,
-                        ClassVariantName));
+                    return new PlaceResult(
+                        new Field(
+                            new Local(ParameterLocalName(0)),
+                            fieldVariable.Name.StringValue,
+                            ClassVariantName));
                 }
                 case TypeChecking.TypeChecker.FunctionSignatureParameter argument:
                 {
@@ -701,7 +757,7 @@ public partial class NewProgramAbseil
                             argumentIndex++;
                         }
 
-                        return new Copy(new Local(ParameterLocalName(argumentIndex)));
+                        return new PlaceResult(new Local(ParameterLocalName(argumentIndex)));
                     }
                     
                     var currentFunction = _currentFunction.NotNull();
@@ -713,16 +769,17 @@ public partial class NewProgramAbseil
                                     []);
                     if (containingFunction.Id == currentFunction.FunctionSignature.Id)
                     {
-                        return new Copy(new Field(LocalsObjectLocalName, argument.Name.StringValue, ClassVariantName));
+                        return new PlaceResult(new Field(new Local(LocalsObjectLocalName), argument.Name.StringValue,
+                            ClassVariantName));
                     }
 
-                    var referencedLocalsObjectLocalName = LocalName((uint)_locals.Count);
-                    _locals.Add(new NewMethodLocal(referencedLocalsObjectLocalName, null, localsTypeReference));
-                    _basicBlockStatements.Add(new Assign(
-                        new Local(referencedLocalsObjectLocalName),
-                        new Use(new Copy(new Field(ParameterLocalName(0), containingFunctionLocals.Name, ClassVariantName)))));
-
-                    return new Copy(new Field(referencedLocalsObjectLocalName, argument.Name.StringValue, ClassVariantName));
+                    return new PlaceResult(new Field(
+                        new Field(
+                            new Local(ParameterLocalName(0)),
+                            containingFunctionLocals.Name,
+                            ClassVariantName),
+                        argument.Name.StringValue,
+                        ClassVariantName));
                 }
             }
 
@@ -816,7 +873,7 @@ public partial class NewProgramAbseil
         var localsType = _types[localsTypeId];
 
         // _basicBlockStatements.Add(new Assign(, new FieldAccess(new Local(LocalsObjectLocalName), variableName, ClassVariantName)));
-        NewLowerExpression(e.VariableDeclaration.Value, destination: new Field(LocalsObjectLocalName, FieldName: variableName, ClassVariantName));
+        NewLowerExpression(e.VariableDeclaration.Value, destination: new Field(new Local(LocalsObjectLocalName), FieldName: variableName, ClassVariantName));
         
         // var localsFieldAssignment = new FieldAssignmentExpression(
         //     new LocalVariableAccessor("__locals",
@@ -834,21 +891,20 @@ public partial class NewProgramAbseil
         //     loweredValue.ResolvedType);
     }
     
-    private IOperand LowerBinaryExpression(BinaryOperatorExpression binaryOperatorExpression, IPlace? destination)
+    private IExpressionResult LowerBinaryExpression(BinaryOperatorExpression binaryOperatorExpression, IPlace? destination)
     {
-        IOperand resultOperand;
         if (binaryOperatorExpression.BinaryOperator.OperatorType == BinaryOperatorType.ValueAssignment)
         {
-            resultOperand = LowerValueAssignment(
+            var placeResult = LowerValueAssignment(
                 binaryOperatorExpression.BinaryOperator.Left.NotNull(),
                 binaryOperatorExpression.BinaryOperator.Right.NotNull());
             
             if (destination is not null)
             {
-                _basicBlockStatements.Add(new Assign(destination, new Use(resultOperand)));
+                _basicBlockStatements.Add(new Assign(destination, new Use(new Copy(placeResult))));
             }
 
-            return resultOperand;
+            return new PlaceResult(destination ?? placeResult);
         }
         
         if (destination is null)
@@ -858,8 +914,6 @@ public partial class NewProgramAbseil
             destination = new Local(localName);
         }
         
-        resultOperand = new Copy(destination);
-
         switch (binaryOperatorExpression.BinaryOperator.OperatorType)
         {
             case BinaryOperatorType.BooleanAnd:
@@ -877,7 +931,7 @@ public partial class NewProgramAbseil
                 var afterBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count + 2}");
                 
                 previousBasicBlock.Terminator = new SwitchInt(
-                    leftOperand,
+                    leftOperand.ToOperand(),
                     new Dictionary<int, BasicBlockId>
                     {
                         { 0, falseBasicBlockId }
@@ -896,7 +950,7 @@ public partial class NewProgramAbseil
                     .NotNull();
                 _controlFlowDepth--;
                 
-                _basicBlockStatements.Add(new Assign(destination, new Use(rightOperand)));
+                _basicBlockStatements.Add(new Assign(destination, new Use(rightOperand.ToOperand())));
                 
                 _basicBlockStatements = [new Assign(destination, new Use(new BoolConstant(false)))];
                 var falseBasicBlock = new BasicBlock(falseBasicBlockId, _basicBlockStatements)
@@ -924,7 +978,7 @@ public partial class NewProgramAbseil
                 var afterBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count + 2}");
                 
                 previousBasicBlock.Terminator = new SwitchInt(
-                    leftOperand,
+                    leftOperand.ToOperand(),
                     new Dictionary<int, BasicBlockId>
                     {
                         { 0, falseBasicBlockId }
@@ -942,7 +996,7 @@ public partial class NewProgramAbseil
                 var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull(), destination: null)
                     .NotNull();
                 _controlFlowDepth--;
-                _basicBlockStatements.Add(new Assign(destination, new Use(rightOperand)));
+                _basicBlockStatements.Add(new Assign(destination, new Use(rightOperand.ToOperand())));
                 
                 _basicBlockStatements = [new Assign(destination, new Use(new BoolConstant(true)))];
                 var trueBasicBlock = new BasicBlock(trueBasicBlockId, _basicBlockStatements)
@@ -975,19 +1029,19 @@ public partial class NewProgramAbseil
 
                 _basicBlockStatements.Add(new Assign(
                     destination,
-                    new BinaryOperation(leftOperand, rightOperand, binaryOperatorKind)));
+                    new BinaryOperation(leftOperand.ToOperand(), rightOperand.ToOperand(), binaryOperatorKind)));
                 break;
             }
         }
 
-        return resultOperand;
+        return new PlaceResult(destination);
     }
     
-    private IOperand LowerValueAssignment(
+    private IPlace LowerValueAssignment(
             IExpression left,
             IExpression right)
     {
-        var valueOperand = NewLowerExpression(right, null).NotNull();
+        var valueResult = NewLowerExpression(right, null).NotNull();
         if (left is Expressions.ValueAccessorExpression valueAccessor)
         {
             var variable = valueAccessor.ReferencedVariable.NotNull();
@@ -1007,11 +1061,13 @@ public partial class NewProgramAbseil
 
                     if (_currentFunction.Value.FunctionSignature == containingFunction)
                     {
+                        var field = new Field(new Local(LocalsObjectLocalName), localVariable.Name.StringValue,
+                            ClassVariantName);
                         _basicBlockStatements.Add(new Assign(
-                            new Field(LocalsObjectLocalName, localVariable.Name.StringValue, ClassVariantName),
-                            new Use(valueOperand)));
-                        
-                        return valueOperand;
+                            field,
+                            new Use(valueResult.ToOperand())));
+
+                        return field;
                     }
 
                     Debug.Assert(_currentFunction.Value.FunctionSignature.ClosureTypeId is not null);
@@ -1026,18 +1082,17 @@ public partial class NewProgramAbseil
                             closureTypeReference,
                             _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type));
 
-                    var localsLocal = new NewMethodLocal($"_local{_locals.Count}", null, localsTypeReference);
-                    _locals.Add(localsLocal);
+                    var localsField = new Field(
+                        new Local(_currentFunction.Value.LoweredMethod.ParameterLocals[0].CompilerGivenName),
+                        localsType.Name,
+                        ClassVariantName);
+                    
                     _basicBlockStatements.Add(
                         new Assign(
-                            new Local(localsLocal.CompilerGivenName),
-                            new Use(new Copy(new Field(_currentFunction.Value.LoweredMethod.ParameterLocals[0].CompilerGivenName, localsType.Name, ClassVariantName)))));
-                    _basicBlockStatements.Add(
-                        new Assign(
-                            new Field(localsLocal.CompilerGivenName, localVariable.Name.StringValue, ClassVariantName),
-                            new Use(valueOperand)));
+                            localsField,
+                            new Use(valueResult.ToOperand())));
 
-                    return valueOperand;
+                    return localsField;
                 }
 
                 var local = _locals.First(x => x.UserGivenName == localVariable.Name.StringValue);
@@ -1045,9 +1100,9 @@ public partial class NewProgramAbseil
                 _basicBlockStatements.Add(
                     new Assign(
                         new Local(local.CompilerGivenName),
-                        new Use(valueOperand)));
+                        new Use(valueResult.ToOperand())));
 
-                return valueOperand;
+                return new Local(local.CompilerGivenName);
             }
 
             if (variable is TypeChecking.TypeChecker.FieldVariable fieldVariable)
@@ -1075,18 +1130,22 @@ public partial class NewProgramAbseil
                             closureType.Name,
                             closureType.Id,
                             []);
-                    
-                    var thisLocal = new NewMethodLocal($"_local{_locals.Count}", null, _currentType);
-                    _basicBlockStatements.Add(
-                        new Assign(
-                            new Local(thisLocal.CompilerGivenName),
-                            new Use(new Copy(new Field(_currentFunction.NotNull().LoweredMethod.ParameterLocals[0].CompilerGivenName, ClosureThisFieldName, ClassVariantName)))));
-                    _basicBlockStatements.Add(
-                        new Assign(
-                            new Field(thisLocal.CompilerGivenName, fieldVariable.Name.StringValue, ClassVariantName),
-                            new Use(valueOperand)));
 
-                    return valueOperand;
+
+                    var field = new Field(
+                        new Field(
+                            new Local(_currentFunction.NotNull().LoweredMethod.ParameterLocals[0].CompilerGivenName),
+                            ClosureThisFieldName,
+                            ClassVariantName),
+                        fieldVariable.Name.StringValue,
+                        ClassVariantName);
+                    
+                    _basicBlockStatements.Add(
+                        new Assign(
+                            field,
+                            new Use(valueResult.ToOperand())));
+
+                    return field;
                 }
 
                 Debug.Assert(fieldVariable.ContainingSignature.Id == _currentType.DefinitionId);
@@ -1096,12 +1155,16 @@ public partial class NewProgramAbseil
                             _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
                             _currentType));
 
+                var valueField = new Field(
+                    new Local(_currentFunction.Value.LoweredMethod.ParameterLocals[0].CompilerGivenName),
+                    fieldVariable.Name.StringValue, ClassVariantName);
+
                 _basicBlockStatements.Add(
                     new Assign(
-                        new Field(_currentFunction.Value.LoweredMethod.ParameterLocals[0].CompilerGivenName, fieldVariable.Name.StringValue, ClassVariantName),
-                        new Use(valueOperand)));
+                        valueField,
+                        new Use(valueResult.ToOperand())));
 
-                return valueOperand;
+                return valueField;
             }
 
             throw new UnreachableException(variable.ToString());
@@ -1109,36 +1172,54 @@ public partial class NewProgramAbseil
 
         if (left is Expressions.MemberAccessExpression memberAccess)
         {
-            throw new NotImplementedException();
-            // var memberOwner = NewLowerExpression(memberAccess.MemberAccess.Owner).NotNull();
-            //
-            // _basicBlockStatements.Add(new Assign(
-            //     new Field()));
-            //
-            // return new FieldAssignmentExpression(
-            //     memberOwner,
-            //     "_classVariant",
-            //     memberAccess.MemberAccess.MemberName.NotNull().StringValue,
-            //     LowerExpression(right),
-            //     valueUseful,
-            //     resolvedType);
+            var ownerResult = NewLowerExpression(memberAccess.MemberAccess.Owner, null);
+
+            IPlace ownerPlace;
+            switch (ownerResult)
+            {
+                case OperandResult{Value: var operand}:
+                {
+                    var localName = LocalName((uint)_locals.Count);
+                    _locals.Add(new NewMethodLocal(
+                        localName,
+                        null,
+                        GetTypeReference(memberAccess.MemberAccess.OwnerType.NotNull())));
+                
+                    ownerPlace = new Local(localName);
+                
+                    _basicBlockStatements.Add(new Assign(ownerPlace, new Use(operand)));
+                    break;
+                }
+                case PlaceResult{Value: var place}:
+                    ownerPlace = place;
+                    break;
+                default:
+                    throw new UnreachableException();
+            }
+
+            var field = new Field(
+                ownerPlace,
+                memberAccess.MemberAccess.MemberName.NotNull().StringValue,
+                ClassVariantName);
+            
+            _basicBlockStatements.Add(new Assign(
+                field,
+                new Use(valueResult.ToOperand())));
+
+            return field; 
         }
 
         if (left is Expressions.StaticMemberAccessExpression staticMemberAccess)
         {
-            throw new NotImplementedException();
-            // if (GetTypeReference(staticMemberAccess.OwnerType.NotNull())
-            //         is not LoweredConcreteTypeReference concreteType)
-            // {
-            //     throw new InvalidOperationException("Expected type to be concrete");
-            // }
-            //
-            // return new StaticFieldAssignmentExpression(
-            //     concreteType,
-            //     staticMemberAccess.StaticMemberAccess.MemberName.NotNull().StringValue,
-            //     LowerExpression(right),
-            //     valueUseful,
-            //     resolvedType);
+            var staticField = new StaticField(
+                (GetTypeReference(staticMemberAccess.OwnerType.NotNull()) as NewLoweredConcreteTypeReference).NotNull(),
+                staticMemberAccess.StaticMemberAccess.MemberName.NotNull().StringValue);
+            
+            _basicBlockStatements.Add(new Assign(
+                staticField,
+                new Use(valueResult.ToOperand())));
+
+            return staticField;
         }
 
         throw new UnreachableException();

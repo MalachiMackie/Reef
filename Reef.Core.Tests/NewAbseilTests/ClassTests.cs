@@ -196,14 +196,11 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                                         new CreateObject(new NewLoweredConcreteTypeReference("MyClass",
                                             new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
                                     new Assign(
-                                        new Field("_local0", "A", "_classVariant"),
+                                        new Field(new Local("_local0"), "A", "_classVariant"),
                                         new Use(new StringConstant(""))),
                                     new Assign(
-                                        new Local("_local2"),
-                                        new Use(new Copy(new Local("_local0")))),
-                                    new Assign(
                                         new Local("_local1"),
-                                        new Use(new Copy(new Field("_local2", "A", "_classVariant"))))
+                                        new Use(new Copy(new Field(new Local("_local0"), "A", "_classVariant"))))
                                 ], new GoTo(new BasicBlockId("bb1"))),
                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
                             ],
@@ -214,9 +211,6 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                                     new NewLoweredConcreteTypeReference("MyClass",
                                         new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
                                 new NewMethodLocal("_local1", "b", StringT),
-                                new NewMethodLocal("_local2", null,
-                                    new NewLoweredConcreteTypeReference("MyClass",
-                                        new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
                             ])
                     ])
             },
@@ -342,13 +336,13 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                                             new NewLoweredConcreteTypeReference("Function`1", DefId.FunctionObject(0),
                                                 [Unit]))),
                                     new Assign(
-                                        new Field("_local0", "FunctionReference", "_classVariant"),
+                                        new Field(new Local("_local0"), "FunctionReference", "_classVariant"),
                                         new Use(new FunctionPointerConstant(
                                             new NewLoweredFunctionReference(
                                                 new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"),
                                                 [])))),
                                     new Assign(
-                                        new Field("_local0", "FunctionParameter", "_classVariant"),
+                                        new Field(new Local("_local0"), "FunctionParameter", "_classVariant"),
                                         new Use(new Copy(new Local("_param0"))))
                                 ], new GoTo(new BasicBlockId("bb1"))),
                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
@@ -396,12 +390,12 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                                             new NewLoweredConcreteTypeReference("Function`1", DefId.FunctionObject(0),
                                                 [Unit]))),
                                     new Assign(
-                                        new Field("_local0", "FunctionReference", "_classVariant"),
+                                        new Field(new Local("_local0"), "FunctionReference", "_classVariant"),
                                         new Use(new FunctionPointerConstant(
                                             new NewLoweredFunctionReference(
                                                 new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), [])))),
                                     new Assign(
-                                        new Field("_local0", "FunctionParameter", "_classVariant"),
+                                        new Field(new Local("_local0"), "FunctionParameter", "_classVariant"),
                                         new Use(new Copy(new Local("_param0"))))
                                 ], new GoTo(new BasicBlockId("bb1"))),
                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
@@ -540,7 +534,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                                 new BasicBlock(new BasicBlockId("bb0"), [
                                     new Assign(
                                         new Local("_local0"),
-                                        new Use(new Copy(new Field("_param0", "MyField", "_classVariant"))))
+                                        new Use(new Copy(new Field(new Local("_param0"), "MyField", "_classVariant"))))
                                 ], new GoTo(new BasicBlockId("bb1"))),
                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
                             ],
@@ -667,48 +661,49 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                             ])
                     ])
             },
-//             {
-//                 "assign to field through member access",
-//                 """
-//                 class MyClass
-//                 {
-//                     pub mut field MyField: string
-//                 }
-//                 var mut a = new MyClass{MyField = ""};
-//                 a.MyField = "hi";
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, 
-//                             "MyClass",
-//                             variants: [
-//                                 Variant("_classVariant", [Field("MyField", StringType)])
-//                             ])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration("a",
-//                                     CreateObject(
-//                                         ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")),
-//                                         "_classVariant",
-//                                         true,
-//                                         new(){{"MyField", StringConstant("", true)}}),
-//                                     false),
-//                                 FieldAssignment(
-//                                     LocalAccess("a", true, ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
-//                                     "_classVariant",
-//                                     "MyField",
-//                                     StringConstant("hi", true),
-//                                     false,
-//                                     StringType),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 Local("a", ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")))
-//                             ])
-//                     ])
-//             },
+             {
+                 "assign to field through member access",
+                 """
+                 class MyClass
+                 {
+                     pub mut field MyField: string
+                 }
+                 var mut a = new MyClass{MyField = ""};
+                 a.MyField = "hi";
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, 
+                             "MyClass",
+                             variants: [
+                                 NewVariant("_classVariant", [NewField("MyField", StringT)])
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new CreateObject(new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                         new Assign(
+                                             new Field(new Local("_local0"), "MyField", "_classVariant"),
+                                             new Use(new StringConstant(""))),
+                                         new Assign(
+                                             new Field(new Local("_local0"), "MyField", "_classVariant"),
+                                             new Use(new StringConstant("hi")))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
+                             ])
+                     ])
+             },
 //             {
 //                 "assign to field in current type",
 //                 """

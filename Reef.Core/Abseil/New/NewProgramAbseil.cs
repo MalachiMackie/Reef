@@ -399,7 +399,7 @@ public partial class NewProgramAbseil
                                         new BasicBlock(new BasicBlockId("bb0"), [
                                             new Assign(new Local(ReturnValueLocalName), new CreateObject(unionTypeReference)),
                                             ..createMethodFieldInitializations.Select(x => new Assign(
-                                                new Field(ReturnValueLocalName, x.fieldName, u.Name),
+                                                new Field(new Local(ReturnValueLocalName), x.fieldName, u.Name),
                                                 new Use(x.operand)))
                                         ])
                                         {

@@ -264,7 +264,9 @@ public class NewPrettyPrinter
         {
             case Field field:
             {
-                _stringBuilder.Append($"({field.LocalName} as {field.VariantName}).{field.FieldName}");
+                _stringBuilder.Append('(');
+                PrettyPrintPlace(field.FieldOwner);
+                _stringBuilder.Append($" as {field.VariantName}.{field.FieldName})");
                 break;
             }
             case Local local:
