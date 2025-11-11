@@ -660,38 +660,33 @@ public partial class NewProgramAbseil
                         Debug.Assert(_currentFunction is not null);
                         Debug.Assert(_currentType is not null);
 
-                        throw new NotImplementedException();
-                        // if (thisVariable.ReferencedInClosure
-                        //         && _currentFunction.Value.FunctionSignature.ClosureTypeId is not null)
-                        // {
-                        //     var closureType = _types[_currentFunction.Value.FunctionSignature.ClosureTypeId];
-                        //     var closureTypeReference = new LoweredConcreteTypeReference(
-                        //                 closureType.Name,
-                        //                 closureType.Id,
-                        //                 []);
-                        //     Debug.Assert(_currentFunction.Value.LoweredMethod.Parameters.Count > 0);
-                        //     Debug.Assert(
-                        //         EqualTypeReferences(
-                        //             _currentFunction.Value.LoweredMethod.Parameters[0],
-                        //             closureTypeReference));
-                        //     return new FieldAccessExpression(
-                        //         new LoadArgumentExpression(
-                        //             0,
-                        //             true,
-                        //             closureTypeReference),
-                        //         "this",
-                        //         "_classVariant",
-                        //         valueUseful,
-                        //         resolvedType);
-                        // }
+                        if (thisVariable.ReferencedInClosure
+                                && _currentFunction.Value.FunctionSignature.ClosureTypeId is not null)
+                        {
+                            var closureType = _types[_currentFunction.Value.FunctionSignature.ClosureTypeId];
+                            var closureTypeReference = new  NewLoweredConcreteTypeReference(
+                                        closureType.Name,
+                                        closureType.Id,
+                                        []);
+                            Debug.Assert(_currentFunction.Value.LoweredMethod.ParameterLocals.Count > 0);
+                            Debug.Assert(
+                                EqualTypeReferences(
+                                    _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
+                                    closureTypeReference));
 
-                        // Debug.Assert(_currentFunction.Value.LoweredMethod.Parameters.Count > 0);
-                        // Debug.Assert(EqualTypeReferences(
-                        //             _currentFunction.Value.LoweredMethod.Parameters[0],
-                        //             _currentType));
-                        //
-                        // return new LoadArgumentExpression(
-                        //         0, valueUseful, resolvedType);
+                            return new PlaceResult(
+                                new Field(
+                                    new Local(ParameterLocalName(0)),
+                                    ClosureThisFieldName,
+                                    ClassVariantName));
+                        }
+
+                        Debug.Assert(_currentFunction.Value.LoweredMethod.ParameterLocals.Count > 0);
+                        Debug.Assert(EqualTypeReferences(
+                                    _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
+                                    _currentType));
+
+                        return new PlaceResult(new Local(ParameterLocalName(0)));
                     }
                 case TypeChecking.TypeChecker.FieldVariable fieldVariable
                     when fieldVariable.ContainingSignature.Id == _currentType?.DefinitionId

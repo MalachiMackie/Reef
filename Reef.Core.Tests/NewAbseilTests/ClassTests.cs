@@ -826,83 +826,100 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                              Unit)
                      ])
              },
-//             {
-//                 "argument access in instance function",
-//                 """
-//                 class MyClass
-//                 {
-//                     fn SomeFn(a: string): string { return a; }
-//                 }
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, 
-//                             "MyClass",
-//                             variants: [
-//                                 Variant("_classVariant")
-//                             ])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
-//                             [
-//                                 MethodReturn(LoadArgument(1, true, StringType))
-//                             ],
-//                             parameters: [ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")), StringType],
-//                             returnType: StringType)
-//                     ])
-//             },
-//             {
-//                 "argument access in static function",
-//                 """
-//                 class MyClass
-//                 {
-//                     static fn SomeFn(a: string): string { return a; }
-//                 }
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, 
-//                             "MyClass",
-//                             variants: [
-//                                 Variant("_classVariant")
-//                             ])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
-//                             [
-//                                 MethodReturn(LoadArgument(0, true, StringType))
-//                             ],
-//                             parameters: [StringType],
-//                             returnType: StringType)
-//                     ])
-//             },
-//             {
-//                 "this reference",
-//                 """
-//                 class MyClass
-//                 {
-//                     fn SomeFn()
-//                     {
-//                         var a = this;
-//                     }
-//                 }
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, "MyClass", variants: [Variant("_classVariant")])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
-//                             [
-//                                 VariableDeclaration("a",
-//                                     LoadArgument(0, true, ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             parameters: [ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))],
-//                             locals: [Local("a", ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")))])
-//                     ])
-//             },
+             {
+                 "argument access in instance function",
+                 """
+                 class MyClass
+                 {
+                     fn SomeFn(a: string): string { return a; }
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, 
+                             "MyClass",
+                             variants: [
+                                 NewVariant("_classVariant")
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
+                             [
+                                 new BasicBlock(new BasicBlockId("bb0"), [
+                                     new Assign(
+                                         new Local("_returnValue"),
+                                         new Use(new Copy(new Local("_param1"))))
+                                 ], new Return()),
+                             ],
+                             StringT,
+                             parameters: [
+                                 ("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                 ("a", StringT)])
+                     ])
+             },
+             {
+                 "argument access in static function",
+                 """
+                 class MyClass
+                 {
+                     static fn SomeFn(a: string): string { return a; }
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, 
+                             "MyClass",
+                             variants: [
+                                 NewVariant("_classVariant")
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
+                             [
+                                 new BasicBlock(new BasicBlockId("bb0"), [
+                                     new Assign(
+                                         new Local("_returnValue"),
+                                         new Use(new Copy(new Local("_param0"))))
+                                 ], new Return())
+                             ],
+                             StringT,
+                             parameters: [("a", StringT)])
+                     ])
+             },
+             {
+                 "this reference",
+                 """
+                 class MyClass
+                 {
+                     fn SomeFn()
+                     {
+                         var a = this;
+                     }
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "MyClass", variants: [NewVariant("_classVariant")])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
+                             [
+                                 new BasicBlock(new BasicBlockId("bb0"), [
+                                     new Assign(
+                                         new Local("_local0"),
+                                         new Use(new Copy(new Local("_param0"))))
+                                 ], new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return()),
+                                 // VariableDeclaration("a",
+                                 //     LoadArgument(0, true, ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
+                                 //     false),
+                                 // MethodReturnUnit()
+                             ],
+                             Unit,
+                             parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))],
+                             locals: [new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))])
+                     ])
+             },
 //             {
 //                 "non generic function in generic class",
 //                 """
