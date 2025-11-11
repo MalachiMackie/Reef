@@ -1059,70 +1059,114 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                              ])
                      ])
              },
-//             {
-//                 "reference generic method inside generic type",
-//                 """
-//                 class MyClass<T>
-//                 {
-//                     static fn SomeFn<T1>(){}
-//  
-//                     static fn OtherFn()
-//                     {
-//                         SomeFn::<string>();
-//                     }
-//                 }
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, "MyClass", ["T"], [Variant("_classVariant")])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn", [MethodReturnUnit()], [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T"), (new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "T1")]),
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn",
-//                             [
-//                                 MethodCall(
-//                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
-//                                         [GenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T"), StringType]),
-//                                     [],
-//                                     false,
-//                                     Unit),
-//                                 MethodReturnUnit()
-//                             ],
-//                             [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")])
-//                     ])
-//             },
-//             {
-//                 "reference non generic method inside generic type",
-//                 """
-//                 class MyClass<T>
-//                 {
-//                     static fn SomeFn(){}
-//
-//                     static fn OtherFn()
-//                     {
-//                         SomeFn();
-//                     }
-//                 }
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, "MyClass", ["T"], [Variant("_classVariant")])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn", [MethodReturnUnit()], [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")]),
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn",
-//                             [
-//                                 MethodCall(
-//                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
-//                                         [GenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")]),
-//                                     [],
-//                                     false,
-//                                     Unit),
-//                                 MethodReturnUnit()
-//                             ],
-//                             [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")])
-//                     ])
-//             }
+             {
+                 "reference generic method inside generic type",
+                 """
+                 class MyClass<T>
+                 {
+                     static fn SomeFn<T1>(){}
+  
+                     static fn OtherFn()
+                     {
+                         SomeFn::<string>();
+                     }
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "MyClass", ["T"], [NewVariant("_classVariant")])
+                     ],
+                     methods: [
+                         NewMethod(
+                             new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"),
+                             "MyClass__SomeFn",
+                             [
+                                 new BasicBlock(new BasicBlockId("bb0"), [], new Return())
+                             ],
+                             Unit,
+                             typeParameters: [
+                                 (new DefId(ModuleId, $"{ModuleId}.MyClass"), "T"),
+                                 (new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "T1")
+                             ]),
+                         NewMethod(
+                             new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"),
+                             "MyClass__OtherFn",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [],
+                                     new MethodCall(
+                                         new NewLoweredFunctionReference(
+                                             new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"),
+                                             [
+                                                 new NewLoweredGenericPlaceholder(
+                                                     new DefId(ModuleId, $"{ModuleId}.MyClass"),
+                                                     "T"),
+                                                 StringT
+                                             ]),
+                                         [],
+                                         new Local("_local0"),
+                                         new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [new NewMethodLocal("_local0", null, Unit)],
+                             typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")])
+                     ])
+             },
+             {
+                 "reference non generic method inside generic type",
+                 """
+                 class MyClass<T>
+                 {
+                     static fn SomeFn(){}
+
+                     static fn OtherFn()
+                     {
+                         SomeFn();
+                     }
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "MyClass", ["T"], [NewVariant("_classVariant")])
+                     ],
+                     methods: [
+                         NewMethod(
+                             new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"),
+                             "MyClass__SomeFn",
+                             [
+                                 new BasicBlock(new BasicBlockId("bb0"), [], new Return())
+                             ],
+                             Unit,
+                             [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")]),
+                         NewMethod(
+                             new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"),
+                             "MyClass__OtherFn",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [],
+                                     new MethodCall(
+                                         new NewLoweredFunctionReference(
+                                             new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"),
+                                             [
+                                                 new NewLoweredGenericPlaceholder(
+                                                     new DefId(ModuleId, $"{ModuleId}.MyClass"),
+                                                     "T")
+                                             ]),
+                                         [],
+                                         new Local("_local0"),
+                                         new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", null, Unit)
+                             ],
+                             typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")])
+                     ])
+             }
         };
     }
 }
