@@ -895,16 +895,20 @@ public partial class NewProgramAbseil
     {
         if (binaryOperatorExpression.BinaryOperator.OperatorType == BinaryOperatorType.ValueAssignment)
         {
-            var placeResult = LowerValueAssignment(
-                binaryOperatorExpression.BinaryOperator.Left.NotNull(),
-                binaryOperatorExpression.BinaryOperator.Right.NotNull());
-            
+            var leftResult = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull(), destination: null);
+            if (leftResult is not PlaceResult { Value: var leftPlace })
+            {
+                throw new InvalidOperationException("Value Assignment left operand must be a place");
+            }
+        
+            NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull(), destination: leftPlace);
+
             if (destination is not null)
             {
-                _basicBlockStatements.Add(new Assign(destination, new Use(new Copy(placeResult))));
+                _basicBlockStatements.Add(new Assign(destination, new Use(new Copy(leftPlace))));
             }
 
-            return new PlaceResult(destination ?? placeResult);
+            return new PlaceResult(destination ?? leftPlace);
         }
         
         if (destination is null)
@@ -1035,193 +1039,5 @@ public partial class NewProgramAbseil
         }
 
         return new PlaceResult(destination);
-    }
-    
-    private IPlace LowerValueAssignment(
-            IExpression left,
-            IExpression right)
-    {
-        var valueResult = NewLowerExpression(right, null).NotNull();
-        if (left is Expressions.ValueAccessorExpression valueAccessor)
-        {
-            var variable = valueAccessor.ReferencedVariable.NotNull();
-            if (variable is TypeChecking.TypeChecker.LocalVariable localVariable)
-            {
-                if (localVariable.ReferencedInClosure)
-                {
-                    var containingFunction = localVariable.ContainingFunction;
-                    Debug.Assert(_currentFunction.HasValue);
-                    Debug.Assert(containingFunction is not null);
-                    Debug.Assert(containingFunction.LocalsTypeId is not null);
-                    var localsType = _types[containingFunction.LocalsTypeId];
-                    var localsTypeReference = new NewLoweredConcreteTypeReference(
-                        localsType.Name,
-                        localsType.Id,
-                        []);
-
-                    if (_currentFunction.Value.FunctionSignature == containingFunction)
-                    {
-                        var field = new Field(new Local(LocalsObjectLocalName), localVariable.Name.StringValue,
-                            ClassVariantName);
-                        _basicBlockStatements.Add(new Assign(
-                            field,
-                            new Use(valueResult.ToOperand())));
-
-                        return field;
-                    }
-
-                    Debug.Assert(_currentFunction.Value.FunctionSignature.ClosureTypeId is not null);
-                    var closureType = _types[_currentFunction.Value.FunctionSignature.ClosureTypeId];
-                    var closureTypeReference = new NewLoweredConcreteTypeReference(
-                            closureType.Name,
-                            closureType.Id,
-                            []);
-
-                    Debug.Assert(_currentFunction.Value.LoweredMethod.ParameterLocals.Count > 0);
-                    Debug.Assert(EqualTypeReferences(
-                            closureTypeReference,
-                            _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type));
-
-                    var localsField = new Field(
-                        new Local(_currentFunction.Value.LoweredMethod.ParameterLocals[0].CompilerGivenName),
-                        localsType.Name,
-                        ClassVariantName);
-                    
-                    _basicBlockStatements.Add(
-                        new Assign(
-                            localsField,
-                            new Use(valueResult.ToOperand())));
-
-                    return localsField;
-                }
-
-                var local = _locals.First(x => x.UserGivenName == localVariable.Name.StringValue);
-
-                _basicBlockStatements.Add(
-                    new Assign(
-                        new Local(local.CompilerGivenName),
-                        new Use(valueResult.ToOperand())));
-
-                return new Local(local.CompilerGivenName);
-            }
-
-            if (variable is TypeChecking.TypeChecker.FieldVariable fieldVariable)
-            {
-                Debug.Assert(_currentType is not null);
-                if (fieldVariable.IsStaticField)
-                {
-                    throw new NotImplementedException();
-                    // return new StaticFieldAssignmentExpression(
-                    //     _currentType,
-                    //     fieldVariable.Name.StringValue,
-                    //     LowerExpression(right),
-                    //     valueUseful,
-                    //     resolvedType);
-                }
-
-                if (fieldVariable.ReferencedInClosure
-                    && _currentFunction is
-                    {
-                        FunctionSignature: { ClosureTypeId: not null} functionSignature
-                    })
-                {
-                    var closureType = _types[functionSignature.ClosureTypeId];
-                    var closureTypeReference = new NewLoweredConcreteTypeReference(
-                            closureType.Name,
-                            closureType.Id,
-                            []);
-
-
-                    var field = new Field(
-                        new Field(
-                            new Local(_currentFunction.NotNull().LoweredMethod.ParameterLocals[0].CompilerGivenName),
-                            ClosureThisFieldName,
-                            ClassVariantName),
-                        fieldVariable.Name.StringValue,
-                        ClassVariantName);
-                    
-                    _basicBlockStatements.Add(
-                        new Assign(
-                            field,
-                            new Use(valueResult.ToOperand())));
-
-                    return field;
-                }
-
-                Debug.Assert(fieldVariable.ContainingSignature.Id == _currentType.DefinitionId);
-                Debug.Assert(_currentFunction is not null);
-                Debug.Assert(_currentFunction.Value.LoweredMethod.ParameterLocals.Count > 0);
-                Debug.Assert(EqualTypeReferences(
-                            _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
-                            _currentType));
-
-                var valueField = new Field(
-                    new Local(_currentFunction.Value.LoweredMethod.ParameterLocals[0].CompilerGivenName),
-                    fieldVariable.Name.StringValue, ClassVariantName);
-
-                _basicBlockStatements.Add(
-                    new Assign(
-                        valueField,
-                        new Use(valueResult.ToOperand())));
-
-                return valueField;
-            }
-
-            throw new UnreachableException(variable.ToString());
-        }
-
-        if (left is Expressions.MemberAccessExpression memberAccess)
-        {
-            var ownerResult = NewLowerExpression(memberAccess.MemberAccess.Owner, null);
-
-            IPlace ownerPlace;
-            switch (ownerResult)
-            {
-                case OperandResult{Value: var operand}:
-                {
-                    var localName = LocalName((uint)_locals.Count);
-                    _locals.Add(new NewMethodLocal(
-                        localName,
-                        null,
-                        GetTypeReference(memberAccess.MemberAccess.OwnerType.NotNull())));
-                
-                    ownerPlace = new Local(localName);
-                
-                    _basicBlockStatements.Add(new Assign(ownerPlace, new Use(operand)));
-                    break;
-                }
-                case PlaceResult{Value: var place}:
-                    ownerPlace = place;
-                    break;
-                default:
-                    throw new UnreachableException();
-            }
-
-            var field = new Field(
-                ownerPlace,
-                memberAccess.MemberAccess.MemberName.NotNull().StringValue,
-                ClassVariantName);
-            
-            _basicBlockStatements.Add(new Assign(
-                field,
-                new Use(valueResult.ToOperand())));
-
-            return field; 
-        }
-
-        if (left is Expressions.StaticMemberAccessExpression staticMemberAccess)
-        {
-            var staticField = new StaticField(
-                (GetTypeReference(staticMemberAccess.OwnerType.NotNull()) as NewLoweredConcreteTypeReference).NotNull(),
-                staticMemberAccess.StaticMemberAccess.MemberName.NotNull().StringValue);
-            
-            _basicBlockStatements.Add(new Assign(
-                staticField,
-                new Use(valueResult.ToOperand())));
-
-            return staticField;
-        }
-
-        throw new UnreachableException();
     }
 }

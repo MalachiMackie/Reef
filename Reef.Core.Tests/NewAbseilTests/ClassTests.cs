@@ -44,8 +44,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                                 ], new GoTo(new BasicBlockId("bb1"))),
                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
                             ],
-                            [],
-                            new NewMethodLocal("_returnValue", null, StringT))
+                            [])
                     ])
             ],
             methods:
@@ -165,8 +164,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                                     ], new GoTo(new BasicBlockId("bb1"))),
                                     new BasicBlock(new BasicBlockId("bb1"), [], new Return())
                                 ],
-                                [],
-                                new NewMethodLocal("_returnValue", null, StringT))
+                                [])
                         ])
                 ])
             },
@@ -237,8 +235,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                                         ], new GoTo(new BasicBlockId("bb1"))),
                                         new BasicBlock(new BasicBlockId("bb1"), [], new Return())
                                     ],
-                                    [],
-                                    new NewMethodLocal("_returnValue", null, StringT))
+                                    [])
                             ])
                     ],
                     methods:
@@ -580,8 +577,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                                         ], new GoTo(new BasicBlockId("bb1"))),
                                         new BasicBlock(new BasicBlockId("bb1"), [], new Return())
                                     ],
-                                    [],
-                                    new NewMethodLocal("_returnValue", null, StringT))
+                                    [])
                             ])
                     ],
                     methods:
@@ -704,116 +700,132 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                              ])
                      ])
              },
-//             {
-//                 "assign to field in current type",
-//                 """
-//                 class MyClass
-//                 {
-//                     pub mut field MyField: string,
-//
-//                     mut fn SomeFn()
-//                     {
-//                         MyField = "hi";
-//                     }
-//
-//                 }
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, 
-//                             "MyClass",
-//                             variants: [
-//                                 Variant("_classVariant", [Field("MyField", StringType)])
-//                             ])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
-//                             [
-//                                 FieldAssignment(
-//                                     LoadArgument(0, true, ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
-//                                     "_classVariant",
-//                                     "MyField",
-//                                     StringConstant("hi", true),
-//                                     false,
-//                                     StringType),
-//                                 MethodReturnUnit()
-//                             ],
-//                             parameters: [
-//                                 ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))
-//                             ])
-//                     ])
-//             },
-//             {
-//                 "assign to static field in current type",
-//                 """
-//                 class MyClass
-//                 {
-//                     pub mut static field MyField: string = "",
-//
-//                     static fn SomeFn()
-//                     {
-//                         MyField = "hi";
-//                     }
-//
-//                 }
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, 
-//                             "MyClass",
-//                             variants: [
-//                                 Variant("_classVariant")
-//                             ],
-//                             staticFields: [
-//                                 StaticField("MyField", StringType, StringConstant("", true))
-//                             ])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
-//                             [
-//                                 StaticFieldAssignment(
-//                                     ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")),
-//                                     "MyField",
-//                                     StringConstant("hi", true),
-//                                     false,
-//                                     StringType),
-//                                 MethodReturnUnit()
-//                             ])
-//                     ])
-//             },
-//             {
-//                 "assign to static field through static member access",
-//                 """
-//                 class MyClass
-//                 {
-//                     pub mut static field MyField: string = "",
-//                 }
-//                 MyClass::MyField = "hi";
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, 
-//                             "MyClass",
-//                             variants: [
-//                                 Variant("_classVariant")
-//                             ],
-//                             staticFields: [
-//                                 StaticField("MyField", StringType, StringConstant("", true))
-//                             ])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 StaticFieldAssignment(
-//                                     ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")),
-//                                     "MyField",
-//                                     StringConstant("hi", true),
-//                                     false,
-//                                     StringType),
-//                                 MethodReturnUnit()
-//                             ])
-//                     ])
-//             },
+             {
+                 "assign to field in current type",
+                 """
+                 class MyClass
+                 {
+                     pub mut field MyField: string,
+
+                     mut fn SomeFn()
+                     {
+                         MyField = "hi";
+                     }
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, 
+                             "MyClass",
+                             variants: [
+                                 NewVariant("_classVariant", [NewField("MyField", StringT)])
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
+                             [
+                                 new BasicBlock(new BasicBlockId("bb0"), [
+                                     new Assign(
+                                         new Field(new Local("_param0"),
+                                             "MyField",
+                                             "_classVariant"),
+                                         new Use(new StringConstant("hi")))
+                                 ], new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             parameters: [
+                                 ("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
+                             ])
+                     ])
+             },
+             {
+                 "assign to static field in current type",
+                 """
+                 class MyClass
+                 {
+                     pub mut static field MyField: string = "",
+
+                     static fn SomeFn()
+                     {
+                         MyField = "hi";
+                     }
+
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, 
+                             "MyClass",
+                             variants: [
+                                 NewVariant("_classVariant")
+                             ],
+                             staticFields: [
+                                 NewStaticField(
+                                     "MyField",
+                                     StringT,
+                                     [
+                                         new BasicBlock(new BasicBlockId("bb0"), [
+                                             new Assign(new Local("_returnValue"), new Use(new StringConstant("")))
+                                         ], new GoTo(new BasicBlockId("bb1"))),
+                                         new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                     ], [])
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
+                             [
+                                 new BasicBlock(new BasicBlockId("bb0"), [
+                                     new Assign(new StaticField(
+                                         new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []),
+                                         "MyField"),
+                                         new Use(new StringConstant("hi")))
+                                 ], new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit)
+                     ])
+             },
+             {
+                 "assign to static field through static member access",
+                 """
+                 class MyClass
+                 {
+                     pub mut static field MyField: string = "",
+                 }
+                 MyClass::MyField = "hi";
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, 
+                             "MyClass",
+                             variants: [
+                                 NewVariant("_classVariant")
+                             ],
+                             staticFields: [
+                                 NewStaticField("MyField", StringT, [
+                                     new BasicBlock(new BasicBlockId("bb0"), [
+                                         new Assign(new Local("_returnValue"),
+                                             new Use(new StringConstant("")))
+                                     ], new GoTo(new BasicBlockId("bb1"))),
+                                     new BasicBlock(new BasicBlockId("bb1"), [], new Return()),
+                                 ], [])
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(new BasicBlockId("bb0"), [
+                                     new Assign(new StaticField(
+                                         new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []),
+                                         "MyField"),
+                                         new Use(new StringConstant("hi")))
+                                 ], new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit)
+                     ])
+             },
 //             {
 //                 "argument access in instance function",
 //                 """

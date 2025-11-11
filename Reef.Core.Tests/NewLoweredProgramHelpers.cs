@@ -47,11 +47,10 @@ public static class NewLoweredProgramHelpers
         string name,
         INewLoweredTypeReference type,
         IReadOnlyList<BasicBlock> initializerBasicBlocks,
-        IReadOnlyList<NewMethodLocal> initializerLocals,
-        NewMethodLocal initializerReturnValueLocal)
+        IReadOnlyList<NewMethodLocal> initializerLocals)
     {
         return new NewStaticDataTypeField(name, type, initializerBasicBlocks, initializerLocals,
-            initializerReturnValueLocal);
+            new NewMethodLocal("_returnValue", null, type));
     }
 
     public static NewLoweredMethod NewMethod(
