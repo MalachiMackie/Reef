@@ -965,35 +965,44 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                              ])
                      ])
              },
-//             {
-//                 "reference static generic method in generic type",
-//                 """
-//                 class MyClass<T>
-//                 {
-//                     pub static fn SomeFn<T1>(){}
-//                 }
-//                 MyClass::<string>::SomeFn::<i64>()
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, "MyClass", ["T"], variants: [Variant("_classVariant")])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn", [MethodReturnUnit()], [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T"), (new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "T1")]),
-//                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 MethodCall(
-//                                     FunctionReference(
-//                                         new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"),
-//                                         "MyClass__SomeFn",
-//                                         [StringType, Int64_t]),
-//                                     [],
-//                                     false,
-//                                     Unit),
-//                                 MethodReturnUnit()
-//                             ])
-//                     ])
-//             },
+             {
+                 "reference static generic method in generic type",
+                 """
+                 class MyClass<T>
+                 {
+                     pub static fn SomeFn<T1>(){}
+                 }
+                 MyClass::<string>::SomeFn::<i64>();
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "MyClass", ["T"], variants: [NewVariant("_classVariant")])
+                     ],
+                     methods: [
+                         NewMethod(
+                             new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"),
+                             "MyClass__SomeFn",
+                             [new BasicBlock(new BasicBlockId("bb0"), [], new Return())],
+                             Unit,
+                             typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T"), (new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "T1")]),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [],
+                                     new MethodCall(
+                                         new NewLoweredFunctionReference(
+                                             new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"),
+                                             [StringT, Int64T]),
+                                         [],
+                                         new Local("_local0"),
+                                         new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [new NewMethodLocal("_local0", null, Unit)])
+                     ])
+             },
 //             {
 //                 "reference generic method on instance of generic type",
 //                 """
