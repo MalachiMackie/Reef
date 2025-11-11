@@ -1003,47 +1003,62 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                              locals: [new NewMethodLocal("_local0", null, Unit)])
                      ])
              },
-//             {
-//                 "reference generic method on instance of generic type",
-//                 """
-//                 class MyClass<T>
-//                 {
-//                     pub fn SomeFn<T2>(){}
-//                 }
-//                 var a = new MyClass::<string>{};
-//                 a.SomeFn::<i64>();
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, "MyClass", ["T"], variants: [Variant("_classVariant")])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), 
-//                             "MyClass__SomeFn",
-//                             [MethodReturnUnit()],
-//                             [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T"), (new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "T2")],
-//                             parameters: [ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [GenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")])]),
-//                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration(
-//                                     "a",
-//                                     CreateObject(
-//                                         ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [StringType]),
-//                                         "_classVariant",
-//                                         true),
-//                                     false),
-//                                 MethodCall(
-//                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn", [StringType, Int64_t]),
-//                                     [LocalAccess("a", true, ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [StringType]))],
-//                                     false,
-//                                     Unit),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 Local("a", ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [StringType]))
-//                             ])
-//                     ])
-//             },
+             {
+                 "reference generic method on instance of generic type",
+                 """
+                 class MyClass<T>
+                 {
+                     pub fn SomeFn<T2>(){}
+                 }
+                 var a = new MyClass::<string>{};
+                 a.SomeFn::<i64>();
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "MyClass", ["T"], variants: [NewVariant("_classVariant")])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), 
+                             "MyClass__SomeFn",
+                             [
+                                 new BasicBlock(new BasicBlockId("bb0"), [], new Return())
+                             ],
+                             Unit,
+                             typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T"), (new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "T2")],
+                             parameters: [
+                                 (
+                                     "this",
+                                     new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [new NewLoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T")])
+                                 )
+                             ]),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new CreateObject(
+                                                 new NewLoweredConcreteTypeReference(
+                                                     "MyClass",
+                                                     new DefId(ModuleId, $"{ModuleId}.MyClass"), [StringT]))),
+                                     ],
+                                     new MethodCall(
+                                             new NewLoweredFunctionReference(
+                                                 new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"),
+                                                 [StringT, Int64T]),
+                                             [new Copy(new Local("_local0"))],
+                                             new Local("_local1"),
+                                             new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [StringT])),
+                                 new NewMethodLocal("_local1", null, Unit)
+                             ])
+                     ])
+             },
 //             {
 //                 "reference generic method inside generic type",
 //                 """
