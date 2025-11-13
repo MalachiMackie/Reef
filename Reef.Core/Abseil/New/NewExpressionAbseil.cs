@@ -24,51 +24,38 @@ public partial class NewProgramAbseil
         public IOperand ToOperand() => new Copy(Value);
     }
     
-    private IExpressionResult NewLowerExpression(Expressions.IExpression expression, IPlace? destination)
+    private IExpressionResult NewLowerExpression(IExpression expression, IPlace? destination)
     {
-        switch (expression)
+        return expression switch
         {
-            case Expressions.BinaryOperatorExpression binaryOperatorExpression:
-                return LowerBinaryExpression(binaryOperatorExpression, destination);
-            case Expressions.BlockExpression blockExpression:
-                return LowerBlock(blockExpression, destination);
-            case Expressions.BreakExpression breakExpression:
-                throw new NotImplementedException();
-            case Expressions.ContinueExpression continueExpression:
-                throw new NotImplementedException();
-            case Expressions.IfExpressionExpression ifExpressionExpression:
-                throw new NotImplementedException();
-            case Expressions.MatchesExpression matchesExpression:
-                throw new NotImplementedException();
-            case Expressions.MatchExpression matchExpression:
-                throw new NotImplementedException();
-            case Expressions.MemberAccessExpression memberAccessExpression:
-                return LowerMemberAccess(memberAccessExpression, destination);
-            case Expressions.MethodCallExpression methodCallExpression:
-                return LowerMethodCall(methodCallExpression, destination);
-            case Expressions.MethodReturnExpression methodReturnExpression:
-                LowerReturn(methodReturnExpression);
-                return new OperandResult(new UnitConstant());
-            case Expressions.ObjectInitializerExpression objectInitializerExpression:
-                return LowerObjectInitializer(objectInitializerExpression, destination); 
-            case Expressions.StaticMemberAccessExpression staticMemberAccessExpression:
-                return LowerStaticMemberAccess(staticMemberAccessExpression, destination);
-            case Expressions.TupleExpression tupleExpression:
-                return LowerTuple(tupleExpression, destination);
-            case Expressions.UnaryOperatorExpression unaryOperatorExpression:
-                return LowerUnaryOperator(unaryOperatorExpression, destination);
-            case Expressions.UnionClassVariantInitializerExpression unionClassVariantInitializerExpression:
-                return LowerUnionClassVariantInitializer(unionClassVariantInitializerExpression, destination);
-            case Expressions.ValueAccessorExpression valueAccessorExpression:
-                return LowerValueAccessor(valueAccessorExpression, destination);
-            case Expressions.VariableDeclarationExpression variableDeclarationExpression:
-                LowerVariableDeclaration(variableDeclarationExpression);
-                return new OperandResult(new UnitConstant());
-            case Expressions.WhileExpression whileExpression:
-                throw new NotImplementedException();
-            default:
-                throw new ArgumentOutOfRangeException(nameof(expression));
-        }
+            BinaryOperatorExpression binaryOperatorExpression => LowerBinaryExpression(
+                binaryOperatorExpression, destination),
+            BlockExpression blockExpression => LowerBlock(blockExpression, destination),
+            BreakExpression breakExpression => throw new NotImplementedException(),
+            ContinueExpression continueExpression => throw new NotImplementedException(),
+            IfExpressionExpression ifExpressionExpression => throw new NotImplementedException(),
+            MatchesExpression matchesExpression => throw new NotImplementedException(),
+            MatchExpression matchExpression => throw new NotImplementedException(),
+            WhileExpression whileExpression => throw new NotImplementedException(),
+            MemberAccessExpression memberAccessExpression => LowerMemberAccess(memberAccessExpression,
+                destination),
+            MethodCallExpression methodCallExpression => LowerMethodCall(methodCallExpression, destination),
+            MethodReturnExpression methodReturnExpression => LowerReturn(methodReturnExpression),
+            ObjectInitializerExpression objectInitializerExpression => LowerObjectInitializer(
+                objectInitializerExpression, destination),
+            StaticMemberAccessExpression staticMemberAccessExpression => LowerStaticMemberAccess(
+                staticMemberAccessExpression, destination),
+            TupleExpression tupleExpression => LowerTuple(tupleExpression, destination),
+            UnaryOperatorExpression unaryOperatorExpression => LowerUnaryOperator(unaryOperatorExpression,
+                destination),
+            UnionClassVariantInitializerExpression unionClassVariantInitializerExpression =>
+                LowerUnionClassVariantInitializer(unionClassVariantInitializerExpression, destination),
+            ValueAccessorExpression valueAccessorExpression => LowerValueAccessor(valueAccessorExpression,
+                destination),
+            VariableDeclarationExpression variableDeclarationExpression => LowerVariableDeclaration(
+                variableDeclarationExpression),
+            _ => throw new ArgumentOutOfRangeException(nameof(expression))
+        };
     }
     
     private IExpressionResult LowerUnionClassVariantInitializer(
@@ -186,13 +173,11 @@ public partial class NewProgramAbseil
             MemberAccessExpression e,
             IPlace? destination)
     {
-        var ownerType = GetTypeReference(e.MemberAccess.OwnerType.NotNull());
-        
         var ownerResult = NewLowerExpression(e.MemberAccess.Owner, null);
         
         switch (e.MemberAccess.MemberType.NotNull())
         {
-            case Expressions.MemberType.Field:
+            case MemberType.Field:
             {
                 IPlace ownerPlace;
 
@@ -228,7 +213,7 @@ public partial class NewProgramAbseil
                 
                 return new PlaceResult(destination ?? field);
             }
-            case Expressions.MemberType.Function:
+            case MemberType.Function:
                 {
                     var ownerTypeArguments = (GetTypeReference(e.MemberAccess.OwnerType.NotNull()) as NewLoweredConcreteTypeReference)
                         .NotNull().TypeArguments;
@@ -251,7 +236,7 @@ public partial class NewProgramAbseil
                         ],
                         destination);
                 }
-            case Expressions.MemberType.Variant:
+            case MemberType.Variant:
                 throw new InvalidOperationException("Can never access a variant through instance member access");
             default:
                 throw new UnreachableException($"{e.MemberAccess.MemberType}");
@@ -357,7 +342,7 @@ public partial class NewProgramAbseil
             destination);
     }
 
-    private void LowerReturn(MethodReturnExpression methodReturnExpression)
+    private IExpressionResult LowerReturn(MethodReturnExpression methodReturnExpression)
     {
         if (methodReturnExpression.MethodReturn.Expression is not null)
         {
@@ -374,6 +359,8 @@ public partial class NewProgramAbseil
         {
             _basicBlocks[^1].Terminator = new Return();
         }
+
+        return new OperandResult(new UnitConstant());
     }
 
     private IExpressionResult LowerMethodCall(MethodCallExpression e, IPlace? destination)
@@ -454,12 +441,12 @@ public partial class NewProgramAbseil
             arguments.Add(new Copy(new Local(ParameterLocalName(parameterIndex: 0))));
         }
 
-        if (e.MethodCall.Method is Expressions.StaticMemberAccessExpression staticMemberAccess)
+        if (e.MethodCall.Method is StaticMemberAccessExpression staticMemberAccess)
         {
             ownerTypeArguments = (GetTypeReference(staticMemberAccess.OwnerType.NotNull())
                 as NewLoweredConcreteTypeReference).NotNull().TypeArguments;
         }
-        else if (e.MethodCall.Method is Expressions.ValueAccessorExpression valueAccessor)
+        else if (e.MethodCall.Method is ValueAccessorExpression valueAccessor)
         {
             if (_currentType is not null)
             {
@@ -553,7 +540,7 @@ public partial class NewProgramAbseil
 
     private IExpressionResult LowerValueAccessor(ValueAccessorExpression e, IPlace? destination)
     {
-        if (e is { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, FunctionInstantiation: { } fn })
+        if (e is { ValueAccessor.AccessType: ValueAccessType.Variable, FunctionInstantiation: { } fn })
         {
             // function access already assigns the value to destination, so handle it separately
             return FunctionAccess(fn, (e.ResolvedType as TypeChecking.TypeChecker.FunctionObject).NotNull(),
@@ -562,14 +549,14 @@ public partial class NewProgramAbseil
         
         var operand = e switch
         {
-            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: StringToken { StringValue: var stringLiteral } } } => new OperandResult(new StringConstant(stringLiteral)),
-            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue} }, ResolvedType: var resolvedType} =>
+            { ValueAccessor: { AccessType: ValueAccessType.Literal, Token: StringToken { StringValue: var stringLiteral } } } => new OperandResult(new StringConstant(stringLiteral)),
+            { ValueAccessor: { AccessType: ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue} }, ResolvedType: var resolvedType} =>
                 new OperandResult(IsIntSigned(resolvedType.NotNull())
                     ? new IntConstant(intValue, GetIntSize(resolvedType.NotNull()))
                     : new UIntConstant((ulong)intValue, GetIntSize(resolvedType.NotNull()))),
-            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.True }} => new OperandResult(new BoolConstant(true)),
-            { ValueAccessor: { AccessType: Expressions.ValueAccessType.Literal, Token.Type: TokenType.False }} => new OperandResult(new BoolConstant(false)),
-            { ValueAccessor.AccessType: Expressions.ValueAccessType.Variable, ReferencedVariable: {} variable} => VariableAccess(variable, e.ValueUseful),
+            { ValueAccessor: { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True }} => new OperandResult(new BoolConstant(true)),
+            { ValueAccessor: { AccessType: ValueAccessType.Literal, Token.Type: TokenType.False }} => new OperandResult(new BoolConstant(false)),
+            { ValueAccessor.AccessType: ValueAccessType.Variable, ReferencedVariable: {} variable} => VariableAccess(variable, e.ValueUseful),
             _ => throw new UnreachableException($"{e}")
         };
 
@@ -860,8 +847,10 @@ public partial class NewProgramAbseil
         throw new UnreachableException();
     }
 
-    private void LowerVariableDeclaration(VariableDeclarationExpression e)
+    private IExpressionResult LowerVariableDeclaration(VariableDeclarationExpression e)
     {
+        var result = new OperandResult(new UnitConstant());
+        
         var variableName = e.VariableDeclaration.Variable.NotNull()
             .Name.StringValue;
 
@@ -870,40 +859,20 @@ public partial class NewProgramAbseil
         if (e.VariableDeclaration.Value is null)
         {
             // noop
-            return;
+            return result;
         }
-
-        // var loweredValueOperand = NewLowerExpression(e.VariableDeclaration.Value).NotNull();
 
         if (!referencedInClosure)
         {
             var variable = _locals.First(x =>
                 x.UserGivenName == e.VariableDeclaration.Variable.NotNull().Name.StringValue);
             NewLowerExpression(e.VariableDeclaration.Value, destination: new Local(variable.CompilerGivenName));
-            return;
+            return result;
         }
 
-        var localsTypeId = _currentFunction.NotNull().FunctionSignature.LocalsTypeId
-            .NotNull();
-        var localsType = _types[localsTypeId];
-
-        // _basicBlockStatements.Add(new Assign(, new FieldAccess(new Local(LocalsObjectLocalName), variableName, ClassVariantName)));
         NewLowerExpression(e.VariableDeclaration.Value, destination: new Field(new Local(LocalsObjectLocalName), FieldName: variableName, ClassVariantName));
-        
-        // var localsFieldAssignment = new FieldAssignmentExpression(
-        //     new LocalVariableAccessor("__locals",
-        //         true,
-        //         new LoweredConcreteTypeReference(
-        //             localsType.Name,
-        //             localsType.Id,
-        //             [])),
-        //     "_classVariant",
-        //     variableName,
-        //     loweredValue,
-        //     // hard code this to false, because either `e.ValueUseful` was false,
-        //     // or we're going to replace the value with a block
-        //     false,
-        //     loweredValue.ResolvedType);
+
+        return result;
     }
     
     private IExpressionResult LowerBinaryExpression(BinaryOperatorExpression binaryOperatorExpression, IPlace? destination)
