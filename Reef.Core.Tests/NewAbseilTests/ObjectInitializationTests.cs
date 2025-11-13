@@ -57,77 +57,128 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : New
                                 ])
                         ])
             },
-            // {
-            //     "create class with fields",
-            //     "class MyClass{pub field MyField: string} new MyClass{MyField = \"\"}",
-            //     LoweredProgram(
-            //             types: [
-            //                 DataType(ModuleId, "MyClass",
-            //                     variants: [
-            //                         Variant("_classVariant", [Field("MyField", StringType)])
-            //                     ])
-            //             ],
-            //             methods: [
-            //                 Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                     [
-            //                         CreateObject(
-            //                             ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")),
-            //                             "_classVariant",
-            //                             false,
-            //                             new(){{"MyField", StringConstant("", true)}}),
-            //                         MethodReturnUnit()
-            //                     ])
-            //             ])
-            // },
-            // {
-            //     "Create unit union variant",
-            //     "union MyUnion{A} MyUnion::A",
-            //     LoweredProgram(
-            //         types: [
-            //             DataType(ModuleId, "MyUnion",
-            //                 variants: [Variant("A", [Field("_variantIdentifier", UInt16_t)])])
-            //         ],
-            //         methods: [
-            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     CreateObject(
-            //                         ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion")),
-            //                         "A",
-            //                         false,
-            //                         new(){{"_variantIdentifier", UInt16Constant(0, true)}}),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // },
-            // {
-            //     "Create class union variant",
-            //     "union MyUnion{A {field a: string}} new MyUnion::A { a = \"hi\"};",
-            //     LoweredProgram(
-            //         types: [
-            //             DataType(ModuleId, "MyUnion",
-            //                 variants: [
-            //                     Variant("A", [
-            //                         Field("_variantIdentifier", UInt16_t),
-            //                         Field("a", StringType),
-            //                     ])
-            //                 ])
-            //         ],
-            //         methods: [
-            //             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     CreateObject(
-            //                         ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion")),
-            //                         "A",
-            //                         false,
-            //                         new()
-            //                         {
-            //                             {"_variantIdentifier", UInt16Constant(0, true)},
-            //                             {"a", StringConstant("hi", true)},
-            //                         }),
-            //                     MethodReturnUnit()
-            //                 ])
-            //         ])
-            // }
+            {
+                "create class with fields",
+                "class MyClass{pub field MyField: string} var a = new MyClass{MyField = \"hi\"};",
+                NewLoweredProgram(
+                        types: [
+                            NewDataType(ModuleId, "MyClass",
+                                variants: [
+                                    NewVariant("_classVariant", [NewField("MyField", StringT)])
+                                ])
+                        ],
+                        methods: [
+                            NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                                [
+                                    new BasicBlock(
+                                        new BasicBlockId("bb0"),
+                                        [
+                                            new Assign(
+                                                new Local("_local0"),
+                                                new CreateObject(
+                                                    new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                            new Assign(
+                                                new Field(
+                                                    new Local("_local0"),
+                                                    "MyField",
+                                                    "_classVariant"),
+                                                new Use(new StringConstant("hi")))
+                                        ],
+                                        new GoTo(new BasicBlockId("bb1"))),
+                                    new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                ],
+                                Unit,
+                                locals: [
+                                    new NewMethodLocal(
+                                        "_local0",
+                                        "a",
+                                        new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
+                                ])
+                        ])
+            },
+            {
+                "Create unit union variant",
+                "union MyUnion{A} var a = MyUnion::A;",
+                NewLoweredProgram(
+                    types: [
+                        NewDataType(ModuleId, "MyUnion",
+                            variants: [NewVariant("A", [NewField("_variantIdentifier", UInt16T)])])
+                    ],
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new CreateObject(
+                                                new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                        new Assign(
+                                            new Field(new Local("_local0"), "_variantIdentifier", "A"),
+                                            new Use(new UIntConstant(0, 2)))
+                                    ],
+                                    new GoTo(new BasicBlockId("bb1"))),
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [],
+                                    new Return())
+                            ],
+                            Unit,
+                            locals: [new NewMethodLocal(
+                                "_local0",
+                                "a",
+                                new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))])
+                    ])
+            },
+            {
+                "Create class union variant",
+                "union MyUnion{A, B {field a: string}} var a = new MyUnion::B { a = \"hi\"};",
+                NewLoweredProgram(
+                    types: [
+                        NewDataType(ModuleId, "MyUnion",
+                            variants: [
+                                NewVariant("A", [NewField("_variantIdentifier", UInt16T)]),
+                                NewVariant("B", [
+                                    NewField("_variantIdentifier", UInt16T),
+                                    NewField("a", StringT),
+                                ])
+                            ])
+                    ],
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                        new Assign(
+                                            new Field(
+                                                new Local("_local0"),
+                                                "_variantIdentifier",
+                                                "B"),
+                                            new Use(new UIntConstant(1, 2))),
+                                        new Assign(
+                                            new Field(
+                                                new Local("_local0"),
+                                                "a",
+                                                "B"),
+                                            new Use(new StringConstant("hi")))
+                                    ],
+                                    new GoTo(new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                            ],
+                            Unit,
+                            locals: [
+                                new NewMethodLocal(
+                                    "_local0",
+                                    "a",
+                                    new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))
+                            ])
+                    ])
+            }
         };
     }
 }

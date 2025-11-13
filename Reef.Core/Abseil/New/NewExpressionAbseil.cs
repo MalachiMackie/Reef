@@ -58,7 +58,7 @@ public partial class NewProgramAbseil
             case Expressions.UnaryOperatorExpression unaryOperatorExpression:
                 return LowerUnaryOperator(unaryOperatorExpression, destination);
             case Expressions.UnionClassVariantInitializerExpression unionClassVariantInitializerExpression:
-                throw new NotImplementedException();
+                return LowerUnionClassVariantInitializer(unionClassVariantInitializerExpression, destination);
             case Expressions.ValueAccessorExpression valueAccessorExpression:
                 return LowerValueAccessor(valueAccessorExpression, destination);
             case Expressions.VariableDeclarationExpression variableDeclarationExpression:
@@ -69,6 +69,26 @@ public partial class NewProgramAbseil
             default:
                 throw new ArgumentOutOfRangeException(nameof(expression));
         }
+    }
+    
+    private IExpressionResult LowerUnionClassVariantInitializer(
+        UnionClassVariantInitializerExpression e,
+        IPlace? destination)
+    {
+        var typeReference = (GetTypeReference(e.ResolvedType.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
+        
+        var dataType = _types[typeReference.DefinitionId];
+        
+        var variantIdentifier = dataType.Variants.Index()
+            .First(x => x.Item.Name == e.UnionInitializer.VariantIdentifier.StringValue).Index;
+
+        return CreateObject(
+            typeReference,
+            e.UnionInitializer.VariantIdentifier.StringValue,
+            e.UnionInitializer.FieldInitializers.Select(x =>
+                new CreateObjectField(x.FieldName.StringValue, x.Value))
+                .Prepend(new CreateObjectField(VariantIdentifierFieldName, new UIntConstant((ulong)variantIdentifier, 2))),
+            destination);
     }
     
     private IExpressionResult LowerStaticMemberAccess(
