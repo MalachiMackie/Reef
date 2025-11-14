@@ -463,110 +463,101 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : NewTestBa
 //                             ])
 //                     ])
 //             },
-//             {
-//                 "call function object without parameters",
-//                 """
-//                 fn SomeFn() {}
-//                 var a = SomeFn;
-//                 a();
-//                 """,
-//                 LoweredProgram(
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.SomeFn"), "SomeFn", [MethodReturnUnit()]),
-//                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration(
-//                                     "a",
-//                                     CreateObject(
-//                                         ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]),
-//                                         "_classVariant",
-//                                         true,
-//                                         new()
-//                                         {
-//                                             {
-//                                                 "FunctionReference",
-//                                                 FunctionReferenceConstant(
-//                                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.SomeFn"), "SomeFn"),
-//                                                     true,
-//                                                     FunctionType([], Unit))
-//                                             }
-//                                         }),
-//                                     false),
-//                                 MethodCall(
-//                                     FunctionReference(DefId.FunctionObject_Call(0), "Function`1__Call", [Unit]),
-//                                     [
-//                                         LocalAccess(
-//                                             "a",
-//                                             true,
-//                                             ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
-//                                     ],
-//                                     false,
-//                                     Unit),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 Local(
-//                                     "a",
-//                                     ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
-//                             ])
-//                     ])
-//             },
-//             {
-//                 "call function object with parameters",
-//                 """
-//                 fn SomeFn(a: string): i64 { return 1; }
-//                 var a = SomeFn;
-//                 var b = a("");
-//                 """,
-//                 LoweredProgram(
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.SomeFn"), "SomeFn",
-//                             [MethodReturn(Int64Constant(1, true))],
-//                             parameters: [StringType],
-//                             returnType: Int64_t),
-//                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration(
-//                                     "a",
-//                                     CreateObject(
-//                                         ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, Int64_t]),
-//                                         "_classVariant",
-//                                         true,
-//                                         new()
-//                                         {
-//                                             {
-//                                                 "FunctionReference",
-//                                                 FunctionReferenceConstant(
-//                                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.SomeFn"), "SomeFn"),
-//                                                     true,
-//                                                     FunctionType([StringType], Int64_t))
-//                                             }
-//                                         }),
-//                                     false),
-//                                 VariableDeclaration(
-//                                     "b",
-//                                     MethodCall(
-//                                         FunctionReference(DefId.FunctionObject_Call(1), "Function`2__Call", [StringType, Int64_t]),
-//                                         [
-//                                             LocalAccess(
-//                                                 "a",
-//                                                 true,
-//                                                 ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, Int64_t])),
-//                                             StringConstant("", true)
-//                                         ],
-//                                         true,
-//                                         Int64_t),
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 Local(
-//                                     "a",
-//                                     ConcreteTypeReference("Function`2", DefId.FunctionObject(1), [StringType, Int64_t])),
-//                                 Local("b", Int64_t)
-//                             ])
-//                     ])
-//             },
+             {
+                 "call function object without parameters",
+                 """
+                 fn SomeFn() {}
+                 var a = SomeFn;
+                 a();
+                 """,
+                 NewLoweredProgram(
+                     methods: [
+                         NewMethod(
+                             new DefId(ModuleId, $"{ModuleId}.SomeFn"),
+                             "SomeFn",
+                             [new BasicBlock(new BasicBlockId("bb0"), [], new Return())],
+                             Unit),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new CreateObject(FunctionObject([], Unit))),
+                                         new Assign(
+                                             new Field(new Local("_local0"), "FunctionReference", "_classVariant"),
+                                             new Use(new FunctionPointerConstant(new NewLoweredFunctionReference(
+                                                 new DefId(ModuleId, $"{ModuleId}.SomeFn"), [])))),
+                                     ],
+                                     new MethodCall(
+                                         FunctionObjectCall([], Unit),
+                                         [new Copy(new Local("_local0"))],
+                                         new Local("_local1"),
+                                         new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal(
+                                     "_local0",
+                                     "a",
+                                     FunctionObject([], Unit)),
+                                 new NewMethodLocal(
+                                     "_local1",
+                                     null,
+                                     Unit)
+                             ])
+                     ])
+             },
+             {
+                 "call function object with parameters",
+                 """
+                 fn SomeFn(a: string): i64 { return 1; }
+                 var a = SomeFn;
+                 var b = a("");
+                 """,
+                 NewLoweredProgram(
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.SomeFn"), "SomeFn",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [new Assign(new Local("_returnValue"), new Use(new IntConstant(1, 8)))],
+                                     new Return())
+                             ],
+                             parameters: [("a", StringT)],
+                             returnType: Int64T),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new CreateObject(FunctionObject([StringT], Int64T))),
+                                         new Assign(
+                                             new Field(new Local("_local0"), "FunctionReference", "_classVariant"),
+                                             new Use(new FunctionPointerConstant(new NewLoweredFunctionReference(
+                                                 new DefId(ModuleId, $"{ModuleId}.SomeFn"), [])))),
+                                     ],
+                                     new MethodCall(
+                                         FunctionObjectCall([StringT], Int64T),
+                                         [new Copy(new Local("_local0")), new StringConstant("")],
+                                         new Local("_local1"),
+                                         new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal(
+                                     "_local0",
+                                     "a",
+                                     FunctionObject([StringT], Int64T)),
+                                 new NewMethodLocal("_local1", "b", Int64T)
+                             ])
+                     ])
+             },
 //             {
 //                 "assign generic function to function object",
 //                 """
