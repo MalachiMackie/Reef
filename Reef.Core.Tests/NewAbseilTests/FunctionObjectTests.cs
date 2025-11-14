@@ -114,127 +114,133 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : NewTestBa
                              ])
                      ])
              },
-//             {
-//                 "assign global function to function object",
-//                 """
-//                 fn SomeFn(){}
-//                 var a = SomeFn;
-//                 """,
-//                 LoweredProgram(
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.SomeFn"), "SomeFn",
-//                             [
-//                                 MethodReturnUnit()
-//                             ]),
-//                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration(
-//                                     "a",
-//                                     CreateObject(
-//                                         ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]),
-//                                         "_classVariant",
-//                                         true,
-//                                         new() {
-//                                             {
-//                                                 "FunctionReference",
-//                                                 FunctionReferenceConstant(
-//                                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.SomeFn"), "SomeFn"),
-//                                                     true,
-//                                                     FunctionType([], Unit))
-//                                             }
-//                                         }),
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 Local("a", ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
-//                             ])
-//                     ])
-//             },
-//             {
-//                 "assign static function to function object inside type",
-//                 """
-//                 class MyClass {
-//                     static fn OtherFn(){}
-//                     static fn MyFn() {
-//                         var a = OtherFn;
-//                     }
-//                 }
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, "MyClass",
-//                             variants: [Variant("_classVariant")])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn",
-//                             [MethodReturnUnit()]),
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
-//                             [
-//                                 VariableDeclaration(
-//                                     "a",
-//                                     CreateObject(
-//                                         ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]),
-//                                         "_classVariant",
-//                                         true,
-//                                         new(){
-//                                             {
-//                                                 "FunctionReference",
-//                                                 FunctionReferenceConstant(
-//                                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn"),
-//                                                     true,
-//                                                     FunctionType([], Unit))
-//                                             }
-//                                         }),
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 Local("a", ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
-//                             ])
-//                     ])
-//             },
-//             {
-//                 "assign static function to function object",
-//                 """
-//                 class MyClass {
-//                     pub static fn OtherFn(){}
-//                 }
-//                 var a = MyClass::OtherFn;
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, "MyClass",
-//                             variants: [Variant("_classVariant")])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn",
-//                             [MethodReturnUnit()]),
-//                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration(
-//                                     "a",
-//                                     CreateObject(
-//                                         ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]),
-//                                         "_classVariant",
-//                                         true,
-//                                         new(){
-//                                             {
-//                                                 "FunctionReference",
-//                                                 FunctionReferenceConstant(
-//                                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn"),
-//                                                     true,
-//                                                     FunctionType([], Unit))
-//                                             }
-//                                         }),
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 Local("a", ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
-//                             ])
-//                     ])
-//             },
+             {
+                 "assign global function to function object",
+                 """
+                 fn SomeFn(){}
+                 var a = SomeFn;
+                 """,
+                 NewLoweredProgram(
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.SomeFn"), "SomeFn",
+                             [
+                                 new BasicBlock(new BasicBlockId("bb0"), [], new Return())
+                             ],
+                             Unit),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new CreateObject(
+                                                 FunctionObject([], Unit))),
+                                         new Assign(
+                                             new Field(
+                                                 new Local("_local0"),
+                                                 "FunctionReference",
+                                                 "_classVariant"),
+                                             new Use(new FunctionPointerConstant(
+                                                 new NewLoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.SomeFn"), []))))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", "a", FunctionObject([], Unit))
+                             ])
+                     ])
+             },
+             {
+                 "assign static function to function object inside type",
+                 """
+                 class MyClass {
+                     static fn OtherFn(){}
+                     static fn MyFn() {
+                         var a = OtherFn;
+                     }
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "MyClass",
+                             variants: [NewVariant("_classVariant")])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn",
+                             [new BasicBlock(new BasicBlockId("bb0"), [], new Return())],
+                             Unit),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new CreateObject(
+                                                 FunctionObject([], Unit))),
+                                         new Assign(
+                                             new Field(
+                                                 new Local("_local0"),
+                                                 "FunctionReference",
+                                                 "_classVariant"),
+                                             new Use(new FunctionPointerConstant(
+                                                 new NewLoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), []))))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", "a", FunctionObject([], Unit))
+                             ])
+                     ])
+             },
+             {
+                 "assign static function to function object",
+                 """
+                 class MyClass {
+                     pub static fn OtherFn(){}
+                 }
+                 var a = MyClass::OtherFn;
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "MyClass",
+                             variants: [NewVariant("_classVariant")])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn",
+                             [new BasicBlock(new BasicBlockId("bb0"), [], new Return())],
+                             Unit),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new CreateObject(
+                                                 FunctionObject([], Unit))),
+                                         new Assign(
+                                             new Field(
+                                                 new Local("_local0"),
+                                                 "FunctionReference",
+                                                 "_classVariant"),
+                                             new Use(new FunctionPointerConstant(
+                                                 new NewLoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), []))))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", "a", FunctionObject([], Unit))
+                             ])
+                     ])
+             },
 //             {
 //                 "assign instance function to function object",
 //                 """
