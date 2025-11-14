@@ -178,7 +178,6 @@ public partial class NewProgramAbseil
             }
         ];
         _program = program;
-        var a = _currentFunction;
     }
 
     private NewLoweredProgram LowerInner()
@@ -249,9 +248,18 @@ public partial class NewProgramAbseil
         _currentFunction = (method, fnSignature);
         _basicBlocks = basicBlocks;
         _locals = locals;
-        _basicBlockStatements = [];
-        
-        basicBlocks.Add(new BasicBlock(new BasicBlockId("bb0"), _basicBlockStatements));
+
+        if (basicBlocks.Count == 0)
+        {
+            _basicBlockStatements = [];
+            basicBlocks.Add(new BasicBlock(new BasicBlockId("bb0"), _basicBlockStatements));
+        }
+        else
+        {
+            var basicBlock = basicBlocks[0];
+            _basicBlockStatements = [..basicBlock.Statements];
+            basicBlocks[0] = new BasicBlock(basicBlock.Id, _basicBlockStatements, basicBlock.Terminator);
+        }
 
         foreach (var expression in expressions)
         {
@@ -367,10 +375,10 @@ public partial class NewProgramAbseil
             var variantIdentifierField = new NewDataTypeField(
                     VariantIdentifierFieldName,
                     GetTypeReference(InstantiatedClass.UInt16));
-            var fields = new List<NewDataTypeField>() { variantIdentifierField };
+            var fields = new List<NewDataTypeField> { variantIdentifierField };
             switch (variant)
             {
-                case TypeChecking.TypeChecker.UnitUnionVariant u:
+                case TypeChecking.TypeChecker.UnitUnionVariant :
                     break;
                 case TypeChecking.TypeChecker.ClassUnionVariant u:
                     {
@@ -388,7 +396,7 @@ public partial class NewProgramAbseil
 
                         var createMethodFieldInitializations = fields.Skip(1)
                             .Select(
-                                (IOperand operand, string fieldName) (x, i) => (new Copy(new Local($"_param{i}")), $"Item{i}"));
+                                (IOperand operand, string fieldName) (_, i) => (new Copy(new Local($"_param{i}")), $"Item{i}"));
                         createMethodFieldInitializations = createMethodFieldInitializations.Prepend((new UIntConstant((ulong)variants.Count, 2), VariantIdentifierFieldName));
 
                         var method = new NewLoweredMethod(
@@ -590,35 +598,28 @@ public partial class NewProgramAbseil
                 (!fnSignature.IsStatic && ownerTypeReference is not null)
                 || closureType is not null;
 
-
-            throw new NotImplementedException();
-            // var fieldInitializers = new Dictionary<string, ILoweredExpression>();
-            // foreach (var parameter in parametersAccessedInClosure)
-            // {
-            //     
-            //     fieldInitializers.Add(
-            //             parameter.Name.StringValue,
-            //             new LoadArgumentExpression(
-            //                 (uint)(parameter.ParameterIndex
-            //                 + (hasCompilerInsertedFirstParameter ? 1 : 0)),
-            //                 true,
-            //                 GetTypeReference(parameter.Type)));
-            // }
-            //
-            // expressions.Add(
-            //     new VariableDeclarationAndAssignmentExpression(
-            //         "__locals",
-            //         new CreateObjectExpression(
-            //             localsTypeReference,
-            //             "_classVariant",
-            //             true,
-            //             fieldInitializers),
-            //         false));
-
+            basicBlocks.Add(
+                new BasicBlock(
+                    new BasicBlockId("bb0"),
+                    [
+                        new Assign(
+                            new Local(LocalsObjectLocalName),
+                            new CreateObject(
+                                localsTypeReference)),
+                        ..parametersAccessedInClosure.Select(
+                            parameter => new Assign(
+                                new Field(
+                                    new Local(LocalsObjectLocalName),
+                                    parameter.Name.StringValue,
+                                    ClassVariantName),
+                                new Use(new Copy(new Local(ParameterLocalName(parameter.ParameterIndex + (uint)(hasCompilerInsertedFirstParameter ? 1 : 0)))))))
+                    ]));
         }
 
-        locals.AddRange(fnSignature.LocalVariables.Where(x => !x.ReferencedInClosure)
-                .Select((x, i) => new NewMethodLocal(LocalName((uint)i), x.Name.StringValue, GetTypeReference(x.Type))));
+        foreach (var localVariable in fnSignature.LocalVariables.Where(x => !x.ReferencedInClosure))
+        {
+            locals.Add(new NewMethodLocal(LocalName((uint)locals.Count), localVariable.Name.StringValue, GetTypeReference(localVariable.Type)));
+        }
 
         var parameters = fnSignature.Parameters.Select(y =>
             (userGivenName: (string?)y.Key, paramType: GetTypeReference(y.Value.Type)));
@@ -658,8 +659,7 @@ public partial class NewProgramAbseil
     }
 
     private NewDataType GetDataType(
-            DefId typeId,
-            IReadOnlyList<INewLoweredTypeReference> typeArguments)
+            DefId typeId)
     {
         if (_types.TryGetValue(typeId, out var dataType))
             return dataType;

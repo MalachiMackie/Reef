@@ -429,8 +429,18 @@ public partial class NewProgramAbseil
         }
         else if (instantiatedFunction.ClosureTypeId is not null)
         {
-            var createClosure = CreateClosureObject(instantiatedFunction);
-            arguments.Add(createClosure.ToOperand());
+            var type = GetDataType(instantiatedFunction.ClosureTypeId);
+            
+            var localName = LocalName((uint)_locals.Count);
+            _locals.Add(new NewMethodLocal(
+                localName,
+                null,
+                new NewLoweredConcreteTypeReference(
+                    type.Name,
+                    type.Id,
+                    [])));
+            CreateClosureObject(instantiatedFunction, new Local(localName));
+            arguments.Add(new Copy(new Local(localName)));
         }
         else if (instantiatedFunction is { IsStatic: false, OwnerType: not null }
                  && _currentType is not null
@@ -484,9 +494,173 @@ public partial class NewProgramAbseil
         }
     }
 
-    private IExpressionResult CreateClosureObject(TypeChecking.TypeChecker.InstantiatedFunction fn)
+    private void CreateClosureObject(TypeChecking.TypeChecker.InstantiatedFunction instantiatedFunction, IPlace destination)
     {
-        throw new NotImplementedException();
+        Debug.Assert(instantiatedFunction.ClosureTypeId is not null);
+
+        var closureType = _types[instantiatedFunction.ClosureTypeId];
+        var closureTypeReference = new NewLoweredConcreteTypeReference(
+                closureType.Name,
+                closureType.Id,
+                []);
+        
+        Debug.Assert(_currentFunction.HasValue);
+        
+        _basicBlockStatements.Add(
+            new Assign(
+                destination,
+                new CreateObject(closureTypeReference)));
+
+        var assignedFields = new HashSet<string>();
+
+        foreach (var variable in instantiatedFunction.AccessedOuterVariables)
+        {
+            switch (variable)
+            {
+                case TypeChecking.TypeChecker.LocalVariable localVariable:
+                    {
+                        if (localVariable.ContainingFunction != _currentFunction.Value.FunctionSignature)
+                        {
+                            Debug.Assert(localVariable.ContainingFunction is not null);
+                            Debug.Assert(localVariable.ContainingFunction.LocalsTypeId is not null);
+                            Debug.Assert(_currentFunction.Value.FunctionSignature.ClosureTypeId is not null);
+
+                            var currentClosureType = _types[
+                                _currentFunction.Value.FunctionSignature.ClosureTypeId
+                            ];
+                            var currentClosureTypeReference = new NewLoweredConcreteTypeReference(
+                                    currentClosureType.Name,
+                                    currentClosureType.Id,
+                                    []);
+
+                            Debug.Assert(
+                                    EqualTypeReferences(_currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
+                                        currentClosureTypeReference));
+
+                            var otherLocalsType = _types[
+                                localVariable.ContainingFunction.LocalsTypeId
+                            ];
+
+                            if (assignedFields.Add(otherLocalsType.Name))
+                            {
+                                _basicBlockStatements.Add(
+                                    new Assign(
+                                        new Field(destination, otherLocalsType.Name, ClassVariantName),
+                                        new Use(new Copy(new Local(ParameterLocalName(0))))));
+                            }
+
+                            break;
+                        }
+                        
+                        Debug.Assert(_currentFunction.Value.FunctionSignature.LocalsTypeId is not null);
+                        var localsType = _types[_currentFunction.Value.FunctionSignature.LocalsTypeId];
+
+                        if (assignedFields.Add(localsType.Name))
+                        {
+                            _basicBlockStatements.Add(
+                                new Assign(
+                                    new Field(destination, localsType.Name, ClassVariantName),
+                                    new Use(new Copy(new Local(LocalsObjectLocalName)))));
+                        }
+                        
+                        break;
+                    }
+                case TypeChecking.TypeChecker.ThisVariable:
+                case TypeChecking.TypeChecker.FieldVariable:
+                    {
+                        Debug.Assert(_currentType is not null);
+
+                        if (_currentFunction.Value.FunctionSignature.ClosureTypeId is not null)
+                        {
+                            var currentClosureType = _types[_currentFunction.Value.FunctionSignature.ClosureTypeId];
+                            var currentClosureTypeReference = new NewLoweredConcreteTypeReference(
+                                    currentClosureType.Name,
+                                    currentClosureType.Id,
+                                    []);
+
+                            Debug.Assert(
+                                EqualTypeReferences(
+                                    _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
+                                    currentClosureTypeReference));
+
+                            if (assignedFields.Add(ClosureThisFieldName))
+                            {
+                                _basicBlockStatements.Add(
+                                    new Assign(
+                                        new Field(
+                                            destination,
+                                            ClosureThisFieldName,
+                                            ClassVariantName),
+                                        new Use(new Copy(new Field(
+                                            new Local(ParameterLocalName(0)),
+                                            ThisParameterName,
+                                            ClassVariantName)))));
+                            }
+                            break;
+                        }
+
+                        Debug.Assert(
+                            EqualTypeReferences(
+                                _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
+                                _currentType));
+
+                        if (assignedFields.Add(ClosureThisFieldName))
+                        {
+                            _basicBlockStatements.Add(
+                                new Assign(
+                                    new Field(destination, ClosureThisFieldName, ClassVariantName),
+                                    new Use(new Copy(new Local(ParameterLocalName(0))))));
+                        }
+                        break;
+                    }
+                case TypeChecking.TypeChecker.FunctionSignatureParameter parameter:
+                    {
+                        if (parameter.ContainingFunction != _currentFunction.Value.FunctionSignature)
+                        {
+                            Debug.Assert(parameter.ContainingFunction is not null);
+                            Debug.Assert(parameter.ContainingFunction.LocalsTypeId is not null);
+                            Debug.Assert(_currentFunction.Value.FunctionSignature.ClosureTypeId is not null);
+
+                            var currentClosureType = _types[
+                                _currentFunction.Value.FunctionSignature.ClosureTypeId
+                            ];
+                            var currentClosureTypeReference = new NewLoweredConcreteTypeReference(
+                                    currentClosureType.Name,
+                                    currentClosureType.Id,
+                                    []);
+
+                            Debug.Assert(
+                                    EqualTypeReferences(_currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
+                                        currentClosureTypeReference));
+
+                            var otherLocalsType = GetDataType(parameter.ContainingFunction.LocalsTypeId);
+
+                            if (assignedFields.Add(otherLocalsType.Name))
+                            {
+                                _basicBlockStatements.Add(new Assign(
+                                    new Field(destination, otherLocalsType.Name, ClassVariantName),
+                                    new Use(new Copy(new Field(
+                                        new Local(ParameterLocalName(0)),
+                                        otherLocalsType.Name,
+                                        ClassVariantName)))));
+                            }
+
+                            break;
+                        }
+                        Debug.Assert(_currentFunction.Value.FunctionSignature.LocalsTypeId is not null);
+                        var localsType = GetDataType(_currentFunction.Value.FunctionSignature.LocalsTypeId);
+
+                        if (assignedFields.Add(localsType.Name))
+                        {
+                            _basicBlockStatements.Add(new Assign(
+                                new Field(destination, localsType.Name, ClassVariantName),
+                                new Use(new Copy(new Local(LocalsObjectLocalName)))));
+                        }
+
+                        break;
+                    }
+            }
+        }
     }
 
     private IExpressionResult LowerBlock(BlockExpression blockExpression, IPlace? destination)
@@ -586,7 +760,19 @@ public partial class NewProgramAbseil
             
             if (innerFn.ClosureTypeId is not null)
             {
-                functionObjectParameters.Add(new CreateObjectField("FunctionParameter", CreateClosureObject(innerFn).ToOperand()));
+                var dataType = GetDataType(innerFn.ClosureTypeId).NotNull();
+                
+                var localName = LocalName((uint)_locals.Count);
+                
+                // todo - I think closure type might be able to be generic, so will need to pass in all type parameters here
+                _locals.Add(new NewMethodLocal(localName, null, new NewLoweredConcreteTypeReference(
+                    dataType.Name,
+                    dataType.Id,
+                    [])));
+
+                CreateClosureObject(innerFn, new Local(localName));
+                
+                functionObjectParameters.Add(new CreateObjectField("FunctionParameter", new Copy(new Local(localName))));
             }
             else if (innerFn is { IsStatic: false, OwnerType: not null }
                      && _currentType is not null
@@ -619,48 +805,29 @@ public partial class NewProgramAbseil
                             return new PlaceResult(new Local(local.CompilerGivenName));
                         }
 
-                        throw new NotImplementedException();
-
-                        // var currentFunction = _currentFunction.NotNull();
-                        // var containingFunction = localVariable.ContainingFunction.NotNull();
-                        // var containingFunctionLocals = _types[containingFunction.LocalsTypeId.NotNull()];
-                        // var localsTypeReference = new LoweredConcreteTypeReference(
-                        //                 containingFunctionLocals.Name,
-                        //                 containingFunctionLocals.Id,
-                        //                 []);
-                        // if (containingFunction.Id == currentFunction.FunctionSignature.Id)
-                        // {
-                        //     return new FieldAccessExpression(
-                        //         new LocalVariableAccessor(
-                        //             "__locals",
-                        //             true,
-                        //             localsTypeReference),
-                        //         localVariable.Name.StringValue,
-                        //         "_classVariant",
-                        //         e.ValueUseful,
-                        //         resolvedType);
-                        // }
-                        // var closureTypeId = _currentFunction.NotNull()
-                        //         .FunctionSignature.ClosureTypeId.NotNull();
-                        // var closureType = _types[closureTypeId];
-                        //
-                        // return new FieldAccessExpression(
-                        //     new FieldAccessExpression(
-                        //         new LoadArgumentExpression(
-                        //             0,
-                        //             true,
-                        //             new LoweredConcreteTypeReference(
-                        //                 closureType.Name,
-                        //                 closureTypeId,
-                        //                 [])),
-                        //         containingFunctionLocals.Name,
-                        //         "_classVariant",
-                        //         true,
-                        //         localsTypeReference),
-                        //     localVariable.Name.StringValue,
-                        //     "_classVariant",
-                        //     e.ValueUseful,
-                        //     resolvedType);
+                        var currentFunction = _currentFunction.NotNull();
+                        var containingFunction = localVariable.ContainingFunction.NotNull();
+                        var containingFunctionLocals = _types[containingFunction.LocalsTypeId.NotNull()];
+                        var localsTypeReference = new NewLoweredConcreteTypeReference(
+                                        containingFunctionLocals.Name,
+                                        containingFunctionLocals.Id,
+                                        []);
+                        if (containingFunction.Id == currentFunction.FunctionSignature.Id)
+                        {
+                            return new PlaceResult(
+                                new Field(
+                                    new Local(LocalsObjectLocalName),
+                                    localVariable.Name.StringValue,
+                                    ClassVariantName));
+                        }
+                        
+                        return new PlaceResult(new Field(
+                            new Field(
+                                new Local("_param0"),
+                                containingFunctionLocals.Name,
+                                ClassVariantName),
+                            localVariable.Name.StringValue,
+                            ClassVariantName));
                     }
                 case TypeChecking.TypeChecker.ThisVariable thisVariable:
                     {

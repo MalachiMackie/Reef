@@ -292,177 +292,180 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : NewTestBa
                              ])
                      ])
              },
-//             {
-//                 "assigning closure to function object",
-//                 """
-//                 class MyClass
-//                 {
-//                     mut field MyField: string,
-//
-//                     mut fn MyFn(param: string)
-//                     {
-//                         var a = "";
-//                         fn InnerFn()
-//                         {
-//                             var _a = a;
-//                             var _param = param;
-//                             var _myField = MyField;
-//                         }
-//                         var b = InnerFn;
-//                     }
-//                 }
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, "MyClass",
-//                             variants: [
-//                                 Variant("_classVariant", [Field("MyField", StringType)])
-//                             ]),
-//                         DataType(ModuleId, "MyClass__MyFn__Locals",
-//                             variants: [
-//                                 Variant(
-//                                     "_classVariant",
-//                                     [
-//                                         Field("a", StringType),
-//                                         Field("param", StringType)
-//                                     ])
-//                             ]),
-//                         DataType(ModuleId, "MyClass__MyFn__InnerFn__Closure",
-//                             variants: [
-//                                 Variant(
-//                                     "_classVariant",
-//                                     [
-//                                         Field("this", ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
-//                                         Field(
-//                                             "MyClass__MyFn__Locals",
-//                                             ConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals")))
-//                                     ])
-//                             ])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn"), "MyClass__MyFn__InnerFn",
-//                             [
-//                                 VariableDeclaration(
-//                                     "_a",
-//                                     FieldAccess(
-//                                         FieldAccess(
-//                                             LoadArgument(
-//                                                 0, true, ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"))),
-//                                             "MyClass__MyFn__Locals",
-//                                             "_classVariant",
-//                                             true,
-//                                             ConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"))),
-//                                         "a",
-//                                         "_classVariant",
-//                                         true,
-//                                         StringType),
-//                                     false),
-//                                 VariableDeclaration(
-//                                     "_param",
-//                                     FieldAccess(
-//                                         FieldAccess(
-//                                             LoadArgument(
-//                                                 0, true, ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"))),
-//                                             "MyClass__MyFn__Locals",
-//                                             "_classVariant",
-//                                             true,
-//                                             ConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"))),
-//                                         "param",
-//                                         "_classVariant",
-//                                         true,
-//                                         StringType),
-//                                     false),
-//                                 VariableDeclaration(
-//                                     "_myField",
-//                                     FieldAccess(
-//                                         FieldAccess(
-//                                             LoadArgument(
-//                                                 0, true, ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"))),
-//                                             "this",
-//                                             "_classVariant",
-//                                             true,
-//                                             ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
-//                                         "MyField",
-//                                         "_classVariant",
-//                                         true,
-//                                         StringType),
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 Local("_a", StringType),
-//                                 Local("_param", StringType),
-//                                 Local("_myField", StringType)
-//                             ],
-//                             parameters: [
-//                                 ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"))
-//                             ]),
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
-//                             [
-//                                 VariableDeclaration(
-//                                     "__locals",
-//                                     CreateObject(
-//                                         ConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals")),
-//                                         "_classVariant",
-//                                         true,
-//                                         new(){{"param", LoadArgument(1, true, StringType)}}),
-//                                     false),
-//                                 FieldAssignment(
-//                                     LocalAccess("__locals", true, ConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"))),
-//                                     "_classVariant",
-//                                     "a",
-//                                     StringConstant("", true),
-//                                     false,
-//                                     StringType),
-//                                 VariableDeclaration(
-//                                     "b",
-//                                     CreateObject(
-//                                         ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]),
-//                                         "_classVariant",
-//                                         true,
-//                                         new()
-//                                         {
-//                                             {
-//                                                 "FunctionReference",
-//                                                 FunctionReferenceConstant(
-//                                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn"), "MyClass__MyFn__InnerFn"),
-//                                                     true,
-//                                                     FunctionType(
-//                                                         [ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"))],
-//                                                         Unit))
-//                                             },
-//                                             {
-//                                                 "FunctionParameter",
-//                                                 CreateObject(
-//                                                     ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure")),
-//                                                     "_classVariant",
-//                                                     true,
-//                                                     new()
-//                                                     {
-//                                                         {
-//                                                             "this",
-//                                                             LoadArgument(0, true, ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")))
-//                                                         },
-//                                                         {
-//                                                             "MyClass__MyFn__Locals",
-//                                                             LocalAccess(
-//                                                                 "__locals",
-//                                                                 true,
-//                                                                 ConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals")))
-//                                                         }
-//                                                     })
-//                                             }
-//                                         }),
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             parameters: [ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")), StringType],
-//                             locals: [
-//                                 Local("__locals", ConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"))),
-//                                 Local("b", ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
-//                             ])
-//                     ])
-//             },
+             {
+                 "assigning closure to function object",
+                 """
+                 class MyClass
+                 {
+                     mut field MyField: string,
+
+                     mut fn MyFn(param: string)
+                     {
+                         var a = "";
+                         fn InnerFn()
+                         {
+                             var _a = a;
+                             var _param = param;
+                             var _myField = MyField;
+                         }
+                         var b = InnerFn;
+                     }
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "MyClass",
+                             variants: [
+                                 NewVariant("_classVariant", [NewField("MyField", StringT)])
+                             ]),
+                         NewDataType(ModuleId, "MyClass__MyFn__Locals",
+                             variants: [
+                                 NewVariant(
+                                     "_classVariant",
+                                     [
+                                         NewField("a", StringT),
+                                         NewField("param", StringT)
+                                     ])
+                             ]),
+                         NewDataType(ModuleId, "MyClass__MyFn__InnerFn__Closure",
+                             variants: [
+                                 NewVariant(
+                                     "_classVariant",
+                                     [
+                                         NewField("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                         NewField(
+                                             "MyClass__MyFn__Locals",
+                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))
+                                     ])
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn"), "MyClass__MyFn__InnerFn",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new Use(new Copy(
+                                                 new Field(
+                                                     new Field(
+                                                         new Local("_param0"),
+                                                         "MyClass__MyFn__Locals",
+                                                         "_classVariant"),
+                                                     "a",
+                                                     "_classVariant")))),
+                                         new Assign(
+                                             new Local("_local1"),
+                                             new Use(new Copy(
+                                                 new Field(
+                                                     new Field(
+                                                         new Local("_param0"),
+                                                         "MyClass__MyFn__Locals",
+                                                         "_classVariant"),
+                                                     "param",
+                                                     "_classVariant")))),
+                                         new Assign(
+                                             new Local("_local2"),
+                                             new Use(new Copy(
+                                                 new Field(
+                                                     new Field(
+                                                         new Local("_param0"),
+                                                         "this",
+                                                         "_classVariant"),
+                                                     "MyField",
+                                                     "_classVariant"))))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", "_a", StringT),
+                                 new NewMethodLocal("_local1", "_param", StringT),
+                                 new NewMethodLocal("_local2", "_myField", StringT)
+                             ],
+                             parameters: [
+                                 ("closure", new NewLoweredConcreteTypeReference(
+                                     "MyClass__MyFn__InnerFn__Closure",
+                                     new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"),
+                                     []))
+                             ]),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_localsObject"),
+                                             new CreateObject(
+                                                 new NewLoweredConcreteTypeReference(
+                                                     "MyClass__MyFn__Locals",
+                                                     new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"),
+                                                     []))),
+                                         new Assign(
+                                             new Field(
+                                                 new Local("_localsObject"),
+                                                 "param",
+                                                 "_classVariant"),
+                                             new Use(new Copy(new Local("_param1")))),
+                                         new Assign(
+                                             new Field(
+                                                 new Local("_localsObject"),
+                                                 "a",
+                                                 "_classVariant"),
+                                             new Use(new StringConstant(""))),
+                                         new Assign(
+                                             new Local("_local2"),
+                                             new CreateObject(
+                                                 new NewLoweredConcreteTypeReference(
+                                                     "MyClass__MyFn__InnerFn__Closure",
+                                                     new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"),
+                                                     []))),
+                                         new Assign(
+                                             new Field(new Local("_local2"), "this", "_classVariant"),
+                                             new Use(new Copy(new Local("_param0")))),
+                                         new Assign(
+                                             new Field(new Local("_local2"), "MyClass__MyFn__Locals", "_classVariant"),
+                                             new Use(new Copy(new Local("_localsObject")))),
+                                         new Assign(
+                                             new Local("_local1"),
+                                             new CreateObject(FunctionObject([], Unit))),
+                                         new Assign(
+                                             new Field(new Local("_local1"), "FunctionReference", "_classVariant"),
+                                             new Use(new FunctionPointerConstant(
+                                                 new NewLoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn"), [])))),
+                                         new Assign(
+                                             new Field(new Local("_local1"), "FunctionParameter", "_classVariant"),
+                                             new Use(new Copy(new Local("_local2"))))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             parameters: [
+                                 ("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                 ("param", StringT)],
+                             locals: [
+                                 new NewMethodLocal(
+                                     "_localsObject",
+                                     null,
+                                     new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])),
+                                 new NewMethodLocal(
+                                     "_local1",
+                                     "b",
+                                     FunctionObject([], Unit)),
+                                 new NewMethodLocal(
+                                     "_local2",
+                                     null,
+                                     new NewLoweredConcreteTypeReference(
+                                         "MyClass__MyFn__InnerFn__Closure",
+                                         new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"),
+                                         []))
+                             ])
+                     ])
+             },
              {
                  "call function object without parameters",
                  """
