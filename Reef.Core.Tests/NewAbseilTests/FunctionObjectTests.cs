@@ -241,64 +241,57 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : NewTestBa
                              ])
                      ])
              },
-//             {
-//                 "assign instance function to function object",
-//                 """
-//                 class MyClass {
-//                     pub fn MyFn(){}
-//                 }
-//                 var a = new MyClass{};
-//                 var b = a.MyFn;
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, "MyClass", variants: [Variant("_classVariant")])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
-//                             [MethodReturnUnit()],
-//                             parameters: [ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))]),
-//                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration(
-//                                     "a",
-//                                     CreateObject(
-//                                         ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")),
-//                                         "_classVariant",
-//                                         true),
-//                                     false),
-//                                 VariableDeclaration(
-//                                     "b",
-//                                     CreateObject(
-//                                         ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]),
-//                                         "_classVariant",
-//                                         true,
-//                                         new()
-//                                         {
-//                                             {
-//                                                 "FunctionReference",
-//                                                 FunctionReferenceConstant(
-//                                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn"),
-//                                                     true,
-//                                                     FunctionType([], Unit))
-//                                             },
-//                                             {
-//                                                 "FunctionParameter",
-//                                                 LocalAccess(
-//                                                     "a",
-//                                                     true,
-//                                                     ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")))
-//                                             }
-//                                         }),
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 Local("a", ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
-//                                 Local("b", ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
-//                             ])
-//                     ])
-//             },
+             {
+                 "assign instance function to function object",
+                 """
+                 class MyClass {
+                     pub fn MyFn(){}
+                 }
+                 var a = new MyClass{};
+                 var b = a.MyFn;
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "MyClass", variants: [NewVariant("_classVariant")])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
+                             [new BasicBlock(new BasicBlockId("bb0"), [], new Return())],
+                             Unit,
+                             parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))]),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new CreateObject(new NewLoweredConcreteTypeReference(
+                                                 "MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                         new Assign(
+                                             new Local("_local1"),
+                                             new CreateObject(FunctionObject([], Unit))),
+                                         new Assign(
+                                             new Field(new Local("_local1"), "FunctionReference", "_classVariant"),
+                                             new Use(new FunctionPointerConstant(new NewLoweredFunctionReference(
+                                                 new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), [])))),
+                                         new Assign(
+                                             new Field(new Local("_local1"), "FunctionParameter", "_classVariant"),
+                                             new Use(new Copy(new Local("_local0"))))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal(
+                                     "_local0",
+                                     "a",
+                                     new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                 new NewMethodLocal("_local1", "b", FunctionObject([], Unit))
+                             ])
+                     ])
+             },
 //             {
 //                 "assigning closure to function object",
 //                 """
