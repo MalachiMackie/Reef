@@ -558,50 +558,47 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : NewTestBa
                              ])
                      ])
              },
-//             {
-//                 "assign generic function to function object",
-//                 """
-//                 class MyClass<T>
-//                 {
-//                     pub static fn SomeFn<T2>(){}
-//                 }
-//                 var a = MyClass::<string>::SomeFn::<i64>;
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, "MyClass", ["T"], [Variant("_classVariant")])
-//                     ],
-//                     methods: [
-//                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
-//                             [MethodReturnUnit()],
-//                             [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T"), (new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "T2")]),
-//                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration(
-//                                     "a",
-//                                     CreateObject(
-//                                         ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]),
-//                                         "_classVariant",
-//                                         true,
-//                                         new()
-//                                         {
-//                                             {
-//                                                 "FunctionReference",
-//                                                 FunctionReferenceConstant(
-//                                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn", [StringType, Int64_t]),
-//                                                     true,
-//                                                     FunctionType([], Unit))
-//                                             }
-//                                         }),
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 Local("a",
-//                                     ConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))
-//                             ])
-//                     ])
-//             }
+             {
+                 "assign generic function to function object",
+                 """
+                 class MyClass<T>
+                 {
+                     pub static fn SomeFn<T2>(){}
+                 }
+                 var a = MyClass::<string>::SomeFn::<i64>;
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "MyClass", ["T"], [NewVariant("_classVariant")])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
+                             [new BasicBlock(new BasicBlockId("bb0"), [], new Return())],
+                             Unit,
+                             [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T"), (new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "T2")]),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new CreateObject(FunctionObject([], Unit))),
+                                         new Assign(
+                                             new Field(new Local("_local0"), "FunctionReference", "_classVariant"),
+                                             new Use(new FunctionPointerConstant(new NewLoweredFunctionReference(
+                                                 new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), [StringT, Int64T])))),
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", "a",
+                                     FunctionObject([], Unit))
+                             ])
+                     ])
+             }
         };
 
         
