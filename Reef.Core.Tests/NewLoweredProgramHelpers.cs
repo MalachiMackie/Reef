@@ -116,4 +116,25 @@ public static class NewLoweredProgramHelpers
             signature.Id,
             types);
     }
+
+    public static NewLoweredConcreteTypeReference FunctionObject(
+        IReadOnlyList<INewLoweredTypeReference> parameterTypes,
+        INewLoweredTypeReference returnType)
+    {
+        var signature = TypeChecking.TypeChecker.ClassSignature.Function(parameterTypes.Count);
+
+        return new NewLoweredConcreteTypeReference(
+            signature.Name,
+            signature.Id,
+            [..parameterTypes, returnType]);
+    }
+
+    public static NewLoweredFunctionReference FunctionObjectCall(
+        IReadOnlyList<INewLoweredTypeReference> parameterTypes,
+        INewLoweredTypeReference returnType)
+    {
+        return new NewLoweredFunctionReference(
+            DefId.FunctionObject_Call(parameterTypes.Count),
+            [..parameterTypes, returnType]);
+    }
 }
