@@ -99,87 +99,79 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
                              ])
                      ])
              },
-//             {
-//                 "access local that is referenced in closure",
-//                 """
-//                 var a = "";
-//                 var c = a;
-//                 fn InnerFn() {
-//                     var b = a;
-//                 }
-//                 """,
-//                 LoweredProgram(
-//                     types: [
-//                         DataType(ModuleId, "_Main__Locals",
-//                             variants: [
-//                                 Variant("_classVariant", [Field("a", StringT)])
-//                             ]),
-//                         DataType(ModuleId, "InnerFn__Closure",
-//                             variants: [
-//                                 Variant("_classVariant", [Field("_Main__Locals", new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), [])))])
-//                             ])
-//                     ],
-//                     methods: [
-//                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration(
-//                                     "_localsObject", 
-//                                     CreateObject(
-//                                         new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), [])),
-//                                         "_classVariant",
-//                                         true),
-//                                     false),
-//                                 FieldAssignment(
-//                                     LocalAccess("_localsObject", true, new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []))),
-//                                     "_classVariant",
-//                                     "a",
-//                                     StringConstant("", true),
-//                                     false,
-//                                     StringT),
-//                                 VariableDeclaration(
-//                                     "c",
-//                                     FieldAccess(
-//                                         LocalAccess(
-//                                             "_localsObject",
-//                                             true,
-//                                             new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []))),
-//                                         "a",
-//                                         "_classVariant",
-//                                         true,
-//                                         StringT),
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 NewMethodLocal("_localsObject", null, new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []))),
-//                                 new NewMethodLocal("_localX", "c", StringT),
-//                             ]),
-//                         NewMethod(new DefId(ModuleId, $"{ModuleId}.InnerFn"), "InnerFn",
-//                             [
-//                                 VariableDeclaration(
-//                                     "b",
-//                                     FieldAccess(
-//                                         FieldAccess(
-//                                             LoadArgument(0, true, new NewLoweredConcreteTypeReference("InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.InnerFn__Closure"), []))),
-//                                             "_Main__Locals",
-//                                             "_classVariant",
-//                                             true,
-//                                             new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []))),
-//                                         "a",
-//                                         "_classVariant",
-//                                         true,
-//                                         StringT),
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             parameters: [
-//                                 new NewLoweredConcreteTypeReference("InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.InnerFn__Closure"), []))
-//                             ],
-//                             locals: [
-//                                 new NewMethodLocal("_localX", "b", StringT)
-//                             ])
-//                     ])
-//             },
+             {
+                 "access local that is referenced in closure",
+                 """
+                 var a = "";
+                 var c = a;
+                 fn InnerFn() {
+                     var b = a;
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "_Main__Locals",
+                             variants: [
+                                 NewVariant("_classVariant", [NewField("a", StringT)])
+                             ]),
+                         NewDataType(ModuleId, "InnerFn__Closure",
+                             variants: [
+                                 NewVariant("_classVariant", [NewField("_Main__Locals", new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []))])
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_localsObject"),
+                                             new CreateObject(new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []))),
+                                         new Assign(
+                                             new Field(new Local("_localsObject"), "a", "_classVariant"),
+                                             new Use(new StringConstant(""))),
+                                         new Assign(
+                                             new Local("_local1"),
+                                             new Use(new Copy(
+                                                 new Field(new Local("_localsObject"), "a", "_classVariant"))))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_localsObject", null, new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), [])),
+                                 new NewMethodLocal("_local1", "c", StringT),
+                             ]),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.InnerFn"), "InnerFn",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new Use(new Copy(
+                                                 new Field(
+                                                     new Field(
+                                                         new Local("_param0"),
+                                                         "_Main__Locals",
+                                                         "_classVariant"),
+                                                     "a",
+                                                     "_classVariant"))))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             parameters: [
+                                 ("closure", new NewLoweredConcreteTypeReference("InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.InnerFn__Closure"), []))
+                             ],
+                             locals: [
+                                 new NewMethodLocal("_local0", "b", StringT)
+                             ])
+                     ])
+             },
 //             {
 //                 "parameter used in closure",
 //                 """
@@ -192,17 +184,17 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                     }
 //                 }
 //                 """,
-//                 LoweredProgram(
+//                 NewLoweredProgram(
 //                     types: [
-//                         DataType(ModuleId, 
+//                         NewDataType(ModuleId, 
 //                             "MyFn__Locals",
-//                             variants: [Variant("_classVariant", [Field("a", StringT)])]),
-//                         DataType(ModuleId, 
+//                             variants: [Variant("_classVariant", [NewField("a", StringT)])]),
+//                         NewDataType(ModuleId, 
 //                             "MyFn__InnerFn__Closure",
 //                             variants: [
-//                                 Variant(
+//                                 NewVariant(
 //                                     "_classVariant",
-//                                     [Field("MyFn__Locals", new NewLoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyFn__Locals"), [])))])
+//                                     [NewField("MyFn__Locals", new NewLoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyFn__Locals"), []))])
 //                             ])
 //                     ],
 //                     methods: [
@@ -215,11 +207,11 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                             LoadArgument(
 //                                                 0,
 //                                                 true,
-//                                                 new NewLoweredConcreteTypeReference("MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyFn__InnerFn__Closure"), []))),
+//                                                 new NewLoweredConcreteTypeReference("MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyFn__InnerFn__Closure"), [])),
 //                                             "MyFn__Locals",
 //                                             "_classVariant",
 //                                             true,
-//                                             new NewLoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyFn__Locals"), []))),
+//                                             new NewLoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyFn__Locals"), [])),
 //                                         "a",
 //                                         "_classVariant",
 //                                         true,
@@ -234,7 +226,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                 VariableDeclaration(
 //                                     "_localsObject",
 //                                     CreateObject(
-//                                         new NewLoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyFn__Locals"), [])),
+//                                         new NewLoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyFn__Locals"), []),
 //                                         "_classVariant",
 //                                         true,
 //                                         new(){{"a", LoadArgument(0, true, StringT)}}),
@@ -245,7 +237,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                         LocalAccess(
 //                                             "_localsObject",
 //                                             true,
-//                                             new NewLoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyFn__Locals"), []))),
+//                                             new NewLoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyFn__Locals"), [])),
 //                                         "a",
 //                                         "_classVariant",
 //                                         true,
@@ -254,8 +246,8 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                 MethodReturnUnit()
 //                             ],
 //                             locals: [
-//                                 NewMethodLocal("_localsObject", null, new NewLoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyFn__Locals"), []))),
-//                                 new NewMethodLocal("_localX", "b", StringT)
+//                                 new NewMethodLocal("_localsObject", null, new NewLoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyFn__Locals"), [])),
+//                                 new NewMethodLocal("_local1", "b", StringT)
 //                             ],
 //                             parameters: [StringT])
 //                     ])
@@ -277,18 +269,18 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                     }
 //                 }
 //                 """,
-//                 LoweredProgram(
+//                 NewLoweredProgram(
 //                     types: [
-//                         DataType(ModuleId, 
+//                         NewDataType(ModuleId, 
 //                             "MyClass",
 //                             variants: [
-//                                 Variant("_classVariant",
-//                                     [Field("MyField", StringT)])
+//                                 NewVariant("_classVariant",
+//                                     [NewField("MyField", StringT)])
 //                             ]),
-//                         DataType(ModuleId, 
+//                         NewDataType(ModuleId, 
 //                             "MyClass__MyFn__InnerFn__Closure",
 //                             variants: [
-//                                 Variant("_classVariant", [Field("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))])
+//                                 NewVariant("_classVariant", [NewField("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))])
 //                             ])
 //                     ],
 //                     methods: [
@@ -301,7 +293,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                             LoadArgument(
 //                                                 0,
 //                                                 true,
-//                                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), []))),
+//                                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), [])),
 //                                             "this",
 //                                             "_classVariant",
 //                                             true,
@@ -349,12 +341,12 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                     }
 //                 }
 //                 """,
-//                 LoweredProgram(
+//                 NewLoweredProgram(
 //                     types: [
-//                         DataType(ModuleId, 
+//                         NewDataType(ModuleId, 
 //                             "MyClass",
 //                             variants: [
-//                                 Variant("_classVariant")
+//                                 NewVariant("_classVariant")
 //                             ],
 //                             staticFields: [StaticField("MyField", StringT, StringConstant("", true))]),
 //                     ],
@@ -391,18 +383,18 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                     a = "bye";
 //                 }
 //                 """,
-//                 LoweredProgram(
+//                 NewLoweredProgram(
 //                     types: [
-//                         DataType(ModuleId, "_Main__Locals",
+//                         NewDataType(ModuleId, "_Main__Locals",
 //                             variants: [
-//                                 Variant("_classVariant",
-//                                     [Field("a", StringT)])
+//                                 NewVariant("_classVariant",
+//                                     [NewField("a", StringT)])
 //                             ]),
-//                         DataType(ModuleId, 
+//                         NewDataType(ModuleId, 
 //                             "InnerFn__Closure",
 //                             variants: [
-//                                 Variant("_classVariant",
-//                                     [Field("_Main__Locals", new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), [])))])
+//                                 NewVariant("_classVariant",
+//                                     [NewField("_Main__Locals", new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []))])
 //                             ])
 //                     ],
 //                     methods: [
@@ -411,11 +403,11 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                 FieldAssignment(
 //                                     FieldAccess(
 //                                         LoadArgument(
-//                                             0, true, new NewLoweredConcreteTypeReference("InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.InnerFn__Closure"), []))),
+//                                             0, true, new NewLoweredConcreteTypeReference("InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.InnerFn__Closure"), [])),
 //                                         "_Main__Locals",
 //                                         "_classVariant",
 //                                         true,
-//                                         new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []))),
+//                                         new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), [])),
 //                                     "_classVariant",
 //                                     "a",
 //                                     StringConstant("bye", true),
@@ -424,14 +416,14 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                 MethodReturnUnit()
 //                             ],
 //                             parameters: [
-//                                 new NewLoweredConcreteTypeReference("InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.InnerFn__Closure"), []))
+//                                 new NewLoweredConcreteTypeReference("InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.InnerFn__Closure"), [])
 //                             ]),
 //                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
 //                             [
 //                                 VariableDeclaration(
 //                                     "_localsObject",
 //                                     CreateObject(
-//                                         new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), [])),
+//                                         new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []),
 //                                         "_classVariant",
 //                                         true,
 //                                         []),
@@ -440,7 +432,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                     LocalAccess(
 //                                         "_localsObject",
 //                                         true,
-//                                         new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []))),
+//                                         new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), [])),
 //                                     "_classVariant",
 //                                     "a",
 //                                     StringConstant("", true),
@@ -450,7 +442,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                     LocalAccess(
 //                                         "_localsObject",
 //                                         true,
-//                                         new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []))),
+//                                         new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), [])),
 //                                     "_classVariant",
 //                                     "a",
 //                                     StringConstant("hi", true),
@@ -459,8 +451,8 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                 MethodReturnUnit()
 //                             ],
 //                             locals: [
-//                                 NewMethodLocal("_localsObject", null,
-//                                     new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), [])))
+//                                 new NewMethodLocal("_localsObject", null,
+//                                     new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []))
 //                             ])
 //                     ])
 //             },
@@ -479,17 +471,17 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                     }
 //                 }
 //                 """,
-//                 LoweredProgram(
+//                 NewLoweredProgram(
 //                     types: [
-//                         DataType(ModuleId, 
+//                         NewDataType(ModuleId, 
 //                             "MyClass",
 //                             variants: [Variant("_classVariant")]),
-//                         DataType(ModuleId, 
+//                         NewDataType(ModuleId, 
 //                             "MyClass__MyFn__InnerFn__Closure",
 //                             variants: [
-//                                 Variant(
+//                                 NewVariant(
 //                                     "_classVariant",
-//                                     [Field("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))])
+//                                     [NewField("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))])
 //                             ])
 //                     ],
 //                     methods: [
@@ -499,7 +491,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                     "a",
 //                                     FieldAccess(
 //                                         LoadArgument(
-//                                             0, true, new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), []))),
+//                                             0, true, new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), [])),
 //                                         "this",
 //                                         "_classVariant",
 //                                         true,
@@ -508,10 +500,10 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                 MethodReturnUnit()
 //                             ],
 //                             parameters: [
-//                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), []))
+//                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), [])
 //                             ],
 //                             locals: [
-//                                 new NewMethodLocal("_localX", "a", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
+//                                 new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
 //                             ]),
 //                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
 //                             [
@@ -519,7 +511,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn"), "MyClass__MyFn__InnerFn"),
 //                                     [
 //                                         CreateObject(
-//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), [])),
+//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), []),
 //                                             "_classVariant",
 //                                             true,
 //                                             new(){{"this", LoadArgument(0, true, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))}})
@@ -548,21 +540,21 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                     }
 //                 }
 //                 """,
-//                 LoweredProgram(
+//                 NewLoweredProgram(
 //                     types: [
-//                         DataType(ModuleId, 
+//                         NewDataType(ModuleId, 
 //                             "MyClass",
 //                             variants: [
-//                                 Variant(
+//                                 NewVariant(
 //                                     "_classVariant",
-//                                     [Field("MyField", StringT)])
+//                                     [NewField("MyField", StringT)])
 //                             ]),
-//                         DataType(ModuleId, 
+//                         NewDataType(ModuleId, 
 //                             "MyClass__MyFn__InnerFn__Closure",
 //                             variants: [
-//                                 Variant(
+//                                 NewVariant(
 //                                     "_classVariant",
-//                                     fields: [Field("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))])
+//                                     fields: [NewField("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))])
 //                             ])
 //                     ],
 //                     methods: [
@@ -573,7 +565,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                         LoadArgument(
 //                                             0,
 //                                             true,
-//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), []))),
+//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), [])),
 //                                         "this",
 //                                         "_classVariant",
 //                                         true,
@@ -586,7 +578,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                 MethodReturnUnit()
 //                             ],
 //                             parameters: [
-//                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), []))
+//                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), [])
 //                             ]),
 //                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
 //                             [
@@ -625,35 +617,35 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                     }
 //                 }
 //                 """,
-//                 LoweredProgram(
+//                 NewLoweredProgram(
 //                     types: [
-//                         DataType(ModuleId, 
+//                         NewDataType(ModuleId, 
 //                             "MyClass",
 //                             variants: [
-//                                 Variant(
+//                                 NewVariant(
 //                                     "_classVariant",
 //                                     [
 //                                         Field("MyField", StringT)
 //                                     ])
 //                             ]),
-//                         DataType(ModuleId, 
+//                         NewDataType(ModuleId, 
 //                             "MyClass__MyFn__Locals",
 //                             variants: [
-//                                 Variant(
+//                                 NewVariant(
 //                                     "_classVariant",
 //                                     [
 //                                         Field("param", StringT),
 //                                         Field("a", StringT),
 //                                     ])
 //                             ]),
-//                         DataType(ModuleId, 
+//                         NewDataType(ModuleId, 
 //                             "MyClass__MyFn__InnerFn__Closure",
 //                             variants: [
-//                                 Variant(
+//                                 NewVariant(
 //                                     "_classVariant",
 //                                     [
 //                                         Field("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
-//                                         Field("MyClass__MyFn__Locals", new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])))
+//                                         Field("MyClass__MyFn__Locals", new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))
 //                                     ])
 //                             ])
 //                     ],
@@ -667,11 +659,11 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                             LoadArgument(
 //                                                 0,
 //                                                 true,
-//                                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), []))),
+//                                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), [])),
 //                                             "MyClass__MyFn__Locals",
 //                                             "_classVariant",
 //                                             true,
-//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))),
+//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])),
 //                                         "a",
 //                                         "_classVariant",
 //                                         true,
@@ -684,11 +676,11 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                             LoadArgument(
 //                                                 0,
 //                                                 true,
-//                                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), []))),
+//                                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), [])),
 //                                             "MyClass__MyFn__Locals",
 //                                             "_classVariant",
 //                                             true,
-//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))),
+//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])),
 //                                         "param",
 //                                         "_classVariant",
 //                                         true,
@@ -701,7 +693,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                             LoadArgument(
 //                                                 0,
 //                                                 true,
-//                                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), []))),
+//                                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), [])),
 //                                             "this",
 //                                             "_classVariant",
 //                                             true,
@@ -714,12 +706,12 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                 MethodReturnUnit()
 //                             ],
 //                             locals: [
-//                                 new NewMethodLocal("_localX", "_a", StringT),
-//                                 new NewMethodLocal("_localX", "_param", StringT),
-//                                 new NewMethodLocal("_localX", "_myField", StringT)
+//                                 new NewMethodLocal("_local0", "_a", StringT),
+//                                 new NewMethodLocal("_local1", "_param", StringT),
+//                                 new NewMethodLocal("_local2", "_myField", StringT)
 //                             ],
 //                             parameters: [
-//                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), [])),
+//                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), []),
 //                                 Int64_t
 //                             ]),
 //                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
@@ -727,7 +719,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                 VariableDeclaration(
 //                                     "_localsObject",
 //                                     CreateObject(
-//                                         new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])),
+//                                         new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []),
 //                                         "_classVariant",
 //                                         true,
 //                                         new(){{"param", LoadArgument(1, true, StringT)}}),
@@ -736,7 +728,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                     LocalAccess(
 //                                         "_localsObject",
 //                                         true,
-//                                         new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))),
+//                                         new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])),
 //                                     "_classVariant",
 //                                     "a",
 //                                     StringConstant("", true),
@@ -746,12 +738,12 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn"), "MyClass__MyFn__InnerFn"),
 //                                     [
 //                                         CreateObject(
-//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), [])),
+//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), []),
 //                                             "_classVariant",
 //                                             true,
 //                                             new(){
 //                                                 {"this", LoadArgument(0, true, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))},
-//                                                 {"MyClass__MyFn__Locals", LocalAccess("_localsObject", true, new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])))}
+//                                                 {"MyClass__MyFn__Locals", LocalAccess("_localsObject", true, new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))}
 //                                             }),
 //                                         Int64Constant(3, true)
 //                                     ],
@@ -760,7 +752,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                 MethodReturnUnit()
 //                             ],
 //                             locals: [
-//                                 NewMethodLocal("_localsObject", null, new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])))
+//                                 new NewMethodLocal("_localsObject", null, new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))
 //                             ],
 //                             parameters: [
 //                                 new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
@@ -793,42 +785,42 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                     }
 //                 }
 //                 """,
-//                 LoweredProgram(
+//                 NewLoweredProgram(
 //                     types: [
-//                         DataType(ModuleId, "MyClass",
+//                         NewDataType(ModuleId, "MyClass",
 //                             variants: [
-//                                 Variant("_classVariant", [Field("MyField", StringT)])
+//                                 NewVariant("_classVariant", [NewField("MyField", StringT)])
 //                             ]),
-//                         DataType(ModuleId, "MyClass__MyFn__Locals",
+//                         NewDataType(ModuleId, "MyClass__MyFn__Locals",
 //                             variants: [
-//                                 Variant(
+//                                 NewVariant(
 //                                     "_classVariant",
 //                                     [
 //                                         Field("param", StringT),
 //                                         Field("a", StringT)
 //                                     ])
 //                             ]),
-//                         DataType(ModuleId, "MyClass__MyFn__MiddleFn__Locals",
+//                         NewDataType(ModuleId, "MyClass__MyFn__MiddleFn__Locals",
 //                             variants: [
-//                                 Variant("_classVariant", [Field("b", Int64_t)])
+//                                 NewVariant("_classVariant", [NewField("b", Int64_t)])
 //                             ]),
-//                         DataType(ModuleId, "MyClass__MyFn__MiddleFn__Closure",
+//                         NewDataType(ModuleId, "MyClass__MyFn__MiddleFn__Closure",
 //                             variants: [
-//                                 Variant(
+//                                 NewVariant(
 //                                     "_classVariant",
 //                                     [
 //                                         Field("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
-//                                         Field("MyClass__MyFn__Locals", new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])))
+//                                         Field("MyClass__MyFn__Locals", new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))
 //                                     ])
 //                             ]),
-//                         DataType(ModuleId, "MyClass__MyFn__MiddleFn__InnerFn__Closure",
+//                         NewDataType(ModuleId, "MyClass__MyFn__MiddleFn__InnerFn__Closure",
 //                             variants: [
-//                                 Variant(
+//                                 NewVariant(
 //                                     "_classVariant",
 //                                     [
 //                                         Field("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
-//                                         Field("MyClass__MyFn__Locals", new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))),
-//                                         Field("MyClass__MyFn__MiddleFn__Locals", new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Locals"), [])))
+//                                         Field("MyClass__MyFn__Locals", new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])),
+//                                         Field("MyClass__MyFn__MiddleFn__Locals", new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Locals"), []))
 //                                     ])
 //                             ])
 //                     ],
@@ -842,11 +834,11 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                             LoadArgument(
 //                                                 0,
 //                                                 true,
-//                                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__InnerFn__Closure"), []))),
+//                                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__InnerFn__Closure"), [])),
 //                                             "MyClass__MyFn__Locals",
 //                                             "_classVariant",
 //                                             true,
-//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))),
+//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])),
 //                                         "a",
 //                                         "_classVariant",
 //                                         true,
@@ -859,11 +851,11 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                             LoadArgument(
 //                                                 0,
 //                                                 true,
-//                                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__InnerFn__Closure"), []))),
+//                                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__InnerFn__Closure"), [])),
 //                                             "MyClass__MyFn__MiddleFn__Locals",
 //                                             "_classVariant",
 //                                             true,
-//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Locals"), []))),
+//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Locals"), [])),
 //                                         "b",
 //                                         "_classVariant",
 //                                         true,
@@ -876,11 +868,11 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                             LoadArgument(
 //                                                 0,
 //                                                 true,
-//                                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__InnerFn__Closure"), []))),
+//                                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__InnerFn__Closure"), [])),
 //                                             "MyClass__MyFn__Locals",
 //                                             "_classVariant",
 //                                             true,
-//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))),
+//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])),
 //                                         "param",
 //                                         "_classVariant",
 //                                         true,
@@ -893,7 +885,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                             LoadArgument(
 //                                                 0,
 //                                                 true,
-//                                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__InnerFn__Closure"), []))),
+//                                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__InnerFn__Closure"), [])),
 //                                             "this",
 //                                             "_classVariant",
 //                                             true,
@@ -906,20 +898,20 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                 MethodReturnUnit()
 //                             ],
 //                             locals: [
-//                                 new NewMethodLocal("_localX", "_a", StringT),
-//                                 new NewMethodLocal("_localX", "_b", Int64_t),
-//                                 new NewMethodLocal("_localX", "_param", StringT),
-//                                 new NewMethodLocal("_localX", "_myField", StringT)
+//                                 new NewMethodLocal("_local0", "_a", StringT),
+//                                 new NewMethodLocal("_local1", "_b", Int64_t),
+//                                 new NewMethodLocal("_local2", "_param", StringT),
+//                                 new NewMethodLocal("_local3", "_myField", StringT)
 //                             ],
 //                             parameters: [
-//                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__InnerFn__Closure"), []))
+//                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__InnerFn__Closure"), [])
 //                             ]),
 //                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn"), "MyClass__MyFn__MiddleFn",
 //                             [
 //                                 VariableDeclaration(
 //                                     "_localsObject",
 //                                     CreateObject(
-//                                         new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Locals"), [])),
+//                                         new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Locals"), []),
 //                                         "_classVariant",
 //                                         true,
 //                                         new(){{"b", LoadArgument(1, true, Int64_t)}}),
@@ -928,24 +920,24 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__InnerFn"), "MyClass__MyFn__MiddleFn__InnerFn"),
 //                                     [
 //                                         CreateObject(
-//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__InnerFn__Closure"), [])),
+//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__InnerFn__Closure"), []),
 //                                             "_classVariant",
 //                                             true,
 //                                             new(){
-//                                                 {"MyClass__MyFn__MiddleFn__Locals", LocalAccess("_localsObject", true, new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Locals"), [])))},
+//                                                 {"MyClass__MyFn__MiddleFn__Locals", LocalAccess("_localsObject", true, new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Locals"), []))},
 //                                                 {
 //                                                     "MyClass__MyFn__Locals",
 //                                                     FieldAccess(
-//                                                         LoadArgument(0, true, new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Closure"), []))),
+//                                                         LoadArgument(0, true, new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Closure"), [])),
 //                                                         "MyClass__MyFn__Locals",
 //                                                         "_classVariant",
 //                                                         true,
-//                                                         new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])))
+//                                                         new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))
 //                                                 },
 //                                                 {
 //                                                     "this",
 //                                                     FieldAccess(
-//                                                         LoadArgument(0, true, new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Closure"), []))),
+//                                                         LoadArgument(0, true, new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Closure"), [])),
 //                                                         "this",
 //                                                         "_classVariant",
 //                                                         true,
@@ -958,11 +950,11 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                 MethodReturnUnit()
 //                             ],
 //                             locals: [
-//                                 NewMethodLocal("_localsObject", null,
-//                                     new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Locals"), [])))
+//                                 new NewMethodLocal("_localsObject", null,
+//                                     new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Locals"), []))
 //                             ],
 //                             parameters: [
-//                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Closure"), [])),
+//                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Closure"), []),
 //                                 Int64_t
 //                             ]),
 //                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
@@ -970,7 +962,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                 VariableDeclaration(
 //                                     "_localsObject",
 //                                     CreateObject(
-//                                         new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])),
+//                                         new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []),
 //                                         "_classVariant",
 //                                         true,
 //                                         new()
@@ -985,7 +977,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                     LocalAccess(
 //                                         "_localsObject",
 //                                         true,
-//                                         new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))),
+//                                         new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])),
 //                                     "_classVariant",
 //                                     "a",
 //                                     StringConstant("", true),
@@ -995,14 +987,14 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                     FunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn"), "MyClass__MyFn__MiddleFn"),
 //                                     [
 //                                         CreateObject(
-//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Closure"), [])),
+//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__MiddleFn__Closure"), []),
 //                                             "_classVariant",
 //                                             true,
 //                                             new()
 //                                             {
 //                                                 {
 //                                                     "MyClass__MyFn__Locals",
-//                                                     LocalAccess("_localsObject", true, new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])))
+//                                                     LocalAccess("_localsObject", true, new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))
 //                                                 },
 //                                                 {
 //                                                     "this",
@@ -1016,7 +1008,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 //                                 MethodReturnUnit()
 //                             ],
 //                             locals: [
-//                                 NewMethodLocal("_localsObject", null, new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])))
+//                                 new NewMethodLocal("_localsObject", null, new NewLoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))
 //                             ],
 //                             parameters: [
 //                                 new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
