@@ -14,7 +14,10 @@ public interface IRValue
 
 public interface ITerminator;
 
-public record BasicBlockId(string Id);
+public record BasicBlockId(string Id)
+{
+    public string Id { get; set; } = Id;
+}
 
 public record BasicBlock(BasicBlockId Id, IReadOnlyList<IStatement> Statements, ITerminator? Terminator = null)
 {

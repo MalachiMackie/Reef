@@ -158,127 +158,106 @@ public partial class NewProgramAbseil
 
                 return new PlaceResult(destination);
             }
-            // {
-            //     string localName;
-            //     if (variableName is not null)
-            //     {
-            //         localName = variableName.StringValue;
-            //     }
-            //     else
-            //     {
-            //         locals.Add(new MethodLocal(
-            //                 localName = $"Local{locals.Count}",
-            //                 operandType));
-            //     }
-            //     
-            //
-            //     return new BlockExpression(
-            //         [
-            //             new VariableDeclarationAndAssignmentExpression(
-            //                 localName,
-            //                 e,
-            //                 false),
-            //             new UInt16EqualsExpression(
-            //                 ValueUseful: true,
-            //                 new FieldAccessExpression(
-            //                     new LocalVariableAccessor(
-            //                         localName,
-            //                         true,
-            //                         operandType),
-            //                     "_variantIdentifier",
-            //                     variantName!.StringValue,
-            //                     true,
-            //                     GetTypeReference(InstantiatedClass.UInt16)),
-            //                 new UInt16ConstantExpression(
-            //                     true,
-            //                     (ushort)variantIndex))
-            //         ],
-            //         boolType,
-            //         valueUseful);
-            // }
             case UnionTupleVariantPattern
             {
                 VariantName: var variantName,
-                VariableName: var variableName,
+                Variable: var variable,
                 TupleParamPatterns: var tupleParamPatterns,
                 TypeReference: var unionType,
             }:
-                throw new NotImplementedException();
-            // {
-            //     string localName;
-            //     if (variableName is not null)
-            //     {
-            //         localName = variableName.StringValue;
-            //     }
-            //     else
-            //     {
-            //         locals.Add(new MethodLocal(
-            //                 localName = $"Local{locals.Count}",
-            //                 operandType));
-            //     }
-            //     var type = (GetTypeReference(unionType.NotNull()) as LoweredConcreteTypeReference).NotNull();
-            //     var dataType = GetDataType(type.DefinitionId, type.TypeArguments);
-            //     var (variantIndex, variant) = dataType.Variants.Index()
-            //         .First(x => x.Item.Name == variantName.NotNull().StringValue);
-            //     
-            //     // type checker should have checked there's at least tuple member
-            //     Debug.Assert(tupleParamPatterns.Count > 0);
-            //
-            //     var variantIdentifierCheck = new UInt16EqualsExpression(
-            //                 ValueUseful: true,
-            //                 new FieldAccessExpression(
-            //                     new LocalVariableAccessor(
-            //                         localName,
-            //                         true,
-            //                         operandType),
-            //                     "_variantIdentifier",
-            //                     variantName.StringValue,
-            //                     true,
-            //                     GetTypeReference(InstantiatedClass.UInt16)),
-            //                 new UInt16ConstantExpression(
-            //                     true,
-            //                     (ushort)variantIndex));
-            //
-            //     var localAccessor = new LocalVariableAccessor(localName, true, operandType);
-            //
-            //     var tuplePatternExpressions = tupleParamPatterns.Select(
-            //             (x, i) => LowerMatchesPattern(
-            //                 new FieldAccessExpression(
-            //                     localAccessor,
-            //                     $"Item{i}",
-            //                     variantName.StringValue,
-            //                     true,
-            //                     // skip the first _variantIdentifier field
-            //                     variant.Fields[i + 1].Type),
-            //                 x,
-            //                 valueUseful: true));
-            //
-            //     var checkExpressions = tuplePatternExpressions.Prepend<ILoweredExpression>(variantIdentifierCheck)
-            //         .ToArray();
-            //
-            //     Debug.Assert(checkExpressions.Length >= 2);
-            //
-            //     // collate all the check expressions into a recurse bool and tree
-            //     var lastExpression = checkExpressions[^1];
-            //     for (var i = checkExpressions.Length - 2; i >= 0; i--)
-            //     {
-            //         lastExpression = new BoolAndExpression(
-            //             true,
-            //             checkExpressions[i],
-            //             lastExpression);
-            //     }
-            //
-            //     return new BlockExpression(
-            //             [
-            //                 new VariableDeclarationAndAssignmentExpression(
-            //                     localName,
-            //                     e,
-            //                     false),
-            //                 lastExpression
-            //             ],
-            //             boolType,
-            //             valueUseful);
-            // }
+            {
+                IPlace? valuePlace = null;
+                if (variable is not null)
+                {
+                    valuePlace = GetLocalVariablePlace(variable);
+                    _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
+                }
+                
+                var type = (GetTypeReference(unionType.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
+                var dataType = GetDataType(type.DefinitionId);
+                var (variantIndex, variant) = dataType.Variants.Index()
+                    .First(x => x.Item.Name == variantName.NotNull().StringValue);
+
+                if (destination is null)
+                {
+                    var localName = LocalName((uint)_locals.Count);
+                    _locals.Add(new NewMethodLocal(localName, null, boolType));
+                    destination = new Local(localName);
+                }
+
+                if (value is PlaceResult { Value: var place })
+                {
+                    // always prefer the original value place
+                    valuePlace = place;
+                }
+                else if (valuePlace is null)
+                {
+                    var localName = LocalName((uint)_locals.Count);
+                    _locals.Add(new NewMethodLocal(localName, null, type));
+                    valuePlace = new Local(localName);
+                    _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
+                    throw new NotImplementedException("I don't know if this is actually ever hit");
+                }
+                
+                _basicBlockStatements.Add(
+                    new Assign(
+                        destination,
+                        new BinaryOperation(
+                            new Copy(new Field(valuePlace, VariantIdentifierFieldName, variant.Name)),
+                            new UIntConstant((uint)variantIndex, 2),
+                            BinaryOperationKind.Equal)));
+
+                Debug.Assert(tupleParamPatterns.Count > 0);
+                var initialBasicBlock = _basicBlocks[^1];
+
+
+                _basicBlockStatements = [];
+                var nextBasicBlock = new BasicBlock(
+                    new BasicBlockId($"bb{_basicBlocks.Count}"),
+                    _basicBlockStatements);
+                _basicBlocks.Add(nextBasicBlock);
+
+                var afterBasicBlockId = new BasicBlockId("after");
+
+                initialBasicBlock.Terminator = new SwitchInt(
+                    new Copy(destination),
+                    new Dictionary<int, BasicBlockId>
+                    {
+                        { 0, afterBasicBlockId }
+                    },
+                    nextBasicBlock.Id);
+                
+                foreach (var (i, tupleParamPattern) in tupleParamPatterns.Index())
+                {
+                    LowerMatchesPattern(
+                        new PlaceResult(new Field(valuePlace, $"Item{i}", variant.Name)),
+                        tupleParamPattern,
+                        destination);
+
+                    _basicBlockStatements = [];
+                    var nextBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+                    if (i + 1 < tupleParamPatterns.Count)
+                    {
+                        nextBasicBlock.Terminator = new SwitchInt(
+                            new Copy(destination),
+                            new Dictionary<int, BasicBlockId>
+                            {
+                                { 0, afterBasicBlockId },
+                            },
+                            nextBasicBlockId);
+                    }
+                    else
+                    {
+                        nextBasicBlock.Terminator = new GoTo(nextBasicBlockId);
+                    }
+
+                    _basicBlocks.Add(nextBasicBlock = new BasicBlock(nextBasicBlockId, _basicBlockStatements));
+                }
+
+                afterBasicBlockId.Id = nextBasicBlock.Id.Id;
+
+                return new PlaceResult(destination);
+            }
         case UnionClassVariantPattern
             {
                 VariantName: var variantName,

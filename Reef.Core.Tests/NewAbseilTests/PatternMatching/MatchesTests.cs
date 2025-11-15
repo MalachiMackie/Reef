@@ -339,329 +339,286 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
                             ])
                     ])
             },
-            // {
-            //     "matches - union tuple pattern",
-            //     """
-            //     union MyUnion{A(i64), B}
-            //     var a = MyUnion::B;
-            //     var b = a matches MyUnion::A(_);
-            //     """,
-            //     NewLoweredProgram(
-            //         types: [
-            //             DataType(ModuleId, "MyUnion",
-            //                 variants: [
-            //                     Variant("A", [Field("_variantIdentifier", UInt16T), Field("Item0", Int64T)]),
-            //                     Variant("B", [Field("_variantIdentifier", UInt16T)])
-            //                 ])
-            //         ],
-            //         methods: [
-            //             NewMethod(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
-            //                 [
-            //                     NewMethodReturn(
-            //                         CreateObject(
-            //                             ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion")),
-            //                             "A",
-            //                             true,
-            //                             new(){{"_variantIdentifier", UInt16Constant(0, true)}, {"Item0", LoadArgument(0, true, Int64T)}}))
-            //                 ],
-            //                 parameters: [Int64T],
-            //                 returnType: ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //             NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     VariableDeclaration(
-            //                         "a",
-            //                         CreateObject(
-            //                             ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion")),
-            //                             "B",
-            //                             true,
-            //                             new(){{"_variantIdentifier", UInt16Constant(1, true)}}),
-            //                         false),
-            //                     VariableDeclaration(
-            //                         "b",
-            //                         Block(
-            //                             [
-            //                                 VariableDeclaration(
-            //                                     "Local2",
-            //                                     LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                                     false),
-            //                                 BoolAnd(
-            //                                     UInt16Equals(
-            //                                         FieldAccess(
-            //                                             LocalAccess(
-            //                                                 "Local2",
-            //                                                 true,
-            //                                                 ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                                             "_variantIdentifier",
-            //                                             "A",
-            //                                             true,
-            //                                             UInt16T),
-            //                                         UInt16Constant(0, true),
-            //                                         true),
-            //                                     Block(
-            //                                         [
-            //                                             VariableDeclaration(
-            //                                                 "Local3",
-            //                                                 FieldAccess(
-            //                                                     LocalAccess("Local2",
-            //                                                         true,
-            //                                                         ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                                                     "Item0",
-            //                                                     "A",
-            //                                                     true,
-            //                                                     Int64T),
-            //                                                 false),
-            //                                             BoolConstant(true, true)
-            //                                         ],
-            //                                         BooleanT,
-            //                                         true),
-            //                                     true)
-            //                             ],
-            //                             BooleanT,
-            //                             true),
-            //                         false),
-            //                     NewMethodReturnUnit()
-            //                 ],
-            //                 locals: [
-            //                     new NewMethodLocal("_localX", "a", ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                     new NewMethodLocal("_localX", "b", BooleanT),
-            //                     new NewMethodLocal("_localX", "Local2", ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                     new NewMethodLocal("_localX", "Local3", Int64T)
-            //                 ])
-            //         ])
-            // },
-            // {
-            //     "matches - union tuple pattern with variable declaration",
-            //     """
-            //     union MyUnion{A(i64), B}
-            //     var a = MyUnion::B;
-            //     var b = a matches MyUnion::A(_) var c;
-            //     """,
-            //     NewLoweredProgram(
-            //         types: [
-            //             DataType(ModuleId, "MyUnion",
-            //                 variants: [
-            //                     Variant("A", [Field("_variantIdentifier", UInt16T), Field("Item0", Int64T)]),
-            //                     Variant("B", [Field("_variantIdentifier", UInt16T)])
-            //                 ])
-            //         ],
-            //         methods: [
-            //             NewMethod(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
-            //                 [
-            //                     NewMethodReturn(
-            //                         CreateObject(
-            //                             ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion")),
-            //                             "A",
-            //                             true,
-            //                             new(){{"_variantIdentifier", UInt16Constant(0, true)}, {"Item0", LoadArgument(0, true, Int64T)}}))
-            //                 ],
-            //                 parameters: [Int64T],
-            //                 returnType: ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //             NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     VariableDeclaration(
-            //                         "a",
-            //                         CreateObject(
-            //                             ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion")),
-            //                             "B",
-            //                             true,
-            //                             new(){{"_variantIdentifier", UInt16Constant(1, true)}}),
-            //                         false),
-            //                     VariableDeclaration(
-            //                         "b",
-            //                         Block(
-            //                             [
-            //                                 VariableDeclaration(
-            //                                     "c",
-            //                                     LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                                     false),
-            //                                 BoolAnd(
-            //                                     UInt16Equals(
-            //                                         FieldAccess(
-            //                                             LocalAccess(
-            //                                                 "c",
-            //                                                 true,
-            //                                                 ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                                             "_variantIdentifier",
-            //                                             "A",
-            //                                             true,
-            //                                             UInt16T),
-            //                                         UInt16Constant(0, true),
-            //                                         true),
-            //                                     Block(
-            //                                         [
-            //                                             VariableDeclaration(
-            //                                                 "Local3",
-            //                                                 FieldAccess(
-            //                                                     LocalAccess("c",
-            //                                                         true,
-            //                                                         ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                                                     "Item0",
-            //                                                     "A",
-            //                                                     true,
-            //                                                     Int64T),
-            //                                                 false),
-            //                                             BoolConstant(true, true)
-            //                                         ],
-            //                                         BooleanT,
-            //                                         true),
-            //                                     true)
-            //                             ],
-            //                             BooleanT,
-            //                             true),
-            //                         false),
-            //                     NewMethodReturnUnit()
-            //                 ],
-            //                 locals: [
-            //                     new NewMethodLocal("_localX", "a", ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                     new NewMethodLocal("_localX", "b", BooleanT),
-            //                     new NewMethodLocal("_localX", "c", ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                     new NewMethodLocal("_localX", "Local3", Int64T)
-            //                 ])
-            //         ])
-            // },
-            // {
-            //     "matches - union tuple pattern with multiple members ",
-            //     """
-            //     union MyUnion{A(i64, string, bool), B}
-            //     var a = MyUnion::B;
-            //     var b = a matches MyUnion::A(_, var c, _);
-            //     """,
-            //     NewLoweredProgram(
-            //         types: [
-            //             DataType(ModuleId, "MyUnion",
-            //                 variants: [
-            //                     Variant(
-            //                         "A",
-            //                         [
-            //                             Field("_variantIdentifier", UInt16T),
-            //                             Field("Item0", Int64T),
-            //                             Field("Item1", StringType),
-            //                             Field("Item2", BooleanT),
-            //                         ]),
-            //                     Variant("B", [Field("_variantIdentifier", UInt16T)])
-            //                 ])
-            //         ],
-            //         methods: [
-            //             NewMethod(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
-            //                 [
-            //                     NewMethodReturn(
-            //                         CreateObject(
-            //                             ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion")),
-            //                             "A",
-            //                             true,
-            //                             new() {
-            //                                 {"Item0", LoadArgument(0, true, Int64T)},
-            //                                 {"Item1", LoadArgument(1, true, StringType)},
-            //                                 {"Item2", LoadArgument(2, true, BooleanT)},
-            //                                 {"_variantIdentifier", UInt16Constant(0, true)},
-            //                             }))
-            //                 ],
-            //                 parameters: [Int64T, StringType, BooleanT],
-            //                 returnType: ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //             NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     VariableDeclaration(
-            //                         "a",
-            //                         CreateObject(
-            //                             ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion")),
-            //                             "B",
-            //                             true,
-            //                             new(){{"_variantIdentifier", UInt16Constant(1, true)}}),
-            //                         false),
-            //                     VariableDeclaration(
-            //                         "b",
-            //                         Block(
-            //                             [
-            //                                 VariableDeclaration(
-            //                                     "Local3",
-            //                                     LocalAccess("a", true, ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                                     false),
-            //                                 BoolAnd(
-            //                                     UInt16Equals(
-            //                                         FieldAccess(
-            //                                             LocalAccess(
-            //                                                 "Local3",
-            //                                                 true,
-            //                                                 ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                                             "_variantIdentifier",
-            //                                             "A",
-            //                                             true,
-            //                                             UInt16T),
-            //                                         UInt16Constant(0, true),
-            //                                         true),
-            //                                     BoolAnd(
-            //                                         Block(
-            //                                             [
-            //                                                 VariableDeclaration(
-            //                                                     "Local4",
-            //                                                     FieldAccess(
-            //                                                         LocalAccess("Local3",
-            //                                                             true,
-            //                                                             ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                                                         "Item0",
-            //                                                         "A",
-            //                                                         true,
-            //                                                         Int64T),
-            //                                                     false),
-            //                                                 BoolConstant(true, true)
-            //                                             ],
-            //                                             BooleanT,
-            //                                             true),
-            //                                         BoolAnd(
-            //                                             Block(
-            //                                                 [
-            //                                                     VariableDeclaration(
-            //                                                         "c",
-            //                                                         FieldAccess(
-            //                                                             LocalAccess("Local3",
-            //                                                                 true,
-            //                                                                 ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                                                             "Item1",
-            //                                                             "A",
-            //                                                             true,
-            //                                                             StringType),
-            //                                                         false),
-            //                                                     BoolConstant(true, true)
-            //                                                 ],
-            //                                                 BooleanT,
-            //                                                 true),
-            //                                             Block(
-            //                                                 [
-            //                                                     VariableDeclaration(
-            //                                                         "Local5",
-            //                                                         FieldAccess(
-            //                                                             LocalAccess("Local3",
-            //                                                                 true,
-            //                                                                 ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                                                             "Item2",
-            //                                                             "A",
-            //                                                             true,
-            //                                                             BooleanT),
-            //                                                         false),
-            //                                                     BoolConstant(true, true)
-            //                                                 ],
-            //                                                 BooleanT,
-            //                                                 true),
-            //                                             true),
-            //                                         true
-            //                                     ),
-            //                                     true)
-            //                             ],
-            //                             BooleanT,
-            //                             true),
-            //                         false),
-            //                     NewMethodReturnUnit()
-            //                 ],
-            //                 locals: [
-            //                     new NewMethodLocal("_localX", "a", ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                     new NewMethodLocal("_localX", "b", BooleanT),
-            //                     new NewMethodLocal("_localX", "c", StringType),
-            //                     new NewMethodLocal("_localX", "Local3", ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                     new NewMethodLocal("_localX", "Local4", Int64T),
-            //                     new NewMethodLocal("_localX", "Local5", BooleanT),
-            //                 ])
-            //         ])
-            // },
+            {
+                "matches - union tuple pattern",
+                """
+                union MyUnion{A(i64), B}
+                var a = MyUnion::B;
+                var b = a matches MyUnion::A(_);
+                """,
+                NewLoweredProgram(
+                    types: [
+                        NewDataType(ModuleId, "MyUnion",
+                            variants: [
+                                NewVariant("A", [NewField("_variantIdentifier", UInt16T), NewField("Item0", Int64T)]),
+                                NewVariant("B", [NewField("_variantIdentifier", UInt16T)])
+                            ])
+                    ],
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_returnValue"),
+                                            new CreateObject(
+                                                new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                        new Assign(
+                                            new Field(new Local("_returnValue"), "_variantIdentifier", "A"),
+                                            new Use(new UIntConstant(0, 2))),
+                                        new Assign(
+                                            new Field(new Local("_returnValue"), "Item0", "A"),
+                                            new Use(new Copy(new Local("_param0"))))
+                                    ],
+                                    new Return())
+                            ],
+                            parameters: [("Item0", Int64T)],
+                            returnType: new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new CreateObject(
+                                                new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                        new Assign(
+                                            new Field(new Local("_local0"), "_variantIdentifier", "B"),
+                                            new Use(new UIntConstant(1, 2))),
+                                        new Assign(
+                                            new Local("_local1"),
+                                            new BinaryOperation(
+                                                new Copy(new Field(new Local("_local0"), "_variantIdentifier", "A")),
+                                                new UIntConstant(0, 2),
+                                                BinaryOperationKind.Equal))
+                                    ],
+                                    new SwitchInt(
+                                        new Copy(new Local("_local1")),
+                                        new Dictionary<int, BasicBlockId>
+                                        {
+                                            {0, new BasicBlockId("bb2")}
+                                        },
+                                        new BasicBlockId("bb1"))),
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [
+                                        new Assign(new Local("_local1"), new Use(new BoolConstant(true)))
+                                    ],
+                                    new GoTo(new BasicBlockId("bb2"))),
+                                new BasicBlock(new BasicBlockId("bb2"), [], new Return())
+                            ],
+                            Unit,
+                            locals: [
+                                new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                new NewMethodLocal("_local1", "b", BooleanT),
+                            ])
+                    ])
+            },
+            {
+                "matches - union tuple pattern with variable declaration",
+                """
+                union MyUnion{A(i64), B}
+                var a = MyUnion::B;
+                var b = a matches MyUnion::A(_) var c;
+                """,
+                NewLoweredProgram(
+                    types: [
+                        NewDataType(ModuleId, "MyUnion",
+                            variants: [
+                                NewVariant("A", [NewField("_variantIdentifier", UInt16T), NewField("Item0", Int64T)]),
+                                NewVariant("B", [NewField("_variantIdentifier", UInt16T)])
+                            ])
+                    ],
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_returnValue"),
+                                            new CreateObject(
+                                                new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                        new Assign(
+                                            new Field(new Local("_returnValue"), "_variantIdentifier", "A"),
+                                            new Use(new UIntConstant(0, 2))),
+                                        new Assign(
+                                            new Field(new Local("_returnValue"), "Item0", "A"),
+                                            new Use(new Copy(new Local("_param0"))))
+                                    ],
+                                    new Return())
+                            ],
+                            parameters: [("Item0", Int64T)],
+                            returnType: new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                        new Assign(
+                                            new Field(new Local("_local0"), "_variantIdentifier", "B"),
+                                            new Use(new UIntConstant(1, 2))),
+                                        new Assign(
+                                            new Local("_local1"),
+                                            new Use(new Copy(new Local("_local0")))),
+                                        new Assign(
+                                            new Local("_local2"),
+                                            new BinaryOperation(
+                                                new Copy(new Field(new Local("_local0"), "_variantIdentifier", "A")),
+                                                new UIntConstant(0, 2),
+                                                BinaryOperationKind.Equal))
+                                    ],
+                                    new SwitchInt(
+                                        new Copy(new Local("_local2")),
+                                        new Dictionary<int, BasicBlockId>
+                                        {
+                                            { 0, new BasicBlockId("bb2") }
+                                        },
+                                        new BasicBlockId("bb1"))),
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [
+                                        new Assign(new Local("_local2"), new Use(new BoolConstant(true)))
+                                    ],
+                                    new GoTo(new BasicBlockId("bb2"))),
+                                new BasicBlock(new BasicBlockId("bb2"), [], new Return())
+                            ],
+                            Unit,
+                            locals: [
+                                new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                new NewMethodLocal("_local1", "c", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                new NewMethodLocal("_local2", "b", BooleanT),
+                            ])
+                    ])
+            },
+            {
+                "matches - union tuple pattern with multiple members ",
+                """
+                union MyUnion{A(i64, string, bool), B}
+                var a = MyUnion::B;
+                var b = a matches MyUnion::A(_, var c, _);
+                """,
+                NewLoweredProgram(
+                    types: [
+                        NewDataType(ModuleId, "MyUnion",
+                            variants: [
+                                NewVariant(
+                                    "A",
+                                    [
+                                        NewField("_variantIdentifier", UInt16T),
+                                        NewField("Item0", Int64T),
+                                        NewField("Item1", StringT),
+                                        NewField("Item2", BooleanT),
+                                    ]),
+                                NewVariant("B", [NewField("_variantIdentifier", UInt16T)])
+                            ])
+                    ],
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_returnValue"),
+                                            new CreateObject(
+                                                new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                        new Assign(
+                                            new Field(new Local("_returnValue"), "_variantIdentifier", "A"),
+                                            new Use(new UIntConstant(0, 2))),
+                                        new Assign(
+                                            new Field(new Local("_returnValue"), "Item0", "A"),
+                                            new Use(new Copy(new Local("_param0")))),
+                                        new Assign(
+                                            new Field(new Local("_returnValue"), "Item1", "A"),
+                                            new Use(new Copy(new Local("_param1")))),
+                                        new Assign(
+                                            new Field(new Local("_returnValue"), "Item2", "A"),
+                                            new Use(new Copy(new Local("_param2")))),
+                                    ],
+                                    new Return())
+                            ],
+                            parameters: [("Item0", Int64T), ("Item1", StringT), ("Item2", BooleanT)],
+                            returnType: new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                        new Assign(
+                                            new Field(new Local("_local0"), "_variantIdentifier", "B"),
+                                            new Use(new UIntConstant(1, 2))),
+                                        new Assign(
+                                            new Local("_local2"),
+                                            new BinaryOperation(
+                                                new Copy(new Field(new Local("_local0"), "_variantIdentifier", "A")),
+                                                new UIntConstant(0, 2),
+                                                BinaryOperationKind.Equal))
+                                    ],
+                                    new SwitchInt(
+                                        new Copy(new Local("_local2")),
+                                        new Dictionary<int, BasicBlockId>
+                                        {
+                                            { 0, new BasicBlockId("bb4") }
+                                        },
+                                        new BasicBlockId("bb1"))),
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [
+                                        new Assign(
+                                            new Local("_local2"),
+                                            new Use(new BoolConstant(true)))
+                                    ],
+                                    new SwitchInt(
+                                        new Copy(new Local("_local2")),
+                                        new Dictionary<int, BasicBlockId>
+                                        {
+                                            { 0, new BasicBlockId("bb4") }
+                                        },
+                                        new BasicBlockId("bb2"))),
+                                new BasicBlock(
+                                    new BasicBlockId("bb2"),
+                                    [
+                                        new Assign(
+                                            new Local("_local1"),
+                                            new Use(new Copy(new Field(new Local("_local0"), "Item1", "A")))),
+                                        new Assign(
+                                            new Local("_local2"),
+                                            new Use(new BoolConstant(true)))
+                                    ],
+                                    new SwitchInt(
+                                        new Copy(new Local("_local2")),
+                                        new Dictionary<int, BasicBlockId>
+                                        {
+                                            { 0, new BasicBlockId("bb4") }
+                                        },
+                                        new BasicBlockId("bb3"))),
+                                new BasicBlock(
+                                    new BasicBlockId("bb3"),
+                                    [
+                                        new Assign(
+                                            new Local("_local2"),
+                                            new Use(new BoolConstant(true)))
+                                    ],
+                                    new GoTo(new BasicBlockId("bb4"))),
+                                new BasicBlock(new BasicBlockId("bb4"), [], new Return())
+                            ],
+                            Unit,
+                            locals: [
+                                new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                new NewMethodLocal("_local1", "c", StringT),
+                                new NewMethodLocal("_local2", "b", BooleanT),
+                            ])
+                    ])
+            },
             // {
             //     "matches - union class variant pattern",
             //     """
