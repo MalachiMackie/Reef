@@ -76,38 +76,31 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
                             ])
                     ])
             },
-            // {
-            //     "matches - type pattern",
-            //     """
-            //     var b = 1 matches i64;
-            //     """,
-            //     NewLoweredProgram(
-            //         methods: [
-            //             NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     VariableDeclaration(
-            //                         "b",
-            //                         Block(
-            //                             [
-            //                                 VariableDeclaration("Local1", Int64Constant(1, true) ,false),
-            //                                 // TODO: for now, type patterns always evaluate to true.
-            //                                 // In the future,this will only be true when the operands concrete
-            //                                 // type is known.When the operand is some dynamic dispatch
-            //                                 // interface, we willneed some way of checking the concrete
-            //                                 // type at runtime
-            //                                 BoolConstant(true, true)
-            //                             ],
-            //                             BooleanT,
-            //                             true),
-            //                         false),
-            //                     NewMethodReturnUnit()
-            //                 ],
-            //                 locals: [
-            //                     new NewMethodLocal("_localX", "b", BooleanT),
-            //                     new NewMethodLocal("_localX", "Local1", Int64_t)
-            //                 ])
-            //         ])
-            // },
+            {
+                "matches - type pattern",
+                """
+                var b = 1 matches i64;
+                """,
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new Use(new BoolConstant(true)))
+                                    ],
+                                    new GoTo(new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                            ],
+                            Unit,
+                            locals: [
+                                new NewMethodLocal("_local0", "b", BooleanT),
+                            ])
+                    ])
+            },
             // {
             //     "matches - type pattern with variable declaration",
             //     """

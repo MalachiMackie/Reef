@@ -41,6 +41,7 @@ public partial class TypeChecker
                             patternUnionType,
                             false,
                             variantPattern.IsMutableVariable);
+                        variantPattern.Variable = variable;
                         patternVariables.Add(variable);
                         if (!TryAddScopedVariable(variableName.StringValue, variable))
                         {
@@ -77,38 +78,39 @@ public partial class TypeChecker
                         .Select(x => x.Name)
                         .ToHashSet();
 
-                    foreach (var (fieldName, fieldPattern) in classPattern.FieldPatterns)
+                    foreach (var fieldPattern in classPattern.FieldPatterns)
                     {
-                        remainingFields.Remove(fieldName.StringValue);
-                        if (TryGetClassField(classType, fieldName) is not { } field)
+                        remainingFields.Remove(fieldPattern.FieldName.StringValue);
+                        if (TryGetClassField(classType, fieldPattern.FieldName) is not { } field)
                         {
                             continue;
                         }
 
                         if (field.IsStatic)
                         {
-                            _errors.Add(TypeCheckerError.StaticFieldInClassPattern(fieldName));
+                            _errors.Add(TypeCheckerError.StaticFieldInClassPattern(fieldPattern.FieldName));
                         }
 
                         var fieldType = field.Type;
 
-                        if (fieldPattern is null)
+                        if (fieldPattern.Pattern is null)
                         {
                             var variable = new LocalVariable(
                                 CurrentFunctionSignature,
-                                fieldName,
+                                fieldPattern.FieldName,
                                 fieldType,
                                 false,
                                 false);
                             patternVariables.Add(variable);
-                            if (!TryAddScopedVariable(fieldName.StringValue, variable))
+                            fieldPattern.Variable = variable;
+                            if (!TryAddScopedVariable(fieldPattern.FieldName.StringValue, variable))
                             {
-                                throw new InvalidOperationException($"Duplicate variable {fieldName.StringValue}");
+                                throw new InvalidOperationException($"Duplicate variable {fieldPattern.FieldName.StringValue}");
                             }
                         }
                         else
                         {
-                            patternVariables.AddRange(TypeCheckPattern(fieldType, fieldPattern));
+                            patternVariables.AddRange(TypeCheckPattern(fieldType, fieldPattern.Pattern));
                         }
                     }
 
@@ -130,6 +132,7 @@ public partial class TypeChecker
                             patternType,
                             false,
                             classPattern.IsMutableVariable);
+                        classPattern.Variable = variable;
                         patternVariables.Add(variable);
                         if (!TryAddScopedVariable(variableName.StringValue, variable))
                         {
@@ -173,28 +176,29 @@ public partial class TypeChecker
                             classVariant.Fields.Select(x => x.Name).Except(classVariantPattern.FieldPatterns.Select(x => x.FieldName.StringValue))));
                     }
 
-                    foreach (var (fieldName, fieldPattern) in classVariantPattern.FieldPatterns)
+                    foreach (var fieldPattern in classVariantPattern.FieldPatterns)
                     {
-                        var fieldType = classVariant.Fields.FirstOrDefault(x => x.Name == fieldName.StringValue)?.Type
-                            ?? throw new InvalidOperationException($"No field named {fieldName}");
+                        var fieldType = classVariant.Fields.FirstOrDefault(x => x.Name == fieldPattern.FieldName.StringValue)?.Type
+                            ?? throw new InvalidOperationException($"No field named {fieldPattern.FieldName}");
 
-                        if (fieldPattern is null)
+                        if (fieldPattern.Pattern is null)
                         {
                             var variable = new LocalVariable(
                                 CurrentFunctionSignature,
-                                fieldName,
+                                fieldPattern.FieldName,
                                 fieldType,
                                 false,
                                 false);
+                            fieldPattern.Variable = variable;
                             patternVariables.Add(variable);
-                            if (!TryAddScopedVariable(fieldName.StringValue, variable))
+                            if (!TryAddScopedVariable(fieldPattern.FieldName.StringValue, variable))
                             {
-                                throw new InvalidOperationException($"Duplicate variable {fieldName.StringValue}");
+                                throw new InvalidOperationException($"Duplicate variable {fieldPattern.FieldName.StringValue}");
                             }
                         }
                         else
                         {
-                            patternVariables.AddRange(TypeCheckPattern(fieldType, fieldPattern));
+                            patternVariables.AddRange(TypeCheckPattern(fieldType, fieldPattern.Pattern));
                         }
                     }
 
@@ -206,6 +210,7 @@ public partial class TypeChecker
                             patternType,
                             false,
                             classVariantPattern.IsMutableVariable);
+                        classVariantPattern.Variable = variable;
                         patternVariables.Add(variable);
                         if (!TryAddScopedVariable(variableName.StringValue, variable))
                         {
@@ -258,6 +263,7 @@ public partial class TypeChecker
                             patternType,
                             false,
                             unionTupleVariantPattern.IsMutableVariable);
+                        unionTupleVariantPattern.Variable = variable;
                         patternVariables.Add(variable);
                         if (!TryAddScopedVariable(variableName.StringValue, variable))
                         {
@@ -267,7 +273,7 @@ public partial class TypeChecker
 
                     break;
                 }
-            case VariableDeclarationPattern { VariableName: var variableName, IsMut: var variableMutable }:
+            case VariableDeclarationPattern { VariableName: var variableName, IsMut: var variableMutable } variableDeclarationPattern:
                 {
                     var variable = new LocalVariable(
                         CurrentFunctionSignature,
@@ -275,6 +281,7 @@ public partial class TypeChecker
                         valueTypeReference,
                         false,
                         variableMutable);
+                    variableDeclarationPattern.Variable = variable;
                     patternVariables.Add(variable);
                     if (!TryAddScopedVariable(variableName.StringValue, variable))
                     {
@@ -293,6 +300,7 @@ public partial class TypeChecker
                     if (variableName is not null)
                     {
                         var variable = new LocalVariable(CurrentFunctionSignature, variableName, type, Instantiated: false, Mutable: typePattern.IsVariableMutable);
+                        typePattern.Variable = variable;
                         patternVariables.Add(variable);
                         if (!TryAddScopedVariable(variableName.StringValue, variable))
                         {

@@ -75,10 +75,10 @@ public partial class NewProgramAbseil
 
                 return new OperandResult(new BoolConstant(true));
             }
-            case VariableDeclarationPattern { VariableName.StringValue: var variableName }:
+            case VariableDeclarationPattern { Variable: var variable }:
             {
-                var variable = _locals.First(x => x.UserGivenName == variableName);
-                _basicBlockStatements.Add(new Assign(new Local(variable.CompilerGivenName), new Use(valueOperand)));
+                var localPlace = GetLocalVariablePlace(variable.NotNull());
+                _basicBlockStatements.Add(new Assign(localPlace, new Use(valueOperand)));
                 
                 if (destination is not null)
                 {
@@ -87,39 +87,27 @@ public partial class NewProgramAbseil
 
                 return new OperandResult(new BoolConstant(true));
             }
-            case TypePattern { VariableName: var variableName }:
-                throw new NotImplementedException();
-                 // {
-                 //     string localName;
-                 //     if (variableName is not null)
-                 //     {
-                 //         localName = variableName.StringValue;
-                 //     }
-                 //     else
-                 //     {
-                 //         localName = $"Local{locals.Count}";
-                 //         locals.Add(new MethodLocal(
-                 //                     localName,
-                 //                     operandType));
-                 //     }
-                 //
-                 //     return new BlockExpression(
-                 //            [
-                 //                new VariableDeclarationAndAssignmentExpression(
-                 //                    localName,
-                 //                    e,
-                 //                    false),
-                 //
-                 //                // TODO: for now, type patterns always evaluate to true.
-                 //                // In the future,this will only be true when the operands concrete
-                 //                // type is known.When the operand is some dynamic dispatch
-                 //                // interface, we will need some way of checking the concrete
-                 //                // type at runtime
-                 //                new BoolConstantExpression(ValueUseful: true, Value: true)
-                 //            ],
-                 //            boolType,
-                 //            valueUseful);
-                 // }
+            case TypePattern { Variable: var variable, TypeReference: var typeReference }:
+            {
+                var loweredTypeReference = GetTypeReference(typeReference.NotNull());
+                if (loweredTypeReference is not NewLoweredConcreteTypeReference)
+                {
+                    throw new NotImplementedException(
+                        "Only concrete type patterns are currently supported. This needs to be implemented when interfaces are added");
+                }
+
+                if (variable is not null)
+                {
+                    _basicBlockStatements.Add(new Assign(GetLocalVariablePlace(variable), new Use(valueOperand)));
+                }
+
+                if (destination is not null)
+                {
+                    _basicBlockStatements.Add(new Assign(destination, new Use(new BoolConstant(true))));
+                }
+
+                return new OperandResult(new BoolConstant(true));
+            }
             case UnionVariantPattern {
                 VariableName: var variableName,
                 TypeReference: var unionType,
@@ -1147,33 +1135,9 @@ public partial class NewProgramAbseil
             switch (variable)
             {
                 case TypeChecking.TypeChecker.LocalVariable localVariable:
-                    {
-                        if (!localVariable.ReferencedInClosure)
-                        {
-                            var local = _locals.First(x => x.UserGivenName == variable.Name.StringValue);
-                            return new PlaceResult(new Local(local.CompilerGivenName));
-                        }
-
-                        var currentFunction = _currentFunction.NotNull();
-                        var containingFunction = localVariable.ContainingFunction.NotNull();
-                        var containingFunctionLocals = _types[containingFunction.LocalsTypeId.NotNull()];
-                        if (containingFunction.Id == currentFunction.FunctionSignature.Id)
-                        {
-                            return new PlaceResult(
-                                new Field(
-                                    new Local(LocalsObjectLocalName),
-                                    localVariable.Name.StringValue,
-                                    ClassVariantName));
-                        }
-                        
-                        return new PlaceResult(new Field(
-                            new Field(
-                                new Local("_param0"),
-                                containingFunctionLocals.Name,
-                                ClassVariantName),
-                            localVariable.Name.StringValue,
-                            ClassVariantName));
-                    }
+                {
+                    return new PlaceResult(GetLocalVariablePlace(localVariable));
+                }
                 case TypeChecking.TypeChecker.ThisVariable thisVariable:
                     {
                         Debug.Assert(_currentFunction is not null);
@@ -1295,6 +1259,34 @@ public partial class NewProgramAbseil
 
             throw new UnreachableException($"{variable.GetType()}");
         }
+    }
+
+    private IPlace GetLocalVariablePlace(TypeChecking.TypeChecker.LocalVariable variable)
+    {
+        if (!variable.ReferencedInClosure)
+        {
+            var local = _locals.First(x => x.UserGivenName == variable.Name.StringValue);
+            return new Local(local.CompilerGivenName);
+        }
+
+        var currentFunction = _currentFunction.NotNull();
+        var containingFunction = variable.ContainingFunction.NotNull();
+        var containingFunctionLocals = _types[containingFunction.LocalsTypeId.NotNull()];
+        if (containingFunction.Id == currentFunction.FunctionSignature.Id)
+        {
+            return new Field(
+                new Local(LocalsObjectLocalName),
+                variable.Name.StringValue,
+                ClassVariantName);
+        }
+                        
+        return new Field(
+            new Field(
+                new Local("_param0"),
+                containingFunctionLocals.Name,
+                ClassVariantName),
+            variable.Name.StringValue,
+            ClassVariantName);  
     }
 
     private static byte GetIntSize(TypeChecking.TypeChecker.ITypeReference type)

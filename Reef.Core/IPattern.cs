@@ -17,6 +17,8 @@ public record UnionVariantPattern(
     SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference? TypeReference { get; set; }
+    
+    public TypeChecker.LocalVariable? Variable { get; set; }
 }
 
 public record UnionTupleVariantPattern(
@@ -28,6 +30,8 @@ public record UnionTupleVariantPattern(
     SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference? TypeReference { get; set; }
+    
+    public TypeChecker.LocalVariable? Variable { get; set; }
 }
 
 public record UnionClassVariantPattern(
@@ -40,9 +44,14 @@ public record UnionClassVariantPattern(
     SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference? TypeReference { get; set; }
+    
+    public TypeChecker.LocalVariable? Variable { get; set; }
 }
 
-public record FieldPattern(StringToken FieldName, IPattern? Pattern);
+public record FieldPattern(StringToken FieldName, IPattern? Pattern)
+{
+    public TypeChecker.LocalVariable? Variable { get; set; }
+}
 
 public record VariableDeclarationPattern(
     StringToken VariableName,
@@ -50,6 +59,8 @@ public record VariableDeclarationPattern(
     bool IsMut) : IPattern
 {
     public TypeChecker.ITypeReference TypeReference => TypeChecker.InstantiatedClass.Never;
+    
+    public TypeChecker.LocalVariable? Variable { get; set; }
 }
 
 public record DiscardPattern(SourceRange SourceRange) : IPattern
@@ -71,9 +82,13 @@ public record ClassPattern(
     SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference? TypeReference { get; set; }
+    
+    public TypeChecker.LocalVariable? Variable { get; set; }
 }
 
 public record TypePattern(ITypeIdentifier Type, StringToken? VariableName, bool IsVariableMutable, SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference? TypeReference { get; set; }
+    
+    public TypeChecker.LocalVariable? Variable { get; set; }
 }
