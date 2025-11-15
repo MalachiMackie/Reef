@@ -210,33 +210,35 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
                             ])
                     ])
             },
-            // {
-            //     "matches - type pattern with variable declaration",
-            //     """
-            //     var b = 1 matches i64 var a;
-            //     """,
-            //     NewLoweredProgram(
-            //         methods: [
-            //             NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     VariableDeclaration(
-            //                         "b",
-            //                         Block(
-            //                             [
-            //                                 VariableDeclaration("a", Int64Constant(1, true) ,false),
-            //                                 BoolConstant(true, true)
-            //                             ],
-            //                             BooleanT,
-            //                             true),
-            //                         false),
-            //                     NewMethodReturnUnit()
-            //                 ],
-            //                 locals: [
-            //                     new NewMethodLocal("_localX", "b", BooleanT),
-            //                     new NewMethodLocal("_localX", "a", Int64_t)
-            //                 ])
-            //         ])
-            // },
+            {
+                "matches - type pattern with variable declaration",
+                """
+                var b = 1 matches i64 var a;
+                """,
+                NewLoweredProgram(
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new Use(new IntConstant(1, 8))),
+                                        new Assign(
+                                            new Local("_local1"),
+                                            new Use(new BoolConstant(true)))
+                                    ],
+                                    new GoTo(new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                            ],
+                            Unit,
+                            locals: [
+                                new NewMethodLocal("_local0", "a", Int64T),
+                                new NewMethodLocal("_local1", "b", BooleanT),
+                            ])
+                    ])
+            },
             // {
             //     "matches - union variant pattern",
             //     """
@@ -248,8 +250,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //         types: [
             //             DataType(ModuleId, "MyUnion",
             //                 variants: [
-            //                     Variant("A", [Field("_variantIdentifier", UInt16_t)]),
-            //                     Variant("B", [Field("_variantIdentifier", UInt16_t)])
+            //                     Variant("A", [Field("_variantIdentifier", UInt16T)]),
+            //                     Variant("B", [Field("_variantIdentifier", UInt16T)])
             //                 ])
             //         ],
             //         methods: [
@@ -280,7 +282,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                                         "_variantIdentifier",
             //                                         "B",
             //                                         true,
-            //                                         UInt16_t),
+            //                                         UInt16T),
             //                                     UInt16Constant(1, true),
             //                                     true)
             //                             ],
@@ -307,8 +309,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //         types: [
             //             DataType(ModuleId, "MyUnion",
             //                 variants: [
-            //                     Variant("A", [Field("_variantIdentifier", UInt16_t)]),
-            //                     Variant("B", [Field("_variantIdentifier", UInt16_t)])
+            //                     Variant("A", [Field("_variantIdentifier", UInt16T)]),
+            //                     Variant("B", [Field("_variantIdentifier", UInt16T)])
             //                 ])
             //         ],
             //         methods: [
@@ -339,7 +341,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                                         "_variantIdentifier",
             //                                         "B",
             //                                         true,
-            //                                         UInt16_t),
+            //                                         UInt16T),
             //                                     UInt16Constant(1, true),
             //                                     true)
             //                             ],
@@ -366,8 +368,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //         types: [
             //             DataType(ModuleId, "MyUnion",
             //                 variants: [
-            //                     Variant("A", [Field("_variantIdentifier", UInt16_t), Field("Item0", Int64_t)]),
-            //                     Variant("B", [Field("_variantIdentifier", UInt16_t)])
+            //                     Variant("A", [Field("_variantIdentifier", UInt16T), Field("Item0", Int64T)]),
+            //                     Variant("B", [Field("_variantIdentifier", UInt16T)])
             //                 ])
             //         ],
             //         methods: [
@@ -378,9 +380,9 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                             ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion")),
             //                             "A",
             //                             true,
-            //                             new(){{"_variantIdentifier", UInt16Constant(0, true)}, {"Item0", LoadArgument(0, true, Int64_t)}}))
+            //                             new(){{"_variantIdentifier", UInt16Constant(0, true)}, {"Item0", LoadArgument(0, true, Int64T)}}))
             //                 ],
-            //                 parameters: [Int64_t],
+            //                 parameters: [Int64T],
             //                 returnType: ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
             //             NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
             //                 [
@@ -410,7 +412,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                                             "_variantIdentifier",
             //                                             "A",
             //                                             true,
-            //                                             UInt16_t),
+            //                                             UInt16T),
             //                                         UInt16Constant(0, true),
             //                                         true),
             //                                     Block(
@@ -424,7 +426,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                                                     "Item0",
             //                                                     "A",
             //                                                     true,
-            //                                                     Int64_t),
+            //                                                     Int64T),
             //                                                 false),
             //                                             BoolConstant(true, true)
             //                                         ],
@@ -441,7 +443,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                     new NewMethodLocal("_localX", "a", ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
             //                     new NewMethodLocal("_localX", "b", BooleanT),
             //                     new NewMethodLocal("_localX", "Local2", ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                     new NewMethodLocal("_localX", "Local3", Int64_t)
+            //                     new NewMethodLocal("_localX", "Local3", Int64T)
             //                 ])
             //         ])
             // },
@@ -456,8 +458,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //         types: [
             //             DataType(ModuleId, "MyUnion",
             //                 variants: [
-            //                     Variant("A", [Field("_variantIdentifier", UInt16_t), Field("Item0", Int64_t)]),
-            //                     Variant("B", [Field("_variantIdentifier", UInt16_t)])
+            //                     Variant("A", [Field("_variantIdentifier", UInt16T), Field("Item0", Int64T)]),
+            //                     Variant("B", [Field("_variantIdentifier", UInt16T)])
             //                 ])
             //         ],
             //         methods: [
@@ -468,9 +470,9 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                             ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion")),
             //                             "A",
             //                             true,
-            //                             new(){{"_variantIdentifier", UInt16Constant(0, true)}, {"Item0", LoadArgument(0, true, Int64_t)}}))
+            //                             new(){{"_variantIdentifier", UInt16Constant(0, true)}, {"Item0", LoadArgument(0, true, Int64T)}}))
             //                 ],
-            //                 parameters: [Int64_t],
+            //                 parameters: [Int64T],
             //                 returnType: ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
             //             NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
             //                 [
@@ -500,7 +502,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                                             "_variantIdentifier",
             //                                             "A",
             //                                             true,
-            //                                             UInt16_t),
+            //                                             UInt16T),
             //                                         UInt16Constant(0, true),
             //                                         true),
             //                                     Block(
@@ -514,7 +516,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                                                     "Item0",
             //                                                     "A",
             //                                                     true,
-            //                                                     Int64_t),
+            //                                                     Int64T),
             //                                                 false),
             //                                             BoolConstant(true, true)
             //                                         ],
@@ -531,7 +533,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                     new NewMethodLocal("_localX", "a", ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
             //                     new NewMethodLocal("_localX", "b", BooleanT),
             //                     new NewMethodLocal("_localX", "c", ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                     new NewMethodLocal("_localX", "Local3", Int64_t)
+            //                     new NewMethodLocal("_localX", "Local3", Int64T)
             //                 ])
             //         ])
             // },
@@ -549,12 +551,12 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                     Variant(
             //                         "A",
             //                         [
-            //                             Field("_variantIdentifier", UInt16_t),
-            //                             Field("Item0", Int64_t),
+            //                             Field("_variantIdentifier", UInt16T),
+            //                             Field("Item0", Int64T),
             //                             Field("Item1", StringType),
             //                             Field("Item2", BooleanT),
             //                         ]),
-            //                     Variant("B", [Field("_variantIdentifier", UInt16_t)])
+            //                     Variant("B", [Field("_variantIdentifier", UInt16T)])
             //                 ])
             //         ],
             //         methods: [
@@ -566,13 +568,13 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                             "A",
             //                             true,
             //                             new() {
-            //                                 {"Item0", LoadArgument(0, true, Int64_t)},
+            //                                 {"Item0", LoadArgument(0, true, Int64T)},
             //                                 {"Item1", LoadArgument(1, true, StringType)},
             //                                 {"Item2", LoadArgument(2, true, BooleanT)},
             //                                 {"_variantIdentifier", UInt16Constant(0, true)},
             //                             }))
             //                 ],
-            //                 parameters: [Int64_t, StringType, BooleanT],
+            //                 parameters: [Int64T, StringType, BooleanT],
             //                 returnType: ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
             //             NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
             //                 [
@@ -602,7 +604,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                                             "_variantIdentifier",
             //                                             "A",
             //                                             true,
-            //                                             UInt16_t),
+            //                                             UInt16T),
             //                                         UInt16Constant(0, true),
             //                                         true),
             //                                     BoolAnd(
@@ -617,7 +619,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                                                         "Item0",
             //                                                         "A",
             //                                                         true,
-            //                                                         Int64_t),
+            //                                                         Int64T),
             //                                                     false),
             //                                                 BoolConstant(true, true)
             //                                             ],
@@ -673,7 +675,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                     new NewMethodLocal("_localX", "b", BooleanT),
             //                     new NewMethodLocal("_localX", "c", StringType),
             //                     new NewMethodLocal("_localX", "Local3", ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                     new NewMethodLocal("_localX", "Local4", Int64_t),
+            //                     new NewMethodLocal("_localX", "Local4", Int64T),
             //                     new NewMethodLocal("_localX", "Local5", BooleanT),
             //                 ])
             //         ])
@@ -695,10 +697,10 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                     Variant(
             //                         "A",
             //                         [
-            //                             Field("_variantIdentifier", UInt16_t),
-            //                             Field("FieldA", Int64_t)
+            //                             Field("_variantIdentifier", UInt16T),
+            //                             Field("FieldA", Int64T)
             //                         ]),
-            //                     Variant("B", [Field("_variantIdentifier", UInt16_t)])
+            //                     Variant("B", [Field("_variantIdentifier", UInt16T)])
             //                 ])
             //         ],
             //         methods: [
@@ -729,7 +731,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                                             "_variantIdentifier",
             //                                             "A",
             //                                             true,
-            //                                             UInt16_t),
+            //                                             UInt16T),
             //                                         UInt16Constant(0, true),
             //                                         true),
             //                                     Block(
@@ -743,7 +745,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                                                     "FieldA",
             //                                                     "A",
             //                                                     true,
-            //                                                     Int64_t),
+            //                                                     Int64T),
             //                                                 false),
             //                                             BoolConstant(true, true)
             //                                         ],
@@ -760,7 +762,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                     new NewMethodLocal("_localX", "a", ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
             //                     new NewMethodLocal("_localX", "b", BooleanT),
             //                     new NewMethodLocal("_localX", "Local2", ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
-            //                     new NewMethodLocal("_localX", "Local3", Int64_t)
+            //                     new NewMethodLocal("_localX", "Local3", Int64T)
             //                 ])
             //         ])
             // },
@@ -781,10 +783,10 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                     Variant(
             //                         "A",
             //                         [
-            //                             Field("_variantIdentifier", UInt16_t),
-            //                             Field("FieldA", Int64_t)
+            //                             Field("_variantIdentifier", UInt16T),
+            //                             Field("FieldA", Int64T)
             //                         ]),
-            //                     Variant("B", [Field("_variantIdentifier", UInt16_t)])
+            //                     Variant("B", [Field("_variantIdentifier", UInt16T)])
             //                 ])
             //         ],
             //         methods: [
@@ -814,7 +816,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                                         "_variantIdentifier",
             //                                         "A",
             //                                         true,
-            //                                         UInt16_t),
+            //                                         UInt16T),
             //                                     UInt16Constant(0, true),
             //                                     true),
             //                             ],
@@ -847,12 +849,12 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                     Variant(
             //                         "A",
             //                         [
-            //                             Field("_variantIdentifier", UInt16_t),
-            //                             Field("FieldA", Int64_t),
+            //                             Field("_variantIdentifier", UInt16T),
+            //                             Field("FieldA", Int64T),
             //                             Field("FieldB", StringType),
             //                             Field("FieldC", BooleanT)
             //                         ]),
-            //                     Variant("B", [Field("_variantIdentifier", UInt16_t)])
+            //                     Variant("B", [Field("_variantIdentifier", UInt16T)])
             //                 ])
             //         ],
             //         methods: [
@@ -883,7 +885,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                                             "_variantIdentifier",
             //                                             "A",
             //                                             true,
-            //                                             UInt16_t),
+            //                                             UInt16T),
             //                                         UInt16Constant(0, true),
             //                                         true),
             //                                     BoolAnd(
@@ -898,7 +900,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                                                         "FieldA",
             //                                                         "A",
             //                                                         true,
-            //                                                         Int64_t),
+            //                                                         Int64T),
             //                                                     false),
             //                                                 BoolConstant(true, true)
             //                                             ],
@@ -952,7 +954,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                 locals: [
             //                     new NewMethodLocal("_localX", "a", ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
             //                     new NewMethodLocal("_localX", "b", BooleanT),
-            //                     new NewMethodLocal("_localX", "c", Int64_t),
+            //                     new NewMethodLocal("_localX", "c", Int64T),
             //                     new NewMethodLocal("_localX", "FieldB", StringType),
             //                     new NewMethodLocal("_localX", "Local4", ConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"))),
             //                     new NewMethodLocal("_localX", "Local5", BooleanT)
@@ -972,8 +974,8 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                 variants: [
             //                     Variant("_classVariant",
             //                         [
-            //                             Field("Field0", Int64_t),
-            //                             Field("Field1", Int64_t),
+            //                             Field("Field0", Int64T),
+            //                             Field("Field1", Int64T),
             //                             Field("Field2", BooleanT)
             //                         ])
             //                 ])
@@ -1014,7 +1016,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                                                     "Field0",
             //                                                     "_classVariant",
             //                                                     true,
-            //                                                     Int64_t),
+            //                                                     Int64T),
             //                                                 false),
             //                                             BoolConstant(true, true)
             //                                         ],
@@ -1033,7 +1035,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                                                         "Field1",
             //                                                         "_classVariant",
             //                                                         true,
-            //                                                         Int64_t),
+            //                                                         Int64T),
             //                                                     false),
             //                                                 BoolConstant(true, true)
             //                                             ],
@@ -1068,9 +1070,9 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             //                 locals: [
             //                     new NewMethodLocal("_localX", "a", ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
             //                     new NewMethodLocal("_localX", "b", BooleanT),
-            //                     new NewMethodLocal("_localX", "c", Int64_t),
+            //                     new NewMethodLocal("_localX", "c", Int64T),
             //                     new NewMethodLocal("_localX", "Local3", ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
-            //                     new NewMethodLocal("_localX", "Local4", Int64_t),
+            //                     new NewMethodLocal("_localX", "Local4", Int64T),
             //                     new NewMethodLocal("_localX", "Local5", BooleanT),
             //                 ])
             //         ])
