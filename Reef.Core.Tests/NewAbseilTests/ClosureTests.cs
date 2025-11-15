@@ -536,80 +536,83 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
                              parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))])
                      ])
              },
-//             {
-//                 "assigning field in closure",
-//                 """
-//                 class MyClass
-//                 {
-//                     mut field MyField: string,
-//
-//                     mut fn MyFn()
-//                     {
-//                         MyField = "hi";
-//                         mut fn InnerFn()
-//                         {
-//                             MyField = "bye";
-//                         }
-//                     }
-//                 }
-//                 """,
-//                 NewLoweredProgram(
-//                     types: [
-//                         NewDataType(ModuleId, 
-//                             "MyClass",
-//                             variants: [
-//                                 NewVariant(
-//                                     "_classVariant",
-//                                     [NewField("MyField", StringT)])
-//                             ]),
-//                         NewDataType(ModuleId, 
-//                             "MyClass__MyFn__InnerFn__Closure",
-//                             variants: [
-//                                 NewVariant(
-//                                     "_classVariant",
-//                                     fields: [NewField("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))])
-//                             ])
-//                     ],
-//                     methods: [
-//                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn"), "MyClass__MyFn__InnerFn",
-//                             [
-//                                 FieldAssignment(
-//                                     FieldAccess(
-//                                         LoadArgument(
-//                                             0,
-//                                             true,
-//                                             new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), [])),
-//                                         "this",
-//                                         "_classVariant",
-//                                         true,
-//                                         new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
-//                                     "_classVariant",
-//                                     "MyField",
-//                                     StringConstant("bye", true),
-//                                     false,
-//                                     StringT),
-//                                 MethodReturnUnit()
-//                             ],
-//                             parameters: [
-//                                 new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), [])
-//                             ]),
-//                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
-//                             [
-//                                 FieldAssignment(
-//                                     LoadArgument(
-//                                         0, true, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
-//                                     "_classVariant",
-//                                     "MyField",
-//                                     StringConstant("hi", true),
-//                                     false,
-//                                     StringT),
-//                                 MethodReturnUnit()
-//                             ],
-//                             parameters: [
-//                                 new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
-//                             ])
-//                     ])
-//             },
+             {
+                 "assigning field in closure",
+                 """
+                 class MyClass
+                 {
+                     mut field MyField: string,
+
+                     mut fn MyFn()
+                     {
+                         MyField = "hi";
+                         mut fn InnerFn()
+                         {
+                             MyField = "bye";
+                         }
+                     }
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, 
+                             "MyClass",
+                             variants: [
+                                 NewVariant(
+                                     "_classVariant",
+                                     [NewField("MyField", StringT)])
+                             ]),
+                         NewDataType(ModuleId, 
+                             "MyClass__MyFn__InnerFn__Closure",
+                             variants: [
+                                 NewVariant(
+                                     "_classVariant",
+                                     fields: [NewField("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))])
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn"), "MyClass__MyFn__InnerFn",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Field(
+                                                 new Field(
+                                                     new Local("_param0"),
+                                                     "this",
+                                                     "_classVariant"),
+                                                 "MyField",
+                                                 "_classVariant"),
+                                             new Use(new StringConstant("bye")))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             parameters: [
+                                 ("closure", new NewLoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"), []))
+                             ]),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Field(new Local("_param0"), "MyField", "_classVariant"),
+                                             new Use(new StringConstant("hi")))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             parameters: [
+                                 ("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
+                             ])
+                     ])
+             },
 //             {
 //                 "calling closure",
 //                 """
