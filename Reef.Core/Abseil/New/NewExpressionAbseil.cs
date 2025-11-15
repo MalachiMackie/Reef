@@ -546,7 +546,11 @@ public partial class NewProgramAbseil
                                 _basicBlockStatements.Add(
                                     new Assign(
                                         new Field(destination, otherLocalsType.Name, ClassVariantName),
-                                        new Use(new Copy(new Local(ParameterLocalName(0))))));
+                                        new Use(new Copy(
+                                            new Field(
+                                                new Local(ParameterLocalName(0)),
+                                                otherLocalsType.Name,
+                                                ClassVariantName)))));
                             }
 
                             break;
@@ -730,7 +734,7 @@ public partial class NewProgramAbseil
                     : new UIntConstant((ulong)intValue, GetIntSize(resolvedType.NotNull()))),
             { ValueAccessor: { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True }} => new OperandResult(new BoolConstant(true)),
             { ValueAccessor: { AccessType: ValueAccessType.Literal, Token.Type: TokenType.False }} => new OperandResult(new BoolConstant(false)),
-            { ValueAccessor.AccessType: ValueAccessType.Variable, ReferencedVariable: {} variable} => VariableAccess(variable, e.ValueUseful),
+            { ValueAccessor.AccessType: ValueAccessType.Variable, ReferencedVariable: {} variable} => VariableAccess(variable),
             _ => throw new UnreachableException($"{e}")
         };
 
@@ -791,10 +795,8 @@ public partial class NewProgramAbseil
         }
 
         IExpressionResult VariableAccess(
-            TypeChecking.TypeChecker.IVariable variable,
-            bool valueUseful)
+            TypeChecking.TypeChecker.IVariable variable)
         {
-            var resolvedType = GetTypeReference(e.ResolvedType.NotNull());
             switch (variable)
             {
                 case TypeChecking.TypeChecker.LocalVariable localVariable:
@@ -808,10 +810,6 @@ public partial class NewProgramAbseil
                         var currentFunction = _currentFunction.NotNull();
                         var containingFunction = localVariable.ContainingFunction.NotNull();
                         var containingFunctionLocals = _types[containingFunction.LocalsTypeId.NotNull()];
-                        var localsTypeReference = new NewLoweredConcreteTypeReference(
-                                        containingFunctionLocals.Name,
-                                        containingFunctionLocals.Id,
-                                        []);
                         if (containingFunction.Id == currentFunction.FunctionSignature.Id)
                         {
                             return new PlaceResult(
@@ -932,10 +930,6 @@ public partial class NewProgramAbseil
                     var currentFunction = _currentFunction.NotNull();
                     var containingFunction = argument.ContainingFunction.NotNull();
                     var containingFunctionLocals = _types[containingFunction.LocalsTypeId.NotNull()];
-                    var localsTypeReference = new NewLoweredConcreteTypeReference(
-                                    containingFunctionLocals.Name,
-                                    containingFunctionLocals.Id,
-                                    []);
                     if (containingFunction.Id == currentFunction.FunctionSignature.Id)
                     {
                         return new PlaceResult(new Field(new Local(LocalsObjectLocalName), argument.Name.StringValue,
