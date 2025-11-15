@@ -34,7 +34,7 @@ public partial class NewProgramAbseil
             BreakExpression breakExpression => throw new NotImplementedException(),
             ContinueExpression continueExpression => throw new NotImplementedException(),
             IfExpressionExpression ifExpressionExpression => throw new NotImplementedException(),
-            MatchesExpression matchesExpression => throw new NotImplementedException(),
+            MatchesExpression matchesExpression => LowerMatches(matchesExpression, destination),
             MatchExpression matchExpression => throw new NotImplementedException(),
             WhileExpression whileExpression => throw new NotImplementedException(),
             MemberAccessExpression memberAccessExpression => LowerMemberAccess(memberAccessExpression,
@@ -56,6 +56,353 @@ public partial class NewProgramAbseil
                 variableDeclarationExpression),
             _ => throw new ArgumentOutOfRangeException(nameof(expression))
         };
+    }
+    
+    private IExpressionResult LowerMatchesPattern(
+            IOperand valueOperand,
+            IPattern pattern,
+            IPlace? destination)
+    {
+        var boolType = GetTypeReference(TypeChecking.TypeChecker.InstantiatedClass.Boolean);
+        switch (pattern)
+        {
+            case DiscardPattern:
+            {
+                if (destination is not null)
+                {
+                    _basicBlockStatements.Add(new Assign(destination, new Use(new BoolConstant(true))));
+                }
+
+                return new OperandResult(new BoolConstant(true));
+            }
+            case VariableDeclarationPattern { VariableName.StringValue: var variableName }:
+            {
+                var variable = _locals.First(x => x.UserGivenName == variableName);
+                _basicBlockStatements.Add(new Assign(new Local(variable.CompilerGivenName), new Use(valueOperand)));
+                
+                if (destination is not null)
+                {
+                    _basicBlockStatements.Add(new Assign(destination, new Use(new BoolConstant(true))));
+                }
+
+                return new OperandResult(new BoolConstant(true));
+            }
+            case TypePattern { VariableName: var variableName }:
+                throw new NotImplementedException();
+                 // {
+                 //     string localName;
+                 //     if (variableName is not null)
+                 //     {
+                 //         localName = variableName.StringValue;
+                 //     }
+                 //     else
+                 //     {
+                 //         localName = $"Local{locals.Count}";
+                 //         locals.Add(new MethodLocal(
+                 //                     localName,
+                 //                     operandType));
+                 //     }
+                 //
+                 //     return new BlockExpression(
+                 //            [
+                 //                new VariableDeclarationAndAssignmentExpression(
+                 //                    localName,
+                 //                    e,
+                 //                    false),
+                 //
+                 //                // TODO: for now, type patterns always evaluate to true.
+                 //                // In the future,this will only be true when the operands concrete
+                 //                // type is known.When the operand is some dynamic dispatch
+                 //                // interface, we will need some way of checking the concrete
+                 //                // type at runtime
+                 //                new BoolConstantExpression(ValueUseful: true, Value: true)
+                 //            ],
+                 //            boolType,
+                 //            valueUseful);
+                 // }
+            case UnionVariantPattern {
+                VariableName: var variableName,
+                TypeReference: var unionType,
+                VariantName: var variantName
+            }:
+                throw new NotImplementedException();
+            // {
+            //     string localName;
+            //     if (variableName is not null)
+            //     {
+            //         localName = variableName.StringValue;
+            //     }
+            //     else
+            //     {
+            //         locals.Add(new MethodLocal(
+            //                 localName = $"Local{locals.Count}",
+            //                 operandType));
+            //     }
+            //     var type = (GetTypeReference(unionType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+            //     var dataType = GetDataType(type.DefinitionId, type.TypeArguments);
+            //     var variantIndex = dataType.Variants.Index()
+            //         .First(x => x.Item.Name == variantName.NotNull().StringValue)
+            //         .Index;
+            //
+            //     return new BlockExpression(
+            //         [
+            //             new VariableDeclarationAndAssignmentExpression(
+            //                 localName,
+            //                 e,
+            //                 false),
+            //             new UInt16EqualsExpression(
+            //                 ValueUseful: true,
+            //                 new FieldAccessExpression(
+            //                     new LocalVariableAccessor(
+            //                         localName,
+            //                         true,
+            //                         operandType),
+            //                     "_variantIdentifier",
+            //                     variantName!.StringValue,
+            //                     true,
+            //                     GetTypeReference(InstantiatedClass.UInt16)),
+            //                 new UInt16ConstantExpression(
+            //                     true,
+            //                     (ushort)variantIndex))
+            //         ],
+            //         boolType,
+            //         valueUseful);
+            // }
+            case UnionTupleVariantPattern
+            {
+                VariantName: var variantName,
+                VariableName: var variableName,
+                TupleParamPatterns: var tupleParamPatterns,
+                TypeReference: var unionType,
+            }:
+                throw new NotImplementedException();
+            // {
+            //     string localName;
+            //     if (variableName is not null)
+            //     {
+            //         localName = variableName.StringValue;
+            //     }
+            //     else
+            //     {
+            //         locals.Add(new MethodLocal(
+            //                 localName = $"Local{locals.Count}",
+            //                 operandType));
+            //     }
+            //     var type = (GetTypeReference(unionType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+            //     var dataType = GetDataType(type.DefinitionId, type.TypeArguments);
+            //     var (variantIndex, variant) = dataType.Variants.Index()
+            //         .First(x => x.Item.Name == variantName.NotNull().StringValue);
+            //     
+            //     // type checker should have checked there's at least tuple member
+            //     Debug.Assert(tupleParamPatterns.Count > 0);
+            //
+            //     var variantIdentifierCheck = new UInt16EqualsExpression(
+            //                 ValueUseful: true,
+            //                 new FieldAccessExpression(
+            //                     new LocalVariableAccessor(
+            //                         localName,
+            //                         true,
+            //                         operandType),
+            //                     "_variantIdentifier",
+            //                     variantName.StringValue,
+            //                     true,
+            //                     GetTypeReference(InstantiatedClass.UInt16)),
+            //                 new UInt16ConstantExpression(
+            //                     true,
+            //                     (ushort)variantIndex));
+            //
+            //     var localAccessor = new LocalVariableAccessor(localName, true, operandType);
+            //
+            //     var tuplePatternExpressions = tupleParamPatterns.Select(
+            //             (x, i) => LowerMatchesPattern(
+            //                 new FieldAccessExpression(
+            //                     localAccessor,
+            //                     $"Item{i}",
+            //                     variantName.StringValue,
+            //                     true,
+            //                     // skip the first _variantIdentifier field
+            //                     variant.Fields[i + 1].Type),
+            //                 x,
+            //                 valueUseful: true));
+            //
+            //     var checkExpressions = tuplePatternExpressions.Prepend<ILoweredExpression>(variantIdentifierCheck)
+            //         .ToArray();
+            //
+            //     Debug.Assert(checkExpressions.Length >= 2);
+            //
+            //     // collate all the check expressions into a recurse bool and tree
+            //     var lastExpression = checkExpressions[^1];
+            //     for (var i = checkExpressions.Length - 2; i >= 0; i--)
+            //     {
+            //         lastExpression = new BoolAndExpression(
+            //             true,
+            //             checkExpressions[i],
+            //             lastExpression);
+            //     }
+            //
+            //     return new BlockExpression(
+            //             [
+            //                 new VariableDeclarationAndAssignmentExpression(
+            //                     localName,
+            //                     e,
+            //                     false),
+            //                 lastExpression
+            //             ],
+            //             boolType,
+            //             valueUseful);
+            // }
+        case UnionClassVariantPattern
+            {
+                VariantName: var variantName,
+                VariableName: var variableName,
+                FieldPatterns: var fieldPatterns,
+                TypeReference: var unionType,
+            }:
+            throw new NotImplementedException();
+            // {
+            //     string localName;
+            //     if (variableName is not null)
+            //     {
+            //         localName = variableName.StringValue;
+            //     }
+            //     else
+            //     {
+            //         locals.Add(new MethodLocal(
+            //                 localName = $"Local{locals.Count}",
+            //                 operandType));
+            //     }
+            //     var type = (GetTypeReference(unionType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+            //     var dataType = GetDataType(type.DefinitionId, type.TypeArguments);
+            //     var (variantIndex, variant) = dataType.Variants.Index()
+            //         .First(x => x.Item.Name == variantName.NotNull().StringValue);
+            //
+            //     var variantIdentifierCheck = new UInt16EqualsExpression(
+            //                 ValueUseful: true,
+            //                 new FieldAccessExpression(
+            //                     new LocalVariableAccessor(
+            //                         localName,
+            //                         true,
+            //                         operandType),
+            //                     "_variantIdentifier",
+            //                     variantName.StringValue,
+            //                     true,
+            //                     GetTypeReference(InstantiatedClass.UInt16)),
+            //                 new UInt16ConstantExpression(
+            //                     true,
+            //                     (ushort)variantIndex));
+            //
+            //     var localAccessor = new LocalVariableAccessor(localName, true, operandType);
+            //
+            //     var checkExpressions = new List<ILoweredExpression>(fieldPatterns.Count + 1)
+            //     {
+            //         variantIdentifierCheck
+            //     };
+            //     foreach (var fieldPattern in fieldPatterns)
+            //     {
+            //         var fieldName = fieldPattern.FieldName.StringValue;
+            //         checkExpressions.Add(LowerMatchesPattern(
+            //             new FieldAccessExpression(
+            //                 localAccessor,
+            //                 fieldName,
+            //                 variantName.StringValue,
+            //                 true,
+            //                 variant.Fields.First(x => x.Name == fieldName).Type),
+            //             fieldPattern.Pattern.NotNull(),
+            //             true));
+            //     }
+            //
+            //     // collate all the check expressions into a recurse bool and tree
+            //     var lastExpression = checkExpressions[^1];
+            //     for (var i = checkExpressions.Count - 2; i >= 0; i--)
+            //     {
+            //         lastExpression = new BoolAndExpression(
+            //             true,
+            //             checkExpressions[i],
+            //             lastExpression);
+            //     }
+            //
+            //     return new BlockExpression(
+            //             [
+            //                 new VariableDeclarationAndAssignmentExpression(
+            //                     localName,
+            //                     e,
+            //                     false),
+            //                 lastExpression
+            //             ],
+            //             boolType,
+            //             valueUseful);
+            // }
+        case ClassPattern
+            {
+                VariableName: var variableName,
+                FieldPatterns: var fieldPatterns,
+                TypeReference: var unionType,
+            }:
+            throw new NotImplementedException();
+            // {
+            //     string localName;
+            //     if (variableName is not null)
+            //     {
+            //         localName = variableName.StringValue;
+            //     }
+            //     else
+            //     {
+            //         locals.Add(new MethodLocal(
+            //                 localName = $"Local{locals.Count}",
+            //                 operandType));
+            //     }
+            //     var type = (GetTypeReference(unionType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+            //     var dataType = GetDataType(type.DefinitionId, type.TypeArguments);
+            //
+            //     var localAccessor = new LocalVariableAccessor(localName, true, operandType);
+            //
+            //     var checkExpressions = new List<ILoweredExpression>(fieldPatterns.Count);
+            //     foreach (var fieldPattern in fieldPatterns)
+            //     {
+            //         var fieldName = fieldPattern.FieldName.StringValue;
+            //         checkExpressions.Add(LowerMatchesPattern(
+            //             new FieldAccessExpression(
+            //                 localAccessor,
+            //                 fieldName,
+            //                 "_classVariant",
+            //                 true,
+            //                 dataType.Variants[0].Fields.First(x => x.Name == fieldName).Type),
+            //             fieldPattern.Pattern.NotNull(),
+            //             true));
+            //     }
+            //
+            //     // collate all the check expressions into a recurse bool and tree
+            //     var lastExpression = checkExpressions[^1];
+            //     for (var i = checkExpressions.Count - 2; i >= 0; i--)
+            //     {
+            //         lastExpression = new BoolAndExpression(
+            //             true,
+            //             checkExpressions[i],
+            //             lastExpression);
+            //     }
+            //
+            //     return new BlockExpression(
+            //             [
+            //                 new VariableDeclarationAndAssignmentExpression(
+            //                     localName,
+            //                     e,
+            //                     false),
+            //                 lastExpression
+            //             ],
+            //             boolType,
+            //             valueUseful);
+            // }
+        }
+        throw new NotImplementedException(); 
+    }
+
+    private IExpressionResult LowerMatches(
+        MatchesExpression e,
+        IPlace? destination)
+    {
+        var valueResult = NewLowerExpression(e.ValueExpression, destination: null);
+
+        return LowerMatchesPattern(valueResult.ToOperand(), e.Pattern.NotNull(), destination);
     }
     
     private IExpressionResult LowerUnionClassVariantInitializer(
