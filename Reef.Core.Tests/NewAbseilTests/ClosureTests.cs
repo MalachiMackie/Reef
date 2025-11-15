@@ -319,54 +319,68 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
                              parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))])
                      ])
              },
-//             {
-//                 "static field used in inner closure",
-//                 """
-//                 class MyClass
-//                 {
-//                     static field MyField: string = "",
-//
-//                     fn MyFn()
-//                     {
-//                         fn InnerFn()
-//                         {
-//                             var b = MyField;
-//                         }
-//                     }
-//                 }
-//                 """,
-//                 NewLoweredProgram(
-//                     types: [
-//                         NewDataType(ModuleId, 
-//                             "MyClass",
-//                             variants: [
-//                                 NewVariant("_classVariant")
-//                             ],
-//                             staticFields: [StaticField("MyField", StringT, StringConstant("", true))]),
-//                     ],
-//                     methods: [
-//                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn"), "MyClass__MyFn__InnerFn",
-//                             [
-//                                 VariableDeclaration(
-//                                     "b",
-//                                     StaticFieldAccess(
-//                                         new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                         "MyField",
-//                                         true,
-//                                         StringT),
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [new NewMethodLocal("_local0", "b", StringT)],
-//                             parameters: []),
-//                             NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
-//                                 [
-//                                     MethodReturnUnit()
-//                                 ],
-//                                 locals: [],
-//                                 parameters: [new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])])
-//                     ])
-//             },
+             {
+                 "static field used in inner closure",
+                 """
+                 class MyClass
+                 {
+                     static field MyField: string = "",
+
+                     fn MyFn()
+                     {
+                         fn InnerFn()
+                         {
+                             var b = MyField;
+                         }
+                     }
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, 
+                             "MyClass",
+                             variants: [
+                                 NewVariant("_classVariant")
+                             ],
+                             staticFields: [NewStaticField(
+                                 "MyField",
+                                 StringT,
+                                 [
+                                     new BasicBlock(
+                                         new BasicBlockId("bb0"),
+                                         [new Assign(new Local("_returnValue"), new Use(new StringConstant("")))], 
+                                         new GoTo(new BasicBlockId("bb1"))),
+                                     new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                 ], 
+                                 [])]),
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn"), "MyClass__MyFn__InnerFn",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new Use(new Copy(new StaticField(
+                                                 new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []),
+                                                 "MyField"))))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [new NewMethodLocal("_local0", "b", StringT)],
+                             parameters: []),
+                             NewMethod(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
+                                 [
+                                     new BasicBlock(new BasicBlockId("bb0"), [], new Return())
+                                 ],
+                                 Unit,
+                                 locals: [],
+                                 parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))])
+                     ])
+             },
 //             {
 //                 "assigning local in closure",
 //                 """
