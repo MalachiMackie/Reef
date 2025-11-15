@@ -381,89 +381,78 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
                                  parameters: [("this", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))])
                      ])
              },
-//             {
-//                 "assigning local in closure",
-//                 """
-//                 var mut a = "";
-//                 a = "hi";
-//                 fn InnerFn()
-//                 {
-//                     a = "bye";
-//                 }
-//                 """,
-//                 NewLoweredProgram(
-//                     types: [
-//                         NewDataType(ModuleId, "_Main__Locals",
-//                             variants: [
-//                                 NewVariant("_classVariant",
-//                                     [NewField("a", StringT)])
-//                             ]),
-//                         NewDataType(ModuleId, 
-//                             "InnerFn__Closure",
-//                             variants: [
-//                                 NewVariant("_classVariant",
-//                                     [NewField("_Main__Locals", new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []))])
-//                             ])
-//                     ],
-//                     methods: [
-//                         NewMethod(new DefId(ModuleId, $"{ModuleId}.InnerFn"), "InnerFn",
-//                             [
-//                                 FieldAssignment(
-//                                     FieldAccess(
-//                                         LoadArgument(
-//                                             0, true, new NewLoweredConcreteTypeReference("InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.InnerFn__Closure"), [])),
-//                                         "_Main__Locals",
-//                                         "_classVariant",
-//                                         true,
-//                                         new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), [])),
-//                                     "_classVariant",
-//                                     "a",
-//                                     StringConstant("bye", true),
-//                                     false,
-//                                     StringT),
-//                                 MethodReturnUnit()
-//                             ],
-//                             parameters: [
-//                                 new NewLoweredConcreteTypeReference("InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.InnerFn__Closure"), [])
-//                             ]),
-//                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration(
-//                                     "_localsObject",
-//                                     CreateObject(
-//                                         new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []),
-//                                         "_classVariant",
-//                                         true,
-//                                         []),
-//                                     false),
-//                                 FieldAssignment(
-//                                     LocalAccess(
-//                                         "_localsObject",
-//                                         true,
-//                                         new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), [])),
-//                                     "_classVariant",
-//                                     "a",
-//                                     StringConstant("", true),
-//                                     false,
-//                                     StringT),
-//                                 FieldAssignment(
-//                                     LocalAccess(
-//                                         "_localsObject",
-//                                         true,
-//                                         new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), [])),
-//                                     "_classVariant",
-//                                     "a",
-//                                     StringConstant("hi", true),
-//                                     false,
-//                                     StringT),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 new NewMethodLocal("_localsObject", null,
-//                                     new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []))
-//                             ])
-//                     ])
-//             },
+             {
+                 "assigning local in closure",
+                 """
+                 var mut a = "";
+                 a = "hi";
+                 fn InnerFn()
+                 {
+                     a = "bye";
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "_Main__Locals",
+                             variants: [
+                                 NewVariant("_classVariant",
+                                     [NewField("a", StringT)])
+                             ]),
+                         NewDataType(ModuleId, 
+                             "InnerFn__Closure",
+                             variants: [
+                                 NewVariant("_classVariant",
+                                     [NewField("_Main__Locals", new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []))])
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.InnerFn"), "InnerFn",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Field(
+                                                 new Field(
+                                                     new Local("_param0"),
+                                                     "_Main__Locals",
+                                                     "_classVariant"),
+                                                 "a",
+                                                 "_classVariant"),
+                                             new Use(new StringConstant("bye")))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             parameters: [
+                                 ("closure", new NewLoweredConcreteTypeReference("InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}.InnerFn__Closure"), []))
+                             ]),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_localsObject"),
+                                             new CreateObject(new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []))),
+                                         new Assign(
+                                             new Field(new Local("_localsObject"), "a", "_classVariant"),
+                                             new Use(new StringConstant(""))),
+                                         new Assign(
+                                             new Field(new Local("_localsObject"), "a", "_classVariant"),
+                                             new Use(new StringConstant("hi"))),
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_localsObject", null,
+                                     new NewLoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}._Main__Locals"), []))
+                             ])
+                     ])
+             },
 //             {
 //                 "this reference in closure",
 //                 """
