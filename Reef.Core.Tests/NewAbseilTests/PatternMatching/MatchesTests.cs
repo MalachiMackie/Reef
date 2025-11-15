@@ -77,6 +77,115 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
                     ])
             },
             {
+                "pattern variable used in closure",
+                """
+                var b = 1 matches var a;
+                
+                fn SomeFn() {
+                    var c = a;
+                }
+                """,
+                NewLoweredProgram(
+                    types: [
+                        NewDataType(
+                            ModuleId,
+                            "_Main__Locals",
+                            variants: [
+                                NewVariant("_classVariant",
+                                    [
+                                        NewField("a", Int32T) 
+                                    ])
+                            ]),
+                        NewDataType(
+                            ModuleId,
+                            "SomeFn__Closure",
+                            variants: [
+                                NewVariant(
+                                    "_classVariant",
+                                    [
+                                        NewField(
+                                            "_Main__Locals",
+                                            new NewLoweredConcreteTypeReference(
+                                                "_Main__Locals",
+                                                new DefId(ModuleId, $"{ModuleId}._Main__Locals"),
+                                                []))
+                                    ])
+                            ])
+                    ],
+                    methods: [
+                        NewMethod(
+                            new DefId(ModuleId, $"{ModuleId}.SomeFn"),
+                            "SomeFn",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new Use(new Copy(
+                                                new Field(
+                                                    new Field(
+                                                        new Local("_param0"),
+                                                        "_Main__Locals",
+                                                        "_classVariant"),
+                                                    "a",
+                                                    "_classVariant"))))
+                                    ],
+                                    new GoTo(new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                            ],
+                            Unit,
+                            locals: [
+                                new NewMethodLocal("_local0", "c", Int32T)
+                            ],
+                            parameters: [
+                                (
+                                    "closure",
+                                    new NewLoweredConcreteTypeReference(
+                                        "SomeFn__Closure",
+                                        new DefId(ModuleId, $"{ModuleId}.SomeFn__Closure"),
+                                        []))
+                            ]),
+                        NewMethod(
+                            new DefId(ModuleId, $"{ModuleId}._Main"),
+                            "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_localsObject"),
+                                            new CreateObject(new NewLoweredConcreteTypeReference(
+                                                "_Main__Locals",
+                                                new DefId(ModuleId, $"{ModuleId}._Main__Locals"),
+                                                []))),
+                                        new Assign(
+                                            new Field(
+                                                new Local("_localsObject"),
+                                                "a",
+                                                "_classVariant"),
+                                            new Use(new IntConstant(1, 4))),
+                                        new Assign(
+                                            new Local("_local1"),
+                                            new Use(new BoolConstant(true)))
+                                    ],
+                                    new GoTo(new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                            ],
+                            Unit,
+                            locals: [
+                                new NewMethodLocal(
+                                    "_localsObject",
+                                    null,
+                                    new NewLoweredConcreteTypeReference(
+                                        "_Main__Locals",
+                                        new DefId(ModuleId, $"{ModuleId}._Main__Locals"),
+                                        [])),
+                                new NewMethodLocal("_local1", "b", BooleanT)
+                            ])
+                    ])
+            },
+            {
                 "matches - type pattern",
                 """
                 var b = 1 matches i64;
