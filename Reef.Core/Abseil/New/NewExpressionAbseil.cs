@@ -59,7 +59,7 @@ public partial class NewProgramAbseil
     }
     
     private IExpressionResult LowerMatchesPattern(
-            IOperand valueOperand,
+            IExpressionResult value,
             IPattern pattern,
             IPlace? destination)
     {
@@ -78,7 +78,7 @@ public partial class NewProgramAbseil
             case VariableDeclarationPattern { Variable: var variable }:
             {
                 var localPlace = GetLocalVariablePlace(variable.NotNull());
-                _basicBlockStatements.Add(new Assign(localPlace, new Use(valueOperand)));
+                _basicBlockStatements.Add(new Assign(localPlace, new Use(value.ToOperand())));
                 
                 if (destination is not null)
                 {
@@ -98,7 +98,7 @@ public partial class NewProgramAbseil
 
                 if (variable is not null)
                 {
-                    _basicBlockStatements.Add(new Assign(GetLocalVariablePlace(variable), new Use(valueOperand)));
+                    _basicBlockStatements.Add(new Assign(GetLocalVariablePlace(variable), new Use(value.ToOperand())));
                 }
 
                 if (destination is not null)
@@ -108,12 +108,56 @@ public partial class NewProgramAbseil
 
                 return new OperandResult(new BoolConstant(true));
             }
-            case UnionVariantPattern {
-                VariableName: var variableName,
+            case UnionVariantPattern
+            {
+                Variable: var variable,
                 TypeReference: var unionType,
                 VariantName: var variantName
             }:
-                throw new NotImplementedException();
+            {
+                IPlace? valuePlace = null;
+                if (variable is not null)
+                {
+                    valuePlace = GetLocalVariablePlace(variable);
+                    _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
+                }
+                
+                var type = (GetTypeReference(unionType.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
+                var dataType = GetDataType(type.DefinitionId);
+                var (variantIndex, variant) = dataType.Variants.Index()
+                    .First(x => x.Item.Name == variantName.NotNull().StringValue);
+
+                if (destination is null)
+                {
+                    var localName = LocalName((uint)_locals.Count);
+                    _locals.Add(new NewMethodLocal(localName, null, boolType));
+                    destination = new Local(localName);
+                }
+
+                if (value is PlaceResult { Value: var place })
+                {
+                    // always prefer the original value place
+                    valuePlace = place;
+                }
+                else if (valuePlace is null)
+                {
+                    var localName = LocalName((uint)_locals.Count);
+                    _locals.Add(new NewMethodLocal(localName, null, type));
+                    valuePlace = new Local(localName);
+                    _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
+                    throw new NotImplementedException("I don't know if this is actually ever hit");
+                }
+                
+                _basicBlockStatements.Add(
+                    new Assign(
+                        destination,
+                        new BinaryOperation(
+                            new Copy(new Field(valuePlace, VariantIdentifierFieldName, variant.Name)),
+                            new UIntConstant((uint)variantIndex, 2),
+                            BinaryOperationKind.Equal)));
+
+                return new PlaceResult(destination);
+            }
             // {
             //     string localName;
             //     if (variableName is not null)
@@ -126,11 +170,7 @@ public partial class NewProgramAbseil
             //                 localName = $"Local{locals.Count}",
             //                 operandType));
             //     }
-            //     var type = (GetTypeReference(unionType.NotNull()) as LoweredConcreteTypeReference).NotNull();
-            //     var dataType = GetDataType(type.DefinitionId, type.TypeArguments);
-            //     var variantIndex = dataType.Variants.Index()
-            //         .First(x => x.Item.Name == variantName.NotNull().StringValue)
-            //         .Index;
+            //     
             //
             //     return new BlockExpression(
             //         [
@@ -390,7 +430,7 @@ public partial class NewProgramAbseil
     {
         var valueResult = NewLowerExpression(e.ValueExpression, destination: null);
 
-        return LowerMatchesPattern(valueResult.ToOperand(), e.Pattern.NotNull(), destination);
+        return LowerMatchesPattern(valueResult, e.Pattern.NotNull(), destination);
     }
     
     private IExpressionResult LowerUnionClassVariantInitializer(
