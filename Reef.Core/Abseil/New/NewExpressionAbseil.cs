@@ -258,14 +258,110 @@ public partial class NewProgramAbseil
 
                 return new PlaceResult(destination);
             }
-        case UnionClassVariantPattern
+            case UnionClassVariantPattern
             {
                 VariantName: var variantName,
-                VariableName: var variableName,
+                Variable: var variable,
                 FieldPatterns: var fieldPatterns,
                 TypeReference: var unionType,
             }:
-            throw new NotImplementedException();
+            {
+                IPlace? valuePlace = null;
+                if (variable is not null)
+                {
+                    valuePlace = GetLocalVariablePlace(variable);
+                    _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
+                }
+                
+                var type = (GetTypeReference(unionType.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
+                var dataType = GetDataType(type.DefinitionId);
+                var (variantIndex, variant) = dataType.Variants.Index()
+                    .First(x => x.Item.Name == variantName.NotNull().StringValue);
+
+                if (destination is null)
+                {
+                    var localName = LocalName((uint)_locals.Count);
+                    _locals.Add(new NewMethodLocal(localName, null, boolType));
+                    destination = new Local(localName);
+                }
+
+                if (value is PlaceResult { Value: var place })
+                {
+                    // always prefer the original value place
+                    valuePlace = place;
+                }
+                else if (valuePlace is null)
+                {
+                    var localName = LocalName((uint)_locals.Count);
+                    _locals.Add(new NewMethodLocal(localName, null, type));
+                    valuePlace = new Local(localName);
+                    _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
+                    throw new NotImplementedException("I don't know if this is actually ever hit");
+                }
+                
+                _basicBlockStatements.Add(
+                    new Assign(
+                        destination,
+                        new BinaryOperation(
+                            new Copy(new Field(valuePlace, VariantIdentifierFieldName, variant.Name)),
+                            new UIntConstant((uint)variantIndex, 2),
+                            BinaryOperationKind.Equal)));
+
+                if (fieldPatterns.Count == 0)
+                {
+                    return new PlaceResult(destination);
+                }
+
+                var initialBasicBlock = _basicBlocks[^1];
+
+                _basicBlockStatements = [];
+                var nextBasicBlock = new BasicBlock(
+                    new BasicBlockId($"bb{_basicBlocks.Count}"),
+                    _basicBlockStatements);
+                _basicBlocks.Add(nextBasicBlock);
+
+                var afterBasicBlockId = new BasicBlockId("after");
+
+                initialBasicBlock.Terminator = new SwitchInt(
+                    new Copy(destination),
+                    new Dictionary<int, BasicBlockId>
+                    {
+                        { 0, afterBasicBlockId }
+                    },
+                    nextBasicBlock.Id);
+                
+                foreach (var (i, fieldPattern) in fieldPatterns.Index())
+                {
+                    LowerMatchesPattern(
+                        new PlaceResult(new Field(valuePlace, fieldPattern.FieldName.ToString(), variant.Name)),
+                        fieldPattern.Pattern ?? 
+                        new VariableDeclarationPattern(fieldPattern.FieldName, SourceRange.Default, IsMut: false){Variable = fieldPattern.Variable.NotNull()},
+                        destination);
+
+                    _basicBlockStatements = [];
+                    var nextBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+                    if (i + 1 < fieldPatterns.Count)
+                    {
+                        nextBasicBlock.Terminator = new SwitchInt(
+                            new Copy(destination),
+                            new Dictionary<int, BasicBlockId>
+                            {
+                                { 0, afterBasicBlockId },
+                            },
+                            nextBasicBlockId);
+                    }
+                    else
+                    {
+                        nextBasicBlock.Terminator = new GoTo(nextBasicBlockId);
+                    }
+
+                    _basicBlocks.Add(nextBasicBlock = new BasicBlock(nextBasicBlockId, _basicBlockStatements));
+                }
+
+                afterBasicBlockId.Id = nextBasicBlock.Id.Id;
+
+                return new PlaceResult(destination);
+            }
             // {
             //     string localName;
             //     if (variableName is not null)
