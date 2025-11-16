@@ -297,126 +297,126 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                              ])
                      ])
              },
-//             {
-//                 "match union tuple variant sub patterns and variant pattern",
-//                 """
-//                 union OtherUnion{A, B}
-//                 union MyUnion {X(OtherUnion), Y}
-//                 
-//                 var a = MyUnion::Y;
-//                 match (a) {
-//                     MyUnion::X(OtherUnion::A) => 1,
-//                     MyUnion::X => 2,
-//                     MyUnion::Y => 3
-//                 }
-//                 """,
-//                 NewLoweredProgram(
-//                     types: [
-//                         NewDataType(ModuleId, "OtherUnion",
-//                             variants: [
-//                                NewVariant("A", [NewField("_variantIdentifier", UInt16T)]),
-//                                NewVariant("B", [NewField("_variantIdentifier", UInt16T)]),
-//                             ]),
-//                         NewDataType(ModuleId, "MyUnion",
-//                             variants: [
-//                                NewVariant(
-//                                     "X",
-//                                     [
-//                                         NewField("_variantIdentifier", UInt16T),
-//                                         NewField("Item0", new NewLoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])),
-//                                     ]),
-//                                NewVariant("Y", [NewField("_variantIdentifier", UInt16T)])
-//                             ])
-//                     ],
-//                     methods: [
-//                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__X"), "MyUnion__Create__X",
-//                             [
-//                                 MethodReturn(
-//                                     CreateObject(
-//                                         new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []),
-//                                         "X",
-//                                         true,
-//                                         new()
-//                                         {
-//                                             {"_variantIdentifier", UInt16Constant(0, true)},
-//                                             {"Item0", LoadArgument(0, true, new NewLoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))}
-//                                         }))
-//                             ],
-//                             parameters: [new NewLoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])],
-//                             returnType: new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration(
-//                                     "a",
-//                                     CreateObject(
-//                                         new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []),
-//                                         "Y",
-//                                         true,
-//                                         new(){{"_variantIdentifier", UInt16Constant(1, true)}}),
-//                                     false),
-//                                 Block(
-//                                     [
-//                                         VariableDeclaration(
-//                                             "Local1",
-//                                             LocalAccess("a", true, new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                             false),
-//                                         SwitchInt(
-//                                             FieldAccess(
-//                                                 LocalAccess("Local1", true, new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                 "_variantIdentifier",
-//                                                 "X",
-//                                                 true,
-//                                                 UInt16T),
-//                                             new()
-//                                             {
-//                                                 {
-//                                                     0,
-//                                                     Block(
-//                                                         [
-//                                                             VariableDeclaration(
-//                                                                 "Local2",
-//                                                                 FieldAccess(
-//                                                                     LocalAccess("Local1", true, new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                                     "Item0",
-//                                                                     "X",
-//                                                                     true,
-//                                                                     new NewLoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])),
-//                                                                 false),
-//                                                             SwitchInt(
-//                                                                 FieldAccess(
-//                                                                     LocalAccess("Local2", true, new NewLoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])),
-//                                                                     "_variantIdentifier",
-//                                                                     "A",
-//                                                                     true,
-//                                                                     UInt16T),
-//                                                                 new()
-//                                                                 {
-//                                                                     {0, Int32Constant(1, true)}
-//                                                                 },
-//                                                                 Int32Constant(2, true),
-//                                                                 true,
-//                                                                 Int32T)
-//                                                         ],
-//                                                         Int32T,
-//                                                         true)
-//                                                 },
-//                                                 { 1, Int32Constant(3, true) }
-//                                             },
-//                                             Unreachable(),
-//                                             true,
-//                                             Int32T)
-//                                     ],
-//                                     Int32T,
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 new NewMethodLocal("_localX", "a", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                 new NewMethodLocal("_localX", "Local1", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                 new NewMethodLocal("_localX", "Local2", new NewLoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])),
-//                             ])
-//                     ])
-//             },
+             {
+                 "match union tuple variant sub patterns and variant pattern",
+                 """
+                 union OtherUnion{A, B}
+                 union MyUnion {X(OtherUnion), Y}
+                 
+                 var a = MyUnion::Y;
+                 var b = match (a) {
+                     MyUnion::X(OtherUnion::A) => 1,
+                     MyUnion::X => 2,
+                     MyUnion::Y => 3
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "OtherUnion",
+                             variants: [
+                                NewVariant("A", [NewField("_variantIdentifier", UInt16T)]),
+                                NewVariant("B", [NewField("_variantIdentifier", UInt16T)]),
+                             ]),
+                         NewDataType(ModuleId, "MyUnion",
+                             variants: [
+                                NewVariant(
+                                     "X",
+                                     [
+                                         NewField("_variantIdentifier", UInt16T),
+                                         NewField("Item0", new NewLoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])),
+                                     ]),
+                                NewVariant("Y", [NewField("_variantIdentifier", UInt16T)])
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__X"), "MyUnion__Create__X",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_returnValue"),
+                                             new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                         new Assign(
+                                             new Field(new Local("_returnValue"), "_variantIdentifier", "X"),
+                                             new Use(new UIntConstant(0, 2))),
+                                         new Assign(
+                                             new Field(new Local("_returnValue"), "Item0", "X"),
+                                             new Use(new Copy(new Local("_param0"))))
+                                     ],
+                                     new Return())
+                             ],
+                             parameters: [("Item0", new NewLoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))],
+                             returnType: new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                         new Assign(
+                                             new Field(new Local("_local0"), "_variantIdentifier", "Y"),
+                                             new Use(new UIntConstant(1, 2)))
+                                     ],
+                                     new SwitchInt(
+                                         new Copy(new Field(new Local("_local0"), "_variantIdentifier", "X")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb1") },
+                                             { 1, new BasicBlockId("bb4") }
+                                         },
+                                         new BasicBlockId("bb5"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [],
+                                     new SwitchInt(
+                                         new Copy(new Field(
+                                             new Field(
+                                                 new Local("_local0"),
+                                                 "Item0",
+                                                 "X"),
+                                             "_variantIdentifier",
+                                             "A")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb2") },
+                                         },
+                                         new BasicBlockId("bb3"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb2"),
+                                     [
+                                         new Assign(
+                                             new Local("_local1"),
+                                             new Use(new IntConstant(1, 4)))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb5"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb3"),
+                                     [
+                                         new Assign(
+                                             new Local("_local1"),
+                                             new Use(new IntConstant(2, 4)))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb5"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb4"),
+                                     [
+                                         new Assign(
+                                             new Local("_local1"),
+                                             new Use(new IntConstant(3, 4)))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb5"))),
+                                 new BasicBlock(new BasicBlockId("bb5"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                 new NewMethodLocal("_local1", "b", Int32T)
+                             ])
+                     ])
+             },
 //             {
 //                 "match union tuple variant sub patterns and discard",
 //                 """
