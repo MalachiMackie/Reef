@@ -843,122 +843,128 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
                             ])
                     ])
             },
-            // {
-            //     "matches - class pattern",
-            //     """
-            //     class MyClass { pub field Field0: i64, pub field Field1: i64, pub field Field2: bool }
-            //     var a = new MyClass{Field0 = 0, Field1 = 1, Field2 = true };
-            //     var b = a matches MyClass {Field0: var c, Field1: _, Field2: _};
-            //     """,
-            //     NewLoweredProgram(
-            //         types: [
-            //             DataType(ModuleId, "MyClass",
-            //                 variants: [
-            //                     Variant("_classVariant",
-            //                         [
-            //                             Field("Field0", Int64T),
-            //                             Field("Field1", Int64T),
-            //                             Field("Field2", BooleanT)
-            //                         ])
-            //                 ])
-            //         ],
-            //         methods: [
-            //             NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-            //                 [
-            //                     VariableDeclaration(
-            //                         "a",
-            //                         CreateObject(
-            //                             ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass")),
-            //                             "_classVariant",
-            //                             true,
-            //                             new()
-            //                             {
-            //                                 {"Field0", Int64Constant(0, true)},
-            //                                 {"Field1", Int64Constant(1, true)},
-            //                                 {"Field2", BoolConstant(true, true)},
-            //                             }),
-            //                         false),
-            //                     VariableDeclaration(
-            //                         "b",
-            //                         Block(
-            //                             [
-            //                                 VariableDeclaration(
-            //                                     "Local3",
-            //                                     LocalAccess("a", true, ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
-            //                                     false),
-            //                                 BoolAnd(
-            //                                     Block(
-            //                                         [
-            //                                             VariableDeclaration("c",
-            //                                                 FieldAccess(
-            //                                                     LocalAccess(
-            //                                                         "Local3",
-            //                                                         true,
-            //                                                         ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
-            //                                                     "Field0",
-            //                                                     "_classVariant",
-            //                                                     true,
-            //                                                     Int64T),
-            //                                                 false),
-            //                                             BoolConstant(true, true)
-            //                                         ],
-            //                                         BooleanT,
-            //                                         true),
-            //                                     BoolAnd(
-            //                                         Block(
-            //                                             [
-            //                                                 VariableDeclaration(
-            //                                                     "Local4",
-            //                                                     FieldAccess(
-            //                                                         LocalAccess(
-            //                                                             "Local3",
-            //                                                             true,
-            //                                                             ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
-            //                                                         "Field1",
-            //                                                         "_classVariant",
-            //                                                         true,
-            //                                                         Int64T),
-            //                                                     false),
-            //                                                 BoolConstant(true, true)
-            //                                             ],
-            //                                             BooleanT,
-            //                                             true),
-            //                                         Block(
-            //                                             [
-            //                                                 VariableDeclaration(
-            //                                                     "Local5",
-            //                                                     FieldAccess(
-            //                                                         LocalAccess(
-            //                                                             "Local3",
-            //                                                             true,
-            //                                                             ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
-            //                                                         "Field2",
-            //                                                         "_classVariant",
-            //                                                         true,
-            //                                                         BooleanT),
-            //                                                     false),
-            //                                                 BoolConstant(true, true)
-            //                                             ],
-            //                                             BooleanT,
-            //                                             true),
-            //                                         true),
-            //                                     true)
-            //                             ],
-            //                             BooleanT,
-            //                             true),
-            //                         false),
-            //                     NewMethodReturnUnit()
-            //                 ],
-            //                 locals: [
-            //                     new NewMethodLocal("_localX", "a", ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
-            //                     new NewMethodLocal("_localX", "b", BooleanT),
-            //                     new NewMethodLocal("_localX", "c", Int64T),
-            //                     new NewMethodLocal("_localX", "Local3", ConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"))),
-            //                     new NewMethodLocal("_localX", "Local4", Int64T),
-            //                     new NewMethodLocal("_localX", "Local5", BooleanT),
-            //                 ])
-            //         ])
-            // }
+            {
+                "matches - class pattern with no fields",
+                """
+                class MyClass {}
+                var a = new MyClass{};
+                var b = a matches MyClass {};
+                """,
+                NewLoweredProgram(
+                    types: [
+                        NewDataType(ModuleId, "MyClass",
+                            variants: [
+                                NewVariant("_classVariant",
+                                    [
+                                    ])
+                            ])
+                    ],
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new CreateObject(new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                        new Assign(
+                                            new Local("_local1"),
+                                            new Use(new BoolConstant(true)))
+                                    ],
+                                    new GoTo(new BasicBlockId("bb1"))),
+                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                            ],
+                            Unit,
+                            locals: [
+                                new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                new NewMethodLocal("_local1", "b", BooleanT),
+                            ])
+                    ])
+            },
+            {
+                "matches - class pattern",
+                """
+                class MyClass { pub field Field0: i64, pub field Field1: i64, pub field Field2: bool }
+                var a = new MyClass{Field0 = 0, Field1 = 1, Field2 = true };
+                var b = a matches MyClass {Field0: var c, Field1: _, Field2: _};
+                """,
+                NewLoweredProgram(
+                    types: [
+                        NewDataType(ModuleId, "MyClass",
+                            variants: [
+                                NewVariant("_classVariant",
+                                    [
+                                        NewField("Field0", Int64T),
+                                        NewField("Field1", Int64T),
+                                        NewField("Field2", BooleanT)
+                                    ])
+                            ])
+                    ],
+                    methods: [
+                        NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new CreateObject(new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                        new Assign(
+                                            new Field(new Local("_local0"), "Field0", "_classVariant"),
+                                            new Use(new IntConstant(0, 8))),
+                                        new Assign(
+                                            new Field(new Local("_local0"), "Field1", "_classVariant"),
+                                            new Use(new IntConstant(1, 8))),
+                                        new Assign(
+                                            new Field(new Local("_local0"), "Field2", "_classVariant"),
+                                            new Use(new BoolConstant(true))),
+                                        new Assign(
+                                            new Local("_local1"),
+                                            new Use(new Copy(new Field(new Local("_local0"), "Field0", "_classVariant")))),
+                                        new Assign(
+                                            new Local("_local2"),
+                                            new Use(new BoolConstant(true)))
+                                    ],
+                                    new SwitchInt(
+                                        new Copy(new Local("_local2")),
+                                        new Dictionary<int, BasicBlockId>
+                                        {
+                                            { 0, new BasicBlockId("bb3") }
+                                        },
+                                        new BasicBlockId("bb1"))),
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [
+                                        new Assign(
+                                            new Local("_local2"),
+                                            new Use(new BoolConstant(true)))
+                                    ],
+                                    new SwitchInt(
+                                        new Copy(new Local("_local2")),
+                                        new Dictionary<int, BasicBlockId>
+                                        {
+                                            { 0, new BasicBlockId("bb3") }
+                                        },
+                                        new BasicBlockId("bb2"))),
+                                new BasicBlock(
+                                    new BasicBlockId("bb2"),
+                                    [
+                                        new Assign(
+                                            new Local("_local2"),
+                                            new Use(new BoolConstant(true)))
+                                    ],
+                                    new GoTo(new BasicBlockId("bb3"))),
+                                new BasicBlock(new BasicBlockId("bb3"), [], new Return())
+                            ],
+                            Unit,
+                            locals: [
+                                new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                new NewMethodLocal("_local1", "c", Int64T),
+                                new NewMethodLocal("_local2", "b", BooleanT),
+                            ])
+                    ])
+            }
         };
     }
 }
