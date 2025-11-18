@@ -61,26 +61,20 @@ public partial class NewProgramAbseil
     private IExpressionResult LowerMatchPatterns(
             List<(IPattern Pattern, IExpression Expression)> patterns,
             IExpressionResult accessExpression,
-            IExpression? otherwise,
             IPlace? destination,
-            BasicBlockId afterBasicBlockId)
+            BasicBlockId afterBasicBlockId,
+            BasicBlockId? otherwiseBasicBlockId)
     {
         var classPatterns = new List<(ClassPattern Pattern, IExpression MatchArmExpression)>();
         var unionPatterns = new List<(IPattern Pattern, IExpression MatchArmExpression)>();
+
+        IExpression? otherwise = null;
 
         foreach (var (pattern, armExpression) in patterns)
         {
             switch (pattern)
             {
                 case DiscardPattern:
-                    // otherwise = armExpression;
-                    // if (patterns.Count == 1)
-                    // {
-                    //     return otherwise;
-                    // }
-                    //
-                    // continue;
-
                     otherwise = armExpression;
                     if (patterns.Count == 1)
                     {
@@ -358,7 +352,7 @@ public partial class NewProgramAbseil
                         foreach (var b in previousNode.UniquePatterns)
                         {
                             b.NextField = new VariantFieldNode(variant.Name, field.Name, [],
-                                b.OriginalPatterns){Otherwise = otherwise};
+                                b.OriginalPatterns){Otherwise = null};
                             newVariantNodes.Add(b.NextField);
                         }
                     }
@@ -520,9 +514,14 @@ public partial class NewProgramAbseil
                             
                             innerResults[variantIndex] = nextBasicBlockId;
                         }
-
+                        
                         BasicBlockId otherwiseId;
-                        if (node.Otherwise is not null)
+
+                        if (otherwiseBasicBlockId is not null)
+                        {
+                            otherwiseId = otherwiseBasicBlockId;
+                        }
+                        else if (node.Otherwise is not null)
                         {
                             otherwiseId = new BasicBlockId($"bb{_basicBlocks.Count}");
                             _basicBlockStatements = [];
@@ -563,14 +562,31 @@ public partial class NewProgramAbseil
                                 valuePlace,
                                 new Use(accessExpression.ToOperand())));
                         }
+
+                        BasicBlockId? innerOtherwiseBasicBlockId = null;
+                        if (fieldNode.Otherwise is not null)
+                        {
+                            innerOtherwiseBasicBlockId = new BasicBlockId("otherwise");
+                        }
                         
                         LowerMatchPatterns(
                             [..nextPatterns.Where(x => x.Item2 is not null).Select(x => (x.Item1, x.Item2.NotNull()))],
                             new PlaceResult(new Field(valuePlace, fieldNode.FieldName, variant.Name)),
-                            node.Otherwise,
                             destination,
-                            afterBasicBlockId);
+                            afterBasicBlockId,
+                            innerOtherwiseBasicBlockId);
 
+                        if (fieldNode.Otherwise is not null)
+                        {
+                            innerOtherwiseBasicBlockId!.Id = $"bb{_basicBlocks.Count}";
+                            _basicBlockStatements = [];
+                            _basicBlocks.Add(new BasicBlock(innerOtherwiseBasicBlockId, _basicBlockStatements));
+                            
+                            NewLowerExpression(fieldNode.Otherwise, destination);
+
+                            _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
+                        }
+                        
                         break;
                     }
                     default:
@@ -739,9 +755,9 @@ public partial class NewProgramAbseil
         var result = LowerMatchPatterns(
             [..e.Arms.Select(x => (x.Pattern, x.Expression.NotNull()))],
             accessResult,
-            null,
             destination,
-            afterBasicBlockId);
+            afterBasicBlockId,
+            null);
 
         _basicBlockStatements = [];
         afterBasicBlockId.Id = $"bb{_basicBlocks.Count}";
