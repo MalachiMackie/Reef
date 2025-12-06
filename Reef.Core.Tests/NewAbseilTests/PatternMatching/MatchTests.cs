@@ -24,125 +24,25 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
     public void Single()
     {
         var source = """
-                 union OtherUnion {A, B, C, D}
-                 union MyUnion {X{field MyField: OtherUnion}, Y}
-
-                 var a = MyUnion::Y;
-                 var b = match(a) {
-                     MyUnion::X {MyField: OtherUnion::A} var something => 1,
-                     MyUnion::X {MyField: var myField} var somethingElse => 2,
-                     var myUnion => 4,
-                 };
+                 var a = match (1) {
+                     i64 => 2
+                 }
                  """;
                  var expectedProgram = NewLoweredProgram(
-                     types: [
-                         NewDataType(ModuleId, "OtherUnion",
-                             variants: [
-                                NewVariant("A", [NewField("_variantIdentifier", UInt16T)]),
-                                NewVariant("B", [NewField("_variantIdentifier", UInt16T)]),
-                                NewVariant("C", [NewField("_variantIdentifier", UInt16T)]),
-                                NewVariant("D", [NewField("_variantIdentifier", UInt16T)]),
-                             ]),
-                         NewDataType(ModuleId, "MyUnion",
-                             variants: [
-                                NewVariant(
-                                     "X",
-                                     [
-                                         NewField("_variantIdentifier", UInt16T),
-                                         NewField("MyField", new NewLoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))
-                                     ]),
-                                NewVariant("Y", [NewField("_variantIdentifier", UInt16T)]),
-                             ]),
-                     ],
                      methods: [
                          NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
                                      new BasicBlockId("bb0"),
                                      [
-                                         new Assign(
-                                             new Local("_local0"),
-                                             new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
-                                         new Assign(
-                                             new Field(new Local("_local0"), "_variantIdentifier", "Y"),
-                                             new Use(new UIntConstant(1, 2)))
+                                         new Assign(new Local("_local0"), new Use(new IntConstant(2, 4)))
                                      ],
-                                     new SwitchInt(
-                                         new Copy(new Field(new Local("_local0"), "_variantIdentifier", "X")),
-                                         new Dictionary<int, BasicBlockId>
-                                         {
-                                             {0, new BasicBlockId("bb1")},
-                                         },
-                                         new BasicBlockId("bb4"))),
-                                 new BasicBlock(
-                                     new BasicBlockId("bb1"),
-                                     [],
-                                     new SwitchInt(
-                                         new Copy(
-                                             new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
-                                                     "MyField",
-                                                     "X"),
-                                                 "_variantIdentifier",
-                                                 "A")),
-                                         new Dictionary<int, BasicBlockId>
-                                         {
-                                             {0, new BasicBlockId("bb2")}
-                                         },
-                                         new BasicBlockId("bb3"))),
-                                 new BasicBlock(
-                                     new BasicBlockId("bb2"),
-                                     [
-                                         new Assign(
-                                             new Local("_local1"),
-                                             new Use(new Copy(new Local("_local0")))),
-                                         new Assign(new Local("_local5"), new Use(new IntConstant(1, 4)))
-                                     ],
-                                     new GoTo(new BasicBlockId("bb5"))),
-                                 new BasicBlock(
-                                     new BasicBlockId("bb3"),
-                                     [
-                                         new Assign(
-                                             new Local("_local2"),
-                                             new Use(
-                                                 new Copy(
-                                                     new Field(
-                                                         new Local("_local0"),
-                                                         "MyField",
-                                                         "X")))),
-                                         new Assign(
-                                             new Local("_local3"),
-                                             new Use(new Copy(new Local("_local0")))),
-                                         new Assign(
-                                             new Local("_local5"),
-                                             new Use(new IntConstant(2, 4)))
-                                     ],
-                                     new GoTo(new BasicBlockId("bb5"))),
-                                 new BasicBlock(
-                                     new BasicBlockId("bb4"),
-                                     [
-                                         new Assign(
-                                             new Local("_local4"),
-                                             new Use(new Copy(new Local("_local0")))),
-                                         new Assign(
-                                             new Local("_local5"),
-                                             new Use(new IntConstant(4, 4)))
-                                     ],
-                                     new GoTo(new BasicBlockId("bb5"))),
-                                 new BasicBlock(
-                                     new BasicBlockId("bb5"),
-                                     [],
-                                     new Return())
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
                              ],
                              Unit,
                              locals: [
-                                 new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-                                 new NewMethodLocal("_local1", "something", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-                                 new NewMethodLocal("_local2", "myField", new NewLoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])),
-                                 new NewMethodLocal("_local3", "somethingElse", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-                                 new NewMethodLocal("_local4", "myUnion", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-                                 new NewMethodLocal("_local5", "b", Int32T),
+                                 new NewMethodLocal("_local0", "a", Int32T),
                              ])
                      ]);
         var program = CreateProgram(ModuleId, source);
@@ -969,11 +869,53 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                                  new BasicBlock(
                                      new BasicBlockId("bb0"),
                                      [
-                                         new Assign(new Local("_local1"), new Use(new IntConstant(1, 8))),
                                          new Assign(new Local("_local0"), new Use(new IntConstant(2, 4)))
                                      ],
                                      new GoTo(new BasicBlockId("bb1"))),
                                  new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", "a", Int32T),
+                             ])
+                     ])
+             },
+             {
+                 "match type pattern 2",
+                 """
+                 fn GetI64(): i64 { return 1; }
+                 var a = match (GetI64()) {
+                     i64 => 2
+                 }
+                 """,
+                 NewLoweredProgram(
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}.GetI64"), "GetI64",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [new Assign(new Local("_returnValue"), new Use(new IntConstant(1, 8)))],
+                                     new Return())
+                             ],
+                             Int64T),
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [],
+                                     new MethodCall(
+                                         new NewLoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.GetI64"), []),
+                                         [],
+                                         new Local("_local1"),
+                                         new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [
+                                         new Assign(new Local("_local0"), new Use(new IntConstant(2, 4)))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb2"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb2"), [], new Return())
                              ],
                              Unit,
                              locals: [

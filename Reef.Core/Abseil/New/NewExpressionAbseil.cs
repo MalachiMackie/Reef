@@ -118,7 +118,7 @@ public partial class NewProgramAbseil
                 foreach (var (variable, accessor) in GetAncestorVariableAssignments(discardNode))
                 {
                     _basicBlockStatements.Add(
-                        new Assign(GetLocalVariablePlace(variable), new Use(new Copy(accessor))));
+                        new Assign(GetLocalVariablePlace(variable), new Use(accessor.ToOperand())));
                 }
                 
                 NewLowerExpression(discardNode.Expression.NotNull(), destination);
@@ -133,6 +133,19 @@ public partial class NewProgramAbseil
         {
             var type = variantNodes[0].Type;
             var accessor = variantNodes[0].Accessor;
+            IPlace accessorPlace;
+            if (accessor is PlaceResult(var placeValue))
+            {
+                accessorPlace = placeValue;
+            }
+            else if (accessor is OperandResult)
+            {
+                accessorPlace = ExpressionResultIntoPlace(accessor, type);
+            }
+            else
+            {
+                throw new UnreachableException();
+            }
             
             // if we have variant nodes, then all the nodes must be variant nodes (except for any discard nodes), and they must all be for the same type
             Debug.Assert(typeNodes.Count == 0);
@@ -142,7 +155,7 @@ public partial class NewProgramAbseil
             var caseResults = new Dictionary<int, BasicBlockId>();
             var lastBasicBlock = _basicBlocks[^1];
             lastBasicBlock.Terminator = new SwitchInt(
-                new Copy(new Field(accessor, VariantIdentifierFieldName, dataType.Variants[0].Name)),
+                new Copy(new Field(accessorPlace, VariantIdentifierFieldName, dataType.Variants[0].Name)),
                 caseResults,
                 otherwiseBasicBlockId);
             
@@ -193,7 +206,7 @@ public partial class NewProgramAbseil
                         foreach (var (variable, variableAccessor) in GetAncestorVariableAssignments(variantNode))
                         {
                             _basicBlockStatements.Add(
-                                new Assign(GetLocalVariablePlace(variable), new Use(new Copy(variableAccessor))));
+                                new Assign(GetLocalVariablePlace(variable), new Use(variableAccessor.ToOperand())));
                         }
                         NewLowerExpression(variantNode.Expression.NotNull(), destination);
                     }
@@ -213,7 +226,7 @@ public partial class NewProgramAbseil
                         foreach (var (variable, variableAccessor) in GetAncestorVariableAssignments(variantNode))
                         {
                             _basicBlockStatements.Add(
-                                new Assign(GetLocalVariablePlace(variable), new Use(new Copy(variableAccessor))));
+                                new Assign(GetLocalVariablePlace(variable), new Use(variableAccessor.ToOperand())));
                         }
                         
                         NewLowerExpression(variantNode.Expression, destination);
@@ -251,7 +264,7 @@ public partial class NewProgramAbseil
                     foreach (var (variable, variableAccessor) in GetAncestorVariableAssignments(typeNode))
                     {
                         _basicBlockStatements.Add(
-                            new Assign(GetLocalVariablePlace(variable), new Use(new Copy(variableAccessor))));
+                            new Assign(GetLocalVariablePlace(variable), new Use(variableAccessor.ToOperand())));
                     }
                     NewLowerExpression(typeNode.Expression, destination);
                 }
@@ -271,7 +284,7 @@ public partial class NewProgramAbseil
                     foreach (var (variable, variableAccessor) in GetAncestorVariableAssignments(typeNode))
                     {
                         _basicBlockStatements.Add(
-                            new Assign(GetLocalVariablePlace(variable), new Use(new Copy(variableAccessor))));
+                            new Assign(GetLocalVariablePlace(variable), new Use(variableAccessor.ToOperand())));
                     }
                     NewLowerExpression(typeNode.Expression, destination);
                 }
@@ -289,13 +302,13 @@ public partial class NewProgramAbseil
             foreach (var (variable, variableAccessor) in GetAncestorVariableAssignments(discardNode))
             {
                 _basicBlockStatements.Add(
-                    new Assign(GetLocalVariablePlace(variable), new Use(new Copy(variableAccessor))));
+                    new Assign(GetLocalVariablePlace(variable), new Use(variableAccessor.ToOperand())));
             }
             NewLowerExpression(discardNode.Expression.NotNull(), destination);
         }
     }
 
-    private static IEnumerable<(TypeChecking.TypeChecker.LocalVariable localVariable, IPlace accessor)>
+    private static IEnumerable<(TypeChecking.TypeChecker.LocalVariable localVariable, IExpressionResult accessor)>
         GetAncestorVariableAssignments(INode node)
     {
         return node switch
@@ -309,7 +322,7 @@ public partial class NewProgramAbseil
     
     private interface INode
     {
-        IPlace Accessor { get; }
+        IExpressionResult Accessor { get; }
         INode? Ancestor { get; }
         List<INode> Branches { get; }
         IExpression? Expression { get; set; }
@@ -319,7 +332,7 @@ public partial class NewProgramAbseil
     private record TypeNode(
         INode? Ancestor,
         INewLoweredTypeReference Type,
-        IPlace Accessor,
+        IExpressionResult Accessor,
         List<INode> Branches,
         TypeChecking.TypeChecker.LocalVariable? Variable) : INode
     {
@@ -330,7 +343,7 @@ public partial class NewProgramAbseil
         INode? Ancestor,
         NewLoweredConcreteTypeReference Type,
         string VariantName,
-        IPlace Accessor,
+        IExpressionResult Accessor,
         List<INode> Branches,
         TypeChecking.TypeChecker.LocalVariable? Variable) : INode
     {
@@ -339,7 +352,7 @@ public partial class NewProgramAbseil
 
     private record DiscardNode(
         INode? Ancestor,
-        IPlace Accessor,
+        IExpressionResult Accessor,
         List<INode> Branches,
         TypeChecking.TypeChecker.LocalVariable? Variable)
         : INode
@@ -351,11 +364,9 @@ public partial class NewProgramAbseil
     {
         var rootNodes = new List<INode>();
 
-        var accessor = ExpressionResultIntoPlace(accessExpression, valueType);
-
         foreach (var (pattern, expression) in patterns.Where(x => !x.Pattern.IsRedundant))
         {
-            var patternNode = CreateNodeFromPattern(ancestor: null, pattern, accessor);
+            var patternNode = CreateNodeFromPattern(ancestor: null, pattern, ref accessExpression, valueType);
             InsertNodeIntoMatchTree(rootNodes, patternNode, expression);
         }
         
@@ -421,7 +432,7 @@ public partial class NewProgramAbseil
         };
     }
 
-    private INode CreateNodeFromPattern(INode? ancestor, IPattern? pattern, IPlace accessor)
+    private INode CreateNodeFromPattern(INode? ancestor, IPattern? pattern, ref IExpressionResult accessor, INewLoweredTypeReference valueType)
     {
         switch (pattern)
         {
@@ -443,11 +454,29 @@ public partial class NewProgramAbseil
                         classPattern.FieldPatterns.FirstOrDefault(x =>
                             x.FieldName.StringValue == field.Name)
                         ?? new FieldPattern(Token.Identifier(field.Name, SourceSpan.Default), new DiscardPattern(SourceRange.Default));
+
+                    IPlace accessorPlace;
+                    if (accessor is PlaceResult(var placeValue))
+                    {
+                        accessorPlace = placeValue;
+                    }
+                    else if (accessor is OperandResult)
+                    {
+                        accessorPlace = ExpressionResultIntoPlace(accessor, valueType);
+                        accessor = new PlaceResult(accessorPlace);
+                    }
+                    else
+                    {
+                        throw new UnreachableException();
+                    }
+
+                    IExpressionResult fieldPlace = new PlaceResult(new Field(accessorPlace, fieldPattern.FieldName.StringValue, ClassVariantName));
                     
                     var newNode = CreateNodeFromPattern(previousNode, fieldPattern.Pattern ??
                                                         new VariableDeclarationPattern(fieldPattern.FieldName,
                                                             SourceRange.Default, IsMut: false){Variable = fieldPattern.Variable},
-                        new Field(accessor, fieldPattern.FieldName.StringValue, ClassVariantName));
+                        ref fieldPlace,
+                        field.Type);
 
                     var leaf = GetNodeLeafs(newNode).Single();
                     
@@ -489,10 +518,28 @@ public partial class NewProgramAbseil
                             x.FieldName.StringValue == field.Name)
                         ?? new FieldPattern(Token.Identifier(field.Name, SourceSpan.Default), new DiscardPattern(SourceRange.Default));
                     
+                    IPlace accessorPlace;
+                    if (accessor is PlaceResult(var placeValue))
+                    {
+                        accessorPlace = placeValue;
+                    }
+                    else if (accessor is OperandResult)
+                    {
+                        accessorPlace = ExpressionResultIntoPlace(accessor, valueType);
+                        accessor = new PlaceResult(accessorPlace);
+                    }
+                    else
+                    {
+                        throw new UnreachableException();
+                    }
+
+                    IExpressionResult fieldPlace = new PlaceResult(new Field(accessorPlace, fieldPattern.FieldName.StringValue, unionClassVariantPattern.VariantName.StringValue));
+                    
                     var newNode = CreateNodeFromPattern(previousNode, fieldPattern.Pattern ??
                                                         new VariableDeclarationPattern(fieldPattern.FieldName,
                                                             SourceRange.Default, IsMut: false){Variable = fieldPattern.Variable},
-                        new Field(accessor, fieldPattern.FieldName.StringValue, unionClassVariantPattern.VariantName.StringValue));
+                        ref fieldPlace,
+                        field.Type);
 
                     var leafs = GetNodeLeafs(newNode);
                     var leaf = leafs.Single();
@@ -515,6 +562,9 @@ public partial class NewProgramAbseil
                     accessor,
                     [],
                     unionTupleVariantPattern.Variable);
+
+                var dataType = GetDataType(typeReference.DefinitionId);
+                var variant = dataType.Variants.First(x => x.Name == unionTupleVariantPattern.VariantName.StringValue);
                 
                 typeNode.Branches.Add(node);
 
@@ -523,11 +573,28 @@ public partial class NewProgramAbseil
                 // tuple patterns have to have the same number of patterns and in the same order, so just loop through the param patterns
                 foreach (var (i, memberPattern) in unionTupleVariantPattern.TupleParamPatterns.Index())
                 {
+                    IPlace accessorPlace;
+                    if (accessor is PlaceResult(var placeValue))
+                    {
+                        accessorPlace = placeValue;
+                    }
+                    else if (accessor is OperandResult)
+                    {
+                        accessorPlace = ExpressionResultIntoPlace(accessor, valueType);
+                        accessor = new PlaceResult(accessorPlace);
+                    }
+                    else
+                    {
+                        throw new UnreachableException();
+                    }
+
+                    IExpressionResult fieldPlace = new PlaceResult(new Field(accessorPlace, TupleElementName((uint)i), unionTupleVariantPattern.VariantName.StringValue));
+                    
                     var newNode = CreateNodeFromPattern(
                         previousNode,
                         memberPattern,
-                        new Field(accessor, TupleElementName((uint)i),
-                            unionTupleVariantPattern.VariantName.StringValue));
+                        ref fieldPlace,
+                        variant.Fields.First(x => x.Name == TupleElementName((uint)i)).Type);
 
                     var leafs = GetNodeLeafs(newNode);
                     var leaf = leafs.Single();
