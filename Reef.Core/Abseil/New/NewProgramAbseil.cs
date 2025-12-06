@@ -16,6 +16,7 @@ public partial class NewProgramAbseil
     private const string VariantIdentifierFieldName = "_variantIdentifier";
     private static string ParameterLocalName(uint parameterIndex) => $"_param{parameterIndex}";
     private static string LocalName(uint localIndex) => $"_local{localIndex}";
+    private static string TupleElementName(uint memberIndex) => $"Item{memberIndex}";
         
     private readonly Dictionary<
         NewLoweredMethod,
@@ -391,12 +392,12 @@ public partial class NewProgramAbseil
                     {
                         var memberTypes = u.TupleMembers.NotNull().Select(GetTypeReference).ToArray();
                         fields.AddRange(memberTypes.Select((x, i) => new NewDataTypeField(
-                                        $"Item{i}",
+                                        TupleElementName((uint)i),
                                         x)));
 
                         var createMethodFieldInitializations = fields.Skip(1)
                             .Select(
-                                (IOperand operand, string fieldName) (_, i) => (new Copy(new Local($"_param{i}")), $"Item{i}"));
+                                (IOperand operand, string fieldName) (_, i) => (new Copy(new Local($"_param{i}")), TupleElementName((uint)i)));
                         createMethodFieldInitializations = createMethodFieldInitializations.Prepend((new UIntConstant((ulong)variants.Count, 2), VariantIdentifierFieldName));
 
                         var method = new NewLoweredMethod(
@@ -415,7 +416,7 @@ public partial class NewProgramAbseil
                                         },
                                     ],
                                     new NewMethodLocal(ReturnValueLocalName, null, unionTypeReference),
-                                    [..memberTypes.Select((x, i) => new NewMethodLocal(ParameterLocalName((uint)i), $"Item{i}", x))],
+                                    [..memberTypes.Select((x, i) => new NewMethodLocal(ParameterLocalName((uint)i), TupleElementName((uint)i), x))],
                                     []);
                         
                         // add the tuple variant as a method

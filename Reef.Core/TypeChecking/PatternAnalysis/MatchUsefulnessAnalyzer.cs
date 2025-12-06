@@ -511,7 +511,7 @@ public static class MatchUsefulnessAnalyzer
         var armUsefulness = arms.Select(arm =>
         {
             IUsefulness usefulness;
-            if (cx.BranchUsefulness[arm.Pattern.Id].IsRedundant() is { } redundancyExplanation)
+            if (cx.BranchUsefulness[arm.Pattern.Id].IsRedundant() is { CoveredBy.Count: > 0 } redundancyExplanation)
             {
                 usefulness = new Redundant(redundancyExplanation);
             }

@@ -245,10 +245,15 @@ public class TypeTwoTypeChecker
         {
             if (usefulness is Useful { OrPatternRedundancies: { Count: > 0 } redundantSubPatterns })
             {
-                foreach (var (pattern, explanation) in redundantSubPatterns)
+                foreach (var (pattern, explanation) in redundantSubPatterns.Where(x => x.Item2.CoveredBy.Count > 0))
                 {
+                    pattern.PatternData.IsRedundant = true;
                     // warn
                 }
+            }
+            else if (usefulness is Redundant redundant)
+            {
+                arm.Pattern.PatternData.IsRedundant = true;
             }
         }
 

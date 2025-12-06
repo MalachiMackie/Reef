@@ -50,10 +50,7 @@ public interface IConstructor
                         _ => throw new ArgumentOutOfRangeException(nameof(variant))
                     };
 
-                    return subTypes.Select(x =>
-                    {
-                        return (x, new PrivateUninhabitedField(false));
-                    });
+                    return subTypes.Select(x => (x, new PrivateUninhabitedField(false)));
                 }
             case ClassConstructor:
                 {
