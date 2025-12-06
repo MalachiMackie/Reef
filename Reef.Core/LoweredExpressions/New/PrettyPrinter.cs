@@ -155,8 +155,16 @@ public class NewPrettyPrinter
                 _stringBuilder.Append(", ");
             }
 
-            _stringBuilder.Append($"{method.ParameterLocals[i].CompilerGivenName}: ");
-            PrettyPrintTypeReference(method.ParameterLocals[i].Type);
+            var parameterLocal = method.ParameterLocals[i];
+
+            _stringBuilder.Append(parameterLocal.CompilerGivenName);
+            if (parameterLocal.UserGivenName is not null)
+            {
+                _stringBuilder.Append($" ({parameterLocal.UserGivenName})");
+            }
+
+            _stringBuilder.Append(": ");
+            PrettyPrintTypeReference(parameterLocal.Type);
         }
         _stringBuilder.Append("): ");
         PrettyPrintTypeReference(method.ReturnValue.Type);
@@ -177,7 +185,13 @@ public class NewPrettyPrinter
         foreach (var local in methodLocals.Prepend(returnLocal))
         {
             Indent();
-            _stringBuilder.Append($"let {local.CompilerGivenName}: ");
+            _stringBuilder.Append($"let {local.CompilerGivenName}");
+            if (local.UserGivenName is not null)
+            {
+                _stringBuilder.Append($" ({local.UserGivenName})");
+            }
+
+            _stringBuilder.Append(": ");
             PrettyPrintTypeReference(local.Type);
             _stringBuilder.AppendLine(";");
         }

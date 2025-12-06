@@ -72,7 +72,11 @@ public partial class NewProgramAbseil
         return destination is not null ? new PlaceResult(destination) : new OperandResult(new UnitConstant());
     }
 
-    private void LowerMatchTree(List<INode> tree, IPlace? destination, BasicBlockId otherwiseBasicBlockId, BasicBlockId afterBasicBlockId)
+    private void LowerMatchTree(
+        List<INode> tree,
+        IPlace? destination,
+        BasicBlockId otherwiseBasicBlockId,
+        BasicBlockId afterBasicBlockId)
     {
         Debug.Assert(tree.Count > 0);
 
@@ -82,12 +86,6 @@ public partial class NewProgramAbseil
         
         foreach (var node in tree)
         {
-            if (node.Variable is not null)
-            {
-                _basicBlockStatements.Add(
-                    new Assign(GetLocalVariablePlace(node.Variable), new Use(new Copy(node.Accessor))));
-            }
-            
             switch (node)
             {
                 case DiscardNode discardNode:
@@ -117,6 +115,12 @@ public partial class NewProgramAbseil
             var discardNode = discardNodes[0];
             if (variantNodes.Count == 0 && typeNodes.Count == 0)
             {
+                foreach (var (variable, accessor) in GetAncestorVariableAssignments(discardNode))
+                {
+                    _basicBlockStatements.Add(
+                        new Assign(GetLocalVariablePlace(variable), new Use(new Copy(accessor))));
+                }
+                
                 NewLowerExpression(discardNode.Expression.NotNull(), destination);
                 return;
             }
@@ -151,7 +155,7 @@ public partial class NewProgramAbseil
                 _basicBlocks.Add(new BasicBlock(
                     basicBlockId,
                     _basicBlockStatements));
-                
+
                 var variantIndex = dataType.Variants.Index().First(x => x.Item.Name == variantNode.VariantName).Index;
                 caseResults[variantIndex] = basicBlockId;
 
@@ -186,6 +190,11 @@ public partial class NewProgramAbseil
                     }
                     else
                     {
+                        foreach (var (variable, variableAccessor) in GetAncestorVariableAssignments(variantNode))
+                        {
+                            _basicBlockStatements.Add(
+                                new Assign(GetLocalVariablePlace(variable), new Use(new Copy(variableAccessor))));
+                        }
                         NewLowerExpression(variantNode.Expression.NotNull(), destination);
                     }
                 }
@@ -200,6 +209,13 @@ public partial class NewProgramAbseil
                         _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
                         _basicBlockStatements = [];
                         _basicBlocks.Add(new BasicBlock(otherwiseBasicBlockId, _basicBlockStatements));
+                        
+                        foreach (var (variable, variableAccessor) in GetAncestorVariableAssignments(variantNode))
+                        {
+                            _basicBlockStatements.Add(
+                                new Assign(GetLocalVariablePlace(variable), new Use(new Copy(variableAccessor))));
+                        }
+                        
                         NewLowerExpression(variantNode.Expression, destination);
                     }
                 }
@@ -232,6 +248,11 @@ public partial class NewProgramAbseil
                 }
                 else
                 {
+                    foreach (var (variable, variableAccessor) in GetAncestorVariableAssignments(typeNode))
+                    {
+                        _basicBlockStatements.Add(
+                            new Assign(GetLocalVariablePlace(variable), new Use(new Copy(variableAccessor))));
+                    }
                     NewLowerExpression(typeNode.Expression, destination);
                 }
             }
@@ -246,6 +267,12 @@ public partial class NewProgramAbseil
                     _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
                     _basicBlockStatements = [];
                     _basicBlocks.Add(new BasicBlock(otherwiseBasicBlockId, _basicBlockStatements));
+                    
+                    foreach (var (variable, variableAccessor) in GetAncestorVariableAssignments(typeNode))
+                    {
+                        _basicBlockStatements.Add(
+                            new Assign(GetLocalVariablePlace(variable), new Use(new Copy(variableAccessor))));
+                    }
                     NewLowerExpression(typeNode.Expression, destination);
                 }
             }
@@ -258,19 +285,39 @@ public partial class NewProgramAbseil
             _basicBlockStatements = [];
             otherwiseBasicBlockId.Id = $"bb{_basicBlocks.Count}";
             _basicBlocks.Add(new BasicBlock(otherwiseBasicBlockId, _basicBlockStatements));
+            
+            foreach (var (variable, variableAccessor) in GetAncestorVariableAssignments(discardNode))
+            {
+                _basicBlockStatements.Add(
+                    new Assign(GetLocalVariablePlace(variable), new Use(new Copy(variableAccessor))));
+            }
             NewLowerExpression(discardNode.Expression.NotNull(), destination);
         }
+    }
+
+    private static IEnumerable<(TypeChecking.TypeChecker.LocalVariable localVariable, IPlace accessor)>
+        GetAncestorVariableAssignments(INode node)
+    {
+        return node switch
+        {
+            {Ancestor: null, Variable: null} => [],
+            {Ancestor: null, Variable: {} variable, Accessor: var accessor} => [(variable, accessor)],
+            {Ancestor: {} ancestor, Variable: null} => GetAncestorVariableAssignments(ancestor),
+            {Ancestor: {} ancestor, Variable: {} variable, Accessor: var accessor} => [(variable, accessor), ..GetAncestorVariableAssignments(ancestor)]
+        };
     }
     
     private interface INode
     {
         IPlace Accessor { get; }
+        INode? Ancestor { get; }
         List<INode> Branches { get; }
         IExpression? Expression { get; set; }
         TypeChecking.TypeChecker.LocalVariable? Variable { get; }
     }
 
     private record TypeNode(
+        INode? Ancestor,
         INewLoweredTypeReference Type,
         IPlace Accessor,
         List<INode> Branches,
@@ -280,6 +327,7 @@ public partial class NewProgramAbseil
     }
 
     private record VariantNode(
+        INode? Ancestor,
         NewLoweredConcreteTypeReference Type,
         string VariantName,
         IPlace Accessor,
@@ -289,7 +337,11 @@ public partial class NewProgramAbseil
         public IExpression? Expression { get; set; }
     }
 
-    private record DiscardNode(IPlace Accessor, List<INode> Branches, TypeChecking.TypeChecker.LocalVariable? Variable)
+    private record DiscardNode(
+        INode? Ancestor,
+        IPlace Accessor,
+        List<INode> Branches,
+        TypeChecking.TypeChecker.LocalVariable? Variable)
         : INode
     {
         public IExpression? Expression { get; set; }
@@ -303,7 +355,7 @@ public partial class NewProgramAbseil
 
         foreach (var (pattern, expression) in patterns.Where(x => !x.Pattern.IsRedundant))
         {
-            var patternNode = CreateNodeFromPattern(pattern, accessor);
+            var patternNode = CreateNodeFromPattern(ancestor: null, pattern, accessor);
             InsertNodeIntoMatchTree(rootNodes, patternNode, expression);
         }
         
@@ -330,7 +382,7 @@ public partial class NewProgramAbseil
         throw new UnreachableException();
     }
 
-    private void InsertNodeIntoMatchTree(List<INode> tree, INode patternNode, IExpression expression)
+    private static void InsertNodeIntoMatchTree(List<INode> tree, INode patternNode, IExpression expression)
     {
         // incoming nodes will either have one or 0 branches 
         Debug.Assert(patternNode.Branches.Count <= 1);
@@ -369,7 +421,7 @@ public partial class NewProgramAbseil
         };
     }
 
-    private INode CreateNodeFromPattern(IPattern pattern, IPlace accessor)
+    private INode CreateNodeFromPattern(INode? ancestor, IPattern? pattern, IPlace accessor)
     {
         switch (pattern)
         {
@@ -380,7 +432,7 @@ public partial class NewProgramAbseil
                 var variant = GetDataType((typeReference as NewLoweredConcreteTypeReference).NotNull().DefinitionId)
                     .Variants[0];
 
-                var typeNode = new TypeNode(typeReference, accessor, [], classPattern.Variable);
+                var typeNode = new TypeNode(ancestor, typeReference, accessor, [], classPattern.Variable);
                 
                 INode previousNode = typeNode;
                 
@@ -392,29 +444,30 @@ public partial class NewProgramAbseil
                             x.FieldName.StringValue == field.Name)
                         ?? new FieldPattern(Token.Identifier(field.Name, SourceSpan.Default), new DiscardPattern(SourceRange.Default));
                     
-                    var newNode = CreateNodeFromPattern(fieldPattern.Pattern ??
+                    var newNode = CreateNodeFromPattern(previousNode, fieldPattern.Pattern ??
                                                         new VariableDeclarationPattern(fieldPattern.FieldName,
                                                             SourceRange.Default, IsMut: false){Variable = fieldPattern.Variable},
                         new Field(accessor, fieldPattern.FieldName.StringValue, ClassVariantName));
 
                     var leaf = GetNodeLeafs(newNode).Single();
                     
-                    previousNode.Branches.Add(leaf);
+                    previousNode.Branches.Add(newNode);
                     previousNode = leaf;
                 }
 
                 return typeNode;
             }
             case DiscardPattern:
-                return new DiscardNode(accessor, [], null);
+                return new DiscardNode(ancestor, accessor, [], null);
             case TypePattern typePattern:
-                return new TypeNode(GetTypeReference(typePattern.TypeReference.NotNull()), accessor, [], typePattern.Variable);
+                return new TypeNode(ancestor, GetTypeReference(typePattern.TypeReference.NotNull()), accessor, [], typePattern.Variable);
             case UnionClassVariantPattern unionClassVariantPattern:
             {
                 var typeReference = (GetTypeReference(unionClassVariantPattern.TypeReference.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
-                var typeNode = new TypeNode(typeReference, accessor, [], null);
+                var typeNode = new TypeNode(ancestor, typeReference, accessor, [], null);
                 
                 var node = new VariantNode(
+                    typeNode,
                     typeReference,
                     unionClassVariantPattern.VariantName.StringValue,
                     accessor,
@@ -429,14 +482,14 @@ public partial class NewProgramAbseil
                     .Variants.First(x => x.Name == node.VariantName);
 
                 // loop through the variant's fields rather that the field patterns so that we every branch has the same order and number of fields
-                foreach (var field in variant.Fields)
+                foreach (var field in variant.Fields.Where(x => x.Name != VariantIdentifierFieldName))
                 {
                     var fieldPattern =
                         unionClassVariantPattern.FieldPatterns.FirstOrDefault(x =>
                             x.FieldName.StringValue == field.Name)
                         ?? new FieldPattern(Token.Identifier(field.Name, SourceSpan.Default), new DiscardPattern(SourceRange.Default));
                     
-                    var newNode = CreateNodeFromPattern(fieldPattern.Pattern ??
+                    var newNode = CreateNodeFromPattern(previousNode, fieldPattern.Pattern ??
                                                         new VariableDeclarationPattern(fieldPattern.FieldName,
                                                             SourceRange.Default, IsMut: false){Variable = fieldPattern.Variable},
                         new Field(accessor, fieldPattern.FieldName.StringValue, unionClassVariantPattern.VariantName.StringValue));
@@ -444,7 +497,7 @@ public partial class NewProgramAbseil
                     var leafs = GetNodeLeafs(newNode);
                     var leaf = leafs.Single();
                     
-                    previousNode.Branches.Add(leaf);
+                    previousNode.Branches.Add(newNode);
                     previousNode = leaf;
                 }
                 
@@ -453,9 +506,10 @@ public partial class NewProgramAbseil
             case UnionTupleVariantPattern unionTupleVariantPattern:
             {
                 var typeReference = (GetTypeReference(unionTupleVariantPattern.TypeReference.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
-                var typeNode = new TypeNode(typeReference, accessor, [], null);
+                var typeNode = new TypeNode(ancestor, typeReference, accessor, [], null);
                 
                 var node = new VariantNode(
+                    typeNode,
                     typeReference,
                     unionTupleVariantPattern.VariantName.StringValue,
                     accessor,
@@ -470,6 +524,7 @@ public partial class NewProgramAbseil
                 foreach (var (i, memberPattern) in unionTupleVariantPattern.TupleParamPatterns.Index())
                 {
                     var newNode = CreateNodeFromPattern(
+                        previousNode,
                         memberPattern,
                         new Field(accessor, TupleElementName((uint)i),
                             unionTupleVariantPattern.VariantName.StringValue));
@@ -477,7 +532,7 @@ public partial class NewProgramAbseil
                     var leafs = GetNodeLeafs(newNode);
                     var leaf = leafs.Single();
 
-                    previousNode.Branches.Add(leaf);
+                    previousNode.Branches.Add(newNode);
                     previousNode = leaf;
                 }
 
@@ -486,9 +541,10 @@ public partial class NewProgramAbseil
             case UnionVariantPattern unionVariantPattern:
             {
                 var typeReference = (GetTypeReference(unionVariantPattern.TypeReference.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
-                var typeNode = new TypeNode(typeReference, accessor, [], null);
+                var typeNode = new TypeNode(ancestor, typeReference, accessor, [], null);
                 
                 var variantNode = new VariantNode(
+                    typeNode,
                     typeReference,
                     unionVariantPattern.VariantName.NotNull().StringValue,
                     accessor,
@@ -501,7 +557,7 @@ public partial class NewProgramAbseil
             }
             case VariableDeclarationPattern variableDeclarationPattern:
             {
-                return new DiscardNode(accessor, [], variableDeclarationPattern.Variable);
+                return new DiscardNode(ancestor, accessor, [], variableDeclarationPattern.Variable);
             }
             default:
                 throw new UnreachableException();
@@ -1157,23 +1213,20 @@ public partial class NewProgramAbseil
         IEnumerable<CreateObjectField> fields,
         IPlace? destination)
     {
-        // always assign to a local, so fields get assign within the stack, then if needed, copy to it's destination
-        
-        var localName = LocalName((uint)_locals.Count);
-        var localDestination = destination as Local ?? new Local(localName);
-
-        if (destination is not Local)
+        if (destination is null)
         {
+            var localName = LocalName((uint)_locals.Count);
             _locals.Add(new NewMethodLocal(localName, null, type));
+            destination = new Local(localName);
         }
         
         _basicBlockStatements.Add(new Assign(
-            localDestination,
+            destination,
             new CreateObject(type)));
 
         foreach (var createObjectField in fields)
         {
-            var field = new Field(localDestination, createObjectField.FieldName, variantName);
+            var field = new Field(destination, createObjectField.FieldName, variantName);
             if (createObjectField.Expression is {} expression)
             {
                 NewLowerExpression(expression, field);
@@ -1185,20 +1238,8 @@ public partial class NewProgramAbseil
                     new Use(operand)));
             }
         }
-
-        if (destination is Local)
-        {
-            return new PlaceResult(destination);
-        }
-
-        if (destination is not null)
-        {
-            _basicBlockStatements.Add(new Assign(
-                destination,
-                new Use(new Copy(localDestination))));
-        }
-
-        return new PlaceResult(destination ?? localDestination);
+        
+        return new PlaceResult(destination);
     }
 
     private IExpressionResult LowerTuple(TupleExpression tupleExpression, IPlace? destination)
