@@ -1065,532 +1065,429 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                              ])
                      ])
              },
-//             {
-//                 "match partial class pattern with discard",
-//                 """
-//                 union MyUnion{A, B}
-//                 class MyClass{pub field MyField: MyUnion}
-//
-//                 var a = new MyClass{MyField = MyUnion::A};
-//                 match (a) {
-//                     MyClass{MyField: MyUnion::A} => 1,
-//                     _ => 2
-//                 }
-//                 """,
-//                 NewLoweredProgram(
-//                     types: [
-//                         NewDataType(ModuleId, "MyUnion",
-//                             variants: [
-//                                NewVariant("A", [NewField("_variantIdentifier", UInt16T)]),
-//                                NewVariant("B", [NewField("_variantIdentifier", UInt16T)])
-//                             ]),
-//                         NewDataType(ModuleId, "MyClass",
-//                             variants: [
-//                                NewVariant("_classVariant", [NewField("MyField", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))])
-//                             ])
-//                     ],
-//                     methods: [
-//                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration("a",
-//                                     CreateObject(
-//                                         new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []),
-//                                         "_classVariant",
-//                                         true,
-//                                         new()
-//                                         {
-//                                             {
-//                                                 "MyField",
-//                                                 CreateObject(
-//                                                     new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []),
-//                                                     "A",
-//                                                     true,
-//                                                     new()
-//                                                     {
-//                                                         {"_variantIdentifier", UInt16Constant(0, true)}
-//                                                     })
-//                                             }
-//                                         }),
-//                                     false),
-//                                 Block(
-//                                     [
-//                                         VariableDeclaration(
-//                                             "Local1",
-//                                             LocalAccess("a", true, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                             false),
-//                                         Block(
-//                                             [
-//                                                 VariableDeclaration(
-//                                                     "Local2",
-//                                                     FieldAccess(
-//                                                         LocalAccess("Local1", true, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                                         "MyField",
-//                                                         "_classVariant",
-//                                                         true,
-//                                                         new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                     false),
-//                                                 SwitchInt(
-//                                                     FieldAccess(
-//                                                         LocalAccess("Local2", true, new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                         "_variantIdentifier",
-//                                                         "A",
-//                                                         true,
-//                                                         UInt16T),
-//                                                     new()
-//                                                     {
-//                                                         {
-//                                                             0,
-//                                                             Int32Constant(1, true)
-//                                                         }
-//                                                     },
-//                                                     Int32Constant(2, true),
-//                                                     true,
-//                                                     Int32T)
-//                                             ],
-//                                             Int32T,
-//                                             true)
-//                                     ],
-//                                     Int32T,
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 new NewMethodLocal("_localX", "a", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                 new NewMethodLocal("_localX", "Local1", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                 new NewMethodLocal("_localX", "Local2", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                             ])
-//                     ])
-//             },
-//             {
-//                 "match partial class pattern with discard 2",
-//                 """
-//                 union MyUnion{A, B, C}
-//                 class MyClass{pub field MyField: MyUnion, pub field SecondField: MyUnion}
-//
-//                 var a = new MyClass {
-//                     MyField = MyUnion::A,
-//                     SecondField = MyUnion::B,
-//                 };
-//                 match (a) {
-//                     MyClass { MyField: MyUnion::A, SecondField: MyUnion::A } => 1,
-//                     MyClass { MyField: MyUnion::B, SecondField: MyUnion::A } => 2,
-//                     MyClass { MyField: MyUnion::C, SecondField: MyUnion::A } => 4,
-//                     _ => 3
-//                 }
-//                 """,
-//                 NewLoweredProgram(
-//                     types: [
-//                         NewDataType(ModuleId, "MyUnion",
-//                             variants: [
-//                                NewVariant("A", [NewField("_variantIdentifier", UInt16T)]),
-//                                NewVariant("B", [NewField("_variantIdentifier", UInt16T)]),
-//                                NewVariant("C", [NewField("_variantIdentifier", UInt16T)])
-//                             ]),
-//                         NewDataType(ModuleId, "MyClass",
-//                             variants: [
-//                                NewVariant(
-//                                     "_classVariant",
-//                                     [
-//                                         NewField("MyField", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                         NewField("SecondField", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                     ])
-//                             ])
-//                     ],
-//                     methods: [
-//                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration("a",
-//                                     CreateObject(
-//                                         new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []),
-//                                         "_classVariant",
-//                                         true,
-//                                         new()
-//                                         {
-//                                             {
-//                                                 "MyField",
-//                                                 CreateObject(
-//                                                     new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []),
-//                                                     "A",
-//                                                     true,
-//                                                     new()
-//                                                     {
-//                                                         {"_variantIdentifier", UInt16Constant(0, true)}
-//                                                     })
-//                                             },
-//                                             {
-//                                                 "SecondField",
-//                                                 CreateObject(
-//                                                     new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []),
-//                                                     "B",
-//                                                     true,
-//                                                     new()
-//                                                     {
-//                                                         {"_variantIdentifier", UInt16Constant(1, true)}
-//                                                     })
-//                                             }
-//                                         }),
-//                                     false),
-//                                 Block(
-//                                     [
-//                                         VariableDeclaration(
-//                                             "Local1",
-//                                             LocalAccess("a", true, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                             false),
-//                                         Block(
-//                                             [
-//                                                 VariableDeclaration(
-//                                                     "Local5",
-//                                                     FieldAccess(
-//                                                         LocalAccess("Local1", true, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                                         "MyField",
-//                                                         "_classVariant",
-//                                                         true,
-//                                                         new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                     false),
-//                                                 SwitchInt(
-//                                                     FieldAccess(
-//                                                         LocalAccess("Local5", true, new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                         "_variantIdentifier",
-//                                                         "A",
-//                                                         true,
-//                                                         UInt16T),
-//                                                     new()
-//                                                     {
-//                                                         {
-//                                                             0,
-//                                                             Block(
-//                                                                 [
-//                                                                     VariableDeclaration(
-//                                                                         "Local2",
-//                                                                         FieldAccess(
-//                                                                             LocalAccess("Local1", true, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                                                             "SecondField",
-//                                                                             "_classVariant",
-//                                                                             true,
-//                                                                             new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                                         false),
-//                                                                     SwitchInt(
-//                                                                         FieldAccess(
-//                                                                             LocalAccess("Local2", true, new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                                             "_variantIdentifier",
-//                                                                             "A",
-//                                                                             true,
-//                                                                             UInt16T),
-//                                                                         new()
-//                                                                         {
-//                                                                             {
-//                                                                                 0,
-//                                                                                 Int32Constant(1, true)
-//                                                                             }
-//                                                                         },
-//                                                                         Int32Constant(3, true),
-//                                                                         true,
-//                                                                         Int32T)
-//                                                                 ],
-//                                                                 Int32T,
-//                                                                 true)
-//                                                         },
-//                                                         {
-//                                                             1,
-//                                                             Block(
-//                                                                 [
-//                                                                     VariableDeclaration(
-//                                                                         "Local3",
-//                                                                         FieldAccess(
-//                                                                             LocalAccess("Local1", true, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                                                             "SecondField",
-//                                                                             "_classVariant",
-//                                                                             true,
-//                                                                             new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                                         false),
-//                                                                     SwitchInt(
-//                                                                         FieldAccess(
-//                                                                             LocalAccess("Local3", true, new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                                             "_variantIdentifier",
-//                                                                             "A",
-//                                                                             true,
-//                                                                             UInt16T),
-//                                                                         new()
-//                                                                         {
-//                                                                             {
-//                                                                                 0,
-//                                                                                 Int32Constant(2, true)
-//                                                                             }
-//                                                                         },
-//                                                                         Int32Constant(3, true),
-//                                                                         true,
-//                                                                         Int32T)
-//                                                                 ],
-//                                                                 Int32T,
-//                                                                 true)
-//                                                         },
-//                                                         {
-//                                                             2,
-//                                                             Block(
-//                                                                 [
-//                                                                     VariableDeclaration(
-//                                                                         "Local4",
-//                                                                         FieldAccess(
-//                                                                             LocalAccess("Local1", true, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                                                             "SecondField",
-//                                                                             "_classVariant",
-//                                                                             true,
-//                                                                             new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                                         false),
-//                                                                     SwitchInt(
-//                                                                         FieldAccess(
-//                                                                             LocalAccess("Local4", true, new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                                             "_variantIdentifier",
-//                                                                             "A",
-//                                                                             true,
-//                                                                             UInt16T),
-//                                                                         new()
-//                                                                         {
-//                                                                             {
-//                                                                                 0,
-//                                                                                 Int32Constant(4, true)
-//                                                                             }
-//                                                                         },
-//                                                                         Int32Constant(3, true),
-//                                                                         true,
-//                                                                         Int32T)
-//                                                                 ],
-//                                                                 Int32T,
-//                                                                 true)
-//                                                         }
-//                                                     },
-//                                                     Int32Constant(3, true),
-//                                                     true,
-//                                                     Int32T)
-//                                             ],
-//                                             Int32T,
-//                                             true)
-//                                     ],
-//                                     Int32T,
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 new NewMethodLocal("_localX", "a", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                 new NewMethodLocal("_localX", "Local1", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                 new NewMethodLocal("_localX", "Local2", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                 new NewMethodLocal("_localX", "Local3", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                 new NewMethodLocal("_localX", "Local4", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                 new NewMethodLocal("_localX", "Local5", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                             ])
-//                     ])
-//             },
-//             {
-//                 "Mixture of class and union patterns",
-//                 """
-//                 union MyUnion{A, B, C}
-//                 class MyClass{pub field MyField: MyUnion, pub field SecondField: MyUnion}
-//
-//                 var a = new MyClass {
-//                     MyField = MyUnion::A,
-//                     SecondField = MyUnion::B,
-//                 };
-//                 match (a) {
-//                     MyClass { MyField: MyUnion::A, SecondField: MyUnion::A } => 1,
-//                     MyClass { MyField: MyUnion::A, SecondField: _          } => 2,
-//                     MyClass { MyField: MyUnion::B, SecondField: MyUnion::B } => 3,
-//                     MyClass { MyField: MyUnion::C, SecondField: MyUnion::A } => 4,
-//                     _ => 5
-//                 }
-//                 """,
-//                 NewLoweredProgram(
-//                     types: [
-//                         NewDataType(ModuleId, "MyUnion",
-//                             variants: [
-//                                NewVariant("A", [NewField("_variantIdentifier", UInt16T)]),
-//                                NewVariant("B", [NewField("_variantIdentifier", UInt16T)]),
-//                                NewVariant("C", [NewField("_variantIdentifier", UInt16T)]),
-//                             ]),
-//                         NewDataType(ModuleId, "MyClass",
-//                             variants: [
-//                                NewVariant(
-//                                     "_classVariant",
-//                                     [
-//                                         NewField("MyField", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                         NewField("SecondField", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))
-//                                     ])
-//                             ])
-//                     ],
-//                     methods: [
-//                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration(
-//                                     "a",
-//                                     CreateObject(
-//                                         new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []),
-//                                         "_classVariant",
-//                                         true,
-//                                         new()
-//                                         {
-//                                             {
-//                                                 "MyField",
-//                                                 CreateObject(
-//                                                     new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []),
-//                                                     "A",
-//                                                     true,
-//                                                     new(){{"_variantIdentifier", UInt16Constant(0, true)}})
-//                                             },
-//                                             {
-//                                                 "SecondField",
-//                                                 CreateObject(
-//                                                     new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []),
-//                                                     "B",
-//                                                     true,
-//                                                     new(){{"_variantIdentifier", UInt16Constant(1, true)}})
-//                                             },
-//                                         }),
-//                                     false),
-//                                 Block(
-//                                     [
-//                                         VariableDeclaration("Local1", LocalAccess("a", true, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])), false),
-//                                         Block(
-//                                             [
-//                                                 VariableDeclaration("Local5", 
-//                                                     FieldAccess(
-//                                                         LocalAccess("Local1", true, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                                         "MyField",
-//                                                         "_classVariant",
-//                                                         true,
-//                                                         new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                     false),
-//                                                 SwitchInt(
-//                                                     FieldAccess(
-//                                                         LocalAccess("Local5", true, new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                         "_variantIdentifier",
-//                                                         "A",
-//                                                         true,
-//                                                         UInt16T),
-//                                                     new()
-//                                                     {
-//                                                         {
-//                                                             0,
-//                                                             Block(
-//                                                                 [
-//                                                                     VariableDeclaration(
-//                                                                         "Local2",
-//                                                                         FieldAccess(LocalAccess("Local1", true, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                                                             "SecondField",
-//                                                                             "_classVariant",
-//                                                                             true,
-//                                                                             new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                                         false),
-//                                                                     SwitchInt(
-//                                                                         FieldAccess(
-//                                                                             LocalAccess("Local2", true, new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                                             "_variantIdentifier",
-//                                                                             "A",
-//                                                                             true,
-//                                                                             UInt16T),
-//                                                                         new()
-//                                                                         {
-//                                                                             {
-//                                                                                 0,
-//                                                                                 Int32Constant(1, true)
-//                                                                             }
-//                                                                         },
-//                                                                         Int32Constant(2, true),
-//                                                                         true,
-//                                                                         Int32T)
-//                                                                 ],
-//                                                                 Int32T,
-//                                                                 true)
-//                                                         },
-//                                                         {
-//                                                             1,
-//                                                             Block(
-//                                                                 [
-//                                                                     VariableDeclaration(
-//                                                                         "Local3",
-//                                                                         FieldAccess(LocalAccess("Local1", true, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                                                             "SecondField",
-//                                                                             "_classVariant",
-//                                                                             true,
-//                                                                             new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                                         false),
-//                                                                     SwitchInt(
-//                                                                         FieldAccess(
-//                                                                             LocalAccess("Local3", true, new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                                             "_variantIdentifier",
-//                                                                             "A",
-//                                                                             true,
-//                                                                             UInt16T),
-//                                                                         new()
-//                                                                         {
-//                                                                             {
-//                                                                                 1,
-//                                                                                 Int32Constant(3, true)
-//                                                                             }
-//                                                                         },
-//                                                                         Int32Constant(5, true),
-//                                                                         true,
-//                                                                         Int32T)
-//                                                                 ],
-//                                                                 Int32T,
-//                                                                 true)
-//                                                         },
-//                                                         {
-//                                                             2,
-//                                                             Block(
-//                                                                 [
-//                                                                     VariableDeclaration(
-//                                                                         "Local4",
-//                                                                         FieldAccess(LocalAccess("Local1", true, new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                                                             "SecondField",
-//                                                                             "_classVariant",
-//                                                                             true,
-//                                                                             new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                                         false),
-//                                                                     SwitchInt(
-//                                                                         FieldAccess(
-//                                                                             LocalAccess("Local4", true, new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                                                             "_variantIdentifier",
-//                                                                             "A",
-//                                                                             true,
-//                                                                             UInt16T),
-//                                                                         new()
-//                                                                         {
-//                                                                             {
-//                                                                                 0,
-//                                                                                 Int32Constant(4, true)
-//                                                                             }
-//                                                                         },
-//                                                                         Int32Constant(5, true),
-//                                                                         true,
-//                                                                         Int32T)
-//                                                                 ],
-//                                                                 Int32T,
-//                                                                 true)
-//                                                         },
-//                                                     },
-//                                                     Int32Constant(5, true),
-//                                                     true,
-//                                                     Int32T)
-//                                             ],
-//                                             Int32T,
-//                                             true),
-//                                         
-//                                     ],
-//                                     Int32T,
-//                                     false),
-//                                 MethodReturnUnit()
-//                             ],
-//                             locals: [
-//                                 new NewMethodLocal("_localX", "a", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                 new NewMethodLocal("_localX", "Local1", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-//                                 // MyField 
-//                                 new NewMethodLocal("_localX", "Local5", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                 // SecondField
-//                                 new NewMethodLocal("_localX", "Local2", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                 new NewMethodLocal("_localX", "Local3", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                                 new NewMethodLocal("_localX", "Local4", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-//                             ])
-//                     ])
-//             }
+             {
+                 "match partial class pattern with discard",
+                 """
+                 union MyUnion{A, B}
+                 class MyClass{pub field MyField: MyUnion}
+
+                 var a = new MyClass{MyField = MyUnion::A};
+                 var b = match (a) {
+                     MyClass{MyField: MyUnion::A} => 1,
+                     _ => 2
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "MyUnion",
+                             variants: [
+                                NewVariant("A", [NewField("_variantIdentifier", UInt16T)]),
+                                NewVariant("B", [NewField("_variantIdentifier", UInt16T)])
+                             ]),
+                         NewDataType(ModuleId, "MyClass",
+                             variants: [
+                                NewVariant("_classVariant", [NewField("MyField", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))])
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new CreateObject(new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                         new Assign(
+                                             new Field(
+                                                 new Local("_local0"),
+                                                 "MyField",
+                                                 "_classVariant"),
+                                             new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                         new Assign(
+                                             new Field(
+                                                 new Field(
+                                                     new Local("_local0"),
+                                                     "MyField",
+                                                     "_classVariant"),
+                                                 "_variantIdentifier",
+                                                 "A"),
+                                             new Use(new UIntConstant(0, 2)))
+                                     ],
+                                     new SwitchInt(
+                                         new Copy(
+                                             new Field(
+                                                 new Field(
+                                                     new Local("_local0"),
+                                                     "MyField",
+                                                     "_classVariant"),
+                                                 "_variantIdentifier",
+                                                 "A")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb1") }
+                                         },
+                                         new BasicBlockId("bb2"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [new Assign(new Local("_local1"), new Use(new IntConstant(1, 4)))],
+                                     new GoTo(new BasicBlockId("bb3"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb2"),
+                                     [new Assign(new Local("_local1"), new Use(new IntConstant(2, 4)))],
+                                     new GoTo(new BasicBlockId("bb3"))),
+                                 new BasicBlock(new BasicBlockId("bb3"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                 new NewMethodLocal("_local1", "b", Int32T),
+                             ])
+                     ])
+             },
+             {
+                 "match partial class pattern with discard 2",
+                 """
+                 union MyUnion{A, B, C}
+                 class MyClass{pub field MyField: MyUnion, pub field SecondField: MyUnion}
+
+                 var a = new MyClass {
+                     MyField = MyUnion::A,
+                     SecondField = MyUnion::B,
+                 };
+                 var b = match (a) {
+                     MyClass { MyField: MyUnion::A, SecondField: MyUnion::A } => 1,
+                     MyClass { MyField: MyUnion::B, SecondField: MyUnion::A } => 2,
+                     MyClass { MyField: MyUnion::C, SecondField: MyUnion::A } => 3,
+                     _ => 4
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "MyUnion",
+                             variants: [
+                                NewVariant("A", [NewField("_variantIdentifier", UInt16T)]),
+                                NewVariant("B", [NewField("_variantIdentifier", UInt16T)]),
+                                NewVariant("C", [NewField("_variantIdentifier", UInt16T)])
+                             ]),
+                         NewDataType(ModuleId, "MyClass",
+                             variants: [
+                                NewVariant(
+                                     "_classVariant",
+                                     [
+                                         NewField("MyField", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                         NewField("SecondField", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                     ])
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new CreateObject(new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                         new Assign(
+                                             new Field(
+                                                 new Local("_local0"),
+                                                 "MyField",
+                                                 "_classVariant"),
+                                             new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                         new Assign(
+                                             new Field(
+                                                 new Field(
+                                                     new Local("_local0"),
+                                                     "MyField",
+                                                     "_classVariant"),
+                                                 "_variantIdentifier",
+                                                 "A"),
+                                             new Use(new UIntConstant(0, 2))),
+                                         new Assign(
+                                             new Field(
+                                                 new Local("_local0"),
+                                                 "SecondField",
+                                                 "_classVariant"),
+                                             new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                         new Assign(
+                                             new Field(
+                                                 new Field(
+                                                     new Local("_local0"),
+                                                     "SecondField",
+                                                     "_classVariant"),
+                                                 "_variantIdentifier",
+                                                 "B"),
+                                             new Use(new UIntConstant(1, 2)))
+                                     ],
+                                     new SwitchInt(
+                                         new Copy(
+                                             new Field(
+                                                 new Field(
+                                                     new Local("_local0"),
+                                                     "MyField",
+                                                     "_classVariant"),
+                                                 "_variantIdentifier",
+                                                 "A")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb1") },
+                                             { 1, new BasicBlockId("bb3") },
+                                             { 2, new BasicBlockId("bb5") },
+                                         },
+                                         new BasicBlockId("bb7"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [],
+                                     new SwitchInt(
+                                         new Copy(
+                                             new Field(
+                                                 new Field(
+                                                     new Local("_local0"),
+                                                     "SecondField",
+                                                     "_classVariant"),
+                                                 "_variantIdentifier",
+                                                 "A")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb2") }
+                                         },
+                                         new BasicBlockId("bb7"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb2"),
+                                     [new Assign(new Local("_local1"), new Use(new IntConstant(1, 4)))],
+                                     new GoTo(new BasicBlockId("bb8"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb3"),
+                                     [],
+                                     new SwitchInt(
+                                         new Copy(
+                                             new Field(
+                                                 new Field(
+                                                     new Local("_local0"),
+                                                     "SecondField",
+                                                     "_classVariant"),
+                                                 "_variantIdentifier",
+                                                 "A")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb4") }
+                                         },
+                                         new BasicBlockId("bb7"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb4"),
+                                     [new Assign(new Local("_local1"), new Use(new IntConstant(2, 4)))],
+                                     new GoTo(new BasicBlockId("bb8"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb5"),
+                                     [],
+                                     new SwitchInt(
+                                         new Copy(
+                                             new Field(
+                                                 new Field(
+                                                     new Local("_local0"),
+                                                     "SecondField",
+                                                     "_classVariant"),
+                                                 "_variantIdentifier",
+                                                 "A")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb6") }
+                                         },
+                                         new BasicBlockId("bb7"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb6"),
+                                     [new Assign(new Local("_local1"), new Use(new IntConstant(3, 4)))],
+                                     new GoTo(new BasicBlockId("bb8"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb7"),
+                                     [new Assign(new Local("_local1"), new Use(new IntConstant(4, 4)))],
+                                     new GoTo(new BasicBlockId("bb8"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb8"),
+                                     [],
+                                     new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                 new NewMethodLocal("_local1", "b", Int32T),
+                             ])
+                     ])
+             },
+             {
+                 "Mixture of class and union patterns",
+                 """
+                 union MyUnion{A, B, C}
+                 class MyClass{pub field MyField: MyUnion, pub field SecondField: MyUnion}
+
+                 var a = new MyClass {
+                     MyField = MyUnion::A,
+                     SecondField = MyUnion::B,
+                 };
+                 var b = match (a) {
+                     MyClass { MyField: MyUnion::A, SecondField: MyUnion::A } => 1,
+                     MyClass { MyField: MyUnion::A, SecondField: _          } => 2,
+                     MyClass { MyField: MyUnion::B, SecondField: MyUnion::B } => 3,
+                     MyClass { MyField: MyUnion::C, SecondField: MyUnion::A } => 4,
+                     _ => 5
+                 }
+                 """,
+                 NewLoweredProgram(
+                     types: [
+                         NewDataType(ModuleId, "MyUnion",
+                             variants: [
+                                NewVariant("A", [NewField("_variantIdentifier", UInt16T)]),
+                                NewVariant("B", [NewField("_variantIdentifier", UInt16T)]),
+                                NewVariant("C", [NewField("_variantIdentifier", UInt16T)]),
+                             ]),
+                         NewDataType(ModuleId, "MyClass",
+                             variants: [
+                                NewVariant(
+                                     "_classVariant",
+                                     [
+                                         NewField("MyField", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                         NewField("SecondField", new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))
+                                     ])
+                             ])
+                     ],
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new CreateObject(new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                         new Assign(
+                                             new Field(
+                                                 new Local("_local0"),
+                                                 "MyField",
+                                                 "_classVariant"),
+                                             new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                         new Assign(
+                                             new Field(
+                                                 new Field(
+                                                     new Local("_local0"),
+                                                     "MyField",
+                                                     "_classVariant"),
+                                                 "_variantIdentifier",
+                                                 "A"),
+                                             new Use(new UIntConstant(0, 2))),
+                                         new Assign(
+                                             new Field(
+                                                 new Local("_local0"),
+                                                 "SecondField",
+                                                 "_classVariant"),
+                                             new CreateObject(new NewLoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                         new Assign(
+                                             new Field(
+                                                 new Field(
+                                                     new Local("_local0"),
+                                                     "SecondField",
+                                                     "_classVariant"),
+                                                 "_variantIdentifier",
+                                                 "B"),
+                                             new Use(new UIntConstant(1, 2)))
+                                     ],
+                                     new SwitchInt(
+                                         new Copy(
+                                             new Field(
+                                                 new Field(
+                                                     new Local("_local0"),
+                                                     "MyField",
+                                                     "_classVariant"),
+                                                 "_variantIdentifier",
+                                                 "A")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb1") },
+                                             { 1, new BasicBlockId("bb4") },
+                                             { 2, new BasicBlockId("bb6") },
+                                         },
+                                         new BasicBlockId("bb8"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [],
+                                     new SwitchInt(
+                                         new Copy(
+                                             new Field(
+                                                 new Field(
+                                                     new Local("_local0"),
+                                                     "SecondField",
+                                                     "_classVariant"),
+                                                 "_variantIdentifier",
+                                                 "A")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb2") }
+                                         },
+                                         new BasicBlockId("bb3"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb2"),
+                                     [new Assign(new Local("_local1"), new Use(new IntConstant(1, 4)))],
+                                     new GoTo(new BasicBlockId("bb9"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb3"),
+                                     [new Assign(new Local("_local1"), new Use(new IntConstant(2, 4)))],
+                                     new GoTo(new BasicBlockId("bb9"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb4"),
+                                     [],
+                                     new SwitchInt(
+                                         new Copy(
+                                             new Field(
+                                                 new Field(
+                                                     new Local("_local0"),
+                                                     "SecondField",
+                                                     "_classVariant"),
+                                                 "_variantIdentifier",
+                                                 "A")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 1, new BasicBlockId("bb5") }
+                                         },
+                                         new BasicBlockId("bb8"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb5"),
+                                     [new Assign(new Local("_local1"), new Use(new IntConstant(3, 4)))],
+                                     new GoTo(new BasicBlockId("bb9"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb6"),
+                                     [],
+                                     new SwitchInt(
+                                         new Copy(
+                                             new Field(
+                                                 new Field(
+                                                     new Local("_local0"),
+                                                     "SecondField",
+                                                     "_classVariant"),
+                                                 "_variantIdentifier",
+                                                 "A")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb7") }
+                                         },
+                                         new BasicBlockId("bb8"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb7"),
+                                     [new Assign(new Local("_local1"), new Use(new IntConstant(4, 4)))],
+                                     new GoTo(new BasicBlockId("bb9"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb8"),
+                                     [new Assign(new Local("_local1"), new Use(new IntConstant(5, 4)))],
+                                     new GoTo(new BasicBlockId("bb9"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb9"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", "a", new NewLoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                 new NewMethodLocal("_local1", "b", Int32T),
+                             ])
+                     ])
+             }
         };
     }
 }
