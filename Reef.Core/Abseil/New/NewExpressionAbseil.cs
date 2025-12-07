@@ -74,18 +74,44 @@ public partial class NewProgramAbseil
         var bodyBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
         var afterBasicBlockId = new BasicBlockId("after");
         var elseBasicBlockId = expression.IfExpression.ElseBody is null ? afterBasicBlockId : new BasicBlockId("else");
+        var elseIfBasicBlockIds = Enumerable.Range(0, expression.IfExpression.ElseIfs.Count).Select(x => new BasicBlockId($"elseIf{x}")).ToArray();
         
         _basicBlocks[^1].Terminator = new SwitchInt(
             valueOperand,
             new Dictionary<int, BasicBlockId>
             {
-                { 0, elseBasicBlockId }
+                { 0, elseIfBasicBlockIds.FirstOrDefault() ?? elseBasicBlockId }
             },
             bodyBasicBlockId);
         
         _basicBlockStatements = [];
         _basicBlocks.Add(new BasicBlock(bodyBasicBlockId, _basicBlockStatements, new GoTo(afterBasicBlockId)));
         NewLowerExpression(expression.IfExpression.Body.NotNull(), destination);
+
+        foreach (var (i, elseIf) in expression.IfExpression.ElseIfs.Index())
+        {
+            _basicBlockStatements = [];
+            var basicBlockId = elseIfBasicBlockIds[i];
+            basicBlockId.Id = $"bb{_basicBlocks.Count}";
+            _basicBlocks.Add(new BasicBlock(basicBlockId, _basicBlockStatements));
+
+            var elseIfCheck = NewLowerExpression(elseIf.CheckExpression, null);
+            
+            var elseIfBodyBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+
+            _basicBlocks[^1].Terminator = new SwitchInt(
+                elseIfCheck.ToOperand(),
+                new Dictionary<int, BasicBlockId>
+                {
+                    { 0, i < elseIfBasicBlockIds.Length - 1 ? elseIfBasicBlockIds[i + 1] : afterBasicBlockId }
+                },
+                elseIfBodyBasicBlockId);
+
+            _basicBlockStatements = [];
+            _basicBlocks.Add(new BasicBlock(elseIfBodyBasicBlockId, _basicBlockStatements, new GoTo(afterBasicBlockId)));
+
+            NewLowerExpression(elseIf.Body.NotNull(), destination);
+        }
 
         if (expression.IfExpression.ElseBody is not null)
         {
