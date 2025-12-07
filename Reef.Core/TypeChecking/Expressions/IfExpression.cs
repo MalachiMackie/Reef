@@ -115,7 +115,12 @@ public partial class TypeChecker
                                                                       variableInstantiation.InstantiatedInEachElseIf);
         }
 
-        // todo: tail expression
+        if (ifExpression is { Body.ResolvedType: { } bodyResolvedType, ElseBody.ResolvedType: { } elseResolvedType }
+            && ExpectType(bodyResolvedType, elseResolvedType, SourceRange.Default, reportError: false, assignInferredTypes: false))
+        {
+            return bodyResolvedType;
+        }
+
         return InstantiatedClass.Unit;
     }
 }
