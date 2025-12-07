@@ -534,6 +534,97 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : NewTestBase(
                                  new NewMethodLocal("_local1", null, BooleanT)
                              ])
                      ])
+             },
+             {
+                 "while continue",
+                 """
+                 var mut a = 0;
+                 while(a < 10) {
+                    a = a + 1;
+                    if (a == 5) {
+                        continue;
+                    }
+                    printf("hi")
+                 }
+                 """,
+                 NewLoweredProgram(
+                     [
+                         NewMethod(
+                             new DefId(ModuleId, $"{ModuleId}._Main"),
+                             "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(new Local("_local0"), new Use(new IntConstant(0, 4))),
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [
+                                         new Assign(
+                                             new Local("_local1"),
+                                             new BinaryOperation(
+                                                 new Copy(new Local("_local0")),
+                                                 new IntConstant(10, 4),
+                                                 BinaryOperationKind.LessThan))
+                                     ],
+                                     new SwitchInt(
+                                         new Copy(new Local("_local1")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb6") }
+                                         },
+                                         new BasicBlockId("bb2"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb2"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new BinaryOperation(
+                                                 new Copy(new Local("_local0")),
+                                                 new IntConstant(1, 4),
+                                                 BinaryOperationKind.Add)),
+                                         new Assign(
+                                             new Local("_local2"),
+                                             new BinaryOperation(
+                                                 new Copy(new Local("_local0")),
+                                                 new IntConstant(5, 4),
+                                                 BinaryOperationKind.Equal))
+                                     ],
+                                     new SwitchInt(
+                                         new Copy(new Local("_local2")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             {0, new BasicBlockId("bb4")}
+                                         },
+                                         new BasicBlockId("bb3"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb3"),
+                                     [],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb4"),
+                                     [],
+                                     new MethodCall(
+                                         new NewLoweredFunctionReference(DefId.Printf, []),
+                                         [new StringConstant("hi")],
+                                         new Local("_local3"),
+                                         new BasicBlockId("bb5"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb5"),
+                                     [],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb6"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new NewMethodLocal("_local0", "a", Int32T),
+                                 new NewMethodLocal("_local1", null, BooleanT),
+                                 new NewMethodLocal("_local2", null, BooleanT),
+                                 new NewMethodLocal("_local3", null, Unit),
+                             ])
+                     ])
              }
         };
     }

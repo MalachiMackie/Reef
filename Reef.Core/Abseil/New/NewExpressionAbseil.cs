@@ -37,7 +37,7 @@ public partial class NewProgramAbseil
             BlockExpression blockExpression => LowerBlock(blockExpression, destination),
             WhileExpression whileExpression => LowerWhile(whileExpression),
             BreakExpression => LowerBreak(),
-            ContinueExpression => throw new NotImplementedException(),
+            ContinueExpression => LowerContinue(),
             IfExpressionExpression ifExpressionExpression => LowerIf(ifExpressionExpression, destination),
             MatchesExpression matchesExpression => LowerMatches(matchesExpression, destination),
             MatchExpression matchExpression => LowerMatch(matchExpression, destination),
@@ -60,6 +60,15 @@ public partial class NewProgramAbseil
                 variableDeclarationExpression),
             _ => throw new ArgumentOutOfRangeException(nameof(expression))
         };
+    }
+
+    private IExpressionResult LowerContinue()
+    {
+        var loopBasicBlocks = _loopBasicBlocksStack.Peek();
+        _basicBlocks[^1].Terminator = new GoTo(loopBasicBlocks.Beginning);
+        GetNextEmptyBasicBlock();
+        
+        return new OperandResult(new UnitConstant());
     }
 
     private IExpressionResult LowerBreak()
