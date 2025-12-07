@@ -69,25 +69,41 @@ public partial class NewProgramAbseil
         
         var valueOperand = NewLowerExpression(expression.IfExpression.CheckExpression, null).ToOperand();
 
+        _controlFlowDepth++;
+
         var bodyBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
         var afterBasicBlockId = new BasicBlockId("after");
+        var elseBasicBlockId = expression.IfExpression.ElseBody is null ? afterBasicBlockId : new BasicBlockId("else");
         
         _basicBlocks[^1].Terminator = new SwitchInt(
             valueOperand,
             new Dictionary<int, BasicBlockId>
             {
-                { 0, afterBasicBlockId }
+                { 0, elseBasicBlockId }
             },
             bodyBasicBlockId);
         
         _basicBlockStatements = [];
-        _basicBlocks.Add(new BasicBlock(bodyBasicBlockId, _basicBlockStatements));
+        _basicBlocks.Add(new BasicBlock(bodyBasicBlockId, _basicBlockStatements, new GoTo(afterBasicBlockId)));
         NewLowerExpression(expression.IfExpression.Body.NotNull(), destination);
 
-        _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
+        if (expression.IfExpression.ElseBody is not null)
+        {
+            _basicBlockStatements = [];
+            elseBasicBlockId.Id = $"bb{_basicBlocks.Count}";
+            _basicBlocks.Add(new BasicBlock(
+                elseBasicBlockId,
+                _basicBlockStatements,
+                new GoTo(afterBasicBlockId)));
+
+            NewLowerExpression(expression.IfExpression.ElseBody, destination);
+        }
+        
         afterBasicBlockId.Id = $"bb{_basicBlocks.Count}";
         _basicBlockStatements = [];
         _basicBlocks.Add(new BasicBlock(afterBasicBlockId, _basicBlockStatements));
+
+        _controlFlowDepth--;
 
         return destination is null ? new OperandResult(new UnitConstant()) : new PlaceResult(destination);
     }

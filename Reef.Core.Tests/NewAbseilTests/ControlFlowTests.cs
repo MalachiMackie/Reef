@@ -145,36 +145,42 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : NewTestBase(
                              locals: [new NewMethodLocal("_local0", "a", Int32T)])
                      ])
              },
-//             {
-//                 "if else",
-//                 """
-//                 var mut a = 0;
-//                 if (true) {a = 1}
-//                 else {a = 2}
-//                 """,
-//                 NewLoweredProgram(
-//                     methods: [
-//                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration("a", Int32Constant(0, true), false),
-//                                 SwitchInt(
-//                                     CastBoolToInt(BoolConstant(true, true), true),
-//                                     new(){
-//                                         {
-//                                             0,
-//                                             Block(
-//                                                 [LocalValueAssignment("a", Int32Constant(2, true), false, Int32T)],
-//                                                 Unit,
-//                                                 false)},
-//                                     },
-//                                     Block([LocalValueAssignment("a", Int32Constant(1, true), false, Int32T)], Unit, false),
-//                                     false,
-//                                     Unit),
-//                                 NewMethodReturnUnit()
-//                             ],
-//                             locals: [new NewMethodLocal("_localX", "a", Int32T)])
-//                     ])
-//             },
+             {
+                 "if else",
+                 """
+                 var mut a = 0;
+                 if (true) {a = 1}
+                 else {a = 2}
+                 """,
+                 NewLoweredProgram(
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(0, 4)))],
+                                     new SwitchInt(
+                                         new BoolConstant(true),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb2")}
+                                         },
+                                         new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(1, 4)))],
+                                     new GoTo(new BasicBlockId("bb3"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb2"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(2, 4)))],
+                                     new GoTo(new BasicBlockId("bb3"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb3"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [new NewMethodLocal("_local0", "a", Int32T)])
+                     ])
+             },
 //             {
 //                 "assign if else to variable",
 //                 """
