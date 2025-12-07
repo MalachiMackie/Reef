@@ -31,7 +31,7 @@ public partial class NewProgramAbseil
             BinaryOperatorExpression binaryOperatorExpression => LowerBinaryExpression(
                 binaryOperatorExpression, destination),
             BlockExpression blockExpression => LowerBlock(blockExpression, destination),
-            WhileExpression whileExpression => throw new NotImplementedException(),
+            WhileExpression whileExpression => LowerWhile(whileExpression),
             BreakExpression breakExpression => throw new NotImplementedException(),
             ContinueExpression continueExpression => throw new NotImplementedException(),
             IfExpressionExpression ifExpressionExpression => LowerIf(ifExpressionExpression, destination),
@@ -56,6 +56,41 @@ public partial class NewProgramAbseil
                 variableDeclarationExpression),
             _ => throw new ArgumentOutOfRangeException(nameof(expression))
         };
+    }
+
+    private IExpressionResult LowerWhile(WhileExpression expression)
+    {
+        _controlFlowDepth++;
+        _basicBlockStatements = [];
+        var beginningBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+        var afterBasicBlockId = new BasicBlockId("after");
+        var bodyBasicBlockId = new BasicBlockId("body");
+        _basicBlocks.Add(new BasicBlock(beginningBasicBlockId, _basicBlockStatements));
+        var checkValue = NewLowerExpression(expression.Check.NotNull(), null);
+
+        _basicBlocks[^1].Terminator = new SwitchInt(
+            checkValue.ToOperand(),
+            new Dictionary<int, BasicBlockId>
+            {
+                { 0, afterBasicBlockId }
+            },
+            bodyBasicBlockId);
+
+        _basicBlockStatements = [];
+        bodyBasicBlockId.Id = $"bb{_basicBlocks.Count}";
+        _basicBlocks.Add(new BasicBlock(
+            bodyBasicBlockId, _basicBlockStatements));
+        NewLowerExpression(expression.Body.NotNull(), null);
+
+        _basicBlocks[^1].Terminator = new GoTo(beginningBasicBlockId);
+
+        _basicBlockStatements = [];
+        afterBasicBlockId.Id = $"bb{_basicBlocks.Count}";
+        _basicBlocks.Add(new BasicBlock(
+            afterBasicBlockId, _basicBlockStatements));
+
+        _controlFlowDepth--;
+        return new OperandResult(new UnitConstant());
     }
 
     private IExpressionResult LowerIf(IfExpressionExpression expression, IPlace? destination)
