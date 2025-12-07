@@ -34,7 +34,7 @@ public partial class NewProgramAbseil
             WhileExpression whileExpression => throw new NotImplementedException(),
             BreakExpression breakExpression => throw new NotImplementedException(),
             ContinueExpression continueExpression => throw new NotImplementedException(),
-            IfExpressionExpression ifExpressionExpression => throw new NotImplementedException(),
+            IfExpressionExpression ifExpressionExpression => LowerIf(ifExpressionExpression, destination),
             MatchesExpression matchesExpression => LowerMatches(matchesExpression, destination),
             MatchExpression matchExpression => LowerMatch(matchExpression, destination),
             MemberAccessExpression memberAccessExpression => LowerMemberAccess(memberAccessExpression,
@@ -56,6 +56,40 @@ public partial class NewProgramAbseil
                 variableDeclarationExpression),
             _ => throw new ArgumentOutOfRangeException(nameof(expression))
         };
+    }
+
+    private IExpressionResult LowerIf(IfExpressionExpression expression, IPlace? destination)
+    {
+        if (destination is null && expression.ValueUseful)
+        {
+            var localName = LocalName((uint)_locals.Count);
+            _locals.Add(new NewMethodLocal(localName, null, GetTypeReference(expression.ResolvedType.NotNull())));
+            destination = new Local(localName);
+        }
+        
+        var valueOperand = NewLowerExpression(expression.IfExpression.CheckExpression, null).ToOperand();
+
+        var bodyBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+        var afterBasicBlockId = new BasicBlockId("after");
+        
+        _basicBlocks[^1].Terminator = new SwitchInt(
+            valueOperand,
+            new Dictionary<int, BasicBlockId>
+            {
+                { 0, afterBasicBlockId }
+            },
+            bodyBasicBlockId);
+        
+        _basicBlockStatements = [];
+        _basicBlocks.Add(new BasicBlock(bodyBasicBlockId, _basicBlockStatements));
+        NewLowerExpression(expression.IfExpression.Body.NotNull(), destination);
+
+        _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
+        afterBasicBlockId.Id = $"bb{_basicBlocks.Count}";
+        _basicBlockStatements = [];
+        _basicBlocks.Add(new BasicBlock(afterBasicBlockId, _basicBlockStatements));
+
+        return destination is null ? new OperandResult(new UnitConstant()) : new PlaceResult(destination);
     }
     
     private IExpressionResult LowerMatchPatterns(

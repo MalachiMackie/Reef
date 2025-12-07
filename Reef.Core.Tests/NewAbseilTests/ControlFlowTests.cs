@@ -113,30 +113,38 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : NewTestBase(
                              returnType: new NewLoweredConcreteTypeReference("result", DefId.Result, [Int64T, Int64T]))
                      ])
              },
-//             {
-//                 "simple if",
-//                 """
-//                 var mut a = 0;
-//                 if (true) a = 1;
-//                 """,
-//                 NewLoweredProgram(
-//                     methods: [
-//                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-//                             [
-//                                 VariableDeclaration("a", Int32Constant(0, true), false),
-//                                 SwitchInt(
-//                                     CastBoolToInt(BoolConstant(true, true), true),
-//                                     new() {
-//                                         {0, Noop()}
-//                                     },
-//                                     new NewMethodLocalValueAssignment("a", Int32Constant(1, true), false, Int32T),
-//                                     false,
-//                                     Unit),
-//                                 NewMethodReturnUnit(),
-//                             ],
-//                             locals: [Local("a", Int32T)])
-//                     ])
-//             },
+             {
+                 "simple if",
+                 """
+                 var mut a = 0;
+                 if (true) a = 1;
+                 """,
+                 NewLoweredProgram(
+                     methods: [
+                         NewMethod(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(new Local("_local0"), new Use(new IntConstant(0, 4)))
+                                     ],
+                                     new SwitchInt(
+                                         new BoolConstant(true),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             {0, new BasicBlockId("bb2")}
+                                         },
+                                         new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(1, 4)))],
+                                     new GoTo(new BasicBlockId("bb2"))),
+                                 new BasicBlock(new BasicBlockId("bb2"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [new NewMethodLocal("_local0", "a", Int32T)])
+                     ])
+             },
 //             {
 //                 "if else",
 //                 """
@@ -164,7 +172,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : NewTestBase(
 //                                     Unit),
 //                                 NewMethodReturnUnit()
 //                             ],
-//                             locals: [Local("a", Int32T)])
+//                             locals: [new NewMethodLocal("_localX", "a", Int32T)])
 //                     ])
 //             },
 //             {
@@ -259,7 +267,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : NewTestBase(
 //                                     Unit),
 //                                 NewMethodReturnUnit()
 //                             ],
-//                             locals: [Local("a", Int32T)])
+//                             locals: [new NewMethodLocal("_localX", "a", Int32T)])
 //                     ])
 //             },
 //             {
@@ -303,7 +311,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : NewTestBase(
 //                                     Unit),
 //                                 NewMethodReturnUnit()
 //                             ],
-//                             locals: [Local("a", Int32T)])
+//                             locals: [new NewMethodLocal("_localX", "a", Int32T)])
 //                     ])
 //             },
         };
