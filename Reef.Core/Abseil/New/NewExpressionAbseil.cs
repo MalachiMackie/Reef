@@ -103,7 +103,7 @@ public partial class NewProgramAbseil
                 elseIfCheck.ToOperand(),
                 new Dictionary<int, BasicBlockId>
                 {
-                    { 0, i < elseIfBasicBlockIds.Length - 1 ? elseIfBasicBlockIds[i + 1] : afterBasicBlockId }
+                    { 0, i < elseIfBasicBlockIds.Length - 1 ? elseIfBasicBlockIds[i + 1] : elseBasicBlockId }
                 },
                 elseIfBodyBasicBlockId);
 
