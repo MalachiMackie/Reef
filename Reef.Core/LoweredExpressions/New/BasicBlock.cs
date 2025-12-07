@@ -2,15 +2,9 @@
 
 public interface IStatement;
 
-public interface IOperand
-{
-}
+public interface IOperand;
 
-public interface IRValue
-{
-}
-
-// public record FieldAccess(IOperand FieldOwner, string FieldName, string VariantName) : IRValue;
+public interface IRValue;
 
 public interface ITerminator;
 
@@ -30,8 +24,6 @@ public record SwitchInt(
     BasicBlockId Otherwise) : ITerminator;
 
 public record MethodCall(NewLoweredFunctionReference Function, IReadOnlyList<IOperand> Arguments, IPlace PlaceDestination, BasicBlockId GoToAfter) : ITerminator;
-
-public record TempGoToReturn : ITerminator;
 
 public record Return : ITerminator;
 

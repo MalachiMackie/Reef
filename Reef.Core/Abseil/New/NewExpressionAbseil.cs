@@ -1334,7 +1334,7 @@ public partial class NewProgramAbseil
 
         if (_controlFlowDepth > 0)
         {
-            _basicBlocks[^1].Terminator = new TempGoToReturn();
+            _basicBlocks[^1].Terminator = new GoTo(new BasicBlockId(TempReturnBasicBlockId));
             _basicBlockStatements = [];
             _basicBlocks.Add(new BasicBlock(new BasicBlockId($"bb{_basicBlocks.Count}"), _basicBlockStatements));
         }
@@ -1671,11 +1671,67 @@ public partial class NewProgramAbseil
         return result;
     }
 
+    private IExpressionResult LowerFallOut(IExpression operand, IPlace? destination)
+    {
+        var value = NewLowerExpression(operand, destination: null);
+
+        var type = GetTypeReference(operand.ResolvedType.NotNull());
+        var resultValuePlace = ExpressionResultIntoPlace(value, type);
+
+        var errBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+        var okBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count + 1}");
+
+        _controlFlowDepth++;
+
+        _basicBlockStatements = [];
+        _basicBlocks[^1].Terminator = new SwitchInt(
+                new Copy(new Field(resultValuePlace, VariantIdentifierFieldName, "Ok")),
+                new Dictionary<int, BasicBlockId>
+                {
+                    { 0, okBasicBlockId }
+                },
+                errBasicBlockId);
+        
+        var currentMethod = _currentFunction.NotNull().LoweredMethod;
+        var returnType = (currentMethod.ReturnValue.Type as NewLoweredConcreteTypeReference).NotNull();
+
+        Debug.Assert(returnType.DefinitionId == DefId.Result);
+        
+        _basicBlocks.Add(new BasicBlock(
+            errBasicBlockId,
+            [],
+            new MethodCall(
+                GetFunctionReference(DefId.Result_Create_Error, [], returnType.TypeArguments),
+                [new Copy(new Field(resultValuePlace, TupleElementName(0), "Error"))],
+                new Local(ReturnValueLocalName),
+                new BasicBlockId(TempReturnBasicBlockId))));
+
+        _controlFlowDepth--;
+
+        _basicBlockStatements = [];
+        _basicBlocks.Add(new BasicBlock(
+            okBasicBlockId,
+            _basicBlockStatements));
+
+        var okValueField = new Field(
+            resultValuePlace,
+            TupleElementName(0),
+            "Ok");
+
+        if (destination is not null)
+        {
+            _basicBlockStatements.Add(
+                new Assign(destination, new Use(new Copy(okValueField))));
+        }
+
+        return new PlaceResult(destination ?? okValueField);
+    }
+
     private IExpressionResult LowerUnaryOperator(UnaryOperatorExpression unaryOperatorExpression, IPlace? destination)
     {
         if (unaryOperatorExpression.UnaryOperator.OperatorType == UnaryOperatorType.FallOut)
         {
-            throw new NotImplementedException();
+            return LowerFallOut(unaryOperatorExpression.UnaryOperator.Operand.NotNull(), destination);
         }
         
         var valueOperand = NewLowerExpression(unaryOperatorExpression.UnaryOperator.Operand.NotNull(), destination: null).NotNull();

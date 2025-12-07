@@ -14,6 +14,7 @@ public partial class NewProgramAbseil
     private const string ThisParameterName = "this";
     private const string ClosureParameterName = "closure";
     private const string VariantIdentifierFieldName = "_variantIdentifier";
+    private const string TempReturnBasicBlockId = "TempReturnBasicBlockId";
     private static string ParameterLocalName(uint parameterIndex) => $"_param{parameterIndex}";
     private static string LocalName(uint localIndex) => $"_local{localIndex}";
     private static string TupleElementName(uint memberIndex) => $"Item{memberIndex}";
@@ -284,9 +285,36 @@ public partial class NewProgramAbseil
             var basicBlock = _basicBlocks[i];
             basicBlock.Terminator ??= new GoTo(new BasicBlockId($"bb{i + 1}"));
 
-            if (basicBlock.Terminator is TempGoToReturn)
+            switch (basicBlock.Terminator)
             {
-                basicBlock.Terminator = new GoTo(returnBasicBlockId);
+                case GoTo goTo:
+                {
+                    if (goTo.BasicBlockId.Id == TempReturnBasicBlockId)
+                    {
+                        goTo.BasicBlockId.Id = returnBasicBlockId.Id;
+                    }
+                    break;
+                }
+                case MethodCall methodCall:
+                {
+                    if (methodCall.GoToAfter.Id == TempReturnBasicBlockId)
+                    {
+                        methodCall.GoToAfter.Id = returnBasicBlockId.Id;
+                    }
+                    break;
+                }
+                case Return:
+                    break;
+                case SwitchInt switchInt:
+                {
+                    foreach (var bbId in switchInt.Cases.Values.Append(switchInt.Otherwise).Where(x => x.Id == TempReturnBasicBlockId))
+                    {
+                        bbId.Id = returnBasicBlockId.Id;
+                    }
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
 
