@@ -8,6 +8,9 @@ namespace Reef.Core.Abseil.New;
 public partial class NewProgramAbseil
 {
     private uint _controlFlowDepth;
+    private readonly Stack<LoopBasicBlocks> _loopBasicBlocksStack = [];
+
+    private record LoopBasicBlocks(BasicBlockId Beginning, BasicBlockId After);
 
     private interface IExpressionResult
     {
@@ -26,14 +29,15 @@ public partial class NewProgramAbseil
     
     private IExpressionResult NewLowerExpression(IExpression expression, IPlace? destination)
     {
+        Debug.Assert(_basicBlocks[^1].Terminator is null);
         return expression switch
         {
             BinaryOperatorExpression binaryOperatorExpression => LowerBinaryExpression(
                 binaryOperatorExpression, destination),
             BlockExpression blockExpression => LowerBlock(blockExpression, destination),
             WhileExpression whileExpression => LowerWhile(whileExpression),
-            BreakExpression breakExpression => throw new NotImplementedException(),
-            ContinueExpression continueExpression => throw new NotImplementedException(),
+            BreakExpression => LowerBreak(),
+            ContinueExpression => throw new NotImplementedException(),
             IfExpressionExpression ifExpressionExpression => LowerIf(ifExpressionExpression, destination),
             MatchesExpression matchesExpression => LowerMatches(matchesExpression, destination),
             MatchExpression matchExpression => LowerMatch(matchExpression, destination),
@@ -58,14 +62,24 @@ public partial class NewProgramAbseil
         };
     }
 
+    private IExpressionResult LowerBreak()
+    {
+        var loopBasicBlocks = _loopBasicBlocksStack.Peek();
+        _basicBlocks[^1].Terminator = new GoTo(loopBasicBlocks.After);
+        GetNextEmptyBasicBlock();
+        
+        return new OperandResult(new UnitConstant());
+    }
+
     private IExpressionResult LowerWhile(WhileExpression expression)
     {
-        _controlFlowDepth++;
-        _basicBlockStatements = [];
-        var beginningBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+        var beginningBasicBlockId = GetNextEmptyBasicBlock();
         var afterBasicBlockId = new BasicBlockId("after");
         var bodyBasicBlockId = new BasicBlockId("body");
-        _basicBlocks.Add(new BasicBlock(beginningBasicBlockId, _basicBlockStatements));
+        
+        _controlFlowDepth++;
+        _loopBasicBlocksStack.Push(new LoopBasicBlocks(beginningBasicBlockId, afterBasicBlockId));
+        
         var checkValue = NewLowerExpression(expression.Check.NotNull(), null);
 
         _basicBlocks[^1].Terminator = new SwitchInt(
@@ -76,20 +90,15 @@ public partial class NewProgramAbseil
             },
             bodyBasicBlockId);
 
-        _basicBlockStatements = [];
-        bodyBasicBlockId.Id = $"bb{_basicBlocks.Count}";
-        _basicBlocks.Add(new BasicBlock(
-            bodyBasicBlockId, _basicBlockStatements));
+        bodyBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
         NewLowerExpression(expression.Body.NotNull(), null);
 
         _basicBlocks[^1].Terminator = new GoTo(beginningBasicBlockId);
 
-        _basicBlockStatements = [];
-        afterBasicBlockId.Id = $"bb{_basicBlocks.Count}";
-        _basicBlocks.Add(new BasicBlock(
-            afterBasicBlockId, _basicBlockStatements));
+        afterBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
 
         _controlFlowDepth--;
+        _loopBasicBlocksStack.Pop();
         return new OperandResult(new UnitConstant());
     }
 
@@ -106,7 +115,7 @@ public partial class NewProgramAbseil
 
         _controlFlowDepth++;
 
-        var bodyBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+        var bodyBasicBlockId = new BasicBlockId("body");
         var afterBasicBlockId = new BasicBlockId("after");
         var elseBasicBlockId = expression.IfExpression.ElseBody is null ? afterBasicBlockId : new BasicBlockId("else");
         var elseIfBasicBlockIds = Enumerable.Range(0, expression.IfExpression.ElseIfs.Count).Select(x => new BasicBlockId($"elseIf{x}")).ToArray();
@@ -118,21 +127,19 @@ public partial class NewProgramAbseil
                 { 0, elseIfBasicBlockIds.FirstOrDefault() ?? elseBasicBlockId }
             },
             bodyBasicBlockId);
-        
-        _basicBlockStatements = [];
-        _basicBlocks.Add(new BasicBlock(bodyBasicBlockId, _basicBlockStatements, new GoTo(afterBasicBlockId)));
+
+        bodyBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
         NewLowerExpression(expression.IfExpression.Body.NotNull(), destination);
 
         foreach (var (i, elseIf) in expression.IfExpression.ElseIfs.Index())
         {
-            _basicBlockStatements = [];
+            _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
             var basicBlockId = elseIfBasicBlockIds[i];
-            basicBlockId.Id = $"bb{_basicBlocks.Count}";
-            _basicBlocks.Add(new BasicBlock(basicBlockId, _basicBlockStatements));
+            basicBlockId.Id = GetNextEmptyBasicBlock().Id;
 
             var elseIfCheck = NewLowerExpression(elseIf.CheckExpression, null);
             
-            var elseIfBodyBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+            var elseIfBodyBasicBlockId = new BasicBlockId("elseIfBody");
 
             _basicBlocks[^1].Terminator = new SwitchInt(
                 elseIfCheck.ToOperand(),
@@ -142,31 +149,38 @@ public partial class NewProgramAbseil
                 },
                 elseIfBodyBasicBlockId);
 
-            _basicBlockStatements = [];
-            _basicBlocks.Add(new BasicBlock(elseIfBodyBasicBlockId, _basicBlockStatements, new GoTo(afterBasicBlockId)));
+            elseIfBodyBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
 
             NewLowerExpression(elseIf.Body.NotNull(), destination);
         }
 
         if (expression.IfExpression.ElseBody is not null)
         {
-            _basicBlockStatements = [];
-            elseBasicBlockId.Id = $"bb{_basicBlocks.Count}";
-            _basicBlocks.Add(new BasicBlock(
-                elseBasicBlockId,
-                _basicBlockStatements,
-                new GoTo(afterBasicBlockId)));
+            _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
+            elseBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
 
             NewLowerExpression(expression.IfExpression.ElseBody, destination);
         }
-        
-        afterBasicBlockId.Id = $"bb{_basicBlocks.Count}";
-        _basicBlockStatements = [];
-        _basicBlocks.Add(new BasicBlock(afterBasicBlockId, _basicBlockStatements));
+
+        afterBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
 
         _controlFlowDepth--;
 
         return destination is null ? new OperandResult(new UnitConstant()) : new PlaceResult(destination);
+    }
+
+    private BasicBlockId GetNextEmptyBasicBlock()
+    {
+        if (_basicBlocks[^1] is {Statements.Count: 0, Terminator: null, Id: var id})
+        {
+            return id;
+        }
+
+        _basicBlockStatements = [];
+        id = new BasicBlockId($"bb{_basicBlocks.Count}");
+        _basicBlocks.Add(new BasicBlock(id, _basicBlockStatements));
+
+        return id;
     }
     
     private IExpressionResult LowerMatchPatterns(
@@ -273,12 +287,8 @@ public partial class NewProgramAbseil
             foreach (var variantNode in variantNodes)
             {
                 _basicBlocks[^1].Terminator ??= new GoTo(afterBasicBlockId);
-                
-                var basicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
-                _basicBlockStatements = [];
-                _basicBlocks.Add(new BasicBlock(
-                    basicBlockId,
-                    _basicBlockStatements));
+
+                var basicBlockId = GetNextEmptyBasicBlock();
 
                 var variantIndex = dataType.Variants.Index().First(x => x.Item.Name == variantNode.VariantName).Index;
                 caseResults[variantIndex] = basicBlockId;
@@ -329,10 +339,9 @@ public partial class NewProgramAbseil
 
                     if (variantNode.Expression is not null)
                     {
-                        otherwiseBasicBlockId.Id = $"bb{_basicBlocks.Count}";
                         _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
-                        _basicBlockStatements = [];
-                        _basicBlocks.Add(new BasicBlock(otherwiseBasicBlockId, _basicBlockStatements));
+
+                        otherwiseBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
                         
                         foreach (var (variable, variableAccessor) in GetAncestorVariableAssignments(variantNode))
                         {
@@ -387,10 +396,8 @@ public partial class NewProgramAbseil
 
                 if (typeNode.Expression is not null)
                 {
-                    otherwiseBasicBlockId.Id = $"bb{_basicBlocks.Count}";
                     _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
-                    _basicBlockStatements = [];
-                    _basicBlocks.Add(new BasicBlock(otherwiseBasicBlockId, _basicBlockStatements));
+                    otherwiseBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
                     
                     foreach (var (variable, variableAccessor) in GetAncestorVariableAssignments(typeNode))
                     {
@@ -406,9 +413,7 @@ public partial class NewProgramAbseil
         {
             var discardNode = discardNodes[0];
             _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
-            _basicBlockStatements = [];
-            otherwiseBasicBlockId.Id = $"bb{_basicBlocks.Count}";
-            _basicBlocks.Add(new BasicBlock(otherwiseBasicBlockId, _basicBlockStatements));
+            otherwiseBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
             
             foreach (var (variable, variableAccessor) in GetAncestorVariableAssignments(discardNode))
             {
@@ -761,10 +766,8 @@ public partial class NewProgramAbseil
             GetTypeReference(e.Value.ResolvedType.NotNull()),
             destination,
             afterBasicBlockId);
-        
-        _basicBlockStatements = [];
-        afterBasicBlockId.Id = $"bb{_basicBlocks.Count}";
-        _basicBlocks.Add(new BasicBlock(afterBasicBlockId, _basicBlockStatements));
+
+        afterBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
 
         return result;
     }
@@ -922,11 +925,8 @@ public partial class NewProgramAbseil
                 var initialBasicBlock = _basicBlocks[^1];
 
 
-                _basicBlockStatements = [];
-                var nextBasicBlock = new BasicBlock(
-                    new BasicBlockId($"bb{_basicBlocks.Count}"),
-                    _basicBlockStatements);
-                _basicBlocks.Add(nextBasicBlock);
+                GetNextEmptyBasicBlock();
+                var nextBasicBlock = _basicBlocks[^1];
 
                 var afterBasicBlockId = new BasicBlockId("after");
 
@@ -945,8 +945,7 @@ public partial class NewProgramAbseil
                         tupleParamPattern,
                         destination);
 
-                    _basicBlockStatements = [];
-                    var nextBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+                    var nextBasicBlockId = GetNextEmptyBasicBlock(); 
                     if (i + 1 < tupleParamPatterns.Count)
                     {
                         nextBasicBlock.Terminator = new SwitchInt(
@@ -962,7 +961,7 @@ public partial class NewProgramAbseil
                         nextBasicBlock.Terminator = new GoTo(nextBasicBlockId);
                     }
 
-                    _basicBlocks.Add(nextBasicBlock = new BasicBlock(nextBasicBlockId, _basicBlockStatements));
+                    nextBasicBlock = _basicBlocks[^1];
                 }
 
                 afterBasicBlockId.Id = nextBasicBlock.Id.Id;
@@ -1025,11 +1024,8 @@ public partial class NewProgramAbseil
 
                 var initialBasicBlock = _basicBlocks[^1];
 
-                _basicBlockStatements = [];
-                var nextBasicBlock = new BasicBlock(
-                    new BasicBlockId($"bb{_basicBlocks.Count}"),
-                    _basicBlockStatements);
-                _basicBlocks.Add(nextBasicBlock);
+                GetNextEmptyBasicBlock();
+                var nextBasicBlock = _basicBlocks[^1];
 
                 var afterBasicBlockId = new BasicBlockId("after");
 
@@ -1049,8 +1045,7 @@ public partial class NewProgramAbseil
                         new VariableDeclarationPattern(fieldPattern.FieldName, SourceRange.Default, IsMut: false){Variable = fieldPattern.Variable.NotNull()},
                         destination);
 
-                    _basicBlockStatements = [];
-                    var nextBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+                    var nextBasicBlockId = GetNextEmptyBasicBlock();
                     if (i + 1 < fieldPatterns.Count)
                     {
                         nextBasicBlock.Terminator = new SwitchInt(
@@ -1066,7 +1061,7 @@ public partial class NewProgramAbseil
                         nextBasicBlock.Terminator = new GoTo(nextBasicBlockId);
                     }
 
-                    _basicBlocks.Add(nextBasicBlock = new BasicBlock(nextBasicBlockId, _basicBlockStatements));
+                    nextBasicBlock = _basicBlocks[^1];
                 }
 
                 afterBasicBlockId.Id = nextBasicBlock.Id.Id;
@@ -1130,9 +1125,8 @@ public partial class NewProgramAbseil
                         new VariableDeclarationPattern(fieldPattern.FieldName, SourceRange.Default, IsMut: false){Variable = fieldPattern.Variable.NotNull()},
                         destination);
 
-                    _basicBlockStatements = [];
                     var basicBlock = _basicBlocks[^1];
-                    var nextBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+                    var nextBasicBlockId = GetNextEmptyBasicBlock();
                     if (i + 1 < fieldPatterns.Count)
                     {
                         basicBlock.Terminator = new SwitchInt(
@@ -1148,7 +1142,6 @@ public partial class NewProgramAbseil
                         basicBlock.Terminator = new GoTo(nextBasicBlockId);
                     }
 
-                    _basicBlocks.Add(new BasicBlock(nextBasicBlockId, _basicBlockStatements));
                     afterBasicBlockId.Id = nextBasicBlockId.Id;
                 }
 
@@ -1446,8 +1439,7 @@ public partial class NewProgramAbseil
         if (_controlFlowDepth > 0)
         {
             _basicBlocks[^1].Terminator = new GoTo(new BasicBlockId(TempReturnBasicBlockId));
-            _basicBlockStatements = [];
-            _basicBlocks.Add(new BasicBlock(new BasicBlockId($"bb{_basicBlocks.Count}"), _basicBlockStatements));
+            GetNextEmptyBasicBlock();
         }
         else
         {
@@ -1502,12 +1494,11 @@ public partial class NewProgramAbseil
             
             arguments.AddRange(originalArguments);
 
-            var lastBasicBlock = _basicBlocks[^1];
-            _basicBlockStatements = [];
-            var newBasicBlock = new BasicBlock(new BasicBlockId($"bb{_basicBlocks.Count}"), _basicBlockStatements);
-            _basicBlocks.Add(newBasicBlock);
+            var nextBasicBlockId = new BasicBlockId("after");
+            _basicBlocks[^1].Terminator = new MethodCall(
+                functionReference, arguments, destination, nextBasicBlockId);
 
-            lastBasicBlock.Terminator = new MethodCall(functionReference, arguments, destination, newBasicBlock.Id);
+            nextBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
 
             return new PlaceResult(destination);
         }
@@ -1577,12 +1568,9 @@ public partial class NewProgramAbseil
         arguments.AddRange(originalArguments);
 
         {
-            var lastBasicBlock = _basicBlocks[^1];
-            _basicBlockStatements = [];
-            var newBasicBlock = new BasicBlock(new BasicBlockId($"bb{_basicBlocks.Count}"), _basicBlockStatements);
-            _basicBlocks.Add(newBasicBlock);
-
-            lastBasicBlock.Terminator = new MethodCall(functionReference, arguments, destination, newBasicBlock.Id);
+            var nextBasicBlockId = new BasicBlockId("after");
+            _basicBlocks[^1].Terminator = new MethodCall(functionReference, arguments, destination, nextBasicBlockId);
+            nextBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
 
             return new PlaceResult(destination);
         }
@@ -1789,12 +1777,11 @@ public partial class NewProgramAbseil
         var type = GetTypeReference(operand.ResolvedType.NotNull());
         var resultValuePlace = ExpressionResultIntoPlace(value, type);
 
-        var errBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
-        var okBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count + 1}");
+        var errBasicBlockId = new BasicBlockId("err");
+        var okBasicBlockId = new BasicBlockId("ok");
 
         _controlFlowDepth++;
 
-        _basicBlockStatements = [];
         _basicBlocks[^1].Terminator = new SwitchInt(
                 new Copy(new Field(resultValuePlace, VariantIdentifierFieldName, "Ok")),
                 new Dictionary<int, BasicBlockId>
@@ -1807,22 +1794,19 @@ public partial class NewProgramAbseil
         var returnType = (currentMethod.ReturnValue.Type as NewLoweredConcreteTypeReference).NotNull();
 
         Debug.Assert(returnType.DefinitionId == DefId.Result);
-        
-        _basicBlocks.Add(new BasicBlock(
-            errBasicBlockId,
-            [],
-            new MethodCall(
-                GetFunctionReference(DefId.Result_Create_Error, [], returnType.TypeArguments),
-                [new Copy(new Field(resultValuePlace, TupleElementName(0), "Error"))],
-                new Local(ReturnValueLocalName),
-                new BasicBlockId(TempReturnBasicBlockId))));
 
+        
+
+        errBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
+        _basicBlocks[^1].Terminator = new MethodCall(
+            GetFunctionReference(DefId.Result_Create_Error, [], returnType.TypeArguments),
+            [new Copy(new Field(resultValuePlace, TupleElementName(0), "Error"))],
+            new Local(ReturnValueLocalName),
+            new BasicBlockId(TempReturnBasicBlockId));
+        
         _controlFlowDepth--;
 
-        _basicBlockStatements = [];
-        _basicBlocks.Add(new BasicBlock(
-            okBasicBlockId,
-            _basicBlockStatements));
+        okBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
 
         var okValueField = new Field(
             resultValuePlace,
@@ -2223,30 +2207,19 @@ public partial class NewProgramAbseil
             {
                 var leftOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull(), null).NotNull();
 
-                if (_basicBlocks.Count == 0)
-                {
-                    _basicBlocks.Add(new BasicBlock(new BasicBlockId("bb0"), _basicBlockStatements));
-                }
-                var previousBasicBlock = _basicBlocks[^1];
-
-                var trueBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
-                var falseBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count + 1}");
-                var afterBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count + 2}");
+                var trueBasicBlockId = new BasicBlockId("true");
+                var falseBasicBlockId = new BasicBlockId("false");
+                var afterBasicBlockId = new BasicBlockId("after");
                 
-                previousBasicBlock.Terminator = new SwitchInt(
+                _basicBlocks[^1].Terminator = new SwitchInt(
                     leftOperand.ToOperand(),
                     new Dictionary<int, BasicBlockId>
                     {
                         { 0, falseBasicBlockId }
                     },
                     trueBasicBlockId);
-                
-                _basicBlockStatements = [];
-                var trueBasicBlock = new BasicBlock(trueBasicBlockId, _basicBlockStatements)
-                {
-                    Terminator = new GoTo(afterBasicBlockId)
-                };
-                _basicBlocks.Add(trueBasicBlock);
+
+                trueBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
 
                 _controlFlowDepth++;
                 var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull(), destination: null)
@@ -2254,62 +2227,45 @@ public partial class NewProgramAbseil
                 _controlFlowDepth--;
                 
                 _basicBlockStatements.Add(new Assign(destination, new Use(rightOperand.ToOperand())));
-                
-                _basicBlockStatements = [new Assign(destination, new Use(new BoolConstant(false)))];
-                var falseBasicBlock = new BasicBlock(falseBasicBlockId, _basicBlockStatements)
-                {
-                    Terminator = new GoTo(afterBasicBlockId)
-                };
-                _basicBlocks.Add(falseBasicBlock);
+                _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
 
-                _basicBlockStatements = [];
-                _basicBlocks.Add(new BasicBlock(afterBasicBlockId, _basicBlockStatements));
+                falseBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
+                _basicBlockStatements.Add(new Assign(destination, new Use(new BoolConstant(false))));
+                _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
+
+                afterBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
                 break;
             }
             case BinaryOperatorType.BooleanOr:
             {
                 var leftOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull(), destination: null).NotNull();
 
-                if (_basicBlocks.Count == 0)
-                {
-                    _basicBlocks.Add(new BasicBlock(new BasicBlockId("bb0"), _basicBlockStatements));
-                }
-                var previousBasicBlock = _basicBlocks[^1];
-
-                var falseBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
-                var trueBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count + 1}");
-                var afterBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count + 2}");
+                var falseBasicBlockId = new BasicBlockId("false");
+                var trueBasicBlockId = new BasicBlockId("true");
+                var afterBasicBlockId = new BasicBlockId("after");
                 
-                previousBasicBlock.Terminator = new SwitchInt(
+                _basicBlocks[^1].Terminator = new SwitchInt(
                     leftOperand.ToOperand(),
                     new Dictionary<int, BasicBlockId>
                     {
                         { 0, falseBasicBlockId }
                     },
                     trueBasicBlockId);
-                
-                _basicBlockStatements = [];
-                var falseBasicBlock = new BasicBlock(falseBasicBlockId, _basicBlockStatements)
-                {
-                    Terminator = new GoTo(afterBasicBlockId)
-                };
-                _basicBlocks.Add(falseBasicBlock);
+
+                falseBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
 
                 _controlFlowDepth++;
                 var rightOperand = NewLowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull(), destination: null)
                     .NotNull();
                 _controlFlowDepth--;
                 _basicBlockStatements.Add(new Assign(destination, new Use(rightOperand.ToOperand())));
-                
-                _basicBlockStatements = [new Assign(destination, new Use(new BoolConstant(true)))];
-                var trueBasicBlock = new BasicBlock(trueBasicBlockId, _basicBlockStatements)
-                {
-                    Terminator = new GoTo(afterBasicBlockId)
-                };
-                _basicBlocks.Add(trueBasicBlock);
+                _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
 
-                _basicBlockStatements = [];
-                _basicBlocks.Add(new BasicBlock(afterBasicBlockId, _basicBlockStatements));
+                trueBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
+                _basicBlockStatements.Add(new Assign(destination, new Use(new BoolConstant(true))));
+                _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
+
+                afterBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
                 break;
             }
             default:
