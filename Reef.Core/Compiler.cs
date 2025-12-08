@@ -1,6 +1,8 @@
 ﻿using System.Diagnostics;
 using Reef.Core.Abseil;
+using Reef.Core.Abseil.New;
 using Reef.Core.IL;
+using Reef.Core.LoweredExpressions.New;
 using Reef.Core.TypeChecking;
 
 namespace Reef.Core;
@@ -10,10 +12,11 @@ public class Compiler
     public static async Task Compile(
         string inputFile)
     {
+        var v2 = true;
         if (string.IsNullOrWhiteSpace(inputFile)
             || Path.GetExtension(inputFile) is not ".rf")
         {
-            Console.Error.WriteLine("Expected a single .rf file as an argument");
+            await Console.Error.WriteLineAsync("Expected a single .rf file as an argument");
             return;
         }
 
@@ -65,6 +68,7 @@ public class Compiler
 
         Console.WriteLine("Lowering...");
         var loweredProgram = ProgramAbseil.Lower(parsedProgram.ParsedProgram);
+        var (newLoweredProgram, newImportedModules) = NewProgramAbseil.Lower(parsedProgram.ParsedProgram);
 
 
         Console.WriteLine("Compiling to IL...");
@@ -73,15 +77,20 @@ public class Compiler
         Console.WriteLine("Generating Assembly...");
 
         IReadOnlyList<ReefILModule> allModules = [..importedModules.Append(il)];
+        IReadOnlyList<NewLoweredModule> allNewModules = [..newImportedModules.Append(newLoweredProgram)];
 
         var usefulMethodIds = new TreeShaker(allModules).Shake();
+        var newUsefulMethodIds = new NewTreeShaker(allNewModules).Shake();
 
-        var assembly = AssemblyLine.Process(allModules, usefulMethodIds);
+        var assembly =
+            v2
+                ? AssemblyLine2.Process(allNewModules, newUsefulMethodIds)
+                : AssemblyLine.Process(allModules, usefulMethodIds);
         var asmFile = $"{fileNameWithoutExtension}.asm";
         await File.WriteAllTextAsync(Path.Join(buildDirectory, asmFile), assembly);
 
         var objFile = $"{fileNameWithoutExtension}.obj";
-        // todo: move out to its own process, so Reef.Core doens't interact with the file system
+        // todo: move out to its own process, so Reef.Core doesn't interact with the file system
         var nasmProcess = new Process
         {
             StartInfo = new ProcessStartInfo(
@@ -108,7 +117,7 @@ public class Compiler
         if (nasmOutput.Length > 0)
             Console.WriteLine(nasmOutput);
         if (nasmError.Length > 0)
-            Console.Error.WriteLine(nasmError);
+            await Console.Error.WriteLineAsync(nasmError);
 
         await nasmProcess.WaitForExitAsync();
 
@@ -147,7 +156,7 @@ public class Compiler
         if (linkOutput.Length > 0)
             Console.WriteLine(linkOutput);
         if (linkError.Length > 0)
-            Console.Error.WriteLine(linkError);
+            await Console.Error.WriteLineAsync(linkError);
 
         await linkProcess.WaitForExitAsync();
 

@@ -4,7 +4,7 @@ namespace Reef.Core.Tests;
 
 public static class NewLoweredProgramHelpers
 {
-    public static NewLoweredProgram NewLoweredProgram(
+    public static NewLoweredModule NewLoweredProgram(
         IReadOnlyList<NewLoweredMethod>? methods = null,
         IReadOnlyList<NewDataType>? types = null)
     {

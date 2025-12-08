@@ -34,31 +34,30 @@ public partial class NewProgramAbseil
     private NewLoweredConcreteTypeReference? _currentType;
     private (NewLoweredMethod LoweredMethod, FunctionSignature FunctionSignature)? _currentFunction;
 
-    private readonly IReadOnlyList<NewLoweredProgram> _importedPrograms;
+    private readonly IReadOnlyList<NewLoweredModule> _importedModules;
     private List<BasicBlock> _basicBlocks = [];
     private List<IStatement> _basicBlockStatements = [];
     private List<NewMethodLocal> _locals = [];
 
-    public static NewLoweredProgram Lower(LangProgram program)
+    public static (NewLoweredModule Module, IReadOnlyList<NewLoweredModule> ImportedModules) Lower(LangProgram program)
     {
-        return new NewProgramAbseil(program).LowerInner();
+        var abseil = new NewProgramAbseil(program);
+        return (abseil.LowerInner(), abseil._importedModules);
     }
 
     private NewProgramAbseil(LangProgram program)
     {
         var importedDataTypes = new List<NewDataType>();
         var printf = FunctionSignature.Printf;
-        var importedMethods = new List<NewLoweredMethod>()
+        var importedMethods = new List<IMethod>
         {
-            new (
+            new NewLoweredExternMethod(
                 printf.Id,
                 printf.Name,
                 [],
-                [],
                 ReturnValue: new NewMethodLocal(ReturnValueLocalName, null, GetTypeReference(InstantiatedClass.Unit)),
                 ParameterLocals: [..printf.Parameters.Select((x, i) => new NewMethodLocal(
-                    ParameterLocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))],
-                Locals: [])
+                    ParameterLocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))])
         };
 
         var rawPointerType = new NewLoweredConcreteTypeReference(
@@ -171,9 +170,9 @@ public partial class NewProgramAbseil
                     [..variant.CreateFunction.Parameters.Values.Select((x, i) => new NewMethodLocal(ParameterLocalName((uint)i), x.Name.StringValue, GetTypeReference(x.Type)))],
                     []));
         }
-
-        _importedPrograms = [
-            new NewLoweredProgram()
+        
+        _importedModules = [
+            new NewLoweredModule
             {
                 DataTypes = importedDataTypes,
                 Methods = importedMethods
@@ -182,7 +181,7 @@ public partial class NewProgramAbseil
         _program = program;
     }
 
-    private NewLoweredProgram LowerInner()
+    private NewLoweredModule LowerInner()
     {
         foreach (var dataType in _program.Unions.Select(x => LowerUnion(x.Signature.NotNull())))
         {
@@ -231,7 +230,7 @@ public partial class NewProgramAbseil
 
         }
 
-        return new NewLoweredProgram()
+        return new NewLoweredModule
         {
             DataTypes = [.._types.Values],
             Methods = [.._methods.Keys]
@@ -693,7 +692,7 @@ public partial class NewProgramAbseil
         if (_types.TryGetValue(typeId, out var dataType))
             return dataType;
 
-        return _importedPrograms.Select(x => x.DataTypes.FirstOrDefault(y => y.Id == typeId))
+        return _importedModules.Select(x => x.DataTypes.FirstOrDefault(y => y.Id == typeId))
             .FirstOrDefault(x => x is not null)
             ?? throw new InvalidOperationException($"No data type with id {typeId} was found");
     }
@@ -704,7 +703,7 @@ public partial class NewProgramAbseil
             IReadOnlyList<INewLoweredTypeReference> ownerTypeArguments)
     {
         var loweredMethod = _methods.Keys.FirstOrDefault(x => x.Id == functionId)
-            ?? _importedPrograms.SelectMany(x => x.Methods)
+            ?? _importedModules.SelectMany(x => x.Methods)
                 .First(x => x.Id == functionId);
 
         IReadOnlyList<INewLoweredTypeReference> resultingTypeArguments = [..typeArguments, ..ownerTypeArguments];
@@ -743,7 +742,7 @@ public partial class NewProgramAbseil
 
         NewLoweredConcreteTypeReference FunctionObjectCase(FunctionObject f)
         {
-            var type = _importedPrograms
+            var type = _importedModules
                 .SelectMany(x => x.DataTypes.Where(y => y.Name == $"Function`{f.Parameters.Count + 1}"))
                 .First();
             

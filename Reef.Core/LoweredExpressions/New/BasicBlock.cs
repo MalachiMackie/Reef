@@ -84,6 +84,15 @@ public enum UnaryOperationKind
     Negate
 }
 
+public interface IMethod
+{
+    DefId Id { get; }
+    string Name { get; }
+    IReadOnlyList<NewLoweredGenericPlaceholder> TypeParameters { get; }
+    NewMethodLocal ReturnValue { get; }
+    List<NewMethodLocal> ParameterLocals { get; }
+}
+
 public record NewLoweredMethod(
     DefId Id,
     string Name,
@@ -91,8 +100,14 @@ public record NewLoweredMethod(
     IReadOnlyList<BasicBlock> BasicBlocks,
     NewMethodLocal ReturnValue,
     List<NewMethodLocal> ParameterLocals,
-    List<NewMethodLocal> Locals);
+    List<NewMethodLocal> Locals) : IMethod;
 
+public record NewLoweredExternMethod(
+    DefId Id,
+    string Name,
+    IReadOnlyList<NewLoweredGenericPlaceholder> TypeParameters,
+    NewMethodLocal ReturnValue,
+    List<NewMethodLocal> ParameterLocals) : IMethod;
 
 public record NewMethodLocal(string CompilerGivenName, string? UserGivenName, INewLoweredTypeReference Type);
 
@@ -125,8 +140,8 @@ public record NewStaticDataTypeField(
     NewMethodLocal ReturnValueLocal);
 
 
-public class NewLoweredProgram
+public class NewLoweredModule
 {
     public required IReadOnlyList<NewDataType> DataTypes { get; init; }
-    public required IReadOnlyList<NewLoweredMethod> Methods { get; init; }
+    public required IReadOnlyList<IMethod> Methods { get; init; }
 }

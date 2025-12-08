@@ -9,11 +9,11 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : NewTestBase(
 {
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void ControlFlowAbseilTest(string description, string source, NewLoweredProgram expectedProgram)
+    public void ControlFlowAbseilTest(string description, string source, NewLoweredModule expectedProgram)
     {
         description.Should().NotBeEmpty();
         var program = CreateProgram(ModuleId, source);
-        var loweredProgram = NewProgramAbseil.Lower(program);
+        var (loweredProgram, _) = NewProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -98,7 +98,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : NewTestBase(
         ]);
         
         var program = CreateProgram(ModuleId, source);
-        var loweredProgram = NewProgramAbseil.Lower(program);
+        var (loweredProgram, _) = NewProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -107,7 +107,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : NewTestBase(
 
     private const string ModuleId = "ControlFlowTests";
 
-    public static TheoryData<string, string, NewLoweredProgram> TestCases()
+    public static TheoryData<string, string, NewLoweredModule> TestCases()
     {
         return new()
         {

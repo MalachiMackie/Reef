@@ -10,7 +10,7 @@ public class NewPrettyPrinter
     private uint _indentationLevel;
 
     public static string PrettyPrintLoweredProgram(
-            NewLoweredProgram program,
+            NewLoweredModule program,
             bool parensAroundExpressions = true,
             bool printValueUseful = true)
     {
@@ -21,14 +21,14 @@ public class NewPrettyPrinter
         return printer._stringBuilder.ToString();
     }
 
-    private void PrettyPrintLoweredProgramInner(NewLoweredProgram program)
+    private void PrettyPrintLoweredProgramInner(NewLoweredModule program)
     {
         foreach (var dataType in program.DataTypes)
         {
             PrettyPrintDataType(dataType);
         }
 
-        foreach (var method in program.Methods)
+        foreach (var method in program.Methods.OfType<NewLoweredMethod>())
         {
             PrettyPrintMethod(method);
         }

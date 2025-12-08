@@ -27,7 +27,7 @@ public class NewTestBase
         return program;
     }
 
-    protected void PrintPrograms(NewLoweredProgram expected, NewLoweredProgram actual, bool parensAroundExpressions = true, bool printValueUseful = true)
+    protected void PrintPrograms(NewLoweredModule expected, NewLoweredModule actual, bool parensAroundExpressions = true, bool printValueUseful = true)
     {
         TestOutput.WriteLine("Expected Program:");
         TestOutput.WriteLine(NewPrettyPrinter.PrettyPrintLoweredProgram(expected, parensAroundExpressions, printValueUseful));

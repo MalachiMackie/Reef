@@ -9,11 +9,11 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
 {
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void MatchAbseilTest(string description, string source, NewLoweredProgram expectedProgram)
+    public void MatchAbseilTest(string description, string source, NewLoweredModule expectedProgram)
     {
         description.Should().NotBeEmpty();
         var program = CreateProgram(ModuleId, source);
-        var loweredProgram = NewProgramAbseil.Lower(program);
+        var (loweredProgram, _) = NewProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram, false, false);
 
@@ -46,7 +46,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                              ])
                      ]);
         var program = CreateProgram(ModuleId, source);
-        var loweredProgram = NewProgramAbseil.Lower(program);
+        var (loweredProgram, _) = NewProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram, false, false);
 
@@ -57,7 +57,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
 
     private const string ModuleId = "MatchTests";
 
-    public static TheoryData<string, string, NewLoweredProgram> TestCases()
+    public static TheoryData<string, string, NewLoweredModule> TestCases()
     {
         return new()
         {

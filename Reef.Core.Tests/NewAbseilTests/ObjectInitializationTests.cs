@@ -10,11 +10,11 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : New
 {
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void ObjectInitializationAbseilTest(string description, string source, NewLoweredProgram expectedProgram)
+    public void ObjectInitializationAbseilTest(string description, string source, NewLoweredModule expectedProgram)
     {
         description.Should().NotBeEmpty();
         var program = CreateProgram(ModuleId, source);
-        var loweredProgram = NewProgramAbseil.Lower(program);
+        var (loweredProgram, _) = NewProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -23,7 +23,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : New
 
     private const string ModuleId = "ObjectInitializationTests";
 
-    public static TheoryData<string, string, NewLoweredProgram> TestCases()
+    public static TheoryData<string, string, NewLoweredModule> TestCases()
     {
         return new()
         {

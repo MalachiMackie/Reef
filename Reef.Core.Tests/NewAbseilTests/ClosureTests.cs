@@ -9,11 +9,11 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 {
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void ClosureAbseilTest(string description, string source, NewLoweredProgram expectedProgram)
+    public void ClosureAbseilTest(string description, string source, NewLoweredModule expectedProgram)
     {
         description.Should().NotBeEmpty();
         var program = CreateProgram(ModuleId, source);
-        var loweredProgram = NewProgramAbseil.Lower(program);
+        var (loweredProgram, _) = NewProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -285,7 +285,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
             ]);
         
         var program = CreateProgram(ModuleId, source);
-        var loweredProgram = NewProgramAbseil.Lower(program);
+        var (loweredProgram, _) = NewProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -294,7 +294,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : NewTestBase(test
 
     private const string ModuleId = "ClosureTests";
     
-    public static TheoryData<string, string, NewLoweredProgram> TestCases()
+    public static TheoryData<string, string, NewLoweredModule> TestCases()
     {
         return new()
         {

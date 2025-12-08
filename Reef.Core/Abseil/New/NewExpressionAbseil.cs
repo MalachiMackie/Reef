@@ -1490,7 +1490,7 @@ public partial class NewProgramAbseil
             
             var methodType = (GetTypeReference(e.MethodCall.Method.ResolvedType.NotNull()) as NewLoweredConcreteTypeReference).NotNull();
 
-            var fn = _importedPrograms.SelectMany(x =>
+            var fn = _importedModules.SelectMany(x =>
                 x.Methods.Where(y => y.Name == $"Function`{e.MethodCall.ArgumentList.Count + 1}__Call"))
                 .First();
             

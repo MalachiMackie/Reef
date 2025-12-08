@@ -9,11 +9,11 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
 {
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void ClassAbseilTest(string description, string source, NewLoweredProgram expectedProgram)
+    public void ClassAbseilTest(string description, string source, NewLoweredModule expectedProgram)
     {
         description.Should().NotBeEmpty();
         var program = CreateProgram(ModuleId, source);
-        var loweredProgram = NewProgramAbseil.Lower(program);
+        var (loweredProgram, _) = NewProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -65,7 +65,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
                     locals: [new NewMethodLocal("_local0", "a", StringT)])
             ]);
         var program = CreateProgram(ModuleId, source);
-        var loweredProgram = NewProgramAbseil.Lower(program);
+        var (loweredProgram, _) = NewProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -74,7 +74,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : NewTestBase(testOu
 
     private const string ModuleId = "ClassTests";
 
-    public static TheoryData<string, string, NewLoweredProgram> TestCases()
+    public static TheoryData<string, string, NewLoweredModule> TestCases()
     {
         return new()
         {
