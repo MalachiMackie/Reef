@@ -261,13 +261,73 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
         {
             case Assign assign:
             {
-                throw new NotImplementedException();
+                var asmPlace = PlaceToAsmPlace(assign.Place);
+                AssignRValue(asmPlace, assign.RValue);
+                break;
             }
             case LocalAlive:
             case LocalDead:
                 throw new NotImplementedException();
             default:
                 throw new ArgumentOutOfRangeException(nameof(statement));
+        }
+    }
+
+    private void ProcessBinaryOperation(IAsmPlace destination, IOperand left, IOperand right, BinaryOperationKind kind)
+    {
+        switch (kind)
+        {
+            case BinaryOperationKind.Add:
+            {
+                MoveOperandToDestination(left, new Register("rax"));
+                MoveOperandToDestination(right, new Register("rbx"));
+                _codeSegment.AppendLine("    add     rax, rbx");
+                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                break;
+            }
+            case BinaryOperationKind.Subtract:
+                throw new NotImplementedException();
+            case BinaryOperationKind.Multiply:
+                throw new NotImplementedException();
+            case BinaryOperationKind.Divide:
+                throw new NotImplementedException();
+            case BinaryOperationKind.LessThan:
+                throw new NotImplementedException();
+            case BinaryOperationKind.LessThanOrEqual:
+                throw new NotImplementedException();
+            case BinaryOperationKind.GreaterThan:
+                throw new NotImplementedException();
+            case BinaryOperationKind.GreaterThanOrEqual:
+                throw new NotImplementedException();
+            case BinaryOperationKind.Equal:
+                throw new NotImplementedException();
+            case BinaryOperationKind.NotEqual:
+                throw new NotImplementedException();
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+    }
+
+    private void AssignRValue(IAsmPlace place, IRValue rValue)
+    {
+        switch (rValue)
+        {
+            case BinaryOperation binaryOperation:
+            {
+                ProcessBinaryOperation(place, binaryOperation.LeftOperand, binaryOperation.RightOperand, binaryOperation.Kind);
+                break;
+            }
+            case CreateObject createObject:
+                throw new NotImplementedException();
+            case UnaryOperation unaryOperation:
+                throw new NotImplementedException();
+            case Use use:
+            {
+                MoveOperandToDestination(use.Operand, place);
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(rValue));
         }
     }
 
