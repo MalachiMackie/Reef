@@ -455,7 +455,7 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
         switch (terminator)
         {
             case GoTo goTo:
-                _codeSegment.AppendLine($"    jmp    {GetBasicBlockLabel(goTo.BasicBlockId)}");
+                _codeSegment.AppendLine($"    jmp     {GetBasicBlockLabel(goTo.BasicBlockId)}");
                 break;
             case MethodCall methodCall:
                 ProcessMethodCall(methodCall);
@@ -476,7 +476,7 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
                     _codeSegment.AppendLine($"    je      {GetBasicBlockLabel(jumpTo)}");
                 }
 
-                _codeSegment.AppendLine($"    jmp    {GetBasicBlockLabel(switchInt.Otherwise)}");
+                _codeSegment.AppendLine($"    jmp     {GetBasicBlockLabel(switchInt.Otherwise)}");
                 break;
             }
             default:
@@ -578,10 +578,11 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
         switch (operand)
         {
             case BoolConstant boolConstant:
-                throw new NotImplementedException();
+                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, {(boolConstant.Value ? '1' : '0')}");
+                break;
             case Copy copy:
             {
-                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, {GetPlaceAsm(PlaceToAsmPlace(copy.Place))}");
+                StoreAsmPlaceInPlace(PlaceToAsmPlace(copy.Place), destination);
                 break;
             }
             case FunctionPointerConstant functionPointerConstant:

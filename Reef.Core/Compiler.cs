@@ -10,7 +10,8 @@ namespace Reef.Core;
 public class Compiler
 {
     public static async Task Compile(
-        string inputFile)
+        string inputFile, 
+        bool outputIr)
     {
         var v2 = true;
         if (string.IsNullOrWhiteSpace(inputFile)
@@ -70,6 +71,12 @@ public class Compiler
         var loweredProgram = ProgramAbseil.Lower(parsedProgram.ParsedProgram);
         var (newLoweredProgram, newImportedModules) = NewProgramAbseil.Lower(parsedProgram.ParsedProgram);
 
+
+        if (outputIr)
+        {
+            var irStr = NewPrettyPrinter.PrettyPrintLoweredProgram(newLoweredProgram, false, false);
+            await File.WriteAllTextAsync(Path.Join(buildDirectory, $"{fileNameWithoutExtension}.ir"), irStr);
+        }
 
         Console.WriteLine("Compiling to IL...");
         var (il, importedModules) = ILCompile.CompileToIL(loweredProgram);
