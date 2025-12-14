@@ -272,6 +272,57 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
                 throw new ArgumentOutOfRangeException(nameof(statement));
         }
     }
+    
+
+    private enum IntSigned
+    {
+        Signed,
+        Unsigned
+    }
+    
+    private IntSigned? GetIntSigned(IOperand operand)
+    {
+        return operand switch
+        {
+            Copy{Place: var place} => GetPlaceType(place) switch
+                {
+                    NewLoweredConcreteTypeReference concrete when DefId.SignedInts.Contains(concrete.DefinitionId) => IntSigned.Signed,
+                    NewLoweredConcreteTypeReference concrete when DefId.UnsignedInts.Contains(concrete.DefinitionId) => IntSigned.Unsigned,
+                    _ => null
+                },
+            UIntConstant => IntSigned.Unsigned,
+            IntConstant => IntSigned.Signed,
+            BoolConstant or FunctionPointerConstant or StringConstant or UnitConstant => null,
+            _ => throw new ArgumentOutOfRangeException(nameof(operand))
+        };
+    }
+    
+
+    private INewLoweredTypeReference GetPlaceType(IPlace place)
+    {
+        switch (place)
+        {
+            case Field field:
+                throw new NotImplementedException();
+            case Local local:
+                return GetLocalType(local);
+            case StaticField staticField:
+                throw new NotImplementedException();
+            default:
+                throw new ArgumentOutOfRangeException(nameof(place));
+        }
+    }
+
+
+    private INewLoweredTypeReference GetLocalType(Local local)
+    {
+        var currentMethod = _currentMethod.NotNull();
+        IEnumerable<NewMethodLocal> locals =
+            [..currentMethod.Locals, ..currentMethod.ParameterLocals, currentMethod.ReturnValue];
+        var foundLocal = locals.First(x => x.CompilerGivenName == local.LocalName);
+        return foundLocal.Type;
+    }
+    
 
     private void ProcessBinaryOperation(IAsmPlace destination, IOperand left, IOperand right, BinaryOperationKind kind)
     {
@@ -286,17 +337,64 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
                 break;
             }
             case BinaryOperationKind.Subtract:
-                throw new NotImplementedException();
+            {
+                MoveOperandToDestination(left, new Register("rax"));
+                MoveOperandToDestination(right, new Register("rbx"));
+                _codeSegment.AppendLine("    sub     rax, rbx");
+                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                break;
+            }
             case BinaryOperationKind.Multiply:
-                throw new NotImplementedException();
+            {
+                MoveOperandToDestination(left, new Register("rax"));
+                MoveOperandToDestination(right, new Register("rbx"));
+                var intSigned = GetIntSigned(left).NotNull();
+                _codeSegment.AppendLine(intSigned == IntSigned.Signed
+                    ? "    imul     rax, rbx"
+                    : "    mul     rax, rbx");
+
+                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                break;
+            }
             case BinaryOperationKind.Divide:
-                throw new NotImplementedException();
+                {
+                MoveOperandToDestination(left, new Register("rax"));
+                MoveOperandToDestination(right, new Register("rbx"));
+                var intSigned = GetIntSigned(left).NotNull();
+                _codeSegment.AppendLine("    cqo");
+                _codeSegment.AppendLine(intSigned == IntSigned.Signed
+                    ? "    idiv     rbx"
+                    : "    div     rbx");
+
+                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                break;
+            }
             case BinaryOperationKind.LessThan:
-                throw new NotImplementedException();
+            {
+                MoveOperandToDestination(left, new Register("rax"));
+                MoveOperandToDestination(right, new Register("rbx"));
+                _codeSegment.AppendLine("    cmp     rax, rbx");
+                _codeSegment.AppendLine("    pushf");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    and     rax, 10000000b"); // sign flag
+                _codeSegment.AppendLine("    shr     rax, 7");
+                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                break;
+            }
             case BinaryOperationKind.LessThanOrEqual:
                 throw new NotImplementedException();
             case BinaryOperationKind.GreaterThan:
-                throw new NotImplementedException();
+            {
+                MoveOperandToDestination(left, new Register("rax"));
+                MoveOperandToDestination(right, new Register("rbx"));
+                _codeSegment.AppendLine("    cmp     rbx, rax");
+                _codeSegment.AppendLine("    pushf");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    and     rax, 10000000b"); // sign flag
+                _codeSegment.AppendLine("    shr     rax, 7");
+                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                break;
+            }
             case BinaryOperationKind.GreaterThanOrEqual:
                 throw new NotImplementedException();
             case BinaryOperationKind.Equal:
