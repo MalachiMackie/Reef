@@ -121,23 +121,31 @@ public class Compiler
 
         await nasmProcess.WaitForExitAsync();
 
+
+        // var msvcVersion = "14.40.33807";
+        var msvcVersion = "14.41.34120";
+
+
+        // var windowsKitsVersion = "10.0.22621.0";
+        var windowsKitsVersion = "10.0.22000.0";
+
         Console.WriteLine("Linking...");
         var linkProcess = new Process
         {
             StartInfo = new ProcessStartInfo(
-                @"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\HostX64\x64\link.exe",
+                $@"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\{msvcVersion}\bin\HostX64\x64\link.exe",
                 [
                     Path.Join(buildDirectory, objFile),
                     "/nologo",
                     "/subsystem:console",
                     $"/out:{Path.Join(buildDirectory, $"{fileNameWithoutExtension}.exe")}",
                     "/machine:x64",
-                    @"C:\Program Files (x86)\Windows Kits\10\Lib\10.0.22621.0\um\x64\kernel32.lib",
-                    @"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\lib\x64\legacy_stdio_definitions.lib",
-                    @"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\lib\x64\legacy_stdio_wide_specifiers.lib",
-                    @"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\lib\x64\vcruntime.lib",
-                    @"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\lib\x64\msvcrt.lib",
-                    @"C:\Program Files (x86)\Windows Kits\10\Lib\10.0.22621.0\ucrt\x64\ucrt.lib",
+                    $@"C:\Program Files (x86)\Windows Kits\10\Lib\{windowsKitsVersion}\um\x64\kernel32.lib",
+                    @$"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\{msvcVersion}\lib\x64\legacy_stdio_definitions.lib",
+                    @$"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\{msvcVersion}\lib\x64\legacy_stdio_wide_specifiers.lib",
+                    @$"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\{msvcVersion}\lib\x64\vcruntime.lib",
+                    @$"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\{msvcVersion}\lib\x64\msvcrt.lib",
+                    $@"C:\Program Files (x86)\Windows Kits\10\Lib\{windowsKitsVersion}\ucrt\x64\ucrt.lib",
                     "/debug:full",
                     "/incremental:no"
                 ])

@@ -300,7 +300,17 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
             case BinaryOperationKind.GreaterThanOrEqual:
                 throw new NotImplementedException();
             case BinaryOperationKind.Equal:
-                throw new NotImplementedException();
+            {
+                MoveOperandToDestination(left, new Register("rax"));
+                MoveOperandToDestination(right, new Register("rbx"));
+                _codeSegment.AppendLine("    cmp     rax, rbx");
+                _codeSegment.AppendLine("    pushf");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    and     rax, 1000000b"); // zero flag
+                _codeSegment.AppendLine("    shr     rax, 6");
+                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, rax");
+                break;
+            }
             case BinaryOperationKind.NotEqual:
                 throw new NotImplementedException();
             default:
@@ -336,7 +346,8 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
         switch (terminator)
         {
             case GoTo goTo:
-                throw new NotImplementedException($"{terminator.GetType()}");
+                _codeSegment.AppendLine($"    jmp    {GetBasicBlockLabel(goTo.BasicBlockId)}");
+                break;
             case MethodCall methodCall:
                 ProcessMethodCall(methodCall);
                 break;
@@ -348,7 +359,17 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
                 break;
             }
             case SwitchInt switchInt:
-                throw new NotImplementedException($"{terminator.GetType()}");
+            {
+                MoveOperandToDestination(switchInt.Operand, new Register("rax"));
+                foreach (var (intCase, jumpTo) in switchInt.Cases)
+                {
+                    _codeSegment.AppendLine($"    cmp     rax, {intCase}");
+                    _codeSegment.AppendLine($"    je      {GetBasicBlockLabel(jumpTo)}");
+                }
+
+                _codeSegment.AppendLine($"    jmp    {GetBasicBlockLabel(switchInt.Otherwise)}");
+                break;
+            }
             default:
                 throw new ArgumentOutOfRangeException(nameof(terminator));
         }
@@ -450,11 +471,17 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
             case BoolConstant boolConstant:
                 throw new NotImplementedException();
             case Copy copy:
-                throw new NotImplementedException();
+            {
+                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, {GetPlaceAsm(PlaceToAsmPlace(copy.Place))}");
+                break;
+            }
             case FunctionPointerConstant functionPointerConstant:
                 throw new NotImplementedException();
             case IntConstant intConstant:
-                throw new NotImplementedException();
+            {
+                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, {intConstant.Value:X}h");
+                break;
+            }
             case StringConstant stringConstant:
             {
                 if (!_strings.TryGetValue(stringConstant.Value, out var stringName))
@@ -470,7 +497,8 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
                 break;
             }
             case UIntConstant uIntConstant:
-                throw new NotImplementedException();
+                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, {uIntConstant.Value:X}h");
+                break;
             case UnitConstant unitConstant:
                 throw new NotImplementedException();
             default:
