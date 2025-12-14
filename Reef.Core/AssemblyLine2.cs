@@ -312,7 +312,18 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
                 break;
             }
             case BinaryOperationKind.NotEqual:
-                throw new NotImplementedException();
+            {
+                MoveOperandToDestination(left, new Register("rax"));
+                MoveOperandToDestination(right, new Register("rbx"));
+                _codeSegment.AppendLine("    cmp     rax, rbx");
+                _codeSegment.AppendLine("    pushf");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    and     rax, 1000000b"); // zero flag
+                _codeSegment.AppendLine("    shr     rax, 6");
+                _codeSegment.AppendLine("    btc     rax, 0");
+                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, rax");
+                break;
+            }
             default:
                 throw new ArgumentOutOfRangeException();
         }
