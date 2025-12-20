@@ -53,5 +53,7 @@ public enum TokenType
     EqualsArrow,
     Todo,
     DoubleAmpersand,
-    DoubleBar
+    DoubleBar,
+    Unboxed,
+    Boxed
 }

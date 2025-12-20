@@ -246,6 +246,8 @@ public class Tokenizer
             TokenType.If when source is "if" => Token.If(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Mut when source is "mut" => Token.Mut(new SourceSpan(position, (ushort)source.Length)),
             TokenType.While when source is "while" => Token.While(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Unboxed when source is "unboxed" => Token.Unboxed(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Boxed when source is "boxed" => Token.Boxed(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Break when source is "break" => Token.Break(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Continue when source is "continue" => Token.Continue(new SourceSpan(position, (ushort)source.Length)),
             TokenType.DoubleColon when source is "::" => Token.DoubleColon(new SourceSpan(position,
@@ -404,6 +406,7 @@ public class Tokenizer
                 break;
             case 'b':
                 tokens[i++] = TokenType.Break;
+                tokens[i++] = TokenType.Boxed;
                 tokens[i++] = TokenType.Identifier;
                 break;
             case 'o':
@@ -411,6 +414,7 @@ public class Tokenizer
                 break;
             case 'u':
                 tokens[i++] = TokenType.Union;
+                tokens[i++] = TokenType.Unboxed;
                 tokens[i++] = TokenType.Identifier;
                 break;
             case '?':
@@ -490,6 +494,8 @@ public class Tokenizer
             TokenType.Semicolon => Matches(source, ";"),
             TokenType.LeftBrace => Matches(source, "{"),
             TokenType.Union => Matches(source, "union"),
+            TokenType.Unboxed => Matches(source, "unboxed"),
+            TokenType.Boxed => Matches(source, "boxed"),
             TokenType.Mut => Matches(source, "mut"),
             TokenType.While => Matches(source, "while"),
             TokenType.Break => Matches(source, "break"),

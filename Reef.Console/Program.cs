@@ -1,10 +1,16 @@
 ﻿using Microsoft.Extensions.Logging;
 using Reef.Core;
 
-await Compiler.Compile(args[0], true, new ConsoleLogger(), CancellationToken.None);
+await Compiler.Compile(args[0], true, ConsoleLogger.Instance, CancellationToken.None);
 
-class ConsoleLogger : ILogger
+file class ConsoleLogger : ILogger
 {
+    public static readonly ConsoleLogger Instance = new();
+
+    private ConsoleLogger()
+    {
+    }
+
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
     {
         Console.WriteLine($"[{logLevel}] {formatter(state, exception)}");
@@ -19,18 +25,18 @@ class ConsoleLogger : ILogger
     {
         return NoopDisposable.Instance;
     }
+}
 
-    private sealed class NoopDisposable : IDisposable
-    {
-        public static readonly NoopDisposable Instance = new(); 
+file sealed class NoopDisposable : IDisposable
+{
+    public static readonly NoopDisposable Instance = new(); 
         
-        private NoopDisposable()
-        {
-        }
-
-        public void Dispose()
-        {
-        }
-
+    private NoopDisposable()
+    {
     }
+
+    public void Dispose()
+    {
+    }
+
 }
