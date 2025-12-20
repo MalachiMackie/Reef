@@ -975,7 +975,7 @@ public sealed class Parser : IDisposable
         return Current switch
         {
             StringToken { Type: TokenType.Identifier, StringValue: "Fn" } stringToken => GetFunctionTypeIdentifier(stringToken),
-            StringToken { Type: TokenType.Identifier } => GetNamedTypeIdentifier(),
+            StringToken { Type: TokenType.Identifier } or {Type: TokenType.Boxed or TokenType.Unboxed} => GetNamedTypeIdentifier(),
             { Type: TokenType.LeftParenthesis } => GetTupleTypeIdentifier(),
             _ => DefaultCase()
         };
@@ -1066,10 +1066,23 @@ public sealed class Parser : IDisposable
 
     private NamedTypeIdentifier? GetNamedTypeIdentifier()
     {
+        Token? boxedSpecifier = null;
+        if (Current.Type is TokenType.Boxed or TokenType.Unboxed)
+        {
+            boxedSpecifier = Current;
+            if (!MoveNext())
+            {
+                _errors.Add(ParserError.ExpectedTypeName(null));
+                return null;
+            }
+        }
+
         // use manual check instead of `ExpectCurrentIdentifier` so we can display the `ExpectedType` error
         if (Current is not StringToken { Type: TokenType.Identifier } typeIdentifier)
         {
-            _errors.Add(ParserError.ExpectedType(Current));
+            _errors.Add(boxedSpecifier is null
+                ? ParserError.ExpectedType(Current)
+                : ParserError.ExpectedTypeName(Current));
             return null;
         }
 
@@ -1094,7 +1107,7 @@ public sealed class Parser : IDisposable
                 });
         }
 
-        return new NamedTypeIdentifier(typeIdentifier, typeArguments,
+        return new NamedTypeIdentifier(typeIdentifier, typeArguments, boxedSpecifier,
             new SourceRange(typeIdentifier.SourceSpan, lastToken?.SourceSpan ?? typeIdentifier.SourceSpan));
     }
 
@@ -1701,10 +1714,10 @@ public sealed class Parser : IDisposable
                 }
             })
         {
-            throw new UnreachableException("It should be impossible to get here");
+            throw new UnreachableException();
         }
 
-        var type = new NamedTypeIdentifier(token, typeArguments ?? [], previousExpression.SourceRange);
+        var type = new NamedTypeIdentifier(token, typeArguments ?? [], null, previousExpression.SourceRange);
 
         ExpectNextIdentifier(out var memberName);
 

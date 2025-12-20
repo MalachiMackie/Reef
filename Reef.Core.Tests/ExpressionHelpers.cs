@@ -99,22 +99,17 @@ public static class ExpressionHelpers
             value), SourceRange.Default);
     }
 
-    public static NamedTypeIdentifier IntType()
+    public static NamedTypeIdentifier IntType(Token? boxedSpecifier = null)
     {
-        return new NamedTypeIdentifier(Identifier("int"), [], SourceRange.Default);
+        return new NamedTypeIdentifier(Identifier("int"), [], boxedSpecifier, SourceRange.Default);
     }
 
     public static ValueAccessorExpression True() =>
         new(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default), null));
 
-    public static NamedTypeIdentifier StringType()
+    public static NamedTypeIdentifier StringType(Token? boxedSpecifier = null)
     {
-        return new NamedTypeIdentifier(Identifier("string"), [], SourceRange.Default);
-    }
-
-    public static NamedTypeIdentifier BooleanType()
-    {
-        return new NamedTypeIdentifier(Identifier("bool"), [], SourceRange.Default);
+        return new NamedTypeIdentifier(Identifier("string"), [], boxedSpecifier, SourceRange.Default);
     }
 
     public static ClassField ClassField(
@@ -321,9 +316,9 @@ public static class ExpressionHelpers
             SourceRange.Default);
     }
 
-    public static NamedTypeIdentifier NamedTypeIdentifier(string typeName, IReadOnlyList<ITypeIdentifier>? typeArguments = null)
+    public static NamedTypeIdentifier NamedTypeIdentifier(string typeName, IReadOnlyList<ITypeIdentifier>? typeArguments = null, Token? boxedSpecifier = null)
     {
-        return new NamedTypeIdentifier(Token.Identifier(typeName, SourceSpan.Default), typeArguments ?? [], SourceRange.Default);
+        return new NamedTypeIdentifier(Token.Identifier(typeName, SourceSpan.Default), typeArguments ?? [], boxedSpecifier, SourceRange.Default);
     }
 
     public static TupleTypeIdentifier TupleTypeIdentifier(IReadOnlyList<ITypeIdentifier> members)

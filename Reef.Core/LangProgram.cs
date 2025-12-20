@@ -79,11 +79,23 @@ public record FnTypeIdentifier(IReadOnlyList<FnTypeIdentifierParameter> Paramete
 
 public record UnitTypeIdentifier(SourceRange SourceRange) : ITypeIdentifier;
 
-public record NamedTypeIdentifier(StringToken Identifier, IReadOnlyList<ITypeIdentifier> TypeArguments, SourceRange SourceRange) : ITypeIdentifier
+public record NamedTypeIdentifier(
+    StringToken Identifier,
+    IReadOnlyList<ITypeIdentifier> TypeArguments,
+    Token? BoxedSpecifier,
+    SourceRange SourceRange) : ITypeIdentifier
 {
     public override string ToString()
     {
-        var sb = new StringBuilder($"{Identifier}");
+        var sb = new StringBuilder();
+
+        if (BoxedSpecifier is not null)
+        {
+            sb.Append(BoxedSpecifier);
+        }
+
+        sb.Append(Identifier.StringValue);
+        
         if (TypeArguments.Count > 0)
         {
             sb.Append("::<");

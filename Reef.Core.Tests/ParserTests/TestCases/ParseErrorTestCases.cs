@@ -46,6 +46,48 @@ public static class ParseErrorTestCases
                 [ParserError.ExpectedType(Token.Equals(SourceSpan.Default))]
             ),
             (
+                "var a: unboxed",
+                new LangProgram("ParseErrorTestCases", [
+                    VariableDeclaration("a")
+                ], [], [], []),
+                [ParserError.ExpectedTypeName(null)]
+            ),
+            (
+                "var a: boxed",
+                new LangProgram("ParseErrorTestCases", [
+                    VariableDeclaration("a")
+                ], [], [], []),
+                [ParserError.ExpectedTypeName(null)]
+            ),
+            (
+                "var a: unboxed;",
+                new LangProgram("ParseErrorTestCases", [
+                    VariableDeclaration("a")
+                ], [], [], []),
+                [ParserError.ExpectedTypeName(Token.Semicolon(SourceSpan.Default))]
+            ),
+            (
+                "var a: boxed;",
+                new LangProgram("ParseErrorTestCases", [
+                    VariableDeclaration("a")
+                ], [], [], []),
+                [ParserError.ExpectedTypeName(Token.Semicolon(SourceSpan.Default))]
+            ),
+            (
+                "var a: int unboxed",
+                new LangProgram("ParseErrorTestCases", [
+                    VariableDeclaration("a", type: IntType())
+                ], [], [], []),
+                [ParserError.ExpectedTokenOrExpression(Token.Unboxed(SourceSpan.Default), TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union)]
+            ),
+            (
+                "var a: int boxed",
+                new LangProgram("ParseErrorTestCases", [
+                    VariableDeclaration("a", type: IntType())
+                ], [], [], []),
+                [ParserError.ExpectedTokenOrExpression(Token.Boxed(SourceSpan.Default), TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union)]
+            ),
+            (
                 "var a: int = ;",
                 new LangProgram("ParseErrorTestCases", [
                     VariableDeclaration("a", type: IntType())

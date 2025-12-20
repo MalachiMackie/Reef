@@ -55,6 +55,30 @@ public static class ParseTestCases
                 [])
             ),
             (
+                """
+                var a: unboxed SomeType;
+                """,
+                new("ParseTestCases",
+                    [
+                        VariableDeclaration("a", value: null, type: NamedTypeIdentifier("SomeType", boxedSpecifier: Token.Unboxed(SourceSpan.Default)))
+                    ],
+                    [],
+                    [], 
+                    [])
+            ),
+            (
+                """
+                var a: boxed SomeType;
+                """,
+                new("ParseTestCases",
+                    [
+                        VariableDeclaration("a", value: null, type: NamedTypeIdentifier("SomeType", boxedSpecifier: Token.Boxed(SourceSpan.Default)))
+                    ],
+                    [],
+                    [], 
+                    [])
+            ),
+            (
              """
              var a = if (true) {} else {};
              """,

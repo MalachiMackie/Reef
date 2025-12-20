@@ -43,6 +43,11 @@ public record ParserError
     {
         return new ParserError(receivedToken, ParserErrorType.ExpectedType);
     }
+    
+    public static ParserError ExpectedTypeName(Token? receivedToken)
+    {
+        return new ParserError(receivedToken, ParserErrorType.ExpectedTypeName);
+    }
 
     public static ParserError ExpectedTypeOrToken(Token? receivedToken, params IReadOnlyList<TokenType> expectedTokens)
     {
@@ -90,4 +95,5 @@ public enum ParserErrorType
     UnexpectedModifier,
 
     // ReSharper restore InconsistentNaming
+    ExpectedTypeName
 }
