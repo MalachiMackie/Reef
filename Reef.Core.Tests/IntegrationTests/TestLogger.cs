@@ -1,13 +1,13 @@
 ﻿using Microsoft.Extensions.Logging;
-using Reef.Core;
 
-await Compiler.Compile(args[0], true, new ConsoleLogger(), CancellationToken.None);
+namespace Reef.Core.Tests.IntegrationTests;
 
-class ConsoleLogger : ILogger
+public class TestLogger(ITestOutputHelper testOutputHelper) : ILogger
 {
+    
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
     {
-        Console.WriteLine($"[{logLevel}] {formatter(state, exception)}");
+        testOutputHelper.WriteLine($"[{logLevel}] {formatter(state, exception)}");
     }
 
     public bool IsEnabled(LogLevel logLevel)
@@ -22,15 +22,12 @@ class ConsoleLogger : ILogger
 
     private sealed class NoopDisposable : IDisposable
     {
-        public static readonly NoopDisposable Instance = new(); 
-        
+        public static readonly NoopDisposable Instance = new();
+
         private NoopDisposable()
         {
         }
 
-        public void Dispose()
-        {
-        }
-
+        public void Dispose(){}
     }
 }

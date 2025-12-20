@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
 using Reef.Core.TypeChecking;
@@ -11,12 +12,13 @@ public class Compiler
     public static async Task Compile(
         string inputFile, 
         bool outputIr,
+        ILogger logger,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(inputFile)
             || Path.GetExtension(inputFile) is not ".rf")
         {
-            await Console.Error.WriteLineAsync("Expected a single .rf file as an argument");
+            logger.LogError("Expected a single .rf file as an argument");
             return;
         }
 
@@ -36,37 +38,34 @@ public class Compiler
 
         var contents = await File.ReadAllTextAsync(inputFile, ct);
 
-        Console.WriteLine("Tokenizing...");
+        logger.LogInformation("Tokenizing...");
         var tokens = Tokenizer.Tokenize(contents);
 
-        Console.WriteLine("Parsing...");
+        logger.LogInformation("Parsing...");
         var parsedProgram = Parser.Parse(fileNameWithoutExtension, tokens);
         if (parsedProgram.Errors.Count > 0)
         {
             foreach (var error in parsedProgram.Errors)
             {
-                await Console.Error.WriteAsync("Error: ");
-                Console.Error.WriteLine(error);
+                logger.LogError("Error: {Error}", error);
             }
 
             return;
         }
 
-        Console.WriteLine("TypeChecking...");
+        logger.LogInformation("TypeChecking...");
         var typeCheckErrors = TypeChecker.TypeCheck(parsedProgram.ParsedProgram);
         if (typeCheckErrors.Count > 0)
         {
             foreach (var error in typeCheckErrors)
             {
-                await Console.Error.WriteAsync("Error: ");
-                await Console.Error.WriteLineAsync(error.Message);
-                await Console.Error.WriteLineAsync(contents[(int)error.Range.Start.Position.Start..(int)(error.Range.End.Position.Start + error.Range.End.Length)]);
+                logger.LogError("Error: {Message}. {Contents}", error.Message, contents[(int)error.Range.Start.Position.Start..(int)(error.Range.End.Position.Start + error.Range.End.Length)]);
             }
 
             return;
         }
 
-        Console.WriteLine("Lowering...");
+        logger.LogInformation("Lowering...");
         var (newLoweredProgram, newImportedModules) = ProgramAbseil.Lower(parsedProgram.ParsedProgram);
 
 
@@ -76,7 +75,7 @@ public class Compiler
             await File.WriteAllTextAsync(Path.Join(buildDirectory, $"{fileNameWithoutExtension}.ir"), irStr, ct);
         }
 
-        Console.WriteLine("Generating Assembly...");
+        logger.LogInformation("Generating Assembly...");
         IReadOnlyList<LoweredModule> allNewModules = [..newImportedModules.Append(newLoweredProgram)];
 
         var newUsefulMethodIds = new TreeShaker(allNewModules).Shake();
@@ -105,7 +104,7 @@ public class Compiler
             }
         };
 
-        Console.WriteLine("Assembling...");
+        logger.LogInformation("Assembling...");
         nasmProcess.Start();
         
         ct.Register(() =>
@@ -117,9 +116,9 @@ public class Compiler
         var nasmError = await nasmProcess.StandardError.ReadToEndAsync(ct);
 
         if (nasmOutput.Length > 0)
-            Console.WriteLine(nasmOutput);
+            logger.LogInformation("{NasmOutput}", nasmOutput);
         if (nasmError.Length > 0)
-            await Console.Error.WriteLineAsync(nasmError);
+            logger.LogError("NasmError: {Error}", nasmError);
 
         await nasmProcess.WaitForExitAsync(ct);
 
@@ -131,7 +130,7 @@ public class Compiler
         // var windowsKitsVersion = "10.0.22621.0";
         var windowsKitsVersion = "10.0.22000.0";
 
-        Console.WriteLine("Linking...");
+        logger.LogInformation("Linking...");
         var linkProcess = new Process
         {
             StartInfo = new ProcessStartInfo(
@@ -169,12 +168,12 @@ public class Compiler
         var linkError = await linkProcess.StandardError.ReadToEndAsync(ct);
 
         if (linkOutput.Length > 0)
-            Console.WriteLine(linkOutput);
+            logger.LogInformation("{LinkOutput}", linkOutput);
         if (linkError.Length > 0)
-            await Console.Error.WriteLineAsync(linkError);
+            logger.LogError("{LinkError}", linkError);
 
         await linkProcess.WaitForExitAsync(ct);
 
-        Console.WriteLine("Done!");
+        logger.LogInformation("Done!");
     }
 }
