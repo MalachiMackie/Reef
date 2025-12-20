@@ -8,365 +8,623 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
 {
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void ControlFlowAbseilTest(string description, string source, LoweredProgram expectedProgram)
+    public void ControlFlowAbseilTest(string description, string source, LoweredModule expectedProgram)
     {
         description.Should().NotBeEmpty();
-        var program = CreateProgram(_moduleId, source);
-        var loweredProgram = ProgramAbseil.Lower(program);
+        var program = CreateProgram(ModuleId, source);
+        var (loweredProgram, _) = ProgramAbseil.Lower(program);
+
+        PrintPrograms(expectedProgram, loweredProgram);
+
+        loweredProgram.Should().BeEquivalentTo(expectedProgram);
+    }
+    
+    [Fact]
+    public void Single()
+    {
+        var source = """
+                 var mut a = 0;
+                 while (true) {
+                    a = a + 1;
+                    if (a > 25) {
+                        break;
+                    }
+                 }
+                 """;
+        var expectedProgram = LoweredProgram(
+        [
+            Method(
+                new DefId(ModuleId, $"{ModuleId}._Main"),
+                "_Main",
+                [
+                    new BasicBlock(
+                        new BasicBlockId("bb0"),
+                        [
+                            new Assign(new Local("_local0"), new Use(new IntConstant(0, 4))),
+                        ],
+                        new GoTo(new BasicBlockId("bb1"))),
+                    new BasicBlock(
+                        new BasicBlockId("bb1"),
+                        [],
+                        new SwitchInt(
+                            new BoolConstant(true),
+                            new Dictionary<int, BasicBlockId>
+                            {
+                                { 0, new BasicBlockId("bb5") }
+                            }, new BasicBlockId("bb2"))),
+                    new BasicBlock(
+                        new BasicBlockId("bb2"),
+                        [
+                            new Assign(
+                                new Local("_local0"),
+                                new BinaryOperation(
+                                    new Copy(new Local("_local0")),
+                                    new IntConstant(1, 4),
+                                    BinaryOperationKind.Add)),
+                            new Assign(
+                                new Local("_local1"),
+                                new BinaryOperation(
+                                    new Copy(new Local("_local0")),
+                                    new IntConstant(25, 4),
+                                    BinaryOperationKind.GreaterThan))
+                        ],
+                        new SwitchInt(
+                            new Copy(new Local("_local1")),
+                            new Dictionary<int, BasicBlockId>
+                            {
+                                { 0, new BasicBlockId("bb4") }
+                            },
+                            new BasicBlockId("bb3"))),
+                    new BasicBlock(
+                        new BasicBlockId("bb3"),
+                        [],
+                        new GoTo(new BasicBlockId("bb5"))),
+                    new BasicBlock(
+                        new BasicBlockId("bb4"),
+                        [],
+                        new GoTo(new BasicBlockId("bb1"))),
+                    new BasicBlock(
+                        new BasicBlockId("bb5"),
+                        [],
+                        new Return())
+                ],
+                Unit,
+                locals:
+                [
+                    new MethodLocal("_local0", "a", Int32T),
+                    new MethodLocal("_local1", null, BooleanT)
+                ])
+        ]);
+        
+        var program = CreateProgram(ModuleId, source);
+        var (loweredProgram, _) = ProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
 
-    private const string _moduleId = "ControlFlowTests";
+    private const string ModuleId = "ControlFlowTests";
 
-    [Fact]
-    public void SingleTest()
-    {
-        var source = """
-                var mut a = 0;
-                if (true)
-                {
-                    a = 1;
-                }
-                else if (true)
-                {
-                    a = 2;
-                }
-                """;
-                var expectedProgram = LoweredProgram(
-                    methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-                            [
-                                VariableDeclaration(
-                                    "a", Int32Constant(0, true), false),
-                                SwitchInt(
-                                    CastBoolToInt(BoolConstant(true, true), true),
-                                    new()
-                                    {
-                                        {
-                                            0,
-                                            SwitchInt(
-                                                CastBoolToInt(BoolConstant(true, true), true),
-                                                new()
-                                                {
-                                                    {
-                                                        0,
-                                                        Noop()
-                                                    }
-                                                },
-                                                Block([LocalValueAssignment("a", Int32Constant(2, true), false, Int32_t)], Unit, false),
-                                                false,
-                                                Unit)
-                                        }
-                                    },
-                                    Block([LocalValueAssignment("a", Int32Constant(1, true), false, Int32_t)], Unit, false),
-                                    false,
-                                    Unit),
-                                MethodReturnUnit()
-                            ],
-                            locals: [Local("a", Int32_t)])
-                    ]);
-
-        var program = CreateProgram(_moduleId, source);
-        var loweredProgram = ProgramAbseil.Lower(program);
-        
-        PrintPrograms(expectedProgram, loweredProgram, false, false);
-        
-        loweredProgram.Should().BeEquivalentTo(expectedProgram);
-    }
-
-    public static TheoryData<string, string, LoweredProgram> TestCases()
+    public static TheoryData<string, string, LoweredModule> TestCases()
     {
         return new()
         {
-            {
-                "FallOut operator",
-                """
-                fn SomeFn(): result::<i64, i64>
-                {
-                    return error(1);
-                }
+             {
+                 "FallOut operator",
+                 """
+                 fn SomeFn(): result::<i32, i64>
+                 {
+                     return error(1);
+                 }
 
-                fn OtherFn(): result::<i64, i64>
-                {
-                    var a = SomeFn()?;
-                    return ok(a);
-                }
-                """,
-                LoweredProgram(
-                    methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn",
-                            [
-                                MethodReturn(
-                                    MethodCall(
-                                        FunctionReference(DefId.Result_Create_Error, "result__Create__Error", [Int64_t, Int64_t]),
-                                        [Int64Constant(1, true)],
-                                        true,
-                                        ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t])))
-                            ],
-                            returnType: ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t])),
-                        Method(new DefId(_moduleId, $"{_moduleId}.OtherFn"), "OtherFn",
-                            [
-                                VariableDeclaration(
-                                    "a",
-                                    Block(
-                                        [
-                                            LocalValueAssignment(
-                                                "Local1",
-                                                MethodCall(
-                                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.SomeFn"), "SomeFn", []),
-                                                    [],
-                                                    true,
-                                                    ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t])),
-                                                false,
-                                                ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t])),
-                                            SwitchInt(
-                                                FieldAccess(
-                                                    LocalAccess("Local1", true, ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t])),
-                                                    "_variantIdentifier",
-                                                    "Ok",
-                                                    true,
-                                                    Int64_t),
-                                                new()
-                                                {
-                                                    {
-                                                        0,
-                                                        FieldAccess(
-                                                            LocalAccess("Local1", true, ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t])),
-                                                            "Item0",
-                                                            "Ok",
-                                                            true,
-                                                            Int64_t)
-                                                        }
-                                                },
-                                                MethodReturn(
-                                                    MethodCall(
-                                                        FunctionReference(DefId.Result_Create_Error, "result__Create__Error", [Int64_t, Int64_t]),
-                                                        [
-                                                            FieldAccess(
-                                                                LocalAccess("Local1", true, ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t])),
-                                                                "Item0",
-                                                                "Error",
-                                                                true,
-                                                                Int64_t)
-                                                        ],
-                                                        true,
-                                                        ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t]))),
-                                                valueUseful: true,
-                                                resolvedType: Int64_t)
-                                        ],
-                                        Int64_t,
-                                        true),
-                                    false),
-                                MethodReturn(
-                                    MethodCall(
-                                        FunctionReference(DefId.Result_Create_Ok, "result__Create__Ok", [Int64_t, Int64_t]),
-                                        [LocalAccess("a", true, Int64_t)],
-                                        true,
-                                        ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t])))
-                            ],
-                            locals: [
-                                Local("a", Int64_t),
-                                Local("Local1", ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t]))
-                            ],
-                            returnType: ConcreteTypeReference("result", DefId.Result, [Int64_t, Int64_t]))
-                    ])
-            },
-            {
-                "simple if",
-                """
-                var mut a = 0;
-                if (true) a = 1;
-                """,
-                LoweredProgram(
-                    methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-                            [
-                                VariableDeclaration("a", Int32Constant(0, true), false),
-                                SwitchInt(
-                                    CastBoolToInt(BoolConstant(true, true), true),
-                                    new() {
-                                        {0, Noop()}
-                                    },
-                                    LocalValueAssignment("a", Int32Constant(1, true), false, Int32_t),
-                                    false,
-                                    Unit),
-                                MethodReturnUnit(),
-                            ],
-                            locals: [Local("a", Int32_t)])
-                    ])
-            },
-            {
-                "if else",
-                """
-                var mut a = 0;
-                if (true) {a = 1}
-                else {a = 2}
-                """,
-                LoweredProgram(
-                    methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-                            [
-                                VariableDeclaration("a", Int32Constant(0, true), false),
-                                SwitchInt(
-                                    CastBoolToInt(BoolConstant(true, true), true),
-                                    new(){
-                                        {
-                                            0,
-                                            Block(
-                                                [LocalValueAssignment("a", Int32Constant(2, true), false, Int32_t)],
-                                                Unit,
-                                                false)},
-                                    },
-                                    Block([LocalValueAssignment("a", Int32Constant(1, true), false, Int32_t)], Unit, false),
-                                    false,
-                                    Unit),
-                                MethodReturnUnit()
-                            ],
-                            locals: [Local("a", Int32_t)])
-                    ])
-            },
-            {
-                "assign if else to variable",
-                """
-                var mut a = 1;
-                var b = if (true) { a = 2; } else { a = 3; };
-                // var b = if (true) { a = 2; 4 } else { a = 3; 5 };
-                """,
-                LoweredProgram(
-                    methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-                            [
-                                VariableDeclaration(
-                                    "a", Int32Constant(1, true), false),
-                                VariableDeclaration(
-                                    "b",
-                                    SwitchInt(
-                                        CastBoolToInt(BoolConstant(true, true), true),
-                                        new()
-                                        {
-                                            {
-                                                0,
-                                                Block(
-                                                    [
-                                                        LocalValueAssignment(
-                                                            "a",
-                                                            Int32Constant(3, true),
-                                                            true,
-                                                            Int32_t)
-                                                    ],
-                                                    Unit,
-                                                    true)
-                                            }
-                                        },
-                                        Block(
-                                            [LocalValueAssignment("a", Int32Constant(2, true), true, Int32_t)],
-                                            Unit,
-                                            true),
-                                        true,
-                                        Unit),
-                                    false),
-                                MethodReturnUnit()
-                            ],
-                            locals: [
-                                Local("a", Int32_t),
-                                Local("b", Unit)
-                            ])
-                    ])
-            },
-            {
-                "if else if",
-                """
-                var mut a = 0;
-                if (true)
-                {
-                    a = 1;
-                }
-                else if (true)
-                {
-                    a = 2;
-                }
-                """,
-                LoweredProgram(
-                    methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-                            [
-                                VariableDeclaration(
-                                    "a", Int32Constant(0, true), false),
-                                SwitchInt(
-                                    CastBoolToInt(BoolConstant(true, true), true),
-                                    new()
-                                    {
-                                        {
-                                            0,
-                                            SwitchInt(
-                                                CastBoolToInt(BoolConstant(true, true), true),
-                                                new()
-                                                {
-                                                    {
-                                                        0,
-                                                        Noop()
-                                                    }
-                                                },
-                                                Block([LocalValueAssignment("a", Int32Constant(2, true), false, Int32_t)], Unit, false),
-                                                false,
-                                                Unit)
-                                        }
-                                    },
-                                    Block([LocalValueAssignment("a", Int32Constant(1, true), false, Int32_t)], Unit, false),
-                                    false,
-                                    Unit),
-                                MethodReturnUnit()
-                            ],
-                            locals: [Local("a", Int32_t)])
-                    ])
-            },
-            {
-                "if else if else",
-                """
-                var mut a = 0;
-                if (true)
-                {a = 1;}
-                else if (true)
-                {a = 2;}
-                else
-                {a = 3;}
-                """,
-                LoweredProgram(
-                    methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-                            [
-                                VariableDeclaration("a", Int32Constant(0, true), false),
-                                SwitchInt(
-                                    CastBoolToInt(BoolConstant(true, true), true),
-                                    new()
-                                    {
-                                        {
-                                            0,
-                                            SwitchInt(
-                                                CastBoolToInt(BoolConstant(true, true), true),
-                                                new()
-                                                {
-                                                    {
-                                                        0,
-                                                        Block([LocalValueAssignment("a", Int32Constant(3, true), false, Int32_t)], Unit, false)
-                                                    }
-                                                },
-                                                Block([LocalValueAssignment("a", Int32Constant(2, true), false, Int32_t)], Unit, false),
-                                                false,
-                                                Unit)
-                                        }
-                                    },
-                                    Block([LocalValueAssignment("a", Int32Constant(1, true), false, Int32_t)], Unit, false),
-                                    false,
-                                    Unit),
-                                MethodReturnUnit()
-                            ],
-                            locals: [Local("a", Int32_t)])
-                    ])
-            },
+                 fn OtherFn(): result::<i64, i64>
+                 {
+                     var a = SomeFn()?;
+                     return ok(1);
+                 }
+                 """,
+                 LoweredProgram(
+                     methods: [
+                         Method(new DefId(ModuleId, $"{ModuleId}.SomeFn"), "SomeFn",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [],
+                                     new MethodCall(
+                                         new LoweredFunctionReference(
+                                             DefId.Result_Create_Error,
+                                             [Int32T, Int64T]),
+                                         [new IntConstant(1, 8)],
+                                         new Local("_returnValue"),
+                                         new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                             ],
+                             returnType: new LoweredConcreteTypeReference("result", DefId.Result, [Int32T, Int64T])),
+                         Method(new DefId(ModuleId, $"{ModuleId}.OtherFn"), "OtherFn",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [],
+                                     new MethodCall(
+                                         new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.SomeFn"), []),
+                                         [],
+                                         new Local("_local1"),
+                                         new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [],
+                                     new SwitchInt(
+                                         new Copy(
+                                             new Field(
+                                                 new Local("_local1"),
+                                                 "_variantIdentifier",
+                                                 "Ok")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb3") }
+                                         },
+                                         new BasicBlockId("bb2"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb2"),
+                                     [],
+                                     new MethodCall(
+                                         new LoweredFunctionReference(
+                                             DefId.Result_Create_Error,
+                                             [Int64T, Int64T]),
+                                         [new Copy(new Field(new Local("_local1"), "Item0", "Error"))],
+                                         new Local("_returnValue"),
+                                         new BasicBlockId("bb4"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb3"),
+                                     [
+                                         new Assign(new Local("_local0"), new Use(new Copy(new Field(new Local("_local1"), "Item0", "Ok"))))
+                                     ],
+                                     new MethodCall(
+                                         new LoweredFunctionReference(
+                                             DefId.Result_Create_Ok,
+                                             [Int64T, Int64T]),
+                                         [new IntConstant(1, 8)],
+                                         new Local("_returnValue"),
+                                         new BasicBlockId("bb4"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb4"), [], new Return())
+                             ],
+                             locals: [
+                                 new MethodLocal("_local0", "a", Int32T),
+                                 new MethodLocal("_local1", null, new LoweredConcreteTypeReference("result", DefId.Result, [Int32T, Int64T])),
+                             ],
+                             returnType: new LoweredConcreteTypeReference("result", DefId.Result, [Int64T, Int64T]))
+                     ])
+             },
+             {
+                 "simple if",
+                 """
+                 var mut a = 0;
+                 if (true) a = 1;
+                 """,
+                 LoweredProgram(
+                     methods: [
+                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(new Local("_local0"), new Use(new IntConstant(0, 4)))
+                                     ],
+                                     new SwitchInt(
+                                         new BoolConstant(true),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             {0, new BasicBlockId("bb2")}
+                                         },
+                                         new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(1, 4)))],
+                                     new GoTo(new BasicBlockId("bb2"))),
+                                 new BasicBlock(new BasicBlockId("bb2"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [new MethodLocal("_local0", "a", Int32T)])
+                     ])
+             },
+             {
+                 "if else",
+                 """
+                 var mut a = 0;
+                 if (true) {a = 1}
+                 else {a = 2}
+                 """,
+                 LoweredProgram(
+                     methods: [
+                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(0, 4)))],
+                                     new SwitchInt(
+                                         new BoolConstant(true),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb2")}
+                                         },
+                                         new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(1, 4)))],
+                                     new GoTo(new BasicBlockId("bb3"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb2"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(2, 4)))],
+                                     new GoTo(new BasicBlockId("bb3"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb3"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [new MethodLocal("_local0", "a", Int32T)])
+                     ])
+             },
+             {
+                 "if else",
+                 """
+                 var a = if (true) 1 else 2;
+                 """,
+                 LoweredProgram(
+                     methods: [
+                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [],
+                                     new SwitchInt(
+                                         new BoolConstant(true),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb2")}
+                                         },
+                                         new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(1, 4)))],
+                                     new GoTo(new BasicBlockId("bb3"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb2"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(2, 4)))],
+                                     new GoTo(new BasicBlockId("bb3"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb3"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [new MethodLocal("_local0", "a", Int32T)])
+                     ])
+             },
+             {
+                 "if else if",
+                 """
+                 var mut a = 0;
+                 if (true)
+                 {
+                     a = 1;
+                 }
+                 else if (true)
+                 {
+                     a = 2;
+                 }
+                 """,
+                 LoweredProgram(
+                     methods: [
+                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(0, 4)))],
+                                     new SwitchInt(
+                                         new BoolConstant(true),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb2") }
+                                         },
+                                         new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(1, 4)))],
+                                     new GoTo(new BasicBlockId("bb4"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb2"),
+                                     [],
+                                     new SwitchInt(
+                                         new BoolConstant(true),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb4")}
+                                         },
+                                         new BasicBlockId("bb3"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb3"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(2, 4)))],
+                                     new GoTo(new BasicBlockId("bb4"))),
+                                 new BasicBlock(new BasicBlockId("bb4"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [new MethodLocal("_local0", "a", Int32T)])
+                     ])
+             },
+             {
+                 "if else if else",
+                 """
+                 var mut a = 0;
+                 if (true)
+                 {a = 1;}
+                 else if (true)
+                 {a = 2;}
+                 else
+                 {a = 3;}
+                 """,
+                 LoweredProgram(
+                     methods: [
+                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(0, 4)))],
+                                     new SwitchInt(
+                                         new BoolConstant(true),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             {0, new BasicBlockId("bb2")}
+                                         },
+                                         new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(1, 4)))],
+                                     new GoTo(new BasicBlockId("bb5"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb2"),
+                                     [],
+                                     new SwitchInt(
+                                         new BoolConstant(true),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb4") }
+                                         }, new BasicBlockId("bb3"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb3"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(2, 4)))],
+                                     new GoTo(new BasicBlockId("bb5"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb4"),
+                                     [new Assign(new Local("_local0"), new Use(new IntConstant(3, 4)))],
+                                     new GoTo(new BasicBlockId("bb5"))),
+                                 new BasicBlock(new BasicBlockId("bb5"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [new MethodLocal("_local0", "a", Int32T)])
+                     ])
+             },
+             {
+                 "basic while",
+                 """
+                 var mut a = 0;
+                 while (a < 25) {
+                    a = a + 1;
+                 }
+                 """,
+                 LoweredProgram(
+                     [
+                         Method(
+                             new DefId(ModuleId, $"{ModuleId}._Main"),
+                             "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(new Local("_local0"), new Use(new IntConstant(0, 4))),
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [
+                                         new Assign(
+                                             new Local("_local1"),
+                                             new BinaryOperation(
+                                                 new Copy(new Local("_local0")),
+                                                 new IntConstant(25, 4),
+                                                 BinaryOperationKind.LessThan))
+                                     ],
+                                     new SwitchInt(
+                                         new Copy(new Local("_local1")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb3") }
+                                         }, new BasicBlockId("bb2"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb2"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new BinaryOperation(
+                                                 new Copy(new Local("_local0")),
+                                                 new IntConstant(1, 4),
+                                                 BinaryOperationKind.Add))
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb3"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new MethodLocal("_local0", "a", Int32T),
+                                 new MethodLocal("_local1", null, BooleanT),
+                             ])
+                     ])
+             },
+             {
+                 "while break",
+                 """
+                 var mut a = 0;
+                 while (true) {
+                    a = a + 1;
+                    if (a > 25) {
+                        break;
+                    }
+                 }
+                 """,
+                 LoweredProgram(
+                     [
+                         Method(
+                             new DefId(ModuleId, $"{ModuleId}._Main"),
+                             "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(new Local("_local0"), new Use(new IntConstant(0, 4))),
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [],
+                                     new SwitchInt(
+                                         new BoolConstant(true),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb5") }
+                                         }, new BasicBlockId("bb2"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb2"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new BinaryOperation(
+                                                 new Copy(new Local("_local0")),
+                                                 new IntConstant(1, 4),
+                                                 BinaryOperationKind.Add)),
+                                         new Assign(
+                                             new Local("_local1"),
+                                             new BinaryOperation(
+                                                 new Copy(new Local("_local0")),
+                                                 new IntConstant(25, 4),
+                                                 BinaryOperationKind.GreaterThan))
+                                     ],
+                                     new SwitchInt(
+                                         new Copy(new Local("_local1")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             {0, new BasicBlockId("bb4")}
+                                         },
+                                         new BasicBlockId("bb3"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb3"),
+                                     [],
+                                     new GoTo(new BasicBlockId("bb5"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb4"),
+                                     [],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb5"),
+                                     [],
+                                     new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new MethodLocal("_local0", "a", Int32T),
+                                 new MethodLocal("_local1", null, BooleanT)
+                             ])
+                     ])
+             },
+             {
+                 "while continue",
+                 """
+                 var mut a = 0;
+                 while(a < 10) {
+                    a = a + 1;
+                    if (a == 5) {
+                        continue;
+                    }
+                    printf("hi")
+                 }
+                 """,
+                 LoweredProgram(
+                     [
+                         Method(
+                             new DefId(ModuleId, $"{ModuleId}._Main"),
+                             "_Main",
+                             [
+                                 new BasicBlock(
+                                     new BasicBlockId("bb0"),
+                                     [
+                                         new Assign(new Local("_local0"), new Use(new IntConstant(0, 4))),
+                                     ],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb1"),
+                                     [
+                                         new Assign(
+                                             new Local("_local1"),
+                                             new BinaryOperation(
+                                                 new Copy(new Local("_local0")),
+                                                 new IntConstant(10, 4),
+                                                 BinaryOperationKind.LessThan))
+                                     ],
+                                     new SwitchInt(
+                                         new Copy(new Local("_local1")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             { 0, new BasicBlockId("bb6") }
+                                         },
+                                         new BasicBlockId("bb2"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb2"),
+                                     [
+                                         new Assign(
+                                             new Local("_local0"),
+                                             new BinaryOperation(
+                                                 new Copy(new Local("_local0")),
+                                                 new IntConstant(1, 4),
+                                                 BinaryOperationKind.Add)),
+                                         new Assign(
+                                             new Local("_local2"),
+                                             new BinaryOperation(
+                                                 new Copy(new Local("_local0")),
+                                                 new IntConstant(5, 4),
+                                                 BinaryOperationKind.Equal))
+                                     ],
+                                     new SwitchInt(
+                                         new Copy(new Local("_local2")),
+                                         new Dictionary<int, BasicBlockId>
+                                         {
+                                             {0, new BasicBlockId("bb4")}
+                                         },
+                                         new BasicBlockId("bb3"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb3"),
+                                     [],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb4"),
+                                     [],
+                                     new MethodCall(
+                                         new LoweredFunctionReference(DefId.Printf, []),
+                                         [new StringConstant("hi")],
+                                         new Local("_local3"),
+                                         new BasicBlockId("bb5"))),
+                                 new BasicBlock(
+                                     new BasicBlockId("bb5"),
+                                     [],
+                                     new GoTo(new BasicBlockId("bb1"))),
+                                 new BasicBlock(new BasicBlockId("bb6"), [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new MethodLocal("_local0", "a", Int32T),
+                                 new MethodLocal("_local1", null, BooleanT),
+                                 new MethodLocal("_local2", null, BooleanT),
+                                 new MethodLocal("_local3", null, Unit),
+                             ])
+                     ])
+             }
         };
     }
 }

@@ -1,8 +1,8 @@
-﻿using Reef.Core.TypeChecking;
+﻿using Reef.Core.Expressions;
+using Reef.Core.TypeChecking;
 
-using static Reef.Core.TypeChecking.TypeChecker;
 using static Reef.Core.Tests.ExpressionHelpers;
-using Reef.Core.Expressions;
+using static Reef.Core.TypeChecking.TypeChecker;
 
 namespace Reef.Core.Tests;
 
@@ -4108,72 +4108,72 @@ public class TypeCheckerTests
         var c = new MyUnion::B{ MyField = ""};
         """;
 
-    private static TypeCheckerError MismatchedTypes(ITypeReference expected, ITypeReference actual)
+    private static TypeCheckerError MismatchedTypes(TypeChecker.ITypeReference expected, TypeChecker.ITypeReference actual)
     {
         return TypeCheckerError.MismatchedTypes(SourceRange.Default, expected, actual);
     }
 
-    private static TypeCheckerError MismatchedTypes(IReadOnlyList<ITypeReference> expected, ITypeReference actual)
+    private static TypeCheckerError MismatchedTypes(IReadOnlyList<TypeChecker.ITypeReference> expected, TypeChecker.ITypeReference actual)
     {
         return TypeCheckerError.MismatchedTypes(SourceRange.Default, expected, actual);
     }
 
-    private static readonly IReadOnlyList<InstantiatedClass> IntTypes = [
-        InstantiatedClass.Int64,
-        InstantiatedClass.Int32,
-        InstantiatedClass.Int16,
-        InstantiatedClass.Int8,
-        InstantiatedClass.UInt64,
-        InstantiatedClass.UInt32,
-        InstantiatedClass.UInt16,
-        InstantiatedClass.UInt8,
+    private static readonly IReadOnlyList<TypeChecker.InstantiatedClass> IntTypes = [
+        TypeChecker.InstantiatedClass.Int64,
+        TypeChecker.InstantiatedClass.Int32,
+        TypeChecker.InstantiatedClass.Int16,
+        TypeChecker.InstantiatedClass.Int8,
+        TypeChecker.InstantiatedClass.UInt64,
+        TypeChecker.InstantiatedClass.UInt32,
+        TypeChecker.InstantiatedClass.UInt16,
+        TypeChecker.InstantiatedClass.UInt8,
     ];
-    private static readonly InstantiatedClass Int64 = InstantiatedClass.Int64;
-    private static readonly InstantiatedClass Int32 = InstantiatedClass.Int32;
-    private static readonly InstantiatedClass Int16 = InstantiatedClass.Int16;
-    private static readonly InstantiatedClass Int8 = InstantiatedClass.Int8;
-    private static readonly InstantiatedClass UInt64 = InstantiatedClass.UInt64;
-    private static readonly InstantiatedClass UInt32 = InstantiatedClass.UInt32;
-    private static readonly InstantiatedClass UInt16 = InstantiatedClass.UInt16;
-    private static readonly InstantiatedClass UInt8 = InstantiatedClass.UInt8;
+    private static readonly TypeChecker.InstantiatedClass Int64 = TypeChecker.InstantiatedClass.Int64;
+    private static readonly TypeChecker.InstantiatedClass Int32 = TypeChecker.InstantiatedClass.Int32;
+    private static readonly TypeChecker.InstantiatedClass Int16 = TypeChecker.InstantiatedClass.Int16;
+    private static readonly TypeChecker.InstantiatedClass Int8 = TypeChecker.InstantiatedClass.Int8;
+    private static readonly TypeChecker.InstantiatedClass UInt64 = TypeChecker.InstantiatedClass.UInt64;
+    private static readonly TypeChecker.InstantiatedClass UInt32 = TypeChecker.InstantiatedClass.UInt32;
+    private static readonly TypeChecker.InstantiatedClass UInt16 = TypeChecker.InstantiatedClass.UInt16;
+    private static readonly TypeChecker.InstantiatedClass UInt8 = TypeChecker.InstantiatedClass.UInt8;
 
-    private static readonly UnspecifiedSizedIntType UnspecifiedSizedIntType = new();
-    private static readonly InstantiatedClass String = InstantiatedClass.String;
-    private static readonly InstantiatedClass Boolean = InstantiatedClass.Boolean;
-    private static readonly InstantiatedClass Unit = InstantiatedClass.Unit;
+    private static readonly TypeChecker.UnspecifiedSizedIntType UnspecifiedSizedIntType = new();
+    private static readonly TypeChecker.InstantiatedClass String = TypeChecker.InstantiatedClass.String;
+    private static readonly TypeChecker.InstantiatedClass Boolean = TypeChecker.InstantiatedClass.Boolean;
+    private static readonly TypeChecker.InstantiatedClass Unit = TypeChecker.InstantiatedClass.Unit;
 
-    private static InstantiatedClass TupleType(params IReadOnlyList<ITypeReference> members)
+    private static TypeChecker.InstantiatedClass TupleType(params IReadOnlyList<TypeChecker.ITypeReference> members)
     {
-        var signature = ClassSignature.Tuple((ushort)members.Count);
-        return new InstantiatedClass(
+        var signature = TypeChecker.ClassSignature.Tuple((ushort)members.Count);
+        return new TypeChecker.InstantiatedClass(
             signature, signature.TypeParameters.Zip(members).Select(x => x.First.Instantiate(x.Second)).ToArray());
     }
 
-    private static InstantiatedUnion Result(ITypeReference value, ITypeReference error)
+    private static TypeChecker.InstantiatedUnion Result(TypeChecker.ITypeReference value, TypeChecker.ITypeReference error)
     {
-        return new InstantiatedUnion(
-            UnionSignature.Result,
+        return new TypeChecker.InstantiatedUnion(
+            TypeChecker.UnionSignature.Result,
             [
-                new GenericTypeReference
+                new TypeChecker.GenericTypeReference
                 {
-                    GenericName = UnionSignature.Result.TypeParameters[0].GenericName,
-                    OwnerType = UnionSignature.Result,
+                    GenericName = TypeChecker.UnionSignature.Result.TypeParameters[0].GenericName,
+                    OwnerType = TypeChecker.UnionSignature.Result,
                     ResolvedType = value
                 },
-                new GenericTypeReference
+                new TypeChecker.GenericTypeReference
                 {
-                    GenericName = UnionSignature.Result.TypeParameters[1].GenericName,
-                    OwnerType = UnionSignature.Result,
+                    GenericName = TypeChecker.UnionSignature.Result.TypeParameters[1].GenericName,
+                    OwnerType = TypeChecker.UnionSignature.Result,
                     ResolvedType = error
                 },
             ]);
     }
 
-    private sealed record TestClassReference(string ClassName) : ITypeReference, IEquatable<ITypeReference>
+    private sealed record TestClassReference(string ClassName) : TypeChecker.ITypeReference, IEquatable<TypeChecker.ITypeReference>
     {
-        public bool Equals(ITypeReference? other)
+        public bool Equals(TypeChecker.ITypeReference? other)
         {
-            if (other is not InstantiatedClass @class)
+            if (other is not TypeChecker.InstantiatedClass @class)
             {
                 return false;
             }
@@ -4196,9 +4196,9 @@ public class TypeCheckerTests
         };
     }
 
-    private static GenericTypeReference GenericTypeReference(string name)
+    private static TypeChecker.GenericTypeReference GenericTypeReference(string name)
     {
-        return new GenericTypeReference
+        return new TypeChecker.GenericTypeReference
         {
             GenericName = name,
             OwnerType = null!

@@ -6,21 +6,21 @@ namespace Reef.Core.TypeChecking;
 public partial class TypeChecker
 {
 
-    private ITypeReference TypeCheckValueAccessor(ValueAccessorExpression valueAccessorExpression,
+    private TypeChecking.TypeChecker.ITypeReference TypeCheckValueAccessor(ValueAccessorExpression valueAccessorExpression,
         bool allowUninstantiatedVariables)
     {
         var type = valueAccessorExpression.ValueAccessor switch
         {
-            { AccessType: ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral } } => new UnspecifiedSizedIntType(),
+            { AccessType: ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral } } => new TypeChecking.TypeChecker.UnspecifiedSizedIntType(),
             { AccessType: ValueAccessType.Literal, Token: StringToken { Type: TokenType.StringLiteral } } =>
-                InstantiatedClass.String,
-            { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True or TokenType.False } => InstantiatedClass
+                TypeChecking.TypeChecker.InstantiatedClass.String,
+            { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True or TokenType.False } => TypeChecking.TypeChecker.InstantiatedClass
                 .Boolean,
             // todo: bring union variants into scope
             { AccessType: ValueAccessType.Variable, Token: StringToken { Type: TokenType.Identifier, StringValue: "ok" } } => TypeCheckResultVariantKeyword("Ok"),
             { AccessType: ValueAccessType.Variable, Token: StringToken { Type: TokenType.Identifier, StringValue: "error" } } =>
                 TypeCheckResultVariantKeyword("Error"),
-            { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Todo } => InstantiatedClass.Never,
+            { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Todo } => TypeChecking.TypeChecker.InstantiatedClass.Never,
             {
                 AccessType: ValueAccessType.Variable,
                 Token: StringToken { Type: TokenType.Identifier } variableNameToken
@@ -30,14 +30,14 @@ public partial class TypeChecker
 
         return type;
 
-        ITypeReference TypeCheckResultVariantKeyword(string variantName)
+        TypeChecking.TypeChecker.ITypeReference TypeCheckResultVariantKeyword(string variantName)
         {
             var instantiatedUnion = InstantiateResult(valueAccessorExpression.SourceRange);
 
-            var okVariant = instantiatedUnion.Variants.FirstOrDefault(x => x.Name == variantName)
+            var okVariant = Enumerable.FirstOrDefault<TypeChecking.TypeChecker.IUnionVariant>(instantiatedUnion.Variants, x => x.Name == variantName)
                             ?? throw new UnreachableException($"{variantName} is a built in variant of Result");
 
-            if (okVariant is not TupleUnionVariant {CreateFunction: var tupleVariantFunctionSignature} tupleVariant)
+            if (okVariant is not TypeChecking.TypeChecker.TupleUnionVariant {CreateFunction: var tupleVariantFunctionSignature} tupleVariant)
             {
                 throw new UnreachableException($"{variantName} is a tuple variant");
             }
@@ -45,19 +45,19 @@ public partial class TypeChecker
             var tupleVariantFunction = InstantiateFunction(tupleVariantFunctionSignature, instantiatedUnion, [], SourceRange.Default, GenericPlaceholders);
             valueAccessorExpression.FunctionInstantiation = tupleVariantFunction;
 
-            return new FunctionObject(
+            return new TypeChecking.TypeChecker.FunctionObject(
                 tupleVariantFunction.Parameters,
                 tupleVariantFunction.ReturnType);
         }
     }
 
-    private ITypeReference TypeCheckVariableAccess(
+    private TypeChecking.TypeChecker.ITypeReference TypeCheckVariableAccess(
         ValueAccessorExpression expression,
         StringToken variableName,
         bool allowUninstantiated)
     {
         var typeArguments = (expression.ValueAccessor.TypeArguments ?? [])
-            .Select(x => (GetTypeReference(x), x.SourceRange))
+            .Select<ITypeIdentifier, (TypeChecking.TypeChecker.ITypeReference, SourceRange SourceRange)>(x => (GetTypeReference(x), x.SourceRange))
             .ToArray();
 
         if (ScopedFunctions.TryGetValue(variableName.StringValue, out var function))
@@ -71,12 +71,12 @@ public partial class TypeChecker
 
             expression.FunctionInstantiation = instantiatedFunction;
 
-            return new FunctionObject(
+            return new TypeChecking.TypeChecker.FunctionObject(
                 parameters: instantiatedFunction.Parameters,
                 returnType: instantiatedFunction.ReturnType);
         }
 
-        if (CurrentTypeSignature is UnionSignature union)
+        if (CurrentTypeSignature is TypeChecking.TypeChecker.UnionSignature union)
         {
             var unionFunction = union.Functions.FirstOrDefault(x => x.Name == variableName.StringValue);
             if (unionFunction is not null)
@@ -95,12 +95,12 @@ public partial class TypeChecker
 
                 expression.FunctionInstantiation = instantiatedFunction;
 
-                return new FunctionObject(
+                return new TypeChecking.TypeChecker.FunctionObject(
                     instantiatedFunction.Parameters,
                     instantiatedFunction.ReturnType);
             }
         }
-        else if (CurrentTypeSignature is ClassSignature @class)
+        else if (CurrentTypeSignature is TypeChecking.TypeChecker.ClassSignature @class)
         {
             var classFunction = @class.Functions.FirstOrDefault(x => x.Name == variableName.StringValue);
             if (classFunction is not null)
@@ -119,7 +119,7 @@ public partial class TypeChecker
 
                 expression.FunctionInstantiation = instantiatedFunction;
 
-                return new FunctionObject(
+                return new TypeChecking.TypeChecker.FunctionObject(
                     instantiatedFunction.Parameters,
                     instantiatedFunction.ReturnType);
             }
@@ -133,12 +133,12 @@ public partial class TypeChecker
         if (!TryGetScopedVariable(variableName, out var valueVariable))
         {
             _errors.Add(TypeCheckerError.SymbolNotFound(variableName));
-            return UnknownType.Instance;
+            return TypeChecking.TypeChecker.UnknownType.Instance;
         }
 
         expression.ReferencedVariable = valueVariable;
 
-        if (!allowUninstantiated && valueVariable is LocalVariable { Instantiated: false, ContainingFunction: var containingFunction }
+        if (!allowUninstantiated && valueVariable is TypeChecking.TypeChecker.LocalVariable { Instantiated: false, ContainingFunction: var containingFunction }
             // if we're accessing an outer variable, then we can assume it's been assigned                     
             && containingFunction == CurrentFunctionSignature)
         {

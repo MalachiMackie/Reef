@@ -11,7 +11,7 @@ public partial class TypeChecker
         public bool InstantiatedInEachElseIf { get; set; } = true;
     }
 
-    private ITypeReference TypeCheckIfExpression(
+    private TypeChecking.TypeChecker.ITypeReference TypeCheckIfExpression(
         IfExpression ifExpression)
     {
         // scope around the entire if expression. Variables declared in the check expression (e.g. with matches) will be
@@ -21,17 +21,17 @@ public partial class TypeChecker
         ifExpression.CheckExpression.ValueUseful = true;
         TypeCheckExpression(ifExpression.CheckExpression);
 
-        ExpectExpressionType(InstantiatedClass.Boolean, ifExpression.CheckExpression);
+        ExpectExpressionType(TypeChecking.TypeChecker.InstantiatedClass.Boolean, ifExpression.CheckExpression);
 
-        IReadOnlyList<LocalVariable> matchVariableDeclarations = [];
+        IReadOnlyList<TypeChecking.TypeChecker.LocalVariable> matchVariableDeclarations = [];
 
         if (ifExpression.CheckExpression is MatchesExpression { DeclaredVariables: var declaredVariables })
         {
             matchVariableDeclarations = declaredVariables;
         }
 
-        var uninstantiatedVariables = GetScopedVariables()
-            .OfType<LocalVariable>()
+        var uninstantiatedVariables = Enumerable
+            .OfType<TypeChecking.TypeChecker.LocalVariable>(GetScopedVariables())
             .Where(x => !x.Instantiated)
             .ToDictionary(x => x, _ => new VariableIfInstantiation());
 
@@ -62,7 +62,7 @@ public partial class TypeChecker
             elseIf.CheckExpression.ValueUseful = true;
             TypeCheckExpression(elseIf.CheckExpression);
 
-            ExpectExpressionType(InstantiatedClass.Boolean, elseIf.CheckExpression);
+            ExpectExpressionType(TypeChecking.TypeChecker.InstantiatedClass.Boolean, elseIf.CheckExpression);
 
             matchVariableDeclarations = elseIf.CheckExpression is MatchesExpression
             {
@@ -121,6 +121,6 @@ public partial class TypeChecker
             return bodyResolvedType;
         }
 
-        return InstantiatedClass.Unit;
+        return TypeChecking.TypeChecker.InstantiatedClass.Unit;
     }
 }

@@ -1,10 +1,6 @@
-﻿#define V2
-
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Reef.Core.Abseil;
-using Reef.Core.Abseil.New;
-using Reef.Core.IL;
-using Reef.Core.LoweredExpressions.New;
+using Reef.Core.LoweredExpressions;
 using Reef.Core.TypeChecking;
 
 namespace Reef.Core;
@@ -71,44 +67,22 @@ public class Compiler
         }
 
         Console.WriteLine("Lowering...");
-        #if V2
-        var (newLoweredProgram, newImportedModules) = NewProgramAbseil.Lower(parsedProgram.ParsedProgram);
-        #else
-        var loweredProgram = ProgramAbseil.Lower(parsedProgram.ParsedProgram);
-        #endif
+        var (newLoweredProgram, newImportedModules) = ProgramAbseil.Lower(parsedProgram.ParsedProgram);
 
 
         if (outputIr)
         {
-            var irStr = NewPrettyPrinter.PrettyPrintLoweredProgram(newLoweredProgram, false, false);
+            var irStr = PrettyPrinter.PrettyPrintLoweredProgram(newLoweredProgram, false, false);
             await File.WriteAllTextAsync(Path.Join(buildDirectory, $"{fileNameWithoutExtension}.ir"), irStr, ct);
         }
 
-        Console.WriteLine("Compiling to IL...");
-        #if V2
-        #else
-        var (il, importedModules) = ILCompile.CompileToIL(loweredProgram);
-#endif
-
         Console.WriteLine("Generating Assembly...");
-#if V2
-        IReadOnlyList<NewLoweredModule> allNewModules = [..newImportedModules.Append(newLoweredProgram)];
-        #else
-        IReadOnlyList<ReefILModule> allModules = [..importedModules.Append(il)];
-#endif
+        IReadOnlyList<LoweredModule> allNewModules = [..newImportedModules.Append(newLoweredProgram)];
 
-        #if V2
-        var newUsefulMethodIds = new NewTreeShaker(allNewModules).Shake();
-        #else
-        var usefulMethodIds = new TreeShaker(allModules).Shake();
-#endif
+        var newUsefulMethodIds = new TreeShaker(allNewModules).Shake();
 
         var assembly =
-#if V2
-            AssemblyLine2.Process(allNewModules, newUsefulMethodIds);
-                #else
-                AssemblyLine.Process(allModules, usefulMethodIds);
-#endif
+            AssemblyLine.Process(allNewModules, newUsefulMethodIds);
         var asmFile = $"{fileNameWithoutExtension}.nasm";
         await File.WriteAllTextAsync(Path.Join(buildDirectory, asmFile), assembly, ct);
 

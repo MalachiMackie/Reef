@@ -4,7 +4,7 @@ namespace Reef.Core.TypeChecking;
 
 public partial class TypeChecker
 {
-    private ITypeReference TypeCheckTupleExpression(TupleExpression tuple)
+    private TypeChecking.TypeChecker.ITypeReference TypeCheckTupleExpression(TupleExpression tuple)
     {
         if (tuple.Values.Count == 1)
         {

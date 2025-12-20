@@ -4,25 +4,56 @@ using static Reef.Core.Tests.LoweredProgramHelpers;
 
 namespace Reef.Core.Tests.AbseilTests;
 
+
 public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutputHelper)
 {
 
+    [Fact]
+    public void SingleTest()
+    {
+        var source = "fn MyFn(a: string): string { return a; }";
+        var expectedProgram = LoweredProgram(
+            methods:
+            [
+                Method(
+                    new DefId(ModuleId, $"{ModuleId}.MyFn"),
+                    "MyFn",
+                    [
+                        new BasicBlock(new BasicBlockId("bb0"), [
+                            new Assign(new Local("_returnValue"), new Use(new Copy(new Local("_param0"))))
+                        ])
+                        {
+                            Terminator = new Return()
+                        }
+                    ],
+                    StringT,
+                    parameters: [("a", StringT)])
+            ]);
+        
+        var program = CreateProgram(ModuleId, source);
+        var (loweredProgram, _) = ProgramAbseil.Lower(program);
+
+        PrintPrograms(expectedProgram, loweredProgram);
+
+        loweredProgram.Should().BeEquivalentTo(expectedProgram);
+    }
+    
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void SimpleExpressionAbseilTest(string description, string source, LoweredProgram expectedProgram)
+    public void SimpleExpressionAbseilTest(string description, string source, LoweredModule expectedProgram)
     {
         description.Should().NotBeEmpty();
-        var program = CreateProgram(_moduleId, source);
-        var loweredProgram = ProgramAbseil.Lower(program);
+        var program = CreateProgram(ModuleId, source);
+        var (loweredProgram, _) = ProgramAbseil.Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
 
-    private const string _moduleId = "SimpleExpressionTests";
+    private const string ModuleId = "SimpleExpressionTests";
 
-    public static TheoryData<string, string, LoweredProgram> TestCases()
+    public static TheoryData<string, string, LoweredModule> TestCases()
     {
         return new()
         {
@@ -30,17 +61,27 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "variable declaration",
                 "var a = \"\";",
                 LoweredProgram(methods: [
-                    Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                    Method(
+                        new DefId(ModuleId, $"{ModuleId}._Main"),
+                        "_Main",
                         [
-                            VariableDeclaration(
-                                "a",
-                                StringConstant("", true),
-                                valueUseful: false),
-                            MethodReturnUnit()
+                            new BasicBlock(
+                                new BasicBlockId("bb0"),
+                                [
+                                    new Assign(new Local("_local0"), new Use(new StringConstant("")))
+                                ])
+                            {
+                                Terminator = new GoTo(new BasicBlockId("bb1"))
+                            },
+                            new BasicBlock(
+                                new BasicBlockId("bb1"),
+                                [])
+                            {
+                                Terminator = new Return()
+                            }
                         ],
-                        locals: [
-                            Local("a", StringType)
-                        ])
+                        Unit,
+                        locals: [new MethodLocal("_local0", "a", StringT)])
                 ])
             },
             {
@@ -48,185 +89,494 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "var a;a = 2;",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}._Main"),
+                            "_Main",
                             [
-                                VariableDeclaration("a", false),
-                                LocalValueAssignment("a", Int32Constant(2, true), false, Int32_t),
-                                MethodReturnUnit()
+                                new BasicBlock(new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(new Local("_local0"), new Use(new IntConstant(2, 4)))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
                             ],
-                            locals: [
-                                Local("a", Int32_t)
-                            ])
+                            Unit,
+                            locals: [new MethodLocal("_local0", "a", Int32T)])
                     ])
             },
             {
                 "int plus",
-                "1 + 2;",
+                "var a = 1 + 2;",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
-                                Int32Plus(Int32Constant(1, true), Int32Constant(2, true), false),
-                                MethodReturnUnit()
-                            ])
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.Add))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new MethodLocal("_local0", "a", Int32T)])
                     ])
             },
             {
                 "int minus",
-                "1 - 2;",
+                "var a = 1 - 2;",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
-                                Int32Minus(Int32Constant(1, true), Int32Constant(2, true), false),
-                                MethodReturnUnit()
-                            ])
-                    ])
-            },
-            {
-                "int multiply",
-                "1 * 2;",
-                LoweredProgram(
-                    methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
-                            [
-                                Int32Multiply(Int32Constant(1, true), Int32Constant(2, true), false),
-                                MethodReturnUnit()
-                            ])
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.Subtract))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new MethodLocal("_local0", "a", Int32T)])
                     ])
             },
             {
                 "int divide",
-                "1 / 2;",
+                "var a = 1 / 2;",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
-                                Int32Divide(Int32Constant(1, true), Int32Constant(2, true), false),
-                                MethodReturnUnit()
-                            ])
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.Divide))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new MethodLocal("_local0", "a", Int32T)])
+                    ])
+            },
+            {
+                "int multiply",
+                "var a = 1 * 2;",
+                LoweredProgram(
+                    methods: [
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.Multiply))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new MethodLocal("_local0", "a", Int32T)])
                     ])
             },
             {
                 "int not equals",
-                "1 != 2;",
+                "var a = 1 != 2;",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
-                                Int32NotEquals(Int32Constant(1, true), Int32Constant(2, true), false),
-                                MethodReturnUnit()
-                            ])
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.NotEqual))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new MethodLocal("_local0", "a", BooleanT)])
                     ])
             },
             {
                 "int equals",
-                "1 == 2;",
+                "var a = 1 == 2;",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
-                                Int32Equals(Int32Constant(1, true), Int32Constant(2, true), false),
-                                MethodReturnUnit()
-                            ])
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.Equal))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new MethodLocal("_local0", "a", BooleanT)])
                     ])
             },
             {
                 "int greater than",
-                "1 > 2;",
+                "var a = 1 > 2;",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
-                                Int32GreaterThan(Int32Constant(1, true), Int32Constant(2, true), false),
-                                MethodReturnUnit()
-                            ])
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.GreaterThan))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new MethodLocal("_local0", "a", BooleanT)])
                     ])
             },
             {
                 "int less than",
-                "1 < 2;",
+                "var a = 1 < 2;",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
-                                Int32LessThan(Int32Constant(1, true), Int32Constant(2, true), false),
-                                MethodReturnUnit()
-                            ])
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(
+                                            new Local("_local0"),
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.LessThan))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new MethodLocal("_local0", "a", BooleanT)])
                     ])
             },
             {
                 "bool or",
-                "true || true",
+                "var a = false || false",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
-                                BoolOr(BoolConstant(true, true), BoolConstant(true, true), false),
-                                MethodReturnUnit()
-                            ])
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [])
+                                {
+                                    Terminator = new SwitchInt(
+                                        new BoolConstant(false),
+                                        new Dictionary<int, BasicBlockId>
+                                        {
+                                            { 0, new BasicBlockId("bb1") }
+                                        },
+                                        new BasicBlockId("bb2"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [
+                                        new Assign(new Local("_local0"), new Use(new BoolConstant(false)))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb3"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb2"),
+                                    [
+                                        new Assign(new Local("_local0"), new Use(new BoolConstant(true)))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb3"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb3"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new MethodLocal("_local0", "a", BooleanT)])
                     ])
             },
             {
                 "bool and",
-                "true && true",
+                "var a = false && false",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
-                                BoolAnd(BoolConstant(true, true), BoolConstant(true, true), false),
-                                MethodReturnUnit()
-                            ])
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [])
+                                {
+                                    Terminator = new SwitchInt(
+                                        new BoolConstant(false),
+                                        new Dictionary<int, BasicBlockId>
+                                        {
+                                            { 0, new BasicBlockId("bb2") }
+                                        },
+                                        new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb1"),
+                                    [
+                                        new Assign(new Local("_local0"), new Use(new BoolConstant(false)))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb3"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb2"),
+                                    [
+                                        new Assign(new Local("_local0"), new Use(new BoolConstant(false)))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb3"))
+                                },
+                                new BasicBlock(
+                                    new BasicBlockId("bb3"),
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new MethodLocal("_local0", "a", BooleanT)])
                     ])
             },
             {
                 "bool not",
-                "!true",
+                "var a = !true",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
-                                BoolNot(BoolConstant(true, true), false),
-                                MethodReturnUnit()
+                                new BasicBlock(new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(new Local("_local0"), new UnaryOperation(new BoolConstant(true), UnaryOperationKind.Not))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [
+                                new MethodLocal("_local0", "a", BooleanT)
                             ])
                     ])
+            },
+            {
+                "chain operations",
+                "var a = 1 + 2 + 3",
+                LoweredProgram(methods: [
+                    Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                        [
+                            new BasicBlock(new BasicBlockId("bb0"), [
+                                new Assign(
+                                    new Local("_local1"),
+                                    new BinaryOperation(new IntConstant(1, 4), new IntConstant(2, 4), BinaryOperationKind.Add)),
+                                new Assign(
+                                    new Local("_local0"),
+                                    new BinaryOperation(new Copy(new Local("_local1")), new IntConstant(3, 4), BinaryOperationKind.Add)),
+                            ])
+                            {
+                                Terminator = new GoTo(new BasicBlockId("bb1"))
+                            },
+                            new BasicBlock(new BasicBlockId("bb1"), [])
+                            {
+                                Terminator = new Return()
+                            }
+                        ],
+                        Unit,
+                        locals: [
+                            new MethodLocal("_local0", "a", Int32T),
+                            new MethodLocal("_local1", null, Int32T),
+                        ])
+                ])
+            },
+            {
+                "dead expression",
+                "1",
+                LoweredProgram(methods: [
+                    Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                        [
+                            new BasicBlock(new BasicBlockId("bb0"), [])
+                            {
+                                Terminator = new Return()
+                            }
+                        ],
+                        Unit)
+                ])
             },
             {
                 "empty block",
                 "{}",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
-                                Block([], Unit, false),
-                                MethodReturnUnit()
-                            ])
+                                new BasicBlock(new BasicBlockId("bb0"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit)
                     ])
             },
             {
                 "block with one expression",
-                "{true;}",
+                "{var a = true;}",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
-                                Block([BoolConstant(true, false)], Unit, false),
-                                MethodReturnUnit()
-                            ])
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(new Local("_local0"), new Use(new BoolConstant(true)))
+                                ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new MethodLocal("_local0", "a", BooleanT)])
                     ])
             },
             {
                 "block with multiple expressions",
-                "{true; 1;}",
+                "{var a = true; var b = 1;}",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
-                                Block([
-                                    BoolConstant(true, false),
-                                    Int32Constant(1, false),
-                                ], Unit, false),
-                                MethodReturnUnit()
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(new Local("_local0"), new Use(new BoolConstant(true))),
+                                    new Assign(new Local("_local1"), new Use(new IntConstant(1, 4))),
+                                ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [
+                                new MethodLocal("_local0", "a", BooleanT),
+                                new MethodLocal("_local1", "b", Int32T),
                             ])
                     ])
             },
@@ -235,15 +585,26 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "var a = 1; var b = a;",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
-                                VariableDeclaration("a", Int32Constant(1, true), valueUseful: false),
-                                VariableDeclaration("b", LocalAccess("a", true, Int32_t), valueUseful: false),
-                                MethodReturnUnit()
+                                new BasicBlock(
+                                    new BasicBlockId("bb0"),
+                                    [
+                                        new Assign(new Local("_local0"), new Use(new IntConstant(1, 4))),
+                                        new Assign(new Local("_local1"), new Use(new Copy(new Local("_local0"))))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
                             ],
+                            Unit,
                             locals: [
-                                Local("a", Int32_t),
-                                Local("b", Int32_t),
+                                new MethodLocal("_local0", "a", Int32T),
+                                new MethodLocal("_local1", "b", Int32T),
                             ])
                     ])
             },
@@ -252,11 +613,37 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "fn MyFn(){} MyFn();",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn", [MethodReturnUnit()]),
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main", [
-                            MethodCall(FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn"), [], false, Unit),
-                            MethodReturnUnit()
-                        ])
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}.MyFn"),
+                            "MyFn",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit),
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}._Main"),
+                            "_Main",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [])
+                                {
+                                    Terminator = new MethodCall(
+                                        new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyFn"), []),
+                                        [],
+                                        new Local("_local0"),
+                                        new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [
+                                new MethodLocal("_local0", null, Unit)
+                            ])
                     ])
             },
             {
@@ -268,20 +655,41 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 """,
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn", [MethodReturnUnit()], typeParameters: [(new DefId(_moduleId, $"{_moduleId}.MyFn"), "T")]),
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}.MyFn"),
+                            "MyFn",
+                            [new BasicBlock(new BasicBlockId("bb0"), []) { Terminator = new Return()}],
+                            Unit,
+                            typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyFn"), "T")]),
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}._Main"),
+                            "_Main",
                             [
-                                MethodCall(
-                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn", [StringType]),
-                                    [],
-                                    false,
-                                    Unit),
-                                MethodCall(
-                                    FunctionReference(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn", [Int64_t]),
-                                    [],
-                                    false,
-                                    Unit),
-                                MethodReturnUnit()
+                                new BasicBlock(new BasicBlockId("bb0"), [])
+                                {
+                                    Terminator = new MethodCall(
+                                        new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyFn"), [StringT]),
+                                        [],
+                                        new Local("_local0"),
+                                        new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new MethodCall(
+                                        new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyFn"), [Int64T]),
+                                        [],
+                                        new Local("_local1"),
+                                        new BasicBlockId("bb2"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb2"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [
+                                new MethodLocal("_local0", null, Unit),
+                                new MethodLocal("_local1", null, Unit),
                             ])
                     ])
             },
@@ -290,44 +698,74 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 "fn MyFn(a: string): string { return a; }",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}.MyFn"), "MyFn",
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}.MyFn"),
+                            "MyFn",
                             [
-                                MethodReturn(
-                                    LoadArgument(0, true, StringType))
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(new Local("_returnValue"), new Use(new Copy(new Local("_param0"))))
+                                ])
+                                {
+                                    Terminator = new Return()
+                                }
                             ],
-                            parameters: [StringType],
-                            returnType: StringType)
+                            StringT,
+                            parameters: [("a", StringT)])
                     ])
             },
             {
                 "single element tuple",
-                "(1)",
+                "var a = (1);",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
-                                Int32Constant(1, false),
-                                MethodReturnUnit()
-                            ])
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(
+                                        new Local("_local0"),
+                                        new Use(new IntConstant(1, 4)))
+                                ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new MethodLocal("_local0", "a", Int32T)])
                     ])
             },
             {
                 "two element tuple",
-                "(1, \"\")",
+                """var a = (1, "");""",
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
-                                CreateObject(
-                                    ConcreteTypeReference("Tuple`2", DefId.Tuple(2), [Int32_t, StringType]),
-                                    "_classVariant",
-                                    false,
-                                    new()
-                                    {
-                                        {"Item0", Int32Constant(1, true)},
-                                        {"Item1", StringConstant("", true)},
-                                    }),
-                                MethodReturnUnit()
+                                new BasicBlock(new BasicBlockId("bb0"), [
+                                    new Assign(
+                                        new Local("_local0"),
+                                        new CreateObject(Tuple(Int32T, StringT))),
+                                    new Assign(
+                                        new Field(new Local("_local0"), "Item0", "_classVariant"),
+                                        new Use(new IntConstant(1, 4))),
+                                    new Assign(
+                                        new Field(new Local("_local0"), "Item1", "_classVariant"),
+                                        new Use(new StringConstant(""))),
+                                ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(new BasicBlockId("bb1"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [
+                                new MethodLocal("_local0", "a", Tuple(Int32T, StringT))
                             ])
                     ])
             },
@@ -340,13 +778,22 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 """,
                 LoweredProgram(
                     methods: [
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main__SomeFn"), "_Main__SomeFn",
-                            [MethodReturnUnit()]),
-                        Method(new DefId(_moduleId, $"{_moduleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main__SomeFn"), "_Main__SomeFn",
                             [
-                                Block([], Unit, false),
-                                MethodReturnUnit()
-                            ])
+                                new BasicBlock(new BasicBlockId("bb0"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit),
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(new BasicBlockId("bb0"), [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit)
                     ])
             },
         };

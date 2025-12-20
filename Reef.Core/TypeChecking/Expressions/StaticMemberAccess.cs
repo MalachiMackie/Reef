@@ -5,7 +5,7 @@ namespace Reef.Core.TypeChecking;
 
 public partial class TypeChecker
 {
-    private ITypeReference TypeCheckStaticMemberAccess(
+    private TypeChecking.TypeChecker.ITypeReference TypeCheckStaticMemberAccess(
         StaticMemberAccessExpression staticMemberAccessExpression)
     {
         var staticMemberAccess = staticMemberAccessExpression.StaticMemberAccess;
@@ -16,16 +16,16 @@ public partial class TypeChecker
         var memberName = staticMemberAccess.MemberName?.StringValue;
         if (memberName is null)
         {
-            return UnknownType.Instance;
+            return TypeChecking.TypeChecker.UnknownType.Instance;
         }
 
         var typeArguments = (staticMemberAccess.TypeArguments ?? [])
-            .Select(x => (GetTypeReference(x), x.SourceRange))
+            .Select<ITypeIdentifier, (TypeChecking.TypeChecker.ITypeReference, SourceRange SourceRange)>(x => (GetTypeReference(x), x.SourceRange))
             .ToArray();
 
         switch (type)
         {
-            case InstantiatedClass { Fields: var fields } instantiatedClass:
+            case TypeChecking.TypeChecker.InstantiatedClass { Fields: var fields } instantiatedClass:
                 {
                     var field = fields.FirstOrDefault(x => x.Name == memberName);
                     if (field is not null)
@@ -53,7 +53,7 @@ public partial class TypeChecker
                             out var function))
                     {
                         _errors.Add(TypeCheckerError.UnknownTypeMember(staticMemberAccess.MemberName!, instantiatedClass.Signature.Name));
-                        return UnknownType.Instance;
+                        return TypeChecking.TypeChecker.UnknownType.Instance;
                     }
 
                     if (!function.IsStatic)
@@ -65,10 +65,10 @@ public partial class TypeChecker
 
                     staticMemberAccess.InstantiatedFunction = function;
 
-                    return new FunctionObject(function.Parameters, function.ReturnType);
+                    return new TypeChecking.TypeChecker.FunctionObject(function.Parameters, function.ReturnType);
 
                 }
-            case InstantiatedUnion instantiatedUnion:
+            case TypeChecking.TypeChecker.InstantiatedUnion instantiatedUnion:
                 {
                     var variant = instantiatedUnion.Variants.FirstOrDefault(x => x.Name == memberName);
                     if (variant is not null)
@@ -82,18 +82,18 @@ public partial class TypeChecker
 
                         switch (variant)
                         {
-                            case TupleUnionVariant tupleVariant:
+                            case TypeChecking.TypeChecker.TupleUnionVariant tupleVariant:
                                 {
                                     var tupleVariantFunction = GetUnionTupleVariantFunction(tupleVariant, instantiatedUnion);
                                     staticMemberAccess.InstantiatedFunction = tupleVariantFunction;
 
-                                    return new FunctionObject(
+                                    return new TypeChecking.TypeChecker.FunctionObject(
                                         tupleVariantFunction.Parameters,
                                         tupleVariantFunction.ReturnType);
                                 }
-                            case UnitUnionVariant:
+                            case TypeChecking.TypeChecker.UnitUnionVariant:
                                 return type;
-                            case ClassUnionVariant:
+                            case TypeChecking.TypeChecker.ClassUnionVariant:
                                 _errors.Add(TypeCheckerError.UnionClassVariantWithoutInitializer(staticMemberAccessExpression.SourceRange));
                                 return type;
                             default:
@@ -108,7 +108,7 @@ public partial class TypeChecker
                             out var function))
                     {
                         _errors.Add(TypeCheckerError.UnknownTypeMember(staticMemberAccess.MemberName!, instantiatedUnion.Name));
-                        return UnknownType.Instance;
+                        return TypeChecking.TypeChecker.UnknownType.Instance;
                     }
 
                     if (!function.IsStatic)
@@ -119,13 +119,13 @@ public partial class TypeChecker
                     staticMemberAccess.MemberType = MemberType.Function;
                     staticMemberAccess.InstantiatedFunction = function;
 
-                    return new FunctionObject(
+                    return new TypeChecking.TypeChecker.FunctionObject(
                         function.Parameters,
                         function.ReturnType);
                 }
-            case GenericTypeReference or GenericPlaceholder:
+            case TypeChecking.TypeChecker.GenericTypeReference or TypeChecking.TypeChecker.GenericPlaceholder:
                 _errors.Add(TypeCheckerError.StaticMemberAccessOnGenericReference(staticMemberAccessExpression));
-                return UnknownType.Instance;
+                return TypeChecking.TypeChecker.UnknownType.Instance;
             default:
                 throw new UnreachableException(type.GetType().ToString());
         }

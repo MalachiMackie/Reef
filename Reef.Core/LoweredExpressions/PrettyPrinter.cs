@@ -4,34 +4,31 @@ using System.Text;
 
 namespace Reef.Core.LoweredExpressions;
 
-public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
+public class PrettyPrinter
 {
     private readonly StringBuilder _stringBuilder = new();
     private uint _indentationLevel;
-    private IReadOnlyList<MethodLocal> _methodLocals = [];
-    private IReadOnlyList<DataType> _dataTypes = [];
 
     public static string PrettyPrintLoweredProgram(
-            LoweredProgram program,
+            LoweredModule program,
             bool parensAroundExpressions = true,
             bool printValueUseful = true)
     {
-        var printer = new PrettyPrinter(parensAroundExpressions, printValueUseful);
+        var printer = new PrettyPrinter();
 
         printer.PrettyPrintLoweredProgramInner(program);
 
         return printer._stringBuilder.ToString();
     }
 
-    private void PrettyPrintLoweredProgramInner(LoweredProgram program)
+    private void PrettyPrintLoweredProgramInner(LoweredModule program)
     {
-        _dataTypes = program.DataTypes;
         foreach (var dataType in program.DataTypes)
         {
             PrettyPrintDataType(dataType);
         }
 
-        foreach (var method in program.Methods)
+        foreach (var method in program.Methods.OfType<LoweredMethod>())
         {
             PrettyPrintMethod(method);
         }
@@ -71,7 +68,7 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
         _stringBuilder.Append($"static field {field.Name}: ");
         PrettyPrintTypeReference(field.Type);
         _stringBuilder.Append(" = ");
-        PrettyPrintExpression(field.StaticInitializer);
+        PrettyPrintCodeBlock(field.InitializerBasicBlocks, field.InitializerLocals, field.ReturnValueLocal);
         _stringBuilder.AppendLine(",");
     }
 
@@ -133,7 +130,6 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
 
     private void PrettyPrintMethod(LoweredMethod method)
     {
-        _methodLocals = method.Locals;
         Indent();
         _stringBuilder.Append($"fn {method.Name}");
 
@@ -152,804 +148,275 @@ public class PrettyPrinter(bool parensAroundExpressions, bool printValueUseful)
         }
         _stringBuilder.Append('(');
 
-        for (var i = 0; i < method.Parameters.Count; i++)
+        for (var i = 0; i < method.ParameterLocals.Count; i++)
         {
             if (i > 0)
             {
                 _stringBuilder.Append(", ");
             }
-            PrettyPrintTypeReference(method.Parameters[i]);
+
+            var parameterLocal = method.ParameterLocals[i];
+
+            _stringBuilder.Append(parameterLocal.CompilerGivenName);
+            if (parameterLocal.UserGivenName is not null)
+            {
+                _stringBuilder.Append($" ({parameterLocal.UserGivenName})");
+            }
+
+            _stringBuilder.Append(": ");
+            PrettyPrintTypeReference(parameterLocal.Type);
         }
         _stringBuilder.Append("): ");
-        PrettyPrintTypeReference(method.ReturnType);
+        PrettyPrintTypeReference(method.ReturnValue.Type);
         _stringBuilder.AppendLine(" {");
         _indentationLevel++;
 
-        for (var i = 0; i < method.Expressions.Count; i++)
-        {
-            var expression = method.Expressions[i];
-            Indent();
-            var beforeLength = _stringBuilder.Length;
-            PrettyPrintExpression(expression);
+        PrettyPrintCodeBlock(method.BasicBlocks, method.Locals, method.ReturnValue);
 
-            // only print a semicolon if it's not a tail expression and we've actually printed something
-            if ((i < method.Expressions.Count - 1 || !expression.ValueUseful) && beforeLength != _stringBuilder.Length)
-            {
-                _stringBuilder.Append(';');
-            }
-            _stringBuilder.AppendLine();
-        }
+        
 
         _indentationLevel--;
         Indent();
         _stringBuilder.AppendLine("}");
     }
 
-    private void PrettyPrintExpression(ILoweredExpression expression)
+    private void PrettyPrintCodeBlock(IReadOnlyList<BasicBlock> basicBlocks, IReadOnlyList<MethodLocal> methodLocals, MethodLocal returnLocal)
     {
-        if (parensAroundExpressions)
+        foreach (var local in methodLocals.Prepend(returnLocal))
         {
-            _stringBuilder.Append('(');
-        }
-        if (printValueUseful)
-        {
-            _stringBuilder.Append($"[ValueUseful: {expression.ValueUseful}] ");
-        }
-        switch (expression)
-        {
-            case VariableDeclarationExpression e:
+            Indent();
+            _stringBuilder.Append($"let {local.CompilerGivenName}");
+            if (local.UserGivenName is not null)
             {
-                var isInLocalsType = _methodLocals.Where(x => x.Name == "__locals")
-                    .Any(x =>
-                    {
-                        var dataType = _dataTypes.First(y => y.Id == (x.Type as LoweredConcreteTypeReference)!.DefinitionId);
-                        return dataType.Variants[0].Fields.Any(y => y.Name == e.LocalName);
-                    });
-
-                if (!isInLocalsType)
-                {
-                    _stringBuilder.Append($"var {e.LocalName}: ");
-                    var local = _methodLocals.First(x => x.Name == e.LocalName);
-                    PrettyPrintTypeReference(local.Type);
-                }
-                break;
+                _stringBuilder.Append($" ({local.UserGivenName})");
             }
-            case VariableDeclarationAndAssignmentExpression e:
-            {
-                var isInLocalsType = _methodLocals.Where(x => x.Name == "__locals")
-                    .Any(x =>
-                    {
-                        var dataType = _dataTypes.FirstOrDefault(y => y.Id == (x.Type as LoweredConcreteTypeReference)!.DefinitionId)
-                            ?? throw new InvalidOperationException($"No data type found with definition id {(x.Type as LoweredConcreteTypeReference)!.DefinitionId}");
-                        return dataType.Variants[0].Fields.Any(y => y.Name == e.LocalName);
-                    });
 
-                if (isInLocalsType)
+            _stringBuilder.Append(": ");
+            PrettyPrintTypeReference(local.Type);
+            _stringBuilder.AppendLine(";");
+        }
+
+        foreach (var basicBlock in basicBlocks)
+        {
+            Indent();
+            _stringBuilder.AppendLine($"{basicBlock.Id.Id}: {{");
+            _indentationLevel++;
+            
+            PrettyPrintJoin(
+                basicBlock.Statements,
+                statement =>
                 {
-                    _stringBuilder.Append($"__locals.{e.LocalName}");
-                }
-                else
-                {
-                    _stringBuilder.Append($"var {e.LocalName}: ");
-                    var local = _methodLocals.First(x => x.Name == e.LocalName);
-                    PrettyPrintTypeReference(local.Type);
-                }
+                    Indent();
+                    PrettyPrintStatement(statement);
+                },
+                "\n");
+
+            if (basicBlock.Statements.Count > 0)
+            {
+                _stringBuilder.AppendLine();
+            }
+            Indent();
+            PrettyPrintTerminator(basicBlock.Terminator);
+            _stringBuilder.AppendLine();
+            _indentationLevel--;
+            Indent();
+            _stringBuilder.AppendLine("}");
+        }
+    }
+
+    private void PrettyPrintTerminator(ITerminator? terminator)
+    {
+        if (terminator is null)
+        {
+            _stringBuilder.Append("[No Terminator]");
+            return;
+        }
+
+        switch (terminator)
+        {
+            case MethodCall methodCall:
+            {
+                PrettyPrintPlace(methodCall.PlaceDestination);
                 _stringBuilder.Append(" = ");
-                PrettyPrintExpression(e.Value);
-                break;
-            }
-            case Int64EqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" == ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int32EqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" == ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int16EqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" == ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int8EqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" == ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt64EqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" == ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt32EqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" == ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt16EqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" == ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt8EqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" == ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case BoolEqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" == ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int64NotEqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" != ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int32NotEqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" != ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int16NotEqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" != ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int8NotEqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" != ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt64NotEqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" != ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt32NotEqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" != ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt16NotEqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" != ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt8NotEqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" != ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case BoolNotEqualsExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" != ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int64GreaterThanExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" > ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int32GreaterThanExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" > ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int16GreaterThanExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" > ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int8GreaterThanExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" > ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt64GreaterThanExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" > ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt32GreaterThanExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" > ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt16GreaterThanExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" > ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt8GreaterThanExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" > ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int64LessThanExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" < ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int32LessThanExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" < ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int16LessThanExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" < ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int8LessThanExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" < ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt64LessThanExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" < ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt32LessThanExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" < ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt16LessThanExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" < ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt8LessThanExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" < ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int64DivideExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" / ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int32DivideExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" / ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int16DivideExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" / ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int8DivideExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" / ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt64DivideExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" / ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt32DivideExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" / ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt16DivideExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" / ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt8DivideExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" / ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int64MultiplyExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" * ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int32MultiplyExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" * ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int16MultiplyExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" * ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int8MultiplyExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" * ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt64MultiplyExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" * ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt32MultiplyExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" * ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt16MultiplyExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" * ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt8MultiplyExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" * ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int64PlusExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" + ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int32PlusExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" + ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int16PlusExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" + ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int8PlusExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" + ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt64PlusExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" + ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt32PlusExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" + ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt16PlusExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" + ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt8PlusExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" + ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int64MinusExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" - ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int32MinusExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" - ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int16MinusExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" - ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case Int8MinusExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" - ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt64MinusExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" - ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt32MinusExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" - ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt16MinusExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" - ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case UInt8MinusExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" - ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case BoolAndExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" && ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case BoolOrExpression e:
-            {
-                PrettyPrintExpression(e.Left);
-                _stringBuilder.Append(" || ");
-                PrettyPrintExpression(e.Right);
-                break;
-            }
-            case BoolNotExpression e:
-            {
-                _stringBuilder.Append('!');
-                PrettyPrintExpression(e.Operand);
-                break;
-            }
-            case MethodReturnExpression e:
-            {
-                _stringBuilder.Append("return ");
-                PrettyPrintExpression(e.ReturnValue);
-                break;
-            }
-            case CreateObjectExpression e:
-            {
-                _stringBuilder.Append("new ");
-                PrettyPrintTypeReference(e.Type);
-                _stringBuilder.Append($"::{e.Variant}");
-                _stringBuilder.Append(" {");
-                if (e.VariantFieldInitializers.Count > 0)
-                {
-                    _indentationLevel++;
-                    for (var i = 0; i < e.VariantFieldInitializers.Count; i++)
-                    {
-                        _stringBuilder.AppendLine();
-                        Indent();
-                        var (fieldName, fieldValue) = e.VariantFieldInitializers.ElementAt(i);
-                        _stringBuilder.Append($"{fieldName} = ");
-                        PrettyPrintExpression(fieldValue);
-                        _stringBuilder.Append(',');
-                    }
-                    _stringBuilder.AppendLine();
-                    _indentationLevel--;
-                    Indent();
-                }
-                _stringBuilder.Append('}');
-                break;
-            }
-            case UnitConstantExpression:
-            {
-                _stringBuilder.Append("()");
-                break;
-            }
-            case Int64ConstantExpression e:
-            {
-                _stringBuilder.Append(e.Value);
-                break;
-            }
-            case Int32ConstantExpression e:
-            {
-                _stringBuilder.Append(e.Value);
-                break;
-            }
-            case Int16ConstantExpression e:
-            {
-                _stringBuilder.Append(e.Value);
-                break;
-            }
-            case Int8ConstantExpression e:
-            {
-                _stringBuilder.Append(e.Value);
-                break;
-            }
-            case UInt64ConstantExpression e:
-            {
-                _stringBuilder.Append(e.Value);
-                break;
-            }
-            case UInt32ConstantExpression e:
-            {
-                _stringBuilder.Append(e.Value);
-                break;
-            }
-            case UInt16ConstantExpression e:
-            {
-                _stringBuilder.Append(e.Value);
-                break;
-            }
-            case UInt8ConstantExpression e:
-            {
-                _stringBuilder.Append(e.Value);
-                break;
-            }
-            case StringConstantExpression e:
-            {
-                _stringBuilder.Append($"\"{e.Value}\"");
-                break;
-            }
-            case BoolConstantExpression e:
-            {
-                _stringBuilder.Append(e.Value ? "true" : "false");
-                break;
-            }
-            case LocalVariableAccessor e:
-            {
-                _stringBuilder.Append(e.LocalName);
-                break;
-            }
-            case LoadArgumentExpression e:
-            {
-                _stringBuilder.Append($"LoadArgument({e.ArgumentIndex})");
-                break;
-            }
-            case FunctionReferenceConstantExpression e:
-            {
-                _stringBuilder.Append('*');
-                PrettyPrintFunctionReference(e.FunctionReference);
-                break;
-            }
-            case FieldAssignmentExpression e:
-            {
-                PrettyPrintExpression(e.FieldOwnerExpression);
-                _stringBuilder.Append($".{e.FieldName} = ");
-                PrettyPrintExpression(e.FieldValue);
-                break;
-            }
-            case FieldAccessExpression e:
-            {
-                PrettyPrintExpression(e.MemberOwner);
-                _stringBuilder.Append($".{e.FieldName}");
-                break;
-            }
-            case StaticFieldAccessExpression e:
-            {
-                PrettyPrintTypeReference(e.OwnerType);
-                _stringBuilder.Append($"::{e.FieldName}");
-                break;
-            }
-            case StaticFieldAssignmentExpression e:
-            {
-                PrettyPrintTypeReference(e.OwnerType);
-                _stringBuilder.Append($"::{e.FieldName} = ");
-                PrettyPrintExpression(e.FieldValue);
-                break;
-            }
-            case LocalAssignmentExpression e:
-            {
-                _stringBuilder.Append($"{e.LocalName} = ");
-                PrettyPrintExpression(e.Value);
-                break;
-            }
-            case MethodCallExpression e:
-            {
-                PrettyPrintFunctionReference(e.FunctionReference);
+                PrettyPrintFunctionReference(methodCall.Function);
                 _stringBuilder.Append('(');
-                for (var i = 0; i < e.Arguments.Count; i++)
-                {
-                    if (i > 0)
-                    {
-                        _stringBuilder.Append(", ");
-                    }
-                    PrettyPrintExpression(e.Arguments[i]);
-                }
-                _stringBuilder.Append(')');
-                break;
-            }
-            case SwitchIntExpression e:
-            {
-                _stringBuilder.Append("int-switch (");
-                PrettyPrintExpression(e.Check);
-                _stringBuilder.AppendLine(") {");
-                _indentationLevel++;
-                foreach (var (i, result) in e.Results)
-                {
-                    Indent();
-                    _stringBuilder.Append($"{i} => ");
-                    PrettyPrintExpression(result);
-                    _stringBuilder.AppendLine(",");
-                }
-                Indent();
-                _stringBuilder.Append("otherwise => ");
-                PrettyPrintExpression(e.Otherwise);
-                _stringBuilder.AppendLine(",");
-                _indentationLevel--;
-                Indent();
-                _stringBuilder.Append('}');
-                break;
-            }
-            case CastBoolToIntExpression e:
-            {
-                _stringBuilder.Append("(int -> bool)");
-                if (!parensAroundExpressions) {
-                    // we always want to print parentheses around this expression
-                    _stringBuilder.Append('(');
-                }
-                PrettyPrintExpression(e.BoolExpression);
-                if (!parensAroundExpressions) {
-                    _stringBuilder.Append(')');
-                }
-                break;
-            }
-            case BlockExpression e:
-            {
-                _stringBuilder.AppendLine("{");
-                _indentationLevel++;
-                for (var i = 0; i < e.Expressions.Count; i++)
-                {
-                    var blockExpression = e.Expressions[i];
-                    Indent();
-                    var beforeLength = _stringBuilder.Length;
-                    PrettyPrintExpression(blockExpression);
+                PrettyPrintJoin(methodCall.Arguments, PrettyPrintOperand, ", ");
+                _stringBuilder.Append($") -> [return: {methodCall.GoToAfter.Id}];");
 
-                    // only print a semicolon if it's not a tail expression and we've actually printed something 
-                    if ((i < e.Expressions.Count - 1 || !expression.ValueUseful) && beforeLength != _stringBuilder.Length)
-                    {
-                        _stringBuilder.Append(';');
-                    }
-                    _stringBuilder.AppendLine();
-                }
-                _indentationLevel--;
-                Indent();
-                _stringBuilder.Append('}');
                 break;
             }
-            case UnreachableExpression:
+            case Return:
             {
-                _stringBuilder.Append("Unreachable");
+                _stringBuilder.Append("return;");
                 break;
             }
-            case NoopExpression:
+            case SwitchInt switchInt:
             {
-                _stringBuilder.Append("noop");
+                _stringBuilder.Append("switchInt(");
+                PrettyPrintOperand(switchInt.Operand);
+                _stringBuilder.Append(") -> [");
+                PrettyPrintJoin(
+                    switchInt.Cases.OrderBy(x => x.Key).ToArray(),
+                    branch => _stringBuilder.Append($"{branch.Key}: {branch.Value.Id}"),
+                    ", ");
+                _stringBuilder.Append($", otherwise {switchInt.Otherwise.Id}];");
+                break;
+            }
+            case GoTo goTo:
+            {
+                _stringBuilder.Append($"goto -> {goTo.BasicBlockId.Id};");
                 break;
             }
             default:
-                throw new NotImplementedException($"{expression.GetType()}");
+                throw new ArgumentOutOfRangeException(nameof(terminator));
         }
+    }
 
-        if (parensAroundExpressions)
+    private void PrettyPrintPlace(IPlace place)
+    {
+        switch (place)
         {
-            _stringBuilder.Append(')');
+            case Field field:
+            {
+                _stringBuilder.Append('(');
+                PrettyPrintPlace(field.FieldOwner);
+                _stringBuilder.Append($" as {field.VariantName}).{field.FieldName}");
+                break;
+            }
+            case Local local:
+            {
+                _stringBuilder.Append(local.LocalName);
+                break;
+            }
+            case StaticField staticField:
+            {
+                PrettyPrintTypeReference(staticField.Type);
+                _stringBuilder.Append($"::{staticField.FieldName}");
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(place));
+        }
+    }
+
+    private void PrettyPrintJoin<T>(IReadOnlyList<T> items, Action<T> printItem, string join)
+    {
+        for (var index = 0; index < items.Count; index++)
+        {
+            printItem(items[index]);
+            if (index + 1 < items.Count)
+            {
+                _stringBuilder.Append(join);
+            }
+        }
+    }
+    
+    private void PrettyPrintStatement(IStatement statement)
+    {
+        switch (statement)
+        {
+            case Assign assign:
+            {
+                PrettyPrintPlace(assign.Place);
+                _stringBuilder.Append(" = ");
+                PrettyPrintRValue(assign.RValue);
+                _stringBuilder.Append(';');
+                break;
+            }
+            case LocalAlive localAlive:
+                throw new NotImplementedException();
+            case LocalDead localDead:
+                throw new NotImplementedException();
+            default:
+                throw new ArgumentOutOfRangeException(nameof(statement));
+        }
+    }
+
+    private void PrettyPrintRValue(IRValue rValue)
+    {
+        switch (rValue)
+        {
+            case BinaryOperation binaryOperation:
+            {
+                _stringBuilder.Append(binaryOperation.Kind switch
+                {
+                    BinaryOperationKind.Add => "Add",
+                    BinaryOperationKind.Subtract => "Subtract",
+                    BinaryOperationKind.Multiply => "Multiply",
+                    BinaryOperationKind.Divide => "Divide",
+                    BinaryOperationKind.LessThan => "LessThan",
+                    BinaryOperationKind.LessThanOrEqual => "LessThanOrEqual",
+                    BinaryOperationKind.GreaterThan => "GreaterThan",
+                    BinaryOperationKind.GreaterThanOrEqual => "GreaterThanOrEqual",
+                    BinaryOperationKind.Equal => "Equal",
+                    BinaryOperationKind.NotEqual => "NotEqual",
+                    _ => throw new ArgumentOutOfRangeException()
+                });
+                _stringBuilder.Append('(');
+                PrettyPrintJoin([binaryOperation.LeftOperand, binaryOperation.RightOperand], PrettyPrintOperand, ", ");
+                _stringBuilder.Append(')');
+                break;
+            }
+            case UnaryOperation unaryOperation:
+                _stringBuilder.Append(unaryOperation.Kind switch
+                {
+                    UnaryOperationKind.Not => '!',
+                    UnaryOperationKind.Negate => '-',
+                    _ => throw new ArgumentOutOfRangeException()
+                });
+                PrettyPrintOperand(unaryOperation.Operand);
+                break;
+            case Use use:
+                PrettyPrintOperand(use.Operand);
+                break;
+            case CreateObject createObject:
+            {
+                _stringBuilder.Append("new ");
+                PrettyPrintTypeReference(createObject.Type);
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(rValue));
+        }
+    }
+
+    private void PrettyPrintOperand(IOperand operand)
+    {
+        switch (operand)
+        {
+            case FunctionPointerConstant functionPointerConstant:
+                _stringBuilder.Append('*');
+                PrettyPrintFunctionReference(functionPointerConstant.Value);
+                break;
+            case IntConstant intConstant:
+                _stringBuilder.Append($"{intConstant.Value}_int{intConstant.ByteSize * 8}");
+                break;
+            case StringConstant stringConstant:
+                _stringBuilder.Append($"\"{stringConstant.Value}\"");
+                break;
+            case UIntConstant uIntConstant:
+                _stringBuilder.Append($"{uIntConstant.Value}_uint{uIntConstant.ByteSize * 8}");
+                break;
+            case UnitConstant:
+                _stringBuilder.Append("()");
+                break;
+            case BoolConstant{Value: var boolValue}:
+                _stringBuilder.Append(boolValue ? "true" : "false");
+                break;
+            case Copy{Place: var place}:
+            {
+                _stringBuilder.Append("copy ");
+                PrettyPrintPlace(place);
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(operand.ToString());
         }
     }
 
     private void PrettyPrintFunctionReference(LoweredFunctionReference functionReference)
     {
-        _stringBuilder.Append(functionReference.Name);
+        _stringBuilder.Append(functionReference.DefinitionId.FullName);
         if (functionReference.TypeArguments.Count > 0)
         {
             _stringBuilder.Append("::<");

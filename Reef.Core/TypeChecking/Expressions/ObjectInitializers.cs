@@ -4,11 +4,11 @@ namespace Reef.Core.TypeChecking;
 
 public partial class TypeChecker
 {
-    private ITypeReference TypeCheckUnionClassVariantInitializer(UnionClassVariantInitializer initializer)
+    private TypeChecking.TypeChecker.ITypeReference TypeCheckUnionClassVariantInitializer(UnionClassVariantInitializer initializer)
     {
         var type = GetTypeReference(initializer.UnionType);
 
-        if (type is not InstantiatedUnion instantiatedUnion)
+        if (type is not TypeChecking.TypeChecker.InstantiatedUnion instantiatedUnion)
         {
             throw new InvalidOperationException($"{type} is not a union");
         }
@@ -22,7 +22,7 @@ public partial class TypeChecker
             return instantiatedUnion;
         }
 
-        if (variant is not ClassUnionVariant classVariant)
+        if (variant is not TypeChecking.TypeChecker.ClassUnionVariant classVariant)
         {
             _errors.Add(TypeCheckerError.UnionClassVariantInitializerNotClassVariant(initializer.VariantIdentifier));
             return instantiatedUnion;
@@ -65,13 +65,13 @@ public partial class TypeChecker
         return type;
     }
 
-    private ITypeReference TypeCheckObjectInitializer(
+    private TypeChecking.TypeChecker.ITypeReference TypeCheckObjectInitializer(
         ObjectInitializerExpression objectInitializerExpression)
     {
         var objectInitializer = objectInitializerExpression.ObjectInitializer;
         var foundType = GetTypeReference(objectInitializer.Type);
 
-        if (foundType is UnknownType)
+        if (foundType is TypeChecking.TypeChecker.UnknownType)
         {
             // if we don't know what type this is, type check the field initializers anyway 
             foreach (var fieldInitializer in objectInitializer.FieldInitializers.Where(x => x.Value is not null))
@@ -79,17 +79,17 @@ public partial class TypeChecker
                 TypeCheckExpression(fieldInitializer.Value!);
             }
 
-            return UnknownType.Instance;
+            return TypeChecking.TypeChecker.UnknownType.Instance;
         }
 
-        if (foundType is not InstantiatedClass instantiatedClass)
+        if (foundType is not TypeChecking.TypeChecker.InstantiatedClass instantiatedClass)
         {
             throw new InvalidOperationException($"Type {foundType} cannot be initialized");
         }
 
         var initializedFields = new HashSet<string>();
         var fields = instantiatedClass.Fields.ToDictionary(x => x.Name);
-        var insideClass = CurrentTypeSignature is ClassSignature currentClassSignature
+        var insideClass = CurrentTypeSignature is TypeChecking.TypeChecker.ClassSignature currentClassSignature
                           && instantiatedClass.MatchesSignature(currentClassSignature);
 
         var publicInstanceFields = instantiatedClass.Fields

@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using System.Text;
-using Reef.Core.IL;
+using Reef.Core.LoweredExpressions;
 
 namespace Reef.Core;
 
-public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> usefulMethodIds)
+public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> usefulMethodIds)
 {
     private const string AsmHeader = """
                                      bits 64
@@ -27,21 +27,24 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
     /// </summary>
     private readonly Dictionary<string, string> _strings = [];
 
-    private readonly Queue<(ReefMethod Method, IReadOnlyList<ConcreteReefTypeReference> TypeArguments)>
+    private readonly Queue<(LoweredMethod Method, IReadOnlyList<LoweredConcreteTypeReference> TypeArguments)>
         _methodProcessingQueue = [];
+
+    private LoweredMethod? _currentMethod;
+    private IReadOnlyList<LoweredConcreteTypeReference> _currentTypeArguments = [];
 
     private readonly HashSet<string> _queuedMethodLabels = [];
 
-    private void TryEnqueueMethodForProcessing(ReefMethod method, IReadOnlyList<ConcreteReefTypeReference> typeArguments)
+    private void TryEnqueueMethodForProcessing(LoweredMethod method, IReadOnlyList<LoweredConcreteTypeReference> typeArguments)
     {
         var label = GetMethodLabel(method, typeArguments);
-        if (!method.Extern && _queuedMethodLabels.Add(label))
+        if (_queuedMethodLabels.Add(label))
         {
             _methodProcessingQueue.Enqueue((method, typeArguments));
         }
     }
 
-    public static string Process(IReadOnlyList<ReefILModule> modules, HashSet<DefId> usefulMethodIds)
+    public static string Process(IReadOnlyList<LoweredModule> modules, HashSet<DefId> usefulMethodIds)
     {
         var assemblyLine = new AssemblyLine(modules, usefulMethodIds);
         return assemblyLine.ProcessInner();
@@ -49,27 +52,29 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
 
     private string ProcessInner()
     {
-        var mainModule = modules.Where(x => x.MainMethod is not null).ToArray();
+        var mainModule = modules.Where(x => x.Methods.Any(y => y.Name == "_Main")).ToArray();
 
-        if (mainModule is not [{ MainMethod: { } mainMethod }])
+        if (mainModule.Length != 1)
         {
             throw new InvalidOperationException("Expected a single module with a main method");
         }
 
-        foreach (var externMethod in modules.SelectMany(x => x.Methods).Where(x => x.Extern && usefulMethodIds.Contains(x.Id)))
+        var mainMethod = mainModule[0].Methods.OfType<LoweredMethod>().Single(x => x.Name == "_Main");
+
+        foreach (var externMethod in modules.SelectMany(x => x.Methods)
+                     .OfType<LoweredExternMethod>()
+                     .Where(x => usefulMethodIds.Contains(x.Id)))
         {
-            _codeSegment.AppendLine($"extern {externMethod.DisplayName}");
+            _codeSegment.AppendLine($"extern {externMethod.Name}");
         }
 
         CreateMain(mainMethod);
 
+        // enqueue all non-generic methods. Generic methods get enqueued lazily based on what they're type arguments they're invoked with
         foreach (var module in modules)
         {
-            _codeSegment.AppendLine();
-
-            foreach (var method in module.Methods.Where(x =>
-                         !x.Extern
-                         && usefulMethodIds.Contains(x.Id)
+            foreach (var method in module.Methods.OfType<LoweredMethod>().Where(x =>
+                         usefulMethodIds.Contains(x.Id)
                          && x.TypeParameters.Count == 0))
             {
                 TryEnqueueMethodForProcessing(method, []);
@@ -91,13 +96,13 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 """;
     }
 
-    private ReefMethod? GetMethod(DefId defId)
+    private IMethod? GetMethod(DefId defId)
     {
         return modules.SelectMany(x => x.Methods)
             .FirstOrDefault(x => x.Id == defId);
     }
 
-    private void CreateMain(ReefMethod mainMethod)
+    private void CreateMain(LoweredMethod mainMethod)
     {
         _codeSegment.AppendLine("main:");
 
@@ -121,35 +126,49 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
         // move rax into rcx for exit process parameter
         _codeSegment.AppendLine("    mov     rcx, rax");
         _codeSegment.AppendLine("    call    ExitProcess");
+        _codeSegment.AppendLine();
     }
 
-    private Dictionary<string, uint> _locals = null!;
-    private Dictionary<uint, uint> _parameters = null!;
+    private Dictionary<string, int> _locals = null!;
 
-    private static string GetMethodLabel(ReefMethod method, IReadOnlyList<ConcreteReefTypeReference> typeArguments)
+    private static string GetMethodLabel(IMethod method, IReadOnlyList<LoweredConcreteTypeReference> typeArguments)
     {
         return typeArguments.Count == 0
             ? method.Id.FullName
             : $"{method.Id.FullName}_{string.Join("_", typeArguments.Select(x => x.DefinitionId.FullName))}";
     }
+
+    private uint _methodCount;
     
-    private void ProcessMethod(ReefMethod method, IReadOnlyList<ConcreteReefTypeReference> typeArguments)
+    private void ProcessMethod(LoweredMethod method, IReadOnlyList<LoweredConcreteTypeReference> typeArguments)
     {
+        _currentTypeArguments = typeArguments;
+        _currentMethod = method;
+        _methodCount++;
         _locals = [];
-        var stackOffset = 8u; // start with offset by 8 because return address is on the top of the stack 
-        foreach (var local in method.Locals)
+        var stackOffset = 32; // start with offset by 8 because return address is on the top of the stack 
+        foreach (var local in method.Locals.Append(method.ReturnValue))
         {
-            _locals[local.DisplayName] = stackOffset;
             stackOffset += 8;
+            _locals[local.CompilerGivenName] = -stackOffset;
         }
         
         _codeSegment.AppendLine($"{GetMethodLabel(method, typeArguments)}:");
+        
+        _codeSegment.AppendLine("    push    rbp");
+        _codeSegment.AppendLine("    mov     rbp, rsp");
+                
+        // ensure stack space is 16 byte aligned
+        stackOffset += stackOffset % 16;
+        _codeSegment.AppendLine("; Allocate stack space for local variables and parameters");
+        _codeSegment.AppendLine($"    sub     rsp, {stackOffset}");
 
-        _parameters = [];
-        for (var index = 0; index < method.Parameters.Count; index++)
+
+        for (var index = 0; index < method.ParameterLocals.Count; index++)
         {
-            var parameterOffset = (uint)(index + 1) * 8;
-            _parameters[(uint)index] = parameterOffset;
+            var parameterLocal = method.ParameterLocals[index];
+
+            var parameterOffset = (index + 2) * 8;
             
             var sourceRegister = index switch
             {
@@ -160,32 +179,38 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
                 _ => null
             };
 
+            _locals[parameterLocal.CompilerGivenName] = parameterOffset;
+
             if (sourceRegister is not null)
             {
-                _codeSegment.AppendLine($"    mov    [rsp+{parameterOffset}], {sourceRegister}");
+                _codeSegment.AppendLine($"    mov     QWORD [rbp{FormatOffset(parameterOffset)}], {sourceRegister}");
             }
         }
-        
-        _codeSegment.AppendLine("    push    rbp");
-        _codeSegment.AppendLine("    mov     rbp, rsp");
 
-        // ensure stack space is 16 byte aligned
-        stackOffset += stackOffset % 16;
-        _codeSegment.AppendLine("; Allocate stack space for local variables and parameters");
-        _codeSegment.AppendLine($"    sub     rsp, {stackOffset}");
-        
-        var labels = method.Instructions.Labels.ToLookup(x => x.ReferencesInstructionIndex, x => x.Name);
-        for (var i = 0; i < method.Instructions.Instructions.Count; i++)
+
+        foreach (var basicBlock in method.BasicBlocks)
         {
-            foreach (var label in labels[(uint)i])
+            _codeSegment.AppendLine($"{GetBasicBlockLabel(basicBlock.Id)}:");
+            foreach (var statement in basicBlock.Statements)
             {
-                _codeSegment.AppendLine($"{label}:");
+                ProcessStatement(statement);
             }
-            ProcessInstruction(method.Instructions.Instructions[i], method, typeArguments);
+
+            ProcessTerminator(basicBlock.Terminator.NotNull());
         }
+
+        _codeSegment.AppendLine();
     }
 
-    private readonly Stack<FunctionDefinitionReference> _functionStack = [];
+
+    private static string FormatOffset(int offset) => offset switch
+    {
+        0 => "",
+        < 0 => $"-{-offset}",
+        > 0 => $"+{offset}"
+    };
+
+    // private readonly Stack<FunctionDefinitionReference> _functionStack = [];
     private const uint ShadowSpaceBytes = 32;
 
     /*
@@ -231,513 +256,446 @@ public class AssemblyLine(IReadOnlyList<ReefILModule> modules, HashSet<DefId> us
             indicates an overflow condition for signed-integer (two’s complement) arithmetic
     */
 
-
-    private void ProcessInstruction(IInstruction instruction, ReefMethod method, IReadOnlyList<ConcreteReefTypeReference> typeArguments)
+    private void ProcessStatement(IStatement statement)
     {
-        switch (instruction)
+        switch (statement)
         {
-            case BoolNot:
+            case Assign assign:
             {
-                _codeSegment.AppendLine("; BOOL_NOT");
-
-                _codeSegment.AppendLine("    xor    [rsp], 1h");
+                var asmPlace = PlaceToAsmPlace(assign.Place);
+                AssignRValue(asmPlace, assign.RValue);
                 break;
             }
-            case Branch branch:
-            {
-                _codeSegment.AppendLine($"; BRANCH({branch.BranchToLabelName})");
-                _codeSegment.AppendLine($"    jmp     {branch.BranchToLabelName}");
-                break;
-            }
-            case BranchIfFalse branchIfFalse:
-            {
-                _codeSegment.AppendLine($"; BRANCH_IF_FALSE({branchIfFalse.BranchToLabelName})");
-
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    cmp     rax, 0");
-                _codeSegment.AppendLine($"    je     {branchIfFalse.BranchToLabelName}");
-                break;
-            }
-            case BranchIfTrue branchIfTrue:
-            {
-                _codeSegment.AppendLine($"; BRANCH_IF_TRUE({branchIfTrue.BranchToLabelName})");
-                
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    cmp     rax, 1");
-                _codeSegment.AppendLine($"    je     {branchIfTrue.BranchToLabelName}");
-                break;
-            }
-            case Call call:
-                {
-                    _codeSegment.AppendLine($"; CALL({call.Arity})");
-                    var functionDefinition = _functionStack.Pop();
-                    var calleeMethod = GetMethod(functionDefinition.DefinitionId).NotNull();
-                    IReadOnlyList<ConcreteReefTypeReference> calleeTypeArguments =
-                        [..functionDefinition.TypeArguments.Select(x =>
-                        {
-                            switch (x)
-                            {
-                                case ConcreteReefTypeReference concreteArgument:
-                                    return concreteArgument;
-                                case GenericReefTypeReference genericReefTypeReference:
-                                {
-                                    Debug.Assert(genericReefTypeReference.DefinitionId == method.Id);
-                                    var typeArgumentIndex = method.TypeParameters.Index()
-                                        .First(y => y.Item == genericReefTypeReference.TypeParameterName).Index;
-                                    return typeArguments[typeArgumentIndex];
-                                }
-                                default:
-                                    throw new NotImplementedException();
-                            }
-                        })];
-                    
-                    TryEnqueueMethodForProcessing(calleeMethod, calleeTypeArguments);
-                    
-                    var functionLabel = GetMethodLabel(calleeMethod, calleeTypeArguments);
-                    
-                    // store the current rbp, and align rsp to 16 bytes
-                    _codeSegment.AppendLine("; store previous rbp and rsp, then align stack to 16 bytes");
-                    _codeSegment.AppendLine("    push    rbp");
-                    _codeSegment.AppendLine("    mov     rbp, rsp");
-                    _codeSegment.AppendLine("    and     rsp, 0xFFFFFFFFFFFFFFF0");
-
-                    var parametersSpaceNeeded = Math.Max(ShadowSpaceBytes, call.Arity * 8);
-                    parametersSpaceNeeded += parametersSpaceNeeded % 16;
-                    _codeSegment.AppendLine($"    sub     rsp, {parametersSpaceNeeded}");
-                    
-                    // current      target
-                    // -----------------------
-                    // 1            1
-                    // 2            2
-                    // 3            3
-                    // 4            4
-                    // 5            5
-                    // 6            6
-                    // 7            7
-                    // <-- rsp      previous rbp <-- rbp
-                    //              [maybe space]
-                    //              7
-                    //              6
-                    //              5
-                    //              [empty]
-                    //              [empty]
-                    //              [empty]
-                    //              [empty]
-                    //              <-- rsp
-
-                    // move first four arguments into registers as specified by win 64 calling convention, then
-                    // shift the remaining arguments up by four so that the 'top' 32 bytes are free and can act as
-                    // the callee's shadow space 
-                    for (var i = 0; i < call.Arity; i++)
-                    {
-                        var source = $"[rbp+{(call.Arity - i) * 8}]";
-                        var destination = i switch
-                        {
-                            0 => "rcx",
-                            1 => "rdx",
-                            2 => "r8",
-                            3 => "r9",
-                            _ => null
-                        };
-
-                        if (destination is null)
-                        {
-                            _codeSegment.AppendLine($"    mov     rax, {source}");
-                            _codeSegment.AppendLine($"    mov     [rsp+{i * 8}], rax");
-                        }
-                        else
-                        {
-                            _codeSegment.AppendLine($"    mov     {destination}, {source}");
-                        }
-                    }
-
-                    // give the function we're calling its shadow space
-                    _codeSegment.AppendLine($"    call    {functionLabel}");
-
-                    // move rsp back to where it was before we called the function
-                    _codeSegment.AppendLine("    mov     rsp, rbp");
-                    _codeSegment.AppendLine("    pop     rbp");
-                    if (call.Arity > 0)
-                    {
-                        _codeSegment.AppendLine($"    add     rsp, {(call.Arity * 8):X}");
-                    }
-
-                    if (call.ValueUseful && (calleeMethod.ReturnType is not ConcreteReefTypeReference concrete || concrete.DefinitionId != DefId.Unit))
-                    {
-                        _codeSegment.AppendLine("    push    rax");
-                    }
-
-                    break;
-                }
-            case CastBoolToInt:
-                {
-                    _codeSegment.AppendLine("; CAST_BOOL_TO_INT");
-                    // noop
-                    break;
-                }
-            case CompareInt64Equal:
-            case CompareInt32Equal:
-            case CompareInt16Equal:
-            case CompareInt8Equal:
-            case CompareUInt64Equal:
-            case CompareUInt32Equal:
-            case CompareUInt16Equal:
-            case CompareUInt8Equal:
-            {
-                _codeSegment.AppendLine("; COMPARE_INT_EQUAL");
-
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    cmp     rax, [rsp]");
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    pushf");
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    and     rax, 1000000b"); // zero flag
-                _codeSegment.AppendLine("    shr     rax, 6");
-                _codeSegment.AppendLine("    push    rax");
-
-                break;
-            }
-            case CompareInt64NotEqual:
-            case CompareInt32NotEqual:
-            case CompareInt16NotEqual:
-            case CompareInt8NotEqual:
-            case CompareUInt64NotEqual:
-            case CompareUInt32NotEqual:
-            case CompareUInt16NotEqual:
-            case CompareUInt8NotEqual:
-            {
-                _codeSegment.AppendLine("; COMPARE_INT_NOT_EQUAL");
-
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    cmp     rax, [rsp]");
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    pushf");
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    and     rax, 1000000b"); // zero flag
-                _codeSegment.AppendLine("    shr     rax, 6");
-                _codeSegment.AppendLine("    xor     rax, 1b");
-                _codeSegment.AppendLine("    push    rax");
-                break;
-            }
-            case CompareInt64GreaterOrEqualTo:
-            case CompareInt32GreaterOrEqualTo:
-            case CompareInt16GreaterOrEqualTo:
-            case CompareInt8GreaterOrEqualTo:
-            case CompareUInt64GreaterOrEqualTo:
-            case CompareUInt32GreaterOrEqualTo:
-            case CompareUInt16GreaterOrEqualTo:
-            case CompareUInt8GreaterOrEqualTo:
-                _codeSegment.AppendLine("; COMPARE_INT_GREATER_OR_EQUAL");
+            case LocalAlive:
+            case LocalDead:
                 throw new NotImplementedException();
-            case CompareUInt64GreaterThan:
-            case CompareUInt32GreaterThan:
-            case CompareUInt16GreaterThan:
-            case CompareUInt8GreaterThan:
-            case CompareInt64GreaterThan:
-            case CompareInt32GreaterThan:
-            case CompareInt16GreaterThan:
-            case CompareInt8GreaterThan:
+            default:
+                throw new ArgumentOutOfRangeException(nameof(statement));
+        }
+    }
+    
+
+    private enum IntSigned
+    {
+        Signed,
+        Unsigned
+    }
+    
+    private IntSigned? GetIntSigned(IOperand operand)
+    {
+        return operand switch
+        {
+            Copy{Place: var place} => GetPlaceType(place) switch
+                {
+                    LoweredConcreteTypeReference concrete when DefId.SignedInts.Contains(concrete.DefinitionId) => IntSigned.Signed,
+                    LoweredConcreteTypeReference concrete when DefId.UnsignedInts.Contains(concrete.DefinitionId) => IntSigned.Unsigned,
+                    _ => null
+                },
+            UIntConstant => IntSigned.Unsigned,
+            IntConstant => IntSigned.Signed,
+            BoolConstant or FunctionPointerConstant or StringConstant or UnitConstant => null,
+            _ => throw new ArgumentOutOfRangeException(nameof(operand))
+        };
+    }
+    
+
+    private ILoweredTypeReference GetPlaceType(IPlace place)
+    {
+        switch (place)
+        {
+            case Field field:
+                throw new NotImplementedException();
+            case Local local:
+                return GetLocalType(local);
+            case StaticField staticField:
+                throw new NotImplementedException();
+            default:
+                throw new ArgumentOutOfRangeException(nameof(place));
+        }
+    }
+
+
+    private ILoweredTypeReference GetLocalType(Local local)
+    {
+        var currentMethod = _currentMethod.NotNull();
+        IEnumerable<MethodLocal> locals =
+            [..currentMethod.Locals, ..currentMethod.ParameterLocals, currentMethod.ReturnValue];
+        var foundLocal = locals.First(x => x.CompilerGivenName == local.LocalName);
+        return foundLocal.Type;
+    }
+    
+
+    private void ProcessBinaryOperation(IAsmPlace destination, IOperand left, IOperand right, BinaryOperationKind kind)
+    {
+        switch (kind)
+        {
+            case BinaryOperationKind.Add:
             {
-                _codeSegment.AppendLine("; COMPARE_INT_GREATER");
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    cmp     rax, [rsp]");
-                _codeSegment.AppendLine("    pop     rax");
+                MoveOperandToDestination(left, new Register("rax"));
+                MoveOperandToDestination(right, new Register("rbx"));
+                _codeSegment.AppendLine("    add     rax, rbx");
+                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                break;
+            }
+            case BinaryOperationKind.Subtract:
+            {
+                MoveOperandToDestination(left, new Register("rax"));
+                MoveOperandToDestination(right, new Register("rbx"));
+                _codeSegment.AppendLine("    sub     rax, rbx");
+                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                break;
+            }
+            case BinaryOperationKind.Multiply:
+            {
+                MoveOperandToDestination(left, new Register("rax"));
+                MoveOperandToDestination(right, new Register("rbx"));
+                var intSigned = GetIntSigned(left).NotNull();
+                _codeSegment.AppendLine(intSigned == IntSigned.Signed
+                    ? "    imul     rax, rbx"
+                    : "    mul     rax, rbx");
+
+                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                break;
+            }
+            case BinaryOperationKind.Divide:
+                {
+                MoveOperandToDestination(left, new Register("rax"));
+                MoveOperandToDestination(right, new Register("rbx"));
+                var intSigned = GetIntSigned(left).NotNull();
+                _codeSegment.AppendLine("    cqo");
+                _codeSegment.AppendLine(intSigned == IntSigned.Signed
+                    ? "    idiv     rbx"
+                    : "    div     rbx");
+
+                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                break;
+            }
+            case BinaryOperationKind.LessThan:
+            {
+                MoveOperandToDestination(left, new Register("rax"));
+                MoveOperandToDestination(right, new Register("rbx"));
+                _codeSegment.AppendLine("    cmp     rax, rbx");
                 _codeSegment.AppendLine("    pushf");
                 _codeSegment.AppendLine("    pop     rax");
                 _codeSegment.AppendLine("    and     rax, 10000000b"); // sign flag
                 _codeSegment.AppendLine("    shr     rax, 7");
-                _codeSegment.AppendLine("    push    rax");
+                StoreAsmPlaceInPlace(new Register("rax"), destination);
                 break;
             }
-            case CompareInt64LessOrEqualTo:
-            case CompareInt32LessOrEqualTo:
-            case CompareInt16LessOrEqualTo:
-            case CompareInt8LessOrEqualTo:
-            case CompareUInt64LessOrEqualTo:
-            case CompareUInt32LessOrEqualTo:
-            case CompareUInt16LessOrEqualTo:
-            case CompareUInt8LessOrEqualTo:
+            case BinaryOperationKind.LessThanOrEqual:
                 throw new NotImplementedException();
-            case CompareInt64LessThan:
-            case CompareInt32LessThan:
-            case CompareInt16LessThan:
-            case CompareInt8LessThan:
-            case CompareUInt64LessThan:
-            case CompareUInt32LessThan:
-            case CompareUInt16LessThan:
-            case CompareUInt8LessThan:
+            case BinaryOperationKind.GreaterThan:
             {
-                _codeSegment.AppendLine("; COMPARE_INT_LESS");
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    pop     rdx");
-                _codeSegment.AppendLine("    cmp     rdx, rax");
+                MoveOperandToDestination(left, new Register("rax"));
+                MoveOperandToDestination(right, new Register("rbx"));
+                _codeSegment.AppendLine("    cmp     rbx, rax");
                 _codeSegment.AppendLine("    pushf");
                 _codeSegment.AppendLine("    pop     rax");
                 _codeSegment.AppendLine("    and     rax, 10000000b"); // sign flag
                 _codeSegment.AppendLine("    shr     rax, 7");
-                _codeSegment.AppendLine("    push    rax");
+                StoreAsmPlaceInPlace(new Register("rax"), destination);
                 break;
             }
-            case CopyStack:
-                _codeSegment.AppendLine("; COPY_STACK");
+            case BinaryOperationKind.GreaterThanOrEqual:
                 throw new NotImplementedException();
+            case BinaryOperationKind.Equal:
+            {
+                MoveOperandToDestination(left, new Register("rax"));
+                MoveOperandToDestination(right, new Register("rbx"));
+                _codeSegment.AppendLine("    cmp     rax, rbx");
+                _codeSegment.AppendLine("    pushf");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    and     rax, 1000000b"); // zero flag
+                _codeSegment.AppendLine("    shr     rax, 6");
+                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                break;
+            }
+            case BinaryOperationKind.NotEqual:
+            {
+                MoveOperandToDestination(left, new Register("rax"));
+                MoveOperandToDestination(right, new Register("rbx"));
+                _codeSegment.AppendLine("    cmp     rax, rbx");
+                _codeSegment.AppendLine("    pushf");
+                _codeSegment.AppendLine("    pop     rax");
+                _codeSegment.AppendLine("    and     rax, 1000000b"); // zero flag
+                _codeSegment.AppendLine("    shr     rax, 6");
+                _codeSegment.AppendLine("    btc     rax, 0");
+                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+    }
+
+    private void AssignRValue(IAsmPlace place, IRValue rValue)
+    {
+        switch (rValue)
+        {
+            case BinaryOperation binaryOperation:
+            {
+                ProcessBinaryOperation(place, binaryOperation.LeftOperand, binaryOperation.RightOperand, binaryOperation.Kind);
+                break;
+            }
             case CreateObject createObject:
-                _codeSegment.AppendLine($"; CREATE_OBJECT({createObject.ReefType.Name}:<{string.Join(",", createObject.ReefType.TypeArguments)}>)");
                 throw new NotImplementedException();
-            case Drop:
-                _codeSegment.AppendLine("; DROP");
+            case UnaryOperation unaryOperation:
+            {
+                ProcessUnaryOperation(place, unaryOperation.Operand, unaryOperation.Kind);
+                break;
+            }
+            case Use use:
+            {
+                MoveOperandToDestination(use.Operand, place);
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(rValue));
+        }
+    }
+
+    private void ProcessUnaryOperation(IAsmPlace place, IOperand operand, UnaryOperationKind kind)
+    {
+        switch (kind)
+        {
+            case UnaryOperationKind.Not:
+            {
+                MoveOperandToDestination(operand, new Register("rax"));
+                _codeSegment.AppendLine("    btc     rax, 0");
+                StoreAsmPlaceInPlace(new Register("rax"), place);
+                break;
+            }
+            case UnaryOperationKind.Negate:
                 throw new NotImplementedException();
-            case Int64Divide:
-            case Int32Divide:
-            case Int16Divide:
-            case Int8Divide:
-            {
-                _codeSegment.AppendLine("; INT_DIVIDE");
+            default:
+                throw new ArgumentOutOfRangeException(nameof(kind), kind, null);
+        }
+    }
 
-                _codeSegment.AppendLine("    pop     rcx");
-                _codeSegment.AppendLine("    pop     rax");
-
-                // extend rax to double quad word for divide operation
-                _codeSegment.AppendLine("    cqo");
-                _codeSegment.AppendLine("    idiv    rcx");
-                _codeSegment.AppendLine("    push    rax");
-
-                // todo: panic/throw when dividing by zero
+    private void ProcessTerminator(ITerminator terminator)
+    {
+        switch (terminator)
+        {
+            case GoTo goTo:
+                _codeSegment.AppendLine($"    jmp     {GetBasicBlockLabel(goTo.BasicBlockId)}");
                 break;
-            }
-            case UInt64Divide:
-            case UInt32Divide:
-            case UInt16Divide:
-            case UInt8Divide:
-            {
-                _codeSegment.AppendLine("; INT_DIVIDE");
-
-                _codeSegment.AppendLine("    pop     rcx");
-                _codeSegment.AppendLine("    pop     rax");
-
-                // extend rax to double quad word for divide operation
-                _codeSegment.AppendLine("    cqo");
-                _codeSegment.AppendLine("    div     rcx");
-                _codeSegment.AppendLine("    push    rax");
-
-                // todo: panic/throw when dividing by zero
-                break;
-            }
-            case Int64Minus:
-            case Int32Minus:
-            case Int16Minus:
-            case Int8Minus:
-            case UInt64Minus:
-            case UInt32Minus:
-            case UInt16Minus:
-            case UInt8Minus:
-            {
-                _codeSegment.AppendLine("; INT_MINUS");
-
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    sub     [rsp], rax");
-                break;
-            }
-            case Int64Multiply:
-            case Int32Multiply:
-            case Int16Multiply:
-            case Int8Multiply:
-            {
-                _codeSegment.AppendLine("; INT_MULTIPLY");
-
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    pop     rbx");
-                // imul requires both arguments to be in registers (I think)
-                _codeSegment.AppendLine("    imul    rax, rbx");
-                _codeSegment.AppendLine("    push    rax");
-                // todo: panic/throw on overflow
-                break;
-            }
-            case UInt64Multiply:
-            case UInt32Multiply:
-            case UInt16Multiply:
-            case UInt8Multiply:
-            {
-                _codeSegment.AppendLine("; INT_MULTIPLY");
-
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    pop     rbx");
-                // mul requires both arguments to be in registers (I think)
-                _codeSegment.AppendLine("    mul     rax, rbx");
-                _codeSegment.AppendLine("    push    rax");
-                // todo: panic/throw on overflow
-                break;
-            }
-            case Int64Plus:
-            case Int32Plus:
-            case Int16Plus:
-            case Int8Plus:
-            case UInt64Plus:
-            case UInt32Plus:
-            case UInt16Plus:
-            case UInt8Plus:
-            {
-                _codeSegment.AppendLine("; INT_PLUS");
-
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    add    [rsp], rax");
-                break;
-            }
-            case LoadArgument loadArgument:
-                {
-                    _codeSegment.AppendLine($"; LOAD_ARGUMENT({loadArgument.ArgumentIndex})");
-
-                    var stackOffset = _parameters[loadArgument.ArgumentIndex];
-
-                    _codeSegment.AppendLine($"    push    [rbp+{stackOffset + 8}]");
-
-                    break;
-                }
-            case LoadBoolConstant loadBoolConstant:
-                {
-                    _codeSegment.AppendLine($"; LOAD_BOOL_CONSTANT({loadBoolConstant.Value})");
-
-                    _codeSegment.AppendLine($"    push    {(loadBoolConstant.Value ? 1 : 0)}h");
-
-                    break;
-                }
-            case LoadField loadField:
-                _codeSegment.AppendLine($"; LOAD_FIELD({loadField.VariantIndex}:{loadField.FieldName})");
-                throw new NotImplementedException();
-            case LoadFunction loadFunction:
-                {
-                    _codeSegment.AppendLine($"; LOAD_FUNCTION({loadFunction.FunctionDefinitionReference.Name})");
-                    _functionStack.Push(loadFunction.FunctionDefinitionReference);
-                    break;
-                }
-            case LoadInt64Constant loadIntConstant:
-                {
-                    _codeSegment.AppendLine($"; LOAD_INT64_CONSTANT({loadIntConstant.Value})");
-                    if (loadIntConstant.Value < 0) throw new NotImplementedException();
-                    _codeSegment.AppendLine($"    push    {loadIntConstant.Value:X}h");
-                    break;
-                }
-            case LoadInt32Constant loadIntConstant:
-            {
-                _codeSegment.AppendLine($"; LOAD_INT32_CONSTANT({loadIntConstant.Value})");
-                if (loadIntConstant.Value < 0) throw new NotImplementedException();
-                _codeSegment.AppendLine($"    push    {loadIntConstant.Value:X}h");
-                break;
-            }
-            case LoadInt16Constant loadIntConstant:
-            {
-                _codeSegment.AppendLine($"; LOAD_INT16_CONSTANT({loadIntConstant.Value})");
-                if (loadIntConstant.Value < 0) throw new NotImplementedException();
-                _codeSegment.AppendLine($"    push    {loadIntConstant.Value:X}h");
-                break;
-            }
-            case LoadInt8Constant loadIntConstant:
-            {
-                _codeSegment.AppendLine($"; LOAD_INT8_CONSTANT({loadIntConstant.Value})");
-                if (loadIntConstant.Value < 0) throw new NotImplementedException();
-                _codeSegment.AppendLine($"    push    {loadIntConstant.Value:X}h");
-                break;
-            }
-            case LoadUInt64Constant loadIntConstant:
-            {
-                _codeSegment.AppendLine($"; LOAD_UINT64_CONSTANT({loadIntConstant.Value})");
-                _codeSegment.AppendLine($"    push    {loadIntConstant.Value:X}h");
-                break;
-            }
-            case LoadUInt32Constant loadIntConstant:
-            {
-                _codeSegment.AppendLine($"; LOAD_UINT32_CONSTANT({loadIntConstant.Value})");
-                _codeSegment.AppendLine($"    push    {loadIntConstant.Value:X}h");
-                break;
-            }
-            case LoadUInt16Constant loadIntConstant:
-            {
-                _codeSegment.AppendLine($"; LOAD_UINT16_CONSTANT({loadIntConstant.Value})");
-                _codeSegment.AppendLine($"    push    {loadIntConstant.Value:X}h");
-                break;
-            }
-            case LoadUInt8Constant loadIntConstant:
-            {
-                _codeSegment.AppendLine($"; LOAD_UINT8_CONSTANT({loadIntConstant.Value})");
-                _codeSegment.AppendLine($"    push    {loadIntConstant.Value:X}h");
-                break;
-            }
-            case LoadLocal loadLocal:
-                {
-                    _codeSegment.AppendLine($"; LOAD_LOCAL({loadLocal.LocalName})");
-                    var stackOffset = _locals[loadLocal.LocalName];
-                    _codeSegment.AppendLine($"    push    [rbp-{stackOffset + 8 }]");
-                    break;
-                }
-            case LoadStaticField loadStaticField:
-                _codeSegment.AppendLine($"; LOAD_STATIC_FIELD({loadStaticField})");
-                throw new NotImplementedException();
-            case LoadStringConstant loadStringConstant:
-                {
-                    _codeSegment.AppendLine($"; LOAD_STRING_CONSTANT(\"{loadStringConstant.Value}\")");
-                    if (!_strings.TryGetValue(loadStringConstant.Value, out var stringName))
-                    {
-                        stringName = $"_str_{_strings.Count}";
-                        _strings[loadStringConstant.Value] = stringName;
-                        // todo: no null terminated strings
-                        _dataSegment.AppendLine(
-                            $"    {stringName} db \"{loadStringConstant.Value}\", 0");
-                    }
-
-                    _codeSegment.AppendLine($"    lea     rax, [{stringName}]");
-                    _codeSegment.AppendLine("    push    rax");
-                    break;
-                }
-            case LoadType loadType:
-                _codeSegment.AppendLine($"; LOAD_TYPE({loadType.ReefType})");
-                throw new NotImplementedException();
-            case LoadUnitConstant:
-                _codeSegment.AppendLine("; LOAD_UNIT_CONSTANT");
-                // noop
+            case MethodCall methodCall:
+                ProcessMethodCall(methodCall);
                 break;
             case Return:
-                {
-                    _codeSegment.AppendLine("; RETURN");
-                    // zero out return value for null return
-                    _codeSegment.AppendLine(method.ReturnType is ConcreteReefTypeReference reference && reference.DefinitionId == DefId.Unit
-                        ? "    xor     rax, rax"
-                        : "    pop     rax");
-
-                    _codeSegment.AppendLine("    leave");
-                    _codeSegment.AppendLine("    ret");
-                    break;
-                }
-            case StoreField storeField:
-                _codeSegment.AppendLine($"; STORE_FIELD({storeField.VariantIndex}:{storeField.FieldName})");
-                throw new NotImplementedException();
-            case StoreLocal storeLocal:
-                {
-                    _codeSegment.AppendLine($"; STORE_LOCAL({storeLocal.LocalName})");
-                    var stackOffset = _locals[storeLocal.LocalName];
-                    // pop the value on the stack into rax
-                    _codeSegment.AppendLine("    pop     rax");
-
-                    // move rax into the local's dedicated stack space
-                    _codeSegment.AppendLine($"    mov     [rbp-{stackOffset + 8}], rax");
-                    break;
-                }
-            case StoreStaticField storeStaticField:
-                _codeSegment.AppendLine($"; STORE_STATIC_FIELD({storeStaticField.StaticFieldName})");
-                throw new NotImplementedException();
+            {
+                StoreAsmPlaceInPlace(PlaceToAsmPlace(new Local(_currentMethod.NotNull().ReturnValue.CompilerGivenName)), new Register("rax"));
+                _codeSegment.AppendLine("    leave");
+                _codeSegment.AppendLine("    ret");
+                break;
+            }
             case SwitchInt switchInt:
+            {
+                MoveOperandToDestination(switchInt.Operand, new Register("rax"));
+                foreach (var (intCase, jumpTo) in switchInt.Cases)
                 {
-                    _codeSegment.AppendLine("; SWITCH_INT");
-                    foreach (var branch in switchInt.BranchLabels)
-                    {
-                        _codeSegment.AppendLine("    pop     rax");
-                        _codeSegment.AppendLine($"    cmp     rax, {branch.Key:x}");
-                        _codeSegment.AppendLine($"    je      {branch.Value}");
-                    }
-                    _codeSegment.AppendLine($"    jmp     {switchInt.Otherwise}");
-                    break;
+                    _codeSegment.AppendLine($"    cmp     rax, {intCase}");
+                    _codeSegment.AppendLine($"    je      {GetBasicBlockLabel(jumpTo)}");
                 }
+
+                _codeSegment.AppendLine($"    jmp     {GetBasicBlockLabel(switchInt.Otherwise)}");
+                break;
+            }
             default:
-                throw new ArgumentOutOfRangeException(nameof(instruction));
+                throw new ArgumentOutOfRangeException(nameof(terminator));
         }
+    }
+
+    private void ProcessMethodCall(MethodCall methodCall)
+    {
+        var arity = methodCall.Arguments.Count;
+        
+        _codeSegment.AppendLine($"; MethodCall({arity})");
+
+        var calleeMethod = GetMethod(methodCall.Function.DefinitionId).NotNull();
+
+        IReadOnlyList<LoweredConcreteTypeReference> calleeTypeArguments =
+        [
+            ..methodCall.Function.TypeArguments.Select(x =>
+            {
+                switch (x)
+                {
+                    case LoweredConcreteTypeReference concreteArgument:
+                        return concreteArgument;
+                    case LoweredGenericPlaceholder genericReefTypeReference:
+                    {
+                        Debug.Assert(genericReefTypeReference.OwnerDefinitionId == _currentMethod.NotNull().Id);
+                        var typeArgumentIndex = _currentMethod.NotNull().TypeParameters.Index()
+                            .First(y => y.Item.PlaceholderName == genericReefTypeReference.PlaceholderName).Index;
+                        return _currentTypeArguments[typeArgumentIndex];
+                    }
+                    default:
+                        throw new NotImplementedException();
+                }
+            })
+        ];
+
+        if (calleeMethod is LoweredMethod loweredMethod)
+        {
+            TryEnqueueMethodForProcessing(loweredMethod, calleeTypeArguments);
+        }
+
+        var functionLabel = GetMethodLabel(calleeMethod, calleeTypeArguments);
+        
+        // I think we can assume everything is already aligned now. We're not using the stack anymore other than local variables
+        
+        var parametersSpaceNeeded = Math.Max((methodCall.Arguments.Count - 4) * 8, 0) + 32;
+        parametersSpaceNeeded += parametersSpaceNeeded % 16;
+        
+        // move first four arguments into registers as specified by win 64 calling convention, then
+        // shift the remaining arguments up by four so that the 'top' 32 bytes are free and can act as
+        // the callee's shadow space 
+
+        _codeSegment.AppendLine($"    sub     rsp, {parametersSpaceNeeded}");
+        
+        for (var i = arity - 1; i >= 0; i--)
+        {
+            IAsmPlace destination = i switch
+            {
+                0 => new Register("rcx"),
+                1 => new Register("rdx"),
+                2 => new Register("r8"),
+                3 => new Register("r9"),
+                _ => new OffsetFromStackPointer(i * 8)
+            };
+            
+            var argument = methodCall.Arguments[i];
+            
+            MoveOperandToDestination(argument, destination);
+        }
+        
+        _codeSegment.AppendLine($"    call    {functionLabel}");
+
+        // move rsp back to where it was before we called the function
+        _codeSegment.AppendLine($"    add     rsp, {parametersSpaceNeeded}");
+
+        StoreAsmPlaceInPlace(new Register("rax"), PlaceToAsmPlace(methodCall.PlaceDestination));
+
+        _codeSegment.AppendLine($"    jmp     {GetBasicBlockLabel(methodCall.GoToAfter)}");
+    }
+
+    private string GetBasicBlockLabel(BasicBlockId basicBlockId)
+    {
+        return $"{basicBlockId.Id}_{_methodCount}";
+    }
+
+    private interface IAsmPlace;
+
+    private record Register(string Name) : IAsmPlace;
+
+
+    private record OffsetFromBasePointer(int Offset) : IAsmPlace;
+    private record OffsetFromStackPointer(int Offset) : IAsmPlace;
+
+    private void MoveOperandToDestination(IOperand operand, IAsmPlace destination)
+    {
+        switch (operand)
+        {
+            case BoolConstant boolConstant:
+                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, {(boolConstant.Value ? '1' : '0')}");
+                break;
+            case Copy copy:
+            {
+                StoreAsmPlaceInPlace(PlaceToAsmPlace(copy.Place), destination);
+                break;
+            }
+            case FunctionPointerConstant functionPointerConstant:
+                throw new NotImplementedException();
+            case IntConstant intConstant:
+            {
+                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, 0x{intConstant.Value:X}");
+                break;
+            }
+            case StringConstant stringConstant:
+            {
+                if (!_strings.TryGetValue(stringConstant.Value, out var stringName))
+                {
+                    stringName = $"_str_{_strings.Count}";
+                    _strings[stringConstant.Value] = stringName;
+                    // todo: no null terminated strings
+                    _dataSegment.AppendLine(
+                        $"    {stringName} db \"{stringConstant.Value}\", 0");
+                }
+
+                LoadEffectiveAddress(destination, $"[{stringName}]");
+                break;
+            }
+            case UIntConstant uIntConstant:
+                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, 0x{uIntConstant.Value:X}");
+                break;
+            case UnitConstant unitConstant:
+                throw new NotImplementedException();
+            default:
+                throw new ArgumentOutOfRangeException(nameof(operand));
+        }
+    }
+
+    private void LoadEffectiveAddress(IAsmPlace place, string operand)
+    {
+        if (place is Register { Name: var registerName })
+        {
+            _codeSegment.AppendLine($"    lea     {registerName}, {operand}");
+            return;
+        }
+
+        _codeSegment.AppendLine($"    lea     rax, {operand}");
+        StoreAsmPlaceInPlace(new Register("rax"), place);
+    }
+    
+    private static string GetPlaceAsm(IAsmPlace place)
+    {
+        return place switch
+        {
+            OffsetFromStackPointer {Offset: var offset} => $"QWORD [rsp{FormatOffset(offset)}]",
+            OffsetFromBasePointer {Offset: var offset} => $"QWORD [rbp{FormatOffset(offset)}]",
+            Register {Name: var name} => name,
+            _ => throw new ArgumentOutOfRangeException(nameof(place))
+        };
+    }
+
+    private void StoreAsmPlaceInPlace(IAsmPlace source, IAsmPlace destination)
+    {
+        switch (source, destination)
+        {
+            case (Register sourceRegister, Register destinationRegister):
+            {
+                _codeSegment.AppendLine($"    mov     {destinationRegister.Name}, {sourceRegister.Name}");
+                break;
+            }
+            case (Register sourceRegister, OffsetFromBasePointer or OffsetFromStackPointer):
+            {
+                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, {sourceRegister.Name}");
+                break;
+            }
+            case (OffsetFromBasePointer or OffsetFromStackPointer, Register destinationRegister):
+            {
+                _codeSegment.AppendLine($"    mov     {destinationRegister.Name}, {GetPlaceAsm(source)}");
+                break;
+            }
+            case (OffsetFromBasePointer or OffsetFromStackPointer, OffsetFromBasePointer or OffsetFromStackPointer):
+            {
+                _codeSegment.AppendLine($"    mov     rax, {GetPlaceAsm(source)}");
+                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, rax");
+                break;
+            }
+            default:
+                throw new UnreachableException();
+        }
+    }
+
+    private IAsmPlace PlaceToAsmPlace(IPlace place)
+    {
+        return place switch
+        {
+            Field field => throw new NotImplementedException(),
+            Local local => new OffsetFromBasePointer(_locals[local.LocalName]),
+            StaticField staticField => throw new NotImplementedException(),
+            _ => throw new ArgumentOutOfRangeException(nameof(place))
+        };
     }
 }

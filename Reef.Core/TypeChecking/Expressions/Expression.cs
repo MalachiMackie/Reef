@@ -6,7 +6,7 @@ namespace Reef.Core.TypeChecking;
 public partial class TypeChecker
 {
 
-    private ITypeReference TypeCheckExpression(
+    private TypeChecking.TypeChecker.ITypeReference TypeCheckExpression(
         IExpression expression,
         bool allowUninstantiatedVariable = false)
     {
@@ -49,33 +49,33 @@ public partial class TypeChecker
 
     private uint _loopDepth;
     
-    private InstantiatedClass TypeCheckContinueExpression(ContinueExpression continueExpression)
+    private TypeChecking.TypeChecker.InstantiatedClass TypeCheckContinueExpression(ContinueExpression continueExpression)
     {
         if (_loopDepth == 0)
         {
             _errors.Add(TypeCheckerError.ContinueUsedOutsideOfLoop(continueExpression));
         }
 
-        return InstantiatedClass.Never;
+        return TypeChecking.TypeChecker.InstantiatedClass.Never;
     }
     
-    private InstantiatedClass TypeCheckBreakExpression(BreakExpression breakExpression)
+    private TypeChecking.TypeChecker.InstantiatedClass TypeCheckBreakExpression(BreakExpression breakExpression)
     {
         if (_loopDepth == 0)
         {
             _errors.Add(TypeCheckerError.BreakUsedOutsideOfLoop(breakExpression));
         }
 
-        return InstantiatedClass.Never;
+        return TypeChecking.TypeChecker.InstantiatedClass.Never;
     }
 
-    private InstantiatedClass TypeCheckWhileExpression(WhileExpression whileExpression)
+    private TypeChecking.TypeChecker.InstantiatedClass TypeCheckWhileExpression(WhileExpression whileExpression)
     {
         if (whileExpression.Check is not null)
         {
             TypeCheckExpression(whileExpression.Check);
             whileExpression.Check.ValueUseful = true;
-            ExpectExpressionType(InstantiatedClass.Boolean, whileExpression.Check);
+            ExpectExpressionType(TypeChecking.TypeChecker.InstantiatedClass.Boolean, whileExpression.Check);
         }
 
         _loopDepth++;
@@ -84,12 +84,12 @@ public partial class TypeChecker
         {
             TypeCheckExpression(whileExpression.Body);
 
-            ExpectExpressionType(InstantiatedClass.Unit, whileExpression.Body);
+            ExpectExpressionType(TypeChecking.TypeChecker.InstantiatedClass.Unit, whileExpression.Body);
         }
 
         _loopDepth--;
         
-        return InstantiatedClass.Unit;
+        return TypeChecking.TypeChecker.InstantiatedClass.Unit;
     }
 
     private bool ExpectAssignableExpression(IExpression expression, bool report = true)
@@ -106,10 +106,10 @@ public partial class TypeChecker
                         _errors.Add(TypeCheckerError.SymbolNotFound(valueToken));
                         return false;
                     }
-                    if (variable is LocalVariable { Instantiated: false }
-                        or LocalVariable { Mutable: true }
-                        or FieldVariable { Mutable: true }
-                        or FunctionSignatureParameter { Mutable: true })
+                    if (variable is TypeChecking.TypeChecker.LocalVariable { Instantiated: false }
+                        or TypeChecking.TypeChecker.LocalVariable { Mutable: true }
+                        or TypeChecking.TypeChecker.FieldVariable { Mutable: true }
+                        or TypeChecking.TypeChecker.FunctionSignatureParameter { Mutable: true })
                     {
                         return true;
                     }
@@ -133,7 +133,7 @@ public partial class TypeChecker
 
                     var isOwnerAssignable = ExpectAssignableExpression(owner, report: false);
 
-                    if (owner.ResolvedType is not InstantiatedClass { Fields: var fields })
+                    if (owner.ResolvedType is not TypeChecking.TypeChecker.InstantiatedClass { Fields: var fields })
                     {
                         if (report)
                             _errors.Add(TypeCheckerError.ExpressionNotAssignable(memberAccess));
@@ -174,7 +174,7 @@ public partial class TypeChecker
                         return false;
                     }
 
-                    if (ownerType is not InstantiatedClass { Fields: var fields })
+                    if (ownerType is not TypeChecking.TypeChecker.InstantiatedClass { Fields: var fields })
                     {
                         if (report)
                             _errors.Add(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
