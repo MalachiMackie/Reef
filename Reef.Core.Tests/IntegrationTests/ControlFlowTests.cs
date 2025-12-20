@@ -102,22 +102,22 @@ public class ControlFlowTests : IntegrationTestBase
             """
             var mut a = 0;
             while (true) {
-                if (a == 0) {
+                a = a + 1;
+                if (a == 1) {
                     continue;
                 }
+                
+                printf("hi. ");
                 
                 if (a == 5) {
                     break;
                 }
-                
-                printf("hi. ");
-                a = a + 1;
             }
             """);
 
         var output = await Run();
 
         Assert.Equal(0, output.ExitCode);
-        Assert.Equal("hi. hi. hi. hi", output.StandardOutput);
+        Assert.Equal("hi. hi. hi. hi. ", output.StandardOutput);
     }
 }

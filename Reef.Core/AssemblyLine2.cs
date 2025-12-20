@@ -168,9 +168,7 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
         {
             var parameterLocal = method.ParameterLocals[index];
 
-            var parameterOffset = index > 3
-                ? (index - 2) * 8
-                : (index + 1) * -8;
+            var parameterOffset = (index + 2) * 8;
             
             var sourceRegister = index switch
             {
@@ -546,17 +544,14 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
         
         // I think we can assume everything is already aligned now. We're not using the stack anymore other than local variables
         
-        var parametersSpaceNeeded = Math.Max((methodCall.Arguments.Count - 4) * 8, 0);
-        var paddingStackSpaceNeeded = parametersSpaceNeeded % 16;
+        var parametersSpaceNeeded = Math.Max((methodCall.Arguments.Count - 4) * 8, 0) + 32;
+        parametersSpaceNeeded += parametersSpaceNeeded % 16;
         
         // move first four arguments into registers as specified by win 64 calling convention, then
         // shift the remaining arguments up by four so that the 'top' 32 bytes are free and can act as
         // the callee's shadow space 
 
-        if (paddingStackSpaceNeeded > 0)
-        {
-            _codeSegment.AppendLine($"    sub     rsp, {paddingStackSpaceNeeded}");
-        }
+        _codeSegment.AppendLine($"    sub     rsp, {parametersSpaceNeeded}");
         
         for (var i = arity - 1; i >= 0; i--)
         {
@@ -566,7 +561,7 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
                 1 => new Register("rdx"),
                 2 => new Register("r8"),
                 3 => new Register("r9"),
-                _ => new TopOfStack()
+                _ => new OffsetFromStackPointer(i * 8)
             };
             
             var argument = methodCall.Arguments[i];
@@ -576,11 +571,8 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
         
         _codeSegment.AppendLine($"    call    {functionLabel}");
 
-        if (parametersSpaceNeeded + paddingStackSpaceNeeded > 0)
-        {
-            // move rsp back to where it was before we called the function
-            _codeSegment.AppendLine($"    add     rsp, {parametersSpaceNeeded + paddingStackSpaceNeeded}");
-        }
+        // move rsp back to where it was before we called the function
+        _codeSegment.AppendLine($"    add     rsp, {parametersSpaceNeeded}");
 
         StoreAsmPlaceInPlace(new Register("rax"), PlaceToAsmPlace(methodCall.PlaceDestination));
 
@@ -596,7 +588,6 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
 
     private record Register(string Name) : IAsmPlace;
 
-    private record TopOfStack : IAsmPlace;
 
     private record OffsetFromBasePointer(int Offset) : IAsmPlace;
     private record OffsetFromStackPointer(int Offset) : IAsmPlace;
@@ -617,7 +608,7 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
                 throw new NotImplementedException();
             case IntConstant intConstant:
             {
-                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, {intConstant.Value:X}h");
+                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, 0x{intConstant.Value:X}");
                 break;
             }
             case StringConstant stringConstant:
@@ -635,7 +626,7 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
                 break;
             }
             case UIntConstant uIntConstant:
-                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, {uIntConstant.Value:X}h");
+                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, 0x{uIntConstant.Value:X}");
                 break;
             case UnitConstant unitConstant:
                 throw new NotImplementedException();
@@ -681,11 +672,6 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
                 _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, {sourceRegister.Name}");
                 break;
             }
-            case (Register sourceRegister, TopOfStack):
-            {
-                _codeSegment.AppendLine($"    push    {sourceRegister.Name}");
-                break;
-            }
             case (OffsetFromBasePointer or OffsetFromStackPointer, Register destinationRegister):
             {
                 _codeSegment.AppendLine($"    mov     {destinationRegister.Name}, {GetPlaceAsm(source)}");
@@ -696,15 +682,6 @@ public class AssemblyLine2(IReadOnlyList<NewLoweredModule> modules, HashSet<DefI
                 _codeSegment.AppendLine($"    mov     rax, {GetPlaceAsm(source)}");
                 _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, rax");
                 break;
-            }
-            case (OffsetFromBasePointer or OffsetFromStackPointer, TopOfStack):
-            {
-                _codeSegment.AppendLine($"    push    {GetPlaceAsm(source)}");
-                break;
-            }
-            case (TopOfStack, _):
-            {
-                throw new UnreachableException();
             }
             default:
                 throw new UnreachableException();

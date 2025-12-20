@@ -2,7 +2,6 @@
 using Reef.Core.LoweredExpressions;
 using Reef.Core.TypeChecking;
 using Reef.Core.IL;
-using Xunit.Abstractions;
 using static Reef.Core.Tests.ILCompilerTests.TestHelpers;
 
 namespace Reef.Core.Tests.ILCompilerTests.TestCases;

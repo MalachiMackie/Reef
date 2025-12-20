@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿#define V2
+
+using System.Diagnostics;
 using Reef.Core.Abseil;
 using Reef.Core.Abseil.New;
 using Reef.Core.IL;
@@ -7,13 +9,14 @@ using Reef.Core.TypeChecking;
 
 namespace Reef.Core;
 
+
 public class Compiler
 {
     public static async Task Compile(
         string inputFile, 
-        bool outputIr)
+        bool outputIr,
+        CancellationToken ct)
     {
-        var v2 = true;
         if (string.IsNullOrWhiteSpace(inputFile)
             || Path.GetExtension(inputFile) is not ".rf")
         {
@@ -35,7 +38,7 @@ public class Compiler
 
         var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(inputFile);
 
-        var contents = await File.ReadAllTextAsync(inputFile);
+        var contents = await File.ReadAllTextAsync(inputFile, ct);
 
         Console.WriteLine("Tokenizing...");
         var tokens = Tokenizer.Tokenize(contents);
@@ -68,33 +71,46 @@ public class Compiler
         }
 
         Console.WriteLine("Lowering...");
-        var loweredProgram = ProgramAbseil.Lower(parsedProgram.ParsedProgram);
+        #if V2
         var (newLoweredProgram, newImportedModules) = NewProgramAbseil.Lower(parsedProgram.ParsedProgram);
+        #else
+        var loweredProgram = ProgramAbseil.Lower(parsedProgram.ParsedProgram);
+        #endif
 
 
         if (outputIr)
         {
             var irStr = NewPrettyPrinter.PrettyPrintLoweredProgram(newLoweredProgram, false, false);
-            await File.WriteAllTextAsync(Path.Join(buildDirectory, $"{fileNameWithoutExtension}.ir"), irStr);
+            await File.WriteAllTextAsync(Path.Join(buildDirectory, $"{fileNameWithoutExtension}.ir"), irStr, ct);
         }
 
         Console.WriteLine("Compiling to IL...");
+        #if V2
+        #else
         var (il, importedModules) = ILCompile.CompileToIL(loweredProgram);
+#endif
 
         Console.WriteLine("Generating Assembly...");
-
-        IReadOnlyList<ReefILModule> allModules = [..importedModules.Append(il)];
+#if V2
         IReadOnlyList<NewLoweredModule> allNewModules = [..newImportedModules.Append(newLoweredProgram)];
+        #else
+        IReadOnlyList<ReefILModule> allModules = [..importedModules.Append(il)];
+#endif
 
-        var usefulMethodIds = new TreeShaker(allModules).Shake();
+        #if V2
         var newUsefulMethodIds = new NewTreeShaker(allNewModules).Shake();
+        #else
+        var usefulMethodIds = new TreeShaker(allModules).Shake();
+#endif
 
         var assembly =
-            v2
-                ? AssemblyLine2.Process(allNewModules, newUsefulMethodIds)
-                : AssemblyLine.Process(allModules, usefulMethodIds);
-        var asmFile = $"{fileNameWithoutExtension}.asm";
-        await File.WriteAllTextAsync(Path.Join(buildDirectory, asmFile), assembly);
+#if V2
+            AssemblyLine2.Process(allNewModules, newUsefulMethodIds);
+                #else
+                AssemblyLine.Process(allModules, usefulMethodIds);
+#endif
+        var asmFile = $"{fileNameWithoutExtension}.nasm";
+        await File.WriteAllTextAsync(Path.Join(buildDirectory, asmFile), assembly, ct);
 
         var objFile = $"{fileNameWithoutExtension}.obj";
         // todo: move out to its own process, so Reef.Core doesn't interact with the file system
@@ -117,16 +133,21 @@ public class Compiler
 
         Console.WriteLine("Assembling...");
         nasmProcess.Start();
+        
+        ct.Register(() =>
+        {
+            nasmProcess.Kill(true);
+        });
 
-        var nasmOutput = await nasmProcess.StandardOutput.ReadToEndAsync();
-        var nasmError = await nasmProcess.StandardError.ReadToEndAsync();
+        var nasmOutput = await nasmProcess.StandardOutput.ReadToEndAsync(ct);
+        var nasmError = await nasmProcess.StandardError.ReadToEndAsync(ct);
 
         if (nasmOutput.Length > 0)
             Console.WriteLine(nasmOutput);
         if (nasmError.Length > 0)
             await Console.Error.WriteLineAsync(nasmError);
 
-        await nasmProcess.WaitForExitAsync();
+        await nasmProcess.WaitForExitAsync(ct);
 
 
         // var msvcVersion = "14.40.33807";
@@ -165,15 +186,20 @@ public class Compiler
 
         linkProcess.Start();
 
-        var linkOutput = await linkProcess.StandardOutput.ReadToEndAsync();
-        var linkError = await linkProcess.StandardError.ReadToEndAsync();
+        ct.Register(() =>
+        {
+            linkProcess.Kill();
+        });
+
+        var linkOutput = await linkProcess.StandardOutput.ReadToEndAsync(ct);
+        var linkError = await linkProcess.StandardError.ReadToEndAsync(ct);
 
         if (linkOutput.Length > 0)
             Console.WriteLine(linkOutput);
         if (linkError.Length > 0)
             await Console.Error.WriteLineAsync(linkError);
 
-        await linkProcess.WaitForExitAsync();
+        await linkProcess.WaitForExitAsync(ct);
 
         Console.WriteLine("Done!");
     }

@@ -3,7 +3,6 @@ using Reef.Core.Abseil;
 using Reef.Core.IL;
 using Reef.Core.LoweredExpressions;
 using Reef.Core.TypeChecking;
-using Xunit.Abstractions;
 using static Reef.Core.Tests.ILCompilerTests.TestHelpers;
 
 namespace Reef.Core.Tests.ILCompilerTests.TestCases;

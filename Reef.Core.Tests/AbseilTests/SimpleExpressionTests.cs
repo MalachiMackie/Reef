@@ -1,9 +1,8 @@
-namespace Reef.Core.Tests.AbseilTests;
-
 using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
-using Xunit.Abstractions;
 using static Reef.Core.Tests.LoweredProgramHelpers;
+
+namespace Reef.Core.Tests.AbseilTests;
 
 public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutputHelper)
 {

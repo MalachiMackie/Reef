@@ -1,8 +1,6 @@
 using Reef.Core.LoweredExpressions;
 using Reef.Core.Abseil;
-
 using static Reef.Core.Tests.LoweredProgramHelpers;
-using Xunit.Abstractions;
 
 namespace Reef.Core.Tests.AbseilTests;
 

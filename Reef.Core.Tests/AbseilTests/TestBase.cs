@@ -1,7 +1,5 @@
-using FluentAssertions.Equivalency;
 using Reef.Core.LoweredExpressions;
 using Reef.Core.TypeChecking;
-using Xunit.Abstractions;
 
 namespace Reef.Core.Tests.AbseilTests;
 

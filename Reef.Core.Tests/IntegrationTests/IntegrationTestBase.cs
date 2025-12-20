@@ -29,7 +29,7 @@ public class IntegrationTestBase
         [CallerFilePath] string callerFilePath = "")
     {
         var testRunFolder = TestRunFolder(testName, testCaseName, callerFilePath);
-        await Compiler.Compile(Path.Join(testRunFolder, $"{testName}.rf"), true);
+        await Compiler.Compile(Path.Join(testRunFolder, $"{testName}.rf"), true, TestContext.Current.CancellationToken);
 
         var exeFileName = Path.Join(testRunFolder, "build", $"{testName}.exe");
         if (!File.Exists(exeFileName))
