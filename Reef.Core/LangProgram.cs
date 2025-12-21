@@ -42,7 +42,7 @@ public interface ITypeIdentifier
     SourceRange SourceRange { get; }
 }
 
-public record TupleTypeIdentifier(IReadOnlyList<ITypeIdentifier> Members, SourceRange SourceRange) : ITypeIdentifier
+public record TupleTypeIdentifier(IReadOnlyList<ITypeIdentifier> Members, Token? BoxingSpecifier, SourceRange SourceRange) : ITypeIdentifier
 {
     public override string ToString()
     {

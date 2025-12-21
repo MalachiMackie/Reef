@@ -23,7 +23,8 @@ public partial class TypeChecker
                 Name = union.Name.StringValue,
                 TypeParameters = typeParameters,
                 Functions = functions,
-                Variants = variants
+                Variants = variants,
+                Boxed = true
             };
 
             union.Signature = unionSignature;
@@ -57,6 +58,7 @@ public partial class TypeChecker
                 TypeParameters = typeParameters,
                 Functions = functions,
                 Fields = fields,
+                Boxed = true
             };
             typeParameters.AddRange(klass.TypeParameters.Select(typeParameter => new GenericPlaceholder
             { GenericName = typeParameter.StringValue, OwnerType = signature }));
@@ -144,7 +146,8 @@ public partial class TypeChecker
                                     OwnerType = x.OwnerType,
                                     GenericName = x.GenericName,
                                 })
-                            ])
+                            ],
+                            boxingSpecifier: null)
                     };
 
                     var tupleMemberTypes = new List<ITypeReference>(tupleVariant.TupleMembers.Count);

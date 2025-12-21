@@ -6,7 +6,7 @@ namespace Reef.Core.TypeChecking;
 public partial class TypeChecker
 {
 
-    private TypeChecking.TypeChecker.ITypeReference TypeCheckBinaryOperatorExpression(
+    private ITypeReference TypeCheckBinaryOperatorExpression(
             BinaryOperatorExpression binaryOperatorExpression)
     {
         var @operator = binaryOperatorExpression.BinaryOperator;
@@ -26,12 +26,12 @@ public partial class TypeChecker
                     if (@operator.Right is not null)
                         TypeCheckExpression(@operator.Right);
 
-                    if (ExpectExpressionType(TypeChecking.TypeChecker.InstantiatedClass.IntTypes, @operator.Left))
+                    if (ExpectExpressionType(InstantiatedClass.IntTypes, @operator.Left))
                     {
                         ExpectExpressionType(@operator.Left.NotNull().ResolvedType.NotNull(), @operator.Right);
                     }
 
-                    return TypeChecking.TypeChecker.InstantiatedClass.Boolean;
+                    return InstantiatedClass.Boolean;
                 }
             case BinaryOperatorType.Plus:
             case BinaryOperatorType.Minus:
@@ -43,13 +43,13 @@ public partial class TypeChecker
                     if (@operator.Right is not null)
                         TypeCheckExpression(@operator.Right);
 
-                    if (ExpectExpressionType(TypeChecking.TypeChecker.InstantiatedClass.IntTypes, @operator.Left))
+                    if (ExpectExpressionType(InstantiatedClass.IntTypes, @operator.Left))
                     {
                         ExpectExpressionType(@operator.Left.NotNull().ResolvedType.NotNull(), @operator.Right);
                         return @operator.Left.NotNull().ResolvedType.NotNull();
                     }
 
-                    return TypeChecking.TypeChecker.InstantiatedClass.Int32;
+                    return InstantiatedClass.Int32;
                 }
             case BinaryOperatorType.NegativeEqualityCheck:
             case BinaryOperatorType.EqualityCheck:
@@ -60,62 +60,62 @@ public partial class TypeChecker
                     if (@operator.Right is not null)
                         TypeCheckExpression(@operator.Right);
 
-                    if (ExpectExpressionType([..TypeChecking.TypeChecker.InstantiatedClass.IntTypes, TypeChecking.TypeChecker.InstantiatedClass.Boolean], @operator.Left))
+                    if (ExpectExpressionType([..InstantiatedClass.IntTypes, InstantiatedClass.Boolean], @operator.Left))
                     {
                         ExpectExpressionType(@operator.Left.NotNull().ResolvedType.NotNull(), @operator.Right);
                     }
 
-                    return TypeChecking.TypeChecker.InstantiatedClass.Boolean;
+                    return InstantiatedClass.Boolean;
                 }
             case BinaryOperatorType.BooleanAnd:
             case BinaryOperatorType.BooleanOr:
                 {
                     if (@operator.Left is not null)
                     {
-                        ExpectType(TypeCheckExpression(@operator.Left), TypeChecking.TypeChecker.InstantiatedClass.Boolean,
+                        ExpectType(TypeCheckExpression(@operator.Left), InstantiatedClass.Boolean,
                             @operator.Left.SourceRange);
                     }
                     if (@operator.Right is not null)
                     {
-                        ExpectType(TypeCheckExpression(@operator.Right), TypeChecking.TypeChecker.InstantiatedClass.Boolean,
+                        ExpectType(TypeCheckExpression(@operator.Right), InstantiatedClass.Boolean,
                             @operator.Right.SourceRange);
                     }
-                    return TypeChecking.TypeChecker.InstantiatedClass.Boolean;
+                    return InstantiatedClass.Boolean;
                 }
             case BinaryOperatorType.ValueAssignment:
                 {
-                    TypeChecking.TypeChecker.ITypeReference leftType = TypeChecking.TypeChecker.UnknownType.Instance;
+                    ITypeReference leftType = UnknownType.Instance;
                     if (@operator.Left is not null)
                     {
                         leftType = TypeCheckExpression(@operator.Left, allowUninstantiatedVariable: true);
                         // we don't actually want the result of this value
                         @operator.Left.ValueUseful = false;
-                        if (leftType is not TypeChecking.TypeChecker.UnknownType)
+                        if (leftType is not UnknownType)
                         {
                             ExpectAssignableExpression(@operator.Left);
                         }
                     }
                     var rightType = @operator.Right is null
-                        ? TypeChecking.TypeChecker.UnknownType.Instance
+                        ? UnknownType.Instance
                         : TypeCheckExpression(@operator.Right);
 
                     if (@operator.Left is ValueAccessorExpression
                         {
                             ValueAccessor: { AccessType: ValueAccessType.Variable, Token: StringToken variableName },
-                        } && leftType is not TypeChecking.TypeChecker.UnknownType)
+                        } && leftType is not UnknownType)
                     {
                         var variable = GetScopedVariable(variableName.StringValue);
 
-                        if (variable is TypeChecking.TypeChecker.LocalVariable { Instantiated: false } localVariable)
+                        if (variable is LocalVariable { Instantiated: false } localVariable)
                         {
                             localVariable.Instantiated = true;
-                            if (localVariable.Type is TypeChecking.TypeChecker.UnknownInferredType { ResolvedType: null } unknownInferredType)
+                            if (localVariable.Type is UnknownInferredType { ResolvedType: null } unknownInferredType)
                             {
                                 unknownInferredType.ResolvedType = rightType;
                             }
                         }
 
-                        if (variable is TypeChecking.TypeChecker.FieldVariable fieldVariable
+                        if (variable is FieldVariable fieldVariable
                                 && !fieldVariable.IsStaticField
                                 && CurrentFunctionSignature is not { IsMutable: true })
                         {
@@ -133,7 +133,7 @@ public partial class TypeChecker
                 throw new UnreachableException(@operator.OperatorType.ToString());
         }
     }
-    private TypeChecking.TypeChecker.ITypeReference TypeCheckUnaryOperator(UnaryOperator unaryOperator)
+    private ITypeReference TypeCheckUnaryOperator(UnaryOperator unaryOperator)
     {
         return unaryOperator.OperatorType switch
         {
@@ -143,7 +143,7 @@ public partial class TypeChecker
         };
     }
 
-    private TypeChecking.TypeChecker.InstantiatedClass TypeCheckNot(IExpression? expression)
+    private InstantiatedClass TypeCheckNot(IExpression? expression)
     {
         if (expression is not null)
         {
@@ -151,12 +151,12 @@ public partial class TypeChecker
             TypeCheckExpression(expression);
         }
 
-        ExpectExpressionType(TypeChecking.TypeChecker.InstantiatedClass.Boolean, expression);
+        ExpectExpressionType(InstantiatedClass.Boolean, expression);
 
-        return TypeChecking.TypeChecker.InstantiatedClass.Boolean;
+        return InstantiatedClass.Boolean;
     }
 
-    private TypeChecking.TypeChecker.GenericTypeReference TypeCheckFallout(IExpression? expression)
+    private GenericTypeReference TypeCheckFallout(IExpression? expression)
     {
         if (expression is not null)
         {
@@ -165,7 +165,7 @@ public partial class TypeChecker
         }
 
         // todo: could implement with an interface? union Result : IFallout?
-        if (ExpectedReturnType is not TypeChecking.TypeChecker.InstantiatedUnion { Name: "result" } union)
+        if (ExpectedReturnType is not InstantiatedUnion { Name: "result" } union)
         {
             throw new InvalidOperationException("Fallout operator is only valid for Result return type");
         }
@@ -179,20 +179,24 @@ public partial class TypeChecker
         //     var someResult: result::<int, int> = todo!;
         //     var a: int = someResult?;
         // }
-        var synthesizedReturnType = InstantiateUnion(union.Signature);
-        Enumerable.First<TypeChecking.TypeChecker.GenericTypeReference>(synthesizedReturnType.TypeArguments, x => x.GenericName == "TError")
-            .SetResolvedType(expectedErrorType, SourceRange.Default);
+        var synthesizedReturnType = InstantiateUnion(
+            union.Signature,
+            boxingSpecifier: union.Boxed
+                ? Token.Boxed(SourceSpan.Default)
+                : Token.Unboxed(SourceSpan.Default));
+        synthesizedReturnType.TypeArguments.First(x => x.GenericName == "TError")
+            .ResolvedType = expectedErrorType;
 
         ExpectExpressionType(synthesizedReturnType, expression);
 
         // if everything type checked correctly, this path should be taken
-        if (expression is { ResolvedType: TypeChecking.TypeChecker.InstantiatedUnion { Name: "result", TypeArguments: [{ GenericName: "TValue" } valueGeneric, ..] } })
+        if (expression is { ResolvedType: InstantiatedUnion { Name: "result", TypeArguments: [{ GenericName: "TValue" } valueGeneric, ..] } })
         {
             return valueGeneric;
         }
 
         // if expression is null or it's type is incorrect, then return the value type from the return type
-        if (union.Name == TypeChecking.TypeChecker.UnionSignature.Result.Name)
+        if (union.Name == UnionSignature.Result.Name)
         {
             return union.TypeArguments.First(x => x.GenericName == "TValue");
         }

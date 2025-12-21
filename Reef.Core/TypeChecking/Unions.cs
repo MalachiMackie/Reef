@@ -19,7 +19,8 @@ public partial class TypeChecker
                 TypeParameters = typeParameters,
                 Name = "result",
                 Variants = variants,
-                Functions = []
+                Functions = [],
+                Boxed = true,
             };
 
             typeParameters[0] = new GenericPlaceholder
@@ -38,7 +39,8 @@ public partial class TypeChecker
                 [
                     typeParameters[0].Instantiate(),
                     typeParameters[1].Instantiate()
-                ]);
+                ],
+                null);
 
             var okCreateParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
             var errorCreateParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
@@ -103,6 +105,7 @@ public partial class TypeChecker
         public required IReadOnlyList<GenericPlaceholder> TypeParameters { get; init; }
         public required IReadOnlyList<IUnionVariant> Variants { get; init; }
         public required IReadOnlyList<FunctionSignature> Functions { get; init; }
+        public required bool Boxed { get; init; }
 
         public required string Name { get; init; }
     }
@@ -150,12 +153,16 @@ public partial class TypeChecker
         return true;
     }
 
-    private static InstantiatedUnion InstantiateUnion(UnionSignature signature)
+    private static InstantiatedUnion InstantiateUnion(UnionSignature signature, Token? boxingSpecifier)
     {
-        return new InstantiatedUnion(signature, [..signature.TypeParameters.Select(x => x.Instantiate())]);
+        return new InstantiatedUnion(signature, [..signature.TypeParameters.Select(x => x.Instantiate())], boxingSpecifier);
     }
 
-    private InstantiatedUnion InstantiateUnion(UnionSignature signature, IReadOnlyList<(ITypeReference, SourceRange)> typeArguments, SourceRange sourceRange)
+    private InstantiatedUnion InstantiateUnion(
+        UnionSignature signature,
+        IReadOnlyList<(ITypeReference, SourceRange)> typeArguments,
+        Token? boxingSpecifier,
+        SourceRange sourceRange)
     {
         // when instantiating, create new generic type references so they can be resolved
         GenericTypeReference[] typeArgumentReferences =
@@ -165,7 +172,7 @@ public partial class TypeChecker
 
         if (typeArguments.Count <= 0)
         {
-            return new InstantiatedUnion(signature, typeArgumentReferences);
+            return new InstantiatedUnion(signature, typeArgumentReferences, boxingSpecifier);
         }
 
         if (typeArguments.Count != signature.TypeParameters.Count)
@@ -180,12 +187,12 @@ public partial class TypeChecker
             ExpectType(typeArgument, typeArgumentReferences[i], referenceSourceRange);
         }
 
-        return new InstantiatedUnion(signature, typeArgumentReferences);
+        return new InstantiatedUnion(signature, typeArgumentReferences, boxingSpecifier);
     }
 
-    private InstantiatedUnion InstantiateResult(SourceRange sourceRange)
+    private InstantiatedUnion InstantiateResult(SourceRange sourceRange, Token? boxingSpecifier)
     {
-        return InstantiateUnion(UnionSignature.Result, [], sourceRange);
+        return InstantiateUnion(UnionSignature.Result, [], boxingSpecifier, sourceRange);
     }
 
     public class InstantiatedUnion : ITypeReference
@@ -195,23 +202,32 @@ public partial class TypeChecker
             return new InstantiatedUnion(
                 Signature,
                 typeArguments,
-                Variants);
+                Variants,
+                Boxed);
         }
 
         private InstantiatedUnion(
             UnionSignature signature,
             IReadOnlyList<GenericTypeReference> typeArguments,
-            IReadOnlyList<IUnionVariant> variants)
+            IReadOnlyList<IUnionVariant> variants,
+            bool boxed)
         {
             Signature = signature;
             TypeArguments = typeArguments;
             Variants = variants;
+            Boxed = boxed;
         }
         
-        public InstantiatedUnion(UnionSignature signature, IReadOnlyList<GenericTypeReference> typeArguments)
+        public InstantiatedUnion(UnionSignature signature, IReadOnlyList<GenericTypeReference> typeArguments, Token? boxingSpecifier)
         {
             Signature = signature;
             TypeArguments = typeArguments;
+            Boxed = boxingSpecifier switch
+            {
+                {Type: TokenType.Boxed} => true,
+                {Type: TokenType.Unboxed} => false,
+                _ => signature.Boxed
+            };
 
             Variants =
             [
@@ -274,6 +290,8 @@ public partial class TypeChecker
         public UnionSignature Signature { get; }
 
         public IReadOnlyList<IUnionVariant> Variants { get; }
+        
+        public bool Boxed { get; }
 
         public string Name => Signature.Name;
 

@@ -79,6 +79,21 @@ public static class ParseTestCases
                     [])
             ),
             (
+                """
+                var a: boxed (string, int);
+                """,
+                new("ParseTestCases",
+                    [
+                        VariableDeclaration(
+                            "a",
+                            value: null,
+                            type: TupleTypeIdentifier(Token.Boxed(SourceSpan.Default), [StringType(), IntType()]))
+                    ],
+                    [],
+                    [], 
+                    [])
+            ),
+            (
              """
              var a = if (true) {} else {};
              """,

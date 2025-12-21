@@ -25,6 +25,17 @@ public record TypeCheckerError
     public static TypeCheckerError MismatchedTypes(SourceRange range, TypeChecker.ITypeReference expected, TypeChecker.ITypeReference actual) =>
         new(TypeCheckerErrorType.MismatchedTypes, range, $"Expected {expected}, but found {actual}");
 
+    public static TypeCheckerError MismatchedTypeBoxing(
+        SourceRange range,
+        TypeChecker.ITypeReference expectedType,
+        bool expectedBoxed,
+        TypeChecker.ITypeReference actualType,
+        bool actualBoxed) =>
+        new(
+            TypeCheckerErrorType.MismatchedTypeBoxing,
+            range,
+            $"Expected {(expectedBoxed ? "" : "un")}boxed {expectedType}, but got {(expectedBoxed ? "un" : "")}boxed {actualType}");
+
     public static TypeCheckerError MismatchedTypes(SourceRange range, IReadOnlyList<TypeChecker.ITypeReference> expected, TypeChecker.ITypeReference actual) =>
         new(TypeCheckerErrorType.MismatchedTypes, range, $"Expected one of [{string.Join(",", expected)}], but found {actual}");
 
@@ -403,5 +414,6 @@ public enum TypeCheckerErrorType
     IfExpressionValueUsedWithoutElseBranch,
     EmptyUnionTupleVariant,
     BreakUsedOutsideOfLoop,
-    ContinueUsedOutsideOfLoop
+    ContinueUsedOutsideOfLoop,
+    MismatchedTypeBoxing
 }

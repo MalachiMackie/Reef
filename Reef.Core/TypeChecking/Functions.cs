@@ -110,8 +110,8 @@ public partial class TypeChecker
             AddScopedVariable(
                     "this",
                     new ThisVariable(fnSignature.OwnerType switch {
-                            ClassSignature c => InstantiateClass(c),
-                            UnionSignature u => InstantiateUnion(u),
+                            ClassSignature c => InstantiateClass(c, boxedSpecifier: null),
+                            UnionSignature u => InstantiateUnion(u, boxingSpecifier: null),
                             _ => throw new UnreachableException()
                         }));
         }

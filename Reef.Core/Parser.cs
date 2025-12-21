@@ -673,7 +673,19 @@ public sealed class Parser : IDisposable
             return false;
         }
 
-        typeIdentifier = GetNamedTypeIdentifier();
+        Token? boxingSpecifier = null;
+        if (Current is { Type: TokenType.Boxed or TokenType.Unboxed })
+        {
+            boxingSpecifier = Current;
+            if (!MoveNext())
+            {
+                _errors.Add(ParserError.ExpectedTypeName(null));
+                typeIdentifier = null;
+                return false;
+            }
+        }
+        
+        typeIdentifier = GetNamedTypeIdentifier(boxingSpecifier);
 
         return typeIdentifier is not null;
     }
@@ -970,15 +982,33 @@ public sealed class Parser : IDisposable
             new Block(scope.Expressions, scope.Functions));
     }
 
-    private ITypeIdentifier? GetTypeIdentifier()
+    private ITypeIdentifier? GetTypeIdentifier(Token? boxingSpecifier = null)
     {
         return Current switch
         {
             StringToken { Type: TokenType.Identifier, StringValue: "Fn" } stringToken => GetFunctionTypeIdentifier(stringToken),
-            StringToken { Type: TokenType.Identifier } or {Type: TokenType.Boxed or TokenType.Unboxed} => GetNamedTypeIdentifier(),
-            { Type: TokenType.LeftParenthesis } => GetTupleTypeIdentifier(),
+            {Type: TokenType.Boxed or TokenType.Unboxed} => BoxingSpecifier(),
+            StringToken { Type: TokenType.Identifier } => GetNamedTypeIdentifier(boxingSpecifier),
+            { Type: TokenType.LeftParenthesis } => GetTupleTypeIdentifier(boxingSpecifier),
             _ => DefaultCase()
         };
+
+        ITypeIdentifier? BoxingSpecifier()
+        {
+            if (boxingSpecifier is not null)
+            {
+                _errors.Add(ParserError.ExpectedTypeName(Current));
+            }
+            var innerBoxingSpecifier = Current;
+
+            if (!MoveNext())
+            {
+                _errors.Add(ParserError.ExpectedTypeName(null));
+                return null;
+            }
+            
+            return GetTypeIdentifier(innerBoxingSpecifier);
+        }
 
         ITypeIdentifier? DefaultCase()
         {
@@ -987,9 +1017,9 @@ public sealed class Parser : IDisposable
         }
     }
 
-    private ITypeIdentifier GetTupleTypeIdentifier()
+    private ITypeIdentifier GetTupleTypeIdentifier(Token? boxingSpecifier)
     {
-        var sourceStart = Current.SourceSpan;
+        var sourceStart = boxingSpecifier?.SourceSpan ?? Current.SourceSpan;
         var (members, lastToken) = GetCommaSeparatedList(
             TokenType.RightParenthesis,
             expectedTokens: [],
@@ -1012,7 +1042,7 @@ public sealed class Parser : IDisposable
             return new UnitTypeIdentifier(new SourceRange(sourceStart, lastToken.SourceSpan));
         }
 
-        return new TupleTypeIdentifier(members, new SourceRange(sourceStart, lastToken?.SourceSpan ?? sourceStart));
+        return new TupleTypeIdentifier(members, boxingSpecifier, new SourceRange(sourceStart, lastToken?.SourceSpan ?? sourceStart));
     }
 
     private FnTypeIdentifier GetFunctionTypeIdentifier(StringToken fnToken)
@@ -1064,23 +1094,12 @@ public sealed class Parser : IDisposable
         return new FnTypeIdentifier(parameters, ReturnType: returnType, new SourceRange(fnToken.SourceSpan, lastToken.SourceSpan));
     }
 
-    private NamedTypeIdentifier? GetNamedTypeIdentifier()
+    private NamedTypeIdentifier? GetNamedTypeIdentifier(Token? boxingSpecifier)
     {
-        Token? boxedSpecifier = null;
-        if (Current.Type is TokenType.Boxed or TokenType.Unboxed)
-        {
-            boxedSpecifier = Current;
-            if (!MoveNext())
-            {
-                _errors.Add(ParserError.ExpectedTypeName(null));
-                return null;
-            }
-        }
-
         // use manual check instead of `ExpectCurrentIdentifier` so we can display the `ExpectedType` error
         if (Current is not StringToken { Type: TokenType.Identifier } typeIdentifier)
         {
-            _errors.Add(boxedSpecifier is null
+            _errors.Add(boxingSpecifier is null
                 ? ParserError.ExpectedType(Current)
                 : ParserError.ExpectedTypeName(Current));
             return null;
@@ -1107,8 +1126,8 @@ public sealed class Parser : IDisposable
                 });
         }
 
-        return new NamedTypeIdentifier(typeIdentifier, typeArguments, boxedSpecifier,
-            new SourceRange(typeIdentifier.SourceSpan, lastToken?.SourceSpan ?? typeIdentifier.SourceSpan));
+        return new NamedTypeIdentifier(typeIdentifier, typeArguments, boxingSpecifier,
+            new SourceRange(boxingSpecifier?.SourceSpan ?? typeIdentifier.SourceSpan, lastToken?.SourceSpan ?? typeIdentifier.SourceSpan));
     }
 
 

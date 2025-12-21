@@ -18,6 +18,6 @@ public partial class TypeChecker
 
         var types = tuple.Values.Select(value => (TypeCheckExpression(value), value.SourceRange)).ToArray();
 
-        return InstantiateTuple(types, tuple.SourceRange);
+        return InstantiateTuple(types, tuple.SourceRange, boxingSpecifier: null);
     }
 }

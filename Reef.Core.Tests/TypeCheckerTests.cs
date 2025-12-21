@@ -1,5 +1,4 @@
 ﻿using Reef.Core.Expressions;
-using Reef.Core.TypeChecking;
 
 using static Reef.Core.Tests.ExpressionHelpers;
 using static Reef.Core.TypeChecking.TypeChecker;
@@ -14,7 +13,7 @@ public class TypeCheckerTests
     {
         var program = Parser.Parse("TypeCheckerTests", Tokenizer.Tokenize(source));
         program.Errors.Should().BeEmpty();
-        var errors = TypeChecker.TypeCheck(program.ParsedProgram);
+        var errors = TypeCheck(program.ParsedProgram);
         errors.Should().BeEmpty();
     }
 
@@ -28,7 +27,7 @@ public class TypeCheckerTests
         description.Should().NotBeNull();
         var program = Parser.Parse("TypeCheckerTests", Tokenizer.Tokenize(source));
         program.Errors.Should().BeEmpty();
-        var errors = TypeChecker.TypeCheck(program.ParsedProgram);
+        var errors = TypeCheck(program.ParsedProgram);
 
         expectedErrors.Should().NotBeEmpty();
 
@@ -57,8 +56,15 @@ public class TypeCheckerTests
 
     public static TheoryData<string> SuccessfulExpressionTestCases()
     {
-        return new TheoryData<string>
-        {
+        return
+        [
+            """
+            var a: unboxed i32 = 1;
+            """,
+            """
+            class MyClass{}
+            var b: boxed MyClass = new MyClass{};
+            """,
             """
             while (true) {
                 continue;
@@ -614,7 +620,7 @@ public class TypeCheckerTests
             // single field match fully exhaustive
             union MyUnion {A, B}
             class MyClass { pub field MyField: MyUnion } 
-            
+
             var a = new MyClass { MyField = MyUnion::A };
             match (a) {
                 MyClass { MyField: MyUnion::A } => 1,
@@ -659,14 +665,14 @@ public class TypeCheckerTests
             union MyUnion {
                 A(i64)
             }  
-            
+
             var a = MyUnion::A(1);
             if (a matches MyUnion::A(_) var b) {
             }
             """,
             """
             fn SomeFn<T>(param: T){}
-            
+
             SomeFn::<>("");
             """,
             """
@@ -1224,8 +1230,8 @@ public class TypeCheckerTests
             class Class1 { field someField: Class1,}
             class Class2 { }
             """,
-            // binary operators
             // less than
+
             "var a: bool = 1 < 2;",
             // GreaterThan,
             "var a: bool = 2 > 2;",
@@ -1507,7 +1513,7 @@ public class TypeCheckerTests
             var c = SomeFn;
             """,
             Mvp
-        };
+        ];
     }
 
     public static TheoryData<string, string, IReadOnlyList<TypeCheckerError>> FailedExpressionTestCases()
@@ -2072,21 +2078,21 @@ public class TypeCheckerTests
                 """
                 var a: (i64, string) = ("", 1);
                 """,
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(Int64, String), TupleType(String, UnspecifiedSizedIntType))]
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(null, Int64, String), TupleType(null, String, UnspecifiedSizedIntType))]
             },
             {
                 "too many tuple members",
                 """
                 var a: (i64, string) = (1, "", 2);
                 """,
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(Int64, String), TupleType(UnspecifiedSizedIntType, String, UnspecifiedSizedIntType))]
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(null, Int64, String), TupleType(null, UnspecifiedSizedIntType, String, UnspecifiedSizedIntType))]
             },
             {
                 "not enough tuple members",
                 """
                 var a: (i64, string, string) = (1, "");
                 """,
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(Int64, String, String), TupleType(UnspecifiedSizedIntType, String))]
+                [TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(null, Int64, String, String), TupleType(null, UnspecifiedSizedIntType, String))]
             },
             {
                 "function type too many parameters",
@@ -3996,7 +4002,58 @@ public class TypeCheckerTests
                 a = 1;
                 """,
                 [TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("SomeFn"), [Identifier("a")])]
-            }
+            },
+            {
+                "Mismatched type boxing",
+                """
+                var a: boxed i32 = todo!;
+                var b: unboxed i32 = a;
+                """,
+                [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32, false, Int32, true)]
+            },
+            {
+                "Mismatched type boxing",
+                """
+                var a: unboxed i32 = todo!;
+                var b: boxed i32 = a;
+                """,
+                [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32, true, Int32, false)]
+            },
+            {
+                "Mismatched type boxing",
+                """
+                var a: i32 = todo!;
+                var b: boxed i32 = a;
+                """,
+                [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32, true, Int32, false)]
+            },
+            {
+                "Mismatched type boxing",
+                """
+                class MyClass {}
+                var a: unboxed MyClass = todo!;
+                var b: boxed MyClass = a;
+                """,
+                [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass"), true, new TestClassReference("MyClass"), false)]
+            },
+            {
+                "Mismatched type boxing",
+                """
+                class MyClass {}
+                var a: MyClass = todo!;
+                var b: unboxed MyClass = a;
+                """,
+                [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass"), false, new TestClassReference("MyClass"), true)]
+            },
+            {
+                "Mismatched type boxing",
+                """
+                class MyClass {}
+                var a: unboxed MyClass = todo!;
+                var b: MyClass = a;
+                """,
+                [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass"), true, new TestClassReference("MyClass"), false)]
+            },
         };
     }
 
@@ -4108,72 +4165,77 @@ public class TypeCheckerTests
         var c = new MyUnion::B{ MyField = ""};
         """;
 
-    private static TypeCheckerError MismatchedTypes(TypeChecker.ITypeReference expected, TypeChecker.ITypeReference actual)
+    private static TypeCheckerError MismatchedTypes(ITypeReference expected, ITypeReference actual)
     {
         return TypeCheckerError.MismatchedTypes(SourceRange.Default, expected, actual);
     }
 
-    private static TypeCheckerError MismatchedTypes(IReadOnlyList<TypeChecker.ITypeReference> expected, TypeChecker.ITypeReference actual)
+    private static TypeCheckerError MismatchedTypes(IReadOnlyList<ITypeReference> expected, ITypeReference actual)
     {
         return TypeCheckerError.MismatchedTypes(SourceRange.Default, expected, actual);
     }
 
-    private static readonly IReadOnlyList<TypeChecker.InstantiatedClass> IntTypes = [
-        TypeChecker.InstantiatedClass.Int64,
-        TypeChecker.InstantiatedClass.Int32,
-        TypeChecker.InstantiatedClass.Int16,
-        TypeChecker.InstantiatedClass.Int8,
-        TypeChecker.InstantiatedClass.UInt64,
-        TypeChecker.InstantiatedClass.UInt32,
-        TypeChecker.InstantiatedClass.UInt16,
-        TypeChecker.InstantiatedClass.UInt8,
+    private static readonly IReadOnlyList<InstantiatedClass> IntTypes = [
+        InstantiatedClass.Int64,
+        InstantiatedClass.Int32,
+        InstantiatedClass.Int16,
+        InstantiatedClass.Int8,
+        InstantiatedClass.UInt64,
+        InstantiatedClass.UInt32,
+        InstantiatedClass.UInt16,
+        InstantiatedClass.UInt8,
     ];
-    private static readonly TypeChecker.InstantiatedClass Int64 = TypeChecker.InstantiatedClass.Int64;
-    private static readonly TypeChecker.InstantiatedClass Int32 = TypeChecker.InstantiatedClass.Int32;
-    private static readonly TypeChecker.InstantiatedClass Int16 = TypeChecker.InstantiatedClass.Int16;
-    private static readonly TypeChecker.InstantiatedClass Int8 = TypeChecker.InstantiatedClass.Int8;
-    private static readonly TypeChecker.InstantiatedClass UInt64 = TypeChecker.InstantiatedClass.UInt64;
-    private static readonly TypeChecker.InstantiatedClass UInt32 = TypeChecker.InstantiatedClass.UInt32;
-    private static readonly TypeChecker.InstantiatedClass UInt16 = TypeChecker.InstantiatedClass.UInt16;
-    private static readonly TypeChecker.InstantiatedClass UInt8 = TypeChecker.InstantiatedClass.UInt8;
+    private static readonly InstantiatedClass Int64 = InstantiatedClass.Int64;
+    private static readonly InstantiatedClass Int32 = InstantiatedClass.Int32;
+    private static readonly InstantiatedClass Int16 = InstantiatedClass.Int16;
+    private static readonly InstantiatedClass Int8 = InstantiatedClass.Int8;
+    private static readonly InstantiatedClass UInt64 = InstantiatedClass.UInt64;
+    private static readonly InstantiatedClass UInt32 = InstantiatedClass.UInt32;
+    private static readonly InstantiatedClass UInt16 = InstantiatedClass.UInt16;
+    private static readonly InstantiatedClass UInt8 = InstantiatedClass.UInt8;
+    
+    private static readonly UnspecifiedSizedIntType UnspecifiedSizedIntType = new(){Boxed = false};
+    private static readonly InstantiatedClass String = InstantiatedClass.String;
+    private static readonly InstantiatedClass Boolean = InstantiatedClass.Boolean;
+    private static readonly InstantiatedClass Unit = InstantiatedClass.Unit;
 
-    private static readonly TypeChecker.UnspecifiedSizedIntType UnspecifiedSizedIntType = new();
-    private static readonly TypeChecker.InstantiatedClass String = TypeChecker.InstantiatedClass.String;
-    private static readonly TypeChecker.InstantiatedClass Boolean = TypeChecker.InstantiatedClass.Boolean;
-    private static readonly TypeChecker.InstantiatedClass Unit = TypeChecker.InstantiatedClass.Unit;
-
-    private static TypeChecker.InstantiatedClass TupleType(params IReadOnlyList<TypeChecker.ITypeReference> members)
+    private static InstantiatedClass TupleType(bool? boxed, params IReadOnlyList<ITypeReference> members)
     {
-        var signature = TypeChecker.ClassSignature.Tuple((ushort)members.Count);
-        return new TypeChecker.InstantiatedClass(
-            signature, signature.TypeParameters.Zip(members).Select(x => x.First.Instantiate(x.Second)).ToArray());
+        var signature = ClassSignature.Tuple((ushort)members.Count);
+        return new InstantiatedClass(
+            signature, signature.TypeParameters.Zip(members).Select(x => x.First.Instantiate(x.Second)).ToArray(),
+            boxed ?? signature.Boxed);
     }
 
-    private static TypeChecker.InstantiatedUnion Result(TypeChecker.ITypeReference value, TypeChecker.ITypeReference error)
+    private static InstantiatedUnion Result(
+        ITypeReference value,
+        ITypeReference error,
+        Token? boxingSpecifier = null)
     {
-        return new TypeChecker.InstantiatedUnion(
-            TypeChecker.UnionSignature.Result,
+        return new InstantiatedUnion(
+            UnionSignature.Result,
             [
-                new TypeChecker.GenericTypeReference
+                new GenericTypeReference
                 {
-                    GenericName = TypeChecker.UnionSignature.Result.TypeParameters[0].GenericName,
-                    OwnerType = TypeChecker.UnionSignature.Result,
+                    GenericName = UnionSignature.Result.TypeParameters[0].GenericName,
+                    OwnerType = UnionSignature.Result,
                     ResolvedType = value
                 },
-                new TypeChecker.GenericTypeReference
+                new GenericTypeReference
                 {
-                    GenericName = TypeChecker.UnionSignature.Result.TypeParameters[1].GenericName,
-                    OwnerType = TypeChecker.UnionSignature.Result,
+                    GenericName = UnionSignature.Result.TypeParameters[1].GenericName,
+                    OwnerType = UnionSignature.Result,
                     ResolvedType = error
                 },
-            ]);
+            ],
+            boxingSpecifier);
     }
 
-    private sealed record TestClassReference(string ClassName) : TypeChecker.ITypeReference, IEquatable<TypeChecker.ITypeReference>
+    private sealed record TestClassReference(string ClassName) : ITypeReference, IEquatable<ITypeReference>
     {
-        public bool Equals(TypeChecker.ITypeReference? other)
+        public bool Equals(ITypeReference? other)
         {
-            if (other is not TypeChecker.InstantiatedClass @class)
+            if (other is not InstantiatedClass @class)
             {
                 return false;
             }
@@ -4196,9 +4258,9 @@ public class TypeCheckerTests
         };
     }
 
-    private static TypeChecker.GenericTypeReference GenericTypeReference(string name)
+    private static GenericTypeReference GenericTypeReference(string name)
     {
-        return new TypeChecker.GenericTypeReference
+        return new GenericTypeReference
         {
             GenericName = name,
             OwnerType = null!

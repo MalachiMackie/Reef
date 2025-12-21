@@ -321,9 +321,9 @@ public static class ExpressionHelpers
         return new NamedTypeIdentifier(Token.Identifier(typeName, SourceSpan.Default), typeArguments ?? [], boxedSpecifier, SourceRange.Default);
     }
 
-    public static TupleTypeIdentifier TupleTypeIdentifier(IReadOnlyList<ITypeIdentifier> members)
+    public static TupleTypeIdentifier TupleTypeIdentifier(Token? boxingSpecifier, IReadOnlyList<ITypeIdentifier> members)
     {
-        return new TupleTypeIdentifier(members, SourceRange.Default);
+        return new TupleTypeIdentifier(members, boxingSpecifier, SourceRange.Default);
     }
 
     public static UnitTypeIdentifier UnitTypeIdentifier() => new(SourceRange.Default);

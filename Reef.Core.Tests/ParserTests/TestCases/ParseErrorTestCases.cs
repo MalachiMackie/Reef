@@ -64,14 +64,14 @@ public static class ParseErrorTestCases
                 new LangProgram("ParseErrorTestCases", [
                     VariableDeclaration("a")
                 ], [], [], []),
-                [ParserError.ExpectedTypeName(Token.Semicolon(SourceSpan.Default))]
+                [ParserError.ExpectedType(Token.Semicolon(SourceSpan.Default))]
             ),
             (
                 "var a: boxed;",
                 new LangProgram("ParseErrorTestCases", [
                     VariableDeclaration("a")
                 ], [], [], []),
-                [ParserError.ExpectedTypeName(Token.Semicolon(SourceSpan.Default))]
+                [ParserError.ExpectedType(Token.Semicolon(SourceSpan.Default))]
             ),
             (
                 "var a: int unboxed",
@@ -1783,14 +1783,14 @@ public static class ParseErrorTestCases
             (
                 "var a: (, string)",
                 new LangProgram("ParseErrorTestCases", [
-                    VariableDeclaration("a", type: TupleTypeIdentifier([StringType()]))
+                    VariableDeclaration("a", type: TupleTypeIdentifier(null, [StringType()]))
                 ], [], [], []),
                 [ParserError.ExpectedTypeOrToken(Token.Comma(SourceSpan.Default), TokenType.RightParenthesis)]
             ),
             (
                 "var a: (int, string,)",
                 new LangProgram("ParseErrorTestCases", [
-                    VariableDeclaration("a", type: TupleTypeIdentifier([IntType(), StringType()]))
+                    VariableDeclaration("a", type: TupleTypeIdentifier(null, [IntType(), StringType()]))
                 ], [], [], []),
                 []
             ),

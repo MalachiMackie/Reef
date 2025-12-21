@@ -299,7 +299,10 @@ public partial class TypeChecker
 
     private InstantiatedClass GetTypeReference(TupleTypeIdentifier tupleTypeIdentifier)
     {
-        return InstantiateTuple([.. tupleTypeIdentifier.Members.Select(x => (GetTypeReference(x), x.SourceRange))], tupleTypeIdentifier.SourceRange);
+        return InstantiateTuple(
+            [.. tupleTypeIdentifier.Members.Select(x => (GetTypeReference(x), x.SourceRange))],
+            tupleTypeIdentifier.SourceRange,
+            tupleTypeIdentifier.BoxingSpecifier);
     }
 
     private ITypeReference GetTypeReference(
@@ -315,12 +318,12 @@ public partial class TypeChecker
                     return InstantiateClass(classSignature, [
                         ..typeIdentifier.TypeArguments
                             .Select(x => (GetTypeReference(x), x.SourceRange))
-                    ], typeIdentifier.SourceRange);
+                    ], typeIdentifier.BoxedSpecifier, typeIdentifier.SourceRange);
                 case UnionSignature unionSignature:
                     return InstantiateUnion(unionSignature, [
                         ..typeIdentifier.TypeArguments
                             .Select(x => (GetTypeReference(x), x.SourceRange))
-                    ], typeIdentifier.SourceRange);
+                    ], typeIdentifier.BoxedSpecifier, typeIdentifier.SourceRange);
             }
         }
 
@@ -429,7 +432,7 @@ public partial class TypeChecker
         SourceRange actualSourceRange, bool reportError = true)
     {
         if ((actual is InstantiatedClass x && x.IsSameSignature(InstantiatedClass.Never))
-            || (expectedTypes.Any(x => x is InstantiatedClass y && y.IsSameSignature(InstantiatedClass.Never))))
+            || expectedTypes.Any(y => y is InstantiatedClass z && z.IsSameSignature(InstantiatedClass.Never)))
         {
             return true;
         }
@@ -485,6 +488,20 @@ public partial class TypeChecker
 
                         result &= argumentsPassed;
 
+                        if (result && actualClass.Boxed != expectedClass.Boxed)
+                        {
+                            result = false;
+                            if (reportError)
+                            {
+                                _errors.Add(TypeCheckerError.MismatchedTypeBoxing(
+                                    actualSourceRange,
+                                    expectedClass,
+                                    expectedClass.Boxed,
+                                    actualClass,
+                                    actualClass.Boxed));
+                            }
+                        }
+
                         break;
                     }
                 case (InstantiatedUnion actualUnion, InstantiatedUnion expectedUnion):
@@ -504,6 +521,20 @@ public partial class TypeChecker
                         }
 
                         result &= argumentsPassed;
+                        
+                        if (result && actualUnion.Boxed != expectedUnion.Boxed)
+                        {
+                            result = false;
+                            if (reportError)
+                            {
+                                _errors.Add(TypeCheckerError.MismatchedTypeBoxing(
+                                    actualSourceRange,
+                                    expectedUnion,
+                                    expectedUnion.Boxed,
+                                    actualUnion,
+                                    actualUnion.Boxed));
+                            }
+                        }
 
                         break;
                     }
@@ -603,7 +634,7 @@ public partial class TypeChecker
                     }
                     else if (assignInferredTypes)
                     {
-                        reference2.SetResolvedType(placeholder1, actualSourceRange);
+                        reference2.ResolvedType = placeholder1;
                     }
 
                     break;
@@ -616,7 +647,7 @@ public partial class TypeChecker
                     }
                     else if (assignInferredTypes)
                     {
-                        reference1.SetResolvedType(placeholder2, actualSourceRange);
+                        reference1.ResolvedType = placeholder2;
                     }
 
                     break;
@@ -661,11 +692,24 @@ public partial class TypeChecker
                             actualIntType.Link(expectedIntType);
                         }
                     }
+
+                    if (actualIntType.Boxed != expectedIntType.Boxed)
+                    {
+                        result = false;
+                        if (reportError)
+                        {
+                            _errors.Add(TypeCheckerError.MismatchedTypeBoxing(
+                                actualSourceRange,
+                                expectedIntType, expectedIntType.Boxed,
+                                actualIntType, actualIntType.Boxed));
+                        }
+                    }
+                    
                     break;
                 }
             case (UnspecifiedSizedIntType actualIntType, InstantiatedClass expectedClass):
                 {
-                    if (!InstantiatedClass.IntTypes.Any(x => x.IsSameSignature(expectedClass)))
+                    if (!InstantiatedClass.IntTypes.Any(intType => intType.IsSameSignature(expectedClass)))
                     {
                         result = false;
                         if (reportError)
@@ -685,12 +729,24 @@ public partial class TypeChecker
                     {
                         actualIntType.ResolvedIntType = expectedClass;
                     }
+                    
+                    if (actualIntType.Boxed != expectedClass.Boxed)
+                    {
+                        result = false;
+                        if (reportError)
+                        {
+                            _errors.Add(TypeCheckerError.MismatchedTypeBoxing(
+                                actualSourceRange,
+                                expectedClass, expectedClass.Boxed,
+                                actualIntType, actualIntType.Boxed));
+                        }
+                    }
 
                     break;
                 }
             case (InstantiatedClass actualClass, UnspecifiedSizedIntType expectedIntType):
                 {
-                    if (!InstantiatedClass.IntTypes.Any(x => x.IsSameSignature(actualClass)))
+                    if (!InstantiatedClass.IntTypes.Any(intType => intType.IsSameSignature(actualClass)))
                     {
                         result = false;
                         if (reportError)
@@ -710,6 +766,18 @@ public partial class TypeChecker
                     {
                         expectedIntType.ResolvedIntType = actualClass;
                     }
+                    
+                    if (actualClass.Boxed != expectedIntType.Boxed)
+                    {
+                        result = false;
+                        if (reportError)
+                        {
+                            _errors.Add(TypeCheckerError.MismatchedTypeBoxing(
+                                actualSourceRange,
+                                expectedIntType, expectedIntType.Boxed,
+                                actualClass, actualClass.Boxed));
+                        }
+                    }
 
                     break;
                 }
@@ -721,7 +789,7 @@ public partial class TypeChecker
                     }
                     else if (assignInferredTypes)
                     {
-                        expectedGeneric.SetResolvedType(actualIntType, actualSourceRange);
+                        expectedGeneric.ResolvedType = actualIntType;
                     }
                     break;
                 }
@@ -733,7 +801,7 @@ public partial class TypeChecker
                     }
                     else if (assignInferredTypes)
                     {
-                        actualGeneric.SetResolvedType(expectedIntType, actualSourceRange);
+                        actualGeneric.ResolvedType = expectedIntType;
                     }
                     break;
                 }
@@ -769,6 +837,18 @@ public partial class TypeChecker
                     }
 
                     result &= argumentsPassed;
+                    
+                    if (actualClass.Boxed != expectedClass.Boxed)
+                    {
+                        result = false;
+                        if (reportError)
+                        {
+                            _errors.Add(TypeCheckerError.MismatchedTypeBoxing(
+                                actualSourceRange,
+                                expectedClass, expectedClass.Boxed,
+                                actualClass, actualClass.Boxed));
+                        }
+                    }
 
                     break;
                 }
@@ -795,6 +875,18 @@ public partial class TypeChecker
                         _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
                     }
                     result &= argumentsPassed;
+                    
+                    if (actualUnion.Boxed != expectedUnion.Boxed)
+                    {
+                        result = false;
+                        if (reportError)
+                        {
+                            _errors.Add(TypeCheckerError.MismatchedTypeBoxing(
+                                actualSourceRange,
+                                expectedUnion, expectedUnion.Boxed,
+                                actualUnion, actualUnion.Boxed));
+                        }
+                    }
 
                     break;
                 }
@@ -806,7 +898,7 @@ public partial class TypeChecker
                     }
                     else if (assignInferredTypes)
                     {
-                        generic.SetResolvedType(union, actualSourceRange);
+                        generic.ResolvedType = union;
                     }
 
                     break;
@@ -819,7 +911,7 @@ public partial class TypeChecker
                     }
                     else if (assignInferredTypes)
                     {
-                        generic.SetResolvedType(union, actualSourceRange);
+                        generic.ResolvedType = union;
                     }
 
                     break;
@@ -832,7 +924,7 @@ public partial class TypeChecker
                     }
                     else if (assignInferredTypes)
                     {
-                        generic.SetResolvedType(@class, actualSourceRange);
+                        generic.ResolvedType = @class;
                     }
 
                     break;
@@ -845,7 +937,7 @@ public partial class TypeChecker
                     }
                     else if (assignInferredTypes)
                     {
-                        generic.SetResolvedType(@class, actualSourceRange);
+                        generic.ResolvedType = @class;
                     }
 
                     break;
@@ -861,18 +953,18 @@ public partial class TypeChecker
                     {
                         if (genericTypeReference.ResolvedType is null && expectedGeneric.ResolvedType is not null)
                         {
-                            genericTypeReference.SetResolvedType(expectedGeneric.ResolvedType, actualSourceRange);
+                            genericTypeReference.ResolvedType = expectedGeneric.ResolvedType;
                         }
                         else if (genericTypeReference.ResolvedType is not null && expectedGeneric.ResolvedType is null)
                         {
-                            expectedGeneric.SetResolvedType(genericTypeReference.ResolvedType, actualSourceRange);
+                            expectedGeneric.ResolvedType = genericTypeReference.ResolvedType;
                         }
                         else
                         {
                             genericTypeReference.Link(expectedGeneric);
                             if (expectedGeneric != genericTypeReference)
                             {
-                                expectedGeneric.SetResolvedType(genericTypeReference, actualSourceRange);
+                                expectedGeneric.ResolvedType = genericTypeReference;
                             }
                         }
                     }
