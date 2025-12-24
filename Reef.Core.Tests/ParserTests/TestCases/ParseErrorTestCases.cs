@@ -78,14 +78,14 @@ public static class ParseErrorTestCases
                 new LangProgram("ParseErrorTestCases", [
                     VariableDeclaration("a", type: IntType())
                 ], [], [], []),
-                [ParserError.ExpectedTokenOrExpression(Token.Unboxed(SourceSpan.Default), TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union)]
+                [ParserError.ExpectedTypeName(null)]
             ),
             (
                 "var a: int boxed",
                 new LangProgram("ParseErrorTestCases", [
                     VariableDeclaration("a", type: IntType())
                 ], [], [], []),
-                [ParserError.ExpectedTokenOrExpression(Token.Boxed(SourceSpan.Default), TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union)]
+                [ParserError.ExpectedTypeName(null)]
             ),
             (
                 "var a: int = ;",
@@ -1995,6 +1995,16 @@ public static class ParseErrorTestCases
                     While(True())
                 ]),
                 [ParserError.ExpectedExpression(null)]
+            ),
+            (
+                "unboxed",
+                Program("ParseErrorTestCases", []),
+                [ParserError.ExpectedTypeName(null)]
+            ),
+            (
+                "boxed",
+                Program("ParseErrorTestCases", []),
+                [ParserError.ExpectedTypeName(null)]
             ),
         ];
 

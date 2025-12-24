@@ -7,6 +7,7 @@ public record DefId(string ModuleId, string FullName)
     public static string CoreLibNamespace => "System";
 
     public static DefId Printf { get; } = new(CoreLibModuleId, "printf");
+    public static DefId Allocate { get; } = new(CoreLibModuleId, CoreLibNamespace + ".Allocate");
 
     public static DefId Unit { get; } = new(CoreLibModuleId, CoreLibNamespace + ".Unit");
 

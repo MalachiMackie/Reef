@@ -35,6 +35,15 @@ public record TypeCheckerError
             TypeCheckerErrorType.MismatchedTypeBoxing,
             range,
             $"Expected {(expectedBoxed ? "" : "un")}boxed {expectedType}, but got {(expectedBoxed ? "un" : "")}boxed {actualType}");
+    
+    public static TypeCheckerError TypeIsNotExpression(
+        SourceRange range, ITypeIdentifier type)
+    {
+        return new TypeCheckerError(
+            TypeCheckerErrorType.TypeIsNotExpression,
+            range,
+            $"Type Identifier \"{type}\" is not a valid expression");
+    }
 
     public static TypeCheckerError MismatchedTypes(SourceRange range, IReadOnlyList<TypeChecker.ITypeReference> expected, TypeChecker.ITypeReference actual) =>
         new(TypeCheckerErrorType.MismatchedTypes, range, $"Expected one of [{string.Join(",", expected)}], but found {actual}");
@@ -415,5 +424,6 @@ public enum TypeCheckerErrorType
     EmptyUnionTupleVariant,
     BreakUsedOutsideOfLoop,
     ContinueUsedOutsideOfLoop,
-    MismatchedTypeBoxing
+    MismatchedTypeBoxing,
+    TypeIsNotExpression
 }

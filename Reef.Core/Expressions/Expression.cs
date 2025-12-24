@@ -14,6 +14,18 @@ public interface IExpression
     bool ValueUseful { get; set; }
 }
 
+// Only used during parsing, should not exist turing type checking phase 
+public record TypeIdentifierExpression(ITypeIdentifier TypeIdentifier) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.TypeIdentifier;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
+
+    public SourceRange SourceRange => TypeIdentifier.SourceRange;
+
+    public bool Diverges => false;
+    public bool ValueUseful { get; set; }
+}
+
 public record ValueAccessorExpression(ValueAccessor ValueAccessor) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.ValueAccess;
@@ -598,5 +610,6 @@ public enum ExpressionType
     Tuple,
     While,
     Break,
-    Continue
+    Continue,
+    TypeIdentifier
 }

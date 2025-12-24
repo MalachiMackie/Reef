@@ -256,9 +256,9 @@ public partial class ProgramAbseil
         }
         else
         {
-            var basicBlock = basicBlocks[0];
+            var basicBlock = basicBlocks[^1];
             _basicBlockStatements = [..basicBlock.Statements];
-            basicBlocks[0] = new BasicBlock(basicBlock.Id, _basicBlockStatements, basicBlock.Terminator);
+            basicBlocks[^1] = new BasicBlock(basicBlock.Id, _basicBlockStatements, basicBlock.Terminator);
         }
 
         foreach (var expression in expressions)
@@ -405,7 +405,7 @@ public partial class ProgramAbseil
             var fields = new List<DataTypeField> { variantIdentifierField };
             switch (variant)
             {
-                case TypeChecker.UnitUnionVariant :
+                case TypeChecker.UnitUnionVariant:
                     break;
                 case TypeChecker.ClassUnionVariant u:
                     {
@@ -426,24 +426,66 @@ public partial class ProgramAbseil
                                 (IOperand operand, string fieldName) (_, i) => (new Copy(new Local($"_param{i}")), TupleElementName((uint)i)));
                         createMethodFieldInitializations = createMethodFieldInitializations.Prepend((new UIntConstant((ulong)variants.Count, 2), VariantIdentifierFieldName));
 
-                        var method = new LoweredMethod(
-                                    u.CreateFunction.Id,
-                                    u.CreateFunction.Name,
-                                    typeParameters,
-                                    [
-                                        new BasicBlock(new BasicBlockId("bb0"), [
-                                            new Assign(new Local(ReturnValueLocalName), new CreateObject(unionTypeReference)),
-                                            ..createMethodFieldInitializations.Select(x => new Assign(
-                                                new Field(new Local(ReturnValueLocalName), x.fieldName, u.Name),
-                                                new Use(x.operand)))
-                                        ])
-                                        {
-                                            Terminator = new Return()
-                                        },
-                                    ],
-                                    new MethodLocal(ReturnValueLocalName, null, unionTypeReference),
-                                    [..memberTypes.Select((x, i) => new MethodLocal(ParameterLocalName((uint)i), TupleElementName((uint)i), x))],
-                                    []);
+                        LoweredMethod method;
+
+                        if (union.Boxed)
+                        {
+                            method = new LoweredMethod(
+                                u.CreateFunction.Id,
+                                u.CreateFunction.Name,
+                                typeParameters,
+                                [
+                                    new BasicBlock(
+                                        new BasicBlockId("bb0"),
+                                        [],
+                                        new MethodCall(
+                                            new LoweredFunctionReference(DefId.Allocate, []),
+                                            [new SizeOf(unionTypeReference)],
+                                            new Local(ReturnValueLocalName),
+                                            new BasicBlockId("bb1"))),
+                                    new BasicBlock(new BasicBlockId("bb1"), [
+                                        new Assign(new Deref(new Local(ReturnValueLocalName)),
+                                            new CreateObject(unionTypeReference)),
+                                        ..createMethodFieldInitializations.Select(x => new Assign(
+                                            new Field(new Deref(new Local(ReturnValueLocalName)), x.fieldName, u.Name),
+                                            new Use(x.operand)))
+                                    ])
+                                    {
+                                        Terminator = new Return()
+                                    },
+                                ],
+                                new MethodLocal(ReturnValueLocalName, null, new LoweredPointer(unionTypeReference)),
+                                [
+                                    ..memberTypes.Select((x, i) =>
+                                        new MethodLocal(ParameterLocalName((uint)i), TupleElementName((uint)i), x))
+                                ],
+                                []);
+                        }
+                        else
+                        {
+                            method = new LoweredMethod(
+                                u.CreateFunction.Id,
+                                u.CreateFunction.Name,
+                                typeParameters,
+                                [
+                                    new BasicBlock(new BasicBlockId("bb0"), [
+                                        new Assign(new Local(ReturnValueLocalName),
+                                            new CreateObject(unionTypeReference)),
+                                        ..createMethodFieldInitializations.Select(x => new Assign(
+                                            new Field(new Local(ReturnValueLocalName), x.fieldName, u.Name),
+                                            new Use(x.operand)))
+                                    ])
+                                    {
+                                        Terminator = new Return()
+                                    },
+                                ],
+                                new MethodLocal(ReturnValueLocalName, null, unionTypeReference),
+                                [
+                                    ..memberTypes.Select((x, i) =>
+                                        new MethodLocal(ParameterLocalName((uint)i), TupleElementName((uint)i), x))
+                                ],
+                                []);
+                        }
                         
                         // add the tuple variant as a method
                         _methods.Add(
@@ -486,7 +528,7 @@ public partial class ProgramAbseil
         if (localsAccessedInClosure.Length > 0 || parametersAccessedInClosure.Length > 0)
         {
             localsType = new DataType(
-                new DefId(fnSignature.Id.ModuleId, fnSignature.Id.FullName + "__Locals"),
+                fnSignature.Id with { FullName = fnSignature.Id.FullName + "__Locals" },
                 $"{name}__Locals",
                 [],
                 [
@@ -532,7 +574,7 @@ public partial class ProgramAbseil
                             // the owner function
                             fields.TryAdd(
                                 localTypeId,
-                                new DataTypeField(localType.Name, localTypeReference)); 
+                                new DataTypeField(localType.Name, new LoweredPointer(localTypeReference))); 
                             break;
                         }
                     case TypeChecker.FunctionSignatureParameter parameterVariable:
@@ -551,7 +593,7 @@ public partial class ProgramAbseil
                             // the owner function
                             fields.TryAdd(
                                     localTypeId,
-                                    new DataTypeField(localType.Name, localTypeReference));
+                                    new DataTypeField(localType.Name, new LoweredPointer(localTypeReference)));
                             break;
                         }
                     case TypeChecker.FieldVariable fieldVariable:
@@ -565,7 +607,7 @@ public partial class ProgramAbseil
 
                             fields.TryAdd(
                                 signature.Id,
-                                new DataTypeField(ClosureThisFieldName, typeReference));
+                                new DataTypeField(ClosureThisFieldName, new LoweredPointer(typeReference)));
 
                             break;
                         }
@@ -574,7 +616,7 @@ public partial class ProgramAbseil
                             Debug.Assert(parentTypeReference is not null);
                             fields.TryAdd(
                                 parentTypeReference.DefinitionId,
-                                new DataTypeField(ClosureThisFieldName, parentTypeReference));
+                                new DataTypeField(ClosureThisFieldName, new LoweredPointer(parentTypeReference)));
                             break;
                         }
                 }
@@ -620,27 +662,35 @@ public partial class ProgramAbseil
             locals.Add(new MethodLocal(
                         LocalsObjectLocalName,
                         null,
-                        localsTypeReference));
+                        new LoweredPointer(localsTypeReference)));
             var hasCompilerInsertedFirstParameter = 
                 (!fnSignature.IsStatic && ownerTypeReference is not null)
                 || closureType is not null;
 
-            basicBlocks.Add(
-                new BasicBlock(
-                    new BasicBlockId("bb0"),
-                    [
-                        new Assign(
-                            new Local(LocalsObjectLocalName),
-                            new CreateObject(
-                                localsTypeReference)),
-                        ..parametersAccessedInClosure.Select(
-                            parameter => new Assign(
-                                new Field(
-                                    new Local(LocalsObjectLocalName),
-                                    parameter.Name.StringValue,
-                                    ClassVariantName),
-                                new Use(new Copy(new Local(ParameterLocalName(parameter.ParameterIndex + (uint)(hasCompilerInsertedFirstParameter ? 1 : 0)))))))
-                    ]));
+            basicBlocks.Add(new BasicBlock(
+                new BasicBlockId("bb0"),
+                [],
+                new MethodCall(
+                    new LoweredFunctionReference(DefId.Allocate, []),
+                    [new SizeOf(localsTypeReference)],
+                    new Local(LocalsObjectLocalName),
+                    new BasicBlockId("bb1"))));
+
+            basicBlocks.Add(new BasicBlock(
+                new BasicBlockId("bb1"),
+                [
+                new Assign(
+                    new Deref(new Local(LocalsObjectLocalName)),
+                    new CreateObject(
+                        localsTypeReference)),
+                ..parametersAccessedInClosure.Select(
+                    parameter => new Assign(
+                        new Field(
+                            new Deref(new Local(LocalsObjectLocalName)),
+                            parameter.Name.StringValue,
+                            ClassVariantName),
+                        new Use(new Copy(new Local(ParameterLocalName(parameter.ParameterIndex + (uint)(hasCompilerInsertedFirstParameter ? 1 : 0)))))))
+            ]));
         }
 
         foreach (var localVariable in fnSignature.LocalVariables.Where(x => !x.ReferencedInClosure))
@@ -653,14 +703,14 @@ public partial class ProgramAbseil
 
         if (!fnSignature.IsStatic && ownerTypeReference is not null)
         {
-            parameters = parameters.Prepend((ThisParameterName, ownerTypeReference));
+            parameters = parameters.Prepend((ThisParameterName, new LoweredPointer(ownerTypeReference)));
         }
         else if (closureType is not null)
         {
-            parameters = parameters.Prepend((ClosureParameterName, new LoweredConcreteTypeReference(
+            parameters = parameters.Prepend((ClosureParameterName, new LoweredPointer(new LoweredConcreteTypeReference(
                 closureType.Name,
                 closureType.Id,
-                [])));
+                []))));
         }
 
         return (
@@ -714,9 +764,19 @@ public partial class ProgramAbseil
                 resultingTypeArguments);
     }
 
-    private ILoweredTypeReference GetTypeReference(TypeChecker.ITypeReference typeReference)
+    private LoweredConcreteTypeReference GetConcreteTypeReference(ILoweredTypeReference typeReference)
     {
         return typeReference switch
+        {
+            LoweredConcreteTypeReference concrete => concrete,
+            LoweredPointer(var pointerTo) => GetConcreteTypeReference(pointerTo),
+            _ => throw new InvalidOperationException($"{typeReference.GetType()}")
+        };
+    }
+
+    private ILoweredTypeReference GetTypeReference(TypeChecker.ITypeReference typeReference)
+    {
+        var loweredTypeReference = typeReference switch
         {
             TypeChecker.InstantiatedClass c => new LoweredConcreteTypeReference(
                 c.Signature.Name,
@@ -738,6 +798,13 @@ public partial class ProgramAbseil
             TypeChecker.UnspecifiedSizedIntType i => GetTypeReference(i.ResolvedIntType.NotNull()),
             _ => throw new InvalidOperationException($"Type reference {typeReference.GetType()} is not supported")
         };
+
+        if (IsTypeReferenceBoxed(typeReference))
+        {
+            loweredTypeReference = new LoweredPointer(loweredTypeReference);
+        }
+
+        return loweredTypeReference;
 
         LoweredConcreteTypeReference FunctionObjectCase(TypeChecker.FunctionObject f)
         {

@@ -14,7 +14,33 @@ public partial class TypeChecker
         { Id = DefId.Unit, TypeParameters = [], Name = "Unit", Fields = [], Functions = [], Boxed = false };
 
         public static ClassSignature String { get; } = new()
-        { Id = DefId.String, TypeParameters = [], Name = "string", Fields = [], Functions = [], Boxed = true };
+        {
+            Id = DefId.String,
+            TypeParameters = [],
+            Name = "string",
+            Fields = [
+                new TypeField
+                {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "Length",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.UInt64
+                },
+                new TypeField
+                {
+                    IsPublic = false,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "StartChar",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.RawPointer
+                }
+            ],
+            Functions = [],
+            Boxed = false
+        };
 
         public static ClassSignature Int64 { get; } = new()
         { Id = DefId.Int64, TypeParameters = [], Name = "i64", Fields = [], Functions = [], Boxed = false };
@@ -318,17 +344,18 @@ public partial class TypeChecker
             ];
         }
 
-        public static InstantiatedClass String { get; } = new(ClassSignature.String, [], boxed: true);
-        public static InstantiatedClass Boolean { get; } = new(ClassSignature.Boolean, [], boxed: false);
+        public static InstantiatedClass String { get; } = new(ClassSignature.String, [], boxed: ClassSignature.String.Boxed);
+        public static InstantiatedClass Boolean { get; } = new(ClassSignature.Boolean, [], boxed: ClassSignature.Boolean.Boxed);
 
-        public static InstantiatedClass Int64 { get; } = new(ClassSignature.Int64, [], boxed: false);
-        public static InstantiatedClass Int32 { get; } = new(ClassSignature.Int32, [], boxed: false);
-        public static InstantiatedClass Int16 { get; } = new(ClassSignature.Int16, [], boxed: false);
-        public static InstantiatedClass Int8 { get; } = new(ClassSignature.Int8, [], boxed: false);
-        public static InstantiatedClass UInt64 { get; } = new(ClassSignature.UInt64, [], boxed: false);
-        public static InstantiatedClass UInt32 { get; } = new(ClassSignature.UInt32, [], boxed: false);
-        public static InstantiatedClass UInt16 { get; } = new(ClassSignature.UInt16, [], boxed: false);
-        public static InstantiatedClass UInt8 { get; } = new(ClassSignature.UInt8, [], boxed: false);
+        public static InstantiatedClass Int64 { get; } = new(ClassSignature.Int64, [], boxed: ClassSignature.Int64.Boxed);
+        public static InstantiatedClass Int32 { get; } = new(ClassSignature.Int32, [], boxed: ClassSignature.Int32.Boxed);
+        public static InstantiatedClass Int16 { get; } = new(ClassSignature.Int16, [], boxed: ClassSignature.Int16.Boxed);
+        public static InstantiatedClass Int8 { get; } = new(ClassSignature.Int8, [], boxed: ClassSignature.Int8.Boxed);
+        public static InstantiatedClass UInt64 { get; } = new(ClassSignature.UInt64, [], boxed: ClassSignature.UInt64.Boxed);
+        public static InstantiatedClass UInt32 { get; } = new(ClassSignature.UInt32, [], boxed: ClassSignature.UInt32.Boxed);
+        public static InstantiatedClass UInt16 { get; } = new(ClassSignature.UInt16, [], boxed: ClassSignature.UInt16.Boxed);
+        public static InstantiatedClass UInt8 { get; } = new(ClassSignature.UInt8, [], boxed: ClassSignature.UInt8.Boxed);
+        public static InstantiatedClass RawPointer { get; } = new(ClassSignature.RawPointer, [], boxed: ClassSignature.RawPointer.Boxed);
 
         // todo: need some sort of inferred int type
 
@@ -343,9 +370,9 @@ public partial class TypeChecker
             UInt8,
         ];
 
-        public static InstantiatedClass Unit { get; } = new(ClassSignature.Unit, [], boxed: false);
+        public static InstantiatedClass Unit { get; } = new(ClassSignature.Unit, [], boxed: ClassSignature.Unit.Boxed);
 
-        public static InstantiatedClass Never { get; } = new(ClassSignature.Never, [], boxed: false);
+        public static InstantiatedClass Never { get; } = new(ClassSignature.Never, [], boxed: ClassSignature.Never.Boxed);
         
         public bool Boxed { get; }
 

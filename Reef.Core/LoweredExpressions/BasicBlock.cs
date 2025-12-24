@@ -38,6 +38,8 @@ public interface IPlace;
 
 public record Local(string LocalName) : IPlace;
 
+public record Deref(IPlace PointerPlace) : IPlace;
+
 public record Field(IPlace FieldOwner, string FieldName, string VariantName) : IPlace;
 
 public record StaticField(LoweredConcreteTypeReference Type, string FieldName) : IPlace;
@@ -57,6 +59,8 @@ public record StringConstant(string Value) : IOperand;
 public record IntConstant(long Value, byte ByteSize) : IOperand;
 
 public record UIntConstant(ulong Value, byte ByteSize) : IOperand;
+
+public record SizeOf(ILoweredTypeReference Type) : IOperand;
 
 public record BoolConstant(bool Value) : IOperand;
 
@@ -117,8 +121,13 @@ public record LoweredFunctionReference(
 
 public interface ILoweredTypeReference;
 
-public record LoweredConcreteTypeReference(string Name, DefId DefinitionId, IReadOnlyList<ILoweredTypeReference> TypeArguments) : ILoweredTypeReference;
+public record LoweredConcreteTypeReference(
+    string Name,
+    DefId DefinitionId,
+    IReadOnlyList<ILoweredTypeReference> TypeArguments) : ILoweredTypeReference;
 public record LoweredGenericPlaceholder(DefId OwnerDefinitionId, string PlaceholderName) : ILoweredTypeReference;
+
+public record LoweredPointer(ILoweredTypeReference PointerTo) : ILoweredTypeReference;
 
 public record DataType(
     DefId Id,

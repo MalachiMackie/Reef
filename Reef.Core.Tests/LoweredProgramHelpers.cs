@@ -54,6 +54,49 @@ public static class LoweredProgramHelpers
             new MethodLocal("_returnValue", null, type));
     }
 
+    public static readonly Local LocalsObject = new ("_localsObject");
+    public static readonly Local Local0 = new ("_local0");
+    public static readonly Local Local1 = new ("_local1");
+    public static readonly Local Local2 = new ("_local2");
+    public static readonly Local Local3 = new ("_local3");
+    public static readonly Local ReturnValue = new ("_returnValue");
+    
+    public static readonly Local Param0 = new ("_param0");
+    public static readonly Local Param1 = new ("_param1");
+    public static readonly Local Param2 = new ("_param2");
+    
+    public static readonly BasicBlockId BB0 = new ("bb0");
+    public static readonly BasicBlockId BB1 = new ("bb1");
+    public static readonly BasicBlockId BB2 = new ("bb2");
+    public static readonly BasicBlockId BB3 = new ("bb3");
+    public static readonly BasicBlockId BB4 = new ("bb4");
+    public static readonly BasicBlockId BB5 = new ("bb5");
+    public static readonly BasicBlockId BB6 = new ("bb6");
+    public static readonly BasicBlockId BB7 = new ("bb7");
+    public static readonly BasicBlockId BB8 = new ("bb8");
+    public static readonly BasicBlockId BB9 = new ("bb9");
+    public static readonly BasicBlockId BB10 = new ("bb10");
+    public static readonly BasicBlockId BB11 = new ("bb11");
+    public static readonly BasicBlockId BB12 = new ("bb12");
+    
+
+    public static LoweredConcreteTypeReference ConcreteTypeReference(string name, string moduleId, IReadOnlyList<ILoweredTypeReference>? typeArguments = null)
+    {
+        return new LoweredConcreteTypeReference(
+            name,
+            new DefId(moduleId, $"{moduleId}.{name}"),
+            typeArguments ?? []);
+    }
+
+    public static MethodCall AllocateMethodCall(ILoweredTypeReference type, IPlace destination, BasicBlockId goTo)
+    {
+        return new MethodCall(
+            new LoweredFunctionReference(DefId.Allocate, []),
+            [new SizeOf(type)],
+            destination,
+            goTo);
+    }
+
     public static LoweredMethod Method(
         DefId id,
         string name,

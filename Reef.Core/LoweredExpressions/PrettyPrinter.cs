@@ -109,6 +109,12 @@ public class PrettyPrinter
                     }
                     break;
                 }
+            case LoweredPointer ptr:
+            {
+                _stringBuilder.Append('*');
+                PrettyPrintTypeReference(ptr.PointerTo);
+                break;
+            }
             default:
                 throw new UnreachableException($"{typeReference}: {typeReference.GetType()}");
         }
@@ -294,6 +300,12 @@ public class PrettyPrinter
                 _stringBuilder.Append($"::{staticField.FieldName}");
                 break;
             }
+            case Deref deref:
+            {
+                _stringBuilder.Append('*');
+                PrettyPrintPlace(deref.PointerPlace);
+                break;
+            }
             default:
                 throw new ArgumentOutOfRangeException(nameof(place));
         }
@@ -407,6 +419,13 @@ public class PrettyPrinter
             {
                 _stringBuilder.Append("copy ");
                 PrettyPrintPlace(place);
+                break;
+            }
+            case SizeOf(var sizeOf):
+            {
+                _stringBuilder.Append("sizeof(");
+                PrettyPrintTypeReference(sizeOf);
+                _stringBuilder.Append(')');
                 break;
             }
             default:

@@ -167,7 +167,6 @@ public partial class TypeChecker
     {
         (ITypeReference Type, DefId Id) ConcreteType()
         {
-
             return this switch
             {
                 GenericTypeReference genericTypeReference => genericTypeReference.ResolvedType?.ConcreteType()

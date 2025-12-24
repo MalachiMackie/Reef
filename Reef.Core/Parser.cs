@@ -1155,6 +1155,7 @@ public sealed class Parser : IDisposable
             TokenType.Todo or TokenType.Identifier => GetVariableAccess(),
             TokenType.Matches => GetMatchesExpression(previousExpression),
             TokenType.Match => GetMatchExpression(),
+            TokenType.Unboxed or TokenType.Boxed => GetTypeIdentifierExpression(),
             _ when TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(
                 previousExpression, Current, unaryOperatorType.Value),
             _ when TryGetBinaryOperatorType(Current.Type, out var binaryOperatorType) => GetBinaryOperatorExpression(
@@ -1168,6 +1169,18 @@ public sealed class Parser : IDisposable
         };
 
         return expression;
+    }
+
+
+    private TypeIdentifierExpression? GetTypeIdentifierExpression()
+    {
+        var typeIdentifier = GetTypeIdentifier();
+        if (typeIdentifier is null)
+        {
+            return null;
+        }
+
+        return new TypeIdentifierExpression(typeIdentifier);
     }
 
     private MatchExpression? GetMatchExpression()
@@ -1301,7 +1314,7 @@ public sealed class Parser : IDisposable
             return new VariableDeclarationPattern(variableName, new SourceRange(start, end), isMut);
         }
 
-        if (Current.Type != TokenType.Identifier)
+        if (Current.Type is not (TokenType.Identifier or TokenType.Boxed or TokenType.Unboxed))
         {
             _errors.Add(ParserError.ExpectedPattern(Current));
             MoveNext();
@@ -1725,7 +1738,18 @@ public sealed class Parser : IDisposable
             return null;
         }
 
-        if (previousExpression is not ValueAccessorExpression
+        NamedTypeIdentifier type;
+        
+        if (previousExpression is TypeIdentifierExpression(var typeIdentifier))
+        {
+            if (typeIdentifier is not NamedTypeIdentifier named)
+            {
+                throw new InvalidOperationException();
+            }
+
+            type = named;
+        }
+        else if (previousExpression is ValueAccessorExpression
             {
                 ValueAccessor:
                 {
@@ -1733,10 +1757,13 @@ public sealed class Parser : IDisposable
                 }
             })
         {
+            type = new NamedTypeIdentifier(token, typeArguments ?? [], null, previousExpression.SourceRange);
+        }
+        else
+        {
             throw new UnreachableException();
         }
 
-        var type = new NamedTypeIdentifier(token, typeArguments ?? [], null, previousExpression.SourceRange);
 
         ExpectNextIdentifier(out var memberName);
 
@@ -1854,6 +1881,7 @@ public sealed class Parser : IDisposable
             {
                 if (!ExpectCurrentIdentifier(out var fieldName))
                 {
+                    MoveNext();
                     return null;
                 }
 

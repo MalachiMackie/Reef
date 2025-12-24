@@ -59,6 +59,10 @@ public class TypeCheckerTests
         return
         [
             """
+            union MyUnion{A}
+            var a: unboxed MyUnion = unboxed MyUnion::A; 
+            """,
+            """
             var a: unboxed i32 = 1;
             """,
             """
@@ -4053,6 +4057,14 @@ public class TypeCheckerTests
                 var b: MyClass = a;
                 """,
                 [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass"), true, new TestClassReference("MyClass"), false)]
+            },
+            {
+                "TypeIdentifier without static access",
+                """
+                class MyClass {}
+                unboxed MyClass
+                """,
+                [TypeCheckerError.TypeIsNotExpression(SourceRange.Default, NamedTypeIdentifier("MyClass", boxedSpecifier: Token.Unboxed(SourceSpan.Default)))]
             },
         };
     }

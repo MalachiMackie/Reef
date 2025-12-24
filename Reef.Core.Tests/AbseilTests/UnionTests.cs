@@ -74,7 +74,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 ], methods: [
                     Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__SomeFn"), "MyUnion__SomeFn",
                         [
-                            new BasicBlock(new BasicBlockId("bb0"), [])
+                            new BasicBlock(BB0, [])
                             {
                                 Terminator = new Return()
                             }
@@ -83,10 +83,10 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                         parameters: [
                             (
                                 "this",
-                                new LoweredConcreteTypeReference(
+                                new LoweredPointer(new LoweredConcreteTypeReference(
                                     "MyUnion",
                                     new DefId(ModuleId, $"{ModuleId}.MyUnion"),
-                                    [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")])
+                                    [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")]))
                             )],
                         typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")])
                 ])
@@ -106,25 +106,32 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 ], methods: [
                     Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
                         [
-                            new BasicBlock(new BasicBlockId("bb0"), [
+                            new BasicBlock(
+                                BB0,
+                                [],
+                                AllocateMethodCall(
+                                    ConcreteTypeReference("MyUnion", ModuleId),
+                                    ReturnValue,
+                                    BB1)),
+                            new BasicBlock(BB1, [
                                 new Assign(
-                                    new Local("_returnValue"),
+                                    new Deref(ReturnValue),
                                     new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                 new Assign(
-                                    new Field(new Local("_returnValue"), "_variantIdentifier", "A"),
+                                    new Field(new Deref(ReturnValue), "_variantIdentifier", "A"),
                                     new Use(new UIntConstant(0, 2))),
                                 new Assign(
-                                    new Field(new Local("_returnValue"), "Item0", "A"),
-                                    new Use(new Copy(new Local("_param0")))),
+                                    new Field(new Deref(ReturnValue), "Item0", "A"),
+                                    new Use(new Copy(Param0))),
                                 new Assign(
-                                    new Field(new Local("_returnValue"), "Item1", "A"),
-                                    new Use(new Copy(new Local("_param1")))),
+                                    new Field(new Deref(ReturnValue), "Item1", "A"),
+                                    new Use(new Copy(Param1))),
                             ])
                             {
                                 Terminator = new Return()
                             }
                         ],
-                        new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []),
+                        new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
                         parameters: [("Item0", StringT), ("Item1", Int64T)])
                 ])
             },
@@ -144,22 +151,32 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 ], methods: [
                     Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
                         [
-                            new BasicBlock(new BasicBlockId("bb0"), [
+                            new BasicBlock(
+                                BB0,
+                                [],
+                                AllocateMethodCall(
+                                    ConcreteTypeReference(
+                                        "MyUnion",
+                                        ModuleId,
+                                        [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")]),
+                                    ReturnValue,
+                                    BB1)),
+                            new BasicBlock(BB1, [
                                 new Assign(
-                                    new Local("_returnValue"),
+                                    new Deref(ReturnValue),
                                     new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")]))),
                                 new Assign(
-                                    new Field(new Local("_returnValue"), "_variantIdentifier", "A"),
+                                    new Field(new Deref(ReturnValue), "_variantIdentifier", "A"),
                                     new Use(new UIntConstant(0, 2))),
                                 new Assign(
-                                    new Field(new Local("_returnValue"), "Item0", "A"),
-                                    new Use(new Copy(new Local("_param0"))))
+                                    new Field(new Deref(ReturnValue), "Item0", "A"),
+                                    new Use(new Copy(Param0)))
                             ])
                             {
                                 Terminator = new Return()
                             }
                         ],
-                        new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")]),
+                        new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")])),
                         typeParameters: [(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T")],
                         parameters: [("Item0", new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}.MyUnion"), "T"))])
                 ])
@@ -185,9 +202,9 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 LoweredProgram(
                 [
                             Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__MyFn"), "MyUnion__MyFn",
-                                [new BasicBlock(new BasicBlockId("bb0"), []) {Terminator = new Return()}],
+                                [new BasicBlock(BB0, []) {Terminator = new Return()}],
                                 Unit,
-                                parameters: [("this", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))])
+                                parameters: [("this", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])))])
                         ], types: [
                     DataType(ModuleId, "MyUnion")
                 ])
@@ -198,49 +215,63 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 LoweredProgram(
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__MyFn"), "MyUnion__MyFn",
-                            [new BasicBlock(new BasicBlockId("bb0"), []){Terminator = new Return()}],
+                            [new BasicBlock(BB0, []){Terminator = new Return()}],
                             Unit),
                         Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
                             [
                                 new BasicBlock(
-                                    new BasicBlockId("bb0"),
+                                    BB0,
+                                    [],
+                                    AllocateMethodCall(
+                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        ReturnValue,
+                                        BB1)),
+                                new BasicBlock(
+                                    BB1,
                                     [
                                         new Assign(
-                                            new Local("_returnValue"),
+                                            new Deref(ReturnValue),
                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                         new Assign(
-                                            new Field(new Local("_returnValue"), "_variantIdentifier", "A"),
+                                            new Field(new Deref(ReturnValue), "_variantIdentifier", "A"),
                                             new Use(new UIntConstant(0, 2))),
                                         new Assign(
-                                            new Field(new Local("_returnValue"), "Item0", "A"),
-                                            new Use(new Copy(new Local("_param0"))))
+                                            new Field(new Deref(ReturnValue), "Item0", "A"),
+                                            new Use(new Copy(Param0)))
                                     ])
                                 {
                                     Terminator = new Return()
                                 }
                             ],
-                            new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []),
+                            new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
                             parameters: [("Item0", StringT)]),
                         Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__B"), "MyUnion__Create__B",
                             [
                                 new BasicBlock(
-                                    new BasicBlockId("bb0"),
+                                    BB0,
+                                    [],
+                                    AllocateMethodCall(
+                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        ReturnValue,
+                                        BB1)),
+                                new BasicBlock(
+                                    BB1,
                                     [
                                         new Assign(
-                                            new Local("_returnValue"),
+                                            new Deref(ReturnValue),
                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                         new Assign(
-                                            new Field(new Local("_returnValue"), "_variantIdentifier", "B"),
+                                            new Field(new Deref(ReturnValue), "_variantIdentifier", "B"),
                                             new Use(new UIntConstant(1, 2))),
                                         new Assign(
-                                            new Field(new Local("_returnValue"), "Item0", "B"),
-                                            new Use(new Copy(new Local("_param0"))))
+                                            new Field(new Deref(ReturnValue), "Item0", "B"),
+                                            new Use(new Copy(Param0)))
                                     ])
                                 {
                                     Terminator = new Return()
                                 }
                             ],
-                            new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []),
+                            new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
                             parameters: [("Item0", StringT)]),
                     ],
                     types: [

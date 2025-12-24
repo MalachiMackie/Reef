@@ -1050,6 +1050,67 @@ public static class ParseTestCases
                         )
                     ], [])
             ),
+            (
+                """
+                boxed int::something 
+                """,
+                new LangProgram("ParseTestCases",
+                    [new StaticMemberAccessExpression(
+                        new StaticMemberAccess(
+                            new NamedTypeIdentifier(
+                                Identifier("int"),
+                                [],
+                                Token.Boxed(SourceSpan.Default),
+                                SourceRange.Default),
+                            Identifier("something"),
+                            null))],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                """
+                unboxed int::something 
+                """,
+                new LangProgram("ParseTestCases",
+                    [new StaticMemberAccessExpression(
+                        new StaticMemberAccess(
+                            new NamedTypeIdentifier(
+                                Identifier("int"),
+                                [],
+                                Token.Unboxed(SourceSpan.Default),
+                                SourceRange.Default),
+                            Identifier("something"),
+                            null))],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                """
+                var b = a matches unboxed MyType;
+                """,
+                new LangProgram("ParseTestCases",
+                    [
+                        new VariableDeclarationExpression(
+                            new VariableDeclaration(
+                                Identifier("b"),
+                                null,
+                                null,
+                                new MatchesExpression(
+                                    VariableAccessor("a"),
+                                    new TypePattern(
+                                        NamedTypeIdentifier("MyType", boxedSpecifier: Token.Unboxed(SourceSpan.Default)),
+                                        null,
+                                        false,
+                                        SourceRange.Default),
+                                    SourceRange.Default)),
+                            SourceRange.Default)
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
             ("""
              pub fn DoSomething(a: int): result::<int, string> {
                  var b: int = 2;

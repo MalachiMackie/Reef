@@ -266,6 +266,7 @@ public partial class ProgramAbseil
 
         if (variantNodes.Count > 0)
         {
+            var isBoxed = IsTypeReferenceBoxed(variantNodes[0].ExpressionType);
             var type = variantNodes[0].Type;
             var accessor = variantNodes[0].Accessor;
             IPlace accessorPlace;
@@ -280,6 +281,11 @@ public partial class ProgramAbseil
             else
             {
                 throw new UnreachableException();
+            }
+
+            if (isBoxed && accessorPlace is not Deref)
+            {
+                accessorPlace = new Deref(accessorPlace);
             }
             
             // if we have variant nodes, then all the nodes must be variant nodes (except for any discard nodes), and they must all be for the same type
@@ -468,6 +474,7 @@ public partial class ProgramAbseil
     private record VariantNode(
         INode? Ancestor,
         LoweredConcreteTypeReference Type,
+        TypeChecker.ITypeReference ExpressionType,
         string VariantName,
         IExpressionResult Accessor,
         List<INode> Branches,
@@ -565,13 +572,34 @@ public partial class ProgramAbseil
             case ClassPattern classPattern:
             {
                 var typeReference = GetTypeReference(classPattern.TypeReference.NotNull());
+                var concreteType = GetConcreteTypeReference(typeReference);
                 
-                var variant = GetDataType((typeReference as LoweredConcreteTypeReference).NotNull().DefinitionId)
+                var variant = GetDataType(concreteType.DefinitionId)
                     .Variants[0];
-
-                var typeNode = new TypeNode(ancestor, typeReference, accessor, [], classPattern.Variable);
+                
+                var typeNode = new TypeNode(ancestor, concreteType, accessor, [], classPattern.Variable);
                 
                 INode previousNode = typeNode;
+                
+                IPlace accessorPlace;
+                if (accessor is PlaceResult(var placeValue))
+                {
+                    accessorPlace = placeValue;
+                }
+                else if (accessor is OperandResult)
+                {
+                    accessorPlace = ExpressionResultIntoPlace(accessor, valueType);
+                    accessor = new PlaceResult(accessorPlace);
+                }
+                else
+                {
+                    throw new UnreachableException();
+                }
+                
+                if (valueType is LoweredPointer && accessorPlace is not Deref)
+                {
+                    accessorPlace = new Deref(accessorPlace);
+                }
                 
                 // loop through the variant's fields rather that the field patterns so that we every branch has the same order and number of fields
                 foreach (var field in variant.Fields)
@@ -580,21 +608,6 @@ public partial class ProgramAbseil
                         classPattern.FieldPatterns.FirstOrDefault(x =>
                             x.FieldName.StringValue == field.Name)
                         ?? new FieldPattern(Token.Identifier(field.Name, SourceSpan.Default), new DiscardPattern(SourceRange.Default));
-
-                    IPlace accessorPlace;
-                    if (accessor is PlaceResult(var placeValue))
-                    {
-                        accessorPlace = placeValue;
-                    }
-                    else if (accessor is OperandResult)
-                    {
-                        accessorPlace = ExpressionResultIntoPlace(accessor, valueType);
-                        accessor = new PlaceResult(accessorPlace);
-                    }
-                    else
-                    {
-                        throw new UnreachableException();
-                    }
 
                     IExpressionResult fieldPlace = new PlaceResult(new Field(accessorPlace, fieldPattern.FieldName.StringValue, ClassVariantName));
                     
@@ -615,15 +628,16 @@ public partial class ProgramAbseil
             case DiscardPattern:
                 return new DiscardNode(ancestor, accessor, [], null);
             case TypePattern typePattern:
-                return new TypeNode(ancestor, GetTypeReference(typePattern.TypeReference.NotNull()), accessor, [], typePattern.Variable);
+                return new TypeNode(ancestor, GetConcreteTypeReference(GetTypeReference(typePattern.TypeReference.NotNull())), accessor, [], typePattern.Variable);
             case UnionClassVariantPattern unionClassVariantPattern:
             {
-                var typeReference = (GetTypeReference(unionClassVariantPattern.TypeReference.NotNull()) as LoweredConcreteTypeReference).NotNull();
+                var typeReference = GetConcreteTypeReference(GetTypeReference(unionClassVariantPattern.TypeReference.NotNull()));
                 var typeNode = new TypeNode(ancestor, typeReference, accessor, [], null);
                 
                 var node = new VariantNode(
                     typeNode,
                     typeReference,
+                    unionClassVariantPattern.TypeReference.NotNull(),
                     unionClassVariantPattern.VariantName.StringValue,
                     accessor,
                     [],
@@ -635,6 +649,26 @@ public partial class ProgramAbseil
 
                 var variant = GetDataType(node.Type.NotNull().DefinitionId)
                     .Variants.First(x => x.Name == node.VariantName);
+                
+                IPlace accessorPlace;
+                if (accessor is PlaceResult(var placeValue))
+                {
+                    accessorPlace = placeValue;
+                }
+                else if (accessor is OperandResult)
+                {
+                    accessorPlace = ExpressionResultIntoPlace(accessor, valueType);
+                    accessor = new PlaceResult(accessorPlace);
+                }
+                else
+                {
+                    throw new UnreachableException();
+                }
+
+                if (valueType is LoweredPointer && accessorPlace is not Deref)
+                {
+                    accessorPlace = new Deref(accessorPlace);
+                }
 
                 // loop through the variant's fields rather that the field patterns so that we every branch has the same order and number of fields
                 foreach (var field in variant.Fields.Where(x => x.Name != VariantIdentifierFieldName))
@@ -644,21 +678,6 @@ public partial class ProgramAbseil
                             x.FieldName.StringValue == field.Name)
                         ?? new FieldPattern(Token.Identifier(field.Name, SourceSpan.Default), new DiscardPattern(SourceRange.Default));
                     
-                    IPlace accessorPlace;
-                    if (accessor is PlaceResult(var placeValue))
-                    {
-                        accessorPlace = placeValue;
-                    }
-                    else if (accessor is OperandResult)
-                    {
-                        accessorPlace = ExpressionResultIntoPlace(accessor, valueType);
-                        accessor = new PlaceResult(accessorPlace);
-                    }
-                    else
-                    {
-                        throw new UnreachableException();
-                    }
-
                     IExpressionResult fieldPlace = new PlaceResult(new Field(accessorPlace, fieldPattern.FieldName.StringValue, unionClassVariantPattern.VariantName.StringValue));
                     
                     var newNode = CreateNodeFromPattern(previousNode, fieldPattern.Pattern ??
@@ -678,12 +697,13 @@ public partial class ProgramAbseil
             }
             case UnionTupleVariantPattern unionTupleVariantPattern:
             {
-                var typeReference = (GetTypeReference(unionTupleVariantPattern.TypeReference.NotNull()) as LoweredConcreteTypeReference).NotNull();
+                var typeReference = GetConcreteTypeReference(GetTypeReference(unionTupleVariantPattern.TypeReference.NotNull()));
                 var typeNode = new TypeNode(ancestor, typeReference, accessor, [], null);
                 
                 var node = new VariantNode(
                     typeNode,
                     typeReference,
+                    unionTupleVariantPattern.TypeReference.NotNull(),
                     unionTupleVariantPattern.VariantName.StringValue,
                     accessor,
                     [],
@@ -695,25 +715,30 @@ public partial class ProgramAbseil
                 typeNode.Branches.Add(node);
 
                 INode previousNode = node;
+                
+                IPlace accessorPlace;
+                if (accessor is PlaceResult(var placeValue))
+                {
+                    accessorPlace = placeValue;
+                }
+                else if (accessor is OperandResult)
+                {
+                    accessorPlace = ExpressionResultIntoPlace(accessor, valueType);
+                    accessor = new PlaceResult(accessorPlace);
+                }
+                else
+                {
+                    throw new UnreachableException();
+                }
+                
+                if (valueType is LoweredPointer && accessorPlace is not Deref)
+                {
+                    accessorPlace = new Deref(accessorPlace);
+                }
 
                 // tuple patterns have to have the same number of patterns and in the same order, so just loop through the param patterns
                 foreach (var (i, memberPattern) in unionTupleVariantPattern.TupleParamPatterns.Index())
                 {
-                    IPlace accessorPlace;
-                    if (accessor is PlaceResult(var placeValue))
-                    {
-                        accessorPlace = placeValue;
-                    }
-                    else if (accessor is OperandResult)
-                    {
-                        accessorPlace = ExpressionResultIntoPlace(accessor, valueType);
-                        accessor = new PlaceResult(accessorPlace);
-                    }
-                    else
-                    {
-                        throw new UnreachableException();
-                    }
-
                     IExpressionResult fieldPlace = new PlaceResult(new Field(accessorPlace, TupleElementName((uint)i), unionTupleVariantPattern.VariantName.StringValue));
                     
                     var newNode = CreateNodeFromPattern(
@@ -733,12 +758,13 @@ public partial class ProgramAbseil
             }
             case UnionVariantPattern unionVariantPattern:
             {
-                var typeReference = (GetTypeReference(unionVariantPattern.TypeReference.NotNull()) as LoweredConcreteTypeReference).NotNull();
+                var typeReference = GetConcreteTypeReference(GetTypeReference(unionVariantPattern.TypeReference.NotNull()));
                 var typeNode = new TypeNode(ancestor, typeReference, accessor, [], null);
-                
+
                 var variantNode = new VariantNode(
                     typeNode,
                     typeReference,
+                    unionVariantPattern.TypeReference.NotNull(),
                     unionVariantPattern.VariantName.NotNull().StringValue,
                     accessor,
                     [],
@@ -846,7 +872,9 @@ public partial class ProgramAbseil
                     _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
                 }
                 
-                var type = (GetTypeReference(unionType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+                var isBoxed = IsTypeReferenceBoxed(unionType.NotNull());
+                
+                var type = GetConcreteTypeReference(GetTypeReference(unionType.NotNull()));
                 var dataType = GetDataType(type.DefinitionId);
                 var (variantIndex, variant) = dataType.Variants.Index()
                     .First(x => x.Item.Name == variantName.NotNull().StringValue);
@@ -870,6 +898,11 @@ public partial class ProgramAbseil
                     valuePlace = new Local(localName);
                     _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
                     throw new NotImplementedException("I don't know if this is actually ever hit");
+                }
+
+                if (isBoxed)
+                {
+                    valuePlace = new Deref(valuePlace);
                 }
                 
                 _basicBlockStatements.Add(
@@ -897,7 +930,9 @@ public partial class ProgramAbseil
                     _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
                 }
                 
-                var type = (GetTypeReference(unionType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+                var isBoxed = IsTypeReferenceBoxed(unionType.NotNull());
+                
+                var type = GetConcreteTypeReference(GetTypeReference(unionType.NotNull()));
                 var dataType = GetDataType(type.DefinitionId);
                 var (variantIndex, variant) = dataType.Variants.Index()
                     .First(x => x.Item.Name == variantName.NotNull().StringValue);
@@ -923,6 +958,11 @@ public partial class ProgramAbseil
                     throw new NotImplementedException("I don't know if this is actually ever hit");
                 }
                 
+                if (isBoxed)
+                {
+                    valuePlace = new Deref(valuePlace);
+                }
+                
                 _basicBlockStatements.Add(
                     new Assign(
                         destination,
@@ -933,7 +973,6 @@ public partial class ProgramAbseil
 
                 Debug.Assert(tupleParamPatterns.Count > 0);
                 var initialBasicBlock = _basicBlocks[^1];
-
 
                 GetNextEmptyBasicBlock();
                 var nextBasicBlock = _basicBlocks[^1];
@@ -993,7 +1032,8 @@ public partial class ProgramAbseil
                     _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
                 }
                 
-                var type = (GetTypeReference(unionType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+                var isBoxed = IsTypeReferenceBoxed(unionType.NotNull());
+                var type = GetConcreteTypeReference(GetTypeReference(unionType.NotNull()));
                 var dataType = GetDataType(type.DefinitionId);
                 var (variantIndex, variant) = dataType.Variants.Index()
                     .First(x => x.Item.Name == variantName.NotNull().StringValue);
@@ -1017,6 +1057,11 @@ public partial class ProgramAbseil
                     valuePlace = new Local(localName);
                     _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
                     throw new NotImplementedException("I don't know if this is actually ever hit");
+                }
+                
+                if (isBoxed)
+                {
+                    valuePlace = new Deref(valuePlace);
                 }
                 
                 _basicBlockStatements.Add(
@@ -1092,7 +1137,8 @@ public partial class ProgramAbseil
                     _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
                 }
                 
-                var type = (GetTypeReference(unionType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+                var isBoxed = IsTypeReferenceBoxed(unionType.NotNull());
+                var type = GetConcreteTypeReference(GetTypeReference(unionType.NotNull()));
 
                 if (destination is null)
                 {
@@ -1113,6 +1159,11 @@ public partial class ProgramAbseil
                     valuePlace = new Local(localName);
                     _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
                     throw new NotImplementedException("I don't know if this is actually ever hit");
+                }
+                
+                if (isBoxed)
+                {
+                    valuePlace = new Deref(valuePlace);
                 }
 
                 if (fieldPatterns.Count == 0)
@@ -1169,18 +1220,41 @@ public partial class ProgramAbseil
 
         return LowerMatchesPattern(valueResult, e.Pattern.NotNull(), destination);
     }
+
+    private bool IsTypeReferenceBoxed(TypeChecker.ITypeReference typeReference)
+    {
+        return typeReference switch
+        {
+            TypeChecker.FunctionObject => true,
+            TypeChecker.GenericPlaceholder => false,
+            TypeChecker.GenericTypeReference => false,
+            TypeChecker.InstantiatedClass instantiatedClass => instantiatedClass.Boxed,
+            TypeChecker.InstantiatedUnion instantiatedUnion => instantiatedUnion.Boxed,
+            TypeChecker.UnspecifiedSizedIntType unspecifiedSizedIntType => unspecifiedSizedIntType.Boxed,
+            TypeChecker.UnknownInferredType {ResolvedType: var resolvedType} => IsTypeReferenceBoxed(resolvedType.NotNull()),
+            TypeChecker.UnknownType => throw new UnreachableException($"{typeReference.GetType()}"),
+            _ => throw new ArgumentOutOfRangeException(nameof(typeReference))
+        };
+    }
     
     private IExpressionResult LowerUnionClassVariantInitializer(
         UnionClassVariantInitializerExpression e,
         IPlace? destination)
     {
-        var typeReference = (GetTypeReference(e.ResolvedType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+        var typeReference = GetTypeReference(e.ResolvedType.NotNull());
+
+        var definitionId = typeReference switch
+        {
+            LoweredPointer(LoweredConcreteTypeReference pointerTo) => pointerTo.DefinitionId,
+            LoweredConcreteTypeReference unboxedTypeReference => unboxedTypeReference.DefinitionId,
+            _ => throw new InvalidOperationException()
+        };
         
-        var dataType = _types[typeReference.DefinitionId];
+        var dataType = _types[definitionId];
         
         var variantIdentifier = dataType.Variants.Index()
             .First(x => x.Item.Name == e.UnionInitializer.VariantIdentifier.StringValue).Index;
-
+        
         return CreateObject(
             typeReference,
             e.UnionInitializer.VariantIdentifier.StringValue,
@@ -1198,10 +1272,16 @@ public partial class ProgramAbseil
         {
             case MemberType.Variant:
             {
-                var unionType = GetTypeReference(e.OwnerType.NotNull())
-                    as LoweredConcreteTypeReference ?? throw new UnreachableException();
+                var unionType = GetTypeReference(e.OwnerType.NotNull());
+                
+                var concreteType = unionType switch
+                {
+                    LoweredPointer(LoweredConcreteTypeReference pointerTo) => pointerTo,
+                    LoweredConcreteTypeReference unboxedTypeReference => unboxedTypeReference,
+                    _ => throw new InvalidOperationException()
+                };
 
-                var dataType = _types[unionType.DefinitionId];
+                var dataType = _types[concreteType.DefinitionId];
                 var variantName = e.StaticMemberAccess.MemberName.NotNull().StringValue;
                 var (variantIdentifier, variant) = dataType.Variants.Index()
                     .First(x => x.Item.Name == variantName);
@@ -1227,12 +1307,12 @@ public partial class ProgramAbseil
                     throw new InvalidOperationException($"Expected a function object, got a {e.ResolvedType?.GetType()}");
                 }
                 
-                var ownerTypeArguments = unionType.TypeArguments;
+                var ownerTypeArguments = concreteType.TypeArguments;
 
                 var fn = e.StaticMemberAccess.InstantiatedFunction.NotNull();
 
                 var functionObjectType =
-                    (GetTypeReference(e.ResolvedType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+                    GetTypeReference(e.ResolvedType.NotNull());
 
                 return CreateObject(
                     functionObjectType,
@@ -1241,7 +1321,7 @@ public partial class ProgramAbseil
                         new CreateObjectField("FunctionReference", new FunctionPointerConstant(
                             GetFunctionReference(
                                 fn.FunctionId,
-                                [..Enumerable.Select<TypeChecker.GenericTypeReference, ILoweredTypeReference>(fn.TypeArguments, GetTypeReference)],
+                                [..fn.TypeArguments.Select(GetTypeReference)],
                                 ownerTypeArguments))),
                     ],
                     destination);
@@ -1249,22 +1329,22 @@ public partial class ProgramAbseil
             }
             case MemberType.Function:
             {
-                var ownerTypeArguments = (GetTypeReference(e.OwnerType.NotNull()) as LoweredConcreteTypeReference).NotNull().TypeArguments;
+                var ownerTypeArguments = GetConcreteTypeReference(GetTypeReference(e.OwnerType.NotNull())).TypeArguments;
                 var fn = e.StaticMemberAccess.InstantiatedFunction.NotNull();
 
                 return CreateObject(
-                    (GetTypeReference(e.ResolvedType.NotNull()) as LoweredConcreteTypeReference).NotNull(),
+                    GetTypeReference(e.ResolvedType.NotNull()),
                     ClassVariantName,
                     [new CreateObjectField("FunctionReference", new FunctionPointerConstant(
                         GetFunctionReference(fn.FunctionId,
-                            [..Enumerable.Select<TypeChecker.GenericTypeReference, ILoweredTypeReference>(fn.TypeArguments, GetTypeReference)],
+                            [..fn.TypeArguments.Select(GetTypeReference)],
                             ownerTypeArguments)))],
                     destination);
             }
             case MemberType.Field:
             {
                 var staticField = new StaticField(
-                    (GetTypeReference(e.OwnerType.NotNull()) as LoweredConcreteTypeReference).NotNull(),
+                    GetConcreteTypeReference(GetTypeReference(e.OwnerType.NotNull())),
                     e.StaticMemberAccess.MemberName.NotNull().StringValue);
 
                 if (destination is not null)
@@ -1293,12 +1373,14 @@ public partial class ProgramAbseil
             {
                 IPlace ownerPlace;
 
+                var ownerType = GetTypeReference(e.MemberAccess.OwnerType.NotNull());
+
                 switch (ownerResult)
                 {
                     case OperandResult{Value: var operand}:
                     {
                         var localName = LocalName((uint)_locals.Count);
-                        _locals.Add(new MethodLocal(localName, null, GetTypeReference(e.MemberAccess.OwnerType.NotNull())));
+                        _locals.Add(new MethodLocal(localName, null, ownerType));
             
                         ownerPlace = new Local(localName);
             
@@ -1313,6 +1395,11 @@ public partial class ProgramAbseil
                     default:
                         throw new UnreachableException();
                 }
+
+                if (IsTypeReferenceBoxed(e.MemberAccess.OwnerType.NotNull()))
+                {
+                    ownerPlace = new Deref(ownerPlace);
+                }
                 
                 var field = new Field(ownerPlace, e.MemberAccess.MemberName.NotNull().StringValue, ClassVariantName);
 
@@ -1326,28 +1413,32 @@ public partial class ProgramAbseil
                 return new PlaceResult(destination ?? field);
             }
             case MemberType.Function:
+            {
+                var concreteType = GetTypeReference(e.MemberAccess.OwnerType.NotNull()) switch
                 {
-                    var ownerTypeArguments = (GetTypeReference(e.MemberAccess.OwnerType.NotNull()) as LoweredConcreteTypeReference)
-                        .NotNull().TypeArguments;
+                    LoweredPointer(LoweredConcreteTypeReference pointerTo) => pointerTo,
+                    LoweredConcreteTypeReference unboxedTypeReference => unboxedTypeReference,
+                    _ => throw new InvalidOperationException()
+                };
+                
+                var fn = e.MemberAccess.InstantiatedFunction.NotNull();
 
-                    var fn = e.MemberAccess.InstantiatedFunction.NotNull();
+                var functionObjectType =
+                    GetTypeReference(e.ResolvedType.NotNull());
 
-                    var functionObjectType =
-                        (GetTypeReference(e.ResolvedType.NotNull()) as LoweredConcreteTypeReference).NotNull();
-
-                    return CreateObject(
-                        functionObjectType,
-                        ClassVariantName,
-                        [
-                            new CreateObjectField("FunctionReference", new FunctionPointerConstant(
-                                    GetFunctionReference(
-                                        fn.FunctionId,
-                                        [..Enumerable.Select<TypeChecker.GenericTypeReference, ILoweredTypeReference>(fn.TypeArguments, GetTypeReference)],
-                                        ownerTypeArguments))),
-                            new CreateObjectField("FunctionParameter", ownerResult.ToOperand())
-                        ],
-                        destination);
-                }
+                return CreateObject(
+                    functionObjectType,
+                    ClassVariantName,
+                    [
+                        new CreateObjectField("FunctionReference", new FunctionPointerConstant(
+                                GetFunctionReference(
+                                    fn.FunctionId,
+                                    [..fn.TypeArguments.Select(GetTypeReference)],
+                                    concreteType.TypeArguments))),
+                        new CreateObjectField("FunctionParameter", ownerResult.ToOperand())
+                    ],
+                    destination);
+            }
             case MemberType.Variant:
                 throw new InvalidOperationException("Can never access a variant through instance member access");
             default:
@@ -1357,7 +1448,7 @@ public partial class ProgramAbseil
 
     private IExpressionResult LowerObjectInitializer(ObjectInitializerExpression objectInitializerExpression, IPlace? destination)
     {
-        var typeReference = (GetTypeReference(objectInitializerExpression.ResolvedType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+        var typeReference = GetTypeReference(objectInitializerExpression.ResolvedType.NotNull());
 
         return CreateObject(
             typeReference,
@@ -1389,7 +1480,7 @@ public partial class ProgramAbseil
     }
 
     private IExpressionResult CreateObject(
-        LoweredConcreteTypeReference type,
+        ILoweredTypeReference type,
         string variantName,
         IEnumerable<CreateObjectField> fields,
         IPlace? destination)
@@ -1400,10 +1491,31 @@ public partial class ProgramAbseil
             _locals.Add(new MethodLocal(localName, null, type));
             destination = new Local(localName);
         }
+
+        var concreteType = type switch
+        {
+            LoweredPointer(LoweredConcreteTypeReference pointerTo) => pointerTo,
+            LoweredConcreteTypeReference unboxedTypeReference => unboxedTypeReference,
+            _ => throw new InvalidOperationException()
+        };
+
+        if (type is LoweredPointer)
+        {
+            _basicBlocks[^1].Terminator = new MethodCall(
+                new LoweredFunctionReference(DefId.Allocate, []),
+                [new SizeOf(concreteType)],
+                destination,
+                new BasicBlockId($"bb{_basicBlocks.Count}"));
+            
+            _basicBlockStatements = [];
+            _basicBlocks.Add(new BasicBlock(new BasicBlockId($"bb{_basicBlocks.Count}"), _basicBlockStatements));
+            
+            destination = new Deref(destination);
+        }
         
         _basicBlockStatements.Add(new Assign(
             destination,
-            new CreateObject(type)));
+            new CreateObject(concreteType)));
 
         foreach (var createObjectField in fields)
         {
@@ -1430,7 +1542,7 @@ public partial class ProgramAbseil
             return NewLowerExpression(tupleExpression.Values[0], destination);
         }
 
-        var typeReference = (GetTypeReference(tupleExpression.ResolvedType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+        var typeReference = GetTypeReference(tupleExpression.ResolvedType.NotNull());
 
         return CreateObject(
             typeReference,
@@ -1489,7 +1601,7 @@ public partial class ProgramAbseil
         {
             var functionObjectResult = NewLowerExpression(e.MethodCall.Method, destination: null);
             
-            var methodType = (GetTypeReference(e.MethodCall.Method.ResolvedType.NotNull()) as LoweredConcreteTypeReference).NotNull();
+            var methodType = GetConcreteTypeReference(GetTypeReference(e.MethodCall.Method.ResolvedType.NotNull()));
 
             var fn = _importedModules.SelectMany(x =>
                 x.Methods.Where(y => y.Name == $"Function`{e.MethodCall.ArgumentList.Count + 1}__Call"))
@@ -1518,9 +1630,9 @@ public partial class ProgramAbseil
         {
             var owner = NewLowerExpression(memberAccess.MemberAccess.Owner, null);
             arguments.Add(owner.ToOperand());
-            ownerTypeArguments = GetTypeReference(memberAccess.MemberAccess.Owner.ResolvedType.NotNull()).NotNull() is LoweredConcreteTypeReference concrete
-                ? concrete.TypeArguments
-                : throw new UnreachableException("Shouldn't ever be able to call a method on a generic parameter");
+            ownerTypeArguments =
+                GetConcreteTypeReference(GetTypeReference(memberAccess.MemberAccess.Owner.ResolvedType.NotNull()))
+                    .TypeArguments;
         }
         else if (instantiatedFunction.ClosureTypeId is not null)
         {
@@ -1530,26 +1642,25 @@ public partial class ProgramAbseil
             _locals.Add(new MethodLocal(
                 localName,
                 null,
-                new LoweredConcreteTypeReference(
+                new LoweredPointer(new LoweredConcreteTypeReference(
                     type.Name,
                     type.Id,
-                    [])));
+                    []))));
             CreateClosureObject(instantiatedFunction, new Local(localName));
             arguments.Add(new Copy(new Local(localName)));
         }
         else if (instantiatedFunction is { IsStatic: false, OwnerType: not null }
                  && _currentType is not null
-                 && EqualTypeReferences(GetTypeReference(instantiatedFunction.OwnerType), _currentType)
-                 && _currentFunction is not null
-                 && EqualTypeReferences(_currentFunction.Value.LoweredMethod.ParameterLocals[0].Type, _currentType))
+                 && EqualTypeReferences(GetConcreteTypeReference(GetTypeReference(instantiatedFunction.OwnerType)), _currentType)
+                 && _currentFunction?.LoweredMethod.ParameterLocals[0].Type is LoweredPointer(var pointerTo)
+                 && EqualTypeReferences(pointerTo, _currentType))
         {
             arguments.Add(new Copy(new Local(ParameterLocalName(parameterIndex: 0))));
         }
 
         if (e.MethodCall.Method is StaticMemberAccessExpression staticMemberAccess)
         {
-            ownerTypeArguments = (GetTypeReference(staticMemberAccess.OwnerType.NotNull())
-                as LoweredConcreteTypeReference).NotNull().TypeArguments;
+            ownerTypeArguments = GetConcreteTypeReference(GetTypeReference(staticMemberAccess.OwnerType.NotNull())).TypeArguments;
         }
         else if (e.MethodCall.Method is ValueAccessorExpression valueAccessor)
         {
@@ -1595,6 +1706,18 @@ public partial class ProgramAbseil
                 closureType.Name,
                 closureType.Id,
                 []);
+
+        _basicBlockStatements = [];
+        _basicBlocks[^1].Terminator = new MethodCall(
+            new LoweredFunctionReference(DefId.Allocate, []),
+            [new SizeOf(closureTypeReference)],
+            destination,
+            new BasicBlockId($"bb{_basicBlocks.Count}"));
+        _basicBlocks.Add(new BasicBlock(
+            new BasicBlockId($"bb{_basicBlocks.Count}"),
+            _basicBlockStatements));
+
+        destination = new Deref(destination);
         
         Debug.Assert(_currentFunction.HasValue);
         
@@ -1626,7 +1749,8 @@ public partial class ProgramAbseil
                                     []);
 
                             Debug.Assert(
-                                    EqualTypeReferences(_currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
+                                _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type is LoweredPointer(var pointerTo)
+                                    && EqualTypeReferences(pointerTo,
                                         currentClosureTypeReference));
 
                             var otherLocalsType = _types[
@@ -1640,7 +1764,7 @@ public partial class ProgramAbseil
                                         new Field(destination, otherLocalsType.Name, ClassVariantName),
                                         new Use(new Copy(
                                             new Field(
-                                                new Local(ParameterLocalName(0)),
+                                                new Deref(new Local(ParameterLocalName(0))),
                                                 otherLocalsType.Name,
                                                 ClassVariantName)))));
                             }
@@ -1675,8 +1799,9 @@ public partial class ProgramAbseil
                                     []);
 
                             Debug.Assert(
-                                EqualTypeReferences(
-                                    _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
+                                _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type is LoweredPointer(var pointerTo2)
+                                && EqualTypeReferences(
+                                    pointerTo2,
                                     currentClosureTypeReference));
 
                             if (assignedFields.Add(ClosureThisFieldName))
@@ -1688,7 +1813,7 @@ public partial class ProgramAbseil
                                             ClosureThisFieldName,
                                             ClassVariantName),
                                         new Use(new Copy(new Field(
-                                            new Local(ParameterLocalName(0)),
+                                            new Deref(new Local(ParameterLocalName(0))),
                                             ThisParameterName,
                                             ClassVariantName)))));
                             }
@@ -1696,8 +1821,9 @@ public partial class ProgramAbseil
                         }
 
                         Debug.Assert(
-                            EqualTypeReferences(
-                                _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
+                            _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type is LoweredPointer(var pointerTo)
+                            && EqualTypeReferences(
+                                pointerTo,
                                 _currentType));
 
                         if (assignedFields.Add(ClosureThisFieldName))
@@ -1726,7 +1852,8 @@ public partial class ProgramAbseil
                                     []);
 
                             Debug.Assert(
-                                    EqualTypeReferences(_currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
+                                _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type is LoweredPointer(var pointerTo)
+                                    && EqualTypeReferences(pointerTo,
                                         currentClosureTypeReference));
 
                             var otherLocalsType = GetDataType(parameter.ContainingFunction.LocalsTypeId);
@@ -1736,7 +1863,7 @@ public partial class ProgramAbseil
                                 _basicBlockStatements.Add(new Assign(
                                     new Field(destination, otherLocalsType.Name, ClassVariantName),
                                     new Use(new Copy(new Field(
-                                        new Local(ParameterLocalName(0)),
+                                        new Deref(new Local(ParameterLocalName(0))),
                                         otherLocalsType.Name,
                                         ClassVariantName)))));
                             }
@@ -1801,7 +1928,7 @@ public partial class ProgramAbseil
                 errBasicBlockId);
         
         var currentMethod = _currentFunction.NotNull().LoweredMethod;
-        var returnType = (currentMethod.ReturnValue.Type as LoweredConcreteTypeReference).NotNull();
+        var returnType = GetConcreteTypeReference(currentMethod.ReturnValue.Type);
 
         Debug.Assert(returnType.DefinitionId == DefId.Result);
 
@@ -1913,10 +2040,10 @@ public partial class ProgramAbseil
                 var localName = LocalName((uint)_locals.Count);
                 
                 // todo - I think closure type might be able to be generic, so will need to pass in all type parameters here
-                _locals.Add(new MethodLocal(localName, null, new LoweredConcreteTypeReference(
+                _locals.Add(new MethodLocal(localName, null, new LoweredPointer(new LoweredConcreteTypeReference(
                     dataType.Name,
                     dataType.Id,
-                    [])));
+                    []))));
 
                 CreateClosureObject(innerFn, new Local(localName));
                 
@@ -1924,15 +2051,15 @@ public partial class ProgramAbseil
             }
             else if (innerFn is { IsStatic: false, OwnerType: not null }
                      && _currentType is not null
-                     && EqualTypeReferences(GetTypeReference(innerFn.OwnerType), _currentType)
-                     && _currentFunction is not null
-                     && EqualTypeReferences(_currentFunction.Value.LoweredMethod.ParameterLocals[0].Type, _currentType))
+                     && EqualTypeReferences(GetConcreteTypeReference(GetTypeReference(innerFn.OwnerType)), _currentType)
+                     && _currentFunction?.LoweredMethod.ParameterLocals[0].Type is LoweredPointer(var pointerTo)
+                     && EqualTypeReferences(pointerTo, _currentType))
             {
                 functionObjectParameters.Add(new CreateObjectField("FunctionParameter", new Copy(new Local(ParameterLocalName(0)))));
             }
 
             return CreateObject(
-                (GetTypeReference(typeReference) as LoweredConcreteTypeReference).NotNull(),
+                GetTypeReference(typeReference),
                 ClassVariantName,
                 functionObjectParameters,
                 innerDestination);
@@ -1962,20 +2089,23 @@ public partial class ProgramAbseil
                                         []);
                             Debug.Assert(_currentFunction.Value.LoweredMethod.ParameterLocals.Count > 0);
                             Debug.Assert(
-                                EqualTypeReferences(
-                                    _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
+                                _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type is LoweredPointer(var pointerTo2)
+                                && EqualTypeReferences(
+                                    pointerTo2,
                                     closureTypeReference));
 
                             return new PlaceResult(
                                 new Field(
-                                    new Local(ParameterLocalName(0)),
+                                    new Deref(new Local(ParameterLocalName(0))),
                                     ClosureThisFieldName,
                                     ClassVariantName));
                         }
 
                         Debug.Assert(_currentFunction.Value.LoweredMethod.ParameterLocals.Count > 0);
-                        Debug.Assert(EqualTypeReferences(
-                                    _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
+                        Debug.Assert(
+                            _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type is LoweredPointer(var pointerTo)
+                            && EqualTypeReferences(
+                                    pointerTo,
                                     _currentType));
 
                         return new PlaceResult(new Local(ParameterLocalName(0)));
@@ -2000,24 +2130,27 @@ public partial class ProgramAbseil
                         // of the closure type
                         Debug.Assert(loweredMethod.ParameterLocals.Count > 0);
                         Debug.Assert(
+                            loweredMethod.ParameterLocals[0].Type is LoweredPointer(var pointerTo2)
+                            && 
                                 EqualTypeReferences(
-                                    loweredMethod.ParameterLocals[0].Type,
+                                    pointerTo2,
                                     closureTypeReference));
 
                         return new PlaceResult(new Field(
-                            new Field(
-                                new Local(ParameterLocalName(0)),
+                            new Deref(new Field(
+                                new Deref(new Local(ParameterLocalName(0))),
                                 ClosureThisFieldName,
-                                ClassVariantName),
+                                ClassVariantName)),
                             fieldVariable.Name.StringValue,
                             ClassVariantName)
                         );
                     }
                     
                     if (_currentFunction.Value.LoweredMethod.ParameterLocals.Count == 0
-                            || !EqualTypeReferences(
-                                _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type,
-                                _currentType))
+                        || _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type is not LoweredPointer(var pointerTo)
+                        || !EqualTypeReferences(
+                            pointerTo,
+                            _currentType))
                     {
                         throw new InvalidOperationException("Expected to be in instance function");
                     }
@@ -2026,7 +2159,7 @@ public partial class ProgramAbseil
 
                     return new PlaceResult(
                         new Field(
-                            new Local(ParameterLocalName(0)),
+                            new Deref(new Local(ParameterLocalName(0))),
                             fieldVariable.Name.StringValue,
                             ClassVariantName));
                 }
@@ -2052,15 +2185,15 @@ public partial class ProgramAbseil
                     var containingFunctionLocals = _types[containingFunction.LocalsTypeId.NotNull()];
                     if (containingFunction.Id == currentFunction.FunctionSignature.Id)
                     {
-                        return new PlaceResult(new Field(new Local(LocalsObjectLocalName), argument.Name.StringValue,
+                        return new PlaceResult(new Field(new Deref(new Local(LocalsObjectLocalName)), argument.Name.StringValue,
                             ClassVariantName));
                     }
 
                     return new PlaceResult(new Field(
-                        new Field(
-                            new Local(ParameterLocalName(0)),
+                        new Deref(new Field(
+                            new Deref(new Local(ParameterLocalName(0))),
                             containingFunctionLocals.Name,
-                            ClassVariantName),
+                            ClassVariantName)),
                         argument.Name.StringValue,
                         ClassVariantName));
                 }
@@ -2084,16 +2217,16 @@ public partial class ProgramAbseil
         if (containingFunction.Id == currentFunction.FunctionSignature.Id)
         {
             return new Field(
-                new Local(LocalsObjectLocalName),
+                new Deref(new Local(LocalsObjectLocalName)),
                 variable.Name.StringValue,
                 ClassVariantName);
         }
                         
         return new Field(
-            new Field(
-                new Local("_param0"),
+            new Deref(new Field(
+                new Deref(new Local("_param0")),
                 containingFunctionLocals.Name,
-                ClassVariantName),
+                ClassVariantName)),
             variable.Name.StringValue,
             ClassVariantName);  
     }
@@ -2170,7 +2303,7 @@ public partial class ProgramAbseil
             // noop
             return result;
         }
-
+        
         if (!referencedInClosure)
         {
             var variable = _locals.First(x =>
@@ -2179,7 +2312,7 @@ public partial class ProgramAbseil
             return result;
         }
 
-        NewLowerExpression(e.VariableDeclaration.Value, destination: new Field(new Local(LocalsObjectLocalName), FieldName: variableName, ClassVariantName));
+        NewLowerExpression(e.VariableDeclaration.Value, destination: new Field(new Deref(new Local(LocalsObjectLocalName)), FieldName: variableName, ClassVariantName));
 
         return result;
     }

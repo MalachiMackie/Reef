@@ -23,27 +23,175 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
     public void Single()
     {
         var source = """
-                 var a = match (1) {
-                     i64 => 2
-                 }
-                 """;
-                 var expectedProgram = LoweredProgram(
-                     methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
-                             [
-                                 new BasicBlock(
-                                     new BasicBlockId("bb0"),
-                                     [
-                                         new Assign(new Local("_local0"), new Use(new IntConstant(2, 4)))
-                                     ],
-                                     new GoTo(new BasicBlockId("bb1"))),
-                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
-                             ],
-                             Unit,
-                             locals: [
-                                 new MethodLocal("_local0", "a", Int32T),
-                             ])
-                     ]);
+                  union MyUnion{A, B, C}
+                  class MyClass{pub field MyField: unboxed MyUnion, pub field SecondField: unboxed MyUnion}
+
+                  var a = new unboxed MyClass {
+                      MyField = unboxed MyUnion::A,
+                      SecondField = unboxed MyUnion::B,
+                  };
+                  var b = match (a) {
+                      unboxed MyClass { MyField: unboxed MyUnion::A, SecondField: unboxed MyUnion::A } => 1,
+                      unboxed MyClass { MyField: unboxed MyUnion::A, SecondField: _          } => 2,
+                      unboxed MyClass { MyField: unboxed MyUnion::B, SecondField: unboxed MyUnion::B } => 3,
+                      unboxed MyClass { MyField: unboxed MyUnion::C, SecondField: unboxed MyUnion::A } => 4,
+                      _ => 5
+                  }
+                  """;
+                  var expectedProgram = LoweredProgram(
+                      types: [
+                          DataType(ModuleId, "MyUnion",
+                              variants: [
+                                 Variant("A", [Field("_variantIdentifier", UInt16T)]),
+                                 Variant("B", [Field("_variantIdentifier", UInt16T)]),
+                                 Variant("C", [Field("_variantIdentifier", UInt16T)]),
+                              ]),
+                          DataType(ModuleId, "MyClass",
+                              variants: [
+                                 Variant(
+                                      "_classVariant",
+                                      [
+                                          Field("MyField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                          Field("SecondField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))
+                                      ])
+                              ])
+                      ],
+                      methods: [
+                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                              [
+                                  new BasicBlock(
+                                      BB0,
+                                      [
+                                          new Assign(
+                                              Local0,
+                                              new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                          new Assign(
+                                              new Field(
+                                                  Local0,
+                                                  "MyField",
+                                                  "_classVariant"),
+                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                          new Assign(
+                                              new Field(
+                                                  new Field(
+                                                      Local0,
+                                                      "MyField",
+                                                      "_classVariant"),
+                                                  "_variantIdentifier",
+                                                  "A"),
+                                              new Use(new UIntConstant(0, 2))),
+                                          new Assign(
+                                              new Field(
+                                                  Local0,
+                                                  "SecondField",
+                                                  "_classVariant"),
+                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                          new Assign(
+                                              new Field(
+                                                  new Field(
+                                                      Local0,
+                                                      "SecondField",
+                                                      "_classVariant"),
+                                                  "_variantIdentifier",
+                                                  "B"),
+                                              new Use(new UIntConstant(1, 2)))
+                                      ],
+                                      new SwitchInt(
+                                          new Copy(
+                                              new Field(
+                                                  new Field(
+                                                      Local0,
+                                                      "MyField",
+                                                      "_classVariant"),
+                                                  "_variantIdentifier",
+                                                  "A")),
+                                          new Dictionary<int, BasicBlockId>
+                                          {
+                                              { 0, BB1 },
+                                              { 1, BB4 },
+                                              { 2, BB6 },
+                                          },
+                                          BB8)),
+                                  new BasicBlock(
+                                      BB1,
+                                      [],
+                                      new SwitchInt(
+                                          new Copy(
+                                              new Field(
+                                                  new Field(
+                                                      Local0,
+                                                      "SecondField",
+                                                      "_classVariant"),
+                                                  "_variantIdentifier",
+                                                  "A")),
+                                          new Dictionary<int, BasicBlockId>
+                                          {
+                                              { 0, BB2 }
+                                          },
+                                          BB3)),
+                                  new BasicBlock(
+                                      BB2,
+                                      [new Assign(Local1, new Use(new IntConstant(1, 4)))],
+                                      new GoTo(BB9)),
+                                  new BasicBlock(
+                                      BB3,
+                                      [new Assign(Local1, new Use(new IntConstant(2, 4)))],
+                                      new GoTo(BB9)),
+                                  new BasicBlock(
+                                      BB4,
+                                      [],
+                                      new SwitchInt(
+                                          new Copy(
+                                              new Field(
+                                                  new Field(
+                                                      Local0,
+                                                      "SecondField",
+                                                      "_classVariant"),
+                                                  "_variantIdentifier",
+                                                  "A")),
+                                          new Dictionary<int, BasicBlockId>
+                                          {
+                                              { 1, BB5 }
+                                          },
+                                          BB8)),
+                                  new BasicBlock(
+                                      BB5,
+                                      [new Assign(Local1, new Use(new IntConstant(3, 4)))],
+                                      new GoTo(BB9)),
+                                  new BasicBlock(
+                                      BB6,
+                                      [],
+                                      new SwitchInt(
+                                          new Copy(
+                                              new Field(
+                                                  new Field(
+                                                      Local0,
+                                                      "SecondField",
+                                                      "_classVariant"),
+                                                  "_variantIdentifier",
+                                                  "A")),
+                                          new Dictionary<int, BasicBlockId>
+                                          {
+                                              { 0, BB7 }
+                                          },
+                                          BB8)),
+                                  new BasicBlock(
+                                      BB7,
+                                      [new Assign(Local1, new Use(new IntConstant(4, 4)))],
+                                      new GoTo(BB9)),
+                                  new BasicBlock(
+                                      BB8,
+                                      [new Assign(Local1, new Use(new IntConstant(5, 4)))],
+                                      new GoTo(BB9)),
+                                  new BasicBlock(
+                                      BB9, [], new Return())
+                              ],
+                              Unit,
+                              locals: [
+                                  new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                  new MethodLocal("_local1", "b", Int32T),
+                              ])
+                      ]);
         var program = CreateProgram(ModuleId, source);
         var (loweredProgram, _) = ProgramAbseil.Lower(program);
 
@@ -84,48 +232,55 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
                                 new BasicBlock(
-                                    new BasicBlockId("bb0"),
+                                    BB0,
+                                    [],
+                                    AllocateMethodCall(
+                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        Local0,
+                                        BB1)),
+                                new BasicBlock(
+                                    BB1,
                                     [
                                         new Assign(
-                                            new Local("_local0"),
+                                            new Deref(Local0),
                                             new CreateObject(
                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                         new Assign(
-                                            new Field(new Local("_local0"), "_variantIdentifier", "A"),
+                                            new Field(new Deref(Local0), "_variantIdentifier", "A"),
                                             new Use(new UIntConstant(0, 2)))
                                     ],
                                     new SwitchInt(
-                                        new Copy(new Field(new Local("_local0"), "_variantIdentifier", "A")),
+                                        new Copy(new Field(new Deref(Local0), "_variantIdentifier", "A")),
                                         new Dictionary<int, BasicBlockId>
                                         {
-                                            { 0, new BasicBlockId("bb1") },
-                                            { 1, new BasicBlockId("bb2") },
-                                            { 2, new BasicBlockId("bb3") }
+                                            { 0, BB2 },
+                                            { 1, BB3 },
+                                            { 2, BB4 }
                                         },
-                                        new BasicBlockId("bb4"))),
+                                        BB5)),
                                 new BasicBlock(
-                                    new BasicBlockId("bb1"),
+                                    BB2,
                                     [
-                                        new Assign(new Local("_local1"), new Use(new IntConstant(1, 4)))
+                                        new Assign(Local1, new Use(new IntConstant(1, 4)))
                                     ],
-                                    new GoTo(new BasicBlockId("bb4"))),
+                                    new GoTo(BB5)),
                                 new BasicBlock(
-                                    new BasicBlockId("bb2"),
+                                    BB3,
                                     [
-                                        new Assign(new Local("_local1"), new Use(new IntConstant(2, 4)))
+                                        new Assign(Local1, new Use(new IntConstant(2, 4)))
                                     ],
-                                    new GoTo(new BasicBlockId("bb4"))),
+                                    new GoTo(BB5)),
                                 new BasicBlock(
-                                    new BasicBlockId("bb3"),
+                                    BB4,
                                     [
-                                        new Assign(new Local("_local1"), new Use(new IntConstant(3, 4)))
+                                        new Assign(Local1, new Use(new IntConstant(3, 4)))
                                     ],
-                                    new GoTo(new BasicBlockId("bb4"))),
-                                new BasicBlock(new BasicBlockId("bb4"), [], new Return())
+                                    new GoTo(BB5)),
+                                new BasicBlock(BB5, [], new Return())
                             ],
                             Unit,
                             locals: [
-                                new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                 new MethodLocal("_local1", "b", Int32T)
                             ])
                     ])
@@ -153,40 +308,47 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
+                                             new Deref(Local0),
                                              new CreateObject(
                                                  new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                          new Assign(
-                                             new Field(new Local("_local0"), "_variantIdentifier", "A"),
+                                             new Field(new Deref(Local0), "_variantIdentifier", "A"),
                                              new Use(new UIntConstant(0, 2))),
                                      ],
                                      new SwitchInt(
-                                         new Copy(new Field(new Local("_local0"), "_variantIdentifier", "A")),
+                                         new Copy(new Field(new Deref(Local0), "_variantIdentifier", "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb1") }
+                                             { 0, BB2 }
                                          },
-                                         new BasicBlockId("bb2"))),
+                                         BB3)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb1"),
+                                     BB2,
                                      [
-                                         new Assign(new Local("_local1"), new Use(new IntConstant(1, 4)))
+                                         new Assign(Local1, new Use(new IntConstant(1, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb3"))),
+                                     new GoTo(BB4)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb2"),
+                                     BB3,
                                      [
-                                         new Assign(new Local("_local1"), new Use(new IntConstant(2, 4)))
+                                         new Assign(Local1, new Use(new IntConstant(2, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb3"))),
-                                 new BasicBlock(new BasicBlockId("bb3"), [], new Return())
+                                     new GoTo(BB4)),
+                                 new BasicBlock(BB4, [], new Return())
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                  new MethodLocal("_local1", "b", Int32T)
                              ])
                      ])
@@ -222,7 +384,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      "X",
                                      [
                                          Field("_variantIdentifier", UInt16T),
-                                         Field("Item0", new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))
+                                         Field("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])))
                                      ]),
                                 Variant("Y", [Field("_variantIdentifier", UInt16T)]),
                              ]),
@@ -232,101 +394,115 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                          Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__X"), "MyUnion__Create__X",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         ReturnValue,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_returnValue"),
+                                             new Deref(ReturnValue),
                                              new CreateObject(
                                                  new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                          new Assign(
-                                             new Field(new Local("_returnValue"), "_variantIdentifier", "X"),
+                                             new Field(new Deref(ReturnValue), "_variantIdentifier", "X"),
                                              new Use(new UIntConstant(0, 2))),
                                          new Assign(
-                                             new Field(new Local("_returnValue"), "Item0", "X"),
-                                             new Use(new Copy(new Local("_param0"))))
+                                             new Field(new Deref(ReturnValue), "Item0", "X"),
+                                             new Use(new Copy(Param0)))
                                      ],
                                      new Return())
                              ],
-                             parameters: [("Item0", new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))],
-                             returnType: new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                             parameters: [("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])))],
+                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
+                                             new Deref(Local0),
                                              new CreateObject(
                                                  new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                          new Assign(
-                                             new Field(new Local("_local0"), "_variantIdentifier", "Y"),
+                                             new Field(new Deref(Local0), "_variantIdentifier", "Y"),
                                              new Use(new UIntConstant(1, 2)))
                                      ],
                                      new SwitchInt(
-                                         new Copy(new Field(new Local("_local0"), "_variantIdentifier", "X")),
+                                         new Copy(new Field(new Deref(Local0), "_variantIdentifier", "X")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb1") },
-                                             { 1, new BasicBlockId("bb5") }
+                                             { 0, BB2 },
+                                             { 1, BB6 }
                                          },
-                                         new BasicBlockId("bb6"))),
+                                         BB7)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb1"),
+                                     BB2,
                                      [],
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "Item0",
-                                                     "X"), 
+                                                     "X")), 
                                                  "_variantIdentifier", 
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb2") },
-                                             { 1, new BasicBlockId("bb3") },
-                                             { 2, new BasicBlockId("bb4") }
+                                             { 0, BB3 },
+                                             { 1, BB4 },
+                                             { 2, BB5 }
                                          },
-                                         new BasicBlockId("bb6"))),
+                                         BB7)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb2"),
+                                     BB3,
                                      [
                                          new Assign(
-                                             new Local("_local1"),
+                                             Local1,
                                              new Use(new IntConstant(1, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb6"))),
+                                     new GoTo(BB7)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb3"),
+                                     BB4,
                                      [
                                          new Assign(
-                                             new Local("_local1"),
+                                             Local1,
                                              new Use(new IntConstant(2, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb6"))),
+                                     new GoTo(BB7)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb4"),
+                                     BB5,
                                      [
                                          new Assign(
-                                             new Local("_local1"),
+                                             Local1,
                                              new Use(new IntConstant(3, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb6"))),
+                                     new GoTo(BB7)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb5"),
+                                     BB6,
                                      [
                                          new Assign(
-                                             new Local("_local1"),
+                                             Local1,
                                              new Use(new IntConstant(4, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb6"))),
-                                 new BasicBlock(new BasicBlockId("bb6"), [], new Return())
+                                     new GoTo(BB7)),
+                                 new BasicBlock(BB7, [], new Return())
                              ],
                              Unit,
                              locals:
                              [
-                                 new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                  new MethodLocal("_local1", "b", Int32T)
                              ])
                      ])
@@ -357,7 +533,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      "X",
                                      [
                                          Field("_variantIdentifier", UInt16T),
-                                         Field("Item0", new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])),
+                                         Field("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))),
                                      ]),
                                 Variant("Y", [Field("_variantIdentifier", UInt16T)])
                              ])
@@ -366,87 +542,101 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                          Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__X"), "MyUnion__Create__X",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         ReturnValue,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_returnValue"),
+                                             new Deref(ReturnValue),
                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                          new Assign(
-                                             new Field(new Local("_returnValue"), "_variantIdentifier", "X"),
+                                             new Field(new Deref(ReturnValue), "_variantIdentifier", "X"),
                                              new Use(new UIntConstant(0, 2))),
                                          new Assign(
-                                             new Field(new Local("_returnValue"), "Item0", "X"),
-                                             new Use(new Copy(new Local("_param0"))))
+                                             new Field(new Deref(ReturnValue), "Item0", "X"),
+                                             new Use(new Copy(Param0)))
                                      ],
                                      new Return())
                              ],
-                             parameters: [("Item0", new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))],
-                             returnType: new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                             parameters: [("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])))],
+                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        Local0,
+                                        BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
+                                             new Deref(Local0),
                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                          new Assign(
-                                             new Field(new Local("_local0"), "_variantIdentifier", "Y"),
+                                             new Field(new Deref(Local0), "_variantIdentifier", "Y"),
                                              new Use(new UIntConstant(1, 2)))
                                      ],
                                      new SwitchInt(
-                                         new Copy(new Field(new Local("_local0"), "_variantIdentifier", "X")),
+                                         new Copy(new Field(new Deref(Local0), "_variantIdentifier", "X")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb1") },
-                                             { 1, new BasicBlockId("bb4") }
+                                             { 0, BB2 },
+                                             { 1, BB5 }
                                          },
-                                         new BasicBlockId("bb5"))),
+                                         BB6)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb1"),
+                                     BB2,
                                      [],
                                      new SwitchInt(
                                          new Copy(new Field(
-                                             new Field(
-                                                 new Local("_local0"),
+                                             new Deref(new Field(
+                                                 new Deref(Local0),
                                                  "Item0",
-                                                 "X"),
+                                                 "X")),
                                              "_variantIdentifier",
                                              "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb2") },
+                                             { 0, BB3 },
                                          },
-                                         new BasicBlockId("bb3"))),
+                                         BB4)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb2"),
+                                     BB3,
                                      [
                                          new Assign(
-                                             new Local("_local1"),
+                                             Local1,
                                              new Use(new IntConstant(1, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb5"))),
+                                     new GoTo(BB6)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb3"),
+                                     BB4,
                                      [
                                          new Assign(
-                                             new Local("_local1"),
+                                             Local1,
                                              new Use(new IntConstant(2, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb5"))),
+                                     new GoTo(BB6)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb4"),
+                                     BB5,
                                      [
                                          new Assign(
-                                             new Local("_local1"),
+                                             Local1,
                                              new Use(new IntConstant(3, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb5"))),
-                                 new BasicBlock(new BasicBlockId("bb5"), [], new Return())
+                                     new GoTo(BB6)),
+                                 new BasicBlock(BB6, [], new Return())
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                  new MethodLocal("_local1", "b", Int32T)
                              ])
                      ])
@@ -480,7 +670,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      "X",
                                      [
                                          Field("_variantIdentifier", UInt16T),
-                                         Field("Item0", new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))
+                                         Field("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])))
                                      ]),
                                 Variant("Y", [Field("_variantIdentifier", UInt16T)]),
                                 Variant("Z", [Field("_variantIdentifier", UInt16T)]),
@@ -490,90 +680,104 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                          Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__X"), "MyUnion__Create__X",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        ReturnValue,
+                                        BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_returnValue"),
+                                             new Deref(ReturnValue),
                                              new CreateObject(
                                                  new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                          new Assign(
-                                             new Field(new Local("_returnValue"), "_variantIdentifier", "X"),
+                                             new Field(new Deref(ReturnValue), "_variantIdentifier", "X"),
                                              new Use(new UIntConstant(0, 2))),
                                          new Assign(
-                                             new Field(new Local("_returnValue"), "Item0", "X"),
-                                             new Use(new Copy(new Local("_param0"))))
+                                             new Field(new Deref(ReturnValue), "Item0", "X"),
+                                             new Use(new Copy(Param0)))
                                      ],
                                      new Return())
                              ],
-                             parameters: [("Item0", new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))],
-                             returnType: new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                             parameters: [("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])))],
+                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
+                                             new Deref(Local0),
                                              new CreateObject(
                                                  new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                          new Assign(
-                                             new Field(new Local("_local0"), "_variantIdentifier", "Y"),
+                                             new Field(new Deref(Local0), "_variantIdentifier", "Y"),
                                              new Use(new UIntConstant(1, 2)))
                                      ],
                                      new SwitchInt(
-                                         new Copy(new Field(new Local("_local0"), "_variantIdentifier", "X")),
+                                         new Copy(new Field(new Deref(Local0), "_variantIdentifier", "X")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb1") },
+                                             { 0, BB2 },
                                          },
-                                         new BasicBlockId("bb5"))),
+                                         BB6)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb1"),
+                                     BB2,
                                      [],
                                      new SwitchInt(
                                          new Copy(new Field(
-                                             new Field(
-                                                 new Local("_local0"),
+                                             new Deref(new Field(
+                                                 new Deref(Local0),
                                                  "Item0",
-                                                 "X"),
+                                                 "X")),
                                              "_variantIdentifier",
                                              "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb2") },
-                                             { 1, new BasicBlockId("bb3") },
-                                             { 2, new BasicBlockId("bb4") },
+                                             { 0, BB3 },
+                                             { 1, BB4 },
+                                             { 2, BB5 },
                                          },
-                                         new BasicBlockId("bb5"))),
+                                         BB6)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb2"),
+                                     BB3,
                                      [
-                                         new Assign(new Local("_local1"), new Use(new IntConstant(1, 4)))
+                                         new Assign(Local1, new Use(new IntConstant(1, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb6"))),
+                                     new GoTo(BB7)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb3"),
+                                     BB4,
                                      [
-                                         new Assign(new Local("_local1"), new Use(new IntConstant(2, 4)))
+                                         new Assign(Local1, new Use(new IntConstant(2, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb6"))),
+                                     new GoTo(BB7)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb4"),
+                                     BB5,
                                      [
-                                         new Assign(new Local("_local1"), new Use(new IntConstant(3, 4)))
+                                         new Assign(Local1, new Use(new IntConstant(3, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb6"))),
+                                     new GoTo(BB7)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb5"),
+                                     BB6,
                                      [
-                                         new Assign(new Local("_local1"), new Use(new IntConstant(4, 4)))
+                                         new Assign(Local1, new Use(new IntConstant(4, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb6"))),
-                                 new BasicBlock(new BasicBlockId("bb6"), [], new Return())
+                                     new GoTo(BB7)),
+                                 new BasicBlock(BB7, [], new Return())
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                  new MethodLocal("_local1", "b", Int32T)
                              ])
                      ])
@@ -605,8 +809,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      "X",
                                      [
                                          Field("_variantIdentifier", UInt16T),
-                                         Field("Item0", new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])),
-                                         Field("Item1", new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])),
+                                         Field("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))),
+                                         Field("Item1", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))),
                                      ]),
                                 Variant("Y", [Field("_variantIdentifier", UInt16T)])
                              ])
@@ -615,116 +819,130 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                          Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__X"), "MyUnion__Create__X",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         ReturnValue,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_returnValue"),
+                                             new Deref(ReturnValue),
                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                          new Assign(
-                                             new Field(new Local("_returnValue"), "_variantIdentifier", "X"),
+                                             new Field(new Deref(ReturnValue), "_variantIdentifier", "X"),
                                              new Use(new UIntConstant(0, 2))),
                                          new Assign(
-                                             new Field(new Local("_returnValue"), "Item0", "X"),
-                                             new Use(new Copy(new Local("_param0")))),
+                                             new Field(new Deref(ReturnValue), "Item0", "X"),
+                                             new Use(new Copy(Param0))),
                                          new Assign(
-                                             new Field(new Local("_returnValue"), "Item1", "X"),
-                                             new Use(new Copy(new Local("_param1")))),
+                                             new Field(new Deref(ReturnValue), "Item1", "X"),
+                                             new Use(new Copy(Param1))),
                                      ],
                                      new Return())
                              ],
                              parameters: [
-                                 ("Item0", new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])),
-                                 ("Item1", new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))],
-                             returnType: new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                 ("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))),
+                                 ("Item1", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])))],
+                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        Local0,
+                                        BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
+                                             new Deref(Local0),
                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                          new Assign(
-                                             new Field(new Local("_local0"), "_variantIdentifier", "Y"),
+                                             new Field(new Deref(Local0), "_variantIdentifier", "Y"),
                                              new Use(new UIntConstant(1, 2)))
                                      ],
                                      new SwitchInt(
-                                         new Copy(new Field(new Local("_local0"), "_variantIdentifier", "X")),
+                                         new Copy(new Field(new Deref(Local0), "_variantIdentifier", "X")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb2") },
-                                             { 1, new BasicBlockId("bb1") }
-                                         }, new BasicBlockId("bb9"))),
+                                             { 0, BB3 },
+                                             { 1, BB2 }
+                                         }, BB10)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb1"),
-                                     [new Assign(new Local("_local1"), new Use(new IntConstant(0, 4)))],
-                                     new GoTo(new BasicBlockId("bb9"))),
+                                     BB2,
+                                     [new Assign(Local1, new Use(new IntConstant(0, 4)))],
+                                     new GoTo(BB10)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb2"),
+                                     BB3,
                                      [],
                                      new SwitchInt(
                                          new Copy(new Field(
-                                             new Field(
-                                                 new Local("_local0"), "Item0", "X"),
+                                             new Deref(new Field(
+                                                 new Deref(Local0), "Item0", "X")),
                                              "_variantIdentifier",
                                              "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb3") },
-                                             { 1, new BasicBlockId("bb6") }
+                                             { 0, BB4 },
+                                             { 1, BB7 }
                                          },
-                                         new BasicBlockId("bb9"))),
+                                         BB10)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb3"),
+                                     BB4,
                                      [],
                                      new SwitchInt(
                                          new Copy(new Field(
-                                             new Field(
-                                                 new Local("_local0"), "Item1", "X"),
+                                             new Deref(new Field(
+                                                 new Deref(Local0), "Item1", "X")),
                                              "_variantIdentifier",
                                              "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb4") },
-                                             { 1, new BasicBlockId("bb5") }
+                                             { 0, BB5 },
+                                             { 1, BB6 }
                                          },
-                                         new BasicBlockId("bb9"))),
+                                         BB10)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb4"),
-                                     [new Assign(new Local("_local1"), new Use(new IntConstant(1, 4)))],
-                                     new GoTo(new BasicBlockId("bb9"))),
+                                     BB5,
+                                     [new Assign(Local1, new Use(new IntConstant(1, 4)))],
+                                     new GoTo(BB10)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb5"),
-                                     [new Assign(new Local("_local1"), new Use(new IntConstant(2, 4)))],
-                                     new GoTo(new BasicBlockId("bb9"))),
+                                     BB6,
+                                     [new Assign(Local1, new Use(new IntConstant(2, 4)))],
+                                     new GoTo(BB10)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb6"),
+                                     BB7,
                                      [],
                                      new SwitchInt(
                                          new Copy(new Field(
-                                             new Field(
-                                                 new Local("_local0"), "Item1", "X"),
+                                             new Deref(new Field(
+                                                 new Deref(Local0), "Item1", "X")),
                                              "_variantIdentifier",
                                              "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb7") },
-                                             { 1, new BasicBlockId("bb8") }
+                                             { 0, BB8 },
+                                             { 1, BB9 }
                                          },
-                                         new BasicBlockId("bb9"))),
+                                         BB10)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb7"),
-                                     [new Assign(new Local("_local1"), new Use(new IntConstant(3, 4)))],
-                                     new GoTo(new BasicBlockId("bb9"))),
+                                     BB8,
+                                     [new Assign(Local1, new Use(new IntConstant(3, 4)))],
+                                     new GoTo(BB10)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb8"),
-                                     [new Assign(new Local("_local1"), new Use(new IntConstant(4, 4)))],
-                                     new GoTo(new BasicBlockId("bb9"))),
-                                 new BasicBlock(new BasicBlockId("bb9"), [], new Return())
+                                     BB9,
+                                     [new Assign(Local1, new Use(new IntConstant(4, 4)))],
+                                     new GoTo(BB10)),
+                                 new BasicBlock(BB10, [], new Return())
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                  new MethodLocal("_local1", "b", Int32T),
                              ])
                      ])
@@ -757,7 +975,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      "X",
                                      [
                                          Field("_variantIdentifier", UInt16T),
-                                         Field("MyField", new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))
+                                         Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])))
                                      ]),
                                 Variant("Y", [Field("_variantIdentifier", UInt16T)]),
                              ]),
@@ -766,90 +984,97 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
+                                             new Deref(Local0),
                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                          new Assign(
-                                             new Field(new Local("_local0"), "_variantIdentifier", "Y"),
+                                             new Field(new Deref(Local0), "_variantIdentifier", "Y"),
                                              new Use(new UIntConstant(1, 2)))
                                      ],
                                      new SwitchInt(
-                                         new Copy(new Field(new Local("_local0"), "_variantIdentifier", "X")),
+                                         new Copy(new Field(new Deref(Local0), "_variantIdentifier", "X")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             {0, new BasicBlockId("bb1")},
+                                             {0, BB2},
                                          },
-                                         new BasicBlockId("bb4"))),
+                                         BB5)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb1"),
+                                     BB2,
                                      [],
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "MyField",
-                                                     "X"),
+                                                     "X")),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             {0, new BasicBlockId("bb2")}
+                                             {0, BB3}
                                          },
-                                         new BasicBlockId("bb3"))),
+                                         BB4)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb2"),
+                                     BB3,
                                      [
                                          new Assign(
-                                             new Local("_local1"),
-                                             new Use(new Copy(new Local("_local0")))),
+                                             Local1,
+                                             new Use(new Copy(Local0))),
                                          new Assign(new Local("_local5"), new Use(new IntConstant(1, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb5"))),
+                                     new GoTo(BB6)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb3"),
+                                     BB4,
                                      [
                                          new Assign(
-                                             new Local("_local2"),
+                                             Local2,
                                              new Use(
                                                  new Copy(
                                                      new Field(
-                                                         new Local("_local0"),
+                                                         new Deref(Local0),
                                                          "MyField",
                                                          "X")))),
                                          new Assign(
-                                             new Local("_local3"),
-                                             new Use(new Copy(new Local("_local0")))),
+                                             Local3,
+                                             new Use(new Copy(Local0))),
                                          new Assign(
                                              new Local("_local5"),
                                              new Use(new IntConstant(2, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb5"))),
+                                     new GoTo(BB6)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb4"),
+                                     BB5,
                                      [
                                          new Assign(
                                              new Local("_local4"),
-                                             new Use(new Copy(new Local("_local0")))),
+                                             new Use(new Copy(Local0))),
                                          new Assign(
                                              new Local("_local5"),
                                              new Use(new IntConstant(4, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb5"))),
+                                     new GoTo(BB6)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb5"),
+                                     BB6,
                                      [],
                                      new Return())
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-                                 new MethodLocal("_local1", "something", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-                                 new MethodLocal("_local2", "myField", new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])),
-                                 new MethodLocal("_local3", "somethingElse", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-                                 new MethodLocal("_local4", "myUnion", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                 new MethodLocal("_local1", "something", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                 new MethodLocal("_local2", "myField", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))),
+                                 new MethodLocal("_local3", "somethingElse", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                 new MethodLocal("_local4", "myUnion", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                  new MethodLocal("_local5", "b", Int32T),
                              ])
                      ])
@@ -866,12 +1091,12 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
                                      [
-                                         new Assign(new Local("_local0"), new Use(new IntConstant(2, 4)))
+                                         new Assign(Local0, new Use(new IntConstant(2, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb1"))),
-                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                     new GoTo(BB1)),
+                                 new BasicBlock(BB1, [], new Return())
                              ],
                              Unit,
                              locals: [
@@ -892,29 +1117,29 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                          Method(new DefId(ModuleId, $"{ModuleId}.GetI64"), "GetI64",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
-                                     [new Assign(new Local("_returnValue"), new Use(new IntConstant(1, 8)))],
+                                     BB0,
+                                     [new Assign(ReturnValue, new Use(new IntConstant(1, 8)))],
                                      new Return())
                              ],
                              Int64T),
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
                                      [],
                                      new MethodCall(
                                          new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.GetI64"), []),
                                          [],
-                                         new Local("_local1"),
-                                         new BasicBlockId("bb1"))),
+                                         Local1,
+                                         BB1)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb1"),
+                                     BB1,
                                      [
-                                         new Assign(new Local("_local0"), new Use(new IntConstant(2, 4)))
+                                         new Assign(Local0, new Use(new IntConstant(2, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb2"))),
+                                     new GoTo(BB2)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb2"), [], new Return())
+                                     BB2, [], new Return())
                              ],
                              Unit,
                              locals: [
@@ -944,28 +1169,43 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ]),
                          DataType(ModuleId, "MyClass",
                              variants: [
-                                Variant("_classVariant", [Field("MyField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))])
+                                Variant("_classVariant", [Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])))])
                              ])
                      ],
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyClass", ModuleId),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
+                                             new Deref(Local0),
                                              new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                                 new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
+                                     ],
+                                     AllocateMethodCall(
+                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        new Field(new Deref(Local0), "MyField", "_classVariant"),
+                                        BB2)),
+                                 new BasicBlock(
+                                     BB2,
+                                     [
                                          new Assign(
-                                             new Field(new Local("_local0"), "MyField", "_classVariant"),
+                                             new Deref(new Field(new Deref(Local0), "MyField", "_classVariant")),
                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                          new Assign(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "MyField",
-                                                     "_classVariant"),
+                                                     "_classVariant")),
                                                  "_variantIdentifier",
                                                  "A"),
                                              new Use(new UIntConstant(0, 2))),
@@ -973,35 +1213,35 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "MyField",
-                                                     "_classVariant"),
+                                                     "_classVariant")),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb1") },
-                                             { 1, new BasicBlockId("bb2") },
+                                             { 0, BB3 },
+                                             { 1, BB4 },
                                          },
-                                         new BasicBlockId("bb3"))),
+                                         BB5)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb1"),
-                                     [new Assign(new Local("_local2"), new Use(new IntConstant(1, 4)))],
-                                     new GoTo(new BasicBlockId("bb3"))),
+                                     BB3,
+                                     [new Assign(Local2, new Use(new IntConstant(1, 4)))],
+                                     new GoTo(BB5)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb2"),
+                                     BB4,
                                      [
-                                         new Assign(new Local("_local1"), new Use(new Copy(new Local("_local0")))),
-                                         new Assign(new Local("_local2"), new Use(new IntConstant(2, 4)))
+                                         new Assign(Local1, new Use(new Copy(Local0))),
+                                         new Assign(Local2, new Use(new IntConstant(2, 4)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb3"))),
-                                 new BasicBlock(new BasicBlockId("bb3"), [], new Return())
+                                     new GoTo(BB5)),
+                                 new BasicBlock(BB5, [], new Return())
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-                                 new MethodLocal("_local1", "something", new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                 new MethodLocal("_local1", "something", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
                                  new MethodLocal("_local2", "b", Int32T),
                              ])
                      ])
@@ -1027,30 +1267,45 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ]),
                          DataType(ModuleId, "MyClass",
                              variants: [
-                                Variant("_classVariant", [Field("MyField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))])
+                                Variant("_classVariant", [Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])))])
                              ])
                      ],
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyClass", ModuleId),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                             new Deref(Local0),
+                                             new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
+                                     ],
+                                     AllocateMethodCall(
+                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        new Field(new Deref(Local0), "MyField", "_classVariant"),
+                                        BB2)),
+                                 new BasicBlock(
+                                     BB2,
+                                     [
                                          new Assign(
-                                             new Field(
-                                                 new Local("_local0"),
+                                             new Deref(new Field(
+                                                 new Deref(Local0),
                                                  "MyField",
-                                                 "_classVariant"),
+                                                 "_classVariant")),
                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                          new Assign(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "MyField",
-                                                     "_classVariant"),
+                                                     "_classVariant")),
                                                  "_variantIdentifier",
                                                  "A"),
                                              new Use(new UIntConstant(0, 2)))
@@ -1058,30 +1313,30 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "MyField",
-                                                     "_classVariant"),
+                                                     "_classVariant")),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb1") }
+                                             { 0, BB3 }
                                          },
-                                         new BasicBlockId("bb2"))),
+                                         BB4)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb1"),
-                                     [new Assign(new Local("_local1"), new Use(new IntConstant(1, 4)))],
-                                     new GoTo(new BasicBlockId("bb3"))),
+                                     BB3,
+                                     [new Assign(Local1, new Use(new IntConstant(1, 4)))],
+                                     new GoTo(BB5)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb2"),
-                                     [new Assign(new Local("_local1"), new Use(new IntConstant(2, 4)))],
-                                     new GoTo(new BasicBlockId("bb3"))),
-                                 new BasicBlock(new BasicBlockId("bb3"), [], new Return())
+                                     BB4,
+                                     [new Assign(Local1, new Use(new IntConstant(2, 4)))],
+                                     new GoTo(BB5)),
+                                 new BasicBlock(BB5, [], new Return())
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
                                  new MethodLocal("_local1", "b", Int32T),
                              ])
                      ])
@@ -1116,8 +1371,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 Variant(
                                      "_classVariant",
                                      [
-                                         Field("MyField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-                                         Field("SecondField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                         Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                         Field("SecondField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                      ])
                              ])
                      ],
@@ -1125,38 +1380,67 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyClass", ModuleId),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                             new Deref(Local0),
+                                             new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
+                                     ],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         new Field(
+                                             new Deref(Local0),
+                                             "MyField",
+                                             "_classVariant"),
+                                         BB2)),
+                                 new BasicBlock(
+                                     BB2,
+                                     [
                                          new Assign(
-                                             new Field(
-                                                 new Local("_local0"),
+                                             new Deref(new Field(
+                                                 new Deref(Local0),
                                                  "MyField",
-                                                 "_classVariant"),
+                                                 "_classVariant")),
                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                          new Assign(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "MyField",
-                                                     "_classVariant"),
+                                                     "_classVariant")),
                                                  "_variantIdentifier",
                                                  "A"),
-                                             new Use(new UIntConstant(0, 2))),
+                                             new Use(new UIntConstant(0, 2)))
+                                     ],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         new Field(
+                                             new Deref(Local0),
+                                             "SecondField",
+                                             "_classVariant"),
+                                         BB3)),
+                                 new BasicBlock(
+                                     BB3,
+                                     [
                                          new Assign(
-                                             new Field(
-                                                 new Local("_local0"),
+                                             new Deref(new Field(
+                                                 new Deref(Local0),
                                                  "SecondField",
-                                                 "_classVariant"),
+                                                 "_classVariant")),
                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                          new Assign(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "SecondField",
-                                                     "_classVariant"),
+                                                     "_classVariant")),
                                                  "_variantIdentifier",
                                                  "B"),
                                              new Use(new UIntConstant(1, 2)))
@@ -1164,94 +1448,94 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "MyField",
-                                                     "_classVariant"),
+                                                     "_classVariant")),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb1") },
-                                             { 1, new BasicBlockId("bb3") },
-                                             { 2, new BasicBlockId("bb5") },
+                                             { 0, BB4 },
+                                             { 1, BB6 },
+                                             { 2, BB8 },
                                          },
-                                         new BasicBlockId("bb7"))),
+                                         BB10)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb1"),
+                                     BB4,
                                      [],
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "SecondField",
-                                                     "_classVariant"),
+                                                     "_classVariant")),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb2") }
+                                             { 0, BB5 }
                                          },
-                                         new BasicBlockId("bb7"))),
+                                         BB10)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb2"),
-                                     [new Assign(new Local("_local1"), new Use(new IntConstant(1, 4)))],
-                                     new GoTo(new BasicBlockId("bb8"))),
+                                     BB5,
+                                     [new Assign(Local1, new Use(new IntConstant(1, 4)))],
+                                     new GoTo(BB11)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb3"),
+                                     BB6,
                                      [],
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "SecondField",
-                                                     "_classVariant"),
+                                                     "_classVariant")),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb4") }
+                                             { 0, BB7 }
                                          },
-                                         new BasicBlockId("bb7"))),
+                                         BB10)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb4"),
-                                     [new Assign(new Local("_local1"), new Use(new IntConstant(2, 4)))],
-                                     new GoTo(new BasicBlockId("bb8"))),
+                                     BB7,
+                                     [new Assign(Local1, new Use(new IntConstant(2, 4)))],
+                                     new GoTo(BB11)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb5"),
+                                     BB8,
                                      [],
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "SecondField",
-                                                     "_classVariant"),
+                                                     "_classVariant")),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb6") }
+                                             { 0, BB9 }
                                          },
-                                         new BasicBlockId("bb7"))),
+                                         BB10)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb6"),
-                                     [new Assign(new Local("_local1"), new Use(new IntConstant(3, 4)))],
-                                     new GoTo(new BasicBlockId("bb8"))),
+                                     BB9,
+                                     [new Assign(Local1, new Use(new IntConstant(3, 4)))],
+                                     new GoTo(BB11)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb7"),
-                                     [new Assign(new Local("_local1"), new Use(new IntConstant(4, 4)))],
-                                     new GoTo(new BasicBlockId("bb8"))),
+                                     BB10,
+                                     [new Assign(Local1, new Use(new IntConstant(4, 4)))],
+                                     new GoTo(BB11)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb8"),
+                                     BB11,
                                      [],
                                      new Return())
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
                                  new MethodLocal("_local1", "b", Int32T),
                              ])
                      ])
@@ -1287,8 +1571,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 Variant(
                                      "_classVariant",
                                      [
-                                         Field("MyField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-                                         Field("SecondField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))
+                                         Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                         Field("SecondField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])))
                                      ])
                              ])
                      ],
@@ -1296,38 +1580,67 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyClass", ModuleId),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                             new Deref(Local0),
+                                             new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
+                                     ],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         new Field(
+                                             new Deref(Local0),
+                                             "MyField",
+                                             "_classVariant"),
+                                         BB2)),
+                                 new BasicBlock(
+                                     BB2,
+                                     [
                                          new Assign(
-                                             new Field(
-                                                 new Local("_local0"),
+                                             new Deref(new Field(
+                                                 new Deref(Local0),
                                                  "MyField",
-                                                 "_classVariant"),
+                                                 "_classVariant")),
                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                          new Assign(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "MyField",
-                                                     "_classVariant"),
+                                                     "_classVariant")),
                                                  "_variantIdentifier",
                                                  "A"),
-                                             new Use(new UIntConstant(0, 2))),
+                                             new Use(new UIntConstant(0, 2)))
+                                     ],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         new Field(
+                                             new Deref(Local0),
+                                             "SecondField",
+                                             "_classVariant"),
+                                         BB3)),
+                                 new BasicBlock(
+                                     BB3,
+                                     [
                                          new Assign(
-                                             new Field(
-                                                 new Local("_local0"),
+                                             new Deref(new Field(
+                                                 new Deref(Local0),
                                                  "SecondField",
-                                                 "_classVariant"),
+                                                 "_classVariant")),
                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                          new Assign(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "SecondField",
-                                                     "_classVariant"),
+                                                     "_classVariant")),
                                                  "_variantIdentifier",
                                                  "B"),
                                              new Use(new UIntConstant(1, 2)))
@@ -1335,100 +1648,273 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "MyField",
-                                                     "_classVariant"),
+                                                     "_classVariant")),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb1") },
-                                             { 1, new BasicBlockId("bb4") },
-                                             { 2, new BasicBlockId("bb6") },
+                                             { 0, BB4 },
+                                             { 1, BB7 },
+                                             { 2, BB9 },
                                          },
-                                         new BasicBlockId("bb8"))),
+                                         BB11)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb1"),
+                                     BB4,
                                      [],
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "SecondField",
-                                                     "_classVariant"),
+                                                     "_classVariant")),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb2") }
+                                             { 0, BB5 }
                                          },
-                                         new BasicBlockId("bb3"))),
+                                         BB6)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb2"),
-                                     [new Assign(new Local("_local1"), new Use(new IntConstant(1, 4)))],
-                                     new GoTo(new BasicBlockId("bb9"))),
+                                     BB5,
+                                     [new Assign(Local1, new Use(new IntConstant(1, 4)))],
+                                     new GoTo(BB12)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb3"),
-                                     [new Assign(new Local("_local1"), new Use(new IntConstant(2, 4)))],
-                                     new GoTo(new BasicBlockId("bb9"))),
+                                     BB6,
+                                     [new Assign(Local1, new Use(new IntConstant(2, 4)))],
+                                     new GoTo(BB12)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb4"),
+                                     BB7,
                                      [],
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "SecondField",
-                                                     "_classVariant"),
+                                                     "_classVariant")),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 1, new BasicBlockId("bb5") }
+                                             { 1, BB8 }
                                          },
-                                         new BasicBlockId("bb8"))),
+                                         BB11)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb5"),
-                                     [new Assign(new Local("_local1"), new Use(new IntConstant(3, 4)))],
-                                     new GoTo(new BasicBlockId("bb9"))),
+                                     BB8,
+                                     [new Assign(Local1, new Use(new IntConstant(3, 4)))],
+                                     new GoTo(BB12)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb6"),
+                                     BB9,
                                      [],
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Field(
-                                                     new Local("_local0"),
+                                                 new Deref(new Field(
+                                                     new Deref(Local0),
                                                      "SecondField",
-                                                     "_classVariant"),
+                                                     "_classVariant")),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
-                                             { 0, new BasicBlockId("bb7") }
+                                             { 0, BB10 }
                                          },
-                                         new BasicBlockId("bb8"))),
+                                         BB11)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb7"),
-                                     [new Assign(new Local("_local1"), new Use(new IntConstant(4, 4)))],
-                                     new GoTo(new BasicBlockId("bb9"))),
+                                     BB10,
+                                     [new Assign(Local1, new Use(new IntConstant(4, 4)))],
+                                     new GoTo(BB12)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb8"),
-                                     [new Assign(new Local("_local1"), new Use(new IntConstant(5, 4)))],
-                                     new GoTo(new BasicBlockId("bb9"))),
+                                     BB11,
+                                     [new Assign(Local1, new Use(new IntConstant(5, 4)))],
+                                     new GoTo(BB12)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb9"), [], new Return())
+                                     BB12, [], new Return())
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
                                  new MethodLocal("_local1", "b", Int32T),
                              ])
                      ])
-             }
+             },
+              {
+                  "Mixture of class and union patterns - unboxed",
+                  """
+                  union MyUnion{A, B, C}
+                  class MyClass{pub field MyField: unboxed MyUnion, pub field SecondField: unboxed MyUnion}
+
+                  var a = new unboxed MyClass {
+                      MyField = unboxed MyUnion::A,
+                      SecondField = unboxed MyUnion::B,
+                  };
+                  var b = match (a) {
+                      unboxed MyClass { MyField: unboxed MyUnion::A, SecondField: unboxed MyUnion::A } => 1,
+                      unboxed MyClass { MyField: unboxed MyUnion::A, SecondField: _          } => 2,
+                      unboxed MyClass { MyField: unboxed MyUnion::B, SecondField: unboxed MyUnion::B } => 3,
+                      unboxed MyClass { MyField: unboxed MyUnion::C, SecondField: unboxed MyUnion::A } => 4,
+                      _ => 5
+                  }
+                  """,
+                  LoweredProgram(
+                      types: [
+                          DataType(ModuleId, "MyUnion",
+                              variants: [
+                                 Variant("A", [Field("_variantIdentifier", UInt16T)]),
+                                 Variant("B", [Field("_variantIdentifier", UInt16T)]),
+                                 Variant("C", [Field("_variantIdentifier", UInt16T)]),
+                              ]),
+                          DataType(ModuleId, "MyClass",
+                              variants: [
+                                 Variant(
+                                      "_classVariant",
+                                      [
+                                          Field("MyField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                          Field("SecondField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))
+                                      ])
+                              ])
+                      ],
+                      methods: [
+                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                              [
+                                  new BasicBlock(
+                                      BB0,
+                                      [
+                                          new Assign(
+                                              Local0,
+                                              new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                          new Assign(
+                                              new Field(
+                                                  Local0,
+                                                  "MyField",
+                                                  "_classVariant"),
+                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                          new Assign(
+                                              new Field(
+                                                  new Field(
+                                                      Local0,
+                                                      "MyField",
+                                                      "_classVariant"),
+                                                  "_variantIdentifier",
+                                                  "A"),
+                                              new Use(new UIntConstant(0, 2))),
+                                          new Assign(
+                                              new Field(
+                                                  Local0,
+                                                  "SecondField",
+                                                  "_classVariant"),
+                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                          new Assign(
+                                              new Field(
+                                                  new Field(
+                                                      Local0,
+                                                      "SecondField",
+                                                      "_classVariant"),
+                                                  "_variantIdentifier",
+                                                  "B"),
+                                              new Use(new UIntConstant(1, 2)))
+                                      ],
+                                      new SwitchInt(
+                                          new Copy(
+                                              new Field(
+                                                  new Field(
+                                                      Local0,
+                                                      "MyField",
+                                                      "_classVariant"),
+                                                  "_variantIdentifier",
+                                                  "A")),
+                                          new Dictionary<int, BasicBlockId>
+                                          {
+                                              { 0, BB1 },
+                                              { 1, BB4 },
+                                              { 2, BB6 },
+                                          },
+                                          BB8)),
+                                  new BasicBlock(
+                                      BB1,
+                                      [],
+                                      new SwitchInt(
+                                          new Copy(
+                                              new Field(
+                                                  new Field(
+                                                      Local0,
+                                                      "SecondField",
+                                                      "_classVariant"),
+                                                  "_variantIdentifier",
+                                                  "A")),
+                                          new Dictionary<int, BasicBlockId>
+                                          {
+                                              { 0, BB2 }
+                                          },
+                                          BB3)),
+                                  new BasicBlock(
+                                      BB2,
+                                      [new Assign(Local1, new Use(new IntConstant(1, 4)))],
+                                      new GoTo(BB9)),
+                                  new BasicBlock(
+                                      BB3,
+                                      [new Assign(Local1, new Use(new IntConstant(2, 4)))],
+                                      new GoTo(BB9)),
+                                  new BasicBlock(
+                                      BB4,
+                                      [],
+                                      new SwitchInt(
+                                          new Copy(
+                                              new Field(
+                                                  new Field(
+                                                      Local0,
+                                                      "SecondField",
+                                                      "_classVariant"),
+                                                  "_variantIdentifier",
+                                                  "A")),
+                                          new Dictionary<int, BasicBlockId>
+                                          {
+                                              { 1, BB5 }
+                                          },
+                                          BB8)),
+                                  new BasicBlock(
+                                      BB5,
+                                      [new Assign(Local1, new Use(new IntConstant(3, 4)))],
+                                      new GoTo(BB9)),
+                                  new BasicBlock(
+                                      BB6,
+                                      [],
+                                      new SwitchInt(
+                                          new Copy(
+                                              new Field(
+                                                  new Field(
+                                                      Local0,
+                                                      "SecondField",
+                                                      "_classVariant"),
+                                                  "_variantIdentifier",
+                                                  "A")),
+                                          new Dictionary<int, BasicBlockId>
+                                          {
+                                              { 0, BB7 }
+                                          },
+                                          BB8)),
+                                  new BasicBlock(
+                                      BB7,
+                                      [new Assign(Local1, new Use(new IntConstant(4, 4)))],
+                                      new GoTo(BB9)),
+                                  new BasicBlock(
+                                      BB8,
+                                      [new Assign(Local1, new Use(new IntConstant(5, 4)))],
+                                      new GoTo(BB9)),
+                                  new BasicBlock(
+                                      BB9, [], new Return())
+                              ],
+                              Unit,
+                              locals: [
+                                  new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                  new MethodLocal("_local1", "b", Int32T),
+                              ])
+                      ])
+              }
         };
     }
 }

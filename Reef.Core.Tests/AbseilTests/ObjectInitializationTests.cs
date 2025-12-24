@@ -38,22 +38,59 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                         methods: [
                             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                                 [
-                                    new BasicBlock(new BasicBlockId("bb0"), [
+                                    new BasicBlock(
+                                        BB0,
+                                        [],
+                                        AllocateMethodCall(
+                                            ConcreteTypeReference("MyClass", ModuleId),
+                                            Local0,
+                                            BB1)),
+                                    new BasicBlock(BB1, [
                                         new Assign(
-                                            new Local("_local0"),
+                                            new Deref(Local0),
                                             new CreateObject(new LoweredConcreteTypeReference(
                                                 "MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
-                                    ], new GoTo(new BasicBlockId("bb1"))),
-                                    new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                    ], new GoTo(BB2)),
+                                    new BasicBlock(BB2, [], new Return())
                                 ],
                                 Unit,
                                 locals: [
                                     new MethodLocal(
                                         "_local0",
                                         "a",
-                                        new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
+                                        new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
                                 ])
                         ])
+            },
+            {
+                "create unboxed empty class",
+                "class MyClass{} var a = new unboxed MyClass{};",
+                LoweredProgram(
+                    types: [
+                        DataType(ModuleId, "MyClass",
+                            variants: [
+                                Variant("_classVariant")
+                            ])
+                    ],
+                    methods: [
+                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            [
+                                new BasicBlock(BB0, [
+                                    new Assign(
+                                        Local0,
+                                        new CreateObject(new LoweredConcreteTypeReference(
+                                            "MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
+                                ], new GoTo(BB1)),
+                                new BasicBlock(BB1, [], new Return())
+                            ],
+                            Unit,
+                            locals: [
+                                new MethodLocal(
+                                    "_local0",
+                                    "a",
+                                    new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
+                            ])
+                    ])
             },
             {
                 "create class with fields",
@@ -69,28 +106,35 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                             Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                                 [
                                     new BasicBlock(
-                                        new BasicBlockId("bb0"),
+                                        BB0,
+                                        [],
+                                        AllocateMethodCall(
+                                            ConcreteTypeReference("MyClass", ModuleId),
+                                            Local0,
+                                            BB1)),
+                                    new BasicBlock(
+                                        BB1,
                                         [
                                             new Assign(
-                                                new Local("_local0"),
+                                                new Deref(Local0),
                                                 new CreateObject(
                                                     new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
                                             new Assign(
                                                 new Field(
-                                                    new Local("_local0"),
+                                                    new Deref(Local0),
                                                     "MyField",
                                                     "_classVariant"),
                                                 new Use(new StringConstant("hi")))
                                         ],
-                                        new GoTo(new BasicBlockId("bb1"))),
-                                    new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                        new GoTo(BB2)),
+                                    new BasicBlock(BB2, [], new Return())
                                 ],
                                 Unit,
                                 locals: [
                                     new MethodLocal(
                                         "_local0",
                                         "a",
-                                        new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
+                                        new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
                                 ])
                         ])
             },
@@ -106,19 +150,26 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
                                 new BasicBlock(
-                                    new BasicBlockId("bb0"),
+                                    BB0,
+                                    [],
+                                    AllocateMethodCall(
+                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        Local0,
+                                        BB1)),
+                                new BasicBlock(
+                                    BB1,
                                     [
                                         new Assign(
-                                            new Local("_local0"),
+                                            new Deref(Local0),
                                             new CreateObject(
                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                         new Assign(
-                                            new Field(new Local("_local0"), "_variantIdentifier", "A"),
+                                            new Field(new Deref(Local0), "_variantIdentifier", "A"),
                                             new Use(new UIntConstant(0, 2)))
                                     ],
-                                    new GoTo(new BasicBlockId("bb1"))),
+                                    new GoTo(BB2)),
                                 new BasicBlock(
-                                    new BasicBlockId("bb1"),
+                                    BB2,
                                     [],
                                     new Return())
                             ],
@@ -126,7 +177,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                             locals: [new MethodLocal(
                                 "_local0",
                                 "a",
-                                new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))])
+                                new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])))])
                     ])
             },
             {
@@ -147,33 +198,40 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
                                 new BasicBlock(
-                                    new BasicBlockId("bb0"),
+                                    BB0,
+                                    [],
+                                    AllocateMethodCall(
+                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        Local0,
+                                        BB1)),
+                                new BasicBlock(
+                                    BB1,
                                     [
                                         new Assign(
-                                            new Local("_local0"),
+                                            new Deref(Local0),
                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                                         new Assign(
                                             new Field(
-                                                new Local("_local0"),
+                                                new Deref(Local0),
                                                 "_variantIdentifier",
                                                 "B"),
                                             new Use(new UIntConstant(1, 2))),
                                         new Assign(
                                             new Field(
-                                                new Local("_local0"),
+                                                new Deref(Local0),
                                                 "a",
                                                 "B"),
                                             new Use(new StringConstant("hi")))
                                     ],
-                                    new GoTo(new BasicBlockId("bb1"))),
-                                new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                    new GoTo(BB2)),
+                                new BasicBlock(BB2, [], new Return())
                             ],
                             Unit,
                             locals: [
                                 new MethodLocal(
                                     "_local0",
                                     "a",
-                                    new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))
+                                    new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])))
                             ])
                     ])
             }

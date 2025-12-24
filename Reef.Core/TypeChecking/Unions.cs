@@ -20,7 +20,7 @@ public partial class TypeChecker
                 Name = "result",
                 Variants = variants,
                 Functions = [],
-                Boxed = true,
+                Boxed = false,
             };
 
             typeParameters[0] = new GenericPlaceholder

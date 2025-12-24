@@ -39,6 +39,7 @@ public partial class TypeChecker
             ContinueExpression continueExpression => TypeCheckContinueExpression(continueExpression),
             BreakExpression breakExpression => TypeCheckBreakExpression(breakExpression),
             WhileExpression whileExpression => TypeCheckWhileExpression(whileExpression),
+            TypeIdentifierExpression typeIdentifierExpression => TypeCheckTypeIdentifierExpression(typeIdentifierExpression),
             _ => throw new UnreachableException($"{expression.ExpressionType}")
         };
 
@@ -47,6 +48,13 @@ public partial class TypeChecker
         return expressionType;
     }
 
+    private InstantiatedClass TypeCheckTypeIdentifierExpression(TypeIdentifierExpression e)
+    {
+        _errors.Add(TypeCheckerError.TypeIsNotExpression(e.SourceRange, e.TypeIdentifier));
+        
+        return InstantiatedClass.Never;
+    }
+    
     private uint _loopDepth;
     
     private TypeChecking.TypeChecker.InstantiatedClass TypeCheckContinueExpression(ContinueExpression continueExpression)

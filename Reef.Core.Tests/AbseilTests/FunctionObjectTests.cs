@@ -18,6 +18,116 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
 
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
+    
+    [Fact]
+    public void Single()
+    {
+        var source = """
+                 union MyUnion{A(string)}
+                 var a = MyUnion::A;
+                 var b = a("");
+                 """;
+                 var expectedProgram = LoweredProgram(
+                     types: [
+                         DataType(ModuleId, "MyUnion",
+                             variants: [
+                                 Variant(
+                                     "A",
+                                     [
+                                         Field("_variantIdentifier", UInt16T),
+                                         Field("Item0", StringT)
+                                     ])
+                             ])
+                     ],
+                     methods: [
+                         Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
+                             [
+                                 new BasicBlock(
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         ReturnValue,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
+                                     [
+                                         new Assign(
+                                             new Deref(ReturnValue),
+                                             new CreateObject(
+                                                 new LoweredConcreteTypeReference(
+                                                     "MyUnion",
+                                                     new DefId(ModuleId, $"{ModuleId}.MyUnion"),
+                                                     []))),
+                                         new Assign(
+                                             new Field(
+                                                 new Deref(ReturnValue),
+                                                 "_variantIdentifier",
+                                                 "A"),
+                                             new Use(new UIntConstant(0, 2))),
+                                         new Assign(
+                                             new Field(
+                                                 new Deref(ReturnValue),
+                                                 "Item0",
+                                                 "A"),
+                                             new Use(
+                                                 new Copy(
+                                                     Param0)))
+                                     ],
+                                     new Return())
+                             ],
+                             parameters: [("Item0", StringT)],
+                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [
+                                 new BasicBlock(
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         FunctionObject([StringT], new LoweredPointer(ConcreteTypeReference("MyUnion", ModuleId))),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
+                                     [
+                                         new Assign(
+                                             new Deref(Local0),
+                                             new CreateObject(
+                                                 FunctionObject([StringT], new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))))),
+                                         new Assign(
+                                             new Field(new Deref(Local0), "FunctionReference", "_classVariant"),
+                                             new Use(new FunctionPointerConstant(new LoweredFunctionReference(
+                                                 new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), []))))
+                                     ],
+                                     new MethodCall(
+                                         FunctionObjectCall([StringT], new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                         [new Copy(Local0), new StringConstant("")],
+                                         Local1,
+                                         BB2)),
+                                 new BasicBlock(BB2, [], new Return())
+                             ],
+                             Unit,
+                             locals: [
+                                 new MethodLocal(
+                                     "_local0",
+                                     "a",
+                                     new LoweredPointer(new LoweredConcreteTypeReference(
+                                         "Function`2",
+                                         DefId.FunctionObject(1),
+                                         [StringT, new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))]))),
+                                 new MethodLocal(
+                                     "_local1",
+                                     "b",
+                                     new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                             ])
+                     ]);
+        var program = CreateProgram(ModuleId, source);
+        var (loweredProgram, _) = ProgramAbseil.Lower(program);
+
+        PrintPrograms(expectedProgram, loweredProgram);
+
+        loweredProgram.Should().BeEquivalentTo(expectedProgram);
+    }
 
     private const string ModuleId = "FunctionObjectTests";
     
@@ -48,10 +158,17 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                          Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         ReturnValue,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_returnValue"),
+                                             new Deref(ReturnValue),
                                              new CreateObject(
                                                  new LoweredConcreteTypeReference(
                                                      "MyUnion",
@@ -59,57 +176,64 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                      []))),
                                          new Assign(
                                              new Field(
-                                                 new Local("_returnValue"),
+                                                 new Deref(ReturnValue),
                                                  "_variantIdentifier",
                                                  "A"),
                                              new Use(new UIntConstant(0, 2))),
                                          new Assign(
                                              new Field(
-                                                 new Local("_returnValue"),
+                                                 new Deref(ReturnValue),
                                                  "Item0",
                                                  "A"),
                                              new Use(
                                                  new Copy(
-                                                     new Local("_param0"))))
+                                                     Param0)))
                                      ],
                                      new Return())
                              ],
                              parameters: [("Item0", StringT)],
-                             returnType: new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         FunctionObject([StringT], new LoweredPointer(ConcreteTypeReference("MyUnion", ModuleId))),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
+                                             new Deref(Local0),
                                              new CreateObject(
-                                                 FunctionObject([StringT], new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])))),
+                                                 FunctionObject([StringT], new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))))),
                                          new Assign(
-                                             new Field(new Local("_local0"), "FunctionReference", "_classVariant"),
+                                             new Field(new Deref(Local0), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
                                                  new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), []))))
                                      ],
                                      new MethodCall(
-                                         FunctionObjectCall([StringT], new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-                                         [new Copy(new Local("_local0")), new StringConstant("")],
-                                         new Local("_local1"),
-                                         new BasicBlockId("bb1"))),
-                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                         FunctionObjectCall([StringT], new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                         [new Copy(Local0), new StringConstant("")],
+                                         Local1,
+                                         BB2)),
+                                 new BasicBlock(BB2, [], new Return())
                              ],
                              Unit,
                              locals: [
                                  new MethodLocal(
                                      "_local0",
                                      "a",
-                                     new LoweredConcreteTypeReference(
+                                     new LoweredPointer(new LoweredConcreteTypeReference(
                                          "Function`2",
                                          DefId.FunctionObject(1),
-                                         [StringT, new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])])),
+                                         [StringT, new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))]))),
                                  new MethodLocal(
                                      "_local1",
                                      "b",
-                                     new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
+                                     new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
                              ])
                      ])
              },
@@ -123,32 +247,39 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}.SomeFn"), "SomeFn",
                              [
-                                 new BasicBlock(new BasicBlockId("bb0"), [], new Return())
+                                 new BasicBlock(BB0, [], new Return())
                              ],
                              Unit),
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         FunctionObject([], Unit),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
+                                             new Deref(Local0),
                                              new CreateObject(
                                                  FunctionObject([], Unit))),
                                          new Assign(
                                              new Field(
-                                                 new Local("_local0"),
+                                                 new Deref(Local0),
                                                  "FunctionReference",
                                                  "_classVariant"),
                                              new Use(new FunctionPointerConstant(
                                                  new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.SomeFn"), []))))
                                      ],
-                                     new GoTo(new BasicBlockId("bb1"))),
-                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                     new GoTo(BB2)),
+                                 new BasicBlock(BB2, [], new Return())
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", FunctionObject([], Unit))
+                                 new MethodLocal("_local0", "a", new LoweredPointer(FunctionObject([], Unit)))
                              ])
                      ])
              },
@@ -169,31 +300,38 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                      ],
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn",
-                             [new BasicBlock(new BasicBlockId("bb0"), [], new Return())],
+                             [new BasicBlock(BB0, [], new Return())],
                              Unit),
                          Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         FunctionObject([], Unit),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
+                                             new Deref(Local0),
                                              new CreateObject(
                                                  FunctionObject([], Unit))),
                                          new Assign(
                                              new Field(
-                                                 new Local("_local0"),
+                                                 new Deref(Local0),
                                                  "FunctionReference",
                                                  "_classVariant"),
                                              new Use(new FunctionPointerConstant(
                                                  new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), []))))
                                      ],
-                                     new GoTo(new BasicBlockId("bb1"))),
-                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                     new GoTo(BB2)),
+                                 new BasicBlock(BB2, [], new Return())
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", FunctionObject([], Unit))
+                                 new MethodLocal("_local0", "a", new LoweredPointer(FunctionObject([], Unit)))
                              ])
                      ])
              },
@@ -212,31 +350,38 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                      ],
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn",
-                             [new BasicBlock(new BasicBlockId("bb0"), [], new Return())],
+                             [new BasicBlock(BB0, [], new Return())],
                              Unit),
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         FunctionObject([], Unit),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
+                                             new Deref(Local0),
                                              new CreateObject(
                                                  FunctionObject([], Unit))),
                                          new Assign(
                                              new Field(
-                                                 new Local("_local0"),
+                                                 new Deref(Local0),
                                                  "FunctionReference",
                                                  "_classVariant"),
                                              new Use(new FunctionPointerConstant(
                                                  new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), []))))
                                      ],
-                                     new GoTo(new BasicBlockId("bb1"))),
-                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                     new GoTo(BB2)),
+                                 new BasicBlock(BB2, [], new Return())
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", FunctionObject([], Unit))
+                                 new MethodLocal("_local0", "a", new LoweredPointer(FunctionObject([], Unit)))
                              ])
                      ])
              },
@@ -255,39 +400,54 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                      ],
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
-                             [new BasicBlock(new BasicBlockId("bb0"), [], new Return())],
+                             [new BasicBlock(BB0, [], new Return())],
                              Unit,
-                             parameters: [("this", new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))]),
+                             parameters: [("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))]),
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyClass", ModuleId),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
+                                             new Deref(Local0),
                                              new CreateObject(new LoweredConcreteTypeReference(
-                                                 "MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                                 "MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
+                                     ],
+                                     AllocateMethodCall(
+                                         FunctionObject([], Unit),
+                                         Local1,
+                                         BB2)),
+                                 new BasicBlock(
+                                     BB2,
+                                     [
                                          new Assign(
-                                             new Local("_local1"),
+                                             new Deref(Local1),
                                              new CreateObject(FunctionObject([], Unit))),
                                          new Assign(
-                                             new Field(new Local("_local1"), "FunctionReference", "_classVariant"),
+                                             new Field(new Deref(Local1), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
                                                  new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), [])))),
                                          new Assign(
-                                             new Field(new Local("_local1"), "FunctionParameter", "_classVariant"),
-                                             new Use(new Copy(new Local("_local0"))))
+                                             new Field(new Deref(Local1), "FunctionParameter", "_classVariant"),
+                                             new Use(new Copy(Local0)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb1"))),
-                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                     new GoTo(BB3)),
+                                 new BasicBlock(BB3, [], new Return())
                              ],
                              Unit,
                              locals: [
                                  new MethodLocal(
                                      "_local0",
                                      "a",
-                                     new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
-                                 new MethodLocal("_local1", "b", FunctionObject([], Unit))
+                                     new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                 new MethodLocal("_local1", "b", new LoweredPointer(FunctionObject([], Unit)))
                              ])
                      ])
              },
@@ -331,10 +491,10 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                  Variant(
                                      "_classVariant",
                                      [
-                                         Field("this", new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                         Field("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
                                          Field(
                                              "MyClass__MyFn__Locals",
-                                             new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))
+                                             new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])))
                                      ])
                              ])
                      ],
@@ -342,41 +502,41 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                          Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn"), "MyClass__MyFn__InnerFn",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
+                                             Local0,
                                              new Use(new Copy(
                                                  new Field(
-                                                     new Field(
-                                                         new Local("_param0"),
+                                                     new Deref(new Field(
+                                                         new Deref(Param0),
                                                          "MyClass__MyFn__Locals",
-                                                         "_classVariant"),
+                                                         "_classVariant")),
                                                      "a",
                                                      "_classVariant")))),
                                          new Assign(
-                                             new Local("_local1"),
+                                             Local1,
                                              new Use(new Copy(
                                                  new Field(
-                                                     new Field(
-                                                         new Local("_param0"),
+                                                     new Deref(new Field(
+                                                         new Deref(Param0),
                                                          "MyClass__MyFn__Locals",
-                                                         "_classVariant"),
+                                                         "_classVariant")),
                                                      "param",
                                                      "_classVariant")))),
                                          new Assign(
-                                             new Local("_local2"),
+                                             Local2,
                                              new Use(new Copy(
                                                  new Field(
-                                                     new Field(
-                                                         new Local("_param0"),
+                                                     new Deref(new Field(
+                                                         new Deref(Param0),
                                                          "this",
-                                                         "_classVariant"),
+                                                         "_classVariant")),
                                                      "MyField",
                                                      "_classVariant"))))
                                      ],
-                                     new GoTo(new BasicBlockId("bb1"))),
-                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                     new GoTo(BB1)),
+                                 new BasicBlock(BB1, [], new Return())
                              ],
                              Unit,
                              locals: [
@@ -385,18 +545,25 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                  new MethodLocal("_local2", "_myField", StringT)
                              ],
                              parameters: [
-                                 ("closure", new LoweredConcreteTypeReference(
+                                 ("closure", new LoweredPointer(new LoweredConcreteTypeReference(
                                      "MyClass__MyFn__InnerFn__Closure",
                                      new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"),
-                                     []))
+                                     [])))
                              ]),
                          Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyClass__MyFn__Locals", ModuleId),
+                                         LocalsObject,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_localsObject"),
+                                             new Deref(LocalsObject),
                                              new CreateObject(
                                                  new LoweredConcreteTypeReference(
                                                      "MyClass__MyFn__Locals",
@@ -404,64 +571,80 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                      []))),
                                          new Assign(
                                              new Field(
-                                                 new Local("_localsObject"),
+                                                 new Deref(LocalsObject),
                                                  "param",
                                                  "_classVariant"),
-                                             new Use(new Copy(new Local("_param1")))),
+                                             new Use(new Copy(Param1))),
                                          new Assign(
                                              new Field(
-                                                 new Local("_localsObject"),
+                                                 new Deref(LocalsObject),
                                                  "a",
                                                  "_classVariant"),
-                                             new Use(new StringConstant(""))),
+                                             new Use(new StringConstant("")))
+                                     ],
+                                     AllocateMethodCall(
+                                         ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", ModuleId),
+                                         Local2,
+                                         BB2)),
+                                 new BasicBlock(
+                                     BB2,
+                                     [
                                          new Assign(
-                                             new Local("_local2"),
+                                             new Deref(Local2),
                                              new CreateObject(
                                                  new LoweredConcreteTypeReference(
                                                      "MyClass__MyFn__InnerFn__Closure",
                                                      new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"),
                                                      []))),
                                          new Assign(
-                                             new Field(new Local("_local2"), "this", "_classVariant"),
-                                             new Use(new Copy(new Local("_param0")))),
+                                             new Field(new Deref(Local2), "this", "_classVariant"),
+                                             new Use(new Copy(Param0))),
                                          new Assign(
-                                             new Field(new Local("_local2"), "MyClass__MyFn__Locals", "_classVariant"),
-                                             new Use(new Copy(new Local("_localsObject")))),
+                                             new Field(new Deref(Local2), "MyClass__MyFn__Locals", "_classVariant"),
+                                             new Use(new Copy(LocalsObject)))
+                                     ],
+                                     AllocateMethodCall(
+                                         FunctionObject([], Unit),
+                                         Local1,
+                                         BB3)),
+                                 new BasicBlock(
+                                     BB3,
+                                     [
                                          new Assign(
-                                             new Local("_local1"),
+                                             new Deref(Local1),
                                              new CreateObject(FunctionObject([], Unit))),
                                          new Assign(
-                                             new Field(new Local("_local1"), "FunctionReference", "_classVariant"),
+                                             new Field(new Deref(Local1), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(
                                                  new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn"), [])))),
                                          new Assign(
-                                             new Field(new Local("_local1"), "FunctionParameter", "_classVariant"),
-                                             new Use(new Copy(new Local("_local2"))))
+                                             new Field(new Deref(Local1), "FunctionParameter", "_classVariant"),
+                                             new Use(new Copy(Local2)))
                                      ],
-                                     new GoTo(new BasicBlockId("bb1"))),
+                                     new GoTo(BB4)),
                                  new BasicBlock(
-                                     new BasicBlockId("bb1"), [], new Return())
+                                     BB4, [], new Return())
                              ],
                              Unit,
                              parameters: [
-                                 ("this", new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                 ("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
                                  ("param", StringT)],
                              locals: [
                                  new MethodLocal(
                                      "_localsObject",
                                      null,
-                                     new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])),
+                                     new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))),
                                  new MethodLocal(
                                      "_local1",
                                      "b",
-                                     FunctionObject([], Unit)),
+                                     new LoweredPointer(FunctionObject([], Unit))),
                                  new MethodLocal(
                                      "_local2",
                                      null,
-                                     new LoweredConcreteTypeReference(
+                                     new LoweredPointer(new LoweredConcreteTypeReference(
                                          "MyClass__MyFn__InnerFn__Closure",
                                          new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"),
-                                         []))
+                                         [])))
                              ])
                      ])
              },
@@ -477,34 +660,41 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                          Method(
                              new DefId(ModuleId, $"{ModuleId}.SomeFn"),
                              "SomeFn",
-                             [new BasicBlock(new BasicBlockId("bb0"), [], new Return())],
+                             [new BasicBlock(BB0, [], new Return())],
                              Unit),
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         FunctionObject([], Unit),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
+                                             new Deref(Local0),
                                              new CreateObject(FunctionObject([], Unit))),
                                          new Assign(
-                                             new Field(new Local("_local0"), "FunctionReference", "_classVariant"),
+                                             new Field(new Deref(Local0), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
                                                  new DefId(ModuleId, $"{ModuleId}.SomeFn"), [])))),
                                      ],
                                      new MethodCall(
                                          FunctionObjectCall([], Unit),
-                                         [new Copy(new Local("_local0"))],
-                                         new Local("_local1"),
-                                         new BasicBlockId("bb1"))),
-                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                         [new Copy(Local0)],
+                                         Local1,
+                                         BB2)),
+                                 new BasicBlock(BB2, [], new Return())
                              ],
                              Unit,
                              locals: [
                                  new MethodLocal(
                                      "_local0",
                                      "a",
-                                     FunctionObject([], Unit)),
+                                     new LoweredPointer(FunctionObject([], Unit))),
                                  new MethodLocal(
                                      "_local1",
                                      null,
@@ -524,8 +714,8 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                          Method(new DefId(ModuleId, $"{ModuleId}.SomeFn"), "SomeFn",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
-                                     [new Assign(new Local("_returnValue"), new Use(new IntConstant(1, 8)))],
+                                     BB0,
+                                     [new Assign(ReturnValue, new Use(new IntConstant(1, 8)))],
                                      new Return())
                              ],
                              parameters: [("a", StringT)],
@@ -533,29 +723,36 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         FunctionObject([StringT], Int64T),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
+                                             new Deref(Local0),
                                              new CreateObject(FunctionObject([StringT], Int64T))),
                                          new Assign(
-                                             new Field(new Local("_local0"), "FunctionReference", "_classVariant"),
+                                             new Field(new Deref(Local0), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
                                                  new DefId(ModuleId, $"{ModuleId}.SomeFn"), [])))),
                                      ],
                                      new MethodCall(
                                          FunctionObjectCall([StringT], Int64T),
-                                         [new Copy(new Local("_local0")), new StringConstant("")],
-                                         new Local("_local1"),
-                                         new BasicBlockId("bb1"))),
-                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                         [new Copy(Local0), new StringConstant("")],
+                                         Local1,
+                                         BB2)),
+                                 new BasicBlock(BB2, [], new Return())
                              ],
                              Unit,
                              locals: [
                                  new MethodLocal(
                                      "_local0",
                                      "a",
-                                     FunctionObject([StringT], Int64T)),
+                                     new LoweredPointer(FunctionObject([StringT], Int64T))),
                                  new MethodLocal("_local1", "b", Int64T)
                              ])
                      ])
@@ -575,29 +772,36 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                      ],
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
-                             [new BasicBlock(new BasicBlockId("bb0"), [], new Return())],
+                             [new BasicBlock(BB0, [], new Return())],
                              Unit,
                              [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T"), (new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "T2")]),
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
                                  new BasicBlock(
-                                     new BasicBlockId("bb0"),
+                                     BB0,
+                                     [],
+                                     AllocateMethodCall(
+                                         FunctionObject([], Unit),
+                                         Local0,
+                                         BB1)),
+                                 new BasicBlock(
+                                     BB1,
                                      [
                                          new Assign(
-                                             new Local("_local0"),
+                                             new Deref(Local0),
                                              new CreateObject(FunctionObject([], Unit))),
                                          new Assign(
-                                             new Field(new Local("_local0"), "FunctionReference", "_classVariant"),
+                                             new Field(new Deref(Local0), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
                                                  new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), [StringT, Int64T])))),
                                      ],
-                                     new GoTo(new BasicBlockId("bb1"))),
-                                 new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                     new GoTo(BB2)),
+                                 new BasicBlock(BB2, [], new Return())
                              ],
                              Unit,
                              locals: [
                                  new MethodLocal("_local0", "a",
-                                     FunctionObject([], Unit))
+                                     new LoweredPointer(FunctionObject([], Unit)))
                              ])
                      ])
              }
