@@ -295,16 +295,16 @@ public partial class TypeChecker
         public List<LocalVariable> LocalVariables { get; init; } = [];
         public List<IVariable> AccessedOuterVariables { get; } = [];
         
-        public static FunctionSignature Printf { get; }
+        public static FunctionSignature PrintString { get; }
 
         static FunctionSignature()
         {
-            var parameters = new OrderedDictionary<string, FunctionSignatureParameter>();
-            var signature = new FunctionSignature(
-                DefId.Printf,
-                Token.Identifier("printf", SourceSpan.Default),
+            var printStringParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+            PrintString = new FunctionSignature(
+                DefId.PrintString,
+                Token.Identifier("print_string", SourceSpan.Default),
                 [],
-                parameters,
+                printStringParameters,
                 IsStatic: true,
                 IsMutable: false,
                 Expressions: [])
@@ -313,14 +313,12 @@ public partial class TypeChecker
                 ReturnType = InstantiatedClass.Unit
             };
 
-            parameters["format"] = new FunctionSignatureParameter(
-                signature,
-                Token.Identifier("format", SourceSpan.Default),
+            printStringParameters["str"] = new FunctionSignatureParameter(
+                PrintString,
+                Token.Identifier("str", SourceSpan.Default),
                 InstantiatedClass.String,
                 false,
                 0);
-
-            Printf = signature;
         }
     }
 

@@ -1,10 +1,14 @@
 using System.Diagnostics;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using Reef.Core.LoweredExpressions;
+using Reef.Core.TypeChecking;
 
 namespace Reef.Core;
 
-public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> usefulMethodIds)
+#pragma warning disable CS9113 // Parameter is unread.
+public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> usefulMethodIds, ILogger logger)
+#pragma warning restore CS9113 // Parameter is unread.
 {
     private const string AsmHeader = """
                                      bits 64
@@ -22,6 +26,10 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
 
                                                       """);
 
+    private const uint PointerSize = 8;
+    private const uint MaxParameterSize = 8;
+    private const string ReturnValueAddressLocal = "_returnValueAddress";
+
     /// <summary>
     /// Dictionary of string constants to their data segment labels
     /// </summary>
@@ -30,8 +38,12 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
     private readonly Queue<(LoweredMethod Method, IReadOnlyList<LoweredConcreteTypeReference> TypeArguments)>
         _methodProcessingQueue = [];
 
+    private readonly HashSet<Register> _registersInUse = [];
+
     private LoweredMethod? _currentMethod;
-    private IReadOnlyList<LoweredConcreteTypeReference> _currentTypeArguments = [];
+    private Dictionary<string, LoweredConcreteTypeReference> _currentTypeArguments = [];
+    private readonly Dictionary<DefId, DataType> _dataTypes = modules.SelectMany(x => x.DataTypes).ToDictionary(
+        x => x.Id);
 
     private readonly HashSet<string> _queuedMethodLabels = [];
 
@@ -44,9 +56,9 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         }
     }
 
-    public static string Process(IReadOnlyList<LoweredModule> modules, HashSet<DefId> usefulMethodIds)
+    public static string Process(IReadOnlyList<LoweredModule> modules, HashSet<DefId> usefulMethodIds, ILogger logger)
     {
-        var assemblyLine = new AssemblyLine(modules, usefulMethodIds);
+        var assemblyLine = new AssemblyLine(modules, usefulMethodIds, logger);
         return assemblyLine.ProcessInner();
     }
 
@@ -122,14 +134,16 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         _codeSegment.AppendLine($"    add     rsp, {ShadowSpaceBytes}");
 
         // zero out rax as return value
-        _codeSegment.AppendLine("    xor     rax, rax");
+        _codeSegment.AppendLine($"    xor     {Register.A.ToAsm(PointerSize)}, {Register.A.ToAsm(PointerSize)}");
         // move rax into rcx for exit process parameter
-        _codeSegment.AppendLine("    mov     rcx, rax");
+        _codeSegment.AppendLine($"    mov     {Register.C.ToAsm(PointerSize)}, {Register.A.ToAsm(PointerSize)}");
         _codeSegment.AppendLine("    call    ExitProcess");
         _codeSegment.AppendLine();
     }
 
-    private Dictionary<string, int> _locals = null!;
+    private Dictionary<string, LocalInfo> _locals = null!;
+
+    private sealed record LocalInfo(IAsmPlace Place, ILoweredTypeReference Type);
 
     private static string GetMethodLabel(IMethod method, IReadOnlyList<LoweredConcreteTypeReference> typeArguments)
     {
@@ -139,53 +153,297 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
     }
 
     private uint _methodCount;
+
+    private LoweredConcreteTypeReference GetConcreteType(ILoweredTypeReference type)
+    {
+        return type switch
+        {
+            LoweredConcreteTypeReference loweredConcreteTypeReference => loweredConcreteTypeReference,
+            LoweredFunctionReference loweredFunctionReference => throw new NotImplementedException(),
+            LoweredGenericPlaceholder loweredGenericPlaceholder => _currentTypeArguments[loweredGenericPlaceholder.PlaceholderName],
+            LoweredPointer loweredPointer => throw new NotImplementedException(),
+            _ => throw new ArgumentOutOfRangeException(nameof(type))
+        };
+    }
+
+    private List<KeyValuePair<ILoweredTypeReference, TypeSizeInfo>> _typeSizes = [];
+
+    private sealed record TypeSizeInfo(uint Size, uint Alignment);
+
+    private bool AreTypeReferencesEqual(ILoweredTypeReference left, ILoweredTypeReference right)
+    {
+        switch (left, right)
+        {
+            case (LoweredConcreteTypeReference leftConcrete, LoweredConcreteTypeReference rightConcrete):
+            {
+                return leftConcrete.DefinitionId == rightConcrete.DefinitionId
+                       && leftConcrete.TypeArguments.Count == rightConcrete.TypeArguments.Count
+                       && leftConcrete.TypeArguments.Zip(rightConcrete.TypeArguments).All(x => AreTypeReferencesEqual(x.First, x.Second));
+            }
+        }
+
+        throw new UnreachableException();
+    }
+    
+    private TypeSizeInfo GetTypeSize(ILoweredTypeReference typeReference)
+    {
+        var foundTypeReference = _typeSizes.FirstOrDefault(x => AreTypeReferencesEqual(x.Key, typeReference));
+        if (foundTypeReference.Key is not null)
+        {
+            return foundTypeReference.Value;
+        }
+
+        var size = new TypeSizeInfo(0, 1);
+        
+        switch (typeReference)
+        {
+            case LoweredConcreteTypeReference concreteTypeReference:
+            {
+                if (concreteTypeReference.DefinitionId == DefId.Int64
+                    || concreteTypeReference.DefinitionId == DefId.UInt64)
+                {
+                    size = new TypeSizeInfo(8, 8);
+                    break;
+                }
+
+                if (concreteTypeReference.DefinitionId == DefId.RawPointer)
+                {
+                    size = new TypeSizeInfo(PointerSize, PointerSize);
+                    break;
+                }
+
+                if (concreteTypeReference.DefinitionId == DefId.Int32 || concreteTypeReference.DefinitionId == DefId.UInt32)
+                {
+                    size = new TypeSizeInfo(4, 4);
+                    break;
+                }
+                
+                if (concreteTypeReference.DefinitionId == DefId.Int16 || concreteTypeReference.DefinitionId == DefId.UInt16)
+                {
+                    size = new TypeSizeInfo(2, 2);
+                    break;
+                }
+                
+                if (concreteTypeReference.DefinitionId == DefId.Int8
+                    || concreteTypeReference.DefinitionId == DefId.UInt8
+                    || concreteTypeReference.DefinitionId == DefId.Boolean
+                    || concreteTypeReference.DefinitionId == DefId.Unit)
+                {
+                    size = new TypeSizeInfo(1, 1);
+                    break;
+                }
+                
+                var dataType = _dataTypes[concreteTypeReference.DefinitionId];
+                
+                foreach (var variant in dataType.Variants)
+                {
+                    var variantSizeInfo = new TypeSizeInfo(0, 1);
+                    
+                    foreach (var field in variant.Fields)
+                    {
+                        TypeSizeInfo fieldSize;
+                        switch (field.Type)
+                        {
+                            case LoweredConcreteTypeReference concreteFieldType:
+                            {
+                                fieldSize = GetTypeSize(concreteFieldType);
+                                break;
+                            }
+                            case LoweredGenericPlaceholder genericPlaceholder:
+                            {
+                                var index = dataType.TypeParameters.Index()
+                                    .First(x => x.Item.PlaceholderName == genericPlaceholder.PlaceholderName).Index;
+                                var typeArgument = concreteTypeReference.TypeArguments[index];
+                                fieldSize = GetTypeSize(GetConcreteType(typeArgument));
+                                break;
+                            }
+                            default:
+                                throw new NotImplementedException(field.Type.GetType().ToString());
+                        }
+
+                        var variantSize = variantSizeInfo.Size;
+                        
+                        AlignInt(ref variantSize, fieldSize.Alignment);
+                        variantSizeInfo = new TypeSizeInfo(
+                            variantSize + fieldSize.Size,
+                            Math.Max(variantSizeInfo.Alignment, fieldSize.Alignment));
+                    }
+
+                    size = new TypeSizeInfo(
+                        Math.Max(size.Size, variantSizeInfo.Size),
+                        Math.Max(size.Alignment, variantSizeInfo.Alignment));
+                }
+                
+                break;
+            }
+            case LoweredPointer:
+            {
+                size = new TypeSizeInfo(PointerSize, PointerSize);
+                break;
+            }
+            case LoweredGenericPlaceholder placeholder:
+            {
+                size = GetTypeSize(_currentTypeArguments[placeholder.PlaceholderName]);
+                break;
+            }
+            default:
+                throw new NotImplementedException(typeReference.GetType().ToString());
+        }
+        
+        return size;
+    }
+
+    private void AlignInt(ref uint value, uint alignBy)
+    {
+        if (alignBy == 0)
+            return;
+        
+        var mod = value % alignBy;
+        if (mod == 0)
+            return;
+
+        value += alignBy - mod;
+    }
+
+    private void AllocateRegister(Register register)
+    {
+        if (!_registersInUse.Add(register))
+        {
+            throw new InvalidOperationException($"Register {register} is already in use");
+        }
+    }
+    
+    private void FreeRegister(Register register)
+    {
+        _registersInUse.Remove(register);
+    }
+
+    private Register AllocateRegister()
+    {
+        var register = Register.GeneralPurposeRegisters.First(_registersInUse.Add);
+        return register;
+    }
     
     private void ProcessMethod(LoweredMethod method, IReadOnlyList<LoweredConcreteTypeReference> typeArguments)
     {
-        _currentTypeArguments = typeArguments;
-        _currentMethod = method;
-        _methodCount++;
-        _locals = [];
-        var stackOffset = 32; // start with offset by 8 because return address is on the top of the stack 
-        foreach (var local in method.Locals.Append(method.ReturnValue))
-        {
-            stackOffset += 8;
-            _locals[local.CompilerGivenName] = -stackOffset;
-        }
-        
         _codeSegment.AppendLine($"{GetMethodLabel(method, typeArguments)}:");
         
         _codeSegment.AppendLine("    push    rbp");
         _codeSegment.AppendLine("    mov     rbp, rsp");
-                
-        // ensure stack space is 16 byte aligned
-        stackOffset += stackOffset % 16;
-        _codeSegment.AppendLine("; Allocate stack space for local variables and parameters");
-        _codeSegment.AppendLine($"    sub     rsp, {stackOffset}");
+        
+        _currentTypeArguments = typeArguments.Zip(method.TypeParameters).ToDictionary(x => x.Second.PlaceholderName, x => x.First);
+        _currentMethod = method;
+        _methodCount++;
+        _locals = [];
+        var parameterStackOffset = PointerSize * 2; // start with offset by PointerSize * 2 because return address and rbp are on the top of the stack 
 
+        var returnType = method.ReturnValue.Type;
+        var returnSize = GetTypeSize(returnType);
 
-        for (var index = 0; index < method.ParameterLocals.Count; index++)
+        var parameters = method.ParameterLocals.ToArray();
+        
+        if (returnSize.Size > MaxParameterSize)
         {
-            var parameterLocal = method.ParameterLocals[index];
+            parameters = parameters.Prepend(new MethodLocal(
+                ReturnValueAddressLocal,
+                null,
+                new LoweredPointer(returnType))).ToArray();
+        }
 
-            var parameterOffset = (index + 2) * 8;
+        for (var i = 0; i < Math.Min(parameters.Length, 4); i++)
+        {
+            var sourceRegister = i switch
+            {
+                0 => Register.C,
+                1 => Register.D,
+                2 => Register.R8,
+                3 => Register.R9,
+                _ => throw new UnreachableException(),
+            };
             
+            AllocateRegister(sourceRegister);
+        }
+        
+        for (var index = 0; index < parameters.Length; index++)
+        {
+            var parameterLocal = parameters[index];
+            var parameterSize = GetTypeSize(parameterLocal.Type);
+            var size = Math.Min(parameterSize.Size, PointerSize);
+            
+            AlignInt(ref parameterStackOffset, parameterSize.Alignment);
+
+            var parameterOffset = (int)parameterStackOffset;
+
             var sourceRegister = index switch
             {
-                0 => "rcx",
-                1 => "rdx",
-                2 => "r8",
-                3 => "r9",
+                0 => Register.C,
+                1 => Register.D,
+                2 => Register.R8,
+                3 => Register.R9,
                 _ => null
             };
 
-            _locals[parameterLocal.CompilerGivenName] = parameterOffset;
+            var rawParameterPlace = new OffsetFromBasePointer(parameterOffset);
+            IAsmPlace parameterPlace = rawParameterPlace;
+            if (parameterSize.Size > MaxParameterSize)
+            {
+                parameterPlace = new PointerTo(parameterPlace, 0);
+            }
+            
+            _locals[parameterLocal.CompilerGivenName] = new LocalInfo(
+                parameterPlace,
+                parameterLocal.Type);
 
             if (sourceRegister is not null)
             {
-                _codeSegment.AppendLine($"    mov     QWORD [rbp{FormatOffset(parameterOffset)}], {sourceRegister}");
+                StoreAsmPlaceInPlace(sourceRegister, rawParameterPlace, size);
+                FreeRegister(sourceRegister);
             }
+            
+            // parameter offset is incremented after we store the parameter place (and maybe move out of register)
+            // because parameters are at higher memory addresses on the stack rather than lower memory addresses
+            parameterStackOffset += size;
         }
+
+        var localStackOffset = 0u;
+
+        IEnumerable<MethodLocal> locals = method.Locals;
+        if (returnSize.Size > MaxParameterSize)
+        {
+            _locals[method.ReturnValue.CompilerGivenName] = new LocalInfo(
+                new PointerTo(_locals[ReturnValueAddressLocal].Place, 0),
+                method.ReturnValue.Type);
+        }
+        else
+        {
+            locals = locals.Append(method.ReturnValue);
+        }
+        
+        foreach (var local in locals)
+        {
+            var typeSize = GetTypeSize(local.Type);
+
+            // make sure stack offset is aligned to the size of the type 
+            AlignInt(ref localStackOffset, typeSize.Alignment);
+            
+            // increment the stack offset before we associate the position with the local so that 
+            // it points to the lowest memory address (top of the stack) as structures grow towards
+            // higher memory addresses
+            localStackOffset += typeSize.Size;
+
+            var localPlace = new OffsetFromBasePointer(-(int)localStackOffset);
+            _locals[local.CompilerGivenName] = new LocalInfo(localPlace, local.Type);
+
+            _codeSegment.AppendLine(
+                $"; {local.CompilerGivenName} ({typeSize.Size} byte{(typeSize.Size > 1 ? "s" : "")}" +
+                $", alignment {typeSize.Alignment} byte{(typeSize.Alignment > 1 ? "s" : "")})" +
+                $": rbp[-{localStackOffset}]");
+        }
+        
+        // ensure stack space is 16 byte aligned
+        AlignInt(ref localStackOffset, 16);
+        _codeSegment.AppendLine("; Allocate stack space for local variables and parameters");
+        _codeSegment.AppendLine($"    sub     rsp, {localStackOffset}");
 
 
         foreach (var basicBlock in method.BasicBlocks)
@@ -202,7 +460,6 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         _codeSegment.AppendLine();
     }
 
-
     private static string FormatOffset(int offset) => offset switch
     {
         0 => "",
@@ -210,7 +467,6 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         > 0 => $"+{offset}"
     };
 
-    // private readonly Stack<FunctionDefinitionReference> _functionStack = [];
     private const uint ShadowSpaceBytes = 32;
 
     /*
@@ -286,11 +542,11 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         return operand switch
         {
             Copy{Place: var place} => GetPlaceType(place) switch
-                {
-                    LoweredConcreteTypeReference concrete when DefId.SignedInts.Contains(concrete.DefinitionId) => IntSigned.Signed,
-                    LoweredConcreteTypeReference concrete when DefId.UnsignedInts.Contains(concrete.DefinitionId) => IntSigned.Unsigned,
-                    _ => null
-                },
+            {
+                LoweredConcreteTypeReference concrete when DefId.SignedInts.Contains(concrete.DefinitionId) => IntSigned.Signed,
+                LoweredConcreteTypeReference concrete when DefId.UnsignedInts.Contains(concrete.DefinitionId) => IntSigned.Unsigned,
+                _ => null
+            },
             UIntConstant => IntSigned.Unsigned,
             IntConstant => IntSigned.Signed,
             BoolConstant or FunctionPointerConstant or StringConstant or UnitConstant => null,
@@ -306,7 +562,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             case Field field:
                 throw new NotImplementedException();
             case Local local:
-                return GetLocalType(local);
+                return _locals[local.LocalName].Type;
             case StaticField staticField:
                 throw new NotImplementedException();
             default:
@@ -315,117 +571,122 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
     }
 
 
-    private ILoweredTypeReference GetLocalType(Local local)
-    {
-        var currentMethod = _currentMethod.NotNull();
-        IEnumerable<MethodLocal> locals =
-            [..currentMethod.Locals, ..currentMethod.ParameterLocals, currentMethod.ReturnValue];
-        var foundLocal = locals.First(x => x.CompilerGivenName == local.LocalName);
-        return foundLocal.Type;
-    }
-    
-
     private void ProcessBinaryOperation(IAsmPlace destination, IOperand left, IOperand right, BinaryOperationKind kind)
     {
+        var operandType = GetOperandType(left);
+        var operandSize = GetTypeSize(operandType);
+        
+        var leftOperandRegister = AllocateRegister();
+        var rightOperandRegister = AllocateRegister();
+        
+        var leftOperandRegisterAsm = leftOperandRegister.ToAsm(operandSize.Size);
+        var rightOperandRegisterAsm = rightOperandRegister.ToAsm(operandSize.Size);
+        
         switch (kind)
         {
             case BinaryOperationKind.Add:
             {
-                MoveOperandToDestination(left, new Register("rax"));
-                MoveOperandToDestination(right, new Register("rbx"));
-                _codeSegment.AppendLine("    add     rax, rbx");
-                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                MoveOperandToDestination(left, leftOperandRegister);
+                MoveOperandToDestination(right, rightOperandRegister);
+                _codeSegment.AppendLine($"    add     {leftOperandRegisterAsm}, {rightOperandRegisterAsm}");
+                StoreAsmPlaceInPlace(Register.A, destination, operandSize.Size);
                 break;
             }
             case BinaryOperationKind.Subtract:
             {
-                MoveOperandToDestination(left, new Register("rax"));
-                MoveOperandToDestination(right, new Register("rbx"));
-                _codeSegment.AppendLine("    sub     rax, rbx");
-                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                MoveOperandToDestination(left, leftOperandRegister);
+                MoveOperandToDestination(right, rightOperandRegister);
+                _codeSegment.AppendLine($"    sub     {leftOperandRegisterAsm}, {rightOperandRegisterAsm}");
+                StoreAsmPlaceInPlace(leftOperandRegister, destination, operandSize.Size);
                 break;
             }
             case BinaryOperationKind.Multiply:
             {
-                MoveOperandToDestination(left, new Register("rax"));
-                MoveOperandToDestination(right, new Register("rbx"));
+                MoveOperandToDestination(left, leftOperandRegister);
+                MoveOperandToDestination(right, rightOperandRegister);
                 var intSigned = GetIntSigned(left).NotNull();
+                
+                // imul with one operand implicitly goes into the a register (rax or al),
+                // and the destination is in the a register too
                 _codeSegment.AppendLine(intSigned == IntSigned.Signed
-                    ? "    imul     rax, rbx"
-                    : "    mul     rax, rbx");
+                    ? $"    imul    {rightOperandRegisterAsm}"
+                    : $"    mul     {rightOperandRegisterAsm}");
 
-                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                StoreAsmPlaceInPlace(leftOperandRegister, destination, operandSize.Size);
                 break;
             }
             case BinaryOperationKind.Divide:
-                {
-                MoveOperandToDestination(left, new Register("rax"));
-                MoveOperandToDestination(right, new Register("rbx"));
+            {
+                MoveOperandToDestination(left, leftOperandRegister);
+                MoveOperandToDestination(right, rightOperandRegister);
                 var intSigned = GetIntSigned(left).NotNull();
                 _codeSegment.AppendLine("    cqo");
                 _codeSegment.AppendLine(intSigned == IntSigned.Signed
-                    ? "    idiv     rbx"
-                    : "    div     rbx");
+                    ? $"    idiv     {rightOperandRegisterAsm}"
+                    : $"    div     {rightOperandRegisterAsm}");
 
-                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                StoreAsmPlaceInPlace(leftOperandRegister, destination, operandSize.Size);
                 break;
             }
             case BinaryOperationKind.LessThan:
             {
-                MoveOperandToDestination(left, new Register("rax"));
-                MoveOperandToDestination(right, new Register("rbx"));
-                _codeSegment.AppendLine("    cmp     rax, rbx");
+                MoveOperandToDestination(left, leftOperandRegister);
+                MoveOperandToDestination(right, rightOperandRegister);
+                _codeSegment.AppendLine($"    cmp     {leftOperandRegisterAsm}, {rightOperandRegisterAsm}");
                 _codeSegment.AppendLine("    pushf");
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    and     rax, 10000000b"); // sign flag
-                _codeSegment.AppendLine("    shr     rax, 7");
-                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                _codeSegment.AppendLine($"    pop     {leftOperandRegister.ToAsm(PointerSize)}");
+                _codeSegment.AppendLine($"    and     {leftOperandRegister.ToAsm(PointerSize)}, 10000000b"); // sign flag
+                _codeSegment.AppendLine($"    shr     {leftOperandRegister.ToAsm(PointerSize)}, 7");
+                StoreAsmPlaceInPlace(leftOperandRegister, destination, 1);
                 break;
             }
             case BinaryOperationKind.LessThanOrEqual:
                 throw new NotImplementedException();
             case BinaryOperationKind.GreaterThan:
             {
-                MoveOperandToDestination(left, new Register("rax"));
-                MoveOperandToDestination(right, new Register("rbx"));
-                _codeSegment.AppendLine("    cmp     rbx, rax");
+                MoveOperandToDestination(left, leftOperandRegister);
+                MoveOperandToDestination(right, rightOperandRegister);
+                _codeSegment.AppendLine($"    cmp     {rightOperandRegisterAsm}, {leftOperandRegisterAsm}");
                 _codeSegment.AppendLine("    pushf");
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    and     rax, 10000000b"); // sign flag
-                _codeSegment.AppendLine("    shr     rax, 7");
-                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                _codeSegment.AppendLine($"    pop     {leftOperandRegister.ToAsm(PointerSize)}");
+                _codeSegment.AppendLine($"    and     {leftOperandRegister.ToAsm(PointerSize)}, 10000000b"); // sign flag
+                _codeSegment.AppendLine($"    shr     {leftOperandRegister.ToAsm(PointerSize)}, 7");
+                StoreAsmPlaceInPlace(leftOperandRegister, destination, 1);
                 break;
             }
             case BinaryOperationKind.GreaterThanOrEqual:
                 throw new NotImplementedException();
             case BinaryOperationKind.Equal:
             {
-                MoveOperandToDestination(left, new Register("rax"));
-                MoveOperandToDestination(right, new Register("rbx"));
-                _codeSegment.AppendLine("    cmp     rax, rbx");
+                MoveOperandToDestination(left, leftOperandRegister);
+                MoveOperandToDestination(right, rightOperandRegister);
+                _codeSegment.AppendLine($"    cmp     {leftOperandRegisterAsm}, {rightOperandRegisterAsm}");
                 _codeSegment.AppendLine("    pushf");
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    and     rax, 1000000b"); // zero flag
-                _codeSegment.AppendLine("    shr     rax, 6");
-                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                _codeSegment.AppendLine($"    pop     {leftOperandRegister.ToAsm(PointerSize)}");
+                _codeSegment.AppendLine($"    and     {leftOperandRegister.ToAsm(PointerSize)}, 1000000b"); // zero flag
+                _codeSegment.AppendLine($"    shr     {leftOperandRegister.ToAsm(PointerSize)}, 6");
+                StoreAsmPlaceInPlace(leftOperandRegister, destination, 1);
                 break;
             }
             case BinaryOperationKind.NotEqual:
             {
-                MoveOperandToDestination(left, new Register("rax"));
-                MoveOperandToDestination(right, new Register("rbx"));
-                _codeSegment.AppendLine("    cmp     rax, rbx");
+                MoveOperandToDestination(left, leftOperandRegister);
+                MoveOperandToDestination(right, rightOperandRegister);
+                _codeSegment.AppendLine($"    cmp     {leftOperandRegisterAsm}, {rightOperandRegisterAsm}");
                 _codeSegment.AppendLine("    pushf");
-                _codeSegment.AppendLine("    pop     rax");
-                _codeSegment.AppendLine("    and     rax, 1000000b"); // zero flag
-                _codeSegment.AppendLine("    shr     rax, 6");
-                _codeSegment.AppendLine("    btc     rax, 0");
-                StoreAsmPlaceInPlace(new Register("rax"), destination);
+                _codeSegment.AppendLine($"    pop     {leftOperandRegister.ToAsm(PointerSize)}");
+                _codeSegment.AppendLine($"    and     {leftOperandRegister.ToAsm(PointerSize)}, 1000000b"); // zero flag
+                _codeSegment.AppendLine($"    shr     {leftOperandRegister.ToAsm(PointerSize)}, 6");
+                _codeSegment.AppendLine($"    btc     {leftOperandRegister.ToAsm(PointerSize)}, 0");
+                StoreAsmPlaceInPlace(leftOperandRegister, destination, 1);
                 break;
             }
             default:
                 throw new ArgumentOutOfRangeException();
         }
+
+        FreeRegister(leftOperandRegister);
+        FreeRegister(rightOperandRegister);
     }
 
     private void AssignRValue(IAsmPlace place, IRValue rValue)
@@ -456,13 +717,21 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
 
     private void ProcessUnaryOperation(IAsmPlace place, IOperand operand, UnaryOperationKind kind)
     {
+        var operandType = GetOperandType(operand);
+        var operandSize = GetTypeSize(operandType);
+        
         switch (kind)
         {
             case UnaryOperationKind.Not:
             {
-                MoveOperandToDestination(operand, new Register("rax"));
-                _codeSegment.AppendLine("    btc     rax, 0");
-                StoreAsmPlaceInPlace(new Register("rax"), place);
+                var operandRegister = AllocateRegister();
+                MoveOperandToDestination(operand, operandRegister);
+                
+                // btc instruction must be performed on 16 bit registers or greater
+                var registerSize = operandRegister.ToAsm(Math.Max(operandSize.Size, 2));
+                _codeSegment.AppendLine($"    btc     {registerSize}, 0");
+                StoreAsmPlaceInPlace(operandRegister, place, operandSize.Size);
+                FreeRegister(operandRegister);
                 break;
             }
             case UnaryOperationKind.Negate:
@@ -484,25 +753,98 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                 break;
             case Return:
             {
-                StoreAsmPlaceInPlace(PlaceToAsmPlace(new Local(_currentMethod.NotNull().ReturnValue.CompilerGivenName)), new Register("rax"));
+                var returnType = _currentMethod.NotNull().ReturnValue.Type;
+                var returnSize = GetTypeSize(returnType);
+                var returnValuePlace = PlaceToAsmPlace(new Local(_currentMethod.NotNull().ReturnValue.CompilerGivenName));
+                
+                AllocateRegister(Register.A);
+                if (returnSize.Size > MaxParameterSize)
+                {
+                    // copy the pointer to the return value into the "a" register
+                    StoreAsmPlaceInPlace(
+                        _locals[ReturnValueAddressLocal].Place,
+                        Register.A,
+                        PointerSize);
+                }
+                else
+                {
+                    StoreAsmPlaceInPlace(
+                        returnValuePlace, 
+                        Register.A,
+                        returnSize.Size);
+                }
+                
                 _codeSegment.AppendLine("    leave");
                 _codeSegment.AppendLine("    ret");
+                FreeRegister(Register.A);
                 break;
             }
             case SwitchInt switchInt:
             {
-                MoveOperandToDestination(switchInt.Operand, new Register("rax"));
+                var register = AllocateRegister();
+                MoveOperandToDestination(switchInt.Operand, register);
+                var operandType = GetOperandType(switchInt.Operand);
+                var operandSize = GetTypeSize(operandType);
                 foreach (var (intCase, jumpTo) in switchInt.Cases)
                 {
-                    _codeSegment.AppendLine($"    cmp     rax, {intCase}");
+                    _codeSegment.AppendLine($"    cmp     {register.ToAsm(operandSize.Size)}, {intCase}");
                     _codeSegment.AppendLine($"    je      {GetBasicBlockLabel(jumpTo)}");
                 }
 
                 _codeSegment.AppendLine($"    jmp     {GetBasicBlockLabel(switchInt.Otherwise)}");
+                FreeRegister(register);
                 break;
             }
             default:
                 throw new ArgumentOutOfRangeException(nameof(terminator));
+        }
+    }
+
+    private ILoweredTypeReference GetOperandType(IOperand operand)
+    {
+        switch (operand)
+        {
+            case BoolConstant boolConstant:
+            {
+                return new LoweredConcreteTypeReference(
+                    TypeChecker.InstantiatedClass.Boolean.Signature.Name,
+                    DefId.Boolean,
+                    []);
+            }
+            case Copy copy:
+                return GetPlaceType(copy.Place);
+            case FunctionPointerConstant functionPointerConstant:
+                return new RawPointer();
+            case IntConstant intConstant:
+            {
+                return intConstant.ByteSize switch
+                {
+                    1 => new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.Int8.Signature.Name, DefId.Int8, []),
+                    2 => new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.Int16.Signature.Name, DefId.Int16, []),
+                    4 => new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.Int32.Signature.Name, DefId.Int32, []),
+                    8 => new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.Int64.Signature.Name, DefId.Int64, []),
+                    _ => throw new UnreachableException()
+                };
+            }
+            case UIntConstant intConstant:
+            {
+                return intConstant.ByteSize switch
+                {
+                    1 => new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.UInt8.Signature.Name, DefId.UInt8, []),
+                    2 => new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.UInt16.Signature.Name, DefId.UInt16, []),
+                    4 => new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.UInt32.Signature.Name, DefId.UInt32, []),
+                    8 => new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.UInt64.Signature.Name, DefId.UInt64, []),
+                    _ => throw new UnreachableException()
+                };
+            }
+            case SizeOf sizeOf:
+                return new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.UInt64.Signature.Name, DefId.UInt64, []);
+            case StringConstant stringConstant:
+                return new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.String.Signature.Name, DefId.String, []);
+            case UnitConstant unitConstant:
+                return new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.Unit.Signature.Name, DefId.Unit, []);
+            default:
+                throw new ArgumentOutOfRangeException(nameof(operand));
         }
     }
 
@@ -513,7 +855,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         _codeSegment.AppendLine($"; MethodCall({arity})");
 
         var calleeMethod = GetMethod(methodCall.Function.DefinitionId).NotNull();
-
+        
         IReadOnlyList<LoweredConcreteTypeReference> calleeTypeArguments =
         [
             ..methodCall.Function.TypeArguments.Select(x =>
@@ -525,56 +867,135 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                     case LoweredGenericPlaceholder genericReefTypeReference:
                     {
                         Debug.Assert(genericReefTypeReference.OwnerDefinitionId == _currentMethod.NotNull().Id);
-                        var typeArgumentIndex = _currentMethod.NotNull().TypeParameters.Index()
-                            .First(y => y.Item.PlaceholderName == genericReefTypeReference.PlaceholderName).Index;
-                        return _currentTypeArguments[typeArgumentIndex];
+                        return _currentTypeArguments[genericReefTypeReference.PlaceholderName];
                     }
                     default:
                         throw new NotImplementedException();
                 }
             })
         ];
-
+        
         if (calleeMethod is LoweredMethod loweredMethod)
         {
             TryEnqueueMethodForProcessing(loweredMethod, calleeTypeArguments);
         }
 
         var functionLabel = GetMethodLabel(calleeMethod, calleeTypeArguments);
+
+        var returnType = calleeMethod.ReturnValue.Type;
+        if (returnType is LoweredGenericPlaceholder genericReturnType)
+        {
+            var typeArgumentIndex = calleeMethod.TypeParameters.Index()
+                .First(x => x.Item.PlaceholderName == genericReturnType.PlaceholderName)
+                .Index;
+            returnType = calleeTypeArguments[typeArgumentIndex];
+        }
+        var returnSize = GetTypeSize(returnType);
         
-        // I think we can assume everything is already aligned now. We're not using the stack anymore other than local variables
+        var argumentTypesEnumerable = methodCall.Arguments.Select(x => (GetOperandType(x), x));
         
-        var parametersSpaceNeeded = Math.Max((methodCall.Arguments.Count - 4) * 8, 0) + 32;
-        parametersSpaceNeeded += parametersSpaceNeeded % 16;
+        var destination = PlaceToAsmPlace(methodCall.PlaceDestination);
+
+        if (returnSize.Size > MaxParameterSize)
+        {
+            argumentTypesEnumerable = 
+                argumentTypesEnumerable.Prepend((new LoweredPointer(returnType), new AddressOf(methodCall.PlaceDestination)));
+            arity += 1;
+        }
+        
+        var argumentTypes = argumentTypesEnumerable.ToArray();
+        
+        
+        var parametersSpaceNeeded = (uint)Math.Max((argumentTypes.Length - 4) * MaxParameterSize, 0) + 32;
         
         // move first four arguments into registers as specified by win 64 calling convention, then
         // shift the remaining arguments up by four so that the 'top' 32 bytes are free and can act as
         // the callee's shadow space 
 
+        var largeParametersSpace = 0u;
+
+        var parameterPointers = new Dictionary<int, int>();
+        
+        for (var i = arity - 1; i >= 0; i--)
+        {
+            var (argumentType, argument) = argumentTypes[i];
+
+            var size = GetTypeSize(argumentType);
+
+            if (size.Size > MaxParameterSize)
+            {
+                AlignInt(ref largeParametersSpace, size.Alignment);
+                largeParametersSpace += size.Size;
+                parameterPointers[i] = -(int)largeParametersSpace;
+                _codeSegment.AppendLine($"; Parameter {i} ({size} bytes) at offset {-largeParametersSpace}");
+                MoveOperandToDestination(argument.NotNull(), new OffsetFromStackPointer(-(int)largeParametersSpace));
+            }
+        }
+
+        parametersSpaceNeeded += largeParametersSpace;
+        
+        AlignInt(ref parametersSpaceNeeded, 16);
+
+        _codeSegment.AppendLine($"; LargeParameterSpace: {largeParametersSpace} bytes, ArgumentStackSpace: {parametersSpaceNeeded - largeParametersSpace}");
         _codeSegment.AppendLine($"    sub     rsp, {parametersSpaceNeeded}");
         
         for (var i = arity - 1; i >= 0; i--)
         {
-            IAsmPlace destination = i switch
+            IAsmPlace argumentDestination = i switch
             {
-                0 => new Register("rcx"),
-                1 => new Register("rdx"),
-                2 => new Register("r8"),
-                3 => new Register("r9"),
-                _ => new OffsetFromStackPointer(i * 8)
+                0 => Register.C,
+                1 => Register.D,
+                2 => Register.R8,
+                3 => Register.R9,
+                _ => new OffsetFromStackPointer(i * (int)MaxParameterSize)
             };
+
+            var (type, argument) = argumentTypes[i];
             
-            var argument = methodCall.Arguments[i];
-            
-            MoveOperandToDestination(argument, destination);
+            var size = GetTypeSize(type);
+
+
+            if (argumentDestination is Register register)
+            {
+                AllocateRegister(register);
+            }
+
+            if (size.Size <= MaxParameterSize)
+            {
+                MoveOperandToDestination(argument, argumentDestination);
+            }
+            else
+            {
+                var offsetFromStackPointer = parameterPointers[i] + (int)parametersSpaceNeeded;
+                
+                StorePlaceAddress(argumentDestination, $"[rsp{FormatOffset(offsetFromStackPointer)}]");
+            }
         }
         
         _codeSegment.AppendLine($"    call    {functionLabel}");
+        
+        FreeRegister(Register.C);
+        FreeRegister(Register.D);
+        FreeRegister(Register.R8);
+        FreeRegister(Register.R9);
 
         // move rsp back to where it was before we called the function
         _codeSegment.AppendLine($"    add     rsp, {parametersSpaceNeeded}");
 
-        StoreAsmPlaceInPlace(new Register("rax"), PlaceToAsmPlace(methodCall.PlaceDestination));
+        AllocateRegister(Register.A);
+        IAsmPlace returnSource = Register.A;
+        
+        if (returnSize.Size > MaxParameterSize)
+        {
+            returnSource = new PointerTo(returnSource, 0);
+        }
+
+        StoreAsmPlaceInPlace(
+            returnSource,
+            destination,
+            returnSize.Size);
+        
+        FreeRegister(Register.A);
 
         _codeSegment.AppendLine($"    jmp     {GetBasicBlockLabel(methodCall.GoToAfter)}");
     }
@@ -586,9 +1007,71 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
 
     private interface IAsmPlace;
 
-    private record Register(string Name) : IAsmPlace;
+    private sealed class Register : IAsmPlace
+    {
+        public static readonly Register A = new ("a", false);
+        public static readonly Register B = new ("b", false);
+        public static readonly Register C = new ("c", false);
+        public static readonly Register D = new ("d", false);
+        public static readonly Register Source = new ("rsi", false);
+        public static readonly Register Destination = new ("rdi", false);
+        
+        public static readonly Register R8 = new ("r8", true);
+        public static readonly Register R9 = new ("r9", true);
+        public static readonly Register R10 = new ("r10", true);
+        public static readonly Register R11 = new ("r11", true);
+        public static readonly Register R12 = new ("r12", true);
+        public static readonly Register R13 = new ("r13", true);
+        public static readonly Register R14 = new ("r14", true);
+        public static readonly Register R15 = new ("r15", true);
 
+        public static readonly IReadOnlyList<Register> GeneralPurposeRegisters = [
+            A,
+            B,
+            C,
+            D,
+            R8,
+            R9,
+            R10,
+            R11,
+            R12,
+            R13,
+            R14,
+            R15,
+        ];
+        
+        private Register(string name, bool isNumberRegister)
+        {
+            Name = name;
+            IsNumberRegister = isNumberRegister;
+        } 
+        
+        private string Name { get; }
+        private bool IsNumberRegister { get; }
 
+        public string ToAsm(uint size)
+        {
+            if (Name is "rsi" or "rdi")
+            {
+                return Name;
+            }
+            
+            return (size, IsNumberRegister) switch
+            {
+                (1, false) => $"{Name}l",
+                (2, false) => $"{Name}x",
+                (4, false) => $"e{Name}x",
+                (8, false) => $"r{Name}x",
+                (1, true) => $"{Name}b",
+                (2, true) => $"{Name}w",
+                (4, true) => $"{Name}d",
+                (8, true) => Name,
+                _ => throw new InvalidOperationException(size.ToString())
+            };
+        }
+    } 
+    
+    private record PointerTo(IAsmPlace PointerPlace, int Offset) : IAsmPlace;
     private record OffsetFromBasePointer(int Offset) : IAsmPlace;
     private record OffsetFromStackPointer(int Offset) : IAsmPlace;
 
@@ -597,18 +1080,20 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         switch (operand)
         {
             case BoolConstant boolConstant:
-                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, {(boolConstant.Value ? '1' : '0')}");
+                MoveIntoPlace(destination, boolConstant.Value ? "1" : "0", 1);
                 break;
             case Copy copy:
             {
-                StoreAsmPlaceInPlace(PlaceToAsmPlace(copy.Place), destination);
+                var operandType = GetOperandType(operand);
+                var size = GetTypeSize(operandType);
+                StoreAsmPlaceInPlace(PlaceToAsmPlace(copy.Place), destination, size.Size);
                 break;
             }
             case FunctionPointerConstant functionPointerConstant:
                 throw new NotImplementedException();
             case IntConstant intConstant:
             {
-                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, 0x{intConstant.Value:X}");
+                MoveIntoPlace(destination, $"0x{intConstant.Value:X}", intConstant.ByteSize);
                 break;
             }
             case StringConstant stringConstant:
@@ -622,78 +1107,645 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                         $"    {stringName} db \"{stringConstant.Value}\", 0");
                 }
 
-                LoadEffectiveAddress(destination, $"[{stringName}]");
+                MoveOperandToDestination(new UIntConstant((ulong)stringConstant.Value.Length, (int)PointerSize), destination);
+                
+                IAsmPlace stringAddressDestination = destination switch
+                {
+                    OffsetFromBasePointer offsetFromBasePointer => new OffsetFromBasePointer(
+                        offsetFromBasePointer.Offset + (int)PointerSize),
+                    OffsetFromStackPointer offsetFromStackPointer => new OffsetFromStackPointer(
+                        offsetFromStackPointer.Offset + (int)PointerSize),
+                    PointerTo pointerTo => pointerTo with {Offset = pointerTo.Offset + (int)PointerSize},
+                    _ => throw new InvalidOperationException($"string must be on the stack for now: {destination.GetType()}")
+                };
+
+                StorePlaceAddress(stringAddressDestination, $"[{stringName}]");
                 break;
             }
             case UIntConstant uIntConstant:
-                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, 0x{uIntConstant.Value:X}");
+                MoveIntoPlace(destination, $"0x{uIntConstant.Value:X}", uIntConstant.ByteSize);
                 break;
             case UnitConstant unitConstant:
                 throw new NotImplementedException();
+            case AddressOf(var place):
+            {
+                var asmPlace = PlaceToAsmPlace(place);
+
+                StorePlaceAddress(destination, asmPlace);
+                break;
+            }
             default:
-                throw new ArgumentOutOfRangeException(nameof(operand));
+                throw new ArgumentOutOfRangeException(nameof(operand), operand.GetType().ToString());
         }
     }
 
-    private void LoadEffectiveAddress(IAsmPlace place, string operand)
+    private void StorePlaceAddress(IAsmPlace destination, IAsmPlace source)
     {
-        if (place is Register { Name: var registerName })
+        switch (source)
         {
-            _codeSegment.AppendLine($"    lea     {registerName}, {operand}");
+            case OffsetFromBasePointer(var offset):
+                StorePlaceAddress(destination, $"[rbp{FormatOffset(offset)}]");
+                break;
+            case OffsetFromStackPointer(var offset):
+                StorePlaceAddress(destination, $"[rsp{FormatOffset(offset)}]");
+                break;
+            case PointerTo pointerTo:
+                switch (pointerTo.PointerPlace)
+                {
+                    case OffsetFromBasePointer offsetFromBasePointer:
+                    {
+                        if (pointerTo.Offset != 0)
+                        {
+                            var register = AllocateRegister();
+                            MoveIntoPlace(register, offsetFromBasePointer, PointerSize);
+                            _codeSegment.AppendLine($"    add     {register.ToAsm(PointerSize)}, 0x{pointerTo.Offset:x}");
+                            MoveIntoPlace(destination, register, PointerSize);
+                            FreeRegister(register);
+                        }
+                        else
+                        {
+                            MoveIntoPlace(destination, offsetFromBasePointer, PointerSize);
+                        }
+                        break;
+                    }
+                    case OffsetFromStackPointer offsetFromStackPointer:
+                    {
+                        if (pointerTo.Offset != 0)
+                        {
+                            var register = AllocateRegister();
+                            MoveIntoPlace(register, offsetFromStackPointer, PointerSize);
+                            _codeSegment.AppendLine($"    add     {register.ToAsm(PointerSize)}, 0x{pointerTo.Offset:x}");
+                            MoveIntoPlace(destination, register, PointerSize);
+                            FreeRegister(register);
+                        }
+                        else
+                        {
+                            MoveIntoPlace(destination, offsetFromStackPointer, PointerSize);
+                        }
+                        break;
+                    }
+                    case PointerTo:
+                        throw new InvalidOperationException();
+                    case Register register:
+                    {
+                        if (pointerTo.Offset != 0)
+                        {
+                            _codeSegment.AppendLine($"    add     {register.ToAsm(PointerSize)}, 0x{pointerTo.Offset:x}");
+                        }
+                        MoveIntoPlace(destination, register, PointerSize);
+                        break;
+                    }
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+
+                break;
+            case Register:
+                throw new InvalidOperationException("Register has no address");
+            default:
+                throw new ArgumentOutOfRangeException(nameof(source));
+        }
+    }
+
+    private void StorePlaceAddress(IAsmPlace place, string operand)
+    {
+        if (place is Register register)
+        {
+            _codeSegment.AppendLine($"    lea     {register.ToAsm(PointerSize)}, {operand}");
             return;
         }
 
-        _codeSegment.AppendLine($"    lea     rax, {operand}");
-        StoreAsmPlaceInPlace(new Register("rax"), place);
-    }
-    
-    private static string GetPlaceAsm(IAsmPlace place)
-    {
-        return place switch
-        {
-            OffsetFromStackPointer {Offset: var offset} => $"QWORD [rsp{FormatOffset(offset)}]",
-            OffsetFromBasePointer {Offset: var offset} => $"QWORD [rbp{FormatOffset(offset)}]",
-            Register {Name: var name} => name,
-            _ => throw new ArgumentOutOfRangeException(nameof(place))
-        };
+        register = AllocateRegister();
+        _codeSegment.AppendLine($"    lea     {register.ToAsm(PointerSize)}, {operand}");
+        StoreAsmPlaceInPlace(register, place, PointerSize);
+        FreeRegister(register);
     }
 
-    private void StoreAsmPlaceInPlace(IAsmPlace source, IAsmPlace destination)
+    private void MoveIntoPlace(IAsmPlace place, Register register, uint size)
     {
-        switch (source, destination)
+        switch (place)
         {
-            case (Register sourceRegister, Register destinationRegister):
+            case OffsetFromBasePointer(var offset):
             {
-                _codeSegment.AppendLine($"    mov     {destinationRegister.Name}, {sourceRegister.Name}");
+                _codeSegment.AppendLine($"    mov     [rbp{FormatOffset(offset)}], {register.ToAsm(size)}");
                 break;
             }
-            case (Register sourceRegister, OffsetFromBasePointer or OffsetFromStackPointer):
+            case OffsetFromStackPointer(var offset):
+                _codeSegment.AppendLine($"    mov     [rsp{FormatOffset(offset)}], {register.ToAsm(size)}");
+                break;
+            case PointerTo pointerTo:
             {
-                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, {sourceRegister.Name}");
+                var destinationRegister = AllocateRegister();
+                StorePlaceAddress(destinationRegister, pointerTo);
+                _codeSegment.AppendLine($"    mov     [{destinationRegister.ToAsm(PointerSize)}], {register.ToAsm(size)}");
+                FreeRegister(destinationRegister);
                 break;
             }
-            case (OffsetFromBasePointer or OffsetFromStackPointer, Register destinationRegister):
+            case Register destinationRegister when destinationRegister == register:
+                throw new InvalidOperationException();
+            case Register destinationRegister:
+                _codeSegment.AppendLine($"    mov     {destinationRegister.ToAsm(size)}, {register.ToAsm(size)}");
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(place));
+        }
+
+    }
+
+    private void MoveIntoPlace(IAsmPlace place, OffsetFromBasePointer offsetFromBasePointer, uint size)
+    {
+        if (size > PointerSize)
+        {
+            AllocateRegister(Register.C);
+            AllocateRegister(Register.Source);
+            AllocateRegister(Register.Destination);
+            
+            MoveIntoPlace(Register.C, $"0x{size:x}", PointerSize);
+            StorePlaceAddress(Register.Source, offsetFromBasePointer);
+            StorePlaceAddress(Register.Destination, place);
+            _codeSegment.AppendLine("    rep movsb");
+            
+            
+            FreeRegister(Register.C);
+            FreeRegister(Register.Source);
+            FreeRegister(Register.Destination);
+            
+            return;
+        }
+        var sizeSpecifier = SizeSpecifiers[size];
+        switch (place)
+        {
+            case OffsetFromBasePointer(var offset):
             {
-                _codeSegment.AppendLine($"    mov     {destinationRegister.Name}, {GetPlaceAsm(source)}");
+                var register = AllocateRegister();
+                MoveIntoPlace(register, offsetFromBasePointer, size);
+                _codeSegment.AppendLine($"    mov     {sizeSpecifier} [rbp{FormatOffset(offset)}], {register.ToAsm(size)}");
+                FreeRegister(register);
                 break;
             }
-            case (OffsetFromBasePointer or OffsetFromStackPointer, OffsetFromBasePointer or OffsetFromStackPointer):
+            case OffsetFromStackPointer(var offset):
             {
-                _codeSegment.AppendLine($"    mov     rax, {GetPlaceAsm(source)}");
-                _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination)}, rax");
+                var register = AllocateRegister();
+                MoveIntoPlace(register, offsetFromBasePointer, size);
+                _codeSegment.AppendLine($"    mov     {sizeSpecifier} [rbp{FormatOffset(offset)}], {register.ToAsm(size)}");
+                FreeRegister(register);
+                break;
+            }
+            case PointerTo(var pointerPlace, var offset):
+            {
+                switch (pointerPlace)
+                {
+                    case OffsetFromBasePointer offsetFromBasePointer1:
+                    {
+                        var register = AllocateRegister();
+                        MoveIntoPlace(register, offsetFromBasePointer, size);
+                        _codeSegment.AppendLine($"    mov     [rbp{FormatOffset(offset+offsetFromBasePointer1.Offset)}], {register.ToAsm(size)}");
+                        FreeRegister(register);
+                        break;
+                    }
+                    case OffsetFromStackPointer offsetFromStackPointer:
+                    {
+                        var register = AllocateRegister();
+                        MoveIntoPlace(register, offsetFromBasePointer, size);
+                        _codeSegment.AppendLine($"    mov     [rbp{FormatOffset(offset+offsetFromStackPointer.Offset)}], {register.ToAsm(size)}");
+                        FreeRegister(register);
+                        break;
+                    }
+                    case PointerTo:
+                        throw new InvalidOperationException();
+                    case Register register:
+                    {
+                        var destinationRegister = AllocateRegister();
+                        MoveIntoPlace(destinationRegister, offsetFromBasePointer, size);
+                        _codeSegment.AppendLine($"    mov     [{register.ToAsm(PointerSize)}{FormatOffset(offset)}], {destinationRegister.ToAsm(size)}");
+                        FreeRegister(destinationRegister);
+                        break;
+                    }
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(pointerPlace));
+                }
+                break;
+            }
+            case Register register:
+            {
+                _codeSegment.AppendLine($"    mov     {register.ToAsm(size)}, [rbp{FormatOffset(offsetFromBasePointer.Offset)}]");
                 break;
             }
             default:
-                throw new UnreachableException();
+                throw new ArgumentOutOfRangeException(nameof(place));
+        }
+
+    }
+
+    private void MoveIntoPlace(IAsmPlace destination, PointerTo source, uint size)
+    {
+        if (size > PointerSize)
+        {
+            AllocateRegister(Register.C);
+            AllocateRegister(Register.Source);
+            AllocateRegister(Register.Destination);
+            
+            MoveIntoPlace(Register.C, $"0x{size:x}", PointerSize);
+            StorePlaceAddress(Register.Source, source);
+            StorePlaceAddress(Register.Destination, destination);
+            _codeSegment.AppendLine("    rep movsb");
+            
+            FreeRegister(Register.C);
+            FreeRegister(Register.Source);
+            FreeRegister(Register.Destination);
+            
+            return;
+        }
+
+        switch (source.PointerPlace)
+        {
+            case OffsetFromBasePointer offsetFromBasePointer:
+            {
+                var register1 = AllocateRegister();
+                var register2 = AllocateRegister();
+                _codeSegment.AppendLine($"    mov     {register1.ToAsm(PointerSize)}, [rbp{FormatOffset(offsetFromBasePointer.Offset)}]");
+                _codeSegment.AppendLine($"    mov     {register2.ToAsm(size)}, [{register1.ToAsm(PointerSize)}{FormatOffset(source.Offset)}]");
+                MoveIntoPlace(destination, register2, size);
+                FreeRegister(register1);
+                FreeRegister(register2);
+                break;
+            }
+            case OffsetFromStackPointer offsetFromStackPointer:
+            {
+                var register1 = AllocateRegister();
+                var register2 = AllocateRegister();
+                _codeSegment.AppendLine($"    mov     {register1.ToAsm(PointerSize)}, [rsp{FormatOffset(offsetFromStackPointer.Offset)}]");
+                _codeSegment.AppendLine($"    mov     {register2.ToAsm(size)}, [{register1.ToAsm(PointerSize)}{FormatOffset(source.Offset)}]");
+                MoveIntoPlace(destination, register2, size);
+                FreeRegister(register1);
+                FreeRegister(register2);
+                break;
+            }
+            case PointerTo:
+                throw new InvalidOperationException();
+            case Register register:
+            {
+                var register1 = AllocateRegister();
+                _codeSegment.AppendLine($"    mov     {register1.ToAsm(size)}, [{register.ToAsm(PointerSize)}{FormatOffset(source.Offset)}]");
+                MoveIntoPlace(destination, register1, size);
+                FreeRegister(register1);
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException();
         }
     }
+
+    private void MoveIntoPlace(IAsmPlace place, OffsetFromStackPointer offsetFromStackPointer, uint size)
+    {
+        if (size > PointerSize)
+        {
+            AllocateRegister(Register.C);
+            AllocateRegister(Register.Source);
+            AllocateRegister(Register.Destination);
+            
+            MoveIntoPlace(Register.C, $"0x{size:x}", PointerSize);
+            StorePlaceAddress(Register.Source, offsetFromStackPointer);
+            StorePlaceAddress(Register.Destination, place);
+            _codeSegment.AppendLine("    rep movsb");
+            
+            FreeRegister(Register.C);
+            FreeRegister(Register.Source);
+            FreeRegister(Register.Destination);
+            return;
+        }
+        var sizeSpecifier = SizeSpecifiers[size];
+        switch (place)
+        {
+            case OffsetFromBasePointer(var offset):
+            {
+                var register = AllocateRegister();
+                
+                MoveIntoPlace(register, offsetFromStackPointer, size);
+                _codeSegment.AppendLine($"    mov     {sizeSpecifier} [rsp{FormatOffset(offset)}], {register.ToAsm(size)}");
+                FreeRegister(register);
+                break;
+            }
+            case OffsetFromStackPointer(var offset):
+            {
+                var register = AllocateRegister();
+                MoveIntoPlace(register, offsetFromStackPointer, size);
+                _codeSegment.AppendLine($"    mov     {sizeSpecifier} [rsp{FormatOffset(offset)}], {register.ToAsm(size)}");
+                FreeRegister(register);
+                break;
+            }
+            case PointerTo(var pointerPlace, var offset):
+            {
+                switch (pointerPlace)
+                {
+                    case OffsetFromBasePointer offsetFromBasePointer:
+                    {
+                        var register = AllocateRegister();
+                        
+                        MoveIntoPlace(register, offsetFromStackPointer, size);
+                        _codeSegment.AppendLine($"    mov     [rbp{FormatOffset(offset+offsetFromBasePointer.Offset)}], {register.ToAsm(size)}");
+                        FreeRegister(register);
+                        break;
+                    }
+                    case OffsetFromStackPointer offsetFromStackPointer1:
+                    {
+                        var register = AllocateRegister();
+                        
+                        MoveIntoPlace(register, offsetFromStackPointer, size);
+                        _codeSegment.AppendLine($"    mov     [rsp{FormatOffset(offset+offsetFromStackPointer1.Offset)}], {register.ToAsm(size)}");
+
+                        FreeRegister(register);
+                        break;
+                    }
+                    case PointerTo:
+                        throw new InvalidOperationException();
+                    case Register register:
+                    {
+                        var register1 = AllocateRegister();
+                        MoveIntoPlace(register1, offsetFromStackPointer, size);
+                        _codeSegment.AppendLine($"    mov     [{register.ToAsm(PointerSize)}{FormatOffset(offset)}], {register1.ToAsm(size)}");
+                        FreeRegister(register1);
+                        break;
+                    }
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(pointerPlace));
+                }
+                break;
+            }
+            case Register register:
+            {
+                _codeSegment.AppendLine($"    mov     {register.ToAsm(size)}, [rsp{FormatOffset(offsetFromStackPointer.Offset)}]");
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(place));
+        }
+
+    }
+
+    private void MoveIntoPlace(IAsmPlace place, string constantValue, uint size)
+    {
+        var sizeSpecifier = SizeSpecifiers[size];
+        switch (place)
+        {
+            case OffsetFromBasePointer(var offset):
+                _codeSegment.AppendLine($"    mov     {sizeSpecifier} [rbp{FormatOffset(offset)}], {constantValue}");
+                break;
+            case OffsetFromStackPointer(var offset):
+                _codeSegment.AppendLine($"    mov     {sizeSpecifier} [rsp{FormatOffset(offset)}], {constantValue}");
+                break;
+            case PointerTo(var pointerPlace, var offset):
+            {
+                switch (pointerPlace)
+                {
+                    case OffsetFromBasePointer offsetFromBasePointer:
+                    {
+                        var register = AllocateRegister();
+                        
+                        _codeSegment.AppendLine($"    mov     {register.ToAsm(PointerSize)}, [rbp{FormatOffset(offsetFromBasePointer.Offset)}]");
+                        _codeSegment.AppendLine($"    mov     {sizeSpecifier} [{register.ToAsm(PointerSize)}{FormatOffset(offset)}], {constantValue}");
+                        FreeRegister(register);
+                        break;
+                    }
+                    case OffsetFromStackPointer offsetFromStackPointer:
+                    {
+                        var register = AllocateRegister();
+                        
+                        _codeSegment.AppendLine($"    mov     {register.ToAsm(PointerSize)}, [rsp{FormatOffset(offsetFromStackPointer.Offset)}]");
+                        _codeSegment.AppendLine($"    mov     {sizeSpecifier} [{register.ToAsm(PointerSize)}{FormatOffset(offset)}], {constantValue}");
+
+                        FreeRegister(register);
+                        break;
+                    }
+                    case PointerTo:
+                        throw new InvalidOperationException();
+                    case Register register:
+                        _codeSegment.AppendLine($"    mov     [{register.ToAsm(PointerSize)}{FormatOffset(offset)}], {constantValue}");
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(pointerPlace));
+                }
+                break;
+            }
+            case Register register:
+            {
+                _codeSegment.AppendLine($"    mov     {register.ToAsm(size)}, {constantValue}");
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(place));
+        }
+    }
+
+    private static string GetPlaceAsm_(IAsmPlace place, uint size)
+    {
+        var sizeSpecifier = SizeSpecifiers[size];
+        
+        return place switch
+        {
+            OffsetFromStackPointer(var offset) => $"{sizeSpecifier} [rsp{FormatOffset(offset)}]",
+            OffsetFromBasePointer(var offset) => $"{sizeSpecifier} [rbp{FormatOffset(offset)}]",
+            Register register => register.ToAsm(size),
+            PointerTo(Register register, var offset) => $"{sizeSpecifier} [{register.ToAsm(PointerSize)}{FormatOffset(offset)}]",
+            PointerTo(var pointerPlace, var offset) => throw new NotImplementedException(),
+            _ => throw new ArgumentOutOfRangeException(nameof(place), place.GetType().ToString())
+        };
+    }
+    
+    private void StoreAsmPlaceInPlace(IAsmPlace source, IAsmPlace destination, uint size)
+    {
+        switch (source)
+        {
+            case OffsetFromBasePointer offsetFromBasePointer:
+                MoveIntoPlace(destination, offsetFromBasePointer, size);
+                break;
+            case OffsetFromStackPointer offsetFromStackPointer:
+                MoveIntoPlace(destination, offsetFromStackPointer, size);
+                break;
+            case PointerTo pointerTo:
+                MoveIntoPlace(destination, pointerTo, size);
+                break;
+            case Register register:
+                MoveIntoPlace(destination, register, size);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(source));
+        }
+        // switch (source, destination)
+        // {
+        //     case (_, Register) when size > PointerSize:
+        //         throw new InvalidOperationException("cannot move more than 8 bytes into register");
+        //     case (Register, _) when size > PointerSize:
+        //         throw new InvalidOperationException("cannot move more than 8 bytes out of register");
+        //     case (Register sourceRegister, Register destinationRegister):
+        //     {
+        //         _codeSegment.AppendLine($"    mov     {destinationRegister.ToAsm(size)}, {sourceRegister.ToAsm(size)}");
+        //         break;
+        //     }
+        //     case (Register sourceRegister, OffsetFromBasePointer or OffsetFromStackPointer):
+        //     {
+        //         MoveIntoPlace(destination, sourceRegister, size);
+        //         break;
+        //     }
+        //     case (Register sourceRegister, PointerTo destinationPointerTo):
+        //     {
+        //         throw new NotImplementedException();
+        //     }
+        //     case (OffsetFromBasePointer or OffsetFromStackPointer, Register destinationRegister):
+        //     {
+        //         _codeSegment.AppendLine($"    mov     {destinationRegister.ToAsm(size)}, {GetPlaceAsm(source, size)}");
+        //         break;
+        //     }
+        //     case (OffsetFromBasePointer or OffsetFromStackPointer, OffsetFromBasePointer or OffsetFromStackPointer)
+        //         when size > PointerSize:
+        //     {
+        //         var i = 0;
+        //         for (; i < size - size % PointerSize; i += (int)PointerSize)
+        //         {
+        //             IAsmPlace sourcePlace = source switch
+        //             {
+        //                 OffsetFromBasePointer(var offset) => new OffsetFromBasePointer(offset + i),
+        //                 OffsetFromStackPointer(var offset) => new OffsetFromStackPointer(offset + i),
+        //                 _ => throw new UnreachableException()
+        //             };
+        //             IAsmPlace destinationPlace = destination switch
+        //             {
+        //                 OffsetFromBasePointer(var offset) => new OffsetFromBasePointer(offset + i),
+        //                 OffsetFromStackPointer(var offset) => new OffsetFromStackPointer(offset + i),
+        //                 _ => throw new UnreachableException()
+        //             };
+        //             
+        //             _codeSegment.AppendLine($"    mov     {Register.A.ToAsm(PointerSize)}, {GetPlaceAsm(sourcePlace, PointerSize)}");
+        //             _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destinationPlace, PointerSize)}, {Register.A.ToAsm(PointerSize)}");
+        //         }
+        //         var remaining = size - i;
+        //         if (remaining > 0)
+        //         {
+        //             throw new NotImplementedException();
+        //         }
+        //
+        //         break;
+        //     }
+        //     case (OffsetFromBasePointer or OffsetFromStackPointer, OffsetFromBasePointer or OffsetFromStackPointer):
+        //     {
+        //         _codeSegment.AppendLine($"    mov     {Register.A.ToAsm(size)}, {GetPlaceAsm(source, size)}");
+        //         _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination, size)}, {Register.A.ToAsm(size)}");
+        //         break;
+        //     }
+        //     case (OffsetFromBasePointer or OffsetFromStackPointer, PointerTo(var pointerPlace, var pointerPlaceOffset))
+        //         when size > PointerSize:
+        //     {
+        //         if (pointerPlace is not Register)
+        //         {
+        //             _codeSegment.AppendLine($"    mov     {Register.B.ToAsm(PointerSize)}, {GetPlaceAsm(pointerPlace, PointerSize)}");
+        //             pointerPlace = Register.B;
+        //         }
+        //         
+        //         var i = 0;
+        //         for (; i < size - size % PointerSize; i += (int)PointerSize)
+        //         {
+        //             IAsmPlace sourcePlace = source switch
+        //             {
+        //                 OffsetFromBasePointer(var offset) => new OffsetFromBasePointer(offset + i),
+        //                 OffsetFromStackPointer(var offset) => new OffsetFromStackPointer(offset + i),
+        //                 _ => throw new UnreachableException()
+        //             };
+        //             
+        //             var destinationPlace = new PointerTo(pointerPlace, i + pointerPlaceOffset);
+        //             
+        //             _codeSegment.AppendLine($"    mov     {Register.A.ToAsm(PointerSize)}, {GetPlaceAsm(sourcePlace, PointerSize)}");
+        //             _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destinationPlace, PointerSize)}, {Register.A.ToAsm(PointerSize)}");
+        //         }
+        //         var remaining = size - i;
+        //         if (remaining > 0)
+        //         {
+        //             throw new NotImplementedException();
+        //         }
+        //
+        //         break;
+        //     }
+        //     case (OffsetFromBasePointer or OffsetFromStackPointer, PointerTo destinationPointerTo):
+        //     {
+        //         throw new NotImplementedException();
+        //     }
+        //     case (PointerTo sourcePointerTo, Register destinationRegister):
+        //         throw new NotImplementedException();
+        //     case (PointerTo sourcePointerTo, PointerTo destinationPointerTo):
+        //     {
+        //         _codeSegment.AppendLine($"    mov     {Register.C.ToAsm(PointerSize)}, 0x{size:x}");
+        //         
+        //         if (sourcePointerTo.PointerPlace is PointerTo
+        //             || destinationPointerTo.PointerPlace is PointerTo)
+        //         {
+        //             throw new InvalidOperationException("Pointer to can't point to a pointer");
+        //         }
+        //
+        //         _codeSegment.AppendLine($"    mov     {Register.Source.ToAsm(PointerSize)}, {GetPlaceAsm(sourcePointerTo.PointerPlace, PointerSize)}");
+        //         _codeSegment.AppendLine($"    mov     {Register.Destination.ToAsm(PointerSize)}, {GetPlaceAsm(destinationPointerTo.PointerPlace, PointerSize)}");
+        //
+        //         _codeSegment.AppendLine("    rep movsb");
+        //         break;
+        //     }
+        //     case (PointerTo sourcePointerTo, OffsetFromBasePointer or OffsetFromStackPointer):
+        //     {
+        //         switch (sourcePointerTo.PointerPlace)
+        //         {
+        //             case Register r when r == Register.A:
+        //                 // value already in rax, no need to do anything
+        //                 break;
+        //             case OffsetFromBasePointer:
+        //             case OffsetFromStackPointer:
+        //             case Register:
+        //             {
+        //                 _codeSegment.AppendLine($"    mov     {Register.A.ToAsm(PointerSize)}, {GetPlaceAsm(sourcePointerTo.PointerPlace, PointerSize)}");
+        //                 break;
+        //             }
+        //             case PointerTo:
+        //                 throw new InvalidOperationException("Cannot have pointer to another pointer to");
+        //             default:
+        //                 throw new ArgumentOutOfRangeException(sourcePointerTo.PointerPlace.GetType().ToString());
+        //         }
+        //
+        //         var i = 0;
+        //         for (; i < size; i += (int)PointerSize)
+        //         {
+        //             IAsmPlace destinationAsm = destination switch
+        //             {
+        //                 OffsetFromBasePointer(var offset) => new OffsetFromBasePointer(offset + i),
+        //                 OffsetFromStackPointer(var offset) => new OffsetFromStackPointer(offset + i),
+        //                 _ => throw new UnreachableException()
+        //             };
+        //
+        //             _codeSegment.AppendLine($"    mov     {Register.B.ToAsm(PointerSize)}, [{Register.A.ToAsm(PointerSize)}{FormatOffset(i)}]");
+        //             _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destinationAsm, PointerSize)}, {Register.B.ToAsm(PointerSize)}");
+        //         }
+        //
+        //         if (i < size)
+        //         {
+        //             throw new NotImplementedException();
+        //         }
+        //
+        //         break;
+        //     }
+        //     default:
+        //         throw new UnreachableException();
+        // }
+    }
+
+    private static readonly Dictionary<uint, string> SizeSpecifiers = new()
+    {
+        { 1, "BYTE" },
+        { 2, "WORD" },
+        { 4, "DWORD" },
+        { 8, "QWORD" },
+    };
 
     private IAsmPlace PlaceToAsmPlace(IPlace place)
     {
         return place switch
         {
             Field field => throw new NotImplementedException(),
-            Local local => new OffsetFromBasePointer(_locals[local.LocalName]),
+            Local local => _locals[local.LocalName].Place,
             StaticField staticField => throw new NotImplementedException(),
             _ => throw new ArgumentOutOfRangeException(nameof(place))
         };

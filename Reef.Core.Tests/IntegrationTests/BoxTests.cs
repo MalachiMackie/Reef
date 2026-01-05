@@ -7,18 +7,19 @@ public class BoxTests : IntegrationTestBase
     {
         await SetupTest(
             """
-            class MyClass {pub field MyField: string}
+            class MyClass {pub field MyField: string, pub field SecondField: string}
             
-            var a = new unboxed MyClass{MyField = "hi"};
+            var a = new unboxed MyClass{MyField = "hi", SecondField = "bye"};
             
-            printf(a.MyField);
+            print_string(a.MyField);
+            print_string(a.SecondField);
             """);
 
         var output = await Run();
         output.ExitCode.Should().Be(0);
         output.StandardOutput.Should().Be("hi");
     }
-
+    
     [Fact]
     public async Task ModifyUnboxedClassInFunction()
     {
@@ -27,19 +28,19 @@ public class BoxTests : IntegrationTestBase
             
             fn SomeFn(mut param: unboxed MyClass) {
                 param.MyField = "bye";
-                printf("param.MyField == ");
-                printf(param.MyField);
-                printf(". ");
+                print_string("param.MyField == ");
+                print_string(param.MyField);
+                print_string(". ");
             }
             
-            class MyClass {pub field MyField: string}
+            class MyClass {pub mut field MyField: string}
             
             var mut a = new unboxed MyClass{MyField = "hi"};
             SomeFn(a);
             
-            printf("a.MyField == ");
-            printf(a.MyField);
-            printf(". ");
+            print_string("a.MyField == ");
+            print_string(a.MyField);
+            print_string(". ");
             """);
 
         var output = await Run();
@@ -55,9 +56,9 @@ public class BoxTests : IntegrationTestBase
 
             fn SomeFn(mut param: unboxed MyClass) {
                 param.MyField = "bye";
-                printf("param.MyField == ");
-                printf(param.MyField);
-                printf(". ");
+                print_string("param.MyField == ");
+                print_string(param.MyField);
+                print_string(". ");
             }
 
             class MyClass {pub field MyField: string}
@@ -65,9 +66,9 @@ public class BoxTests : IntegrationTestBase
             var mut a = new MyClass{MyField = "hi"};
             SomeFn(a);
 
-            printf("a.MyField == ");
-            printf(a.MyField);
-            printf(". ");
+            print_string("a.MyField == ");
+            print_string(a.MyField);
+            print_string(". ");
             """);
 
         var output = await Run();
@@ -83,16 +84,16 @@ public class BoxTests : IntegrationTestBase
             var a: boxed i32 = box(1);
             
             if (unbox(a) == 1) {
-                printf("a == 1. ");
+                print_string("a == 1. ");
             }
             if (unbox(a) == 2) {
-                printf("a == 2. ");
+                print_string("a == 2. ");
             }
             if (a == box(1)) {
-                printf("a == box(1). ");
+                print_string("a == box(1). ");
             }
             if (a == box(2)) {
-                printf("a == box(2). ");
+                print_string("a == box(2). ");
             }
             """);
 
@@ -109,10 +110,10 @@ public class BoxTests : IntegrationTestBase
             fn SomeFn(mut param: boxed i32) {
                 param = box(2);
                 if (param == box(1)) {
-                    printf("param == box(1). ");
+                    print_string("param == box(1). ");
                 }
                 else if (param == box(2)) {
-                    printf("param == box(2). ");
+                    print_string("param == box(2). ");
                 }
             }
             
@@ -120,10 +121,10 @@ public class BoxTests : IntegrationTestBase
             SomeFn(a);
             
             if (a == box(1)) {
-                printf("a == box(1)");
+                print_string("a == box(1)");
             }
             else if (a == box(2)) {
-                printf("a == box(2)");
+                print_string("a == box(2)");
             }
             """
         );
@@ -141,10 +142,10 @@ public class BoxTests : IntegrationTestBase
             fn SomeFn(mut param: i32) {
                 param = 2;
                 if (param == 1) {
-                    printf("param == 1. ");
+                    print_string("param == 1. ");
                 }
                 else if (param == 2) {
-                    printf("param == 2. ");
+                    print_string("param == 2. ");
                 }
             }
 
@@ -152,10 +153,10 @@ public class BoxTests : IntegrationTestBase
             SomeFn(a);
 
             if (a == 1) {
-                printf("a == 1");
+                print_string("a == 1");
             }
             else if (a == 2) {
-                printf("a == 2");
+                print_string("a == 2");
             }
             """
         );

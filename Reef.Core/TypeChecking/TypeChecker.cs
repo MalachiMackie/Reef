@@ -36,14 +36,14 @@ public partial class TypeChecker
 
     private void TypeCheckInner()
     {
-        var printf = FunctionSignature.Printf;
+        var printString = FunctionSignature.PrintString;
         
         // initial scope
         _typeCheckingScopes.Push(new TypeCheckingScope(
             null,
             new Dictionary<string, FunctionSignature>()
             {
-                { printf.Name, printf},
+                { printString.Name, printString},
             },
             InstantiatedClass.Unit,
             null,

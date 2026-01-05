@@ -543,7 +543,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                     if (a == 5) {
                         continue;
                     }
-                    printf("hi")
+                    print_string("hi")
                  }
                  """,
                  LoweredProgram(
@@ -606,7 +606,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                      new BasicBlockId("bb4"),
                                      [],
                                      new MethodCall(
-                                         new LoweredFunctionReference(DefId.Printf, []),
+                                         new LoweredFunctionReference(DefId.PrintString, []),
                                          [new StringConstant("hi")],
                                          new Local("_local3"),
                                          new BasicBlockId("bb5"))),

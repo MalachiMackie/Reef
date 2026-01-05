@@ -27,10 +27,10 @@ public class IntOperations : IntegrationTestBase
             var one: {{typeSpecifier}} = 1;
             var two: {{typeSpecifier}} = 2;
             if (one == one) {
-                printf("1 == 1");
+                print_string("1 == 1");
             }
             if (one == two) {
-                printf("1 == 2");
+                print_string("1 == 2");
             }
             """,
             typeSpecifier);
@@ -48,10 +48,10 @@ public class IntOperations : IntegrationTestBase
             var one: {{typeSpecifier}} = 1;
             var zero: {{typeSpecifier}} = 0;
             if (one != zero) {
-                printf("1 != 0");
+                print_string("1 != 0");
             }
             if (one != one) {
-                printf("1 != 1");
+                print_string("1 != 1");
             }
             """, typeSpecifier);
 
@@ -70,9 +70,9 @@ public class IntOperations : IntegrationTestBase
             var two: {{typeSpecifier}} = 2;
             var a = one + two;
             if (a == 3) {
-                printf("a == 3");
+                print_string("a == 3");
             } else {
-                printf("a != 3");
+                print_string("a != 3");
             }
             """, typeSpecifier);
 
@@ -92,9 +92,9 @@ public class IntOperations : IntegrationTestBase
             var one: {{typeSpecifier}} = 1;
             var a = four - one;
             if (a == 3) {
-                printf("a == 3");
+                print_string("a == 3");
             } else {
-                printf("a != 3");
+                print_string("a != 3");
             }
             """, typeSpecifier);
 
@@ -114,9 +114,9 @@ public class IntOperations : IntegrationTestBase
             var two: {{typeSpecifier}} = 2;
             var a = four * two;
             if (a == 8) {
-                printf("a == 8");
+                print_string("a == 8");
             } else {
-                printf("a != 8");
+                print_string("a != 8");
             }
             """, typeSpecifier);
 
@@ -136,9 +136,9 @@ public class IntOperations : IntegrationTestBase
             var two: {{typeSpecifier}} = 2;
             var a = four / two;
             if (a == 2) {
-                printf("a == 2");
+                print_string("a == 2");
             } else {
-                printf("a != 2");
+                print_string("a != 2");
             }
             """, typeSpecifier);
 
@@ -158,9 +158,9 @@ public class IntOperations : IntegrationTestBase
             var three: {{typeSpecifier}} = 3;
             var a = four / three;
             if (a == 1) {
-                printf("a == 1");
+                print_string("a == 1");
             } else {
-                printf("a != 1");
+                print_string("a != 1");
             }
             """);
 
@@ -179,13 +179,13 @@ public class IntOperations : IntegrationTestBase
             var one: {{typeSpecifier}} = 1;
             var two: {{typeSpecifier}} = 2;
             if (one > two) {
-                printf("1 > 2");
+                print_string("1 > 2");
             }
             if (two > one) {
-                printf("2 > 1");
+                print_string("2 > 1");
             }
             if (two > two) {
-                printf("2 > 2");
+                print_string("2 > 2");
             }
             """, typeSpecifier
         );
@@ -204,13 +204,13 @@ public class IntOperations : IntegrationTestBase
               var one: {{typeSpecifier}} = 1;
               var two: {{typeSpecifier}} = 2;
               if (one < two) {
-                  printf("1 < 2");
+                  print_string("1 < 2");
               }
               if (two < one) {
-                  printf("2 < 1");
+                  print_string("2 < 1");
               }
               if (two < two) {
-                  printf("2 > 2");
+                  print_string("2 > 2");
               }
               """, typeSpecifier
         );

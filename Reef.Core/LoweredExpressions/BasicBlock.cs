@@ -54,6 +54,8 @@ public record CreateObject(LoweredConcreteTypeReference Type) : IRValue;
 
 public record Copy(IPlace Place) : IOperand;
 
+public record AddressOf(IPlace Place) : IOperand;
+
 public record StringConstant(string Value) : IOperand;
 
 public record IntConstant(long Value, byte ByteSize) : IOperand;
@@ -128,6 +130,7 @@ public record LoweredConcreteTypeReference(
 public record LoweredGenericPlaceholder(DefId OwnerDefinitionId, string PlaceholderName) : ILoweredTypeReference;
 
 public record LoweredPointer(ILoweredTypeReference PointerTo) : ILoweredTypeReference;
+public record RawPointer : ILoweredTypeReference;
 
 public record DataType(
     DefId Id,

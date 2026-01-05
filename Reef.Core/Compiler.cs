@@ -66,22 +66,22 @@ public class Compiler
         }
 
         logger.LogInformation("Lowering...");
-        var (newLoweredProgram, newImportedModules) = ProgramAbseil.Lower(parsedProgram.ParsedProgram);
+        var (loweredProgram, importedModules) = ProgramAbseil.Lower(parsedProgram.ParsedProgram);
 
 
         if (outputIr)
         {
-            var irStr = PrettyPrinter.PrettyPrintLoweredProgram(newLoweredProgram, false, false);
+            var irStr = PrettyPrinter.PrettyPrintLoweredProgram(loweredProgram, false, false);
             await File.WriteAllTextAsync(Path.Join(buildDirectory, $"{fileNameWithoutExtension}.ir"), irStr, ct);
         }
 
         logger.LogInformation("Generating Assembly...");
-        IReadOnlyList<LoweredModule> allNewModules = [..newImportedModules.Append(newLoweredProgram)];
+        IReadOnlyList<LoweredModule> allModules = [..importedModules.Append(loweredProgram)];
 
-        var newUsefulMethodIds = new TreeShaker(allNewModules).Shake();
+        var usefulMethodIds = new TreeShaker(allModules).Shake();
 
         var assembly =
-            AssemblyLine.Process(allNewModules, newUsefulMethodIds);
+            AssemblyLine.Process(allModules, usefulMethodIds, logger);
         var asmFile = $"{fileNameWithoutExtension}.nasm";
         await File.WriteAllTextAsync(Path.Join(buildDirectory, asmFile), assembly, ct);
 
@@ -131,6 +131,11 @@ public class Compiler
         var windowsKitsVersion = "10.0.22000.0";
 
         logger.LogInformation("Linking...");
+
+        var runtimeLibraryLocation = 
+            Path.Join(Path.GetDirectoryName(typeof(Compiler).Assembly.Location),
+                "libreef_runtime.a");
+        
         var linkProcess = new Process
         {
             StartInfo = new ProcessStartInfo(
@@ -141,6 +146,7 @@ public class Compiler
                     "/subsystem:console",
                     $"/out:{Path.Join(buildDirectory, $"{fileNameWithoutExtension}.exe")}",
                     "/machine:x64",
+                    runtimeLibraryLocation,
                     $@"C:\Program Files (x86)\Windows Kits\10\Lib\{windowsKitsVersion}\um\x64\kernel32.lib",
                     @$"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\{msvcVersion}\lib\x64\legacy_stdio_definitions.lib",
                     @$"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\{msvcVersion}\lib\x64\legacy_stdio_wide_specifiers.lib",

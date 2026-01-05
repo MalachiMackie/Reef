@@ -12,7 +12,7 @@ public class VariableTests : IntegrationTestBase
     [Fact]
     public async Task PrintStringVariable()
     {
-        await SetupTest("var a = \"My Test\";printf(a)");
+        await SetupTest("var a = \"My Test\";print_string(a)");
         var result = await Run();
 
         result.ExitCode.Should().Be(0);
@@ -27,10 +27,10 @@ public class VariableTests : IntegrationTestBase
             var a = "Hello";
             var b = "World";
 
-            printf(a);
-            printf(" ");
-            printf(b);
-            printf("!");
+            print_string(a);
+            print_string(" ");
+            print_string(b);
+            print_string("!");
             """);
 
         var result = await Run();
@@ -47,7 +47,7 @@ public class VariableTests : IntegrationTestBase
             var mut a = "hello";
             a = "world";
 
-            printf(a);
+            print_string(a);
             """);
 
         var result = await Run();

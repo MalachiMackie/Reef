@@ -14,4 +14,13 @@
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.1.1" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Update="libreef_runtime.a">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="libreef_runtime.dll">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
 </Project>

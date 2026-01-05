@@ -11,7 +11,7 @@ public class StringTests : IntegrationTestBase
     [Fact]
     public async Task PrintStringConstant()
     {
-        await SetupTest("""printf("Hello World!")""");
+        await SetupTest("""print_string("Hello World!")""");
 
         var result = await Run();
 
@@ -22,7 +22,7 @@ public class StringTests : IntegrationTestBase
     [Fact]
     public async Task PrintMultipleStringConstants()
     {
-        await SetupTest("""printf("Hello ");printf("World!!")""");
+        await SetupTest("""print_string("Hello ");print_string("World!!")""");
 
         var result = await Run();
 

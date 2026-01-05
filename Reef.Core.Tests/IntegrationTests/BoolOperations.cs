@@ -9,7 +9,7 @@ public class BoolOperations : IntegrationTestBase
             """
             var a = true;
             if (a) {
-                printf("true");
+                print_string("true");
             }
             """);
 
@@ -25,7 +25,7 @@ public class BoolOperations : IntegrationTestBase
             """
             var a = false;
             if (a) {
-                printf("false");
+                print_string("false");
             }
             """);
 
@@ -41,13 +41,13 @@ public class BoolOperations : IntegrationTestBase
             """
             var a = true;
             if (a) {
-                printf("true. ");
+                print_string("true. ");
             }
             if (!a) {
-                printf("!true. ");
+                print_string("!true. ");
             }
             if (!!a) {
-                printf("!!true. ");
+                print_string("!!true. ");
             }
             """);
 
@@ -62,25 +62,25 @@ public class BoolOperations : IntegrationTestBase
         await SetupTest(
             """
             fn getTrue(): bool {
-                printf("getTrue(). ");
+                print_string("getTrue(). ");
                 return true;
             }
             fn getFalse(): bool {
-                printf("getFalse(). ");
+                print_string("getFalse(). ");
                 return false;
             }
             
             if (getTrue() && getTrue()) {
-                printf("true && true. ");
+                print_string("true && true. ");
             }
             if (getFalse() && getTrue()) {
-                printf("false && true. ");
+                print_string("false && true. ");
             }
             if (getTrue() && getFalse()) {
-                printf("true && false. ");
+                print_string("true && false. ");
             }
             if (getFalse() && getFalse()) {
-                printf("false && false. ");
+                print_string("false && false. ");
             }
             """);
 
@@ -95,25 +95,25 @@ public class BoolOperations : IntegrationTestBase
         await SetupTest(
             """
             fn getTrue(): bool {
-                printf("getTrue(). ");
+                print_string("getTrue(). ");
                 return true;
             }
             fn getFalse(): bool {
-                printf("getFalse(). ");
+                print_string("getFalse(). ");
                 return false;
             }
 
             if (getTrue() || getTrue()) {
-                printf("true || true. ");
+                print_string("true || true. ");
             }
             if (getFalse() || getTrue()) {
-                printf("false || true. ");
+                print_string("false || true. ");
             }
             if (getTrue() || getFalse()) {
-                printf("true || false. ");
+                print_string("true || false. ");
             }
             if (getFalse() || getFalse()) {
-                printf("false || false");
+                print_string("false || false");
             }
             """);
 

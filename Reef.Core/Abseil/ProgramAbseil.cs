@@ -44,19 +44,23 @@ public partial class ProgramAbseil
         return (abseil.LowerInner(), abseil._importedModules);
     }
 
+    private LoweredExternMethod ExternMethodFromSignature(TypeChecker.FunctionSignature signature)
+    {
+        return new LoweredExternMethod(
+            signature.Id,
+            signature.Name,
+            [..signature.TypeParameters.Select(x => new LoweredGenericPlaceholder(signature.Id, x.GenericName))],
+            ReturnValue: new MethodLocal(ReturnValueLocalName, null, GetTypeReference(signature.ReturnType)),
+            ParameterLocals: [..signature.Parameters.Select((x, i) => new MethodLocal(
+                ParameterLocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))]);
+    }
+
     private ProgramAbseil(LangProgram program)
     {
         var importedDataTypes = new List<DataType>();
-        var printf = TypeChecker.FunctionSignature.Printf;
         var importedMethods = new List<IMethod>
         {
-            new LoweredExternMethod(
-                printf.Id,
-                printf.Name,
-                [],
-                ReturnValue: new MethodLocal(ReturnValueLocalName, null, GetTypeReference(TypeChecker.InstantiatedClass.Unit)),
-                ParameterLocals: [..printf.Parameters.Select((x, i) => new MethodLocal(
-                    ParameterLocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))])
+            ExternMethodFromSignature(TypeChecker.FunctionSignature.PrintString),
         };
 
         var rawPointerType = new LoweredConcreteTypeReference(
@@ -169,6 +173,19 @@ public partial class ProgramAbseil
                     [..variant.CreateFunction.Parameters.Values.Select((x, i) => new MethodLocal(ParameterLocalName((uint)i), x.Name.StringValue, GetTypeReference(x.Type)))],
                     []));
         }
+
+        var stringSignature = TypeChecker.InstantiatedClass.String.Signature;
+
+        importedDataTypes.Add(new DataType(
+            DefId.String,
+            stringSignature.Name,
+            [],
+            [
+                new DataTypeVariant(
+                    ClassVariantName,
+                    [..stringSignature.Fields.Select(x => new DataTypeField(x.Name, GetTypeReference(x.Type)))])
+            ],
+            []));
         
         _importedModules = [
             new LoweredModule

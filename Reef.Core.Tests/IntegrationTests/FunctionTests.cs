@@ -7,9 +7,9 @@ public class FunctionTests : IntegrationTestBase
     {
         await SetupTest("""
             fn SomeFn() {
-                printf("SomeFn");
+                print_string("SomeFn");
             }
-            printf("Start. ");
+            print_string("Start. ");
             SomeFn();
             """);
 
@@ -24,13 +24,13 @@ public class FunctionTests : IntegrationTestBase
         await SetupTest("""
             fn SomeFn(a: i64, b: string, c: bool) {
                 if (a == 0) {
-                    printf("a == 0. ");
+                    print_string("a == 0. ");
                 }
 
-                printf(b);
+                print_string(b);
 
                 if (c) {
-                    printf("c is true. ");
+                    print_string("c is true. ");
                 }
             }
 
@@ -55,7 +55,7 @@ public class FunctionTests : IntegrationTestBase
                 return "Hello World";
             }
 
-            printf(SomeFn());
+            print_string(SomeFn());
             """);
 
         var output = await Run();
@@ -74,8 +74,8 @@ public class FunctionTests : IntegrationTestBase
                 return "Good Bye";
             }
             fn SomeFn3(a: string, b: string) {
-                printf(a);
-                printf(b);
+                print_string(a);
+                print_string(b);
             }
 
             SomeFn3(SomeFn(), SomeFn2());
@@ -92,14 +92,14 @@ public class FunctionTests : IntegrationTestBase
         await SetupTest(
             """
             fn SomeFn(a: string, b: string, c: string, d: string, e: string, f: string, g: string, h: string) {
-                printf(a);
-                printf(b);
-                printf(c);
-                printf(d);
-                printf(e);
-                printf(f);
-                printf(g);
-                printf(h);
+                print_string(a);
+                print_string(b);
+                print_string(c);
+                print_string(d);
+                print_string(e);
+                print_string(f);
+                print_string(g);
+                print_string(h);
             }
             
             SomeFn("a", "b", "c", "d", "e", "f", "g", "h");
@@ -124,9 +124,9 @@ public class FunctionTests : IntegrationTestBase
             var b = SomeFn("hi");
             
             if (a == 1) {
-                printf("a == 1. ");
+                print_string("a == 1. ");
             }
-            printf(b);
+            print_string(b);
             """);
 
         var result = await Run();
@@ -151,9 +151,9 @@ public class FunctionTests : IntegrationTestBase
             var b = Fn2("hi");
             
             if (a == 1) {
-                printf("a == 1. ");
+                print_string("a == 1. ");
             }
-            printf(b);
+            print_string(b);
             """
         );
         

@@ -10,14 +10,14 @@ public class ControlFlowTests : IntegrationTestBase
             var b = a < 2;
 
             if (b) {
-                printf("Less than 2. ");
+                print_string("Less than 2. ");
             }
 
             if (a > 2) {
-                printf("Greater than 2. ");
+                print_string("Greater than 2. ");
             }
             else {
-                printf("Less than or equal to 2. ");
+                print_string("Less than or equal to 2. ");
             }
             """);
 
@@ -35,14 +35,14 @@ public class ControlFlowTests : IntegrationTestBase
             var b = a < 2;
 
             if (b) {
-                printf("Less than 2. ");
+                print_string("Less than 2. ");
             }
 
             if (a > 2) {
-                printf("Greater than 2. ");
+                print_string("Greater than 2. ");
             }
             else {
-                printf("Less than or equal to 2. ");
+                print_string("Less than or equal to 2. ");
             }
             """);
 
@@ -60,14 +60,14 @@ public class ControlFlowTests : IntegrationTestBase
             var b = a < 2;
 
             if (b) {
-                printf("Less than 2. ");
+                print_string("Less than 2. ");
             }
 
             if (a > 2) {
-                printf("Greater than 2. ");
+                print_string("Greater than 2. ");
             }
             else {
-                printf("Less than or equal to 2. ");
+                print_string("Less than or equal to 2. ");
             }
             """);
 
@@ -84,7 +84,7 @@ public class ControlFlowTests : IntegrationTestBase
             """
             var mut a = 10;
             while (a > 0) {
-                printf("hi. ");
+                print_string("hi. ");
                 a = a - 1;
             }
             """);
@@ -107,7 +107,7 @@ public class ControlFlowTests : IntegrationTestBase
                     continue;
                 }
                 
-                printf("hi. ");
+                print_string("hi. ");
                 
                 if (a == 5) {
                     break;
