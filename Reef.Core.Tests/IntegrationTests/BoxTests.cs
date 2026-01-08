@@ -17,7 +17,7 @@ public class BoxTests : IntegrationTestBase
 
         var output = await Run();
         output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Be("hi");
+        output.StandardOutput.Should().Be("hibye");
     }
     
     [Fact]
@@ -61,9 +61,9 @@ public class BoxTests : IntegrationTestBase
                 print_string(". ");
             }
 
-            class MyClass {pub field MyField: string}
+            class MyClass {pub mut field MyField: string}
 
-            var mut a = new MyClass{MyField = "hi"};
+            var mut a = new unboxed MyClass{MyField = "hi"};
             SomeFn(a);
 
             print_string("a.MyField == ");

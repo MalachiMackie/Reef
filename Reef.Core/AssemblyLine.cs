@@ -166,11 +166,16 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         };
     }
 
-    private List<KeyValuePair<ILoweredTypeReference, TypeSizeInfo>> _typeSizes = [];
+    private readonly List<KeyValuePair<ILoweredTypeReference, TypeSizeInfo>> _typeSizes = [];
 
-    private sealed record TypeSizeInfo(uint Size, uint Alignment);
+    private sealed record TypeSizeInfo(
+        uint Size,
+        uint Alignment,
+        Dictionary<string, Dictionary<string, FieldSize>> VariantFieldOffsets);
 
-    private bool AreTypeReferencesEqual(ILoweredTypeReference left, ILoweredTypeReference right)
+    private sealed record FieldSize(uint Offset, uint Size, uint Alignment);
+
+    private bool AreTypeReferencesEqual(ILoweredTypeReference left, ILoweredTypeReference right, Dictionary<string, LoweredConcreteTypeReference> typeArguments)
     {
         switch (left, right)
         {
@@ -178,22 +183,40 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             {
                 return leftConcrete.DefinitionId == rightConcrete.DefinitionId
                        && leftConcrete.TypeArguments.Count == rightConcrete.TypeArguments.Count
-                       && leftConcrete.TypeArguments.Zip(rightConcrete.TypeArguments).All(x => AreTypeReferencesEqual(x.First, x.Second));
+                       && leftConcrete.TypeArguments.Zip(rightConcrete.TypeArguments).All(x => AreTypeReferencesEqual(x.First, x.Second, typeArguments));
+            }
+            case (LoweredGenericPlaceholder leftGeneric, LoweredGenericPlaceholder rightGeneric):
+            {
+                var leftConcrete = typeArguments[leftGeneric.PlaceholderName];
+                var rightConcrete = typeArguments[rightGeneric.PlaceholderName];
+                return AreTypeReferencesEqual(leftConcrete, rightConcrete, typeArguments);
+            }
+            case (LoweredPointer leftPointer, LoweredPointer rightPointer):
+            {
+                return AreTypeReferencesEqual(leftPointer.PointerTo, rightPointer.PointerTo, typeArguments);
             }
         }
 
-        throw new UnreachableException();
+        if (left.GetType() == right.GetType())
+        {
+            throw new NotImplementedException($"{left.GetType()}, {right.GetType()}");
+        }
+        
+        return false;
     }
     
-    private TypeSizeInfo GetTypeSize(ILoweredTypeReference typeReference)
+    private TypeSizeInfo GetTypeSize(ILoweredTypeReference typeReference, Dictionary<string, LoweredConcreteTypeReference> typeArguments)
     {
-        var foundTypeReference = _typeSizes.FirstOrDefault(x => AreTypeReferencesEqual(x.Key, typeReference));
+        var foundTypeReference = _typeSizes.FirstOrDefault(x => AreTypeReferencesEqual(x.Key, typeReference, typeArguments));
         if (foundTypeReference.Key is not null)
         {
             return foundTypeReference.Value;
         }
 
-        var size = new TypeSizeInfo(0, 1);
+        var size = 0u;
+        var alignment = 1u;
+        // var size = new SizeAndAlignment(0, 1);
+        var dataTypeFieldOffsets = new Dictionary<string, Dictionary<string, FieldSize>>();
         
         switch (typeReference)
         {
@@ -202,25 +225,29 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                 if (concreteTypeReference.DefinitionId == DefId.Int64
                     || concreteTypeReference.DefinitionId == DefId.UInt64)
                 {
-                    size = new TypeSizeInfo(8, 8);
+                    size = 8;
+                    alignment = 8;
                     break;
                 }
 
                 if (concreteTypeReference.DefinitionId == DefId.RawPointer)
                 {
-                    size = new TypeSizeInfo(PointerSize, PointerSize);
+                    size = PointerSize;
+                    alignment = PointerSize;
                     break;
                 }
 
                 if (concreteTypeReference.DefinitionId == DefId.Int32 || concreteTypeReference.DefinitionId == DefId.UInt32)
                 {
-                    size = new TypeSizeInfo(4, 4);
+                    size = 4;
+                    alignment = 4;
                     break;
                 }
                 
                 if (concreteTypeReference.DefinitionId == DefId.Int16 || concreteTypeReference.DefinitionId == DefId.UInt16)
                 {
-                    size = new TypeSizeInfo(2, 2);
+                    size = 2;
+                    alignment = 2;
                     break;
                 }
                 
@@ -229,7 +256,8 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                     || concreteTypeReference.DefinitionId == DefId.Boolean
                     || concreteTypeReference.DefinitionId == DefId.Unit)
                 {
-                    size = new TypeSizeInfo(1, 1);
+                    size = 1;
+                    alignment = 1;
                     break;
                 }
                 
@@ -237,7 +265,9 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                 
                 foreach (var variant in dataType.Variants)
                 {
-                    var variantSizeInfo = new TypeSizeInfo(0, 1);
+                    var variantSize = 0u;
+                    var variantAlignment = 1u;
+                    var variantFieldOffsets = new Dictionary<string, FieldSize>();
                     
                     foreach (var field in variant.Fields)
                     {
@@ -246,7 +276,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                         {
                             case LoweredConcreteTypeReference concreteFieldType:
                             {
-                                fieldSize = GetTypeSize(concreteFieldType);
+                                fieldSize = GetTypeSize(concreteFieldType, typeArguments);
                                 break;
                             }
                             case LoweredGenericPlaceholder genericPlaceholder:
@@ -254,43 +284,51 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                                 var index = dataType.TypeParameters.Index()
                                     .First(x => x.Item.PlaceholderName == genericPlaceholder.PlaceholderName).Index;
                                 var typeArgument = concreteTypeReference.TypeArguments[index];
-                                fieldSize = GetTypeSize(GetConcreteType(typeArgument));
+                                fieldSize = GetTypeSize(GetConcreteType(typeArgument), typeArguments);
                                 break;
                             }
                             default:
                                 throw new NotImplementedException(field.Type.GetType().ToString());
                         }
 
-                        var variantSize = variantSizeInfo.Size;
-                        
                         AlignInt(ref variantSize, fieldSize.Alignment);
-                        variantSizeInfo = new TypeSizeInfo(
-                            variantSize + fieldSize.Size,
-                            Math.Max(variantSizeInfo.Alignment, fieldSize.Alignment));
+
+                        variantFieldOffsets[field.Name] =
+                            new FieldSize(variantSize, fieldSize.Size, fieldSize.Alignment);
+
+                        variantSize += fieldSize.Size;
+                        variantAlignment = Math.Max(variantAlignment, fieldSize.Alignment);
                     }
 
-                    size = new TypeSizeInfo(
-                        Math.Max(size.Size, variantSizeInfo.Size),
-                        Math.Max(size.Alignment, variantSizeInfo.Alignment));
+                    size = Math.Max(size, variantSize);
+                    alignment = Math.Max(alignment, variantAlignment);
+
+                    dataTypeFieldOffsets[variant.Name] = variantFieldOffsets;
                 }
                 
                 break;
             }
             case LoweredPointer:
             {
-                size = new TypeSizeInfo(PointerSize, PointerSize);
+                size = PointerSize;
+                alignment = PointerSize;
                 break;
             }
             case LoweredGenericPlaceholder placeholder:
             {
-                size = GetTypeSize(_currentTypeArguments[placeholder.PlaceholderName]);
-                break;
+                var innerTypeSize = GetTypeSize(typeArguments[placeholder.PlaceholderName], typeArguments);
+                _typeSizes.Add(KeyValuePair.Create(typeReference, innerTypeSize));
+                return innerTypeSize;
             }
             default:
                 throw new NotImplementedException(typeReference.GetType().ToString());
         }
         
-        return size;
+        var typeSize = new TypeSizeInfo(size, alignment, dataTypeFieldOffsets);
+
+        _typeSizes.Add(KeyValuePair.Create(typeReference, typeSize));
+
+        return typeSize;
     }
 
     private void AlignInt(ref uint value, uint alignBy)
@@ -338,7 +376,12 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         var parameterStackOffset = PointerSize * 2; // start with offset by PointerSize * 2 because return address and rbp are on the top of the stack 
 
         var returnType = method.ReturnValue.Type;
-        var returnSize = GetTypeSize(returnType);
+        if (returnType is LoweredGenericPlaceholder{PlaceholderName: var placeholderName})
+        {
+            returnType = _currentTypeArguments[placeholderName];
+        }
+        
+        var returnSize = GetTypeSize(returnType, _currentTypeArguments);
 
         var parameters = method.ParameterLocals.ToArray();
         
@@ -367,7 +410,12 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         for (var index = 0; index < parameters.Length; index++)
         {
             var parameterLocal = parameters[index];
-            var parameterSize = GetTypeSize(parameterLocal.Type);
+            var parameterType = parameterLocal.Type;
+            if (parameterType is LoweredGenericPlaceholder{PlaceholderName: var parameterPlaceholderName})
+            {
+                parameterType = _currentTypeArguments[parameterPlaceholderName];
+            }
+            var parameterSize = GetTypeSize(parameterType, _currentTypeArguments);
             var size = Math.Min(parameterSize.Size, PointerSize);
             
             AlignInt(ref parameterStackOffset, parameterSize.Alignment);
@@ -392,7 +440,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             
             _locals[parameterLocal.CompilerGivenName] = new LocalInfo(
                 parameterPlace,
-                parameterLocal.Type);
+                parameterType);
 
             if (sourceRegister is not null)
             {
@@ -412,7 +460,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         {
             _locals[method.ReturnValue.CompilerGivenName] = new LocalInfo(
                 new PointerTo(_locals[ReturnValueAddressLocal].Place, 0),
-                method.ReturnValue.Type);
+                returnType);
         }
         else
         {
@@ -421,7 +469,12 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         
         foreach (var local in locals)
         {
-            var typeSize = GetTypeSize(local.Type);
+            var localType = local.Type;
+            if (localType is LoweredGenericPlaceholder{PlaceholderName: var localPlaceholderName})
+            {
+                localType = _currentTypeArguments[localPlaceholderName];
+            }
+            var typeSize = GetTypeSize(localType, _currentTypeArguments);
 
             // make sure stack offset is aligned to the size of the type 
             AlignInt(ref localStackOffset, typeSize.Alignment);
@@ -432,7 +485,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             localStackOffset += typeSize.Size;
 
             var localPlace = new OffsetFromBasePointer(-(int)localStackOffset);
-            _locals[local.CompilerGivenName] = new LocalInfo(localPlace, local.Type);
+            _locals[local.CompilerGivenName] = new LocalInfo(localPlace, localType);
 
             _codeSegment.AppendLine(
                 $"; {local.CompilerGivenName} ({typeSize.Size} byte{(typeSize.Size > 1 ? "s" : "")}" +
@@ -560,7 +613,19 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         switch (place)
         {
             case Field field:
-                throw new NotImplementedException();
+            {
+                var ownerType = GetPlaceType(field.FieldOwner);
+                if (ownerType is LoweredGenericPlaceholder { PlaceholderName: var placeholderName })
+                {
+                    ownerType = _currentTypeArguments[placeholderName];
+                }
+
+                var concreteType = GetConcreteType(ownerType);
+                var dataType = _dataTypes[concreteType.DefinitionId];
+                var variant = dataType.Variants.First(x => x.Name == field.VariantName);
+
+                return variant.Fields.First(x => x.Name == field.FieldName).Type;
+            }
             case Local local:
                 return _locals[local.LocalName].Type;
             case StaticField staticField:
@@ -574,7 +639,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
     private void ProcessBinaryOperation(IAsmPlace destination, IOperand left, IOperand right, BinaryOperationKind kind)
     {
         var operandType = GetOperandType(left);
-        var operandSize = GetTypeSize(operandType);
+        var operandSize = GetTypeSize(operandType, _currentTypeArguments);
         
         var leftOperandRegister = AllocateRegister();
         var rightOperandRegister = AllocateRegister();
@@ -699,7 +764,12 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                 break;
             }
             case CreateObject createObject:
-                throw new NotImplementedException();
+            {
+                var size = GetTypeSize(createObject.Type, _currentTypeArguments);
+                FillMemory(place, "0x0", size.Size);
+                
+                break;
+            }
             case UnaryOperation unaryOperation:
             {
                 ProcessUnaryOperation(place, unaryOperation.Operand, unaryOperation.Kind);
@@ -718,7 +788,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
     private void ProcessUnaryOperation(IAsmPlace place, IOperand operand, UnaryOperationKind kind)
     {
         var operandType = GetOperandType(operand);
-        var operandSize = GetTypeSize(operandType);
+        var operandSize = GetTypeSize(operandType, _currentTypeArguments);
         
         switch (kind)
         {
@@ -754,7 +824,11 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             case Return:
             {
                 var returnType = _currentMethod.NotNull().ReturnValue.Type;
-                var returnSize = GetTypeSize(returnType);
+                if (returnType is LoweredGenericPlaceholder{PlaceholderName: var placeholderName })
+                {
+                    returnType = _currentTypeArguments[placeholderName];
+                }
+                var returnSize = GetTypeSize(returnType, _currentTypeArguments);
                 var returnValuePlace = PlaceToAsmPlace(new Local(_currentMethod.NotNull().ReturnValue.CompilerGivenName));
                 
                 AllocateRegister(Register.A);
@@ -784,7 +858,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                 var register = AllocateRegister();
                 MoveOperandToDestination(switchInt.Operand, register);
                 var operandType = GetOperandType(switchInt.Operand);
-                var operandSize = GetTypeSize(operandType);
+                var operandSize = GetTypeSize(operandType, _currentTypeArguments);
                 foreach (var (intCase, jumpTo) in switchInt.Cases)
                 {
                     _codeSegment.AppendLine($"    cmp     {register.ToAsm(operandSize.Size)}, {intCase}");
@@ -875,6 +949,9 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             })
         ];
         
+        var calleeTypeArgumentsDictionary = calleeMethod.TypeParameters.Index()
+            .ToDictionary(x => x.Item.PlaceholderName, x => calleeTypeArguments[x.Index]);
+        
         if (calleeMethod is LoweredMethod loweredMethod)
         {
             TryEnqueueMethodForProcessing(loweredMethod, calleeTypeArguments);
@@ -885,12 +962,9 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         var returnType = calleeMethod.ReturnValue.Type;
         if (returnType is LoweredGenericPlaceholder genericReturnType)
         {
-            var typeArgumentIndex = calleeMethod.TypeParameters.Index()
-                .First(x => x.Item.PlaceholderName == genericReturnType.PlaceholderName)
-                .Index;
-            returnType = calleeTypeArguments[typeArgumentIndex];
+            returnType = calleeTypeArgumentsDictionary[genericReturnType.PlaceholderName];
         }
-        var returnSize = GetTypeSize(returnType);
+        var returnSize = GetTypeSize(returnType, calleeTypeArgumentsDictionary);
         
         var argumentTypesEnumerable = methodCall.Arguments.Select(x => (GetOperandType(x), x));
         
@@ -920,7 +994,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         {
             var (argumentType, argument) = argumentTypes[i];
 
-            var size = GetTypeSize(argumentType);
+            var size = GetTypeSize(argumentType, _currentTypeArguments);
 
             if (size.Size > MaxParameterSize)
             {
@@ -952,7 +1026,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
 
             var (type, argument) = argumentTypes[i];
             
-            var size = GetTypeSize(type);
+            var size = GetTypeSize(type, _currentTypeArguments);
 
 
             if (argumentDestination is Register register)
@@ -1085,7 +1159,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             case Copy copy:
             {
                 var operandType = GetOperandType(operand);
-                var size = GetTypeSize(operandType);
+                var size = GetTypeSize(operandType, _currentTypeArguments);
                 StoreAsmPlaceInPlace(PlaceToAsmPlace(copy.Place), destination, size.Size);
                 break;
             }
@@ -1482,6 +1556,92 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         }
 
     }
+    
+    private void FillMemory(IAsmPlace place, string constantValue, uint size)
+    {
+        if (size < PointerSize)
+        {
+            MoveIntoPlace(place, constantValue, size);
+            return;
+        }
+        
+        if (size % PointerSize != 0)
+        {
+            throw new NotImplementedException();
+        }
+        
+        var sizeSpecifier = SizeSpecifiers[PointerSize];
+        
+        switch (place)
+        {
+            case OffsetFromBasePointer(var offset):
+            {
+                for (var i = 0; i < size; i += (int)PointerSize)
+                {
+                    _codeSegment.AppendLine($"    mov     {sizeSpecifier} [rbp{FormatOffset(offset + i)}], {constantValue}");
+                }
+                break;
+            }
+            case OffsetFromStackPointer(var offset):
+            {
+                for (var i = 0; i < size; i += (int)PointerSize)
+                {
+                    _codeSegment.AppendLine($"    mov     {sizeSpecifier} [rsp{FormatOffset(offset + i)}], {constantValue}");
+                }
+                break;
+            }
+            case PointerTo(var pointerPlace, var offset):
+            {
+                switch (pointerPlace)
+                {
+                    case OffsetFromBasePointer offsetFromBasePointer:
+                    {
+                        var register = AllocateRegister();
+
+                        _codeSegment.AppendLine($"    mov     {register.ToAsm(PointerSize)}, [rbp{FormatOffset(offsetFromBasePointer.Offset)}]");
+                        for (var i = 0; i < size; i += (int)PointerSize)
+                        {
+                            _codeSegment.AppendLine($"    mov     {sizeSpecifier} [{register.ToAsm(PointerSize)}{FormatOffset(offset + i)}], {constantValue}");
+                        }
+                        
+                        FreeRegister(register);
+                        break;
+                    }
+                    case OffsetFromStackPointer offsetFromStackPointer:
+                    {
+                        var register = AllocateRegister();
+                        
+                        _codeSegment.AppendLine($"    mov     {register.ToAsm(PointerSize)}, [rsp{FormatOffset(offsetFromStackPointer.Offset)}]");
+
+                        for (var i = 0; i < size; i += (int)PointerSize)
+                        {
+                            _codeSegment.AppendLine($"    mov     {sizeSpecifier} [{register.ToAsm(PointerSize)}{FormatOffset(offset + i)}], {constantValue}");
+                        }
+
+                        FreeRegister(register);
+                        break;
+                    }
+                    case PointerTo:
+                        throw new InvalidOperationException();
+                    case Register register:
+                        for (var i = 0; i < size; i += (int)PointerSize)
+                        {
+                            _codeSegment.AppendLine($"    mov     [{register.ToAsm(PointerSize)}{FormatOffset(offset + i)}], {constantValue}");
+                        }
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(pointerPlace));
+                }
+                break;
+            }
+            case Register:
+            {
+                throw new InvalidOperationException("Cannot move more than 8 bytes into a register");
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(place));
+        }
+    }
 
     private void MoveIntoPlace(IAsmPlace place, string constantValue, uint size)
     {
@@ -1744,10 +1904,29 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
     {
         return place switch
         {
-            Field field => throw new NotImplementedException(),
+            Field field => FieldToAsmPlace(field),
             Local local => _locals[local.LocalName].Place,
             StaticField staticField => throw new NotImplementedException(),
+            Deref deref => throw new NotImplementedException(),
             _ => throw new ArgumentOutOfRangeException(nameof(place))
         };
     }
+
+    private IAsmPlace FieldToAsmPlace(Field field)
+    {
+        var ownerPlace = PlaceToAsmPlace(field.FieldOwner);
+        var ownerType = GetPlaceType(field.FieldOwner);
+        var typeSize = GetTypeSize(ownerType, _currentTypeArguments);
+        var fieldSize = typeSize.VariantFieldOffsets[field.VariantName][field.FieldName];
+
+        return ownerPlace switch
+        {
+            OffsetFromStackPointer(var offset) => new OffsetFromStackPointer(offset + (int)fieldSize.Offset),
+            OffsetFromBasePointer(var offset) => new OffsetFromBasePointer(offset + (int)fieldSize.Offset),
+            PointerTo pointerTo => pointerTo with {Offset = pointerTo.Offset + (int)fieldSize.Offset},
+            Register register => throw new NotImplementedException(),
+            _ => throw new ArgumentOutOfRangeException(nameof(ownerPlace))
+        };
+    }
+    
 }
