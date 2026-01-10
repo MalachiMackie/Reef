@@ -216,7 +216,8 @@ public partial class ProgramAbseil
                 [],
                 IsStatic: true,
                 IsMutable: false,
-                _program.Expressions)
+                _program.Expressions,
+                Extern: false)
         {
             ReturnType = TypeChecker.InstantiatedClass.Unit,
             OwnerType = null,

@@ -35,7 +35,7 @@ public partial class TypeChecker
             }
 
             typeParameters.AddRange(union.TypeParameters.Select(typeParameter => new GenericPlaceholder
-            { GenericName = typeParameter.StringValue, OwnerType = unionSignature }));
+            { GenericName = typeParameter.StringValue, OwnerType = unionSignature, Constraints = [] }));
 
             unions.Add((union, unionSignature, functions, variants));
 
@@ -61,7 +61,7 @@ public partial class TypeChecker
                 Boxed = true
             };
             typeParameters.AddRange(klass.TypeParameters.Select(typeParameter => new GenericPlaceholder
-            { GenericName = typeParameter.StringValue, OwnerType = signature }));
+            { GenericName = typeParameter.StringValue, OwnerType = signature, Constraints = [] }));
 
             klass.Signature = signature;
 
@@ -127,6 +127,11 @@ public partial class TypeChecker
 
                     var createFunctionParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
 
+                    var createFunctionReturnType = InstantiatedUnion.Create(
+                        unionSignature,
+                        [],
+                        boxed: unionSignature.Boxed);
+                    
                     var createFunction = new FunctionSignature(
                         new DefId(unionSignature.Id.ModuleId, unionSignature.Id.FullName + $"__Create__{variant.Name.StringValue}"),
                         Token.Identifier($"{unionSignature.Name}__Create__{variant.Name.StringValue}",
@@ -135,19 +140,11 @@ public partial class TypeChecker
                         createFunctionParameters,
                         IsStatic: true,
                         IsMutable: false,
-                        [])
+                        [],
+                        true)
                     {
                         OwnerType = unionSignature,
-                        ReturnType = new InstantiatedUnion(
-                            unionSignature,
-                            [
-                                .. unionSignature.TypeParameters.Select(x => new GenericTypeReference
-                                {
-                                    OwnerType = x.OwnerType,
-                                    GenericName = x.GenericName,
-                                })
-                            ],
-                            boxingSpecifier: null)
+                        ReturnType = createFunctionReturnType
                     };
 
                     var tupleMemberTypes = new List<ITypeReference>(tupleVariant.TupleMembers.Count);

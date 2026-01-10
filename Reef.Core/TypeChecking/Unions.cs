@@ -26,21 +26,15 @@ public partial class TypeChecker
             typeParameters[0] = new GenericPlaceholder
             {
                 GenericName = "TValue",
-                OwnerType = resultSignature
+                OwnerType = resultSignature,
+                Constraints = [],
             };
             typeParameters[1] = new GenericPlaceholder
             {
                 GenericName = "TError",
-                OwnerType = resultSignature
+                OwnerType = resultSignature,
+                Constraints = [],
             };
-
-            var resultTypeReference = new InstantiatedUnion(
-                resultSignature,
-                [
-                    typeParameters[0].Instantiate(),
-                    typeParameters[1].Instantiate()
-                ],
-                null);
 
             var okCreateParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
             var errorCreateParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
@@ -51,9 +45,10 @@ public partial class TypeChecker
                     okCreateParameters,
                     IsStatic: true,
                     IsMutable: false,
-                    Expressions: [])
+                    Expressions: [],
+                    true)
             {
-                ReturnType = resultTypeReference,
+                ReturnType = InstantiatedUnion.Create(resultSignature, typeParameters, resultSignature.Boxed),
                 OwnerType = resultSignature
             };
             var errorCreateFunction = new FunctionSignature(
@@ -63,9 +58,10 @@ public partial class TypeChecker
                 errorCreateParameters,
                 IsStatic: true,
                 IsMutable: false,
-                Expressions: [])
+                Expressions: [],
+                true)
             {
-                ReturnType = resultTypeReference,
+                ReturnType = InstantiatedUnion.Create(resultSignature, typeParameters, resultSignature.Boxed),
                 OwnerType = resultSignature
             };
 
@@ -155,7 +151,15 @@ public partial class TypeChecker
 
     private static InstantiatedUnion InstantiateUnion(UnionSignature signature, Token? boxingSpecifier)
     {
-        return new InstantiatedUnion(signature, [..signature.TypeParameters.Select(x => x.Instantiate())], boxingSpecifier);
+        return InstantiatedUnion.Create(
+            signature,
+            [],
+            boxingSpecifier switch
+            {
+                {Type: TokenType.Boxed} => true,
+                {Type: TokenType.Unboxed} => false,
+                _ => signature.Boxed
+            });
     }
 
     private InstantiatedUnion InstantiateUnion(
@@ -164,15 +168,14 @@ public partial class TypeChecker
         Token? boxingSpecifier,
         SourceRange sourceRange)
     {
-        // when instantiating, create new generic type references so they can be resolved
-        GenericTypeReference[] typeArgumentReferences =
-        [
-            ..signature.TypeParameters.Select(x => x.Instantiate())
-        ];
-
         if (typeArguments.Count <= 0)
         {
-            return new InstantiatedUnion(signature, typeArgumentReferences, boxingSpecifier);
+            return InstantiatedUnion.Create(signature, [], boxingSpecifier switch
+            {
+                {Type: TokenType.Boxed} => true,
+                {Type: TokenType.Unboxed} => false,
+                _ => signature.Boxed
+            });
         }
 
         if (typeArguments.Count != signature.TypeParameters.Count)
@@ -180,14 +183,21 @@ public partial class TypeChecker
             _errors.Add(TypeCheckerError.IncorrectNumberOfTypeArguments(sourceRange, typeArguments.Count, signature.TypeParameters.Count));
         }
 
-        for (var i = 0; i < Math.Min(typeArguments.Count, typeArgumentReferences.Length); i++)
+        var instantiatedUnion = InstantiatedUnion.Create(signature, [..typeArguments.Select(x => x.Item1)], boxingSpecifier switch
+            {
+                {Type: TokenType.Boxed} => true,
+                {Type: TokenType.Unboxed} => false,
+                _ => signature.Boxed
+            });
+        
+        for (var i = 0; i < Math.Min(instantiatedUnion.TypeArguments.Count, typeArguments.Count); i++)
         {
             var (typeArgument, referenceSourceRange) = typeArguments[i];
 
-            ExpectType(typeArgument, typeArgumentReferences[i], referenceSourceRange);
+            ExpectType(typeArgument, instantiatedUnion.TypeArguments[i], referenceSourceRange);
         }
 
-        return new InstantiatedUnion(signature, typeArgumentReferences, boxingSpecifier);
+        return instantiatedUnion;
     }
 
     private InstantiatedUnion InstantiateResult(SourceRange sourceRange, Token? boxingSpecifier)
@@ -195,7 +205,7 @@ public partial class TypeChecker
         return InstantiateUnion(UnionSignature.Result, [], boxingSpecifier, sourceRange);
     }
 
-    public class InstantiatedUnion : ITypeReference
+    public class InstantiatedUnion : ITypeReference, IInstantiatedGeneric
     {
         public InstantiatedUnion CloneWithTypeArguments(IReadOnlyList<GenericTypeReference> typeArguments)
         {
@@ -218,18 +228,17 @@ public partial class TypeChecker
             Boxed = boxed;
         }
         
-        public InstantiatedUnion(UnionSignature signature, IReadOnlyList<GenericTypeReference> typeArguments, Token? boxingSpecifier)
+        public static InstantiatedUnion Create(UnionSignature signature, IReadOnlyList<ITypeReference> typeArguments, bool boxed)
         {
-            Signature = signature;
-            TypeArguments = typeArguments;
-            Boxed = boxingSpecifier switch
-            {
-                {Type: TokenType.Boxed} => true,
-                {Type: TokenType.Unboxed} => false,
-                _ => signature.Boxed
-            };
+            var variants = new List<IUnionVariant>();
+            var typeArgumentReferences = new List<GenericTypeReference>();
+            
+            var instantiatedUnion = new InstantiatedUnion(signature, typeArgumentReferences, variants, boxed);
 
-            Variants =
+            typeArgumentReferences.AddRange(signature.TypeParameters.Select((x, i) =>
+                x.Instantiate(instantiatedUnion, typeArguments.ElementAtOrDefault(i))));
+
+            variants.AddRange(
             [
                 ..signature.Variants.Select(x => 
                 {
@@ -254,7 +263,7 @@ public partial class TypeChecker
                             ],
                             CreateFunction = tuple.CreateFunction with
                             {
-                                ReturnType = this, // the create function for a tuple variant within this instantiated union returns this type, so directly use `this`
+                                ReturnType = instantiatedUnion, // the create function for a tuple variant within this instantiated union returns this type, so directly use instantiated union
                                 Parameters = createFunctionParameters,
                             }
                         };
@@ -272,14 +281,16 @@ public partial class TypeChecker
                         return x;
                     }
                 })
-            ];
+            ]);
+
+            return instantiatedUnion;
 
             ITypeReference HandleType(ITypeReference type)
             {
                 return type switch
                 {
-                    GenericTypeReference genericTypeReference => typeArguments.First(z => z.GenericName == genericTypeReference.GenericName),
-                    GenericPlaceholder placeholder => typeArguments.First(z => z.GenericName == placeholder.GenericName),
+                    GenericTypeReference genericTypeReference => typeArgumentReferences.First(z => z.GenericName == genericTypeReference.GenericName),
+                    GenericPlaceholder placeholder => typeArgumentReferences.First(z => z.GenericName == placeholder.GenericName),
                     InstantiatedUnion union => union.CloneWithTypeArguments([..union.TypeArguments.Select(HandleType).Cast<GenericTypeReference>()]),
                     InstantiatedClass klass => klass.CloneWithTypeArguments([..klass.TypeArguments.Select(HandleType).Cast<GenericTypeReference>()]),
                     _ => type

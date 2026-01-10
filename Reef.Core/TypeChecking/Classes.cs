@@ -129,7 +129,8 @@ public partial class TypeChecker
                 callFunctionParameters,
                 IsStatic: false,
                 IsMutable: false,
-                Expressions: [])
+                Expressions: [],
+                true)
             {
                 ReturnType = null!,
                 OwnerType = signature
@@ -140,7 +141,8 @@ public partial class TypeChecker
             typeParameters.AddRange(Enumerable.Range(0, typeParamsCount).Select(i => new GenericPlaceholder
             {
                 GenericName = i == typeParamsCount - 1 ? "TReturn" : $"TParam{i}",
-                OwnerType = signature
+                OwnerType = signature,
+                Constraints = []
             }));
 
             functionSignature.ReturnType = typeParameters[^1];
@@ -191,7 +193,8 @@ public partial class TypeChecker
             typeParameters.AddRange(Enumerable.Range(0, elementCount).Select(x => new GenericPlaceholder
             {
                 GenericName = $"T{x}",
-                OwnerType = signature
+                OwnerType = signature,
+                Constraints = []
             }));
 
             fields.AddRange(Enumerable.Range(0, elementCount).Select(i => new TypeField
@@ -211,11 +214,11 @@ public partial class TypeChecker
         }
     }
 
-    private InstantiatedClass InstantiateClass(ClassSignature signature, Token? boxedSpecifier)
+    private static InstantiatedClass InstantiateClass(ClassSignature signature, Token? boxedSpecifier)
     {
-        return new InstantiatedClass(
+        return InstantiatedClass.Create(
             signature,
-            [..signature.TypeParameters.Select(x => x.Instantiate())],
+            [],
             boxedSpecifier switch
             {
                 {Type: TokenType.Boxed} => true,
@@ -236,15 +239,10 @@ public partial class TypeChecker
             { Type: TokenType.Unboxed } => false,
             _ => signature.Boxed
         };
-        
-        GenericTypeReference[] typeArgumentReferences =
-        [
-            ..signature.TypeParameters.Select(x => x.Instantiate())
-        ];
 
         if (typeArguments.Count <= 0)
         {
-            return new InstantiatedClass(signature, typeArgumentReferences, boxed);
+            return InstantiatedClass.Create(signature, [], boxed);
         }
 
         if (typeArguments.Count != signature.TypeParameters.Count)
@@ -252,13 +250,15 @@ public partial class TypeChecker
             _errors.Add(TypeCheckerError.IncorrectNumberOfTypeArguments(sourceRange, typeArguments.Count, signature.TypeParameters.Count));
         }
 
-        for (var i = 0; i < Math.Min(typeArguments.Count, typeArgumentReferences.Length); i++)
+        var instantiatedClass = InstantiatedClass.Create(signature, [..typeArguments.Select(x => x.Item1)], boxed);
+
+        for (var i = 0; i < Math.Min(instantiatedClass.TypeArguments.Count, typeArguments.Count); i++)
         {
             var (typeReference, referenceSourceRange) = typeArguments[i];
-            ExpectType(typeReference, typeArgumentReferences[i], referenceSourceRange);
+            ExpectType(typeReference, instantiatedClass.TypeArguments[i], referenceSourceRange);
         }
 
-        return new InstantiatedClass(signature, typeArgumentReferences, boxed);
+        return instantiatedClass;
     }
 
     private bool TryInstantiateClassFunction(
@@ -293,7 +293,7 @@ public partial class TypeChecker
         };
     }
 
-    public class InstantiatedClass : ITypeReference
+    public class InstantiatedClass : ITypeReference, IInstantiatedGeneric
     {
         public InstantiatedClass CloneWithTypeArguments(IReadOnlyList<GenericTypeReference> typeArguments)
         {
@@ -315,17 +315,28 @@ public partial class TypeChecker
             Fields = fields;
             Boxed = boxed;
         }
-        
-        public InstantiatedClass(ClassSignature signature, IReadOnlyList<GenericTypeReference> typeArguments, bool boxed)
+
+        public static InstantiatedClass Create(ClassSignature signature, IReadOnlyList<ITypeReference> typeArguments, bool boxed)
         {
+            var fields = new List<TypeField>();
+
+            var typeArgumentReferences = new List<GenericTypeReference>(typeArguments.Count);
+            var instantiatedClass = new InstantiatedClass(signature, typeArgumentReferences, fields, boxed);
+
+            typeArgumentReferences.AddRange(
+                signature.TypeParameters.Select((t, i) => t.Instantiate(instantiatedClass, typeArguments.Count > i ? typeArguments[i] : null)));
+            fields.AddRange(signature.Fields.Select(x => x with { Type = HandleType(x.Type) }));
+
+            return instantiatedClass;
+            
             ITypeReference HandleType(ITypeReference type)
             {
                 return type switch
                 {
-                    GenericTypeReference genericTypeReference => typeArguments.First(y =>
+                    GenericTypeReference genericTypeReference => typeArgumentReferences.First(y =>
                         y.GenericName == genericTypeReference.GenericName),
                     GenericPlaceholder placeholder =>
-                        typeArguments.First(y => y.GenericName == placeholder.GenericName),
+                        typeArgumentReferences.First(y => y.GenericName == placeholder.GenericName),
                     InstantiatedUnion union => union.CloneWithTypeArguments([
                         ..union.TypeArguments.Select(HandleType).Cast<GenericTypeReference>()
                     ]),
@@ -333,29 +344,20 @@ public partial class TypeChecker
                     _ => type
                 };
             }
-            
-            Signature = signature;
-            TypeArguments = typeArguments;
-            Boxed = boxed;
-
-            Fields =
-            [
-                ..signature.Fields.Select(x => x with { Type = HandleType(x.Type)})
-            ];
         }
 
-        public static InstantiatedClass String => new(ClassSignature.String, [], boxed: ClassSignature.String.Boxed);
-        public static InstantiatedClass Boolean => new(ClassSignature.Boolean, [], boxed: ClassSignature.Boolean.Boxed);
+        public static InstantiatedClass String => new(ClassSignature.String, [], [], boxed: ClassSignature.String.Boxed);
+        public static InstantiatedClass Boolean => new(ClassSignature.Boolean, [], [], boxed: ClassSignature.Boolean.Boxed);
 
-        public static InstantiatedClass Int64 => new(ClassSignature.Int64, [], boxed: ClassSignature.Int64.Boxed);
-        public static InstantiatedClass Int32 => new(ClassSignature.Int32, [], boxed: ClassSignature.Int32.Boxed);
-        public static InstantiatedClass Int16 => new(ClassSignature.Int16, [], boxed: ClassSignature.Int16.Boxed);
-        public static InstantiatedClass Int8 => new(ClassSignature.Int8, [], boxed: ClassSignature.Int8.Boxed);
-        public static InstantiatedClass UInt64 => new(ClassSignature.UInt64, [], boxed: ClassSignature.UInt64.Boxed);
-        public static InstantiatedClass UInt32 => new(ClassSignature.UInt32, [], boxed: ClassSignature.UInt32.Boxed);
-        public static InstantiatedClass UInt16 => new(ClassSignature.UInt16, [], boxed: ClassSignature.UInt16.Boxed);
-        public static InstantiatedClass UInt8 => new(ClassSignature.UInt8, [], boxed: ClassSignature.UInt8.Boxed);
-        public static InstantiatedClass RawPointer => new(ClassSignature.RawPointer, [], boxed: ClassSignature.RawPointer.Boxed);
+        public static InstantiatedClass Int64 => new(ClassSignature.Int64, [], [], boxed: ClassSignature.Int64.Boxed);
+        public static InstantiatedClass Int32 => new(ClassSignature.Int32, [], [], boxed: ClassSignature.Int32.Boxed);
+        public static InstantiatedClass Int16 => new(ClassSignature.Int16, [], [], boxed: ClassSignature.Int16.Boxed);
+        public static InstantiatedClass Int8 => new(ClassSignature.Int8, [], [], boxed: ClassSignature.Int8.Boxed);
+        public static InstantiatedClass UInt64 => new(ClassSignature.UInt64, [], [], boxed: ClassSignature.UInt64.Boxed);
+        public static InstantiatedClass UInt32 => new(ClassSignature.UInt32, [], [], boxed: ClassSignature.UInt32.Boxed);
+        public static InstantiatedClass UInt16 => new(ClassSignature.UInt16, [], [], boxed: ClassSignature.UInt16.Boxed);
+        public static InstantiatedClass UInt8 => new(ClassSignature.UInt8, [], [], boxed: ClassSignature.UInt8.Boxed);
+        public static InstantiatedClass RawPointer => new(ClassSignature.RawPointer, [], [], boxed: ClassSignature.RawPointer.Boxed);
 
         // todo: need some sort of inferred int type
 
@@ -370,9 +372,9 @@ public partial class TypeChecker
             UInt8,
         ];
 
-        public static InstantiatedClass Unit { get; } = new(ClassSignature.Unit, [], boxed: ClassSignature.Unit.Boxed);
+        public static InstantiatedClass Unit { get; } = new(ClassSignature.Unit, [], [], boxed: ClassSignature.Unit.Boxed);
 
-        public static InstantiatedClass Never { get; } = new(ClassSignature.Never, [], boxed: ClassSignature.Never.Boxed);
+        public static InstantiatedClass Never { get; } = new(ClassSignature.Never, [], [], boxed: ClassSignature.Never.Boxed);
         
         public bool Boxed { get; }
 

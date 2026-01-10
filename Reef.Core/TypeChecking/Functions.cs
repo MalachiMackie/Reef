@@ -19,7 +19,8 @@ public partial class TypeChecker
             parameters,
             fn.StaticModifier is not null,
             fn.MutabilityModifier is not null,
-            fn.Block.Expressions)
+            fn.Block.Expressions,
+            false)
         {
             ReturnType = null!,
             OwnerType = ownerType
@@ -64,7 +65,8 @@ public partial class TypeChecker
             typeParameters.Add(new GenericPlaceholder
             {
                 GenericName = typeParameter.StringValue,
-                OwnerType = fnSignature
+                OwnerType = fnSignature,
+                Constraints = []
             });
         }
 
@@ -96,6 +98,11 @@ public partial class TypeChecker
 
     private void TypeCheckFunctionBody(FunctionSignature fnSignature)
     {
+        if (fnSignature.Extern)
+        {
+            return;
+        }
+        
         using var _ = PushScope(null, fnSignature, fnSignature.ReturnType,
             genericPlaceholders: fnSignature.TypeParameters, fnSignature.Id);
         foreach (var parameter in fnSignature.Parameters.Values)
@@ -184,7 +191,12 @@ public partial class TypeChecker
         }
     }
 
-    public class InstantiatedFunction : IFunction
+    public interface IInstantiatedGeneric
+    {
+        IReadOnlyList<GenericTypeReference> TypeArguments { get; } 
+    }
+
+    public class InstantiatedFunction : IFunction, IInstantiatedGeneric
     {
         public InstantiatedFunction(
             ITypeReference? ownerType,
@@ -194,9 +206,7 @@ public partial class TypeChecker
             OwnerType = ownerType;
             Signature = signature;
 
-            var instantiatedTypeArguments = signature.TypeParameters.Select(x => x.Instantiate()).ToArray();
-
-            TypeArguments = instantiatedTypeArguments;
+            TypeArguments = signature.TypeParameters.Select(x => x.Instantiate(instantiatedFrom: this)).ToArray();
             var parametersList = new List<FunctionParameter>();
             Parameters = parametersList;
 
@@ -213,7 +223,7 @@ public partial class TypeChecker
                 var parameter = signature.Parameters.GetAt(i);
                 var functionParameter = new FunctionParameter(parameter.Value.Type switch
                 {
-                    GenericPlaceholder placeholder => (ITypeReference?)instantiatedTypeArguments.FirstOrDefault(x => x.GenericName == placeholder.GenericName)
+                    GenericPlaceholder placeholder => TypeArguments.FirstOrDefault(x => x.GenericName == placeholder.GenericName)
                         ?? inScopeTypeParameters.FirstOrDefault(x => x.GenericName == placeholder.GenericName)
                         ?? (ITypeReference)ownerTypeArguments.First(x => x.GenericName == placeholder.GenericName),
                     _ => parameter.Value.Type
@@ -222,7 +232,7 @@ public partial class TypeChecker
             }
             ReturnType = signature.ReturnType switch
             {
-                GenericPlaceholder placeholder => (ITypeReference?)instantiatedTypeArguments.FirstOrDefault(x => x.GenericName == placeholder.GenericName)
+                GenericPlaceholder placeholder => TypeArguments.FirstOrDefault(x => x.GenericName == placeholder.GenericName)
                         ?? inScopeTypeParameters.FirstOrDefault(x => x.GenericName == placeholder.GenericName)
                         ?? (ITypeReference)ownerTypeArguments.First(x => x.GenericName == placeholder.GenericName),
                 _ => signature.ReturnType
@@ -281,11 +291,12 @@ public partial class TypeChecker
         OrderedDictionary<string, FunctionSignatureParameter> Parameters,
         bool IsStatic,
         bool IsMutable,
-        IReadOnlyList<IExpression> Expressions) : ITypeSignature
+        IReadOnlyList<IExpression> Expressions,
+        bool Extern) : ITypeSignature
     {
         public DefId? LocalsTypeId { get; set; }
         public DefId? ClosureTypeId { get; set; }
-        public List<(DefId fieldTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureTypeFields { get; set; } = [];
+        public List<(DefId fieldTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureTypeFields { get; } = [];
 
         // mutable due to setting up signatures and generic stuff
         public required ITypeReference ReturnType { get; set; }
@@ -296,6 +307,8 @@ public partial class TypeChecker
         public List<IVariable> AccessedOuterVariables { get; } = [];
         
         public static FunctionSignature PrintString { get; }
+        public static FunctionSignature Box { get; }
+        public static FunctionSignature Unbox { get; }
 
         static FunctionSignature()
         {
@@ -307,7 +320,8 @@ public partial class TypeChecker
                 printStringParameters,
                 IsStatic: true,
                 IsMutable: false,
-                Expressions: [])
+                Expressions: [],
+                Extern: true)
             {
                 OwnerType = null,
                 ReturnType = InstantiatedClass.Unit
@@ -319,8 +333,83 @@ public partial class TypeChecker
                 InstantiatedClass.String,
                 false,
                 0);
+
+            var boxParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+            var boxTypeParameters = new List<GenericPlaceholder>();
+            Box = new FunctionSignature(
+                DefId.Box,
+                Token.Identifier("box", SourceSpan.Default),
+                boxTypeParameters,
+                boxParameters,
+                IsStatic: true,
+                IsMutable: false,
+                Expressions: [],
+                Extern: true)
+            {
+                OwnerType = null,
+                ReturnType = null!
+            };
+            
+            /*
+             * pub fn box<TParam, TResult>(param: TParam): TResult
+             *  where TParam: unboxed TResult,
+             *        TResult: boxed TParam
+             * {}
+             */
+            
+            var boxTParamConstraints = new List<ITypeConstraint>();
+            boxTypeParameters.Add(new GenericPlaceholder{GenericName = "TParam", OwnerType = Box, Constraints = boxTParamConstraints});
+            boxTypeParameters.Add(new GenericPlaceholder{GenericName = "TReturn", OwnerType = Box, Constraints = [new BoxedTypeConstraint(boxTypeParameters[0])]});
+            boxTParamConstraints.Add(new UnboxedTypeConstraint(boxTypeParameters[1]));
+            Box.ReturnType = boxTypeParameters[1];
+            boxParameters["value"] = new FunctionSignatureParameter(
+                Box,
+                Token.Identifier("value", SourceSpan.Default),
+                boxTypeParameters[0],
+                false,
+                0);
+            
+            var unboxParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+            var unboxTypeParameters = new List<GenericPlaceholder>();
+            Unbox = new FunctionSignature(
+                DefId.Unbox,
+                Token.Identifier("unbox", SourceSpan.Default),
+                unboxTypeParameters,
+                unboxParameters,
+                IsStatic: true,
+                IsMutable: false,
+                Expressions: [],
+                Extern: true)
+            {
+                OwnerType = null,
+                ReturnType = null!
+            };
+            
+            /*
+             * pub fn unbox<TParam, TResult>(param: TParam): TResult
+             *  where TParam: boxed TResult,
+             *        TResult: unboxed TParam
+             * {}
+             */
+            
+            var unboxTParamConstraints = new List<ITypeConstraint>();
+            unboxTypeParameters.Add(new GenericPlaceholder{GenericName = "TParam", OwnerType = Unbox, Constraints = unboxTParamConstraints});
+            unboxTypeParameters.Add(new GenericPlaceholder{GenericName = "TReturn", OwnerType = Unbox, Constraints = [new UnboxedTypeConstraint(unboxTypeParameters[0])]});
+            unboxTParamConstraints.Add(new BoxedTypeConstraint(unboxTypeParameters[1]));
+            Unbox.ReturnType = unboxTypeParameters[1];
+            unboxParameters["value"] = new FunctionSignatureParameter(
+                Unbox,
+                Token.Identifier("value", SourceSpan.Default),
+                unboxTypeParameters[0],
+                false,
+                0);
         }
     }
+
+    public interface ITypeConstraint;
+    
+    public record BoxedTypeConstraint(ITypeReference BoxedOfType) : ITypeConstraint;
+    public record UnboxedTypeConstraint(ITypeReference BoxedOfType) : ITypeConstraint;
 
     public record FunctionParameter(ITypeReference Type, bool Mutable);
 

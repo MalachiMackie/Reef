@@ -55,12 +55,14 @@ public partial class TypeChecker
     {
         public required string GenericName { get; init; }
         public required ITypeSignature OwnerType { get; init; }
+        public required IReadOnlyList<ITypeConstraint> Constraints { get; init; }
 
-        public GenericTypeReference Instantiate(ITypeReference? resolvedType = null) => new()
+        public GenericTypeReference Instantiate(IInstantiatedGeneric instantiatedFrom, ITypeReference? resolvedType = null) => new()
         {
             GenericName = GenericName,
             OwnerType = OwnerType,
-            ResolvedType = resolvedType
+            ResolvedType = resolvedType,
+            InstantiatedFrom = instantiatedFrom,
         };
 
         public override string ToString() => GenericName;
@@ -71,6 +73,8 @@ public partial class TypeChecker
         public required string GenericName { get; init; }
 
         public required ITypeSignature OwnerType { get; init; }
+        
+        public required IInstantiatedGeneric InstantiatedFrom { get; init; }
 
         public ITypeReference? ResolvedType
         {
@@ -86,7 +90,7 @@ public partial class TypeChecker
                 foreach (var link in _links)
                 {
                     link.ResolvedType ??= value;
-                }    
+                }
             }
         }
 

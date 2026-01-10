@@ -54,7 +54,7 @@ public class BoxTests : IntegrationTestBase
         await SetupTest(
             """
 
-            fn SomeFn(mut param: unboxed MyClass) {
+            fn SomeFn(mut param: MyClass) {
                 param.MyField = "bye";
                 print_string("param.MyField == ");
                 print_string(param.MyField);
@@ -63,7 +63,7 @@ public class BoxTests : IntegrationTestBase
 
             class MyClass {pub mut field MyField: string}
 
-            var mut a = new unboxed MyClass{MyField = "hi"};
+            var mut a = new MyClass{MyField = "hi"};
             SomeFn(a);
 
             print_string("a.MyField == ");

@@ -39,13 +39,11 @@ public class TypeCheckerTests
     {
         const string src =
                 """
-                static fn SomeFn(): result::<i64, string> {
-                    var a = ok(1)?;
-                    return ok(a);
-                }
+                var number: boxed i32 = todo!;
+                var a: boxed i32 = box(number);
                 """;
-
-        IReadOnlyList<TypeCheckerError> expectedErrors = [];
+        IReadOnlyList<TypeCheckerError> expectedErrors =
+            [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("i32", false), false, new TestClassReference("i32", true), true)];
 
 
         var program = Parser.Parse("TypeCheckerTests", Tokenizer.Tokenize(src));
@@ -58,6 +56,24 @@ public class TypeCheckerTests
     {
         return
         [
+            """
+            class MyClass{}
+            var a = unbox(new MyClass{});
+            """,
+            """
+            class MyClass{}
+            var a: unboxed MyClass = unbox(new MyClass{});
+            """,
+            """
+            var a: boxed i32 = box(2);
+            """,
+            """
+            var a: boxed i32 = todo!;
+            var b: unboxed i32 = unbox(a);
+            """,
+            """
+            var a = box(1);
+            """,
             """
             union MyUnion{A}
             var a: unboxed MyUnion = unboxed MyUnion::A; 
@@ -1525,6 +1541,37 @@ public class TypeCheckerTests
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
             {
+                "mismatched boxing for unbox method return value",
+                """
+                class MyClass{}
+                var a: boxed MyClass = unbox(new MyClass{});
+                """,
+                [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass", true), true, new TestClassReference("MyClass", false), false)]
+            },
+            {
+                "mismatched boxing for unbox method parameter",
+                """
+                class MyClass{}
+                var a: unboxed MyClass = unbox(new unboxed MyClass{});
+                """,
+                [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass", true), true, new TestClassReference("MyClass", false), false)]
+            },
+            {
+                "mismatched boxing for box method return value",
+                """
+                var a: unboxed i32 = box(1);
+                """,
+                [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("i32", false), false, UnspecifiedSizedIntType, true)]
+            },
+            {
+                "mismatched boxing for box method parameter",
+                """
+                var number: boxed i32 = todo!;
+                var a: boxed i32 = box(number);
+                """,
+                [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("i32", false), false, new TestClassReference("i32", true), true)]
+            },
+            {
                 "incorrect while loop check expression type",
                 """
                 while (1) {
@@ -2514,7 +2561,7 @@ public class TypeCheckerTests
                     return todo!;
                 }
                 """,
-                [MismatchedTypes(String, Int64)]
+                [MismatchedTypes(Int64, String)]
             },
             {
                 "Static local function cannot access local variables",
@@ -4214,36 +4261,24 @@ public class TypeCheckerTests
     private static InstantiatedClass TupleType(bool? boxed, params IReadOnlyList<ITypeReference> members)
     {
         var signature = ClassSignature.Tuple((ushort)members.Count);
-        return new InstantiatedClass(
-            signature, signature.TypeParameters.Zip(members).Select(x => x.First.Instantiate(x.Second)).ToArray(),
+        return InstantiatedClass.Create(
+            signature, 
+            members,
             boxed ?? signature.Boxed);
     }
 
     private static InstantiatedUnion Result(
         ITypeReference value,
         ITypeReference error,
-        Token? boxingSpecifier = null)
+        bool? boxed = null)
     {
-        return new InstantiatedUnion(
+        return InstantiatedUnion.Create(
             UnionSignature.Result,
-            [
-                new GenericTypeReference
-                {
-                    GenericName = UnionSignature.Result.TypeParameters[0].GenericName,
-                    OwnerType = UnionSignature.Result,
-                    ResolvedType = value
-                },
-                new GenericTypeReference
-                {
-                    GenericName = UnionSignature.Result.TypeParameters[1].GenericName,
-                    OwnerType = UnionSignature.Result,
-                    ResolvedType = error
-                },
-            ],
-            boxingSpecifier);
+            [value, error],
+            boxed ?? UnionSignature.Result.Boxed);
     }
 
-    private sealed record TestClassReference(string ClassName) : ITypeReference, IEquatable<ITypeReference>
+    private sealed record TestClassReference(string ClassName, bool Boxed = true) : ITypeReference, IEquatable<ITypeReference>
     {
         public bool Equals(ITypeReference? other)
         {
@@ -4251,8 +4286,8 @@ public class TypeCheckerTests
             {
                 return false;
             }
-
-            return @class.Signature.Name == ClassName;
+            
+            return @class.Signature.Name == ClassName && Boxed == @class.Boxed;
         }
 
         public override string ToString()
@@ -4266,7 +4301,8 @@ public class TypeCheckerTests
         return new GenericPlaceholder
         {
             GenericName = name,
-            OwnerType = null!
+            OwnerType = null!,
+            Constraints = []
         };
     }
 
@@ -4275,7 +4311,8 @@ public class TypeCheckerTests
         return new GenericTypeReference
         {
             GenericName = name,
-            OwnerType = null!
+            OwnerType = null!,
+            InstantiatedFrom = null!
         };
     }
 }
