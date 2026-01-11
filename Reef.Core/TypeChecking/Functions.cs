@@ -307,11 +307,34 @@ public partial class TypeChecker
         public List<IVariable> AccessedOuterVariables { get; } = [];
         
         public static FunctionSignature PrintString { get; }
+        public static FunctionSignature Allocate { get; }
         public static FunctionSignature Box { get; }
         public static FunctionSignature Unbox { get; }
 
         static FunctionSignature()
         {
+            var allocateParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+            Allocate = new FunctionSignature(
+                DefId.Allocate,
+                Token.Identifier("allocate", SourceSpan.Default),
+                [],
+                allocateParameters,
+                IsStatic: true,
+                IsMutable: false,
+                [],
+                Extern: true)
+            {
+                OwnerType = null,
+                ReturnType = InstantiatedClass.RawPointer
+            };
+            
+            allocateParameters["byteSize"] = new FunctionSignatureParameter(
+                Allocate,
+                Token.Identifier("byteSize", SourceSpan.Default),
+                InstantiatedClass.UInt64,
+                Mutable: false,
+                ParameterIndex: 0);
+            
             var printStringParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
             PrintString = new FunctionSignature(
                 DefId.PrintString,

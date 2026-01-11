@@ -1,3 +1,4 @@
+using System.Reflection;
 using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
 using static Reef.Core.Tests.LoweredProgramHelpers;
@@ -11,24 +12,32 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
     [Fact]
     public void SingleTest()
     {
-        var source = "fn MyFn(a: string): string { return a; }";
-        var expectedProgram = LoweredProgram(
-            methods:
-            [
-                Method(
-                    new DefId(ModuleId, $"{ModuleId}.MyFn"),
-                    "MyFn",
-                    [
-                        new BasicBlock(new BasicBlockId("bb0"), [
-                            new Assign(new Local("_returnValue"), new Use(new Copy(new Local("_param0"))))
-                        ])
-                        {
-                            Terminator = new Return()
-                        }
-                    ],
-                    StringT,
-                    parameters: [("a", StringT)])
-            ]);
+        var source = "var a: boxed i32 = box(1)";
+        var expectedProgram = LoweredProgram(ModuleId, methods:
+        [
+            Method(new DefId(ModuleId, $"{ModuleId}._Main"),
+                "_Main",
+                [
+                    new BasicBlock(
+                        BB0,
+                        [],
+                        new MethodCall(
+                            new LoweredFunctionReference(
+                                DefId.Box, [Int32T, new LoweredPointer(Int32T)]),
+                            [new IntConstant(1, 4)],
+                            new Local("_local0"),
+                            BB1)),
+                    new BasicBlock(BB1, [], new Return()),
+                ],
+                Unit,
+                locals:
+                [
+                    new MethodLocal(
+                        "_local0",
+                        "a",
+                        new LoweredPointer(Int32T))
+                ])
+        ]);
         
         var program = CreateProgram(ModuleId, source);
         var (loweredProgram, _) = ProgramAbseil.Lower(program);
@@ -58,9 +67,36 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
         return new()
         {
             {
+                "box number",
+                "var a: boxed i32 = box(1)",
+                LoweredProgram(ModuleId, methods: [
+                    Method(new DefId(ModuleId, $"{ModuleId}._Main"),
+                        "_Main",
+                        [
+                            new BasicBlock(
+                                BB0,
+                                [],
+                                new MethodCall(
+                                    new LoweredFunctionReference(
+                                        DefId.Box, [Int32T, new LoweredPointer(Int32T)]),
+                                    [new IntConstant(1, 4)],
+                                    new Local("_local0"),
+                                    BB1)),
+                            new BasicBlock(BB1, [], new Return()),
+                        ],
+                        Unit,
+                        locals: [
+                            new MethodLocal(
+                            "_local0",
+                            "a",
+                            new LoweredPointer(Int32T))
+                        ])
+                ])
+            },
+            {
                 "variable declaration",
                 "var a = \"\";",
-                LoweredProgram(methods: [
+                LoweredProgram(ModuleId, methods: [
                     Method(
                         new DefId(ModuleId, $"{ModuleId}._Main"),
                         "_Main",
@@ -87,7 +123,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "local assignment",
                 "var a;a = 2;",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(
                             new DefId(ModuleId, $"{ModuleId}._Main"),
@@ -112,7 +148,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "int plus",
                 "var a = 1 + 2;",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -143,7 +179,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "int minus",
                 "var a = 1 - 2;",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -174,7 +210,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "int divide",
                 "var a = 1 / 2;",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -205,7 +241,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "int multiply",
                 "var a = 1 * 2;",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -236,7 +272,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "int not equals",
                 "var a = 1 != 2;",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -267,7 +303,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "int equals",
                 "var a = 1 == 2;",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -298,7 +334,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "int greater than",
                 "var a = 1 > 2;",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -329,7 +365,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "int less than",
                 "var a = 1 < 2;",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -360,7 +396,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "bool or",
                 "var a = false || false",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -406,7 +442,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "bool and",
                 "var a = false && false",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -452,7 +488,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "bool not",
                 "var a = !true",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -477,7 +513,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "chain operations",
                 "var a = 1 + 2 + 3",
-                LoweredProgram(methods: [
+                LoweredProgram(ModuleId, methods: [
                     Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                         [
                             new BasicBlock(new BasicBlockId("bb0"), [
@@ -506,7 +542,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "dead expression",
                 "1",
-                LoweredProgram(methods: [
+                LoweredProgram(ModuleId, methods: [
                     Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                         [
                             new BasicBlock(new BasicBlockId("bb0"), [])
@@ -520,7 +556,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "empty block",
                 "{}",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -535,7 +571,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "block with one expression",
                 "{var a = true;}",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -557,7 +593,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "block with multiple expressions",
                 "{var a = true; var b = 1;}",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -583,7 +619,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "local access",
                 "var a = 1; var b = a;",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -611,7 +647,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "method call",
                 "fn MyFn(){} MyFn();",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(
                             new DefId(ModuleId, $"{ModuleId}.MyFn"),
@@ -653,7 +689,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 MyFn::<string>();
                 MyFn::<i64>();
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(
                             new DefId(ModuleId, $"{ModuleId}.MyFn"),
@@ -696,7 +732,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "function parameter access",
                 "fn MyFn(a: string): string { return a; }",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(
                             new DefId(ModuleId, $"{ModuleId}.MyFn"),
@@ -716,7 +752,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "single element tuple",
                 "var a = (1);",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -740,7 +776,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "two element tuple",
                 """var a = (1, "");""",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -776,7 +812,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                     fn SomeFn(){}
                 }
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main__SomeFn"), "_Main__SomeFn",
                             [

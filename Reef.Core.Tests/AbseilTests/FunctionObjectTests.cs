@@ -27,7 +27,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  var a = MyUnion::A;
                  var b = a("");
                  """;
-                 var expectedProgram = LoweredProgram(
+                 var expectedProgram = LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyUnion",
                              variants: [
@@ -142,7 +142,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  var a = MyUnion::A;
                  var b = a("");
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyUnion",
                              variants: [
@@ -243,7 +243,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  fn SomeFn(){}
                  var a = SomeFn;
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}.SomeFn"), "SomeFn",
                              [
@@ -293,7 +293,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                      }
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyClass",
                              variants: [Variant("_classVariant")])
@@ -343,7 +343,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  }
                  var a = MyClass::OtherFn;
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyClass",
                              variants: [Variant("_classVariant")])
@@ -394,7 +394,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  var a = new MyClass{};
                  var b = a.MyFn;
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyClass", variants: [Variant("_classVariant")])
                      ],
@@ -471,7 +471,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                      }
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyClass",
                              variants: [
@@ -655,7 +655,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  var a = SomeFn;
                  a();
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      methods: [
                          Method(
                              new DefId(ModuleId, $"{ModuleId}.SomeFn"),
@@ -709,7 +709,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  var a = SomeFn;
                  var b = a("");
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}.SomeFn"), "SomeFn",
                              [
@@ -766,7 +766,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  }
                  var a = MyClass::<string>::SomeFn::<i64>;
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyClass", ["T"], [Variant("_classVariant")])
                      ],

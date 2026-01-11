@@ -18,9 +18,6 @@
       <None Update="libreef_runtime.a">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
-      <None Update="libreef_runtime.dll">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
     </ItemGroup>
 
 </Project>

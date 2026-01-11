@@ -38,7 +38,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                       _ => 5
                   }
                   """;
-                  var expectedProgram = LoweredProgram(
+                  var expectedProgram = LoweredProgram(ModuleId, 
                       types: [
                           DataType(ModuleId, "MyUnion",
                               variants: [
@@ -219,7 +219,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     MyUnion::C => 3,
                 };
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types: [
                         DataType(ModuleId, "MyUnion",
                             variants: [
@@ -295,7 +295,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      _ => 2
                  };
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyUnion",
                              variants: [
@@ -367,7 +367,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      MyUnion::Y => 4,
                  };
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types:
                      [
                          DataType(ModuleId, "OtherUnion",
@@ -520,7 +520,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      MyUnion::Y => 3
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "OtherUnion",
                              variants: [
@@ -655,7 +655,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      _ => 4,
                  };
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "OtherUnion",
                              variants: [
@@ -796,7 +796,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      MyUnion::X(OtherUnion::B, OtherUnion::B) => 4,
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "OtherUnion",
                              variants: [
@@ -960,7 +960,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      var myUnion => 4,
                  };
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "OtherUnion",
                              variants: [
@@ -1086,7 +1086,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      i64 => 2
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                              [
@@ -1112,7 +1112,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      i64 => 2
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}.GetI64"), "GetI64",
                              [
@@ -1160,7 +1160,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      MyClass{MyField: MyUnion::B} var something => 2,
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyUnion",
                              variants: [
@@ -1258,7 +1258,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      _ => 2
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyUnion",
                              variants: [
@@ -1358,7 +1358,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      _ => 4
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyUnion",
                              variants: [
@@ -1558,7 +1558,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      _ => 5
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyUnion",
                              variants: [
@@ -1760,7 +1760,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                       _ => 5
                   }
                   """,
-                  LoweredProgram(
+                  LoweredProgram(ModuleId, 
                       types: [
                           DataType(ModuleId, "MyUnion",
                               variants: [

@@ -30,7 +30,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 """
                 var b = 1 matches _;
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -55,7 +55,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 """
                 var b = 1 matches var a;
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -84,7 +84,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                     var c = a;
                 }
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types: [
                         DataType(
                             ModuleId,
@@ -196,7 +196,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 """
                 var b = 1 matches i64;
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -221,7 +221,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 """
                 var b = 1 matches i64 var a;
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
                             [
@@ -252,7 +252,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 var a = MyUnion::A;
                 var b = a matches MyUnion::B;
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types: [
                         DataType(ModuleId, "MyUnion",
                             variants: [
@@ -310,7 +310,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 var a = MyUnion::A;
                 var b = a matches MyUnion::B var c;
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types: [
                         DataType(ModuleId, "MyUnion",
                             variants: [
@@ -366,7 +366,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 var a = MyUnion::B;
                 var b = a matches MyUnion::A(_);
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types: [
                         DataType(ModuleId, "MyUnion",
                             variants: [
@@ -457,7 +457,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 var a = MyUnion::B;
                 var b = a matches MyUnion::A(_) var c;
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types: [
                         DataType(ModuleId, "MyUnion",
                             variants: [
@@ -551,7 +551,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 var a = MyUnion::B;
                 var b = a matches MyUnion::A(_, var c, _);
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types: [
                         DataType(ModuleId, "MyUnion",
                             variants: [
@@ -691,7 +691,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 var a = MyUnion::B;
                 var b = a matches MyUnion::A{FieldA: _};
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types: [
                         DataType(ModuleId, "MyUnion",
                             variants: [
@@ -762,7 +762,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 var a = MyUnion::B;
                 var b = a matches MyUnion::A{_};
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types: [
                         DataType(ModuleId, "MyUnion",
                             variants: [
@@ -822,7 +822,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 var a = MyUnion::B;
                 var b = a matches MyUnion::A{FieldA: var c, FieldB, FieldC: _};
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types: [
                         DataType(ModuleId, "MyUnion",
                             variants: [
@@ -936,7 +936,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 var a = unboxed MyUnion::B;
                 var b = a matches unboxed MyUnion::A{FieldA: var c, FieldB, FieldC: _};
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types: [
                         DataType(ModuleId, "MyUnion",
                             variants: [
@@ -1040,7 +1040,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 var a = new MyClass{};
                 var b = a matches MyClass {};
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types: [
                         DataType(ModuleId, "MyClass",
                             variants: [
@@ -1086,7 +1086,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 var a = new MyClass{Field0 = 0, Field1 = 1, Field2 = true };
                 var b = a matches MyClass {Field0: var c, Field1: _, Field2: _};
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types: [
                         DataType(ModuleId, "MyClass",
                             variants: [

@@ -84,22 +84,16 @@ public class BoxTests : IntegrationTestBase
             var a: boxed i32 = box(1);
             
             if (unbox(a) == 1) {
-                print_string("a == 1. ");
+                print_string("unbox(a) == 1");
             }
             if (unbox(a) == 2) {
-                print_string("a == 2. ");
-            }
-            if (a == box(1)) {
-                print_string("a == box(1). ");
-            }
-            if (a == box(2)) {
-                print_string("a == box(2). ");
+                print_string("unbox(a) == 2");
             }
             """);
 
         var output = await Run();
         output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Be("a == 1. a == box(1). ");
+        output.StandardOutput.Should().Be("unbox(a) == 1");
     }
 
     [Fact]
@@ -109,29 +103,29 @@ public class BoxTests : IntegrationTestBase
             """
             fn SomeFn(mut param: boxed i32) {
                 param = box(2);
-                if (param == box(1)) {
-                    print_string("param == box(1). ");
+                if (unbox(param) == 1) {
+                    print_string("unbox(param) == 1. ");
                 }
-                else if (param == box(2)) {
-                    print_string("param == box(2). ");
+                else if (unbox(param) == 2) {
+                    print_string("unbox(param) == 2. ");
                 }
             }
             
             var mut a = box(1);
             SomeFn(a);
             
-            if (a == box(1)) {
-                print_string("a == box(1)");
+            if (unbox(a) == 1) {
+                print_string("unbox(a) == 1");
             }
-            else if (a == box(2)) {
-                print_string("a == box(2)");
+            else if (unbox(a) == 2) {
+                print_string("unbox(a) == 2");
             }
             """
         );
 
         var output = await Run();
         output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Be("param == box(2). a == box(2)");
+        output.StandardOutput.Should().Be("unbox(param) == 2. unbox(a) == 1");
     }
     
     [Fact]

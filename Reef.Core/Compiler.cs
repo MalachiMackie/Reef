@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
@@ -71,8 +72,18 @@ public class Compiler
 
         if (outputIr)
         {
-            var irStr = PrettyPrinter.PrettyPrintLoweredProgram(loweredProgram, false, false);
-            await File.WriteAllTextAsync(Path.Join(buildDirectory, $"{fileNameWithoutExtension}.ir"), irStr, ct);
+            var stringBuilder = new StringBuilder();
+            foreach (var importedModule in importedModules.Prepend(loweredProgram))
+            {
+                var importedModuleIrStr = PrettyPrinter.PrettyPrintLoweredProgram(importedModule, false, false);
+                if (!string.IsNullOrWhiteSpace(importedModuleIrStr))
+                {
+                    stringBuilder.AppendLine($"Module: {importedModule.Id}");
+                    stringBuilder.AppendLine(importedModuleIrStr);
+                }
+            }
+            
+            await File.WriteAllTextAsync(Path.Join(buildDirectory, $"{fileNameWithoutExtension}.ir"), stringBuilder.ToString(), ct);
         }
 
         logger.LogInformation("Generating Assembly...");

@@ -28,7 +28,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
             {
                 "create empty class",
                 "class MyClass{} var a = new MyClass{};",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                         types: [
                             DataType(ModuleId, "MyClass",
                                 variants: [
@@ -65,7 +65,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
             {
                 "create unboxed empty class",
                 "class MyClass{} var a = new unboxed MyClass{};",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types: [
                         DataType(ModuleId, "MyClass",
                             variants: [
@@ -95,7 +95,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
             {
                 "create class with fields",
                 "class MyClass{pub field MyField: string} var a = new MyClass{MyField = \"hi\"};",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                         types: [
                             DataType(ModuleId, "MyClass",
                                 variants: [
@@ -141,7 +141,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
             {
                 "Create unit union variant",
                 "union MyUnion{A} var a = MyUnion::A;",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types: [
                         DataType(ModuleId, "MyUnion",
                             variants: [Variant("A", [Field("_variantIdentifier", UInt16T)])])
@@ -183,7 +183,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
             {
                 "Create class union variant",
                 "union MyUnion{A, B {field a: string}} var a = new MyUnion::B { a = \"hi\"};",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types: [
                         DataType(ModuleId, "MyUnion",
                             variants: [

@@ -154,6 +154,8 @@ public record StaticDataTypeField(
 
 public class LoweredModule
 {
+    public required string Id { get; init; }
+
     public required IReadOnlyList<DataType> DataTypes { get; init; }
     public required IReadOnlyList<IMethod> Methods { get; init; }
 }

@@ -26,7 +26,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
     {
         const string source = 
                 "union MyUnion{}";
-        var expectedProgram = LoweredProgram(types: [
+        var expectedProgram = LoweredProgram(ModuleId, types: [
             DataType(ModuleId, "MyUnion")
         ]);
         
@@ -42,14 +42,14 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "empty union",
                 "union MyUnion{}",
-                LoweredProgram(types: [
+                LoweredProgram(ModuleId, types: [
                     DataType(ModuleId, "MyUnion")
                 ])
             },
             {
                 "generic union",
                 "union MyUnion<T>{}",
-                LoweredProgram(types: [
+                LoweredProgram(ModuleId, types: [
                         DataType(ModuleId, "MyUnion",
                             ["T"])
                 ])
@@ -57,7 +57,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "union with unit variants",
                 "union MyUnion{A, B}",
-                LoweredProgram(types: [
+                LoweredProgram(ModuleId, types: [
                     DataType(ModuleId, "MyUnion",
                         variants: [
                             Variant("A", [Field("_variantIdentifier", UInt16T)]),
@@ -68,7 +68,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "generic union with instance function",
                 "union MyUnion<T>{pub fn SomeFn(){}}",
-                LoweredProgram(types: [
+                LoweredProgram(ModuleId, types: [
                     DataType(ModuleId, "MyUnion",
                         ["T"])
                 ], methods: [
@@ -94,7 +94,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "union with tuple variant",
                 "union MyUnion { A(string, i64) }",
-                LoweredProgram(types: [
+                LoweredProgram(ModuleId, types: [
                     DataType(ModuleId, "MyUnion",
                         variants: [
                             Variant("A", [
@@ -138,7 +138,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "generic union with tuple variant",
                 "union MyUnion<T>{ A(T) }",
-                LoweredProgram(types: [
+                LoweredProgram(ModuleId, types: [
                     DataType(ModuleId, "MyUnion",
                         ["T"],
                         [
@@ -184,7 +184,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "union with class variant",
                 "union MyUnion { A { field MyField: string, field OtherField: i64 } }",
-                LoweredProgram(types: [
+                LoweredProgram(ModuleId, types: [
                     DataType(ModuleId, "MyUnion",
                         variants: [
                             Variant("A",
@@ -199,7 +199,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "union with method",
                 "union MyUnion { pub fn MyFn(){} }",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                 [
                             Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__MyFn"), "MyUnion__MyFn",
                                 [new BasicBlock(BB0, []) {Terminator = new Return()}],
@@ -212,7 +212,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "union with method and tuple variants",
                 "union MyUnion { A(string), pub static fn MyFn() {}, B(string) }",
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__MyFn"), "MyUnion__MyFn",
                             [new BasicBlock(BB0, []){Terminator = new Return()}],

@@ -484,6 +484,8 @@ public class TypeTwoTypeChecker
 
                     break;
                 }
+            case TypeChecker.InstantiatedClass:
+                break;
             case TypeChecker.InstantiatedUnion { TypeArguments: { Count: > 0 } unionTypeArguments }:
                 {
                     foreach (var argument in unionTypeArguments)
@@ -493,12 +495,19 @@ public class TypeTwoTypeChecker
 
                     break;
                 }
+            case TypeChecker.InstantiatedUnion:
+                break;
             case TypeChecker.GenericTypeReference genericTypeReference:
                 {
                     if (genericTypeReference.ResolvedType is null
                         && _erroredGenerics.Add(genericTypeReference))
                     {
                         _errors.Add(TypeCheckerError.UnresolvedInferredGenericType(expression, genericTypeReference.GenericName));
+                    }
+
+                    if (genericTypeReference.ResolvedType is {} resolvedType)
+                    {
+                        CheckTypeReferenceIsResolved(resolvedType, expression);
                     }
 
                     break;
@@ -514,8 +523,18 @@ public class TypeTwoTypeChecker
                     {
                         _errors.Add(TypeCheckerError.UnresolvedInferredVariableType(Token.Identifier("Bob", SourceSpan.Default)));
                     }
+                    else
+                    {
+                        CheckTypeReferenceIsResolved(unknownInferredType.ResolvedType, expression);
+                    }
                     break;
                 }
+            case TypeChecker.FunctionObject:
+                break;
+            case TypeChecker.GenericPlaceholder:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(typeReference.GetType().ToString());
         }
     }
 

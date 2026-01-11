@@ -29,7 +29,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      var b = a;
                  }
                  """;
-        var expectedProgram = LoweredProgram(
+        var expectedProgram = LoweredProgram(ModuleId, 
             types:
             [
                 DataType(ModuleId, "_Main__Locals",
@@ -142,7 +142,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      }
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyFn__Locals",
                              variants: [
@@ -220,7 +220,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      var b = a;
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "_Main__Locals",
                              variants: [
@@ -303,7 +303,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      }
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, 
                              "MyFn__Locals",
@@ -390,7 +390,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      }
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, 
                              "MyClass",
@@ -461,7 +461,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      }
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, 
                              "MyClass",
@@ -517,7 +517,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      a = "bye";
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "_Main__Locals",
                              variants: [
@@ -601,7 +601,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      }
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, 
                              "MyClass",
@@ -693,7 +693,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      }
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, 
                              "MyClass",
@@ -772,7 +772,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      }
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, 
                              "MyClass",
@@ -951,7 +951,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      }
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyClass",
                              variants: [

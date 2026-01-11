@@ -123,7 +123,7 @@ public partial class TypeChecker
             var callFunctionParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
 
             var functionSignature = new FunctionSignature(
-                new DefId(signature.Id.ModuleId, signature.Id.FullName + "__Call"),
+                DefId.FunctionObject_Call(parameterCount),
                 Token.Identifier("Call", SourceSpan.Default),
                 [],
                 callFunctionParameters,

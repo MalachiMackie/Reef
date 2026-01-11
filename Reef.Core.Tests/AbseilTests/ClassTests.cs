@@ -26,7 +26,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                               class MyClass{pub static field MyField: string = ""}
                               var a = MyClass::MyField;
                               """;
-        var expectedProgram = LoweredProgram(
+        var expectedProgram = LoweredProgram(ModuleId,
             types:
             [
                 DataType(ModuleId,
@@ -80,7 +80,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "empty class",
                 "class MyClass{}",
-                LoweredProgram(
+                LoweredProgram(ModuleId,
                     types:
                     [
                         DataType(ModuleId, "MyClass",
@@ -90,7 +90,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "generic class",
                 "class MyClass<T>{}",
-                LoweredProgram(
+                LoweredProgram(ModuleId,
                     types:
                     [
                         DataType(ModuleId, "MyClass",
@@ -101,7 +101,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "generic class with instance function",
                 "class MyClass<T>{pub fn SomeFn(){}}",
-                LoweredProgram(
+                LoweredProgram(ModuleId,
                     types:
                     [
                         DataType(ModuleId, "MyClass",
@@ -129,7 +129,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "class with instance fields",
                 "class MyClass { pub field MyField: string, pub field OtherField: i64}",
-                LoweredProgram(types:
+                LoweredProgram(ModuleId, types:
                 [
                     DataType(ModuleId, "MyClass",
                         variants:
@@ -146,7 +146,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "class with static fields",
                 """class MyClass { pub static field MyField: string = ""}""",
-                LoweredProgram(types:
+                LoweredProgram(ModuleId, types:
                 [
                     DataType(ModuleId, "MyClass",
                         variants: [Variant("_classVariant")],
@@ -174,7 +174,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 var a = new MyClass{A = ""};
                 var b = a.A;
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types:
                     [
                         DataType(ModuleId, "MyClass",
@@ -226,7 +226,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 class MyClass{pub static field MyField: string = ""}
                 var a = MyClass::MyField;
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types:
                     [
                         DataType(ModuleId,
@@ -273,7 +273,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     pub static fn MyFn(){}
                 }
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types:
                     [
                         DataType(ModuleId, "MyClass", variants: [Variant("_classVariant")]),
@@ -312,7 +312,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     }
                 }
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types:
                     [
                         DataType(ModuleId, "MyClass",
@@ -382,7 +382,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     }
                 }
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types:
                     [
                         DataType(ModuleId, "MyClass",
@@ -443,7 +443,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 var a = new MyClass{};
                 a.MyFn();
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types:
                     [
                         DataType(ModuleId, "MyClass", variants: [Variant("_classVariant")])
@@ -507,7 +507,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     }
                 }
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types:
                     [
                         DataType(ModuleId, "MyClass",
@@ -544,7 +544,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     }
                 }
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types:
                     [
                         DataType(ModuleId,
@@ -590,7 +590,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     }
                 }
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types:
                     [
                         DataType(ModuleId,
@@ -646,7 +646,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     fn OtherFn(){}
                 }
                 """,
-                LoweredProgram(
+                LoweredProgram(ModuleId, 
                     types:
                     [
                         DataType(ModuleId,
@@ -697,7 +697,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                  var mut a = new MyClass{MyField = ""};
                  a.MyField = "hi";
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, 
                              "MyClass",
@@ -754,7 +754,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      }
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, 
                              "MyClass",
@@ -794,7 +794,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
 
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, 
                              "MyClass",
@@ -836,7 +836,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                  }
                  MyClass::MyField = "hi";
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, 
                              "MyClass",
@@ -875,7 +875,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      fn SomeFn(a: string): string { return a; }
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, 
                              "MyClass",
@@ -906,7 +906,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      static fn SomeFn(a: string): string { return a; }
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, 
                              "MyClass",
@@ -938,7 +938,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      }
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyClass", variants: [Variant("_classVariant")])
                      ],
@@ -965,7 +965,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      static fn SomeFn(){}
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyClass", ["T"], variants: [Variant("_classVariant")])
                      ],
@@ -986,7 +986,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      static fn SomeFn<T1>(){}
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyClass", ["T"], variants: [Variant("_classVariant")])
                      ],
@@ -1011,7 +1011,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                  }
                  MyClass::<string>::SomeFn::<i64>();
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyClass", ["T"], variants: [Variant("_classVariant")])
                      ],
@@ -1050,7 +1050,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                  var a = new MyClass::<string>{};
                  a.SomeFn::<i64>();
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyClass", ["T"], variants: [Variant("_classVariant")])
                      ],
@@ -1117,7 +1117,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      }
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyClass", ["T"], [Variant("_classVariant")])
                      ],
@@ -1172,7 +1172,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      }
                  }
                  """,
-                 LoweredProgram(
+                 LoweredProgram(ModuleId, 
                      types: [
                          DataType(ModuleId, "MyClass", ["T"], [Variant("_classVariant")])
                      ],

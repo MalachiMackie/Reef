@@ -35,19 +35,19 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
     /// </summary>
     private readonly Dictionary<string, string> _strings = [];
 
-    private readonly Queue<(LoweredMethod Method, IReadOnlyList<LoweredConcreteTypeReference> TypeArguments)>
+    private readonly Queue<(LoweredMethod Method, IReadOnlyList<ILoweredTypeReference> TypeArguments)>
         _methodProcessingQueue = [];
 
     private readonly HashSet<Register> _registersInUse = [];
 
     private LoweredMethod? _currentMethod;
-    private Dictionary<string, LoweredConcreteTypeReference> _currentTypeArguments = [];
+    private Dictionary<string, ILoweredTypeReference> _currentTypeArguments = [];
     private readonly Dictionary<DefId, DataType> _dataTypes = modules.SelectMany(x => x.DataTypes).ToDictionary(
         x => x.Id);
 
     private readonly HashSet<string> _queuedMethodLabels = [];
 
-    private void TryEnqueueMethodForProcessing(LoweredMethod method, IReadOnlyList<LoweredConcreteTypeReference> typeArguments)
+    private void TryEnqueueMethodForProcessing(LoweredMethod method, IReadOnlyList<ILoweredTypeReference> typeArguments)
     {
         var label = GetMethodLabel(method, typeArguments);
         if (_queuedMethodLabels.Add(label))
@@ -145,26 +145,19 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
 
     private sealed record LocalInfo(IAsmPlace Place, ILoweredTypeReference Type);
 
-    private static string GetMethodLabel(IMethod method, IReadOnlyList<LoweredConcreteTypeReference> typeArguments)
+    private static string GetMethodLabel(IMethod method, IReadOnlyList<ILoweredTypeReference> typeArguments)
     {
         return typeArguments.Count == 0
             ? method.Id.FullName
-            : $"{method.Id.FullName}_{string.Join("_", typeArguments.Select(x => x.DefinitionId.FullName))}";
+            : $"{method.Id.FullName}_{string.Join("_", typeArguments.Select(x => x switch {
+                    LoweredConcreteTypeReference concrete => concrete.DefinitionId.FullName,
+                    LoweredPointer(LoweredConcreteTypeReference pointerToConcrete) => $"Pointer_{pointerToConcrete.DefinitionId.FullName}_",
+                    LoweredPointer(var pointerTo) => throw new NotImplementedException(pointerTo.GetType().ToString()),
+                    _ => throw new NotImplementedException(x.GetType().ToString())
+                }))}";
     }
 
     private uint _methodCount;
-
-    private LoweredConcreteTypeReference GetConcreteType(ILoweredTypeReference type)
-    {
-        return type switch
-        {
-            LoweredConcreteTypeReference loweredConcreteTypeReference => loweredConcreteTypeReference,
-            LoweredFunctionReference loweredFunctionReference => throw new NotImplementedException(),
-            LoweredGenericPlaceholder loweredGenericPlaceholder => _currentTypeArguments[loweredGenericPlaceholder.PlaceholderName],
-            LoweredPointer loweredPointer => throw new NotImplementedException(),
-            _ => throw new ArgumentOutOfRangeException(nameof(type))
-        };
-    }
 
     private readonly List<KeyValuePair<ILoweredTypeReference, TypeSizeInfo>> _typeSizes = [];
 
@@ -175,7 +168,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
 
     private sealed record FieldSize(uint Offset, uint Size, uint Alignment);
 
-    private bool AreTypeReferencesEqual(ILoweredTypeReference left, ILoweredTypeReference right, Dictionary<string, LoweredConcreteTypeReference> typeArguments)
+    private bool AreTypeReferencesEqual(ILoweredTypeReference left, ILoweredTypeReference right, Dictionary<string, ILoweredTypeReference> typeArguments)
     {
         switch (left, right)
         {
@@ -205,7 +198,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         return false;
     }
     
-    private TypeSizeInfo GetTypeSize(ILoweredTypeReference typeReference, Dictionary<string, LoweredConcreteTypeReference> typeArguments)
+    private TypeSizeInfo GetTypeSize(ILoweredTypeReference typeReference, Dictionary<string, ILoweredTypeReference> typeArguments)
     {
         var foundTypeReference = _typeSizes.FirstOrDefault(x => AreTypeReferencesEqual(x.Key, typeReference, typeArguments));
         if (foundTypeReference.Key is not null)
@@ -284,7 +277,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                                 var index = dataType.TypeParameters.Index()
                                     .First(x => x.Item.PlaceholderName == genericPlaceholder.PlaceholderName).Index;
                                 var typeArgument = concreteTypeReference.TypeArguments[index];
-                                fieldSize = GetTypeSize(GetConcreteType(typeArgument), typeArguments);
+                                fieldSize = GetTypeSize(typeArgument, typeArguments);
                                 break;
                             }
                             default:
@@ -362,7 +355,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         return register;
     }
     
-    private void ProcessMethod(LoweredMethod method, IReadOnlyList<LoweredConcreteTypeReference> typeArguments)
+    private void ProcessMethod(LoweredMethod method, IReadOnlyList<ILoweredTypeReference> typeArguments)
     {
         _codeSegment.AppendLine($"{GetMethodLabel(method, typeArguments)}:");
         
@@ -615,13 +608,24 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             case Field field:
             {
                 var ownerType = GetPlaceType(field.FieldOwner);
-                if (ownerType is LoweredGenericPlaceholder { PlaceholderName: var placeholderName })
-                {
-                    ownerType = _currentTypeArguments[placeholderName];
-                }
+                var concreteOwner = ownerType as LoweredConcreteTypeReference;
 
-                var concreteType = GetConcreteType(ownerType);
-                var dataType = _dataTypes[concreteType.DefinitionId];
+                while (concreteOwner is null)
+                {
+                    ownerType = ownerType switch
+                    {
+                        LoweredConcreteTypeReference => ownerType,
+                        LoweredFunctionReference => throw new InvalidOperationException("FunctionReference has no fields"),
+                        LoweredGenericPlaceholder(_, var placeholderName) => _currentTypeArguments[placeholderName],
+                        LoweredPointer(var pointerTo) => pointerTo,
+                        RawPointer => throw new InvalidOperationException("Raw Pointer has no fields"),
+                        _ => throw new ArgumentOutOfRangeException(nameof(ownerType))
+                    };
+                    
+                    concreteOwner = ownerType as LoweredConcreteTypeReference;
+                }
+                
+                var dataType = _dataTypes[concreteOwner.DefinitionId];
                 var variant = dataType.Variants.First(x => x.Name == field.VariantName);
 
                 return variant.Fields.First(x => x.Name == field.FieldName).Type;
@@ -630,8 +634,13 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                 return _locals[local.LocalName].Type;
             case StaticField staticField:
                 throw new NotImplementedException();
+            case Deref deref:
+            {
+                var pointerType = (GetPlaceType(deref.PointerPlace) as LoweredPointer).NotNull();
+                return pointerType.PointerTo;
+            }
             default:
-                throw new ArgumentOutOfRangeException(nameof(place));
+                throw new ArgumentOutOfRangeException(place.GetType().ToString());
         }
     }
 
@@ -930,9 +939,9 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
 
         var calleeMethod = GetMethod(methodCall.Function.DefinitionId).NotNull();
         
-        IReadOnlyList<LoweredConcreteTypeReference> calleeTypeArguments =
+        IReadOnlyList<ILoweredTypeReference> calleeTypeArguments =
         [
-            ..methodCall.Function.TypeArguments.Select(x =>
+            ..methodCall.Function.TypeArguments.Select(ILoweredTypeReference (x) =>
             {
                 switch (x)
                 {
@@ -943,8 +952,12 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                         Debug.Assert(genericReefTypeReference.OwnerDefinitionId == _currentMethod.NotNull().Id);
                         return _currentTypeArguments[genericReefTypeReference.PlaceholderName];
                     }
+                    case LoweredPointer loweredPointer:
+                    {
+                        return loweredPointer;
+                    }
                     default:
-                        throw new NotImplementedException();
+                        throw new NotImplementedException(x.GetType().ToString());
                 }
             })
         ];
@@ -1208,6 +1221,12 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                 StorePlaceAddress(destination, asmPlace);
                 break;
             }
+            case SizeOf(var sizeOfType):
+            {
+                var size = GetTypeSize(sizeOfType, _currentTypeArguments);
+                MoveIntoPlace(destination, $"0x{size.Size:X}", PointerSize);
+                break;
+            }
             default:
                 throw new ArgumentOutOfRangeException(nameof(operand), operand.GetType().ToString());
         }
@@ -1339,7 +1358,6 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             StorePlaceAddress(Register.Destination, place);
             _codeSegment.AppendLine("    rep movsb");
             
-            
             FreeRegister(Register.C);
             FreeRegister(Register.Source);
             FreeRegister(Register.Destination);
@@ -1371,28 +1389,34 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                 {
                     case OffsetFromBasePointer offsetFromBasePointer1:
                     {
-                        var register = AllocateRegister();
-                        MoveIntoPlace(register, offsetFromBasePointer, size);
-                        _codeSegment.AppendLine($"    mov     [rbp{FormatOffset(offset+offsetFromBasePointer1.Offset)}], {register.ToAsm(size)}");
-                        FreeRegister(register);
+                        var valueRegister = AllocateRegister();
+                        var pointerRegister = AllocateRegister();
+                        MoveIntoPlace(valueRegister, offsetFromBasePointer, size);
+                        MoveIntoPlace(pointerRegister, offsetFromBasePointer1, PointerSize);
+                        _codeSegment.AppendLine($"    mov     {sizeSpecifier} [{pointerRegister.ToAsm(PointerSize)}{FormatOffset(offset)}], {valueRegister.ToAsm(size)}");
+                        FreeRegister(valueRegister);
+                        FreeRegister(pointerRegister);
                         break;
                     }
                     case OffsetFromStackPointer offsetFromStackPointer:
                     {
-                        var register = AllocateRegister();
-                        MoveIntoPlace(register, offsetFromBasePointer, size);
-                        _codeSegment.AppendLine($"    mov     [rbp{FormatOffset(offset+offsetFromStackPointer.Offset)}], {register.ToAsm(size)}");
-                        FreeRegister(register);
+                        var valueRegister = AllocateRegister();
+                        var pointerRegister = AllocateRegister();
+                        MoveIntoPlace(valueRegister, offsetFromBasePointer, size);
+                        MoveIntoPlace(pointerRegister, offsetFromStackPointer, size);
+                        _codeSegment.AppendLine($"    mov     {sizeSpecifier} [{pointerRegister.ToAsm(PointerSize)}{FormatOffset(offset)}], {valueRegister.ToAsm(size)}");
+                        FreeRegister(valueRegister);
+                        FreeRegister(pointerRegister);
                         break;
                     }
                     case PointerTo:
                         throw new InvalidOperationException();
-                    case Register register:
+                    case Register pointerRegister:
                     {
-                        var destinationRegister = AllocateRegister();
-                        MoveIntoPlace(destinationRegister, offsetFromBasePointer, size);
-                        _codeSegment.AppendLine($"    mov     [{register.ToAsm(PointerSize)}{FormatOffset(offset)}], {destinationRegister.ToAsm(size)}");
-                        FreeRegister(destinationRegister);
+                        var valueRegister = AllocateRegister();
+                        MoveIntoPlace(valueRegister, offsetFromBasePointer, size);
+                        _codeSegment.AppendLine($"    mov     {sizeSpecifier} [{pointerRegister.ToAsm(PointerSize)}{FormatOffset(offset)}], {valueRegister.ToAsm(size)}");
+                        FreeRegister(valueRegister);
                         break;
                     }
                     default:
@@ -1435,34 +1459,36 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         {
             case OffsetFromBasePointer offsetFromBasePointer:
             {
-                var register1 = AllocateRegister();
-                var register2 = AllocateRegister();
-                _codeSegment.AppendLine($"    mov     {register1.ToAsm(PointerSize)}, [rbp{FormatOffset(offsetFromBasePointer.Offset)}]");
-                _codeSegment.AppendLine($"    mov     {register2.ToAsm(size)}, [{register1.ToAsm(PointerSize)}{FormatOffset(source.Offset)}]");
-                MoveIntoPlace(destination, register2, size);
-                FreeRegister(register1);
-                FreeRegister(register2);
+                var sourcePointerRegister = AllocateRegister();
+                var valueRegister = AllocateRegister();
+                MoveIntoPlace(sourcePointerRegister, offsetFromBasePointer, PointerSize);
+                _codeSegment.AppendLine($"    mov     {valueRegister.ToAsm(size)}, [{sourcePointerRegister.ToAsm(PointerSize)}{FormatOffset(source.Offset)}]");
+                MoveIntoPlace(destination, valueRegister, size);
+                
+                FreeRegister(sourcePointerRegister);
+                FreeRegister(valueRegister);
                 break;
             }
             case OffsetFromStackPointer offsetFromStackPointer:
             {
-                var register1 = AllocateRegister();
-                var register2 = AllocateRegister();
-                _codeSegment.AppendLine($"    mov     {register1.ToAsm(PointerSize)}, [rsp{FormatOffset(offsetFromStackPointer.Offset)}]");
-                _codeSegment.AppendLine($"    mov     {register2.ToAsm(size)}, [{register1.ToAsm(PointerSize)}{FormatOffset(source.Offset)}]");
-                MoveIntoPlace(destination, register2, size);
-                FreeRegister(register1);
-                FreeRegister(register2);
+                var sourcePointerRegister = AllocateRegister();
+                var valueRegister = AllocateRegister();
+                MoveIntoPlace(sourcePointerRegister, offsetFromStackPointer, PointerSize);
+                _codeSegment.AppendLine($"    mov     {valueRegister.ToAsm(size)}, [{sourcePointerRegister.ToAsm(PointerSize)}{FormatOffset(source.Offset)}]");
+                MoveIntoPlace(destination, valueRegister, size);
+                
+                FreeRegister(sourcePointerRegister);
+                FreeRegister(valueRegister);
                 break;
             }
             case PointerTo:
                 throw new InvalidOperationException();
             case Register register:
             {
-                var register1 = AllocateRegister();
-                _codeSegment.AppendLine($"    mov     {register1.ToAsm(size)}, [{register.ToAsm(PointerSize)}{FormatOffset(source.Offset)}]");
-                MoveIntoPlace(destination, register1, size);
-                FreeRegister(register1);
+                var valueRegister = AllocateRegister();
+                _codeSegment.AppendLine($"    mov     {valueRegister.ToAsm(size)}, [{register.ToAsm(PointerSize)}{FormatOffset(source.Offset)}]");
+                MoveIntoPlace(destination, valueRegister, size);
+                FreeRegister(valueRegister);
                 break;
             }
             default:
@@ -1470,7 +1496,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         }
     }
 
-    private void MoveIntoPlace(IAsmPlace place, OffsetFromStackPointer offsetFromStackPointer, uint size)
+    private void MoveIntoPlace(IAsmPlace destination, OffsetFromStackPointer offsetFromStackPointer, uint size)
     {
         if (size > PointerSize)
         {
@@ -1480,7 +1506,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             
             MoveIntoPlace(Register.C, $"0x{size:x}", PointerSize);
             StorePlaceAddress(Register.Source, offsetFromStackPointer);
-            StorePlaceAddress(Register.Destination, place);
+            StorePlaceAddress(Register.Destination, destination);
             _codeSegment.AppendLine("    rep movsb");
             
             FreeRegister(Register.C);
@@ -1489,23 +1515,23 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             return;
         }
         var sizeSpecifier = SizeSpecifiers[size];
-        switch (place)
+        switch (destination)
         {
             case OffsetFromBasePointer(var offset):
             {
-                var register = AllocateRegister();
+                var valueRegister = AllocateRegister();
                 
-                MoveIntoPlace(register, offsetFromStackPointer, size);
-                _codeSegment.AppendLine($"    mov     {sizeSpecifier} [rsp{FormatOffset(offset)}], {register.ToAsm(size)}");
-                FreeRegister(register);
+                MoveIntoPlace(valueRegister, offsetFromStackPointer, size);
+                _codeSegment.AppendLine($"    mov     {sizeSpecifier} [rsp{FormatOffset(offset)}], {valueRegister.ToAsm(size)}");
+                FreeRegister(valueRegister);
                 break;
             }
             case OffsetFromStackPointer(var offset):
             {
-                var register = AllocateRegister();
-                MoveIntoPlace(register, offsetFromStackPointer, size);
-                _codeSegment.AppendLine($"    mov     {sizeSpecifier} [rsp{FormatOffset(offset)}], {register.ToAsm(size)}");
-                FreeRegister(register);
+                var valueRegister = AllocateRegister();
+                MoveIntoPlace(valueRegister, offsetFromStackPointer, size);
+                _codeSegment.AppendLine($"    mov     {sizeSpecifier} [rsp{FormatOffset(offset)}], {valueRegister.ToAsm(size)}");
+                FreeRegister(valueRegister);
                 break;
             }
             case PointerTo(var pointerPlace, var offset):
@@ -1514,31 +1540,40 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                 {
                     case OffsetFromBasePointer offsetFromBasePointer:
                     {
-                        var register = AllocateRegister();
+                        var valueRegister = AllocateRegister();
+                        var sourcePointerRegister = AllocateRegister();
                         
-                        MoveIntoPlace(register, offsetFromStackPointer, size);
-                        _codeSegment.AppendLine($"    mov     [rbp{FormatOffset(offset+offsetFromBasePointer.Offset)}], {register.ToAsm(size)}");
-                        FreeRegister(register);
+                        MoveIntoPlace(sourcePointerRegister, offsetFromBasePointer, PointerSize);
+                        _codeSegment.AppendLine($"    mov     {valueRegister.ToAsm(size)}, [{sourcePointerRegister.ToAsm(PointerSize)}{FormatOffset(offset)}]");
+                        MoveIntoPlace(destination, valueRegister, size);
+                        
+                        FreeRegister(valueRegister);
+                        FreeRegister(sourcePointerRegister);
                         break;
                     }
                     case OffsetFromStackPointer offsetFromStackPointer1:
                     {
-                        var register = AllocateRegister();
+                        var valueRegister = AllocateRegister();
+                        var sourcePointerRegister = AllocateRegister();
                         
-                        MoveIntoPlace(register, offsetFromStackPointer, size);
-                        _codeSegment.AppendLine($"    mov     [rsp{FormatOffset(offset+offsetFromStackPointer1.Offset)}], {register.ToAsm(size)}");
+                        MoveIntoPlace(sourcePointerRegister, offsetFromStackPointer1, PointerSize);
+                        _codeSegment.AppendLine($"    mov     {valueRegister.ToAsm(size)}, [{sourcePointerRegister.ToAsm(PointerSize)}{FormatOffset(offset)}]");
+                        MoveIntoPlace(destination, valueRegister, size);
 
-                        FreeRegister(register);
+                        FreeRegister(valueRegister);
+                        FreeRegister(sourcePointerRegister);
                         break;
                     }
                     case PointerTo:
                         throw new InvalidOperationException();
                     case Register register:
                     {
-                        var register1 = AllocateRegister();
-                        MoveIntoPlace(register1, offsetFromStackPointer, size);
-                        _codeSegment.AppendLine($"    mov     [{register.ToAsm(PointerSize)}{FormatOffset(offset)}], {register1.ToAsm(size)}");
-                        FreeRegister(register1);
+                        var valueRegister = AllocateRegister();
+                        
+                        _codeSegment.AppendLine($"    mov     {valueRegister.ToAsm(size)}, [{register.ToAsm(PointerSize)}{FormatOffset(offset)}]");
+                        MoveIntoPlace(destination, valueRegister, size);
+                        
+                        FreeRegister(valueRegister);
                         break;
                     }
                     default:
@@ -1552,7 +1587,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                 break;
             }
             default:
-                throw new ArgumentOutOfRangeException(nameof(place));
+                throw new ArgumentOutOfRangeException(nameof(destination));
         }
 
     }
@@ -1697,21 +1732,6 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         }
     }
 
-    private static string GetPlaceAsm_(IAsmPlace place, uint size)
-    {
-        var sizeSpecifier = SizeSpecifiers[size];
-        
-        return place switch
-        {
-            OffsetFromStackPointer(var offset) => $"{sizeSpecifier} [rsp{FormatOffset(offset)}]",
-            OffsetFromBasePointer(var offset) => $"{sizeSpecifier} [rbp{FormatOffset(offset)}]",
-            Register register => register.ToAsm(size),
-            PointerTo(Register register, var offset) => $"{sizeSpecifier} [{register.ToAsm(PointerSize)}{FormatOffset(offset)}]",
-            PointerTo(var pointerPlace, var offset) => throw new NotImplementedException(),
-            _ => throw new ArgumentOutOfRangeException(nameof(place), place.GetType().ToString())
-        };
-    }
-    
     private void StoreAsmPlaceInPlace(IAsmPlace source, IAsmPlace destination, uint size)
     {
         switch (source)
@@ -1731,165 +1751,6 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             default:
                 throw new ArgumentOutOfRangeException(nameof(source));
         }
-        // switch (source, destination)
-        // {
-        //     case (_, Register) when size > PointerSize:
-        //         throw new InvalidOperationException("cannot move more than 8 bytes into register");
-        //     case (Register, _) when size > PointerSize:
-        //         throw new InvalidOperationException("cannot move more than 8 bytes out of register");
-        //     case (Register sourceRegister, Register destinationRegister):
-        //     {
-        //         _codeSegment.AppendLine($"    mov     {destinationRegister.ToAsm(size)}, {sourceRegister.ToAsm(size)}");
-        //         break;
-        //     }
-        //     case (Register sourceRegister, OffsetFromBasePointer or OffsetFromStackPointer):
-        //     {
-        //         MoveIntoPlace(destination, sourceRegister, size);
-        //         break;
-        //     }
-        //     case (Register sourceRegister, PointerTo destinationPointerTo):
-        //     {
-        //         throw new NotImplementedException();
-        //     }
-        //     case (OffsetFromBasePointer or OffsetFromStackPointer, Register destinationRegister):
-        //     {
-        //         _codeSegment.AppendLine($"    mov     {destinationRegister.ToAsm(size)}, {GetPlaceAsm(source, size)}");
-        //         break;
-        //     }
-        //     case (OffsetFromBasePointer or OffsetFromStackPointer, OffsetFromBasePointer or OffsetFromStackPointer)
-        //         when size > PointerSize:
-        //     {
-        //         var i = 0;
-        //         for (; i < size - size % PointerSize; i += (int)PointerSize)
-        //         {
-        //             IAsmPlace sourcePlace = source switch
-        //             {
-        //                 OffsetFromBasePointer(var offset) => new OffsetFromBasePointer(offset + i),
-        //                 OffsetFromStackPointer(var offset) => new OffsetFromStackPointer(offset + i),
-        //                 _ => throw new UnreachableException()
-        //             };
-        //             IAsmPlace destinationPlace = destination switch
-        //             {
-        //                 OffsetFromBasePointer(var offset) => new OffsetFromBasePointer(offset + i),
-        //                 OffsetFromStackPointer(var offset) => new OffsetFromStackPointer(offset + i),
-        //                 _ => throw new UnreachableException()
-        //             };
-        //             
-        //             _codeSegment.AppendLine($"    mov     {Register.A.ToAsm(PointerSize)}, {GetPlaceAsm(sourcePlace, PointerSize)}");
-        //             _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destinationPlace, PointerSize)}, {Register.A.ToAsm(PointerSize)}");
-        //         }
-        //         var remaining = size - i;
-        //         if (remaining > 0)
-        //         {
-        //             throw new NotImplementedException();
-        //         }
-        //
-        //         break;
-        //     }
-        //     case (OffsetFromBasePointer or OffsetFromStackPointer, OffsetFromBasePointer or OffsetFromStackPointer):
-        //     {
-        //         _codeSegment.AppendLine($"    mov     {Register.A.ToAsm(size)}, {GetPlaceAsm(source, size)}");
-        //         _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destination, size)}, {Register.A.ToAsm(size)}");
-        //         break;
-        //     }
-        //     case (OffsetFromBasePointer or OffsetFromStackPointer, PointerTo(var pointerPlace, var pointerPlaceOffset))
-        //         when size > PointerSize:
-        //     {
-        //         if (pointerPlace is not Register)
-        //         {
-        //             _codeSegment.AppendLine($"    mov     {Register.B.ToAsm(PointerSize)}, {GetPlaceAsm(pointerPlace, PointerSize)}");
-        //             pointerPlace = Register.B;
-        //         }
-        //         
-        //         var i = 0;
-        //         for (; i < size - size % PointerSize; i += (int)PointerSize)
-        //         {
-        //             IAsmPlace sourcePlace = source switch
-        //             {
-        //                 OffsetFromBasePointer(var offset) => new OffsetFromBasePointer(offset + i),
-        //                 OffsetFromStackPointer(var offset) => new OffsetFromStackPointer(offset + i),
-        //                 _ => throw new UnreachableException()
-        //             };
-        //             
-        //             var destinationPlace = new PointerTo(pointerPlace, i + pointerPlaceOffset);
-        //             
-        //             _codeSegment.AppendLine($"    mov     {Register.A.ToAsm(PointerSize)}, {GetPlaceAsm(sourcePlace, PointerSize)}");
-        //             _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destinationPlace, PointerSize)}, {Register.A.ToAsm(PointerSize)}");
-        //         }
-        //         var remaining = size - i;
-        //         if (remaining > 0)
-        //         {
-        //             throw new NotImplementedException();
-        //         }
-        //
-        //         break;
-        //     }
-        //     case (OffsetFromBasePointer or OffsetFromStackPointer, PointerTo destinationPointerTo):
-        //     {
-        //         throw new NotImplementedException();
-        //     }
-        //     case (PointerTo sourcePointerTo, Register destinationRegister):
-        //         throw new NotImplementedException();
-        //     case (PointerTo sourcePointerTo, PointerTo destinationPointerTo):
-        //     {
-        //         _codeSegment.AppendLine($"    mov     {Register.C.ToAsm(PointerSize)}, 0x{size:x}");
-        //         
-        //         if (sourcePointerTo.PointerPlace is PointerTo
-        //             || destinationPointerTo.PointerPlace is PointerTo)
-        //         {
-        //             throw new InvalidOperationException("Pointer to can't point to a pointer");
-        //         }
-        //
-        //         _codeSegment.AppendLine($"    mov     {Register.Source.ToAsm(PointerSize)}, {GetPlaceAsm(sourcePointerTo.PointerPlace, PointerSize)}");
-        //         _codeSegment.AppendLine($"    mov     {Register.Destination.ToAsm(PointerSize)}, {GetPlaceAsm(destinationPointerTo.PointerPlace, PointerSize)}");
-        //
-        //         _codeSegment.AppendLine("    rep movsb");
-        //         break;
-        //     }
-        //     case (PointerTo sourcePointerTo, OffsetFromBasePointer or OffsetFromStackPointer):
-        //     {
-        //         switch (sourcePointerTo.PointerPlace)
-        //         {
-        //             case Register r when r == Register.A:
-        //                 // value already in rax, no need to do anything
-        //                 break;
-        //             case OffsetFromBasePointer:
-        //             case OffsetFromStackPointer:
-        //             case Register:
-        //             {
-        //                 _codeSegment.AppendLine($"    mov     {Register.A.ToAsm(PointerSize)}, {GetPlaceAsm(sourcePointerTo.PointerPlace, PointerSize)}");
-        //                 break;
-        //             }
-        //             case PointerTo:
-        //                 throw new InvalidOperationException("Cannot have pointer to another pointer to");
-        //             default:
-        //                 throw new ArgumentOutOfRangeException(sourcePointerTo.PointerPlace.GetType().ToString());
-        //         }
-        //
-        //         var i = 0;
-        //         for (; i < size; i += (int)PointerSize)
-        //         {
-        //             IAsmPlace destinationAsm = destination switch
-        //             {
-        //                 OffsetFromBasePointer(var offset) => new OffsetFromBasePointer(offset + i),
-        //                 OffsetFromStackPointer(var offset) => new OffsetFromStackPointer(offset + i),
-        //                 _ => throw new UnreachableException()
-        //             };
-        //
-        //             _codeSegment.AppendLine($"    mov     {Register.B.ToAsm(PointerSize)}, [{Register.A.ToAsm(PointerSize)}{FormatOffset(i)}]");
-        //             _codeSegment.AppendLine($"    mov     {GetPlaceAsm(destinationAsm, PointerSize)}, {Register.B.ToAsm(PointerSize)}");
-        //         }
-        //
-        //         if (i < size)
-        //         {
-        //             throw new NotImplementedException();
-        //         }
-        //
-        //         break;
-        //     }
-        //     default:
-        //         throw new UnreachableException();
-        // }
     }
 
     private static readonly Dictionary<uint, string> SizeSpecifiers = new()
@@ -1907,7 +1768,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             Field field => FieldToAsmPlace(field),
             Local local => _locals[local.LocalName].Place,
             StaticField staticField => throw new NotImplementedException(),
-            Deref deref => throw new NotImplementedException(),
+            Deref deref => new PointerTo(PlaceToAsmPlace(deref.PointerPlace), 0),
             _ => throw new ArgumentOutOfRangeException(nameof(place))
         };
     }
@@ -1916,6 +1777,23 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
     {
         var ownerPlace = PlaceToAsmPlace(field.FieldOwner);
         var ownerType = GetPlaceType(field.FieldOwner);
+        var concreteOwner = ownerType as LoweredConcreteTypeReference;
+
+        while (concreteOwner is null)
+        {
+            ownerType = ownerType switch
+            {
+                LoweredConcreteTypeReference => ownerType,
+                LoweredFunctionReference => throw new InvalidOperationException("FunctionReference has no fields"),
+                LoweredGenericPlaceholder(_, var placeholderName) => _currentTypeArguments[placeholderName],
+                LoweredPointer(var pointerTo) => pointerTo,
+                RawPointer => throw new InvalidOperationException("Raw Pointer has no fields"),
+                _ => throw new ArgumentOutOfRangeException(nameof(ownerType))
+            };
+            
+            concreteOwner = ownerType as LoweredConcreteTypeReference;
+        }
+
         var typeSize = GetTypeSize(ownerType, _currentTypeArguments);
         var fieldSize = typeSize.VariantFieldOffsets[field.VariantName][field.FieldName];
 

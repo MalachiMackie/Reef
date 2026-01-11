@@ -55,12 +55,99 @@ public partial class ProgramAbseil
                 ParameterLocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))]);
     }
 
+    private LoweredMethod CreateBoxMethod(TypeChecker.FunctionSignature signature)
+    {
+        var basicBlocks = new List<BasicBlock>();
+        
+        var loweredMethod = new LoweredMethod(
+            signature.Id,
+            signature.Name,
+            [..signature.TypeParameters.Select(GetGenericPlaceholder)],
+            basicBlocks,
+            new MethodLocal(ReturnValueLocalName, null, GetTypeReference(signature.ReturnType)),
+            [..signature.Parameters.Select((x, i) => new MethodLocal(
+                LocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))],
+            []);
+        
+        /*
+         *
+         * pub fn box<TParam, TReturn>(TParam param): TReturn
+         *     where TParam:  unboxed TReturn,
+         *           TReturn: boxed TParam
+         * {
+         *     _returnValue = allocate(sizeof(TTParam));
+         *     *_returnValue = param;
+         *     return;
+         * }
+         * 
+         */
+        
+        basicBlocks.Add(new BasicBlock(
+            new BasicBlockId("bb0"),
+            [],
+            new MethodCall(
+                new LoweredFunctionReference(
+                    DefId.Allocate, []),
+                [new SizeOf(loweredMethod.ParameterLocals[0].Type)],
+                new Local(loweredMethod.ReturnValue.CompilerGivenName),
+                new BasicBlockId("bb1"))));
+        basicBlocks.Add(new BasicBlock(
+            new BasicBlockId("bb1"),
+            [
+                new Assign(
+                    new Deref(new Local(loweredMethod.ReturnValue.CompilerGivenName)),
+                    new Use(new Copy(new Local(loweredMethod.ParameterLocals[0].CompilerGivenName))))
+            ],
+            new Return()));
+        
+        return loweredMethod;
+    }
+    
+    private LoweredMethod CreateUnboxMethod(TypeChecker.FunctionSignature signature)
+    {
+        var basicBlocks = new List<BasicBlock>();
+        
+        var loweredMethod = new LoweredMethod(
+            signature.Id,
+            signature.Name,
+            [..signature.TypeParameters.Select(GetGenericPlaceholder)],
+            basicBlocks,
+            new MethodLocal(ReturnValueLocalName, null, GetTypeReference(signature.ReturnType)),
+            [..signature.Parameters.Select((x, i) => new MethodLocal(
+                LocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))],
+            []);
+        
+        /*
+         *
+         * pub fn unbox<TParam, TReturn>(TParam param): TReturn
+         *     where TParam:  boxed TReturn,
+         *           TReturn: unboxed TParam
+         * {
+         *     _returnValue = *param;
+         *     return;
+         * }
+         *
+         */
+        
+        basicBlocks.Add(new BasicBlock(
+            new BasicBlockId("bb0"),
+            [new Assign(
+                new Local(loweredMethod.ReturnValue.CompilerGivenName),
+                new Use(new Copy(new Deref(new Local(loweredMethod.ParameterLocals[0].CompilerGivenName)))))],
+            new Return()));
+        
+        return loweredMethod;
+    }
+
     private ProgramAbseil(LangProgram program)
     {
         var importedDataTypes = new List<DataType>();
         var importedMethods = new List<IMethod>
         {
             ExternMethodFromSignature(TypeChecker.FunctionSignature.PrintString),
+            ExternMethodFromSignature(TypeChecker.FunctionSignature.Allocate),
+            CreateBoxMethod(TypeChecker.FunctionSignature.Box),
+            CreateUnboxMethod(TypeChecker.FunctionSignature.Unbox),
         };
 
         var rawPointerType = new LoweredConcreteTypeReference(
@@ -82,9 +169,7 @@ public partial class ProgramAbseil
                             [
                                 new DataTypeField(
                                     "FunctionReference",
-                                    new LoweredFunctionReference(
-                                        fnClass.Id,
-                                        [..fnClass.TypeParameters.SkipLast(1).Select(GetGenericPlaceholder)])),
+                                    new RawPointer()),
                                 new DataTypeField(
                                     "FunctionParameter",
                                     rawPointerType)
@@ -190,6 +275,7 @@ public partial class ProgramAbseil
         _importedModules = [
             new LoweredModule
             {
+                Id = DefId.CoreLibModuleId,
                 DataTypes = importedDataTypes,
                 Methods = importedMethods
             }
@@ -249,6 +335,7 @@ public partial class ProgramAbseil
 
         return new LoweredModule
         {
+            Id = _program.ModuleId,
             DataTypes = [.._types.Values],
             Methods = [.._methods.Keys]
         };
@@ -817,7 +904,7 @@ public partial class ProgramAbseil
             _ => throw new InvalidOperationException($"Type reference {typeReference.GetType()} is not supported")
         };
 
-        if (IsTypeReferenceBoxed(typeReference))
+        if (loweredTypeReference is not LoweredPointer && IsTypeReferenceBoxed(typeReference))
         {
             loweredTypeReference = new LoweredPointer(loweredTypeReference);
         }

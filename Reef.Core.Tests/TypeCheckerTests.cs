@@ -57,6 +57,10 @@ public class TypeCheckerTests
         return
         [
             """
+            var a: boxed i32 = box(1);
+            var b = unbox(a) == 1;
+            """,
+            """
             class MyClass{}
             var a = unbox(new MyClass{});
             """,
@@ -68,7 +72,7 @@ public class TypeCheckerTests
             var a: boxed i32 = box(2);
             """,
             """
-            var a: boxed i32 = todo!;
+            var a: boxed i32 = box(1);
             var b: unboxed i32 = unbox(a);
             """,
             """

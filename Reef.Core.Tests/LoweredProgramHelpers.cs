@@ -6,11 +6,13 @@ namespace Reef.Core.Tests;
 public static class LoweredProgramHelpers
 {
     public static LoweredModule LoweredProgram(
+        string moduleId,
         IReadOnlyList<LoweredMethod>? methods = null,
         IReadOnlyList<DataType>? types = null)
     {
         return new()
         {
+            Id = moduleId,
             Methods = methods ?? [],
             DataTypes = types ?? []
         };

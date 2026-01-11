@@ -4,31 +4,31 @@ using System.Text;
 
 namespace Reef.Core.LoweredExpressions;
 
-public class PrettyPrinter
+public class PrettyPrinter(LoweredModule module)
 {
     private readonly StringBuilder _stringBuilder = new();
     private uint _indentationLevel;
 
     public static string PrettyPrintLoweredProgram(
-            LoweredModule program,
+            LoweredModule module,
             bool parensAroundExpressions = true,
             bool printValueUseful = true)
     {
-        var printer = new PrettyPrinter();
+        var printer = new PrettyPrinter(module);
 
-        printer.PrettyPrintLoweredProgramInner(program);
+        printer.PrettyPrintLoweredProgramInner();
 
         return printer._stringBuilder.ToString();
     }
 
-    private void PrettyPrintLoweredProgramInner(LoweredModule program)
+    private void PrettyPrintLoweredProgramInner()
     {
-        foreach (var dataType in program.DataTypes)
+        foreach (var dataType in module.DataTypes)
         {
             PrettyPrintDataType(dataType);
         }
 
-        foreach (var method in program.Methods.OfType<LoweredMethod>())
+        foreach (var method in module.Methods.OfType<LoweredMethod>())
         {
             PrettyPrintMethod(method);
         }
@@ -113,6 +113,28 @@ public class PrettyPrinter
             {
                 _stringBuilder.Append('*');
                 PrettyPrintTypeReference(ptr.PointerTo);
+                break;
+            }
+            case LoweredFunctionReference functionReference:
+            {
+                var method = module.Methods.First(x => x.Id == functionReference.DefinitionId);
+                _stringBuilder.Append(method.Name);
+                if (functionReference.TypeArguments.Count > 0)
+                {
+                    _stringBuilder.Append("::<");
+                    for (var i = 0; i < functionReference.TypeArguments.Count; i++)
+                    {
+                        if (i > 0)
+                            _stringBuilder.Append(", ");
+                        PrettyPrintTypeReference(functionReference.TypeArguments[i]);
+                    }
+                }
+
+                break;
+            }
+            case RawPointer:
+            {
+                _stringBuilder.Append("void*");
                 break;
             }
             default:
