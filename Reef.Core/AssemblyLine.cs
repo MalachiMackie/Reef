@@ -1190,8 +1190,70 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                     stringName = $"_str_{_strings.Count}";
                     _strings[stringConstant.Value] = stringName;
                     // todo: no null terminated strings
-                    _dataSegment.AppendLine(
-                        $"    {stringName} db \"{stringConstant.Value}\", 0");
+                    var str = stringConstant.Value.AsSpan();
+                    _dataSegment.Append($"    {stringName} db ");
+                    
+                    // https://www.ascii-code.com/characters/white-space-characters
+                    var whitespaceIndex = str.IndexOfAnyInRange((char)9, (char)13);
+
+                    var started = false;
+                    var inStringLiteral = false;
+                    while (whitespaceIndex >= 0)
+                    {
+                        var segment = str[..whitespaceIndex];
+                        if (segment.Length > 0)
+                        {
+                            if (started)
+                            {
+                                _dataSegment.Append(", ");
+                            }
+                            if (!inStringLiteral)
+                            {
+                                _dataSegment.Append("\"");
+                            }
+                            _dataSegment.Append(segment);
+                            started = true;
+                            inStringLiteral = true;
+                        }
+                        if (inStringLiteral)
+                        {
+                            _dataSegment.Append("\"");
+                            inStringLiteral = false;
+                        }
+                        if (started)
+                        {
+                            _dataSegment.Append(", ");
+                        }
+                        _dataSegment.Append((int)str[whitespaceIndex]);
+                        str = str[(whitespaceIndex + 1)..];
+                        whitespaceIndex = str.IndexOfAnyInRange((char)9, (char)13);
+                        started = true;
+                    }
+
+                    if (str.Length > 0)
+                    {
+                        if (started)
+                        {
+                            _dataSegment.Append(", ");
+                        }
+                        if (!inStringLiteral)
+                        {
+                            _dataSegment.Append("\"");
+                        }
+                        _dataSegment.Append(str);
+                        inStringLiteral = true;
+                        started = true;
+                    }
+                    
+                    if (inStringLiteral)
+                    {
+                        _dataSegment.Append("\"");
+                    }
+                    if (started)
+                    {
+                        _dataSegment.Append(", ");
+                    }
+                    _dataSegment.AppendLine("0");
                 }
 
                 MoveOperandToDestination(new UIntConstant((ulong)stringConstant.Value.Length, (int)PointerSize), destination);

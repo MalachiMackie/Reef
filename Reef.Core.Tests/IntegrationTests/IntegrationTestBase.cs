@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging;
 
 namespace Reef.Core.Tests.IntegrationTests;
 
@@ -29,7 +30,8 @@ public class IntegrationTestBase
         [CallerFilePath] string callerFilePath = "")
     {
         var testRunFolder = TestRunFolder(testName, testCaseName, callerFilePath);
-        await Compiler.Compile(Path.Join(testRunFolder, $"{testName}.rf"), true, new TestLogger(TestContext.Current.TestOutputHelper ?? throw new UnreachableException()), TestContext.Current.CancellationToken);
+        var testLogger = new TestLogger(TestContext.Current.TestOutputHelper ?? throw new UnreachableException());
+        await Compiler.Compile(Path.Join(testRunFolder, $"{testName}.rf"), true, testLogger, TestContext.Current.CancellationToken);
 
         var exeFileName = Path.Join(testRunFolder, "build", $"{testName}.exe");
         if (!File.Exists(exeFileName))
@@ -49,6 +51,8 @@ public class IntegrationTestBase
 
         var output = await process.StandardOutput.ReadToEndAsync();
         await process.WaitForExitAsync();
+        
+        testLogger.LogInformation(output);
 
         return new TestRunOutput(process.ExitCode, output);
     }

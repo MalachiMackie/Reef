@@ -305,8 +305,9 @@ public partial class TypeChecker
         public List<FunctionSignature> LocalFunctions { get; init; } = [];
         public List<LocalVariable> LocalVariables { get; init; } = [];
         public List<IVariable> AccessedOuterVariables { get; } = [];
-        
+
         public static FunctionSignature PrintString { get; }
+        public static FunctionSignature PrintI32 { get; }
         public static FunctionSignature Allocate { get; }
         public static FunctionSignature Box { get; }
         public static FunctionSignature Unbox { get; }
@@ -334,6 +335,28 @@ public partial class TypeChecker
                 InstantiatedClass.UInt64,
                 Mutable: false,
                 ParameterIndex: 0);
+            
+            var printI32Parameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+            PrintI32 = new FunctionSignature(
+                DefId.PrintI32,
+                Token.Identifier("print_i32", SourceSpan.Default),
+                [],
+                printI32Parameters,
+                IsStatic: true,
+                IsMutable: false,
+                Expressions: [],
+                Extern: true)
+            {
+                OwnerType = null,
+                ReturnType = InstantiatedClass.Unit
+            };
+
+            printI32Parameters["num"] = new FunctionSignatureParameter(
+                PrintI32,
+                Token.Identifier("num", SourceSpan.Default),
+                InstantiatedClass.Int32,
+                false,
+                0);
             
             var printStringParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
             PrintString = new FunctionSignature(

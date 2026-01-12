@@ -132,11 +132,12 @@ public class TokenizerTests
         [
             [
                 """
-                u8
+                "";
                 """,
-                new[]
+                new []
                 {
-                    Token.Identifier("u8", new SourceSpan(new SourcePosition(0, 0, 0), 2)),
+                    Token.StringLiteral("", new SourceSpan(SourcePosition.Default, 2)),
+                    Token.Semicolon(new SourceSpan(new SourcePosition(2, 0, 2), 1))
                 }
             ]
         ];
@@ -271,6 +272,56 @@ public class TokenizerTests
             [
                 "\"hello this is a string\"",
                 new[] { Token.StringLiteral("hello this is a string", new SourceSpan(new SourcePosition(0, 0, 0), 24)) }
+            ],
+            [
+                """
+                "\\\\\\\\"
+                """,
+                new []
+                {
+                    Token.StringLiteral(@"\\\\", new SourceSpan(SourcePosition.Default, 10)),
+                }
+            ],
+            [
+                """
+                "";
+                """,
+                new []
+                {
+                    Token.StringLiteral("", new SourceSpan(SourcePosition.Default, 2)),
+                    Token.Semicolon(new SourceSpan(new SourcePosition(2, 0, 2), 1))
+                }
+            ],
+            ["\"\"", new [] {Token.StringLiteral("", new SourceSpan(SourcePosition.Default, 2))}],
+            [
+                """
+                "this is a string\nwith a new line"
+                """,
+                new [] { Token.StringLiteral("this is a string\nwith a new line", new SourceSpan(SourcePosition.Default, 35))}
+            ],
+            [
+                """
+                "this is a string with a back slash (\\) in it"
+                """,
+                new [] { Token.StringLiteral("this is a string with a back slash (\\) in it", new SourceSpan(SourcePosition.Default, 47)) }
+            ],
+            [
+                """
+                "\t"
+                """,
+                new [] { Token.StringLiteral("\t", new SourceSpan(SourcePosition.Default, 4)) }
+            ],
+            [
+                """
+                "\""
+                """,
+                new [] { Token.StringLiteral("\"", new SourceSpan(SourcePosition.Default, 4)) }
+            ],
+            [
+                """
+                "\r"
+                """,
+                new [] { Token.StringLiteral("\r", new SourceSpan(SourcePosition.Default, 4)) },
             ],
             ["0", new[] { Token.IntLiteral(0, new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["1", new[] { Token.IntLiteral(1, new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],

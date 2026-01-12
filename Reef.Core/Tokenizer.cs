@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
 namespace Reef.Core;
 
@@ -12,8 +13,8 @@ public class Tokenizer
 
     private readonly List<int> _notTokens = [];
 
-    private readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> _stringsAlternateLookup =
-        new HashSet<string>().GetAlternateLookup<ReadOnlySpan<char>>();
+    private readonly Dictionary<string, string>.AlternateLookup<ReadOnlySpan<char>> _stringsAlternateLookup =
+        new Dictionary<string, string>().GetAlternateLookup<ReadOnlySpan<char>>();
 
     public static IEnumerable<Token> Tokenize(string sourceStr)
     {
@@ -228,9 +229,36 @@ public class Tokenizer
             return str;
         }
 
-        _stringsAlternateLookup.Add(source);
+        var sb = new StringBuilder();
+        var backSlashIndex = source.IndexOf('\\');
 
-        return source.ToString();
+        while (backSlashIndex >= 0)
+        {
+            if (backSlashIndex == source.Length - 1)
+            {
+                throw new InvalidOperationException();
+            }
+            sb.Append(source[..backSlashIndex]);
+            var nextChar = source[backSlashIndex + 1];
+            sb.Append(nextChar switch
+            {
+                'n' => '\n',
+                't' => '\t',
+                'r' => '\r',
+                '"' => '"',
+                '\\' => '\\',
+                _ => throw new InvalidOperationException()
+            });
+            source = source[(backSlashIndex + 2)..];
+            backSlashIndex = source.IndexOf('\\');
+        }
+
+        sb.Append(source);
+
+        str = sb.ToString();
+        _stringsAlternateLookup[source] = str;
+
+        return str;
     }
 
     private bool TryResolveToken(
@@ -293,9 +321,7 @@ public class Tokenizer
             TokenType.Else when source is "else" => Token.Else(new SourceSpan(position, (ushort)source.Length)),
             TokenType.IntLiteral when int.TryParse(source, out var intValue) => Token.IntLiteral(intValue,
                 new SourceSpan(position, (ushort)source.Length)),
-            TokenType.StringLiteral when source[0] == '"'
-                                         && source[^1] == '"'
-                                         && source[1..].IndexOf('"') == source.Length - 2 => Token.StringLiteral(
+            TokenType.StringLiteral when ExactlyMatchesStringLiteral(source) => Token.StringLiteral(
                 GetString(source[1..^1]), new SourceSpan(position, (ushort)source.Length)),
             TokenType.QuestionMark when source is "?" => Token.QuestionMark(new SourceSpan(position,
                 (ushort)source.Length)),
@@ -521,7 +547,7 @@ public class Tokenizer
             TokenType.NotEquals => Matches(source, "!="),
             TokenType.Else => Matches(source, "else"),
             TokenType.IntLiteral => !source.ContainsAnyExcept(Digits),
-            TokenType.StringLiteral => MatchesStringLiteral(source),
+            TokenType.StringLiteral => PossiblyMatchesStringLiteral(source),
             TokenType.QuestionMark => source is "?",
             TokenType.Return => Matches(source, "return"),
             TokenType.True => Matches(source, "true"),
@@ -541,7 +567,9 @@ public class Tokenizer
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
 
-        static bool MatchesStringLiteral(ReadOnlySpan<char> stringSource)
+        
+
+        static bool PossiblyMatchesStringLiteral(ReadOnlySpan<char> stringSource)
         {
             if (stringSource[0] != '"')
             {
@@ -556,16 +584,63 @@ public class Tokenizer
 
             var rest = stringSource[1..];
 
-            var nextQuoteIndex = rest.IndexOf('"');
+            var lastQuoteIndex = rest.LastIndexOf('"');
 
-            // the next quote either doesn't exist, or is at the end of the source
-            return nextQuoteIndex < 0 || nextQuoteIndex == rest.Length - 1;
+            // haven't found the ending quote yet
+            if (lastQuoteIndex < 0)
+            {
+                return true;
+            }
+
+            // the last quote is at the end of the string
+            if (lastQuoteIndex == rest.Length - 1)
+            {
+                return true;
+            }
+
+            var untilQuote = rest[..lastQuoteIndex];
+
+            var withoutBackslashes = untilQuote.TrimEnd('\\');
+            var trailingBackslashesCount = untilQuote.Length - withoutBackslashes.Length;
+
+            // there are an odd number of trailing backslashes, so the last one escapes the quote mark we found 
+            return trailingBackslashesCount % 2 == 1;
         }
 
         static bool Matches(ReadOnlySpan<char> source, ReadOnlySpan<char> expected)
         {
             return expected.StartsWith(source) && source.Length <= expected.Length;
         }
+    }
+    
+    private static bool ExactlyMatchesStringLiteral(ReadOnlySpan<char> stringSource)
+    {
+        if (stringSource[0] != '"')
+        {
+            return false;
+        }
+
+        if (stringSource.Length == 1)
+        {
+            return false;
+        }
+
+        var rest = stringSource[1..];
+
+        var lastQuoteIndex = rest.LastIndexOf('"');
+
+        // if there is no quote, or it's not at the end of the string, then it's not valid
+        if (lastQuoteIndex < 0 || lastQuoteIndex != rest.Length - 1)
+        {
+            return false;
+        }
+
+        var untilQuote = rest[..lastQuoteIndex];
+        var withoutTrailingBackSlashes = untilQuote.TrimEnd('\\');
+        var backslashCount = untilQuote.Length - withoutTrailingBackSlashes.Length;
+
+        // if there are any backslashes at the end of the string literal, they must be escaped, so the number must be even
+        return backslashCount % 2 == 0;
     }
 
     private static bool IsValidIdentifier(ReadOnlySpan<char> source)

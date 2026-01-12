@@ -37,6 +37,7 @@ public partial class TypeChecker
     private void TypeCheckInner()
     {
         var printString = FunctionSignature.PrintString;
+        var printI32 = FunctionSignature.PrintI32;
         var box = FunctionSignature.Box;
         var unbox = FunctionSignature.Unbox;
         
@@ -46,6 +47,7 @@ public partial class TypeChecker
             new Dictionary<string, FunctionSignature>()
             {
                 { printString.Name, printString },
+                { printI32.Name, printI32 },
                 { box.Name, box },
                 { unbox.Name, unbox }
             },

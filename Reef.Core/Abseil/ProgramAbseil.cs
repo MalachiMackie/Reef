@@ -145,6 +145,7 @@ public partial class ProgramAbseil
         var importedMethods = new List<IMethod>
         {
             ExternMethodFromSignature(TypeChecker.FunctionSignature.PrintString),
+            ExternMethodFromSignature(TypeChecker.FunctionSignature.PrintI32),
             ExternMethodFromSignature(TypeChecker.FunctionSignature.Allocate),
             CreateBoxMethod(TypeChecker.FunctionSignature.Box),
             CreateUnboxMethod(TypeChecker.FunctionSignature.Unbox),
