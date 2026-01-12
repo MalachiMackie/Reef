@@ -9,7 +9,14 @@ public record DefId(string ModuleId, string FullName)
     public static DefId Unbox { get; } = new(CoreLibModuleId, "unbox");
     public static DefId Box { get; } = new(CoreLibModuleId, "box");
     public static DefId PrintString { get; } = new(CoreLibModuleId, "print_string");
+    public static DefId PrintI8 { get; } = new(CoreLibModuleId, "print_i8");
+    public static DefId PrintI16 { get; } = new(CoreLibModuleId, "print_i16");
     public static DefId PrintI32 { get; } = new(CoreLibModuleId, "print_i32");
+    public static DefId PrintI64 { get; } = new(CoreLibModuleId, "print_i64");
+    public static DefId PrintU8 { get; } = new(CoreLibModuleId, "print_u8");
+    public static DefId PrintU16 { get; } = new(CoreLibModuleId, "print_u16");
+    public static DefId PrintU32 { get; } = new(CoreLibModuleId, "print_u32");
+    public static DefId PrintU64 { get; } = new(CoreLibModuleId, "print_u64");
     public static DefId Allocate { get; } = new(CoreLibModuleId, "allocate");
 
     public static DefId Unit { get; } = new(CoreLibModuleId, CoreLibNamespace + ".Unit");

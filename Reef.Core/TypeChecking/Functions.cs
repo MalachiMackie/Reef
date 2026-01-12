@@ -307,10 +307,45 @@ public partial class TypeChecker
         public List<IVariable> AccessedOuterVariables { get; } = [];
 
         public static FunctionSignature PrintString { get; }
-        public static FunctionSignature PrintI32 { get; }
+        public static FunctionSignature PrintI8 { get; } = CreatePrintInt(InstantiatedClass.Int8, DefId.PrintI8);
+        public static FunctionSignature PrintI16 { get; } = CreatePrintInt(InstantiatedClass.Int16, DefId.PrintI16);
+        public static FunctionSignature PrintI32 { get; } = CreatePrintInt(InstantiatedClass.Int32, DefId.PrintI32);
+        public static FunctionSignature PrintI64 { get; } = CreatePrintInt(InstantiatedClass.Int64, DefId.PrintI64);
+        public static FunctionSignature PrintU8 { get; } = CreatePrintInt(InstantiatedClass.UInt8, DefId.PrintU8);
+        public static FunctionSignature PrintU16 { get; } = CreatePrintInt(InstantiatedClass.UInt16, DefId.PrintU16);
+        public static FunctionSignature PrintU32 { get; } = CreatePrintInt(InstantiatedClass.UInt32, DefId.PrintU32);
+        public static FunctionSignature PrintU64 { get; } = CreatePrintInt(InstantiatedClass.UInt64, DefId.PrintU64);
+        
         public static FunctionSignature Allocate { get; }
         public static FunctionSignature Box { get; }
         public static FunctionSignature Unbox { get; }
+
+        private static FunctionSignature CreatePrintInt(InstantiatedClass type, DefId id)
+        {
+            var parameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+            var signature = new FunctionSignature(
+                id,
+                Token.Identifier($"print_{type.Signature.Name}", SourceSpan.Default),
+                [],
+                parameters,
+                IsStatic: true,
+                IsMutable: false,
+                Expressions: [],
+                Extern: true)
+            {
+                OwnerType = null,
+                ReturnType = InstantiatedClass.Unit
+            };
+
+            parameters["num"] = new FunctionSignatureParameter(
+                signature,
+                Token.Identifier("num", SourceSpan.Default),
+                type,
+                false,
+                0);
+
+            return signature;
+        }
 
         static FunctionSignature()
         {
@@ -335,29 +370,7 @@ public partial class TypeChecker
                 InstantiatedClass.UInt64,
                 Mutable: false,
                 ParameterIndex: 0);
-            
-            var printI32Parameters = new OrderedDictionary<string, FunctionSignatureParameter>();
-            PrintI32 = new FunctionSignature(
-                DefId.PrintI32,
-                Token.Identifier("print_i32", SourceSpan.Default),
-                [],
-                printI32Parameters,
-                IsStatic: true,
-                IsMutable: false,
-                Expressions: [],
-                Extern: true)
-            {
-                OwnerType = null,
-                ReturnType = InstantiatedClass.Unit
-            };
 
-            printI32Parameters["num"] = new FunctionSignatureParameter(
-                PrintI32,
-                Token.Identifier("num", SourceSpan.Default),
-                InstantiatedClass.Int32,
-                false,
-                0);
-            
             var printStringParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
             PrintString = new FunctionSignature(
                 DefId.PrintString,

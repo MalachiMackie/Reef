@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Reef.Core.Tests.IntegrationTests;
+﻿namespace Reef.Core.Tests.IntegrationTests;
 
 public class IntOperations : IntegrationTestBase
 {
-    public static readonly TheoryData<string> IntTypes = new(){
+    public static readonly TheoryData<string> IntTypes =
+    [
         "i64",
         "i32",
         "i16",
@@ -16,9 +11,35 @@ public class IntOperations : IntegrationTestBase
         "u64",
         "u32",
         "u16",
-        "u8",
-    };
+        "u8"
+    ];
+
+    [Theory]
+    [MemberData(nameof(IntTypes))]
+    public async Task PrintPositiveInts(string typeSpecifier)
+    {
+        await SetupTest($"print_{typeSpecifier}(3)", typeSpecifier);
+
+        var result = await Run(typeSpecifier);
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be("3");
+    }
     
+
+    [Theory]
+    [InlineData("i64")]
+    [InlineData("i32")]
+    [InlineData("i16")]
+    [InlineData("i8")]
+    public async Task PrintNegativeInts(string typeSpecifier)
+    {
+        await SetupTest($"print_{typeSpecifier}(-3)", typeSpecifier);
+
+        var result = await Run(typeSpecifier);
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be("-3");
+    }
+
     [Theory]
     [MemberData(nameof(IntTypes))]
     public async Task IntEquals(string typeSpecifier)
@@ -162,9 +183,9 @@ public class IntOperations : IntegrationTestBase
             } else {
                 print_string("a != 1");
             }
-            """);
+            """, typeSpecifier);
 
-        var output = await Run();
+        var output = await Run(typeSpecifier);
 
         output.ExitCode.Should().Be(0);
         output.StandardOutput.Should().Be("a == 1");

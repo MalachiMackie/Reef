@@ -36,21 +36,25 @@ public partial class TypeChecker
 
     private void TypeCheckInner()
     {
-        var printString = FunctionSignature.PrintString;
-        var printI32 = FunctionSignature.PrintI32;
-        var box = FunctionSignature.Box;
-        var unbox = FunctionSignature.Unbox;
+        var builtInFunctions = new [] 
+        {
+            FunctionSignature.Box,
+            FunctionSignature.Unbox,
+            FunctionSignature.PrintString,
+            FunctionSignature.PrintI8,
+            FunctionSignature.PrintI16,
+            FunctionSignature.PrintI32,
+            FunctionSignature.PrintI64,
+            FunctionSignature.PrintU8,
+            FunctionSignature.PrintU16,
+            FunctionSignature.PrintU32,
+            FunctionSignature.PrintU64,
+        };
         
         // initial scope
         _typeCheckingScopes.Push(new TypeCheckingScope(
             null,
-            new Dictionary<string, FunctionSignature>()
-            {
-                { printString.Name, printString },
-                { printI32.Name, printI32 },
-                { box.Name, box },
-                { unbox.Name, unbox }
-            },
+            builtInFunctions.ToDictionary(x => x.Name),
             InstantiatedClass.Unit,
             null,
             null,
