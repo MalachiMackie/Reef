@@ -33,11 +33,34 @@ public class IntOperations : IntegrationTestBase
     [InlineData("i8")]
     public async Task PrintNegativeInts(string typeSpecifier)
     {
-        await SetupTest($"print_{typeSpecifier}(-3)", typeSpecifier);
+        await SetupTest($"print_{typeSpecifier}(0 - 4)", typeSpecifier);
 
         var result = await Run(typeSpecifier);
         result.ExitCode.Should().Be(0);
-        result.StandardOutput.Should().Be("-3");
+        result.StandardOutput.Should().Be("-4");
+    }
+
+    [Fact]
+    public async Task NegateIntLiteral()
+    {
+        await SetupTest("print_i32(-1);");
+
+        var result = await Run();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be("-1");
+    }
+
+    [Fact]
+    public async Task NegateVariable()
+    {
+        await SetupTest("""
+                        var a = 1;
+                        print_i32(-a);
+                        """);
+
+        var result = await Run();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be("-1");
     }
 
     [Theory]

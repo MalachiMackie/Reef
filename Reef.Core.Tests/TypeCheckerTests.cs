@@ -57,6 +57,14 @@ public class TypeCheckerTests
         return
         [
             """
+            var a: i32 = 1;
+            var b = -a;
+            """,
+            """
+            var a = 1;
+            var b = -a;
+            """,
+            """
             var a: boxed i32 = box(1);
             var b = unbox(a) == 1;
             """,
@@ -2460,6 +2468,21 @@ public class TypeCheckerTests
                 a.DoSomething();
                 """,
                 [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
+            {
+                "negate non integer",
+                """
+                var a = -"";
+                """,
+                [MismatchedTypes([Int8, Int16, Int32, Int64], String)]
+            },
+            {
+                "negate unsigned value",
+                """
+                var a: u16 = 1;
+                var b = -a;
+                """,
+                [MismatchedTypes([Int8, Int16, Int32, Int64], UInt16)]
             },
             {
                 "Assigning mut instance reference with non mut variable",

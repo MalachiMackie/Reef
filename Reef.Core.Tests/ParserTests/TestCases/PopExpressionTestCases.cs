@@ -1,7 +1,7 @@
-﻿namespace Reef.Core.Tests.ParserTests.TestCases;
+﻿using Reef.Core.Expressions;
+using static Reef.Core.Tests.ExpressionHelpers;
 
-using Reef.Core.Expressions;
-using static ExpressionHelpers;
+namespace Reef.Core.Tests.ParserTests.TestCases;
 
 public static class PopExpressionTestCases
 {
@@ -379,24 +379,11 @@ public static class PopExpressionTestCases
                         Identifier("ok"), null)), []), SourceRange.Default)),
             ("(a)", new TupleExpression([VariableAccessor("a")], SourceRange.Default)),
             ("(a, b)", new TupleExpression([VariableAccessor("a"), VariableAccessor("b")], SourceRange.Default)),
-            ("!a", new UnaryOperatorExpression(new UnaryOperator(
-                UnaryOperatorType.Not,
-                VariableAccessor("a"),
-                Token.Bang(SourceSpan.Default)))),
-            ("a?", new UnaryOperatorExpression(new UnaryOperator(
-                UnaryOperatorType.FallOut,
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                    Identifier("a"), null)),
-                Token.QuestionMark(SourceSpan.Default)))),
+            ("-a", Negate(VariableAccessor("a"))),
+            ("!a", Not(VariableAccessor("a"))),
+            ("a?", FallOut(VariableAccessor("a"))),
             ("a??",
-                new UnaryOperatorExpression(new UnaryOperator(
-                    UnaryOperatorType.FallOut,
-                    new UnaryOperatorExpression(new UnaryOperator(
-                        UnaryOperatorType.FallOut,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        Token.QuestionMark(SourceSpan.Default))),
-                    Token.QuestionMark(SourceSpan.Default)))
+                FallOut(FallOut(VariableAccessor("a")))
             ),
             ("return 1", new MethodReturnExpression(
                 new MethodReturn(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
@@ -992,6 +979,13 @@ public static class PopExpressionTestCases
                         Token.Bang(SourceSpan.Default))),
                     Token.RightAngleBracket(SourceSpan.Default)))
             ),
+            ( // negate
+                "a > -b",
+                BinaryOperatorExpression(
+                    BinaryOperatorType.GreaterThan,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
+            ),
             ( // and 
                 "a > b && c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
@@ -1192,6 +1186,13 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
+            ( // negate
+                "a < -b",
+                BinaryOperatorExpression(
+                    BinaryOperatorType.LessThan,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
+            ),
             // __multiply
             ( // greater than
                 "a * b > c",
@@ -1367,6 +1368,13 @@ public static class PopExpressionTestCases
                         VariableAccessor("a"),
                         VariableAccessor("b")),
                     VariableAccessor("c"))
+            ),
+            ( // negate
+                "a * -b",
+                BinaryOperatorExpression(
+                    BinaryOperatorType.Multiply,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
             ),
             // __divide
             ( // greater than
@@ -1552,6 +1560,13 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
+            ( // negate
+                "a / -b",
+                BinaryOperatorExpression(
+                    BinaryOperatorType.Divide,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
+            ),
             // __plus
             ( // greater than
                 "a + b > c",
@@ -1735,6 +1750,13 @@ public static class PopExpressionTestCases
                         VariableAccessor("a"),
                         VariableAccessor("b")),
                     VariableAccessor("c"))
+            ),
+            ( // negate
+                "a + -b",
+                BinaryOperatorExpression(
+                    BinaryOperatorType.Plus,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
             ),
             // __minus
             ( // greater than
@@ -1920,6 +1942,13 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
+            ( // negate
+                "a - -b",
+                BinaryOperatorExpression(
+                    BinaryOperatorType.Minus,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
+            ),
             // __FallOut
             ( // fallout
                 "a??",
@@ -2059,6 +2088,10 @@ public static class PopExpressionTestCases
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     FallOut(VariableAccessor("a")),
                     VariableAccessor("b"))
+            ),
+            ( // negate
+                "-a?",
+                Negate(FallOut(VariableAccessor("a")))
             ),
             // __ value assignment
             ( // greater than
@@ -2222,6 +2255,13 @@ public static class PopExpressionTestCases
                     BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                         VariableAccessor("b"),
                         VariableAccessor("c")))
+            ),
+            ( // negate
+                "a = -b",
+                BinaryOperatorExpression(
+                    BinaryOperatorType.ValueAssignment,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
             ),
             // __ equality check
             ( // greater than
@@ -2407,6 +2447,13 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
+            ( // negate
+                "a == -b",
+                BinaryOperatorExpression(
+                    BinaryOperatorType.EqualityCheck,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
+            ),
             // __ negative equality check
             ( // greater than
                 "a != b > c",
@@ -2591,6 +2638,13 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
+            ( // negate
+                "a != -b",
+                BinaryOperatorExpression(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
+            ),
             // __Member Access
             ( // greater than
                 "a.b > c",
@@ -2711,6 +2765,13 @@ public static class PopExpressionTestCases
                     MemberAccess(VariableAccessor("a"), "b"),
                     VariableAccessor("c"))
             ),
+            ( // negate
+                "-a.b",
+                UnaryOperatorExpression(
+                    UnaryOperatorType.Negate,
+                    MemberAccess(
+                        VariableAccessor("a"), "b"))
+            ),
             // __Static Member Access
             ( // greater than
                 "a::b > c",
@@ -2830,6 +2891,11 @@ public static class PopExpressionTestCases
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     StaticMemberAccess(NamedTypeIdentifier("a"), "b"),
                     VariableAccessor("c"))
+            ),
+            ( // negate
+                "-a::b",
+                UnaryOperatorExpression(UnaryOperatorType.Negate,
+                    StaticMemberAccess(NamedTypeIdentifier("a"), "b"))
             ),
             // __Not
             ( // fallout
@@ -2971,6 +3037,10 @@ public static class PopExpressionTestCases
                     Not(VariableAccessor("a")),
                     VariableAccessor("b"))
             ),
+            ( // negate
+                "!-a",
+                Not(Negate(VariableAccessor("a")))
+            ),
             // __And
             ( // fallout
                 "a && !b",
@@ -3086,6 +3156,13 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
+            ( // negate
+                "a && -b",
+                BinaryOperatorExpression(
+                    BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    Negate(VariableAccessor("b")))
+            ),
             // __Or
             ( // fallout
                 "a || !b",
@@ -3200,7 +3277,104 @@ public static class PopExpressionTestCases
                         VariableAccessor("a"),
                         VariableAccessor("b")),
                     VariableAccessor("c"))
-            )
+            ),
+            ( // negate
+                "a || -b",
+                BinaryOperatorExpression(
+                    BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    Negate(VariableAccessor("b")))
+            ),
+            // __Negate
+            ( // fallout
+                "-a?",
+                Negate(FallOut(VariableAccessor("a")))
+            ),
+            ( // less than
+                "-a < b",
+                BinaryOperatorExpression(BinaryOperatorType.LessThan,
+                    Negate(VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // greater than
+                "-a > b",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThan,
+                    Negate(VariableAccessor("a")),
+                    VariableAccessor("b"))
+
+            ),
+            ( // plus
+                "-a + b",
+                BinaryOperatorExpression(BinaryOperatorType.Plus,
+                    Negate(VariableAccessor("a")),
+                    VariableAccessor("b"))
+
+            ),
+            ( // minus
+                "-a - b",
+                BinaryOperatorExpression(BinaryOperatorType.Minus,
+                    Negate(VariableAccessor("a")),
+                    VariableAccessor("b"))
+
+            ),
+            ( // multiply
+                "-a * b",
+                BinaryOperatorExpression(BinaryOperatorType.Multiply,
+                    Negate(VariableAccessor("a")),
+                    VariableAccessor("b"))
+
+            ),
+            ( // divide
+                "-a / b",
+                BinaryOperatorExpression(BinaryOperatorType.Divide,
+                    Negate(VariableAccessor("a")),
+                    VariableAccessor("b"))
+
+            ),
+            ( // assignment
+                "-a = b",
+                BinaryOperatorExpression(BinaryOperatorType.ValueAssignment,
+                    Negate(VariableAccessor("a")),
+                    VariableAccessor("b"))
+),
+            ( // equality check
+                "-a == b",
+                BinaryOperatorExpression(BinaryOperatorType.EqualityCheck,
+                    Negate(VariableAccessor("a")),
+                    VariableAccessor("b"))
+
+            ),
+            ( // negative equality check
+                "-a != b",
+                BinaryOperatorExpression(BinaryOperatorType.NegativeEqualityCheck,
+                    Negate(VariableAccessor("a")),
+                    VariableAccessor("b"))
+
+            ),
+            ( // member access
+                "-a.c",
+                Negate(MemberAccess(VariableAccessor("a"), "c"))
+            ),
+            ( // not
+                "-!b",
+                Negate(Not(VariableAccessor("b")))
+            ),
+            ( // and 
+                "-a && b",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    Negate(VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // or 
+                "-a || b",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    Negate(VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // negate
+                "--a",
+                Negate(Negate(VariableAccessor("a")))
+            ),
         }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedExpression });
     }
 }

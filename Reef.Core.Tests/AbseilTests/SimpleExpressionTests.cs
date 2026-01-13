@@ -1,4 +1,3 @@
-using System.Reflection;
 using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
 using static Reef.Core.Tests.LoweredProgramHelpers;
@@ -66,6 +65,39 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
     {
         return new()
         {
+            {
+                "negate value",
+                """
+                var a = 1;
+                var b = -a;
+                """,
+                LoweredProgram(ModuleId, methods: [
+                    Method(new DefId(ModuleId, $"{ModuleId}._Main"),
+                        "_Main",
+                        [
+                        new BasicBlock(
+                            BB0,
+                            [
+                                new Assign(
+                                    new Local("_local0"), new Use(new IntConstant(1, 4))),
+                                new Assign(
+                                    new Local("_local1"), new UnaryOperation(
+                                        new Copy(new Local("_local0")),
+                                        UnaryOperationKind.Negate))
+                            ],
+                            new GoTo(BB1)),
+                        new BasicBlock(
+                            BB1,
+                            [],
+                            new Return()),
+                        ],
+                        Unit,
+                        locals: [
+                            new MethodLocal("_local0", "a", Int32T),
+                            new MethodLocal("_local1", "b", Int32T),
+                        ])
+                ])
+            },
             {
                 "box number",
                 "var a: boxed i32 = box(1)",

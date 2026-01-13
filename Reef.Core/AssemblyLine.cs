@@ -814,7 +814,16 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                 break;
             }
             case UnaryOperationKind.Negate:
-                throw new NotImplementedException();
+            {
+                var operandRegister = AllocateRegister();
+                MoveOperandToDestination(operand, operandRegister);
+                
+                _codeSegment.AppendLine($"    neg     {operandRegister.ToAsm(operandSize.Size)}");
+                StoreAsmPlaceInPlace(operandRegister, place, operandSize.Size);
+
+                FreeRegister(operandRegister);
+                break;
+            }
             default:
                 throw new ArgumentOutOfRangeException(nameof(kind), kind, null);
         }

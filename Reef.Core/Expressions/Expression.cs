@@ -498,7 +498,7 @@ public static class UnaryOperatorTypeExtensions
 {
     public static bool IsPrefix(this UnaryOperatorType @operator)
     {
-        return @operator is UnaryOperatorType.Not;
+        return @operator is UnaryOperatorType.Not or UnaryOperatorType.Negate;
     }
 }
 
@@ -587,7 +587,8 @@ public enum UnaryOperatorType
 {
     // ?
     FallOut,
-    Not
+    Not,
+    Negate
 }
 
 public enum ExpressionType
@@ -611,5 +612,6 @@ public enum ExpressionType
     While,
     Break,
     Continue,
-    TypeIdentifier
+    TypeIdentifier,
+    Negate
 }

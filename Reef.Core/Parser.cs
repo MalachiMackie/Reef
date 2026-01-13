@@ -1156,19 +1156,47 @@ public sealed class Parser : IDisposable
             TokenType.Matches => GetMatchesExpression(previousExpression),
             TokenType.Match => GetMatchExpression(),
             TokenType.Unboxed or TokenType.Boxed => GetTypeIdentifierExpression(),
-            _ when TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(
-                previousExpression, Current, unaryOperatorType.Value),
+            _ when TryGetBinaryOperatorType(Current.Type, out var binaryOperatorType)
+                && TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOrBinaryOperatorExpression(
+                previousExpression,
+                Current,
+                binaryOperatorType.Value,
+                unaryOperatorType.Value),
             _ when TryGetBinaryOperatorType(Current.Type, out var binaryOperatorType) => GetBinaryOperatorExpression(
                 previousExpression,
                 binaryOperatorType.Value),
-            // hack to assign out variable and return null
-#pragma warning disable CS0665 // Assignment in conditional expression is always constant
-            // ReSharper disable once ConditionalTernaryEqualBranch
-            _ => (consumedToken = false) ? null : null
-#pragma warning restore CS0665 // Assignment in conditional expression is always constant
+            _ when TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOperatorExpression(
+                previousExpression, Current, unaryOperatorType.Value),
+            _ => DefaultCase(out consumedToken)
         };
-
+        
         return expression;
+
+        static IExpression? DefaultCase(out bool consumedToken)
+        {
+            consumedToken = false;
+            return null;
+        }
+    }
+
+    private IExpression? GetUnaryOrBinaryOperatorExpression(
+        IExpression? previousExpression,
+        Token currentToken,
+        BinaryOperatorType binaryOperatorType,
+        UnaryOperatorType unaryOperatorType)
+    {
+        // -b     - unary,  previousExpression == null, isPrefix = true
+        // a - b  - binary, previousExpression != null, isPrefix = true
+        // a * b? - unary,  previousExpression != null, isPrefix = false
+        // a * !b - unary,  previousExpression == null, isPrefix = true
+        // a * -b - unary,  previousExpression == null, isPrefix = true
+
+        if (previousExpression is not null && unaryOperatorType.IsPrefix())
+        {
+            return GetBinaryOperatorExpression(previousExpression, binaryOperatorType);
+        }
+
+        return GetUnaryOperatorExpression(previousExpression, currentToken, unaryOperatorType);
     }
 
 
@@ -1940,8 +1968,9 @@ public sealed class Parser : IDisposable
             keepBinding = _hasNext
                           && TryGetBindingStrength(Current, out var bindingStrength)
                           && (!TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) ||
-                              !unaryOperatorType.Value.IsPrefix())
-                          && bindingStrength > (currentBindingStrength ?? 0);
+                              !unaryOperatorType.Value.IsPrefix()
+                              || TryGetBinaryOperatorType(Current.Type, out _))
+                          && bindingStrength.Min() > (currentBindingStrength ?? 0);
         }
 
         return previousExpression;
@@ -2213,7 +2242,7 @@ public sealed class Parser : IDisposable
             throw new UnreachableException("All operators have a binding strength");
         }
 
-        if (!ExpectNextExpression(bindingStrength, out var right))
+        if (!ExpectNextExpression(bindingStrength.Min(), out var right))
         {
             return new BinaryOperatorExpression(
                 new BinaryOperator(operatorType, leftOperand, null, operatorToken));
@@ -2222,22 +2251,25 @@ public sealed class Parser : IDisposable
         return new BinaryOperatorExpression(new BinaryOperator(operatorType, leftOperand, right, operatorToken));
     }
 
-    private static bool TryGetBindingStrength(Token token, [NotNullWhen(true)] out uint? bindingStrength)
+    private static bool TryGetBindingStrength(Token token, out IReadOnlyList<uint> bindingStrengths)
     {
-        bindingStrength = token.Type switch
+        bindingStrengths = token.Type switch
         {
-            _ when TryGetUnaryOperatorType(token.Type, out var unaryOperatorType) => GetUnaryOperatorBindingStrength(
-                unaryOperatorType.Value),
-            _ when TryGetBinaryOperatorType(token.Type, out var binaryOperatorType) => GetBinaryOperatorBindingStrength(
-                binaryOperatorType.Value),
-            TokenType.LeftParenthesis => 8,
-            TokenType.Dot => 11,
-            TokenType.DoubleColon => 12,
-            TokenType.Matches => 3,
-            _ => null
+            _ when TryGetUnaryOperatorType(token.Type, out var unaryOperatorType)
+                && TryGetBinaryOperatorType(token.Type, out var binaryOperatorType) => 
+                [GetUnaryOperatorBindingStrength(unaryOperatorType.Value), GetBinaryOperatorBindingStrength(binaryOperatorType.Value)],
+            _ when TryGetUnaryOperatorType(token.Type, out var unaryOperatorType) => [GetUnaryOperatorBindingStrength(
+                unaryOperatorType.Value)],
+            _ when TryGetBinaryOperatorType(token.Type, out var binaryOperatorType) => [GetBinaryOperatorBindingStrength(
+                binaryOperatorType.Value)],
+            TokenType.LeftParenthesis => [8],
+            TokenType.Dot => [11],
+            TokenType.DoubleColon => [12],
+            TokenType.Matches => [3],
+            _ => []
         };
 
-        return bindingStrength.HasValue;
+        return bindingStrengths.Count > 0;
     }
 
     private static bool TryGetUnaryOperatorType(TokenType type, [NotNullWhen(true)] out UnaryOperatorType? operatorType)
@@ -2246,6 +2278,7 @@ public sealed class Parser : IDisposable
         {
             TokenType.QuestionMark => UnaryOperatorType.FallOut,
             TokenType.Bang => UnaryOperatorType.Not,
+            TokenType.Dash => UnaryOperatorType.Negate,
             _ => null
         };
 
@@ -2299,6 +2332,7 @@ public sealed class Parser : IDisposable
         return operatorType switch
         {
             UnaryOperatorType.FallOut => 10,
+            UnaryOperatorType.Negate => 9,
             UnaryOperatorType.Not => 9,
             _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType,
                 typeof(UnaryOperatorType))

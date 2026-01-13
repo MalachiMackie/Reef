@@ -464,6 +464,7 @@ public class Tokenizer
                 break;
             case '-':
                 tokens[i++] = TokenType.Dash;
+                tokens[i++] = TokenType.IntLiteral;
                 break;
             case 'w':
                 tokens[i++] = TokenType.While;
@@ -546,7 +547,7 @@ public class Tokenizer
             TokenType.DoubleEquals => Matches(source, "=="),
             TokenType.NotEquals => Matches(source, "!="),
             TokenType.Else => Matches(source, "else"),
-            TokenType.IntLiteral => !source.ContainsAnyExcept(Digits),
+            TokenType.IntLiteral => (source[0] == '-' || char.IsDigit(source[0])) && (source.Length == 1 || !source[1..].ContainsAnyExcept(Digits)),
             TokenType.StringLiteral => PossiblyMatchesStringLiteral(source),
             TokenType.QuestionMark => source is "?",
             TokenType.Return => Matches(source, "return"),

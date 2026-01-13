@@ -258,6 +258,11 @@ public class TokenizerTests
             ["this", new[] { Token.Identifier("this", new SourceSpan(new SourcePosition(0, 0, 0), 4)) }],
             ["ok", new[] { Token.Identifier("ok", new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["error", new[] { Token.Identifier("error", new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
+            ["-a", new []
+            {
+                Token.Dash(new SourceSpan(SourcePosition.Default, 1)),
+                Token.Identifier("a", new SourceSpan(new SourcePosition(1, 0, 1), 1))
+            }],
             ["*", new[] { Token.Star(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["!", new[] { Token.Bang(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["-", new[] { Token.Dash(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
@@ -323,6 +328,7 @@ public class TokenizerTests
                 """,
                 new [] { Token.StringLiteral("\r", new SourceSpan(SourcePosition.Default, 4)) },
             ],
+            ["-1", new[] { Token.IntLiteral(-1, new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["0", new[] { Token.IntLiteral(0, new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["1", new[] { Token.IntLiteral(1, new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["2", new[] { Token.IntLiteral(2, new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],

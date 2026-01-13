@@ -1683,7 +1683,7 @@ public partial class ProgramAbseil
         }
 
         functionReference = GetFunctionReference(instantiatedFunction.FunctionId,
-            [..Enumerable.Select<TypeChecker.GenericTypeReference, ILoweredTypeReference>(instantiatedFunction.TypeArguments, GetTypeReference)],
+            [..instantiatedFunction.TypeArguments.Select<TypeChecker.GenericTypeReference, ILoweredTypeReference>(GetTypeReference)],
             ownerTypeArguments);
 
         arguments.AddRange(originalArguments);
@@ -1981,6 +1981,7 @@ public partial class ProgramAbseil
                 new UnaryOperation(valueOperand.ToOperand(), unaryOperatorExpression.UnaryOperator.OperatorType switch
                 {
                     UnaryOperatorType.Not => UnaryOperationKind.Not,
+                    UnaryOperatorType.Negate => UnaryOperationKind.Negate,
                     _ => throw new UnreachableException()
                 })));
 

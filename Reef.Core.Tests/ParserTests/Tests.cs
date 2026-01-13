@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using Reef.Core.Common;
 using Reef.Core.Expressions;
 
 #pragma warning disable IDE0060 // Remove unused parameter
@@ -55,9 +56,23 @@ public class Tests(ITestOutputHelper testOutputHelper)
     [Fact]
     public void SingleTest()
     {
-        const string source = "::<";
-        var result = Parser.Parse("Tests", Tokenizer.Tokenize(source));
-        result.Should().NotBeNull();
+        
+        var source = "!a - b";
+        var expectedExpression = new BinaryOperatorExpression(new BinaryOperator(
+            BinaryOperatorType.Minus,
+            new UnaryOperatorExpression(new UnaryOperator(
+                UnaryOperatorType.Not,
+                ExpressionHelpers.VariableAccessor("a"),
+                Token.Bang(SourceSpan.Default))),
+            ExpressionHelpers.VariableAccessor("b"),
+            Token.Dash(SourceSpan.Default)));
+        
+        var result = Parser.PopExpression("Tests", Tokenizer.Tokenize(source)).NotNull();
+        
+        testOutputHelper.WriteLine("Expected {0}, found {1}", expectedExpression, result);
+        
+        result.Should().BeEquivalentTo(expectedExpression, opts => opts
+            .Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
     }
 
     [Theory]

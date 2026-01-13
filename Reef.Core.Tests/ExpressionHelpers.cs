@@ -45,8 +45,12 @@ public static class ExpressionHelpers
 
     public static UnaryOperatorExpression Not(IExpression? value)
     {
-        return new UnaryOperatorExpression(new UnaryOperator(UnaryOperatorType.Not, value,
-            Token.Bang(SourceSpan.Default)));
+        return UnaryOperatorExpression(UnaryOperatorType.Not, value);
+    }
+
+    public static UnaryOperatorExpression Negate(IExpression? value)
+    {
+        return UnaryOperatorExpression(UnaryOperatorType.Negate, value);
     }
 
     public static BlockExpression Block(IReadOnlyList<IExpression>? expressions = null)
@@ -366,6 +370,22 @@ public static class ExpressionHelpers
     public static ElseIf ElseIf(IExpression checkExpression, IExpression? elseBody = null)
     {
         return new ElseIf(checkExpression, elseBody);
+    }
+
+    public static UnaryOperatorExpression UnaryOperatorExpression(
+        UnaryOperatorType type,
+        IExpression? operand)
+    {
+        return new UnaryOperatorExpression(new UnaryOperator(
+            type,
+            operand,
+            type switch
+            {
+                UnaryOperatorType.FallOut => Token.QuestionMark(SourceSpan.Default),
+                UnaryOperatorType.Not => Token.Bang(SourceSpan.Default),
+                UnaryOperatorType.Negate => Token.Dash(SourceSpan.Default),
+                _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+            }));
     }
 
     public static BinaryOperatorExpression BinaryOperatorExpression(BinaryOperatorType type, IExpression left,

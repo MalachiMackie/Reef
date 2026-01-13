@@ -139,7 +139,26 @@ public partial class TypeChecker
         {
             UnaryOperatorType.FallOut => TypeCheckFallout(unaryOperator.Operand),
             UnaryOperatorType.Not => TypeCheckNot(unaryOperator.Operand),
+            UnaryOperatorType.Negate => TypeCheckNegate(unaryOperator.Operand),
             _ => throw new UnreachableException($"{unaryOperator.OperatorType}")
+        };
+    }
+
+    private ITypeReference TypeCheckNegate(IExpression? expression)
+    {
+        if (expression is not null)
+        {
+            expression.ValueUseful = true;
+            TypeCheckExpression(expression);
+        }
+
+        ExpectExpressionType(
+            [InstantiatedClass.Int8, InstantiatedClass.Int16, InstantiatedClass.Int32, InstantiatedClass.Int64],
+            expression);
+
+        return expression?.ResolvedType ?? new UnspecifiedSizedIntType()
+        {
+            Boxed = false,
         };
     }
 

@@ -40,6 +40,31 @@ public static class ParseTestCases
                     [])
             ),
             (
+                "-1",
+                new LangProgram("ParseTestCases",
+                    [
+                        Literal(-1)
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                """
+                var a = 1;
+                var b = -a;
+                """,
+                new ("ParseTestCases",
+                    [
+                        VariableDeclaration("a", Literal(1)),
+                        VariableDeclaration("b", new UnaryOperatorExpression(
+                            new UnaryOperator(UnaryOperatorType.Negate, VariableAccessor("a"), Token.Dash(SourceSpan.Default))))
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
                 """
                 var a: u8 = 3;
                 """,
