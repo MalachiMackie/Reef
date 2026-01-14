@@ -48,7 +48,7 @@ public class Compiler
         {
             foreach (var error in parsedProgram.Errors)
             {
-                logger.LogError("Error: {Error}", error);
+                logger.LogError("Error: {Error}", error.Format());
             }
 
             return;
@@ -60,7 +60,7 @@ public class Compiler
         {
             foreach (var error in typeCheckErrors)
             {
-                logger.LogError("Error: {Message}. {Contents}", error.Message, contents[(int)error.Range.Start.Position.Start..(int)(error.Range.End.Position.Start + error.Range.End.Length)]);
+                logger.LogError("Error: {Message}. {Contents}", error.Message, GetSourceRange(contents, error.Range).ToString());
             }
 
             return;
@@ -90,6 +90,12 @@ public class Compiler
         IReadOnlyList<LoweredModule> allModules = [..importedModules.Append(loweredProgram)];
 
         var usefulMethodIds = new TreeShaker(allModules).Shake();
+
+        if (usefulMethodIds.Count == 0)
+        {
+            logger.LogError("No main method was found");
+            return;
+        }
 
         var assembly =
             AssemblyLine.Process(allModules, usefulMethodIds, logger);
@@ -192,5 +198,10 @@ public class Compiler
         await linkProcess.WaitForExitAsync(ct);
 
         logger.LogInformation("Done!");
+    }
+
+    private static ReadOnlySpan<char> GetSourceRange(string source, SourceRange range)
+    {
+        return source.AsSpan()[(int)range.Start.Position.Start..(int)(range.End.Position.Start + range.End.Length)];
     }
 }

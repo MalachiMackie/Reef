@@ -14,7 +14,7 @@ public class TreeShaker(IReadOnlyList<LoweredModule> modules)
 
         if (mainModule.Length != 1)
         {
-            throw new InvalidOperationException("A single main method must be defined");
+            return [];
         }
 
         var mainMethod = mainModule[0].Methods.OfType<LoweredMethod>().Single(x => x.Name == "_Main");

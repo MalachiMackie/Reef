@@ -33,5 +33,6 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
+**/reef-implementation/build/
 **/Examples/build/
 **/IntegrationTests/**/*_TestRuns/

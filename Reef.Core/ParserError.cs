@@ -15,9 +15,43 @@ public record ParserError
         Type = type;
     }
 
-    public ParserErrorType Type { get; init; }
-    public IReadOnlyList<TokenType>? ExpectedTokenTypes { get; init; }
-    public Token? ReceivedToken { get; init; }
+    public ParserErrorType Type { get; }
+    public IReadOnlyList<TokenType>? ExpectedTokenTypes { get; }
+    public Token? ReceivedToken { get; }
+
+    public string Format()
+    {
+        if (Type == ParserErrorType.DuplicateModifier)
+        {
+            return $"Duplicate modifier {ReceivedToken.NotNull()}";
+        }
+
+        var expectedMessage = Type switch
+        {
+            ParserErrorType.ExpectedToken when ExpectedTokenTypes is { Count: > 1 } =>
+                $"Expected one of [{string.Join(", ", ExpectedTokenTypes)}]",
+            ParserErrorType.ExpectedToken => $"Expected {ExpectedTokenTypes.NotNull()[0]}",
+            ParserErrorType.ExpectedExpression => "Expected expression",
+            ParserErrorType.ExpectedType => "Expected type",
+            ParserErrorType.ExpectedPattern => "Expected pattern",
+            ParserErrorType.ExpectedPatternOrToken when ExpectedTokenTypes is { Count: > 1 } =>
+                $"Expected pattern or one of [{string.Join(", ", ExpectedTokenTypes)}]",
+            ParserErrorType.ExpectedPatternOrToken => $"Expected pattern or {ExpectedTokenTypes.NotNull()[0]}",
+            ParserErrorType.ExpectedTypeOrToken when ExpectedTokenTypes is { Count: > 1 } =>
+                $"Expected type or one of [{string.Join(", ", ExpectedTokenTypes)}]",
+            ParserErrorType.ExpectedTypeOrToken => $"Expected type or {ExpectedTokenTypes.NotNull()[0]}",
+            ParserErrorType.ExpectedTokenOrExpression when ExpectedTokenTypes is { Count: > 1 } =>
+                $"Expected expression or one of [{string.Join(", ", ExpectedTokenTypes)}]",
+            ParserErrorType.ExpectedTokenOrExpression => $"Expected expression or {ExpectedTokenTypes.NotNull()[0]}",
+            ParserErrorType.ExpectedTypeName => "Expected type name",
+            ParserErrorType.UnexpectedModifier when ExpectedTokenTypes is { Count: > 1 } =>
+                $"Expected one of modifiers [{string.Join(", ", ExpectedTokenTypes)}]",
+            ParserErrorType.UnexpectedModifier => $"Expected modifier {ExpectedTokenTypes.NotNull()[0]}",
+            _ => throw new ArgumentOutOfRangeException()
+        };
+
+        return expectedMessage + $", but received {ReceivedToken?.ToString() ?? "EOF"}";
+    }
 
     public static ParserError ExpectedToken(Token? receivedToken, params IReadOnlyList<TokenType> expectedTokens)
     {
