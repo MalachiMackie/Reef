@@ -340,6 +340,8 @@ public class TokenizerTests
             ["8", new[] { Token.IntLiteral(8, new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["9", new[] { Token.IntLiteral(9, new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["?", new[] { Token.QuestionMark(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
+            ["[", new[] { Token.LeftSquareBracket(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
+            ["]", new[] { Token.RightSquareBracket(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["true", new[] { Token.True(new SourceSpan(new SourcePosition(0, 0, 0), 4)) }],
             ["false", new[] { Token.False(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["bool", new[] { Token.Identifier("bool", new SourceSpan(new SourcePosition(0, 0, 0), 4)) }],

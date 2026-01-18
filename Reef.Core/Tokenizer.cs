@@ -296,6 +296,8 @@ public class Tokenizer
                 (ushort)source.Length)),
             TokenType.RightParenthesis when source is ")" => Token.RightParenthesis(new SourceSpan(position,
                 (ushort)source.Length)),
+            TokenType.LeftSquareBracket when source is "[" => Token.LeftSquareBracket(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.RightSquareBracket when source is "]" => Token.RightSquareBracket(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Semicolon when source is ";" => Token.Semicolon(new SourceSpan(position, (ushort)source.Length)),
             TokenType.LeftBrace when source is "{" => Token.LeftBrace(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Bang when source is "!" => Token.Bang(new SourceSpan(position, (ushort)source.Length)),
@@ -493,6 +495,12 @@ public class Tokenizer
             case '|':
                 tokens[i++] = TokenType.DoubleBar;
                 break;
+            case '[':
+                tokens[i++] = TokenType.LeftSquareBracket;
+                break;
+            case ']':
+                tokens[i++] = TokenType.RightSquareBracket;
+                break;
             default:
                 {
                     if (IsValidIdentifier([firstChar]))
@@ -520,6 +528,8 @@ public class Tokenizer
             TokenType.Bang => Matches(source, "!"),
             TokenType.Semicolon => Matches(source, ";"),
             TokenType.LeftBrace => Matches(source, "{"),
+            TokenType.LeftSquareBracket => Matches(source, "["),
+            TokenType.RightSquareBracket => Matches(source, "]"),
             TokenType.Union => Matches(source, "union"),
             TokenType.Unboxed => Matches(source, "unboxed"),
             TokenType.Boxed => Matches(source, "boxed"),

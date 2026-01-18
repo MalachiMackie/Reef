@@ -55,5 +55,7 @@ public enum TokenType
     DoubleAmpersand,
     DoubleBar,
     Unboxed,
-    Boxed
+    Boxed,
+    RightSquareBracket,
+    LeftSquareBracket
 }

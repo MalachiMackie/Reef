@@ -91,6 +91,8 @@ public record Token
             TokenType.Continue => "continue",
             TokenType.Unboxed => "unboxed",
             TokenType.Boxed => "boxed",
+            TokenType.LeftSquareBracket => "[",
+            TokenType.RightSquareBracket => "]",
             _ => throw new UnreachableException(Type.ToString())
         };
     }
@@ -246,7 +248,7 @@ public record Token
         return new StringToken { StringValue = value, Type = TokenType.StringLiteral, SourceSpan = sourceSpan };
     }
 
-    public static Token IntLiteral(int value, SourceSpan sourceSpan)
+    public static IntToken IntLiteral(int value, SourceSpan sourceSpan)
     {
         return new IntToken { IntValue = value, Type = TokenType.IntLiteral, SourceSpan = sourceSpan };
     }
@@ -259,6 +261,16 @@ public record Token
     public static Token QuestionMark(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.QuestionMark, SourceSpan = sourceSpan };
+    }
+    
+    public static Token LeftSquareBracket(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.LeftSquareBracket, SourceSpan = sourceSpan };
+    }
+    
+    public static Token RightSquareBracket(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.RightSquareBracket, SourceSpan = sourceSpan };
     }
 
     public static Token Return(SourceSpan sourceSpan)

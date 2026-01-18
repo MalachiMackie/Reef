@@ -79,6 +79,31 @@ public record FnTypeIdentifier(IReadOnlyList<FnTypeIdentifierParameter> Paramete
 
 public record UnitTypeIdentifier(SourceRange SourceRange) : ITypeIdentifier;
 
+public record ArrayTypeIdentifier(
+    ITypeIdentifier ElementTypeIdentifier,
+    IntToken LengthSpecifier,
+    Token? BoxingSpecifier,
+    SourceRange SourceRange) : ITypeIdentifier
+{
+    public override string ToString()
+    {
+        var sb = new StringBuilder();
+
+        if (BoxingSpecifier is not null)
+        {
+            sb.Append(BoxingSpecifier);
+        }
+
+        sb.Append('[');
+        sb.Append(ElementTypeIdentifier);
+        sb.Append(';');
+        sb.Append(LengthSpecifier.IntValue);
+        sb.Append(']');
+
+        return sb.ToString();
+    }
+}
+
 public record NamedTypeIdentifier(
     StringToken Identifier,
     IReadOnlyList<ITypeIdentifier> TypeArguments,

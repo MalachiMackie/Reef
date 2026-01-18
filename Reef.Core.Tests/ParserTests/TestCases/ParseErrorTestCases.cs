@@ -8,6 +8,51 @@ public static class ParseErrorTestCases
     {
         IEnumerable<(string, LangProgram, IEnumerable<ParserError>)> data =
         [
+            (
+                "a[0",
+                new LangProgram(
+                    "ParseErrorTestCases",
+                    [IndexExpression(VariableAccessor("a"), Literal(0))],
+                    [],
+                    [],
+                    []),
+                [ParserError.ExpectedToken(null, TokenType.RightSquareBracket)]
+            ),
+            (
+                "a[",
+                new LangProgram(
+                    "ParseErrorTestCases",
+                    [IndexExpression(VariableAccessor("a"), null)],
+                    [],
+                    [],
+                    []),
+                [ParserError.ExpectedExpression(null)]
+            ),
+            (
+                "[",
+                new LangProgram("ParseErrorTestCases", [], [], [], []),
+                [ParserError.ExpectedTokenOrExpression(null, TokenType.Unboxed, TokenType.Boxed, TokenType.RightSquareBracket)]
+            ),
+            (
+                "[1",
+                new LangProgram("ParseErrorTestCases", [], [], [], []),
+                [ParserError.ExpectedToken(null, TokenType.Comma, TokenType.Semicolon, TokenType.RightSquareBracket)]
+            ),
+            (
+                "[1,",
+                new LangProgram("ParseErrorTestCases", [CollectionExpression([Literal(1)])], [], [], []),
+                [ParserError.ExpectedTokenOrExpression(null, TokenType.RightSquareBracket)]
+            ),
+            (
+                "[1;",
+                new LangProgram("ParseErrorTestCases", [], [], [], []),
+                [ParserError.ExpectedToken(null, TokenType.IntLiteral)]
+            ),
+            (
+                "[1;3",
+                new LangProgram("ParseErrorTestCases", [FillCollectionExpression(Literal(1), Token.IntLiteral(3, SourceSpan.Default))], [], [], []),
+                [ParserError.ExpectedToken(null, TokenType.RightSquareBracket)]
+            ),
             ("", new LangProgram("ParseErrorTestCases", [], [], [], []), []),
             (
                 "var a",

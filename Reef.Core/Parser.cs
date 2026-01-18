@@ -990,6 +990,7 @@ public sealed class Parser : IDisposable
             {Type: TokenType.Boxed or TokenType.Unboxed} => BoxingSpecifier(),
             StringToken { Type: TokenType.Identifier } => GetNamedTypeIdentifier(boxingSpecifier),
             { Type: TokenType.LeftParenthesis } => GetTupleTypeIdentifier(boxingSpecifier),
+            { Type: TokenType.LeftSquareBracket } => GetArrayTypeIdentifier(boxingSpecifier),
             _ => DefaultCase()
         };
 
@@ -1015,6 +1016,38 @@ public sealed class Parser : IDisposable
             _errors.Add(ParserError.ExpectedType(Current));
             return null;
         }
+    }
+
+    private ITypeIdentifier? GetArrayTypeIdentifier(Token? boxingSpecifier)
+    {
+        var sourceStart = boxingSpecifier?.SourceSpan ?? Current.SourceSpan;
+
+        if (!ExpectNextTypeIdentifier(out var elementTypeIdentifier))
+        {
+            return null;
+        }
+
+        if (!ExpectCurrentToken(TokenType.Semicolon))
+        {
+            return null;
+        }
+
+        if (!ExpectNextToken(TokenType.IntLiteral) || Current is not IntToken lengthSpecifier)
+        {
+            return null;
+        }
+
+        ExpectNextToken(TokenType.RightSquareBracket);
+        
+        var end = _hasNext ? Current : lengthSpecifier;
+
+        MoveNext();
+
+        return new ArrayTypeIdentifier(
+            elementTypeIdentifier,
+            lengthSpecifier,
+            boxingSpecifier,
+            new SourceRange(sourceStart, end.SourceSpan));
     }
 
     private ITypeIdentifier GetTupleTypeIdentifier(Token? boxingSpecifier)
@@ -1152,6 +1185,8 @@ public sealed class Parser : IDisposable
             TokenType.Semicolon => throw new UnreachableException("PopExpression should have handled semicolon"),
             TokenType.Dot => GetMemberAccess(previousExpression),
             TokenType.DoubleColon => GetStaticMemberAccess(previousExpression),
+            TokenType.LeftSquareBracket when previousExpression is null => GetCollectionExpression(),
+            TokenType.LeftSquareBracket => GetIndexExpression(previousExpression),
             TokenType.Todo or TokenType.Identifier => GetVariableAccess(),
             TokenType.Matches => GetMatchesExpression(previousExpression),
             TokenType.Match => GetMatchExpression(),
@@ -1177,6 +1212,128 @@ public sealed class Parser : IDisposable
             consumedToken = false;
             return null;
         }
+    }
+    
+    private IndexExpression GetIndexExpression(IExpression collection)
+    {
+        var end = Current.SourceSpan;
+        if (!ExpectNextExpression(out var index))
+        {
+            return new IndexExpression(collection, null,
+                collection.SourceRange with { End = end });
+        }
+
+        end = index.SourceRange.End;
+
+        if (ExpectCurrentToken(TokenType.RightSquareBracket)) 
+        {
+            end = Current.SourceSpan;
+            MoveNext();
+        }
+
+        return new IndexExpression(
+            collection,
+            index,
+            collection.SourceRange with { End = end });
+    }
+
+    private IExpression? GetCollectionExpression()
+    {
+        var start = Current;
+
+        if (!MoveNext())
+        {
+            _errors.Add(ParserError.ExpectedTokenOrExpression(null, TokenType.Boxed, TokenType.Unboxed, TokenType.RightSquareBracket));
+            return null;
+        }
+
+        Token? boxingSpecifier = null;
+        if (Current.Type is TokenType.Boxed or TokenType.Unboxed)
+        {
+            boxingSpecifier = Current;
+            ExpectNextToken(TokenType.Semicolon);
+
+            if (!MoveNext())
+            {
+                _errors.Add(ParserError.ExpectedTokenOrExpression(null, TokenType.RightSquareBracket));
+                return null;
+            }
+        }
+
+        if (Current.Type == TokenType.RightSquareBracket)
+        {
+            var end = Current;
+            MoveNext();
+            
+            return new CollectionExpression([], boxingSpecifier, new SourceRange(
+                start.SourceSpan, end.SourceSpan));
+        }
+
+        var beforeExpression = Current;
+        var firstElement = PopExpression();
+        if (firstElement is null)
+        {
+            _errors.Add(ParserError.ExpectedExpression(beforeExpression));
+            return null;
+        }
+
+        if (!_hasNext)
+        {
+            _errors.Add(ParserError.ExpectedToken(null, TokenType.Semicolon, TokenType.Comma, TokenType.RightSquareBracket));
+            return null;
+        }
+        
+        switch (Current.Type)
+        {
+            case TokenType.Comma:
+                break;
+            case TokenType.RightSquareBracket:
+            {
+                var end = Current;
+                MoveNext();
+            
+                return new CollectionExpression(
+                    [firstElement],
+                    boxingSpecifier,
+                    new SourceRange(start.SourceSpan, end.SourceSpan));
+            }
+            case TokenType.Semicolon:
+            {
+                if (!ExpectNextToken(TokenType.IntLiteral) || Current is not IntToken intToken)
+                {
+                    return null;
+                }
+
+                ExpectNextToken(TokenType.RightSquareBracket);
+
+                var lastToken = _hasNext ? Current : intToken;
+            
+                MoveNext();
+
+                return new FillCollectionExpression(firstElement, intToken, boxingSpecifier, new SourceRange(
+                    start.SourceSpan, lastToken.SourceSpan));
+            }
+            default:
+            {
+                _errors.Add(ParserError.ExpectedToken(Current, TokenType.Semicolon, TokenType.Comma, TokenType.RightSquareBracket));
+                return null;
+            }
+        }
+
+        var comma = Current;
+
+        var (expressions, last) = GetCommaSeparatedList(
+            TokenType.RightSquareBracket,
+            expectedTokens: [],
+            expectExpression: true,
+            expectType: false,
+            expectPattern: false,
+            () => PopExpression());
+
+        return new CollectionExpression(
+            expressions.Prepend(firstElement).ToArray(),
+            boxingSpecifier,
+            new SourceRange(start.SourceSpan, last?.SourceSpan ?? comma.SourceSpan));
     }
 
     private IExpression? GetUnaryOrBinaryOperatorExpression(
@@ -2262,10 +2419,11 @@ public sealed class Parser : IDisposable
                 unaryOperatorType.Value)],
             _ when TryGetBinaryOperatorType(token.Type, out var binaryOperatorType) => [GetBinaryOperatorBindingStrength(
                 binaryOperatorType.Value)],
-            TokenType.LeftParenthesis => [8],
-            TokenType.Dot => [11],
-            TokenType.DoubleColon => [12],
+            TokenType.LeftParenthesis => [10],
+            TokenType.Dot => [12],
+            TokenType.DoubleColon => [13],
             TokenType.Matches => [3],
+            TokenType.LeftSquareBracket => [9],
             _ => []
         };
 
@@ -2331,9 +2489,9 @@ public sealed class Parser : IDisposable
     {
         return operatorType switch
         {
-            UnaryOperatorType.FallOut => 10,
-            UnaryOperatorType.Negate => 9,
-            UnaryOperatorType.Not => 9,
+            UnaryOperatorType.FallOut => 11,
+            UnaryOperatorType.Negate => 8,
+            UnaryOperatorType.Not => 8,
             _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType,
                 typeof(UnaryOperatorType))
         };

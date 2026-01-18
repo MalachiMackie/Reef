@@ -88,6 +88,38 @@ public static class ExpressionHelpers
         return new(SourceRange.Default);
     }
 
+    public static CollectionExpression CollectionExpression(
+        IReadOnlyList<IExpression>? elements = null,
+        Token? boxingSpecifier = null)
+    {
+        return new CollectionExpression(
+            elements ?? [],
+            boxingSpecifier,
+            SourceRange.Default);
+    }
+
+    public static FillCollectionExpression FillCollectionExpression(
+        IExpression element,
+        IntToken lengthSpecifier,
+        Token? boxingSpecifier = null)
+    {
+        return new FillCollectionExpression(
+            element,
+            lengthSpecifier,
+            boxingSpecifier,
+            SourceRange.Default);
+    }
+
+    public static IndexExpression IndexExpression(
+        IExpression collection,
+        IExpression? index)
+    {
+        return new IndexExpression(
+            collection,
+            index,
+            SourceRange.Default);
+    }
+
     public static VariableDeclarationExpression VariableDeclaration(
         string name,
         IExpression? value = null,
@@ -102,7 +134,7 @@ public static class ExpressionHelpers
             type,
             value), SourceRange.Default);
     }
-
+    
     public static NamedTypeIdentifier IntType(Token? boxedSpecifier = null)
     {
         return new NamedTypeIdentifier(Identifier("int"), [], boxedSpecifier, SourceRange.Default);
@@ -323,6 +355,18 @@ public static class ExpressionHelpers
     public static NamedTypeIdentifier NamedTypeIdentifier(string typeName, IReadOnlyList<ITypeIdentifier>? typeArguments = null, Token? boxedSpecifier = null)
     {
         return new NamedTypeIdentifier(Token.Identifier(typeName, SourceSpan.Default), typeArguments ?? [], boxedSpecifier, SourceRange.Default);
+    }
+
+    public static ArrayTypeIdentifier ArrayTypeIdentifier(
+        ITypeIdentifier elementType,
+        uint arrayLength,
+        Token? boxingSpecifier)
+    {
+        return new ArrayTypeIdentifier(
+            elementType,
+            Token.IntLiteral((int)arrayLength, SourceSpan.Default),
+            boxingSpecifier,
+            SourceRange.Default);
     }
 
     public static TupleTypeIdentifier TupleTypeIdentifier(Token? boxingSpecifier, IReadOnlyList<ITypeIdentifier> members)

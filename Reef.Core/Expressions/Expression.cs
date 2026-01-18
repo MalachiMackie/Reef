@@ -206,6 +206,72 @@ public record ContinueExpression(SourceRange SourceRange) : IExpression
     }
 }
 
+public record FillCollectionExpression(
+    IExpression Element,
+    IntToken LengthSpecifier,
+    Token? BoxingSpecifier,
+    SourceRange SourceRange) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.FillCollection;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
+    public bool Diverges => Element.Diverges;
+    public bool ValueUseful { get; set; }   
+    
+    public override string ToString()
+    {
+        var sb = new StringBuilder("[");
+        if (BoxingSpecifier is not null)
+        {
+            sb.Append(BoxingSpecifier);
+            sb.Append("; ");
+        }
+
+        sb.Append($"{Element}; {LengthSpecifier}]");
+        return sb.ToString();
+    }
+}
+
+public record CollectionExpression(
+    IReadOnlyList<IExpression> Elements, Token? BoxingSpecifier, SourceRange SourceRange) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.Collection;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
+    public bool Diverges => Elements.Any(x => x.Diverges);
+    public bool ValueUseful { get; set; }   
+    
+    public override string ToString()
+    {
+        var sb = new StringBuilder("[");
+        if (BoxingSpecifier is not null)
+        {
+            sb.Append(BoxingSpecifier);
+            sb.Append("; ");
+        }
+
+        sb.AppendJoin(", ", Elements);
+        sb.Append(']');
+
+        return sb.ToString();
+    }
+}
+
+public record IndexExpression(
+    IExpression Collection,
+    IExpression? Index,
+    SourceRange SourceRange) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.Index;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
+
+    public bool Diverges { get; } = Collection.Diverges || Index is {Diverges: true};
+    public bool ValueUseful { get; set; }
+
+    public override string ToString()
+    {
+        return $"{Collection}[{Index?.ToString() ?? "??"}]";
+    }
+}
+
 public record VariableDeclarationExpression(VariableDeclaration VariableDeclaration, SourceRange SourceRange)
     : IExpression
 {
@@ -613,5 +679,8 @@ public enum ExpressionType
     Break,
     Continue,
     TypeIdentifier,
-    Negate
+    Negate,
+    Collection,
+    FillCollection,
+    Index
 }

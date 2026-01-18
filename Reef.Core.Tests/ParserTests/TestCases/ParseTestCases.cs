@@ -10,6 +10,121 @@ public static class ParseTestCases
         return new (string Source, LangProgram ExpectedProgram)[]
         {
             (
+                "var a = b[0]; hi()",
+                new ("ParseTestCases",
+                    [
+                        VariableDeclaration(
+                            "a",
+                            IndexExpression(VariableAccessor("b"), Literal(0))),
+                        MethodCall(VariableAccessor("hi"))
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "var a = b[0]",
+                new ("ParseTestCases",
+                    [
+                        VariableDeclaration(
+                            "a",
+                            IndexExpression(VariableAccessor("b"), Literal(0)))
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "var a: [string;5];",
+                new("ParseTestCases",
+                    [
+                        VariableDeclaration(
+                            "a",
+                            type: ArrayTypeIdentifier(
+                                StringType(),
+                                5,
+                                null))
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "var a: unboxed [i32; 5];",
+                new("ParseTestCases",
+                    [
+                        VariableDeclaration(
+                            "a",
+                            type: ArrayTypeIdentifier(
+                                NamedTypeIdentifier("i32"),
+                                5,
+                                Token.Unboxed(SourceSpan.Default)))
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "var a = []",
+                new("ParseTestCases",
+                    [
+                        VariableDeclaration(
+                            "a",
+                            value: CollectionExpression())
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "var a = [unboxed; 1]",
+                new("ParseTestCases",
+                    [
+                        VariableDeclaration(
+                            "a",
+                            value: CollectionExpression([Literal(1)], Token.Unboxed(SourceSpan.Default)))
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "var a = [1, 2]",
+                new("ParseTestCases",
+                    [
+                        VariableDeclaration(
+                            "a",
+                            value: CollectionExpression([Literal(1), Literal(2)]))
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "var a = [1, 2,]",
+                new("ParseTestCases",
+                    [
+                        VariableDeclaration(
+                            "a",
+                            value: CollectionExpression([Literal(1), Literal(2)]))
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
+                "var a = [1; 15]",
+                new("ParseTestCases",
+                    [
+                        VariableDeclaration(
+                            "a",
+                            value: FillCollectionExpression(Literal(1), Token.IntLiteral(15, SourceSpan.Default)))
+                    ],
+                    [],
+                    [],
+                    [])
+            ),
+            (
                 "break",
                 new("ParseTestCases",
                     [
