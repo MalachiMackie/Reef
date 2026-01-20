@@ -57,6 +57,27 @@ public class TypeCheckerTests
         return
         [
             """
+            var mut a = [""];
+            a[0] = "x";
+            """,
+            """
+            var a: [string; 4] = [""; 4];
+            """,
+            """
+            var a: [i32; 3] = [1, 2, 3];
+            """,
+            """
+            var a: unboxed [i32; 2] = [unboxed; 1, 2];
+            """,
+            """
+            var a = [1, 4];
+            var b: u32 = a[0];
+            """,
+            """
+            var a: [boxed i32; 2] = [box(2), box(3)];
+            var b: boxed i32 = a[0];
+            """,
+            """
             var a: i32 = 1;
             var b = -a;
             """,
@@ -1552,6 +1573,129 @@ public class TypeCheckerTests
     {
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
+            {
+                "assign to field of object inside non mutable array",
+                """
+                class MyClass { pub mut field MyField: string, } 
+                var a = [new MyClass{MyField = "hi"}];
+                a[0].MyField = "bye";
+                """,
+                [
+                    TypeCheckerError.NonMutableMemberOwnerAssignment(
+                    IndexExpression(
+                        VariableAccessor("a"),
+                        Literal(0)))
+                ]
+            },
+            {
+                "assign to non mutable array",
+                """
+                var a = [""];
+                a[0] = "hi";
+                """,
+                [
+                    TypeCheckerError.NonMutableMemberOwnerAssignment(VariableAccessor("a"))
+                ]
+            },
+            {
+                "Incorrect array element type",
+                """
+                var a: [string; 3] = [1, 2, 3];
+                """,
+                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+            },
+            {
+                "Incorrect array length",
+                """
+                var a: [string; 3] = ["hi", "bye"];
+                """,
+                [TypeCheckerError.ArrayLengthMismatch(3, 2, SourceRange.Default)]
+            },
+            {
+                "Incorrect array length - fill collection expression",
+                """
+                var a: [string; 3] = ["hi"; 2];
+                """,
+                [TypeCheckerError.ArrayLengthMismatch(3, 2, SourceRange.Default)]
+            },
+            {
+                "different array element types",
+                """
+                var a = ["", 1];
+                """,
+                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+            },
+            {
+                "Incorrect array boxing - boxed",
+                """
+                var a: unboxed [string; 2] = ["", ""];
+                """,
+                [
+                    TypeCheckerError.MismatchedTypeBoxing(
+                        SourceRange.Default,
+                        new ArrayType(String, false, 2),
+                        false,
+                        new ArrayType(String, true, 2),
+                        true)
+                ]
+            },
+            {
+                "Incorrect array boxing - unboxed",
+                """
+                var a: [string; 2] = [unboxed; "", ""];
+                """,
+                [
+                    TypeCheckerError.MismatchedTypeBoxing(
+                        SourceRange.Default,
+                        new ArrayType(String, true, 2),
+                        true,
+                        new ArrayType(String, false, 2),
+                        false)
+                ]
+            },
+            {
+                "Incorrect array element boxing - unboxed",
+                """
+                class MyClass{}
+                var a: [MyClass; 1] = [new unboxed MyClass{}];
+                """,
+                [
+                    TypeCheckerError.MismatchedTypeBoxing(
+                        SourceRange.Default,
+                        new TestClassReference("MyClass"),
+                        expectedBoxed: true,
+                        new TestClassReference("MyClass", false),
+                        actualBoxed: false)
+                ]
+            },
+            {
+                "Incorrect array element boxing - boxed",
+                """
+                var a: [i32; 1] = [box(1)];
+                """,
+                [
+                    TypeCheckerError.MismatchedTypeBoxing(
+                        SourceRange.Default,
+                        Int32,
+                        expectedBoxed: false,
+                        new UnspecifiedSizedIntType{Boxed = true},
+                        actualBoxed: true)
+                ]
+            },
+            {
+                "boxed-only type cannot be used",
+                """
+                var a: unboxed string = todo!;
+                """,
+                [TypeCheckerError.BoxedOnlyTypeCannotBeUnboxed(String, SourceRange.Default)]
+            },
+            {
+                "boxed-only type cannot be unboxed",
+                """
+                var a = unbox("");
+                """,
+                [TypeCheckerError.BoxedOnlyTypeCannotBeUnboxed(String, SourceRange.Default)]
+            },
             {
                 "mismatched boxing for unbox method return value",
                 """

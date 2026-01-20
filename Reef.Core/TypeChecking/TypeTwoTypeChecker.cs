@@ -180,11 +180,42 @@ public class TypeTwoTypeChecker
             case WhileExpression whileExpression:
                 CheckWhileExpression(whileExpression);
                 break;
+            case CollectionExpression collectionExpression:
+                CheckCollectionExpression(collectionExpression);
+                break;
+            case FillCollectionExpression fillCollectionExpression:
+                CheckFillCollectionExpression(fillCollectionExpression);
+                break;
+            case IndexExpression indexExpression:
+                CheckIndexExpression(indexExpression);
+                break;
             case ContinueExpression:
             case BreakExpression:
                 break;
             default:
                 throw new NotImplementedException($"{expression.ExpressionType}");
+        }
+    }
+
+    private void CheckCollectionExpression(CollectionExpression collectionExpression)
+    {
+        foreach (var element in collectionExpression.Elements)
+        {
+            CheckExpression(element);
+        }
+    }
+
+    private void CheckFillCollectionExpression(FillCollectionExpression fillCollectionExpression)
+    {
+        CheckExpression(fillCollectionExpression.Element);
+    }
+
+    private void CheckIndexExpression(IndexExpression indexExpression)
+    {
+        CheckExpression(indexExpression.Collection);
+        if (indexExpression.Index is not null)
+        {
+            CheckExpression(indexExpression.Index);
         }
     }
 
@@ -529,6 +560,15 @@ public class TypeTwoTypeChecker
                     }
                     break;
                 }
+            case TypeChecker.ArrayType arrayType:
+            {
+                foreach (var typeArgument in arrayType.TypeArguments)
+                {
+                    CheckTypeReferenceIsResolved(typeArgument, expression);
+                }
+
+                break;
+            }
             case TypeChecker.FunctionObject:
                 break;
             case TypeChecker.GenericPlaceholder:

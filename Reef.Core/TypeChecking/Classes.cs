@@ -293,6 +293,60 @@ public partial class TypeChecker
         };
     }
 
+    public class ArrayTypeSignature : ITypeSignature
+    {
+        public static ArrayTypeSignature Instance { get; } = new();
+        public string Name => "array";
+        public DefId Id => DefId.Array;
+        public GenericPlaceholder ElementGenericPlaceholder { get; }
+        public IReadOnlyList<GenericPlaceholder> TypeParameters => [ElementGenericPlaceholder];
+        public bool Boxed => true;
+
+        private ArrayTypeSignature()
+        {
+            ElementGenericPlaceholder =
+                new GenericPlaceholder
+                {
+                    OwnerType = this,
+                    Constraints = [],
+                    GenericName = "TElement"
+                };
+        }
+    }
+
+    // TODO: arrayType and ArrayTypeSignature can't be generic classes until we implement const generics  
+    public class ArrayType : ITypeReference, IInstantiatedGeneric
+    {
+        public ArrayType(
+            ITypeReference? elementType,
+            bool boxed,
+            int length)
+        {
+            ElementType = ArrayTypeSignature.Instance.ElementGenericPlaceholder.Instantiate(this, elementType);
+            Boxed = boxed;
+            Fields = [
+                new TypeField
+                {
+                    IsMutable = false,
+                    IsPublic = true,
+                    IsStatic = false,
+                    Name = "length",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.UInt64
+                }
+            ];
+            Length = length;
+        }
+
+        public IReadOnlyList<GenericTypeReference> TypeArguments => [ElementType];
+        public GenericTypeReference ElementType { get; }
+        public int Length { get; } 
+        
+        public bool Boxed { get; }
+        
+        public IReadOnlyList<TypeField> Fields { get; }
+    }
+
     public class InstantiatedClass : ITypeReference, IInstantiatedGeneric
     {
         public InstantiatedClass CloneWithTypeArguments(IReadOnlyList<GenericTypeReference> typeArguments)

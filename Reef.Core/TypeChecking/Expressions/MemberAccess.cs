@@ -4,7 +4,7 @@ namespace Reef.Core.TypeChecking;
 
 public partial class TypeChecker
 {
-    private TypeChecking.TypeChecker.ITypeReference TypeCheckMemberAccess(
+    private ITypeReference TypeCheckMemberAccess(
         MemberAccessExpression memberAccessExpression)
     {
         var (ownerExpression, stringToken, typeArgumentsIdentifiers) = memberAccessExpression.MemberAccess;
@@ -13,26 +13,36 @@ public partial class TypeChecker
 
         if (stringToken is null)
         {
-            return TypeChecking.TypeChecker.UnknownType.Instance;
+            return UnknownType.Instance;
         }
 
+        while (ownerType is GenericTypeReference genericTypeReference)
+        {
+            if (genericTypeReference.ResolvedType is null)
+            {
+                throw new NotImplementedException();
+            }
+
+            ownerType = genericTypeReference.ResolvedType;
+        }
+        
         switch (ownerType)
         {
-            case TypeChecking.TypeChecker.InstantiatedClass classType:
+            case InstantiatedClass classType:
                 return TypeCheckClassMemberAccess(classType, memberAccessExpression, stringToken, typeArgumentsIdentifiers,
                     ownerExpression);
-            case TypeChecking.TypeChecker.InstantiatedUnion instantiatedUnion:
+            case InstantiatedUnion instantiatedUnion:
                 return TypeCheckUnionMemberAccess(instantiatedUnion, memberAccessExpression, stringToken, typeArgumentsIdentifiers,
                     ownerExpression);
             default:
                 // todo: generic parameter constraints with interfaces?
                 _errors.Add(TypeCheckerError.MemberAccessOnGenericExpression(memberAccessExpression));
-                return TypeChecking.TypeChecker.UnknownType.Instance;
+                return UnknownType.Instance;
         }
     }
 
-    private TypeChecking.TypeChecker.ITypeReference TypeCheckClassMemberAccess(
-        TypeChecking.TypeChecker.InstantiatedClass classType,
+    private ITypeReference TypeCheckClassMemberAccess(
+        InstantiatedClass classType,
         MemberAccessExpression memberAccessExpression,
         StringToken stringToken,
         IReadOnlyList<ITypeIdentifier>? typeArgumentsIdentifiers,
@@ -41,7 +51,7 @@ public partial class TypeChecker
         memberAccessExpression.MemberAccess.OwnerType = classType;
 
         var typeArguments = (typeArgumentsIdentifiers ?? [])
-            .Select<ITypeIdentifier, (TypeChecking.TypeChecker.ITypeReference, SourceRange SourceRange)>(x => (GetTypeReference(x), x.SourceRange)).ToArray();
+            .Select<ITypeIdentifier, (ITypeReference, SourceRange SourceRange)>(x => (GetTypeReference(x), x.SourceRange)).ToArray();
 
         if (!TryInstantiateClassFunction(
                 classType,
@@ -57,7 +67,7 @@ public partial class TypeChecker
 
             if (TryGetClassField(classType, stringToken) is not { } field)
             {
-                return TypeChecking.TypeChecker.UnknownType.Instance;
+                return UnknownType.Instance;
             }
 
             if (field.IsStatic)
@@ -84,13 +94,13 @@ public partial class TypeChecker
             ExpectAssignableExpression(ownerExpression);
         }
 
-        return new TypeChecking.TypeChecker.FunctionObject(
+        return new FunctionObject(
             parameters: function.Parameters,
             returnType: function.ReturnType);
     }
 
-    private TypeChecking.TypeChecker.ITypeReference TypeCheckUnionMemberAccess(
-        TypeChecking.TypeChecker.InstantiatedUnion unionType,
+    private ITypeReference TypeCheckUnionMemberAccess(
+        InstantiatedUnion unionType,
         MemberAccessExpression memberAccessExpression,
         StringToken stringToken,
         IReadOnlyList<ITypeIdentifier>? typeArgumentsIdentifiers,
@@ -99,7 +109,7 @@ public partial class TypeChecker
         memberAccessExpression.MemberAccess.OwnerType = unionType;
 
         var typeArguments = (typeArgumentsIdentifiers ?? [])
-            .Select<ITypeIdentifier, (TypeChecking.TypeChecker.ITypeReference, SourceRange SourceRange)>(x => (GetTypeReference(x), x.SourceRange)).ToArray();
+            .Select<ITypeIdentifier, (ITypeReference, SourceRange SourceRange)>(x => (GetTypeReference(x), x.SourceRange)).ToArray();
 
         if (!TryInstantiateUnionFunction(
                 unionType,
@@ -109,7 +119,7 @@ public partial class TypeChecker
                 out var function))
         {
             _errors.Add(TypeCheckerError.UnknownTypeMember(stringToken, unionType.Name));
-            return TypeChecking.TypeChecker.UnknownType.Instance;
+            return UnknownType.Instance;
         }
 
         if (typeArgumentsIdentifiers is not null)
@@ -130,7 +140,7 @@ public partial class TypeChecker
         memberAccessExpression.MemberAccess.MemberType = MemberType.Function;
         memberAccessExpression.MemberAccess.InstantiatedFunction = function;
 
-        return new TypeChecking.TypeChecker.FunctionObject(
+        return new FunctionObject(
             function.Parameters,
             function.ReturnType);
     }

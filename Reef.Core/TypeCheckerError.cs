@@ -22,6 +22,9 @@ public record TypeCheckerError
     public static TypeCheckerError BreakUsedOutsideOfLoop(BreakExpression expression) =>
         new(TypeCheckerErrorType.BreakUsedOutsideOfLoop, expression.SourceRange, "break used outside of a loop");
 
+    public static TypeCheckerError ArrayLengthMismatch(int expectedLength, int actualLength, SourceRange sourceRange) =>
+        new(TypeCheckerErrorType.ArrayLengthMismatch, sourceRange, $"Expected array of length {expectedLength}, but found length {actualLength}");
+
     public static TypeCheckerError MismatchedTypes(SourceRange range, TypeChecker.ITypeReference expected, TypeChecker.ITypeReference actual) =>
         new(TypeCheckerErrorType.MismatchedTypes, range, $"Expected {expected}, but found {actual}");
 
@@ -34,7 +37,7 @@ public record TypeCheckerError
         new(
             TypeCheckerErrorType.MismatchedTypeBoxing,
             range,
-            $"Expected {(expectedBoxed ? "" : "un")}boxed {expectedType}, but got {(expectedBoxed ? "un" : "")}boxed {actualType}");
+            $"Expected {(expectedBoxed ? "" : "un")}boxed {expectedType}, but got {(actualBoxed ? "un" : "")}boxed {actualType}");
     
     public static TypeCheckerError TypeIsNotExpression(
         SourceRange range, ITypeIdentifier type)
@@ -370,6 +373,14 @@ public record TypeCheckerError
             new SourceRange(variantIdentifier.SourceSpan, variantIdentifier.SourceSpan),
             $"Union tuple variant {unionName}::{variantIdentifier.StringValue}() must have at least one tuple member");
     }
+
+    public static TypeCheckerError BoxedOnlyTypeCannotBeUnboxed(TypeChecker.ITypeReference type, SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.BoxedOnlyTypeCannotBeUnboxed,
+            sourceRange,
+            $"boxed-only type {type} cannot be unboxed");
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -425,5 +436,8 @@ public enum TypeCheckerErrorType
     BreakUsedOutsideOfLoop,
     ContinueUsedOutsideOfLoop,
     MismatchedTypeBoxing,
-    TypeIsNotExpression
+    TypeIsNotExpression,
+    ArrayLengthMismatch,
+    BoxedOnlyTypeCannotBeUnboxed,
+    NonMutableExpressionPassedToMutableReturn
 }

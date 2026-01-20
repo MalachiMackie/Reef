@@ -22,6 +22,7 @@ public record DefId(string ModuleId, string FullName)
     public static DefId Unit { get; } = new(CoreLibModuleId, CoreLibNamespace + ".Unit");
 
     public static DefId String { get; } = new(CoreLibModuleId, CoreLibNamespace + ".string");
+    public static DefId Array { get; } = new(CoreLibModuleId, CoreLibNamespace + ".array");
 
     public static DefId Int64 { get; } = new(CoreLibModuleId, CoreLibNamespace + ".i64");
     public static DefId Int32 { get; } = new(CoreLibModuleId, CoreLibNamespace + ".i32");

@@ -6,7 +6,7 @@ namespace Reef.Core.TypeChecking;
 public partial class TypeChecker
 {
 
-    private TypeChecking.TypeChecker.ITypeReference TypeCheckExpression(
+    private ITypeReference TypeCheckExpression(
         IExpression expression,
         bool allowUninstantiatedVariable = false)
     {
@@ -40,12 +40,64 @@ public partial class TypeChecker
             BreakExpression breakExpression => TypeCheckBreakExpression(breakExpression),
             WhileExpression whileExpression => TypeCheckWhileExpression(whileExpression),
             TypeIdentifierExpression typeIdentifierExpression => TypeCheckTypeIdentifierExpression(typeIdentifierExpression),
+            CollectionExpression collectionExpression => TypeCheckCollectionExpression(collectionExpression),
+            FillCollectionExpression fillCollectionExpression => TypeCheckFillCollectionExpression(fillCollectionExpression),
+            IndexExpression indexExpression => TypeCheckIndexExpression(indexExpression),
             _ => throw new UnreachableException($"{expression.ExpressionType}")
         };
 
         expression.ResolvedType = expressionType;
 
         return expressionType;
+    }
+
+    private ITypeReference TypeCheckIndexExpression(IndexExpression e)
+    {
+        var arrayType = (TypeCheckExpression(e.Collection) as ArrayType).NotNull();
+        if (e.Index is {} indexExpression)
+        {
+            var indexType = TypeCheckExpression(indexExpression);
+            ExpectType(indexType, InstantiatedClass.UInt64, indexExpression.SourceRange);
+        }
+
+        return arrayType.ElementType;
+    }
+
+    private ArrayType TypeCheckCollectionExpression(CollectionExpression e)
+    {
+        ITypeReference? firstElementType = null;
+        foreach (var element in e.Elements)
+        {
+            var elementType = TypeCheckExpression(element);
+            firstElementType ??= elementType;
+            ExpectType(elementType, firstElementType, element.SourceRange);
+        }
+        
+        return new ArrayType(
+            firstElementType,
+            boxed: e.BoxingSpecifier?.Type switch
+            {
+                TokenType.Boxed => true,
+                TokenType.Unboxed => false,
+                null => ArrayTypeSignature.Instance.Boxed,
+                _ => throw new UnreachableException(e.BoxingSpecifier.Type.ToString())
+            },
+            length: e.Elements.Count);
+    }
+
+    private ArrayType TypeCheckFillCollectionExpression(FillCollectionExpression e)
+    {
+        var elementTypeReference = TypeCheckExpression(e.Element);
+        return new ArrayType(
+            elementTypeReference,
+            boxed: e.BoxingSpecifier?.Type switch
+            {
+                TokenType.Boxed => true,
+                TokenType.Unboxed => false,
+                null => ArrayTypeSignature.Instance.Boxed,
+                _ => throw new UnreachableException(e.BoxingSpecifier.Type.ToString())
+            },
+            length: e.LengthSpecifier.IntValue);
     }
 
     private InstantiatedClass TypeCheckTypeIdentifierExpression(TypeIdentifierExpression e)
@@ -57,33 +109,33 @@ public partial class TypeChecker
     
     private uint _loopDepth;
     
-    private TypeChecking.TypeChecker.InstantiatedClass TypeCheckContinueExpression(ContinueExpression continueExpression)
+    private InstantiatedClass TypeCheckContinueExpression(ContinueExpression continueExpression)
     {
         if (_loopDepth == 0)
         {
             _errors.Add(TypeCheckerError.ContinueUsedOutsideOfLoop(continueExpression));
         }
 
-        return TypeChecking.TypeChecker.InstantiatedClass.Never;
+        return InstantiatedClass.Never;
     }
     
-    private TypeChecking.TypeChecker.InstantiatedClass TypeCheckBreakExpression(BreakExpression breakExpression)
+    private InstantiatedClass TypeCheckBreakExpression(BreakExpression breakExpression)
     {
         if (_loopDepth == 0)
         {
             _errors.Add(TypeCheckerError.BreakUsedOutsideOfLoop(breakExpression));
         }
 
-        return TypeChecking.TypeChecker.InstantiatedClass.Never;
+        return InstantiatedClass.Never;
     }
 
-    private TypeChecking.TypeChecker.InstantiatedClass TypeCheckWhileExpression(WhileExpression whileExpression)
+    private InstantiatedClass TypeCheckWhileExpression(WhileExpression whileExpression)
     {
         if (whileExpression.Check is not null)
         {
             TypeCheckExpression(whileExpression.Check);
             whileExpression.Check.ValueUseful = true;
-            ExpectExpressionType(TypeChecking.TypeChecker.InstantiatedClass.Boolean, whileExpression.Check);
+            ExpectExpressionType(InstantiatedClass.Boolean, whileExpression.Check);
         }
 
         _loopDepth++;
@@ -92,12 +144,12 @@ public partial class TypeChecker
         {
             TypeCheckExpression(whileExpression.Body);
 
-            ExpectExpressionType(TypeChecking.TypeChecker.InstantiatedClass.Unit, whileExpression.Body);
+            ExpectExpressionType(InstantiatedClass.Unit, whileExpression.Body);
         }
 
         _loopDepth--;
         
-        return TypeChecking.TypeChecker.InstantiatedClass.Unit;
+        return InstantiatedClass.Unit;
     }
 
     private bool ExpectAssignableExpression(IExpression expression, bool report = true)
@@ -114,10 +166,10 @@ public partial class TypeChecker
                         _errors.Add(TypeCheckerError.SymbolNotFound(valueToken));
                         return false;
                     }
-                    if (variable is TypeChecking.TypeChecker.LocalVariable { Instantiated: false }
-                        or TypeChecking.TypeChecker.LocalVariable { Mutable: true }
-                        or TypeChecking.TypeChecker.FieldVariable { Mutable: true }
-                        or TypeChecking.TypeChecker.FunctionSignatureParameter { Mutable: true })
+                    if (variable is LocalVariable { Instantiated: false }
+                        or LocalVariable { Mutable: true }
+                        or FieldVariable { Mutable: true }
+                        or FunctionSignatureParameter { Mutable: true })
                     {
                         return true;
                     }
@@ -141,7 +193,13 @@ public partial class TypeChecker
 
                     var isOwnerAssignable = ExpectAssignableExpression(owner, report: false);
 
-                    if (owner.ResolvedType is not TypeChecking.TypeChecker.InstantiatedClass { Fields: var fields })
+                    var ownerType = owner.ResolvedType;
+                    while (ownerType is GenericTypeReference generic)
+                    {
+                        ownerType = generic.ResolvedType ?? throw new NotImplementedException();
+                    }
+
+                    if (ownerType is not InstantiatedClass { Fields: var fields })
                     {
                         if (report)
                             _errors.Add(TypeCheckerError.ExpressionNotAssignable(memberAccess));
@@ -182,7 +240,7 @@ public partial class TypeChecker
                         return false;
                     }
 
-                    if (ownerType is not TypeChecking.TypeChecker.InstantiatedClass { Fields: var fields })
+                    if (ownerType is not InstantiatedClass { Fields: var fields })
                     {
                         if (report)
                             _errors.Add(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
@@ -208,6 +266,21 @@ public partial class TypeChecker
                     return false;
 
                 }
+            case IndexExpression indexExpression:
+            {
+                var owner = indexExpression.Collection;
+
+                var isOwnerAssignable = ExpectAssignableExpression(owner, report: false);
+
+                if (isOwnerAssignable)
+                {
+                    return true;
+                }
+
+                if (report)
+                    _errors.Add(TypeCheckerError.NonMutableMemberOwnerAssignment(owner));
+                return false;
+            }
         }
 
         if (report)
