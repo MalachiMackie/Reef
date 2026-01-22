@@ -876,7 +876,7 @@ public static class ParseErrorTestCases
                 "fn MyFn(a: int):",
                 new LangProgram("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
                 [
-                    ParserError.ExpectedType(null)
+                    ParserError.ExpectedTypeOrToken(null, TokenType.Mut)
                 ]
             ),
             (
@@ -1857,6 +1857,14 @@ public static class ParseErrorTestCases
                 "var a: Fn(): int",
                 new LangProgram("ParseErrorTestCases", [
                         VariableDeclaration("a", type: FnTypeIdentifier(returnType: IntType()))
+                    ],
+                    [], [], []),
+                []
+            ),
+            (
+                "var a: Fn(): mut int",
+                new LangProgram("ParseErrorTestCases", [
+                        VariableDeclaration("a", type: FnTypeIdentifier(returnType: IntType(), returnMutabilityModifier: Token.Mut(SourceSpan.Default)))
                     ],
                     [], [], []),
                 []

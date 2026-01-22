@@ -20,7 +20,8 @@ public partial class TypeChecker
             fn.StaticModifier is not null,
             fn.MutabilityModifier is not null,
             fn.Block.Expressions,
-            false)
+            false,
+            fn.ReturnMutabilityModifier?.Type == TokenType.Mut)
         {
             ReturnType = null!,
             OwnerType = ownerType
@@ -28,12 +29,12 @@ public partial class TypeChecker
 
         if (CurrentTypeSignature is null && fnSignature.IsMutable)
         {
-            _errors.Add(TypeCheckerError.GlobalFunctionMarkedAsMutable(fn.Name));
+            AddError(TypeCheckerError.GlobalFunctionMarkedAsMutable(fn.Name));
         }
 
         if (CurrentFunctionSignature is { IsMutable: false } && fnSignature.IsMutable)
         {
-            _errors.Add(TypeCheckerError.MutableFunctionWithinNonMutableFunction(new SourceRange(fn.Name.SourceSpan, fn.Name.SourceSpan)));
+            AddError(TypeCheckerError.MutableFunctionWithinNonMutableFunction(new SourceRange(fn.Name.SourceSpan, fn.Name.SourceSpan)));
         }
 
         fn.Signature = fnSignature;
@@ -41,7 +42,7 @@ public partial class TypeChecker
         if (fnSignature is { IsStatic: true, IsMutable: true })
         {
             var mutModifierSourceSpan = fn.MutabilityModifier!.Modifier.SourceSpan;
-            _errors.Add(TypeCheckerError.StaticFunctionMarkedAsMutable(name, new SourceRange(mutModifierSourceSpan, mutModifierSourceSpan)));
+            AddError(TypeCheckerError.StaticFunctionMarkedAsMutable(name, new SourceRange(mutModifierSourceSpan, mutModifierSourceSpan)));
         }
 
         var foundTypeParameters = new HashSet<string>();
@@ -50,17 +51,17 @@ public partial class TypeChecker
         {
             if (!foundTypeParameters.Add(typeParameter.StringValue))
             {
-                _errors.Add(TypeCheckerError.DuplicateTypeParameter(typeParameter));
+                AddError(TypeCheckerError.DuplicateTypeParameter(typeParameter));
             }
 
             if (genericPlaceholdersDictionary.ContainsKey(typeParameter.StringValue))
             {
-                _errors.Add(TypeCheckerError.ConflictingTypeParameter(typeParameter));
+                AddError(TypeCheckerError.ConflictingTypeParameter(typeParameter));
             }
 
             if (_types.ContainsKey(typeParameter.StringValue))
             {
-                _errors.Add(TypeCheckerError.TypeParameterConflictsWithType(typeParameter));
+                AddError(TypeCheckerError.TypeParameterConflictsWithType(typeParameter));
             }
             typeParameters.Add(new GenericPlaceholder
             {
@@ -83,7 +84,7 @@ public partial class TypeChecker
 
             if (!parameters.TryAdd(paramName.StringValue, new FunctionSignatureParameter(fnSignature, paramName, type, parameter.MutabilityModifier is not null, (uint)index)))
             {
-                _errors.Add(TypeCheckerError.DuplicateFunctionParameter(parameter.Identifier, fn.Name));
+                AddError(TypeCheckerError.DuplicateFunctionParameter(parameter.Identifier, fn.Name));
             }
         }
 
@@ -138,7 +139,7 @@ public partial class TypeChecker
         if (!expressionsDiverge && !Equals(fnSignature.ReturnType, InstantiatedClass.Unit))
         {
             // todo: figure out source range
-            _errors.Add(TypeCheckerError.MismatchedTypes(
+            AddError(TypeCheckerError.MismatchedTypes(
                 new SourceRange(fnSignature.NameToken.SourceSpan, fnSignature.NameToken.SourceSpan),
                 fnSignature.ReturnType,
                 InstantiatedClass.Unit));
@@ -172,14 +173,17 @@ public partial class TypeChecker
     {
         IReadOnlyList<FunctionParameter> Parameters { get; }
         ITypeReference ReturnType { get; }
+        bool MutableReturn { get; }
     }
 
     public class FunctionObject(
         IReadOnlyList<FunctionParameter> parameters,
-        ITypeReference returnType) : IFunction, ITypeReference
+        ITypeReference returnType,
+        bool isMutableReturn) : IFunction, ITypeReference
     {
         public IReadOnlyList<FunctionParameter> Parameters { get; } = parameters;
         public ITypeReference ReturnType { get; } = returnType;
+        public bool MutableReturn { get; } = isMutableReturn; 
 
         public override string ToString()
         {
@@ -249,6 +253,7 @@ public partial class TypeChecker
         public IReadOnlyList<GenericTypeReference> TypeArguments { get; }
         public ITypeReference ReturnType { get; }
         public DefId FunctionId => Signature.Id;
+        public bool MutableReturn => Signature.IsMutableReturn;
         public IReadOnlyList<FunctionParameter> Parameters { get; }
         public string Name => Signature.Name;
         public DefId? ClosureTypeId => Signature.ClosureTypeId;
@@ -267,7 +272,7 @@ public partial class TypeChecker
         {
             if (typeArguments.Count != instantiatedFunction.TypeArguments.Count)
             {
-                _errors.Add(TypeCheckerError.IncorrectNumberOfTypeArguments(
+                AddError(TypeCheckerError.IncorrectNumberOfTypeArguments(
                     typeArgumentsSourceRange,
                     typeArguments.Count,
                     instantiatedFunction.TypeArguments.Count));
@@ -292,7 +297,8 @@ public partial class TypeChecker
         bool IsStatic,
         bool IsMutable,
         IReadOnlyList<IExpression> Expressions,
-        bool Extern) : ITypeSignature
+        bool Extern,
+        bool IsMutableReturn) : ITypeSignature
     {
         public DefId? LocalsTypeId { get; set; }
         public DefId? ClosureTypeId { get; set; }
@@ -331,7 +337,8 @@ public partial class TypeChecker
                 IsStatic: true,
                 IsMutable: false,
                 Expressions: [],
-                Extern: true)
+                Extern: true,
+                true)
             {
                 OwnerType = null,
                 ReturnType = InstantiatedClass.Unit
@@ -358,7 +365,8 @@ public partial class TypeChecker
                 IsStatic: true,
                 IsMutable: false,
                 [],
-                Extern: true)
+                Extern: true,
+                IsMutableReturn: true)
             {
                 OwnerType = null,
                 ReturnType = InstantiatedClass.RawPointer
@@ -380,7 +388,8 @@ public partial class TypeChecker
                 IsStatic: true,
                 IsMutable: false,
                 Expressions: [],
-                Extern: true)
+                Extern: true,
+                IsMutableReturn: true)
             {
                 OwnerType = null,
                 ReturnType = InstantiatedClass.Unit
@@ -403,7 +412,8 @@ public partial class TypeChecker
                 IsStatic: true,
                 IsMutable: false,
                 Expressions: [],
-                Extern: true)
+                Extern: true,
+                IsMutableReturn: true)
             {
                 OwnerType = null,
                 ReturnType = null!
@@ -438,7 +448,8 @@ public partial class TypeChecker
                 IsStatic: true,
                 IsMutable: false,
                 Expressions: [],
-                Extern: true)
+                Extern: true,
+                IsMutableReturn: true)
             {
                 OwnerType = null,
                 ReturnType = null!

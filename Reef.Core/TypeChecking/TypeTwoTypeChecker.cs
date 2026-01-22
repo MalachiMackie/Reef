@@ -5,10 +5,19 @@ using Reef.Core.TypeChecking.PatternAnalysis;
 namespace Reef.Core.TypeChecking;
 
 // todo: this should probably be able to be a visitor
-public class TypeTwoTypeChecker
+public class TypeTwoTypeChecker(bool throwOnError)
 {
     private readonly List<TypeCheckerError> _errors = [];
     private readonly Stack<Dictionary<TypeChecker.LocalVariable, bool>> _localVariablesInitialized = [];
+
+    private void AddError(TypeCheckerError error)
+    {
+        if (throwOnError)
+        {
+            throw new InvalidOperationException(error.ToString());
+        }
+        _errors.Add(error);
+    }
 
     private bool GetLocalVariableInitialized(TypeChecker.LocalVariable variable)
     {
@@ -24,9 +33,9 @@ public class TypeTwoTypeChecker
         return false;
     }
 
-    public static IReadOnlyList<TypeCheckerError> TypeTwoTypeCheck(LangProgram program)
+    public static IReadOnlyList<TypeCheckerError> TypeTwoTypeCheck(LangProgram program, bool throwOnError = false)
     {
-        var checker = new TypeTwoTypeChecker();
+        var checker = new TypeTwoTypeChecker(throwOnError);
         checker.InnerTypeTwoTypeCheck(program);
 
         return checker._errors;
@@ -244,7 +253,7 @@ public class TypeTwoTypeChecker
 
             if (uninitializedAccessedVariables.Length > 0)
             {
-                _errors.Add(TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(nameToken, uninitializedAccessedVariables));
+                AddError(TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(nameToken, uninitializedAccessedVariables));
             }
 
             foreach (var functionTypeArgument in function.TypeArguments)
@@ -290,7 +299,7 @@ public class TypeTwoTypeChecker
 
         if (usefulnessReport.NonExhaustivenessWitnesses.Count > 0)
         {
-            _errors.Add(TypeCheckerError.MatchNonExhaustive(matchExpression.SourceRange));
+            AddError(TypeCheckerError.MatchNonExhaustive(matchExpression.SourceRange));
         }
     }
 
@@ -433,7 +442,7 @@ public class TypeTwoTypeChecker
         }
         else if (e.ValueUseful)
         {
-            _errors.Add(TypeCheckerError.IfExpressionValueUsedWithoutElseBranch(e.SourceRange));
+            AddError(TypeCheckerError.IfExpressionValueUsedWithoutElseBranch(e.SourceRange));
         }
 
         foreach (var (variable, variableInstantiation) in uninitializedLocalVariables)
@@ -495,7 +504,7 @@ public class TypeTwoTypeChecker
 
         if (variable.Type is TypeChecker.UnknownInferredType { ResolvedType: null })
         {
-            _errors.Add(TypeCheckerError.UnresolvedInferredVariableType(variable.Name));
+            AddError(TypeCheckerError.UnresolvedInferredVariableType(variable.Name));
             return;
         }
 
@@ -533,7 +542,7 @@ public class TypeTwoTypeChecker
                     if (genericTypeReference.ResolvedType is null
                         && _erroredGenerics.Add(genericTypeReference))
                     {
-                        _errors.Add(TypeCheckerError.UnresolvedInferredGenericType(expression, genericTypeReference.GenericName));
+                        AddError(TypeCheckerError.UnresolvedInferredGenericType(expression, genericTypeReference.GenericName));
                     }
 
                     if (genericTypeReference.ResolvedType is {} resolvedType)
@@ -552,7 +561,7 @@ public class TypeTwoTypeChecker
                 {
                     if (unknownInferredType.ResolvedType is null)
                     {
-                        _errors.Add(TypeCheckerError.UnresolvedInferredVariableType(Token.Identifier("Bob", SourceSpan.Default)));
+                        AddError(TypeCheckerError.UnresolvedInferredVariableType(Token.Identifier("Bob", SourceSpan.Default)));
                     }
                     else
                     {

@@ -46,7 +46,8 @@ public partial class TypeChecker
                     IsStatic: true,
                     IsMutable: false,
                     Expressions: [],
-                    true)
+                    true,
+                    IsMutableReturn: true)
             {
                 ReturnType = InstantiatedUnion.Create(resultSignature, typeParameters, resultSignature.Boxed),
                 OwnerType = resultSignature
@@ -59,7 +60,8 @@ public partial class TypeChecker
                 IsStatic: true,
                 IsMutable: false,
                 Expressions: [],
-                true)
+                true,
+                IsMutableReturn: true)
             {
                 ReturnType = InstantiatedUnion.Create(resultSignature, typeParameters, resultSignature.Boxed),
                 OwnerType = resultSignature
@@ -180,7 +182,7 @@ public partial class TypeChecker
 
         if (typeArguments.Count != signature.TypeParameters.Count)
         {
-            _errors.Add(TypeCheckerError.IncorrectNumberOfTypeArguments(sourceRange, typeArguments.Count, signature.TypeParameters.Count));
+            AddError(TypeCheckerError.IncorrectNumberOfTypeArguments(sourceRange, typeArguments.Count, signature.TypeParameters.Count));
         }
 
         var instantiatedUnion = InstantiatedUnion.Create(signature, [..typeArguments.Select(x => x.Item1)], boxingSpecifier switch

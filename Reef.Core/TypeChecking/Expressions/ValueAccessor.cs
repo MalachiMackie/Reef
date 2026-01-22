@@ -47,7 +47,8 @@ public partial class TypeChecker
 
             return new FunctionObject(
                 tupleVariantFunction.Parameters,
-                tupleVariantFunction.ReturnType);
+                tupleVariantFunction.ReturnType,
+                tupleVariantFunction.MutableReturn);
         }
     }
 
@@ -73,7 +74,8 @@ public partial class TypeChecker
 
             return new FunctionObject(
                 parameters: instantiatedFunction.Parameters,
-                returnType: instantiatedFunction.ReturnType);
+                returnType: instantiatedFunction.ReturnType,
+                instantiatedFunction.MutableReturn);
         }
 
         if (CurrentTypeSignature is UnionSignature union)
@@ -83,7 +85,7 @@ public partial class TypeChecker
             {
                 if (!unionFunction.IsStatic && CurrentFunctionSignature is not { IsStatic: false })
                 {
-                    _errors.Add(TypeCheckerError.AccessInstanceMemberInStaticContext(variableName));
+                    AddError(TypeCheckerError.AccessInstanceMemberInStaticContext(variableName));
                 }
 
                 var instantiatedFunction = InstantiateFunction(
@@ -97,7 +99,8 @@ public partial class TypeChecker
 
                 return new FunctionObject(
                     instantiatedFunction.Parameters,
-                    instantiatedFunction.ReturnType);
+                    instantiatedFunction.ReturnType,
+                    instantiatedFunction.MutableReturn);
             }
         }
         else if (CurrentTypeSignature is ClassSignature @class)
@@ -107,7 +110,7 @@ public partial class TypeChecker
             {
                 if (!classFunction.IsStatic && CurrentFunctionSignature is not { IsStatic: false })
                 {
-                    _errors.Add(TypeCheckerError.AccessInstanceMemberInStaticContext(variableName));
+                    AddError(TypeCheckerError.AccessInstanceMemberInStaticContext(variableName));
                 }
 
                 var instantiatedFunction = InstantiateFunction(
@@ -121,18 +124,19 @@ public partial class TypeChecker
 
                 return new FunctionObject(
                     instantiatedFunction.Parameters,
-                    instantiatedFunction.ReturnType);
+                    instantiatedFunction.ReturnType,
+                    instantiatedFunction.MutableReturn);
             }
         }
 
         if (expression.ValueAccessor.TypeArguments is not null)
         {
-            _errors.Add(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(expression.SourceRange));
+            AddError(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(expression.SourceRange));
         }
 
         if (!TryGetScopedVariable(variableName, out var valueVariable))
         {
-            _errors.Add(TypeCheckerError.SymbolNotFound(variableName));
+            AddError(TypeCheckerError.SymbolNotFound(variableName));
             return UnknownType.Instance;
         }
 
@@ -142,7 +146,7 @@ public partial class TypeChecker
             // if we're accessing an outer variable, then we can assume it's been assigned                     
             && containingFunction == CurrentFunctionSignature)
         {
-            _errors.Add(TypeCheckerError.AccessUninitializedVariable(variableName));
+            AddError(TypeCheckerError.AccessUninitializedVariable(variableName));
         }
 
         return valueVariable.Type;

@@ -5,7 +5,7 @@ namespace Reef.Core.TypeChecking;
 
 public partial class TypeChecker
 {
-    private TypeChecking.TypeChecker.ITypeReference TypeCheckStaticMemberAccess(
+    private ITypeReference TypeCheckStaticMemberAccess(
         StaticMemberAccessExpression staticMemberAccessExpression)
     {
         var staticMemberAccess = staticMemberAccessExpression.StaticMemberAccess;
@@ -16,16 +16,16 @@ public partial class TypeChecker
         var memberName = staticMemberAccess.MemberName?.StringValue;
         if (memberName is null)
         {
-            return TypeChecking.TypeChecker.UnknownType.Instance;
+            return UnknownType.Instance;
         }
 
         var typeArguments = (staticMemberAccess.TypeArguments ?? [])
-            .Select<ITypeIdentifier, (TypeChecking.TypeChecker.ITypeReference, SourceRange SourceRange)>(x => (GetTypeReference(x), x.SourceRange))
+            .Select<ITypeIdentifier, (ITypeReference, SourceRange SourceRange)>(x => (GetTypeReference(x), x.SourceRange))
             .ToArray();
 
         switch (type)
         {
-            case TypeChecking.TypeChecker.InstantiatedClass { Fields: var fields } instantiatedClass:
+            case InstantiatedClass { Fields: var fields } instantiatedClass:
                 {
                     var field = fields.FirstOrDefault(x => x.Name == memberName);
                     if (field is not null)
@@ -34,12 +34,12 @@ public partial class TypeChecker
 
                         if (staticMemberAccess.TypeArguments is not null)
                         {
-                            _errors.Add(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(staticMemberAccessExpression.SourceRange));
+                            AddError(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(staticMemberAccessExpression.SourceRange));
                         }
 
                         if (!field.IsStatic)
                         {
-                            _errors.Add(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange));
+                            AddError(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange));
                         }
 
                         return field.Type;
@@ -52,23 +52,23 @@ public partial class TypeChecker
                             staticMemberAccessExpression.SourceRange,
                             out var function))
                     {
-                        _errors.Add(TypeCheckerError.UnknownTypeMember(staticMemberAccess.MemberName!, instantiatedClass.Signature.Name));
-                        return TypeChecking.TypeChecker.UnknownType.Instance;
+                        AddError(TypeCheckerError.UnknownTypeMember(staticMemberAccess.MemberName!, instantiatedClass.Signature.Name));
+                        return UnknownType.Instance;
                     }
 
                     if (!function.IsStatic)
                     {
-                        _errors.Add(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange));
+                        AddError(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange));
                     }
 
                     staticMemberAccess.MemberType = MemberType.Function;
 
                     staticMemberAccess.InstantiatedFunction = function;
 
-                    return new TypeChecking.TypeChecker.FunctionObject(function.Parameters, function.ReturnType);
+                    return new FunctionObject(function.Parameters, function.ReturnType, function.MutableReturn);
 
                 }
-            case TypeChecking.TypeChecker.InstantiatedUnion instantiatedUnion:
+            case InstantiatedUnion instantiatedUnion:
                 {
                     var variant = instantiatedUnion.Variants.FirstOrDefault(x => x.Name == memberName);
                     if (variant is not null)
@@ -77,24 +77,25 @@ public partial class TypeChecker
 
                         if (staticMemberAccess.TypeArguments is not null)
                         {
-                            _errors.Add(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(staticMemberAccessExpression.SourceRange));
+                            AddError(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(staticMemberAccessExpression.SourceRange));
                         }
 
                         switch (variant)
                         {
-                            case TypeChecking.TypeChecker.TupleUnionVariant tupleVariant:
+                            case TupleUnionVariant tupleVariant:
                                 {
                                     var tupleVariantFunction = GetUnionTupleVariantFunction(tupleVariant, instantiatedUnion);
                                     staticMemberAccess.InstantiatedFunction = tupleVariantFunction;
 
-                                    return new TypeChecking.TypeChecker.FunctionObject(
+                                    return new FunctionObject(
                                         tupleVariantFunction.Parameters,
-                                        tupleVariantFunction.ReturnType);
+                                        tupleVariantFunction.ReturnType,
+                                        isMutableReturn: true);
                                 }
-                            case TypeChecking.TypeChecker.UnitUnionVariant:
+                            case UnitUnionVariant:
                                 return type;
-                            case TypeChecking.TypeChecker.ClassUnionVariant:
-                                _errors.Add(TypeCheckerError.UnionClassVariantWithoutInitializer(staticMemberAccessExpression.SourceRange));
+                            case ClassUnionVariant:
+                                AddError(TypeCheckerError.UnionClassVariantWithoutInitializer(staticMemberAccessExpression.SourceRange));
                                 return type;
                             default:
                                 throw new UnreachableException();
@@ -107,25 +108,26 @@ public partial class TypeChecker
                             staticMemberAccessExpression.SourceRange,
                             out var function))
                     {
-                        _errors.Add(TypeCheckerError.UnknownTypeMember(staticMemberAccess.MemberName!, instantiatedUnion.Name));
-                        return TypeChecking.TypeChecker.UnknownType.Instance;
+                        AddError(TypeCheckerError.UnknownTypeMember(staticMemberAccess.MemberName!, instantiatedUnion.Name));
+                        return UnknownType.Instance;
                     }
 
                     if (!function.IsStatic)
                     {
-                        _errors.Add(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange));
+                        AddError(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange));
                     }
 
                     staticMemberAccess.MemberType = MemberType.Function;
                     staticMemberAccess.InstantiatedFunction = function;
 
-                    return new TypeChecking.TypeChecker.FunctionObject(
+                    return new FunctionObject(
                         function.Parameters,
-                        function.ReturnType);
+                        function.ReturnType,
+                        function.MutableReturn);
                 }
-            case TypeChecking.TypeChecker.GenericTypeReference or TypeChecking.TypeChecker.GenericPlaceholder:
-                _errors.Add(TypeCheckerError.StaticMemberAccessOnGenericReference(staticMemberAccessExpression));
-                return TypeChecking.TypeChecker.UnknownType.Instance;
+            case GenericTypeReference or GenericPlaceholder:
+                AddError(TypeCheckerError.StaticMemberAccessOnGenericReference(staticMemberAccessExpression));
+                return UnknownType.Instance;
             default:
                 throw new UnreachableException(type.GetType().ToString());
         }

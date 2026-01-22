@@ -57,6 +57,9 @@ public record TypeCheckerError
     public static TypeCheckerError NonMutableAssignment(string variableName, SourceRange sourceRange) =>
         new(TypeCheckerErrorType.NonMutableAssignment, sourceRange, $"Variable {variableName} is not marked as mutable");
 
+    public static TypeCheckerError NonMutableExpressionPassedToMutableReturn(SourceRange sourceRange) =>
+        new(TypeCheckerErrorType.NonMutableExpressionPassedToMutableReturn, sourceRange, "Non mutable expression returned through mutable return");
+
     public static TypeCheckerError MutatingInstanceInNonMutableFunction(string functionName, SourceRange assignmentSourceRange) =>
         new(TypeCheckerErrorType.MutatingInstanceInNonMutableFunction, assignmentSourceRange, $"Function {functionName} is not marked as mutable");
 
@@ -381,6 +384,14 @@ public record TypeCheckerError
             sourceRange,
             $"boxed-only type {type} cannot be unboxed");
     }
+
+    public static TypeCheckerError FunctionObjectReturnTypeMutabilityMismatch(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.FunctionObjectReturnTypeMutabilityMismatch,
+            sourceRange,
+            "Mismatched return type mutability for function object");
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -439,5 +450,6 @@ public enum TypeCheckerErrorType
     TypeIsNotExpression,
     ArrayLengthMismatch,
     BoxedOnlyTypeCannotBeUnboxed,
-    NonMutableExpressionPassedToMutableReturn
+    NonMutableExpressionPassedToMutableReturn,
+    FunctionObjectReturnTypeMutabilityMismatch
 }

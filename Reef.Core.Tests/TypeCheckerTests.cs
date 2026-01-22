@@ -13,7 +13,7 @@ public class TypeCheckerTests
     {
         var program = Parser.Parse("TypeCheckerTests", Tokenizer.Tokenize(source));
         program.Errors.Should().BeEmpty();
-        var errors = TypeCheck(program.ParsedProgram);
+        var errors = TypeCheck(program.ParsedProgram, throwOnError: true);
         errors.Should().BeEmpty();
     }
 
@@ -37,13 +37,13 @@ public class TypeCheckerTests
     [Fact]
     public void SingleTest()
     {
-        const string src =
-                """
-                var number: boxed i32 = todo!;
-                var a: boxed i32 = box(number);
+        const string src = """
+                fn someFn(): string { return ""; }
+                var a: Fn(): mut string = someFn;
                 """;
+                
         IReadOnlyList<TypeCheckerError> expectedErrors =
-            [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("i32", false), false, new TestClassReference("i32", true), true)];
+            [TypeCheckerError.FunctionObjectReturnTypeMutabilityMismatch(SourceRange.Default)];
 
 
         var program = Parser.Parse("TypeCheckerTests", Tokenizer.Tokenize(src));
@@ -56,6 +56,29 @@ public class TypeCheckerTests
     {
         return
         [
+            """
+            class FirstClass{ pub mut field FirstClassField: string }
+            class MyClass{pub mut field MyField: FirstClass}
+            var mut firstClass = new FirstClass{FirstClassField = ""};
+            var secondClass = new MyClass{MyField = firstClass}
+            """,
+            """
+            class MyClass { pub mut field MyField: string, } 
+            var mut a = [new MyClass{MyField = "hi"}];
+            a[0].MyField = "bye";
+            """,
+            """
+            fn someFn(): mut string { return ""; }
+            var a: Fn(): mut string = someFn;
+            """,
+            """
+            fn someFn(): mut string { return ""; }
+            var a: Fn(): string = someFn;
+            """,
+            """
+            fn someFn(): string { return ""; }
+            var a: Fn(): string = someFn;
+            """,
             """
             var mut a = [""];
             a[0] = "x";
@@ -1573,6 +1596,49 @@ public class TypeCheckerTests
     {
         return new TheoryData<string, string, IReadOnlyList<TypeCheckerError>>
         {
+            {
+                "Function object return type mutability mismatch",
+                """
+                fn someFn(): string { return ""; }
+                var a: Fn(): mut string = someFn;
+                """,
+                [TypeCheckerError.FunctionObjectReturnTypeMutabilityMismatch(SourceRange.Default)]
+            },
+            {
+                "assign non mutable variable to mutable field",
+                """
+                class FirstClass{ pub mut field FirstClassField: string }
+                class MyClass{pub mut field MyField: FirstClass}
+                var firstClass = new FirstClass{FirstClassField = ""};
+                var secondClass = new MyClass{MyField = firstClass}
+                """,
+                [TypeCheckerError.NonMutableAssignment("firstClass", SourceRange.Default)]
+            },
+            {
+                "return non mutable variable through mutable return",
+                """
+                class MyClass {pub mut field MyField: string, }
+                fn someFn(myClass: MyClass): mut MyClass 
+                {
+                    return myClass;
+                }
+                
+                var outer = new MyClass{MyField = ""};
+                var mut a = someFn(outer);
+                a.MyField = "bye";
+                """,
+                [TypeCheckerError.NonMutableExpressionPassedToMutableReturn(SourceRange.Default)]
+            },
+            {
+                "assign non mutable variable to mutable variable",
+                """
+                class MyClass{pub mut field MyField: string, }
+                var a = new MyClass{MyField = ""};
+                var mut b = a;
+                b.MyField = "bye";
+                """,
+                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+            },
             {
                 "assign to field of object inside non mutable array",
                 """

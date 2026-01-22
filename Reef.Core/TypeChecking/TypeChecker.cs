@@ -6,7 +6,18 @@ namespace Reef.Core.TypeChecking;
 public partial class TypeChecker
 {
     private readonly LangProgram _program;
+    private readonly bool _throwOnError;
     private readonly List<TypeCheckerError> _errors = [];
+
+    private void AddError(TypeCheckerError error)
+    {
+        if (_throwOnError)
+        {
+            throw new InvalidOperationException(error.ToString());
+        }
+        
+        _errors.Add(error);
+    }
 
     private readonly Stack<TypeCheckingScope> _typeCheckingScopes = new();
 
@@ -14,9 +25,10 @@ public partial class TypeChecker
         .Concat(UnionSignature.BuiltInTypes)
         .ToDictionary(x => x.Name);
 
-    private TypeChecker(LangProgram program)
+    private TypeChecker(LangProgram program, bool throwOnError = false)
     {
         _program = program;
+        _throwOnError = throwOnError;
     }
 
     private Dictionary<string, FunctionSignature> ScopedFunctions => _typeCheckingScopes.Peek().Functions;
@@ -26,9 +38,9 @@ public partial class TypeChecker
     private ITypeReference ExpectedReturnType => _typeCheckingScopes.Peek().ExpectedReturnType;
     private DefId? CurrentDefId => _typeCheckingScopes.Peek().CurrentDefId; 
 
-    public static IReadOnlyList<TypeCheckerError> TypeCheck(LangProgram program)
+    public static IReadOnlyList<TypeCheckerError> TypeCheck(LangProgram program, bool throwOnError = false)
     {
-        var typeChecker = new TypeChecker(program);
+        var typeChecker = new TypeChecker(program, throwOnError);
         typeChecker.TypeCheckInner();
 
         return typeChecker._errors;
@@ -172,7 +184,7 @@ public partial class TypeChecker
 
         if (_errors.Count == 0)
         {
-            _errors.AddRange(TypeTwoTypeChecker.TypeTwoTypeCheck(_program));
+            _errors.AddRange(TypeTwoTypeChecker.TypeTwoTypeCheck(_program, _throwOnError));
         }
     }
 
@@ -215,7 +227,7 @@ public partial class TypeChecker
 
         if (field is null)
         {
-            _errors.Add(TypeCheckerError.UnknownTypeMember(fieldName, classType.Signature.Name));
+            AddError(TypeCheckerError.UnknownTypeMember(fieldName, classType.Signature.Name));
             return null;
         }
 
@@ -223,7 +235,7 @@ public partial class TypeChecker
              || !classType.MatchesSignature(currentClassSignature))
             && !field.IsPublic)
         {
-            _errors.Add(TypeCheckerError.PrivateFieldReferenced(fieldName));
+            AddError(TypeCheckerError.PrivateFieldReferenced(fieldName));
         }
 
         return field;
@@ -237,7 +249,7 @@ public partial class TypeChecker
         if (isVariableDefined)
         {
             // todo: variable shadowing?
-            _errors.Add(TypeCheckerError.DuplicateVariableDeclaration(varName));
+            AddError(TypeCheckerError.DuplicateVariableDeclaration(varName));
         }
 
         LocalVariable? variable = null;
@@ -282,6 +294,12 @@ public partial class TypeChecker
             AddScopedVariable(varName.StringValue, variable);
         }
         expression.VariableDeclaration.Variable = variable;
+        
+        // todo: need a way to be able to reassign a variable, but mutate any inner fields in case the parent expression is not mutable 
+        if (expression.VariableDeclaration is { MutabilityModifier.Modifier.Type: TokenType.Mut, Value: {} expressionValue })
+        {
+            ExpectMutableExpression(expressionValue);
+        }
 
         // variable declaration return type is always unit, regardless of the variable type
         return InstantiatedClass.Unit;
@@ -319,7 +337,8 @@ public partial class TypeChecker
     {
         return new FunctionObject(
             [.. identifier.Parameters.Select(x => new FunctionParameter(GetTypeReference(x.ParameterType), x.Mut))],
-            identifier.ReturnType is null ? InstantiatedClass.Unit : GetTypeReference(identifier.ReturnType));
+            identifier.ReturnType is null ? InstantiatedClass.Unit : GetTypeReference(identifier.ReturnType),
+            identifier.ReturnMutabilityModifier?.Type == TokenType.Mut);
     }
 
     private InstantiatedClass GetTupleTypeReference(TupleTypeIdentifier tupleTypeIdentifier)
@@ -357,7 +376,7 @@ public partial class TypeChecker
             return genericTypeReference;
         }
 
-        _errors.Add(TypeCheckerError.SymbolNotFound(typeIdentifier.Identifier));
+        AddError(TypeCheckerError.SymbolNotFound(typeIdentifier.Identifier));
         return UnknownType.Instance;
     }
 
@@ -529,7 +548,7 @@ public partial class TypeChecker
                             result = false;
                             if (reportError)
                             {
-                                _errors.Add(TypeCheckerError.MismatchedTypeBoxing(
+                                AddError(TypeCheckerError.MismatchedTypeBoxing(
                                     actualSourceRange,
                                     expectedClass,
                                     expectedClass.Boxed,
@@ -563,7 +582,7 @@ public partial class TypeChecker
                             result = false;
                             if (reportError)
                             {
-                                _errors.Add(TypeCheckerError.MismatchedTypeBoxing(
+                                AddError(TypeCheckerError.MismatchedTypeBoxing(
                                     actualSourceRange,
                                     expectedUnion,
                                     expectedUnion.Boxed,
@@ -623,6 +642,13 @@ public partial class TypeChecker
                     {
                         result &= ExpectType(functionObject1.ReturnType, functionObject2.ReturnType, actualSourceRange,
                             reportError: false, assignInferredTypes: false);
+
+                        if (functionObject2.MutableReturn && !functionObject1.MutableReturn)
+                        {
+                            result = false;
+                            AddError(TypeCheckerError.FunctionObjectReturnTypeMutabilityMismatch(actualSourceRange));
+                        }
+                        
                         result &= functionObject1.Parameters.Count == functionObject2.Parameters.Count;
                         result &= functionObject1.Parameters.Zip(functionObject2.Parameters)
                             .All(z => z.First.Mutable == z.Second.Mutable
@@ -640,7 +666,7 @@ public partial class TypeChecker
 
         if (reportError)
         {
-            _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expectedTypes, actual));
+            AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expectedTypes, actual));
         }
 
         return false;
@@ -783,7 +809,7 @@ public partial class TypeChecker
             {
                 if (!expectedBoxing && reportError)
                 {
-                    _errors.Add(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, actual, expectedBoxing, actual, actualBoxed: true));
+                    AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, actual, expectedBoxing, actual, actualBoxed: true));
                 }
 
                 // for now, FunctionObjects are always boxed
@@ -793,7 +819,7 @@ public partial class TypeChecker
             {
                 if (expectedBoxing != arrayType.Boxed)
                 {
-                    _errors.Add(TypeCheckerError.MismatchedTypeBoxing(
+                    AddError(TypeCheckerError.MismatchedTypeBoxing(
                         actualSourceRange, actual, expectedBoxing, actual, arrayType.Boxed));
                     return false;
                 }
@@ -808,7 +834,7 @@ public partial class TypeChecker
             {
                 if (expectedBoxing != instantiatedClass.Boxed)
                 {
-                    _errors.Add(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, actual, expectedBoxing, actual,
+                    AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, actual, expectedBoxing, actual,
                         instantiatedClass.Boxed));
                     return false;
                 }
@@ -819,7 +845,7 @@ public partial class TypeChecker
             {
                 if (expectedBoxing != instantiatedUnion.Boxed)
                 {
-                    _errors.Add(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, actual, expectedBoxing, actual,
+                    AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, actual, expectedBoxing, actual,
                         instantiatedUnion.Boxed));
                     return false;
                 }
@@ -835,7 +861,7 @@ public partial class TypeChecker
             {
                 if (expectedBoxing != unspecifiedSizedIntType.Boxed)
                 {
-                    _errors.Add(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, actual, expectedBoxing, actual,
+                    AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, actual, expectedBoxing, actual,
                         unspecifiedSizedIntType.Boxed));
                     return false;
                 }
@@ -895,7 +921,7 @@ public partial class TypeChecker
                     result = placeholder1 == placeholder2;
                     if (!result && reportError)
                     {
-                        _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
+                        AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
                     }
                     break;
                 }
@@ -905,7 +931,7 @@ public partial class TypeChecker
                     result = false;
                     if (reportError)
                     {
-                        _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
+                        AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
                     }
                     break;
                 }
@@ -936,7 +962,7 @@ public partial class TypeChecker
                         result = false;
                         if (reportError)
                         {
-                            _errors.Add(TypeCheckerError.MismatchedTypeBoxing(
+                            AddError(TypeCheckerError.MismatchedTypeBoxing(
                                 actualSourceRange,
                                 expectedIntType, expectedIntType.Boxed,
                                 actualIntType, actualIntType.Boxed));
@@ -952,7 +978,7 @@ public partial class TypeChecker
                         result = false;
                         if (reportError)
                         {
-                            _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expectedClass, actualIntType));
+                            AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expectedClass, actualIntType));
                         }
                         break;
                     }
@@ -973,7 +999,7 @@ public partial class TypeChecker
                         result = false;
                         if (reportError)
                         {
-                            _errors.Add(TypeCheckerError.MismatchedTypeBoxing(
+                            AddError(TypeCheckerError.MismatchedTypeBoxing(
                                 actualSourceRange,
                                 expectedClass, expectedClass.Boxed,
                                 actualIntType, actualIntType.Boxed));
@@ -989,7 +1015,7 @@ public partial class TypeChecker
                         result = false;
                         if (reportError)
                         {
-                            _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expectedIntType, actualClass));
+                            AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expectedIntType, actualClass));
                         }
                         break;
                     }
@@ -1010,7 +1036,7 @@ public partial class TypeChecker
                         result = false;
                         if (reportError)
                         {
-                            _errors.Add(TypeCheckerError.MismatchedTypeBoxing(
+                            AddError(TypeCheckerError.MismatchedTypeBoxing(
                                 actualSourceRange,
                                 expectedIntType, expectedIntType.Boxed,
                                 actualClass, actualClass.Boxed));
@@ -1076,7 +1102,7 @@ public partial class TypeChecker
                 {
                     if (reportError)
                     {
-                        _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
+                        AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
                     }
                     break;
                 }
@@ -1088,7 +1114,7 @@ public partial class TypeChecker
                 if (actualArray.Boxed != expectedArray.Boxed)
                 {
                     result = false;
-                    _errors.Add(TypeCheckerError.MismatchedTypeBoxing(
+                    AddError(TypeCheckerError.MismatchedTypeBoxing(
                         actualSourceRange,
                         expectedArray,
                         expectedArray.Boxed,
@@ -1099,7 +1125,7 @@ public partial class TypeChecker
                 if (actualArray.Length != expectedArray.Length)
                 {
                     result = false;
-                    _errors.Add(TypeCheckerError.ArrayLengthMismatch(
+                    AddError(TypeCheckerError.ArrayLengthMismatch(
                         expectedArray.Length, actualArray.Length, actualSourceRange));
                 }
                 
@@ -1110,7 +1136,7 @@ public partial class TypeChecker
                     if (!actualClass.IsSameSignature(expectedClass))
                     {
                         if (reportError)
-                            _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
+                            AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
                         result = false;
                         break;
                     }
@@ -1124,7 +1150,7 @@ public partial class TypeChecker
 
                     if (!argumentsPassed && reportError)
                     {
-                        _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
+                        AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
                     }
 
                     result &= argumentsPassed;
@@ -1134,7 +1160,7 @@ public partial class TypeChecker
                         result = false;
                         if (reportError)
                         {
-                            _errors.Add(TypeCheckerError.MismatchedTypeBoxing(
+                            AddError(TypeCheckerError.MismatchedTypeBoxing(
                                 actualSourceRange,
                                 expectedClass, expectedClass.Boxed,
                                 actualClass, actualClass.Boxed));
@@ -1148,7 +1174,7 @@ public partial class TypeChecker
                     if (!actualUnion.IsSameSignature(expectedUnion))
                     {
                         if (reportError)
-                            _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
+                            AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
                         result = false;
                         break;
                     }
@@ -1163,7 +1189,7 @@ public partial class TypeChecker
 
                     if (!argumentsPassed && reportError)
                     {
-                        _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
+                        AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
                     }
                     result &= argumentsPassed;
                     
@@ -1172,7 +1198,7 @@ public partial class TypeChecker
                         result = false;
                         if (reportError)
                         {
-                            _errors.Add(TypeCheckerError.MismatchedTypeBoxing(
+                            AddError(TypeCheckerError.MismatchedTypeBoxing(
                                 actualSourceRange,
                                 expectedUnion, expectedUnion.Boxed,
                                 actualUnion, actualUnion.Boxed));
@@ -1381,7 +1407,13 @@ public partial class TypeChecker
 
                     if (!result && reportError)
                     {
-                        _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
+                        AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
+                    }
+                    
+                    if (functionObject2.MutableReturn && !functionObject1.MutableReturn)
+                    {
+                        result = false;
+                        AddError(TypeCheckerError.FunctionObjectReturnTypeMutabilityMismatch(actualSourceRange));
                     }
 
                     break;
@@ -1418,7 +1450,7 @@ public partial class TypeChecker
             }
             default:
                 {
-                    _errors.Add(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
+                    AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
                     break;
                 }
         }

@@ -41,7 +41,7 @@ public partial class TypeChecker
 
             if (!_types.TryAdd(unionSignature.Name, unionSignature))
             {
-                _errors.Add(TypeCheckerError.ConflictingTypeName(union.Name));
+                AddError(TypeCheckerError.ConflictingTypeName(union.Name));
             }
         }
 
@@ -71,7 +71,7 @@ public partial class TypeChecker
             {
                 foreach (var typeParameter in grouping.Skip(1))
                 {
-                    _errors.Add(TypeCheckerError.DuplicateTypeParameter(typeParameter));
+                    AddError(TypeCheckerError.DuplicateTypeParameter(typeParameter));
                 }
             }
 
@@ -79,7 +79,7 @@ public partial class TypeChecker
 
             if (!_types.TryAdd(name, signature))
             {
-                _errors.Add(TypeCheckerError.ConflictingTypeName(klass.Name));
+                AddError(TypeCheckerError.ConflictingTypeName(klass.Name));
             }
         }
 
@@ -94,7 +94,7 @@ public partial class TypeChecker
             {
                 if (functions.Any(x => x.Name == function.Name.StringValue))
                 {
-                    _errors.Add(TypeCheckerError.ConflictingFunctionName(function.Name));
+                    AddError(TypeCheckerError.ConflictingFunctionName(function.Name));
                 }
 
                 functions.Add(TypeCheckFunctionSignature(new DefId(unionSignature.Id.ModuleId, unionSignature.Id.FullName + "__" + function.Name), function, unionSignature));
@@ -104,7 +104,7 @@ public partial class TypeChecker
             {
                 if (variants.Any(x => x.Name == variant.Name.StringValue))
                 {
-                    _errors.Add(TypeCheckerError.DuplicateVariantName(variant.Name));
+                    AddError(TypeCheckerError.DuplicateVariantName(variant.Name));
                 }
 
                 variants.Add(variant switch
@@ -121,7 +121,7 @@ public partial class TypeChecker
                 {
                     if (tupleVariant.TupleMembers.Count == 0)
                     {
-                        _errors.Add(TypeCheckerError.EmptyUnionTupleVariant(
+                        AddError(TypeCheckerError.EmptyUnionTupleVariant(
                                     unionSignature.Name, variant.Name));
                     }
 
@@ -141,7 +141,8 @@ public partial class TypeChecker
                         IsStatic: true,
                         IsMutable: false,
                         [],
-                        true)
+                        true,
+                        IsMutableReturn: true)
                     {
                         OwnerType = unionSignature,
                         ReturnType = createFunctionReturnType
@@ -180,7 +181,7 @@ public partial class TypeChecker
                     {
                         if (fields.Any(x => x.Name == field.Name.StringValue))
                         {
-                            _errors.Add(TypeCheckerError.DuplicateFieldInUnionClassVariant(union.Name,
+                            AddError(TypeCheckerError.DuplicateFieldInUnionClassVariant(union.Name,
                                 classVariant.Name, field.Name));
                         }
 
@@ -228,7 +229,7 @@ public partial class TypeChecker
             {
                 if (functions.Any(x => x.Name == fn.Name.StringValue))
                 {
-                    _errors.Add(TypeCheckerError.ConflictingFunctionName(fn.Name));
+                    AddError(TypeCheckerError.ConflictingFunctionName(fn.Name));
                 }
 
                 // todo: function overloading
@@ -268,7 +269,7 @@ public partial class TypeChecker
             // todo: function overloading
             if (!ScopedFunctions.TryAdd(name, TypeCheckFunctionSignature(new DefId(_program.ModuleId, $"{_program.ModuleId}.{fn.Name.StringValue}"), fn, ownerType: null)))
             {
-                _errors.Add(TypeCheckerError.ConflictingFunctionName(fn.Name));
+                AddError(TypeCheckerError.ConflictingFunctionName(fn.Name));
             }
         }
 
@@ -276,7 +277,7 @@ public partial class TypeChecker
                      .Concat(_program.Unions.SelectMany(x => x.TypeParameters))
                      .Where(x => _types.ContainsKey(x.StringValue)))
         {
-            _errors.Add(TypeCheckerError.TypeParameterConflictsWithType(typeParameter));
+            AddError(TypeCheckerError.TypeParameterConflictsWithType(typeParameter));
         }
 
         return (

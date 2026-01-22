@@ -60,7 +60,11 @@ public record FnTypeIdentifierParameter(ITypeIdentifier ParameterType, bool Mut)
     }
 }
 
-public record FnTypeIdentifier(IReadOnlyList<FnTypeIdentifierParameter> Parameters, ITypeIdentifier? ReturnType, SourceRange SourceRange)
+public record FnTypeIdentifier(
+    IReadOnlyList<FnTypeIdentifierParameter> Parameters,
+    ITypeIdentifier? ReturnType,
+    Token? ReturnMutabilityModifier,
+    SourceRange SourceRange)
     : ITypeIdentifier
 {
     public override string ToString()
@@ -70,7 +74,12 @@ public record FnTypeIdentifier(IReadOnlyList<FnTypeIdentifierParameter> Paramete
         sb.Append(')');
         if (ReturnType is not null)
         {
-            sb.Append($": {ReturnType}");
+            sb.Append(": ");
+            if (ReturnMutabilityModifier is not null)
+            {
+                sb.Append($"{ReturnMutabilityModifier} ");
+            }
+            sb.Append(ReturnType);
         }
 
         return sb.ToString();
@@ -140,6 +149,7 @@ public record LangFunction(
     IReadOnlyList<StringToken> TypeParameters,
     IReadOnlyList<FunctionParameter> Parameters,
     ITypeIdentifier? ReturnType,
+    Token? ReturnMutabilityModifier,
     Block Block)
 {
     public TypeChecker.FunctionSignature? Signature { get; set; }

@@ -36,7 +36,7 @@ public partial class TypeChecker
                     ownerExpression);
             default:
                 // todo: generic parameter constraints with interfaces?
-                _errors.Add(TypeCheckerError.MemberAccessOnGenericExpression(memberAccessExpression));
+                AddError(TypeCheckerError.MemberAccessOnGenericExpression(memberAccessExpression));
                 return UnknownType.Instance;
         }
     }
@@ -62,7 +62,7 @@ public partial class TypeChecker
         {
             if (typeArgumentsIdentifiers is not null)
             {
-                _errors.Add(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(memberAccessExpression.SourceRange));
+                AddError(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(memberAccessExpression.SourceRange));
             }
 
             if (TryGetClassField(classType, stringToken) is not { } field)
@@ -72,7 +72,7 @@ public partial class TypeChecker
 
             if (field.IsStatic)
             {
-                _errors.Add(TypeCheckerError.InstanceMemberAccessOnStaticMember(memberAccessExpression.SourceRange));
+                AddError(TypeCheckerError.InstanceMemberAccessOnStaticMember(memberAccessExpression.SourceRange));
             }
 
             memberAccessExpression.MemberAccess.MemberType = MemberType.Field;
@@ -83,7 +83,7 @@ public partial class TypeChecker
 
         if (function.IsStatic)
         {
-            _errors.Add(TypeCheckerError.InstanceMemberAccessOnStaticMember(memberAccessExpression.SourceRange));
+            AddError(TypeCheckerError.InstanceMemberAccessOnStaticMember(memberAccessExpression.SourceRange));
         }
 
         memberAccessExpression.MemberAccess.MemberType = MemberType.Function;
@@ -96,7 +96,8 @@ public partial class TypeChecker
 
         return new FunctionObject(
             parameters: function.Parameters,
-            returnType: function.ReturnType);
+            returnType: function.ReturnType,
+            function.MutableReturn);
     }
 
     private ITypeReference TypeCheckUnionMemberAccess(
@@ -118,18 +119,18 @@ public partial class TypeChecker
                 memberAccessExpression.SourceRange,
                 out var function))
         {
-            _errors.Add(TypeCheckerError.UnknownTypeMember(stringToken, unionType.Name));
+            AddError(TypeCheckerError.UnknownTypeMember(stringToken, unionType.Name));
             return UnknownType.Instance;
         }
 
         if (typeArgumentsIdentifiers is not null)
         {
-            _errors.Add(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(memberAccessExpression.SourceRange));
+            AddError(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(memberAccessExpression.SourceRange));
         }
 
         if (function.IsStatic)
         {
-            _errors.Add(TypeCheckerError.InstanceMemberAccessOnStaticMember(memberAccessExpression.SourceRange));
+            AddError(TypeCheckerError.InstanceMemberAccessOnStaticMember(memberAccessExpression.SourceRange));
         }
 
         if (function.IsMutable)
@@ -142,6 +143,7 @@ public partial class TypeChecker
 
         return new FunctionObject(
             function.Parameters,
-            function.ReturnType);
+            function.ReturnType,
+            function.MutableReturn);
     }
 }

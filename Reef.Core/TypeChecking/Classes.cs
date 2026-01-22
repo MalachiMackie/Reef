@@ -130,7 +130,8 @@ public partial class TypeChecker
                 IsStatic: false,
                 IsMutable: false,
                 Expressions: [],
-                true)
+                true,
+                IsMutableReturn: false) // todo: I don't know what to do with this, how can a function object specify mutable return?
             {
                 ReturnType = null!,
                 OwnerType = signature
@@ -247,7 +248,7 @@ public partial class TypeChecker
 
         if (typeArguments.Count != signature.TypeParameters.Count)
         {
-            _errors.Add(TypeCheckerError.IncorrectNumberOfTypeArguments(sourceRange, typeArguments.Count, signature.TypeParameters.Count));
+            AddError(TypeCheckerError.IncorrectNumberOfTypeArguments(sourceRange, typeArguments.Count, signature.TypeParameters.Count));
         }
 
         var instantiatedClass = InstantiatedClass.Create(signature, [..typeArguments.Select(x => x.Item1)], boxed);

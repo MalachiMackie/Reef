@@ -4,23 +4,29 @@ namespace Reef.Core.TypeChecking;
 
 public partial class TypeChecker
 {
-    private TypeChecking.TypeChecker.InstantiatedClass TypeCheckMethodReturn(
+    private InstantiatedClass TypeCheckMethodReturn(
         MethodReturnExpression methodReturnExpression)
     {
         methodReturnExpression.ValueUseful = true;
-        if (methodReturnExpression.MethodReturn.Expression is null)
+        if (methodReturnExpression.MethodReturn.Expression is {} value)
         {
-            // no inner expression to check the type of, but we know the type is unit
-            ExpectType(TypeChecking.TypeChecker.InstantiatedClass.Unit, ExpectedReturnType,
-                methodReturnExpression.SourceRange);
+            value.ValueUseful = true;
+            TypeCheckExpression(value);
+            if (CurrentFunctionSignature!.IsMutableReturn
+                && !ExpectMutableExpression(value, report: false))
+            {
+                AddError(TypeCheckerError.NonMutableExpressionPassedToMutableReturn(methodReturnExpression.SourceRange));
+            }
+
+            ExpectExpressionType(ExpectedReturnType, value);
         }
         else
         {
-            methodReturnExpression.MethodReturn.Expression.ValueUseful = true;
-            TypeCheckExpression(methodReturnExpression.MethodReturn.Expression);
-            ExpectExpressionType(ExpectedReturnType, methodReturnExpression.MethodReturn.Expression);
+            // no inner expression to check the type of, but we know the type is unit
+            ExpectType(InstantiatedClass.Unit, ExpectedReturnType,
+                methodReturnExpression.SourceRange);
         }
 
-        return TypeChecking.TypeChecker.InstantiatedClass.Never;
+        return InstantiatedClass.Never;
     }
 }

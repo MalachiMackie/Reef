@@ -524,6 +524,8 @@ public record IfExpression(
 
 public record Block(IReadOnlyList<IExpression> Expressions, IReadOnlyList<LangFunction> Functions)
 {
+    public bool HasTailExpression => false;
+    
     public override string ToString()
     {
         var sb = new StringBuilder("{\n");

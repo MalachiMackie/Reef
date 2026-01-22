@@ -28,7 +28,7 @@ public partial class TypeChecker
                     {
                         if (union.Variants.All(x => x.Name != variantPattern.VariantName.StringValue))
                         {
-                            _errors.Add(TypeCheckerError.UnknownTypeMember(variantPattern.VariantName, union.Name));
+                            AddError(TypeCheckerError.UnknownTypeMember(variantPattern.VariantName, union.Name));
                             break;
                         }
                     }
@@ -65,7 +65,7 @@ public partial class TypeChecker
 
                     if (patternType is not InstantiatedClass classType)
                     {
-                        _errors.Add(TypeCheckerError.NonClassUsedInClassPattern(classPattern.Type));
+                        AddError(TypeCheckerError.NonClassUsedInClassPattern(classPattern.Type));
                         break;
                     }
 
@@ -88,7 +88,7 @@ public partial class TypeChecker
 
                         if (field.IsStatic)
                         {
-                            _errors.Add(TypeCheckerError.StaticFieldInClassPattern(fieldPattern.FieldName));
+                            AddError(TypeCheckerError.StaticFieldInClassPattern(fieldPattern.FieldName));
                         }
 
                         var fieldType = field.Type;
@@ -121,7 +121,7 @@ public partial class TypeChecker
 
                     if (remainingFields.Count > 0)
                     {
-                        _errors.Add(TypeCheckerError.MissingFieldsInClassPattern(remainingFields, classPattern.Type));
+                        AddError(TypeCheckerError.MissingFieldsInClassPattern(remainingFields, classPattern.Type));
                     }
 
                     if (classPattern.VariableName is { } variableName)
@@ -171,7 +171,7 @@ public partial class TypeChecker
                     if (!classVariantPattern.RemainingFieldsDiscarded &&
                         classVariantPattern.FieldPatterns.Count != classVariant.Fields.Count)
                     {
-                        _errors.Add(TypeCheckerError.MissingFieldsInUnionClassVariantPattern(
+                        AddError(TypeCheckerError.MissingFieldsInUnionClassVariantPattern(
                             classVariantPattern,
                             classVariant.Fields.Select(x => x.Name).Except(classVariantPattern.FieldPatterns.Select(x => x.FieldName.StringValue))));
                     }
@@ -244,7 +244,7 @@ public partial class TypeChecker
 
                     if (tupleUnionVariant.TupleMembers.Count != unionTupleVariantPattern.TupleParamPatterns.Count)
                     {
-                        _errors.Add(TypeCheckerError.IncorrectNumberOfPatternsInTupleVariantUnionPattern(
+                        AddError(TypeCheckerError.IncorrectNumberOfPatternsInTupleVariantUnionPattern(
                             unionTupleVariantPattern, tupleUnionVariant.TupleMembers.Count));
                     }
 

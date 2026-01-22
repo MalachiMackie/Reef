@@ -311,7 +311,8 @@ public partial class ProgramAbseil
                 IsStatic: true,
                 IsMutable: false,
                 _program.Expressions,
-                Extern: false)
+                Extern: false,
+                false)
         {
             ReturnType = TypeChecker.InstantiatedClass.Unit,
             OwnerType = null,

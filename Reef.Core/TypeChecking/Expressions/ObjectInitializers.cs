@@ -4,11 +4,11 @@ namespace Reef.Core.TypeChecking;
 
 public partial class TypeChecker
 {
-    private TypeChecking.TypeChecker.ITypeReference TypeCheckUnionClassVariantInitializer(UnionClassVariantInitializer initializer)
+    private ITypeReference TypeCheckUnionClassVariantInitializer(UnionClassVariantInitializer initializer)
     {
         var type = GetTypeReference(initializer.UnionType);
 
-        if (type is not TypeChecking.TypeChecker.InstantiatedUnion instantiatedUnion)
+        if (type is not InstantiatedUnion instantiatedUnion)
         {
             throw new InvalidOperationException($"{type} is not a union");
         }
@@ -18,13 +18,13 @@ public partial class TypeChecker
 
         if (variant is null)
         {
-            _errors.Add(TypeCheckerError.UnknownTypeMember(initializer.VariantIdentifier, initializer.UnionType.Identifier.StringValue));
+            AddError(TypeCheckerError.UnknownTypeMember(initializer.VariantIdentifier, initializer.UnionType.Identifier.StringValue));
             return instantiatedUnion;
         }
 
-        if (variant is not TypeChecking.TypeChecker.ClassUnionVariant classVariant)
+        if (variant is not ClassUnionVariant classVariant)
         {
-            _errors.Add(TypeCheckerError.UnionClassVariantInitializerNotClassVariant(initializer.VariantIdentifier));
+            AddError(TypeCheckerError.UnionClassVariantInitializerNotClassVariant(initializer.VariantIdentifier));
             return instantiatedUnion;
         }
 
@@ -53,7 +53,7 @@ public partial class TypeChecker
 
             if (!fields.TryGetValue(fieldInitializer.FieldName.StringValue, out var field))
             {
-                _errors.Add(TypeCheckerError.UnknownField(fieldInitializer.FieldName, $"union variant {initializer.UnionType.Identifier.StringValue}::{initializer.VariantIdentifier.StringValue}"));
+                AddError(TypeCheckerError.UnknownField(fieldInitializer.FieldName, $"union variant {initializer.UnionType.Identifier.StringValue}::{initializer.VariantIdentifier.StringValue}"));
                 continue;
             }
 
@@ -65,13 +65,13 @@ public partial class TypeChecker
         return type;
     }
 
-    private TypeChecking.TypeChecker.ITypeReference TypeCheckObjectInitializer(
+    private ITypeReference TypeCheckObjectInitializer(
         ObjectInitializerExpression objectInitializerExpression)
     {
         var objectInitializer = objectInitializerExpression.ObjectInitializer;
         var foundType = GetTypeReference(objectInitializer.Type);
 
-        if (foundType is TypeChecking.TypeChecker.UnknownType)
+        if (foundType is UnknownType)
         {
             // if we don't know what type this is, type check the field initializers anyway 
             foreach (var fieldInitializer in objectInitializer.FieldInitializers.Where(x => x.Value is not null))
@@ -79,17 +79,17 @@ public partial class TypeChecker
                 TypeCheckExpression(fieldInitializer.Value!);
             }
 
-            return TypeChecking.TypeChecker.UnknownType.Instance;
+            return UnknownType.Instance;
         }
 
-        if (foundType is not TypeChecking.TypeChecker.InstantiatedClass instantiatedClass)
+        if (foundType is not InstantiatedClass instantiatedClass)
         {
             throw new InvalidOperationException($"Type {foundType} cannot be initialized");
         }
 
         var initializedFields = new HashSet<string>();
         var fields = instantiatedClass.Fields.ToDictionary(x => x.Name);
-        var insideClass = CurrentTypeSignature is TypeChecking.TypeChecker.ClassSignature currentClassSignature
+        var insideClass = CurrentTypeSignature is ClassSignature currentClassSignature
                           && instantiatedClass.MatchesSignature(currentClassSignature);
 
         var publicInstanceFields = instantiatedClass.Fields
@@ -107,7 +107,7 @@ public partial class TypeChecker
 
             if (!fields.TryGetValue(fieldInitializer.FieldName.StringValue, out var field))
             {
-                _errors.Add(TypeCheckerError.UnknownField(fieldInitializer.FieldName, $"class {objectInitializer.Type.Identifier.StringValue}"));
+                AddError(TypeCheckerError.UnknownField(fieldInitializer.FieldName, $"class {objectInitializer.Type.Identifier.StringValue}"));
                 continue;
             }
 
@@ -115,12 +115,17 @@ public partial class TypeChecker
 
             if (!publicInstanceFields.Contains(fieldInitializer.FieldName.StringValue))
             {
-                _errors.Add(TypeCheckerError.PrivateFieldReferenced(fieldInitializer.FieldName));
+                AddError(TypeCheckerError.PrivateFieldReferenced(fieldInitializer.FieldName));
             }
             // only set field as initialized if it is public
             else if (!initializedFields.Add(fieldInitializer.FieldName.StringValue))
             {
-                _errors.Add(TypeCheckerError.ClassFieldSetMultipleTypesInInitializer(fieldInitializer.FieldName));
+                AddError(TypeCheckerError.ClassFieldSetMultipleTypesInInitializer(fieldInitializer.FieldName));
+            }
+
+            if (field.IsMutable && fieldInitializer.Value is not null)
+            {
+                ExpectMutableExpression(fieldInitializer.Value);
             }
 
             ExpectExpressionType(field.Type, fieldInitializer.Value);
@@ -128,7 +133,7 @@ public partial class TypeChecker
 
         if (initializedFields.Count != publicInstanceFields.Count)
         {
-            _errors.Add(TypeCheckerError.FieldsLeftUnassignedInClassInitializer(
+            AddError(TypeCheckerError.FieldsLeftUnassignedInClassInitializer(
                 objectInitializerExpression,
                 publicInstanceFields.Where(x => !initializedFields.Contains(x))));
         }

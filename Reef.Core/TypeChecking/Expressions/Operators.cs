@@ -115,11 +115,10 @@ public partial class TypeChecker
                             }
                         }
 
-                        if (variable is FieldVariable fieldVariable
-                                && !fieldVariable.IsStaticField
-                                && CurrentFunctionSignature is not { IsMutable: true })
+                        if (variable is FieldVariable { IsStaticField: false } 
+                            && CurrentFunctionSignature is not { IsMutable: true })
                         {
-                            _errors.Add(TypeCheckerError.MutatingInstanceInNonMutableFunction(
+                            AddError(TypeCheckerError.MutatingInstanceInNonMutableFunction(
                                 CurrentFunctionSignature!.Name,
                                 binaryOperatorExpression.SourceRange));
                         }

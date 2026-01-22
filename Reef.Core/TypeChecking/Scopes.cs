@@ -34,7 +34,7 @@ public partial class TypeChecker
         {
             if (CurrentFunctionSignature.IsStatic)
             {
-                _errors.Add(TypeCheckerError.StaticLocalFunctionAccessesOuterVariable(name));
+                AddError(TypeCheckerError.StaticLocalFunctionAccessesOuterVariable(name));
             }
             else
             {

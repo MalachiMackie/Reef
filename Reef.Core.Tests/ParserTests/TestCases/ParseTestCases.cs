@@ -451,7 +451,7 @@ public static class ParseTestCases
                             [],
                             [
                                 new LangFunction(null, null, null, Identifier("SomeFn"),
-                                    [], [], null, new Block([], []))
+                                    [], [], null, null, new Block([], []))
                             ],
                             []
                         )
@@ -560,6 +560,25 @@ public static class ParseTestCases
                             ])
                     ])
             ),
+            (
+                "fn MyFn(): mut string{}",
+                new LangProgram("ParseTestCases",
+                    [],
+                    [
+                        new LangFunction(
+                        null,
+                        null,
+                        null,
+                        Identifier("MyFn"),
+                        [],
+                        [],
+                        StringType(),
+                        Token.Mut(SourceSpan.Default),
+                        new Block([], []))
+                    ],
+                    [],
+                    [])
+            ),
             ("fn MyFn(mut a: int,){}", new LangProgram("ParseTestCases", [], [
                 new LangFunction(
                     null,
@@ -574,6 +593,7 @@ public static class ParseTestCases
                             Identifier("a")
                         )
                     ],
+                    null,
                     null,
                     new Block([], []))
             ], [], [])),
@@ -597,6 +617,7 @@ public static class ParseTestCases
                         )
                     ],
                     null,
+                    null,
                     new Block([], []))
             ], [], [])),
             ("fn MyFn(mut a: int, mut b: int){}", new LangProgram("ParseTestCases", [], [
@@ -619,6 +640,7 @@ public static class ParseTestCases
                         )
                     ],
                     null,
+                    null,
                     new Block([], []))
             ], [], [])),
             ("fn MyFn(a: int,){}", new LangProgram("ParseTestCases", [], [
@@ -634,6 +656,7 @@ public static class ParseTestCases
                             Identifier("a"))
                     ],
                     null,
+                    null,
                     new Block([], []))
             ], [], [])),
             ("fn /* some comment */ MyFn(/*some comment*/a: int,)/**/{//}\r\n}", new LangProgram("ParseTestCases", [], [
@@ -648,6 +671,7 @@ public static class ParseTestCases
                             NamedTypeIdentifier("int"), null,
                             Identifier("a"))
                     ],
+                    null,
                     null,
                     new Block([], []))
             ], [], [])),
@@ -666,6 +690,7 @@ public static class ParseTestCases
                     Identifier("MyFn"),
                     [Identifier("T")],
                     [],
+                    null,
                     null,
                     new Block([], [])
                 )
@@ -729,7 +754,7 @@ public static class ParseTestCases
                 [], [])),
             ("fn MyFn() {}", new LangProgram("ParseTestCases", [], [
                 new LangFunction(null, null, null, Identifier("MyFn"), [], [], null,
-                    new Block([], []))
+                    null, new Block([], []))
             ], [], [])),
             ("if (a) {return b;}", new LangProgram("ParseTestCases", [
                 new IfExpressionExpression(new IfExpression(
@@ -748,6 +773,7 @@ public static class ParseTestCases
                     Identifier("MyFn"),
                     [],
                     [],
+                    null,
                     null,
                     new Block([
                         new IfExpressionExpression(new IfExpression(
@@ -771,6 +797,7 @@ public static class ParseTestCases
                     [],
                     [],
                     null,
+                    null,
                     new Block([
                         new IfExpressionExpression(new IfExpression(
                             VariableAccessor("a"),
@@ -788,6 +815,7 @@ public static class ParseTestCases
             ("fn MyFn(): string {}", new LangProgram("ParseTestCases", [], [
                 new LangFunction(null, null, null, Identifier("MyFn"), [], [],
                     NamedTypeIdentifier("string"),
+                    null,
                     new Block([], []))
             ], [], [])),
             ("fn MyFn(): result::<int, MyErrorType> {}", new LangProgram("ParseTestCases", [], [
@@ -804,6 +832,7 @@ public static class ParseTestCases
                             NamedTypeIdentifier("int"),
                             NamedTypeIdentifier("MyErrorType")
                         ]),
+                    null,
                     new Block([], []))
             ], [], [])),
             ("fn MyFn(): Outer::<Inner::<int>> {}", new LangProgram("ParseTestCases", [], [
@@ -821,6 +850,7 @@ public static class ParseTestCases
                                 NamedTypeIdentifier("int")
                             ])
                         ]),
+                    null,
                     new Block([], []))
             ], [], [])),
             ("fn MyFn(): Outer::<Inner::<int>, Inner::<int>> {}", new LangProgram("ParseTestCases", [], [
@@ -839,6 +869,7 @@ public static class ParseTestCases
                             NamedTypeIdentifier("Inner",
                                 [NamedTypeIdentifier("int")])
                         ]),
+                    null,
                     new Block([], []))
             ], [], [])),
             ("fn MyFn(): result::<int, MyErrorType, ThirdTypeArgument> {}", new LangProgram("ParseTestCases", [], [
@@ -856,6 +887,7 @@ public static class ParseTestCases
                             NamedTypeIdentifier("MyErrorType"),
                             NamedTypeIdentifier("ThirdTypeArgument")
                         ]),
+                    null,
                     new Block([], []))
             ], [], [])),
             ("fn MyFn() { var a = 2; }", new LangProgram("ParseTestCases", [], [
@@ -866,6 +898,7 @@ public static class ParseTestCases
                     Identifier("MyFn"),
                     [],
                     [],
+                    null,
                     null,
                     new Block([
                         new VariableDeclarationExpression(new VariableDeclaration(
@@ -890,6 +923,7 @@ public static class ParseTestCases
                             Identifier("a"))
                     ],
                     null,
+                    null,
                     new Block([], [])
                 )
             ], [], [])),
@@ -901,6 +935,7 @@ public static class ParseTestCases
                     Identifier("MyFn"),
                     [],
                     [],
+                    null,
                     null,
                     new Block([], [])
                 )
@@ -914,6 +949,7 @@ public static class ParseTestCases
                     [Identifier("T1")],
                     [],
                     null,
+                    null,
                     new Block([], [])
                 )
             ], [], [])),
@@ -925,6 +961,7 @@ public static class ParseTestCases
                     Identifier("MyFn"),
                     [Identifier("T1"), Identifier("T2")],
                     [],
+                    null,
                     null,
                     new Block([], [])
                 )
@@ -940,6 +977,7 @@ public static class ParseTestCases
                         Identifier("T3")
                     ],
                     [],
+                    null,
                     null,
                     new Block([], [])
                 )
@@ -958,6 +996,7 @@ public static class ParseTestCases
                                 NamedTypeIdentifier("MyType")
                             ]), null, Identifier("a"))
                     ],
+                    null,
                     null,
                     new Block([], [])
                 )
@@ -978,6 +1017,7 @@ public static class ParseTestCases
                             null, Identifier("b"))
                     ],
                     null,
+                    null,
                     new Block([], [])
                 )
             ], [], [])),
@@ -990,6 +1030,7 @@ public static class ParseTestCases
                     [],
                     [],
                     NamedTypeIdentifier("int"),
+                    null,
                     new Block(
                     [
                         new MethodReturnExpression(new MethodReturn(new ValueAccessorExpression(
@@ -1115,7 +1156,7 @@ public static class ParseTestCases
                     [],
                     [
                         new LangFunction(new AccessModifier(Token.Pub(SourceSpan.Default)), null, null,
-                            Identifier("MyFn"), [], [], null, new Block([], []))
+                            Identifier("MyFn"), [], [], null, null, new Block([], []))
                     ],
                     [
                         new ClassField(
@@ -1133,7 +1174,7 @@ public static class ParseTestCases
                     [],
                     [
                         new LangFunction(null, null, null, Identifier("MyFn"), [], [], null,
-                            new Block([], []))
+                            null, new Block([], []))
                     ],
                     [
                         new ClassField(
@@ -1163,6 +1204,7 @@ public static class ParseTestCases
                             NamedTypeIdentifier("int"),
                             NamedTypeIdentifier("string")
                         ]),
+                        null,
                         new Block([], []))
                 ],
                 [], [])),
@@ -1361,6 +1403,7 @@ public static class ParseTestCases
                             NamedTypeIdentifier("int"),
                             NamedTypeIdentifier("string")
                         ]),
+                        null,
                         new Block(
                             [
                                 new VariableDeclarationExpression(new VariableDeclaration(
@@ -1453,6 +1496,7 @@ public static class ParseTestCases
                         [Identifier("T")],
                         [],
                         null,
+                        null,
                         new Block(
                             [
                                 new MethodCallExpression(
@@ -1470,6 +1514,7 @@ public static class ParseTestCases
                                     Identifier("InnerFn"),
                                     [],
                                     [],
+                                    null,
                                     null,
                                     new Block(
                                         [
@@ -1500,6 +1545,7 @@ public static class ParseTestCases
                             NamedTypeIdentifier("int"),
                             NamedTypeIdentifier("string")
                         ]),
+                        null,
                         new Block(
                             [
                                 new VariableDeclarationExpression(new VariableDeclaration(
@@ -1539,6 +1585,7 @@ public static class ParseTestCases
                                 [],
                                 [],
                                 null,
+                                null,
                                 new Block([], [])),
                             new LangFunction(
                                 new AccessModifier(Token.Pub(SourceSpan.Default)),
@@ -1547,6 +1594,7 @@ public static class ParseTestCases
                                 Identifier("StaticMethod"),
                                 [],
                                 [],
+                                null,
                                 null,
                                 new Block([], []))
                         ],
@@ -1588,6 +1636,7 @@ public static class ParseTestCases
                                 Identifier("PublicMethod"),
                                 [Identifier("T1")],
                                 [],
+                                null,
                                 null,
                                 new Block([], []))
                         ],

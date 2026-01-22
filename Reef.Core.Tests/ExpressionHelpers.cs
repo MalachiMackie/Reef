@@ -197,7 +197,8 @@ public static class ExpressionHelpers
     {
         return new TypeChecker.FunctionObject(
             parameters: parameters?.Select(x => new TypeChecker.FunctionParameter(x.parameterType, x.isMut)).ToArray() ?? [],
-            returnType: returnType ?? TypeChecker.InstantiatedClass.Unit);
+            returnType: returnType ?? TypeChecker.InstantiatedClass.Unit,
+            false);
     }
 
     public static LangFunction Function(
@@ -207,7 +208,8 @@ public static class ExpressionHelpers
         bool isMutable = false,
         IReadOnlyList<FunctionParameter>? parameters = null,
         IReadOnlyList<string>? typeParameters = null,
-        ITypeIdentifier? returnType = null)
+        ITypeIdentifier? returnType = null,
+        bool isMutableReturn = false)
     {
         return new LangFunction(isPublic
                 ? new AccessModifier(Token.Pub(SourceSpan.Default))
@@ -222,6 +224,7 @@ public static class ExpressionHelpers
             typeParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)).ToArray() ?? [],
             parameters ?? [],
             returnType,
+            isMutableReturn ? Token.Mut(SourceSpan.Default) : null,
             new Block([], []));
     }
 
@@ -377,9 +380,10 @@ public static class ExpressionHelpers
     public static UnitTypeIdentifier UnitTypeIdentifier() => new(SourceRange.Default);
 
     public static FnTypeIdentifier FnTypeIdentifier(IReadOnlyList<FnTypeIdentifierParameter>? parameters = null,
-        ITypeIdentifier? returnType = null)
+        ITypeIdentifier? returnType = null,
+        Token? returnMutabilityModifier = null)
     {
-        return new FnTypeIdentifier(parameters ?? [], returnType, SourceRange.Default);
+        return new FnTypeIdentifier(parameters ?? [], returnType, returnMutabilityModifier, SourceRange.Default);
     }
 
     public static FnTypeIdentifierParameter FnTypeIdentifierParameter(ITypeIdentifier parameterType, bool isMut = false)

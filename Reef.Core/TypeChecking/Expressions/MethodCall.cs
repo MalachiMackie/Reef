@@ -5,14 +5,14 @@ namespace Reef.Core.TypeChecking;
 public partial class TypeChecker
 {
 
-    private TypeChecking.TypeChecker.ITypeReference TypeCheckMethodCall(
+    private ITypeReference TypeCheckMethodCall(
             MethodCallExpression methodCallExpression)
     {
         var methodCall = methodCallExpression.MethodCall;
         methodCall.Method.ValueUseful = true;
         var methodType = TypeCheckExpression(methodCall.Method);
 
-        if (methodType is TypeChecking.TypeChecker.UnknownType)
+        if (methodType is UnknownType)
         {
             // type check arguments even if we don't know what the type is
             foreach (var argument in methodCall.ArgumentList)
@@ -20,17 +20,17 @@ public partial class TypeChecker
                 TypeCheckExpression(argument);
             }
 
-            return TypeChecking.TypeChecker.UnknownType.Instance;
+            return UnknownType.Instance;
         }
 
-        if (methodType is not TypeChecking.TypeChecker.IFunction functionType)
+        if (methodType is not IFunction functionType)
         {
             throw new InvalidOperationException($"{methodType} is not callable");
         }
 
         if (methodCall.ArgumentList.Count != functionType.Parameters.Count)
         {
-            _errors.Add(TypeCheckerError.IncorrectNumberOfMethodArguments(
+            AddError(TypeCheckerError.IncorrectNumberOfMethodArguments(
                 methodCallExpression, functionType.Parameters.Count));
 
             foreach (var argument in methodCall.ArgumentList)
