@@ -82,7 +82,7 @@ public partial class TypeChecker
                 null => ArrayTypeSignature.Instance.Boxed,
                 _ => throw new UnreachableException(e.BoxingSpecifier.Type.ToString())
             },
-            length: e.Elements.Count);
+            length: (uint)e.Elements.Count);
     }
 
     private ArrayType TypeCheckFillCollectionExpression(FillCollectionExpression e)
@@ -97,7 +97,7 @@ public partial class TypeChecker
                 null => ArrayTypeSignature.Instance.Boxed,
                 _ => throw new UnreachableException(e.BoxingSpecifier.Type.ToString())
             },
-            length: e.LengthSpecifier.IntValue);
+            length: (uint)e.LengthSpecifier.IntValue);
     }
 
     private InstantiatedClass TypeCheckTypeIdentifierExpression(TypeIdentifierExpression e)

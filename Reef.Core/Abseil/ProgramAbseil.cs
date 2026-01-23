@@ -377,7 +377,7 @@ public partial class ProgramAbseil
 
         foreach (var expression in expressions)
         {
-            NewLowerExpression(expression, destination: null);
+            LowerExpression(expression, destination: null);
         }
         
         TerminateBasicBlocks();
@@ -425,6 +425,14 @@ public partial class ProgramAbseil
                     }
                     break;
                 }
+                case Assert assert:
+                {
+                    if (assert.GoTo.Id == TempReturnBasicBlockId)
+                    {
+                        assert.GoTo.Id = returnBasicBlockId.Id;
+                    }
+                    break;
+                }
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -463,7 +471,7 @@ public partial class ProgramAbseil
                 _basicBlocks = [new BasicBlock(new BasicBlockId("bb0"), _basicBlockStatements)];
                 _locals = [];
                 
-                NewLowerExpression(x.StaticInitializer.NotNull(), destination: new Local(ReturnValueLocalName));
+                LowerExpression(x.StaticInitializer.NotNull(), destination: new Local(ReturnValueLocalName));
                 
                 TerminateBasicBlocks();
 
@@ -910,6 +918,8 @@ public partial class ProgramAbseil
             TypeChecker.UnknownInferredType i => GetTypeReference(i.ResolvedType.NotNull()),
             TypeChecker.FunctionObject f => FunctionObjectCase(f),
             TypeChecker.UnspecifiedSizedIntType i => GetTypeReference(i.ResolvedIntType.NotNull()),
+            TypeChecker.ArrayType a => new LoweredArray(
+                GetTypeReference(a.ElementType), a.Length),
             _ => throw new InvalidOperationException($"Type reference {typeReference.GetType()} is not supported")
         };
 

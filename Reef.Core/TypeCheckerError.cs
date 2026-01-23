@@ -22,7 +22,7 @@ public record TypeCheckerError
     public static TypeCheckerError BreakUsedOutsideOfLoop(BreakExpression expression) =>
         new(TypeCheckerErrorType.BreakUsedOutsideOfLoop, expression.SourceRange, "break used outside of a loop");
 
-    public static TypeCheckerError ArrayLengthMismatch(int expectedLength, int actualLength, SourceRange sourceRange) =>
+    public static TypeCheckerError ArrayLengthMismatch(uint expectedLength, uint actualLength, SourceRange sourceRange) =>
         new(TypeCheckerErrorType.ArrayLengthMismatch, sourceRange, $"Expected array of length {expectedLength}, but found length {actualLength}");
 
     public static TypeCheckerError MismatchedTypes(SourceRange range, TypeChecker.ITypeReference expected, TypeChecker.ITypeReference actual) =>

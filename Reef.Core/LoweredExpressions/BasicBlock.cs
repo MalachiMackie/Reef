@@ -23,7 +23,11 @@ public record SwitchInt(
     Dictionary<int, BasicBlockId> Cases,
     BasicBlockId Otherwise) : ITerminator;
 
+public record Fill(IOperand Value, uint Count) : IRValue;
+
 public record MethodCall(LoweredFunctionReference Function, IReadOnlyList<IOperand> Arguments, IPlace PlaceDestination, BasicBlockId GoToAfter) : ITerminator;
+
+public record Assert(IOperand Value, BasicBlockId GoTo) : ITerminator;
 
 public record Return : ITerminator;
 
@@ -38,6 +42,8 @@ public interface IPlace;
 
 public record Local(string LocalName) : IPlace;
 
+public record Index(IPlace ArrayPlace, IOperand ArrayIndex) : IPlace;
+
 public record Deref(IPlace PointerPlace) : IPlace;
 
 public record Field(IPlace FieldOwner, string FieldName, string VariantName) : IPlace;
@@ -51,6 +57,8 @@ public record UnaryOperation(IOperand Operand, UnaryOperationKind Kind) : IRValu
 public record Use(IOperand Operand) : IRValue;
 
 public record CreateObject(LoweredConcreteTypeReference Type) : IRValue;
+
+public record CreateArray(LoweredArray Array) : IRValue;
 
 public record Copy(IPlace Place) : IOperand;
 
@@ -127,7 +135,10 @@ public record LoweredConcreteTypeReference(
     string Name,
     DefId DefinitionId,
     IReadOnlyList<ILoweredTypeReference> TypeArguments) : ILoweredTypeReference;
+
 public record LoweredGenericPlaceholder(DefId OwnerDefinitionId, string PlaceholderName) : ILoweredTypeReference;
+
+public record LoweredArray(ILoweredTypeReference ElementType, uint Length) : ILoweredTypeReference;
 
 public record LoweredPointer(ILoweredTypeReference PointerTo) : ILoweredTypeReference;
 public record RawPointer : ILoweredTypeReference;

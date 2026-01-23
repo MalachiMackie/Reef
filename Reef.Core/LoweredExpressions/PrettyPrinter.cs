@@ -137,6 +137,13 @@ public class PrettyPrinter(LoweredModule module)
                 _stringBuilder.Append("void*");
                 break;
             }
+            case LoweredArray loweredArray:
+            {
+                _stringBuilder.Append("[");
+                PrettyPrintTypeReference(loweredArray.ElementType);
+                _stringBuilder.Append($"; {loweredArray.Length}]");
+                break;
+            }
             default:
                 throw new UnreachableException($"{typeReference}: {typeReference.GetType()}");
         }
@@ -295,6 +302,13 @@ public class PrettyPrinter(LoweredModule module)
                 _stringBuilder.Append($"goto -> {goTo.BasicBlockId.Id};");
                 break;
             }
+            case Assert assert:
+            {
+                _stringBuilder.Append("Assert(");
+                PrettyPrintOperand(assert.Value);
+                _stringBuilder.Append($") -> [ok: {assert.GoTo.Id}]");
+                break;
+            }
             default:
                 throw new ArgumentOutOfRangeException(nameof(terminator));
         }
@@ -328,8 +342,16 @@ public class PrettyPrinter(LoweredModule module)
                 PrettyPrintPlace(deref.PointerPlace);
                 break;
             }
+            case Index index:
+            {
+                PrettyPrintPlace(index.ArrayPlace);
+                _stringBuilder.Append('[');
+                PrettyPrintOperand(index.ArrayIndex);
+                _stringBuilder.Append(']');
+                break;
+            }
             default:
-                throw new ArgumentOutOfRangeException(nameof(place));
+                throw new ArgumentOutOfRangeException(place.GetType().ToString());
         }
     }
 
@@ -409,8 +431,21 @@ public class PrettyPrinter(LoweredModule module)
                 PrettyPrintTypeReference(createObject.Type);
                 break;
             }
+            case CreateArray createArray:
+            {
+                _stringBuilder.Append("new ");
+                PrettyPrintTypeReference(createArray.Array);
+                break;
+            }
+            case Fill fill:
+            {
+                _stringBuilder.Append("[");
+                PrettyPrintOperand(fill.Value);
+                _stringBuilder.Append($"; {fill.Count}]");
+                break;
+            }
             default:
-                throw new ArgumentOutOfRangeException(nameof(rValue));
+                throw new ArgumentOutOfRangeException(rValue.GetType().ToString());
         }
     }
 

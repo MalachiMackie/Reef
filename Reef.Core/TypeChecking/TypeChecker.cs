@@ -330,7 +330,7 @@ public partial class TypeChecker
                 null => ArrayTypeSignature.Instance.Boxed,
                 _ => throw new UnreachableException(arrayTypeIdentifier.BoxingSpecifier.Type.ToString())
             },
-            arrayTypeIdentifier.LengthSpecifier.IntValue);
+            (uint)arrayTypeIdentifier.LengthSpecifier.IntValue);
     }
 
     private FunctionObject GetFnTypeReference(FnTypeIdentifier identifier)

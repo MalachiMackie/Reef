@@ -321,7 +321,7 @@ public partial class TypeChecker
         public ArrayType(
             ITypeReference? elementType,
             bool boxed,
-            int length)
+            uint length)
         {
             ElementType = ArrayTypeSignature.Instance.ElementGenericPlaceholder.Instantiate(this, elementType);
             Boxed = boxed;
@@ -341,7 +341,7 @@ public partial class TypeChecker
 
         public IReadOnlyList<GenericTypeReference> TypeArguments => [ElementType];
         public GenericTypeReference ElementType { get; }
-        public int Length { get; } 
+        public uint Length { get; } 
         
         public bool Boxed { get; }
         

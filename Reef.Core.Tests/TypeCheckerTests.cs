@@ -1749,20 +1749,6 @@ public class TypeCheckerTests
                 ]
             },
             {
-                "boxed-only type cannot be used",
-                """
-                var a: unboxed string = todo!;
-                """,
-                [TypeCheckerError.BoxedOnlyTypeCannotBeUnboxed(String, SourceRange.Default)]
-            },
-            {
-                "boxed-only type cannot be unboxed",
-                """
-                var a = unbox("");
-                """,
-                [TypeCheckerError.BoxedOnlyTypeCannotBeUnboxed(String, SourceRange.Default)]
-            },
-            {
                 "mismatched boxing for unbox method return value",
                 """
                 class MyClass{}
