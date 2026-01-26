@@ -1397,8 +1397,48 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                         }
                         break;
                     }
-                    case PointerTo:
-                        throw new InvalidOperationException();
+                    case PointerTo innerPointer:
+                    {
+                        var pointerStack = new Stack<PointerTo>([]);
+                        IAsmPlace nextPlace = innerPointer;
+                        while (nextPlace is PointerTo nextPointer)
+                        {
+                            pointerStack.Push(nextPointer);
+                            nextPlace = nextPointer.PointerPlace;
+                        }
+
+                        var freeRegister = false;
+                        Register addressRegister;
+                        if (destination is Register destinationRegister)
+                        {
+                            addressRegister = destinationRegister;
+                        }
+                        else
+                        {
+                            addressRegister = AllocateRegister();
+                            freeRegister = true;
+                        }
+
+                        MoveIntoPlace(addressRegister, nextPlace, PointerSize);
+                        
+                        while (pointerStack.TryPop(out var topPointer))
+                        {
+                            _codeSegment.AppendLine($"    mov     {addressRegister.ToAsm(PointerSize)}, [{addressRegister.ToAsm(PointerSize)}{FormatOffset(topPointer.Offset)}]");
+                        }
+
+                        if (pointerTo.Offset != 0)
+                        {
+                            _codeSegment.AppendLine($"    add     {addressRegister.ToAsm(PointerSize)}, 0x{pointerTo.Offset:X}");
+                        }
+
+                        if (freeRegister)
+                        {
+                            MoveIntoPlace(destination, addressRegister, PointerSize);
+                            FreeRegister(addressRegister);
+                        }
+                        
+                        break;
+                    }
                     case Register register:
                     {
                         if (pointerTo.Offset != 0)
@@ -1433,8 +1473,29 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         StoreAsmPlaceInPlace(register, place, PointerSize);
         FreeRegister(register);
     }
+    
+    private void MoveIntoPlace(IAsmPlace destination, IAsmPlace source, uint size)
+    {
+        switch (source)
+        {
+            case OffsetFromBasePointer offsetFromBasePointer:
+                MoveIntoPlaceInner(destination, offsetFromBasePointer, size);
+                break;
+            case OffsetFromStackPointer offsetFromStackPointer:
+                MoveIntoPlaceInner(destination, offsetFromStackPointer, size);
+                break;
+            case PointerTo pointerTo:
+                MoveIntoPlaceInner(destination, pointerTo, size);
+                break;
+            case Register register:
+                MoveIntoPlaceInner(destination, register, size);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(source));
+        }
+    }
 
-    private void MoveIntoPlace(IAsmPlace place, Register register, uint size)
+    private void MoveIntoPlaceInner(IAsmPlace place, Register register, uint size)
     {
         switch (place)
         {
@@ -1465,7 +1526,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
 
     }
 
-    private void MoveIntoPlace(IAsmPlace place, OffsetFromBasePointer offsetFromBasePointer, uint size)
+    private void MoveIntoPlaceInner(IAsmPlace place, OffsetFromBasePointer offsetFromBasePointer, uint size)
     {
         if (size > PointerSize)
         {
@@ -1555,7 +1616,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
 
     }
 
-    private void MoveIntoPlace(IAsmPlace destination, PointerTo source, uint size)
+    private void MoveIntoPlaceInner(IAsmPlace destination, PointerTo source, uint size)
     {
         if (size > PointerSize)
         {
@@ -1616,7 +1677,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         }
     }
 
-    private void MoveIntoPlace(IAsmPlace destination, OffsetFromStackPointer offsetFromStackPointer, uint size)
+    private void MoveIntoPlaceInner(IAsmPlace destination, OffsetFromStackPointer offsetFromStackPointer, uint size)
     {
         if (size > PointerSize)
         {
@@ -1776,8 +1837,33 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                         FreeRegister(register);
                         break;
                     }
-                    case PointerTo:
-                        throw new InvalidOperationException();
+                    case PointerTo innerPointer:
+                    {
+                        var pointerStack = new Stack<PointerTo>([]);
+                        IAsmPlace nextPlace = innerPointer;
+                        while (nextPlace is PointerTo nextPointer)
+                        {
+                            pointerStack.Push(nextPointer);
+                            nextPlace = nextPointer.PointerPlace;
+                        }
+
+                        var addressRegister = AllocateRegister();
+                        MoveIntoPlace(addressRegister, nextPlace, PointerSize);
+                        
+                        while (pointerStack.TryPop(out var topPointer))
+                        {
+                            _codeSegment.AppendLine($"    mov     {addressRegister.ToAsm(PointerSize)}, [{addressRegister.ToAsm(PointerSize)}{FormatOffset(topPointer.Offset)}]");
+                        }
+                        
+                        for (var i = 0; i < size; i += (int)PointerSize)
+                        {
+                            _codeSegment.AppendLine($"    mov     {sizeSpecifier} [{addressRegister.ToAsm(PointerSize)}{FormatOffset(offset + i)}], {constantValue}");
+                        }
+                        
+                        FreeRegister(addressRegister);
+                        
+                        break;
+                    }
                     case Register register:
                         for (var i = 0; i < size; i += (int)PointerSize)
                         {
@@ -1832,8 +1918,30 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                         FreeRegister(register);
                         break;
                     }
-                    case PointerTo:
-                        throw new InvalidOperationException();
+                    case PointerTo innerPointer:
+                    {
+                        var pointerStack = new Stack<PointerTo>([]);
+                        IAsmPlace nextPlace = innerPointer;
+                        while (nextPlace is PointerTo nextPointer)
+                        {
+                            pointerStack.Push(nextPointer);
+                            nextPlace = nextPointer.PointerPlace;
+                        }
+
+                        var addressRegister = AllocateRegister();
+                        MoveIntoPlace(addressRegister, nextPlace, PointerSize);
+                        
+                        while (pointerStack.TryPop(out var topPointer))
+                        {
+                            _codeSegment.AppendLine($"    mov     {addressRegister.ToAsm(PointerSize)}, [{addressRegister.ToAsm(PointerSize)}{FormatOffset(topPointer.Offset)}]");
+                        }
+
+                        _codeSegment.AppendLine($"    mov     {sizeSpecifier} [{addressRegister.ToAsm(PointerSize)}{FormatOffset(offset)}], {constantValue}");
+
+                        FreeRegister(addressRegister);
+                        
+                        break;
+                    }
                     case Register register:
                         _codeSegment.AppendLine($"    mov     [{register.ToAsm(PointerSize)}{FormatOffset(offset)}], {constantValue}");
                         break;
@@ -1880,7 +1988,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         { 4, "DWORD" },
         { 8, "QWORD" },
     };
-
+    
     private IAsmPlace PlaceToAsmPlace(IPlace place)
     {
         return place switch
