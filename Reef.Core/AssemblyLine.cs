@@ -1034,7 +1034,6 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         
         var argumentTypesEnumerable = methodCall.Arguments.Select(x => (GetOperandType(x), x));
         
-        var destination = PlaceToAsmPlace(methodCall.PlaceDestination);
 
         if (returnSize.Size > MaxParameterSize)
         {
@@ -1078,7 +1077,8 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
 
         _codeSegment.AppendLine($"; LargeParameterSpace: {largeParametersSpace} bytes, ArgumentStackSpace: {parametersSpaceNeeded - largeParametersSpace}");
         _codeSegment.AppendLine($"    sub     rsp, {parametersSpaceNeeded}");
-        
+
+        var registersToFree = new List<Register>();
         for (var i = arity - 1; i >= 0; i--)
         {
             IAsmPlace argumentDestination = i switch
@@ -1097,6 +1097,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
 
             if (argumentDestination is Register register)
             {
+                registersToFree.Add(register);
                 AllocateRegister(register);
             }
 
@@ -1113,11 +1114,11 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         }
         
         _codeSegment.AppendLine($"    call    {functionLabel}");
-        
-        FreeRegister(Register.C);
-        FreeRegister(Register.D);
-        FreeRegister(Register.R8);
-        FreeRegister(Register.R9);
+
+        foreach (var register in registersToFree)
+        {
+            FreeRegister(register);
+        }
 
         // move rsp back to where it was before we called the function
         _codeSegment.AppendLine($"    add     rsp, {parametersSpaceNeeded}");
@@ -1129,6 +1130,8 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         {
             returnSource = new PointerTo(returnSource, 0);
         }
+        
+        var destination = PlaceToAsmPlace(methodCall.PlaceDestination);
 
         StoreAsmPlaceInPlace(
             returnSource,
@@ -1166,9 +1169,9 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         public static readonly Register R15 = new ("r15", true);
 
         public static readonly IReadOnlyList<Register> GeneralPurposeRegisters = [
-            A,
+            // A,
             B,
-            C,
+            // C,
             D,
             R8,
             R9,
@@ -1885,9 +1888,43 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             Field field => FieldToAsmPlace(field),
             Local local => _locals[local.LocalName].Place,
             StaticField staticField => throw new NotImplementedException(),
-            Deref deref => new PointerTo(PlaceToAsmPlace(deref.PointerPlace), 0),
+            Deref deref => DerefToAsmPlace(deref),
+            Index index => IndexToAsmPlace(index),
             _ => throw new ArgumentOutOfRangeException(nameof(place))
         };
+    }
+
+    private IAsmPlace DerefToAsmPlace(Deref deref)
+    {
+        var pointerPlace = PlaceToAsmPlace(deref.PointerPlace);
+
+        return new PointerTo(pointerPlace, 0);
+    }
+    
+    private IAsmPlace IndexToAsmPlace(Index index)
+    {
+        var arrayPlace = PlaceToAsmPlace(index.ArrayPlace);
+        var arrayType = GetPlaceType(index.ArrayPlace) switch
+        {
+            LoweredArray x => x,
+            LoweredPointer(LoweredArray x) => x,
+            _ => throw new UnreachableException()
+        };
+
+        // TODO: need to free this register
+        var addressRegister = AllocateRegister();
+        var indexRegister = AllocateRegister();
+        StorePlaceAddress(addressRegister, arrayPlace);
+        
+        MoveOperandToDestination(index.ArrayIndex, indexRegister);
+
+        var elementSize = GetTypeSize(arrayType.ElementType, _currentTypeArguments);
+        _codeSegment.AppendLine($"    imul    {indexRegister.ToAsm(PointerSize)}, 0x{elementSize.Size:x}");
+        _codeSegment.AppendLine($"    add     {addressRegister.ToAsm(PointerSize)}, {indexRegister.ToAsm(PointerSize)}");
+        
+        FreeRegister(indexRegister);
+
+        return new PointerTo(addressRegister, 0);
     }
 
     private IAsmPlace FieldToAsmPlace(Field field)
