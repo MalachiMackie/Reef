@@ -53,7 +53,12 @@ public partial class TypeChecker
 
     private ITypeReference TypeCheckIndexExpression(IndexExpression e)
     {
-        var arrayType = (TypeCheckExpression(e.Collection) as ArrayType).NotNull();
+        var type = TypeCheckExpression(e.Collection);
+        if (type is GenericTypeReference generic)
+        {
+            type = generic.ResolvedType;
+        }
+        var arrayType = (type as ArrayType).NotNull();
         if (e.Index is {} indexExpression)
         {
             var indexType = TypeCheckExpression(indexExpression);

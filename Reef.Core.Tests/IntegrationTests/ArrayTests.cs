@@ -77,6 +77,33 @@ public class ArrayTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task DeepArray()
+    {
+        await SetupTest(
+            """
+            class MyClass { pub field MyString: string, }
+            var a = [
+                [
+                    [new MyClass{MyString = "a"}, new MyClass{MyString = "b"}]
+                ],
+                [
+                    [new MyClass{MyString = "c"}, new MyClass{MyString = "d"}]
+                ]
+            ];
+            
+            print_string(a[0][0][0].MyString);
+            print_string(a[0][0][1].MyString);
+            print_string(a[0][1][0].MyString);
+            print_string(a[0][1][1].MyString);
+            """);
+
+        var result = await Run();
+
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be("abcd");
+    }
+
+    [Fact]
     public async Task WriteIntoArray()
     {
         await SetupTest(
