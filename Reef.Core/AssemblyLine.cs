@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using Reef.Core.LoweredExpressions;
 using Reef.Core.TypeChecking;
+using Index = Reef.Core.LoweredExpressions.Index;
 
 namespace Reef.Core;
 
@@ -188,6 +189,11 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             {
                 return AreTypeReferencesEqual(leftPointer.PointerTo, rightPointer.PointerTo, typeArguments);
             }
+            case (LoweredArray leftArray, LoweredArray rightArray):
+            {
+                return AreTypeReferencesEqual(leftArray.ElementType, rightArray.ElementType, typeArguments)
+                       && leftArray.Length == rightArray.Length;
+            }
         }
 
         if (left.GetType() == right.GetType())
@@ -313,6 +319,23 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                 _typeSizes.Add(KeyValuePair.Create(typeReference, innerTypeSize));
                 return innerTypeSize;
             }
+            case LoweredArray array:
+            {
+                var elementSize = GetTypeSize(array.ElementType, typeArguments);
+                if (elementSize.Size % elementSize.Alignment != 0)
+                {
+                    throw new NotImplementedException();
+                }
+
+                var arrayTypeSize = new TypeSizeInfo(
+                    elementSize.Size * array.Length,
+                    array.Length == 0 ? 1 : elementSize.Alignment,
+                    new Dictionary<string, Dictionary<string, FieldSize>>());
+                
+                _typeSizes.Add(KeyValuePair.Create(typeReference, arrayTypeSize));
+
+                return arrayTypeSize;
+            }
             default:
                 throw new NotImplementedException(typeReference.GetType().ToString());
         }
@@ -340,7 +363,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
     {
         if (!_registersInUse.Add(register))
         {
-            throw new InvalidOperationException($"Register {register} is already in use");
+            throw new InvalidOperationException($"Register {register.ToAsm(PointerSize)} is already in use");
         }
     }
     
@@ -639,6 +662,11 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                 var pointerType = (GetPlaceType(deref.PointerPlace) as LoweredPointer).NotNull();
                 return pointerType.PointerTo;
             }
+            case Index index:
+            {
+                var arrayType = (GetPlaceType(index.ArrayPlace) as LoweredArray).NotNull();
+                return arrayType.ElementType;
+            }
             default:
                 throw new ArgumentOutOfRangeException(place.GetType().ToString());
         }
@@ -779,6 +807,16 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                 
                 break;
             }
+            case CreateArray createArray:
+            {
+                var size = GetTypeSize(createArray.Array, _currentTypeArguments);
+                if (size.Size > 0)
+                {
+                    FillMemory(place, "0x0", size.Size);
+                }
+
+                break;
+            }
             case UnaryOperation unaryOperation:
             {
                 ProcessUnaryOperation(place, unaryOperation.Operand, unaryOperation.Kind);
@@ -790,7 +828,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                 break;
             }
             default:
-                throw new ArgumentOutOfRangeException(nameof(rValue));
+                throw new ArgumentOutOfRangeException(rValue.GetType().ToString());
         }
     }
 
@@ -885,6 +923,12 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
 
                 _codeSegment.AppendLine($"    jmp     {GetBasicBlockLabel(switchInt.Otherwise)}");
                 FreeRegister(register);
+                break;
+            }
+            case Assert assert:
+            {
+                // TODO: actually assert
+                ProcessTerminator(new GoTo(assert.GoTo));
                 break;
             }
             default:
@@ -1265,7 +1309,9 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                     _dataSegment.AppendLine("0");
                 }
 
-                MoveOperandToDestination(new UIntConstant((ulong)stringConstant.Value.Length, (int)PointerSize), destination);
+                MoveOperandToDestination(
+                    new UIntConstant((ulong)stringConstant.Value.Length, (int)PointerSize),
+                    destination);
                 
                 IAsmPlace stringAddressDestination = destination switch
                 {
