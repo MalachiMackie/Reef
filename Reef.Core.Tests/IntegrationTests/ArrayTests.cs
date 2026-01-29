@@ -104,6 +104,35 @@ public class ArrayTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task DeepUnboxedArrays()
+    {
+        await SetupTest("""
+                        class MyClass{pub field MyProp: i32}
+                        
+                        var a = [
+                            unboxed;
+                            [
+                                unboxed;
+                                [unboxed; new unboxed MyClass{MyProp = 1}, new unboxed MyClass{MyProp = 2}]
+                            ],
+                            [
+                                unboxed;
+                                [unboxed; new unboxed MyClass{MyProp = 3}, new unboxed MyClass{MyProp = 4}]
+                            ]
+                        ];
+                        
+                        print_i32(a[0][0][0].MyProp);
+                        print_i32(a[0][0][1].MyProp);
+                        print_i32(a[0][1][0].MyProp);
+                        print_i32(a[0][1][1].MyProp);
+                        """);
+
+        var result = await Run();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be("1234");
+    }
+
+    [Fact]
     public async Task WriteIntoArray()
     {
         await SetupTest(
