@@ -1452,24 +1452,37 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         {
             case MemoryOffset or PointerTo:
             {
-                var freeAddressRegister = false;
-                if (source is not Register addressRegister)
+                var (remainingOffset, addressRegister, freeAddressRegister) = FollowOffsetPointerChain(source);
+
+                if (destination is Register destinationRegister)
                 {
-                    freeAddressRegister = true;
-                    addressRegister = AllocateRegister();
+                    _codeSegment.AppendLine($"    lea     {destinationRegister.ToAsm(PointerSize)}, [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset)}]");
+                    if (freeAddressRegister)
+                    {
+                        FreeRegister(addressRegister);
+                    }
                 }
-                
-                var remainingConstOffset = FollowOffsetPointerChain(source, addressRegister);
-                
-                if (remainingConstOffset is {} offset)
+                else if (addressRegister.IsImmutable)
                 {
-                    _codeSegment.AppendLine($"    add     {addressRegister.ToAsm(PointerSize)}, 0x{offset:x}");
+                    var newAddressRegister = AllocateRegister();
+                    _codeSegment.AppendLine($"    lea     {newAddressRegister.ToAsm(PointerSize)}, [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset)}]");
+
+                    if (freeAddressRegister)
+                    {
+                        FreeRegister(addressRegister);
+                    }
+                    
+                    MoveIntoPlace(destination, newAddressRegister, PointerSize);
+                    FreeRegister(newAddressRegister);
                 }
-                
-                if (freeAddressRegister)
+                else
                 {
+                    _codeSegment.AppendLine($"    lea     {addressRegister.ToAsm(PointerSize)}, [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset)}]");
                     MoveIntoPlace(destination, addressRegister, PointerSize);
-                    FreeRegister(addressRegister);
+                    if (freeAddressRegister)
+                    {
+                        FreeRegister(addressRegister);
+                    }
                 }
                 
                 break;
@@ -1499,14 +1512,15 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             };
         }
 
-        var constOffset = 0;
-        var getOffsetInRegisters = new List<Action<Register>>();
-        var offsetRegister = AllocateRegister();
-
-        if (offsetsAndPointers.Pop() is not PointerTo)
+        if (nextPlace is not Register addressRegister || offsetsAndPointers.Pop() is not PointerTo)
         {
             throw new UnreachableException();
         }
+
+        var constOffset = 0;
+        var getOffsetInRegisters = new List<Action<Register>>();
+        var offsetRegister = AllocateRegister();
+        var freeAddressRegister = false;
 
         while (offsetsAndPointers.TryPop(out var next))
         {
@@ -1519,13 +1533,12 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                         getOffsetInRegisters.Add(getOffsetInRegister);
                     break;
                 }
-                case PointerTo pointerTo:
+                case PointerTo:
                 {
                     if (getOffsetInRegisters.Count > 0)
                     {
                         getOffsetInRegisters[0](offsetRegister);
                     }
-
                     if (getOffsetInRegisters.Count > 1)
                     {
                         var tempRegister = AllocateRegister();
@@ -1533,127 +1546,66 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                         foreach (var getOffsetInRegister in getOffsetInRegisters)
                         {
                             getOffsetInRegister(tempRegister);
-                            _codeSegment.AppendLine($"    add     {offsetRegister.ToAsm(PointerSize)}");
+                            _codeSegment.AppendLine($"    add     {offsetRegister.ToAsm(PointerSize)}, {tempRegister.ToAsm(PointerSize)}");
                         }
                         
                         FreeRegister(tempRegister);
                     }
+
+                    if (addressRegister.IsImmutable)
+                    {
+                        var newAddressRegister = AllocateRegister();
+                        MoveIntoPlace(newAddressRegister, addressRegister, PointerSize);
+                        addressRegister = newAddressRegister;
+                        freeAddressRegister = true;
+                    }
+
+                    if (getOffsetInRegisters.Count > 0)
+                    {
+                        _codeSegment.AppendLine($"    add     {addressRegister.ToAsm(PointerSize)}, {offsetRegister.ToAsm(PointerSize)}");
+                    }
+                    
+                    _codeSegment.AppendLine($"    mov     {addressRegister.ToAsm(PointerSize)}, [{addressRegister.ToAsm(PointerSize)}{FormatOffset(constOffset)}]");
+                    constOffset = 0;
+                    getOffsetInRegisters.Clear();
                     
                     break;
                 }
             }
         }
-        
-        var something = new List<(PointerTo, List<MemoryOffset>)>();
-        var currentMemoryOffsets = new List<MemoryOffset>();
-        MemoryOffset? topMemoryOffset = null;
-        
-        IAsmPlace? nextPlace;
-        switch (place)
-        {
-            case PointerTo(var pointerPlace):
-                nextPlace = pointerPlace;
-                break;
-            case MemoryOffset(var memoryPlace, _, _) memoryOffset:
-                topMemoryOffset = memoryOffset;
-                nextPlace = memoryPlace;
-                break;
-            default:
-                throw new UnreachableException();
-        }
 
-        while (nextPlace is MemoryOffset or PointerTo)
+        if (getOffsetInRegisters.Count > 0)
         {
-            if (nextPlace is PointerTo pointerTo)
-            {
-                something.Add((pointerTo, currentMemoryOffsets));
-                currentMemoryOffsets = [];
-                nextPlace = pointerTo.PointerPlace;
-            }
-            else if (nextPlace is MemoryOffset memoryOffset)
-            {
-                currentMemoryOffsets.Add(memoryOffset);
-                nextPlace = memoryOffset.Memory;
-            }
-        }
-
-        StorePlaceAddress(addressRegister, nextPlace);
-
-        var constOffset = 0;
-        var offsetInRegister = false;
-        var offsetRegister = AllocateRegister();
-        foreach (var memoryOffset in currentMemoryOffsets)
-        {
-            if (memoryOffset.Offset.HasValue)
-            {
-                constOffset += memoryOffset.Offset.Value;
-            }
-            else if (memoryOffset.GetOffsetInRegister is not null && !offsetInRegister)
-            {
-                offsetInRegister = true;
-                memoryOffset.GetOffsetInRegister(offsetRegister);
-            }
-            else if (memoryOffset.GetOffsetInRegister is not null && offsetInRegister)
+            getOffsetInRegisters[0](offsetRegister);
+            if (getOffsetInRegisters.Count > 1)
             {
                 var tempRegister = AllocateRegister();
-                memoryOffset.GetOffsetInRegister(tempRegister);
-                _codeSegment.AppendLine($"    add     {offsetRegister.ToAsm(PointerSize)}, {tempRegister.ToAsm(PointerSize)}");
+
+                foreach (var getOffsetInRegister in getOffsetInRegisters)
+                {
+                    getOffsetInRegister(tempRegister);
+                    _codeSegment.AppendLine(
+                        $"    add     {offsetRegister.ToAsm(PointerSize)}, {tempRegister.ToAsm(PointerSize)}");
+                }
+
                 FreeRegister(tempRegister);
             }
-        }
 
-        if (offsetInRegister)
-        {
-            _codeSegment.AppendLine($"    add     {addressRegister.ToAsm(PointerSize)}, {offsetRegister.ToAsm(PointerSize)}");
-        }
-
-        if (constOffset != 0)
-        {
-            _codeSegment.AppendLine($"    add     {addressRegister.ToAsm(PointerSize)}, 0x{constOffset:x}");
-        }
-        
-        foreach (var (_, memoryOffsets) in something)
-        {
-            constOffset = memoryOffsets.Where(x => x.Offset.HasValue)
-                .Select(x => x.Offset!.Value)
-                .DefaultIfEmpty()
-                .Sum();
-            offsetInRegister = false; 
-            foreach (var getOffsetInRegister in memoryOffsets
-                         .Where(x => x.GetOffsetInRegister is not null)
-                         .Select(x => x.GetOffsetInRegister!))
+            if (addressRegister.IsImmutable)
             {
-                if (offsetInRegister)
-                {
-                    var tempRegister = AllocateRegister();
-                    getOffsetInRegister(tempRegister);
-                    _codeSegment.AppendLine($"    add     {offsetRegister.ToAsm(PointerSize)}, {tempRegister.ToAsm(PointerSize)}");
-                    FreeRegister(tempRegister);
-                }
-                else
-                {
-                    getOffsetInRegister(offsetRegister);
-                }
-                offsetInRegister = true;
-                
+                var newAddressRegister = AllocateRegister();
+                MoveIntoPlace(newAddressRegister, addressRegister, PointerSize);
+                addressRegister = newAddressRegister;
+                freeAddressRegister = true;
             }
 
-            if (offsetInRegister)
-            {
-                _codeSegment.AppendLine($"    add     {addressRegister.ToAsm(PointerSize)}, {offsetRegister.ToAsm(PointerSize)}");
-            }
-            _codeSegment.AppendLine($"    mov     {addressRegister.ToAsm(PointerSize)}, [{addressRegister.ToAsm(PointerSize)}{FormatOffset(constOffset)}]");
+            _codeSegment.AppendLine(
+                $"    add     {addressRegister.ToAsm(PointerSize)}, {offsetRegister.ToAsm(PointerSize)}");
         }
-        
-        if (topMemoryOffset is { GetOffsetInRegister: { } topGetOffsetInRegister })
-        {
-            topGetOffsetInRegister(offsetRegister);
-            _codeSegment.AppendLine($"    add     {addressRegister.ToAsm(PointerSize)}, {offsetRegister.ToAsm(PointerSize)}");
-        }
-        
+
         FreeRegister(offsetRegister);
-        
-        return topMemoryOffset?.Offset;
+
+        return (constOffset, addressRegister, freeAddressRegister);
     }
 
     private void StorePlaceAddress(IAsmPlace place, string operand)
@@ -1731,12 +1683,14 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             return;
         }
         
-        var addressRegister = AllocateRegister();
-        var remainingOffset = FollowOffsetPointerChain(source, addressRegister);
+        var (remainingOffset, addressRegister, freeAddressRegister) = FollowOffsetPointerChain(source);
         var valueRegister = AllocateRegister();
         
-        _codeSegment.AppendLine($"    mov     {valueRegister.ToAsm(size)}, [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset ?? 0)}]");
-        FreeRegister(addressRegister);
+        _codeSegment.AppendLine($"    mov     {valueRegister.ToAsm(size)}, [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset)}]");
+        if (freeAddressRegister)
+        {
+            FreeRegister(addressRegister);
+        }
         
         MoveIntoPlace(destination, valueRegister, size);
         
@@ -1763,12 +1717,14 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             return;
         }
         
-        var addressRegister = AllocateRegister();
-        var remainingOffset = FollowOffsetPointerChain(source, addressRegister);
+        var (remainingOffset, addressRegister, freeAddressRegister) = FollowOffsetPointerChain(source);
         var valueRegister = AllocateRegister();
         
-        _codeSegment.AppendLine($"    mov     {valueRegister.ToAsm(size)}, [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset ?? 0)}]");
-        FreeRegister(addressRegister);
+        _codeSegment.AppendLine($"    mov     {valueRegister.ToAsm(size)}, [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset)}]");
+        if (freeAddressRegister)
+        {
+            FreeRegister(addressRegister);
+        }
         
         MoveIntoPlace(destination, valueRegister, size);
         
@@ -1794,15 +1750,17 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         {
             case PointerTo or MemoryOffset:
             {
-                var addressRegister = AllocateRegister();
-                var remainingOffset = FollowOffsetPointerChain(place, addressRegister) ?? 0;
+                var (remainingOffset, addressRegister, freeAddressRegister) = FollowOffsetPointerChain(place);
                 
                 for (var i = 0; i < size; i += (int)PointerSize)
                 {
                     _codeSegment.AppendLine($"    mov     {sizeSpecifier} [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset + i)}], {constantValue}");
                 }
                 
-                FreeRegister(addressRegister);
+                if (freeAddressRegister)
+                {
+                    FreeRegister(addressRegister);
+                }
                 break;
             }
             case Register:
@@ -1821,12 +1779,14 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         {
             case PointerTo or MemoryOffset:
             {
-                var addressRegister = AllocateRegister();
-                var remainingOffset = FollowOffsetPointerChain(place, addressRegister) ?? 0;
+                var (remainingOffset, addressRegister, freeAddressRegister) = FollowOffsetPointerChain(place);
                 
                 _codeSegment.AppendLine($"    mov     {sizeSpecifier} [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset)}], {constantValue}");
                 
-                FreeRegister(addressRegister);
+                if (freeAddressRegister)
+                {
+                    FreeRegister(addressRegister);
+                }
                 break;
             }
             case Register register:
@@ -1879,14 +1839,6 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         
         var elementSize = GetTypeSize(arrayType.ElementType, _currentTypeArguments);
         
-        // if (arrayPlace is PointerTo)
-        // {
-        //     return new MemoryOffset(
-        //         new PointerTo(arrayPlace),
-        //         GetOffsetInRegister,
-        //         null);
-        // }
-
         return new MemoryOffset(arrayPlace, GetOffsetInRegister, null);
         
         void GetOffsetInRegister(Register indexRegister)
