@@ -273,6 +273,7 @@ public class Tokenizer
                 Token.Identifier(GetString(source), new SourceSpan(position, (ushort)source.Length)),
             TokenType.If when source is "if" => Token.If(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Mut when source is "mut" => Token.Mut(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Use when source is "use" => Token.Use(new SourceSpan(position, (ushort)source.Length)),
             TokenType.While when source is "while" => Token.While(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Unboxed when source is "unboxed" => Token.Unboxed(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Boxed when source is "boxed" => Token.Boxed(new SourceSpan(position, (ushort)source.Length)),
@@ -443,6 +444,7 @@ public class Tokenizer
             case 'u':
                 tokens[i++] = TokenType.Union;
                 tokens[i++] = TokenType.Unboxed;
+                tokens[i++] = TokenType.Use;
                 tokens[i++] = TokenType.Identifier;
                 break;
             case '?':
@@ -524,6 +526,7 @@ public class Tokenizer
             TokenType.LeftParenthesis => Matches(source, "("),
             TokenType.RightParenthesis => Matches(source, ")"),
             TokenType.Todo => Matches(source, "todo!"),
+            TokenType.Use => Matches(source, "use"),
             TokenType.Underscore => Matches(source, "_"),
             TokenType.Bang => Matches(source, "!"),
             TokenType.Semicolon => Matches(source, ";"),

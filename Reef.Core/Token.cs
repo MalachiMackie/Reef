@@ -119,6 +119,7 @@ public record Token
     }
 
     public static Token Match(SourceSpan sourceSpan) => new() { Type = TokenType.Match, SourceSpan = sourceSpan };
+    public static Token Use(SourceSpan sourceSpan) => new() { Type = TokenType.Use, SourceSpan = sourceSpan };
     public static Token While(SourceSpan sourceSpan) => new() { Type = TokenType.While, SourceSpan = sourceSpan };
     public static Token Break(SourceSpan sourceSpan) => new() { Type = TokenType.Break, SourceSpan = sourceSpan };
     public static Token Continue(SourceSpan sourceSpan) => new() { Type = TokenType.Continue, SourceSpan = sourceSpan };

@@ -57,5 +57,6 @@ public enum TokenType
     Unboxed,
     Boxed,
     RightSquareBracket,
-    LeftSquareBracket
+    LeftSquareBracket,
+    Use
 }

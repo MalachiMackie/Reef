@@ -164,6 +164,7 @@ public class TokenizerTests
             ["union", new[] { Token.Union(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["static", new[] { Token.Static(new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],
             ["matches", new[] { Token.Matches(new SourceSpan(new SourcePosition(0, 0, 0), 7)) }],
+            ["use", new[] { Token.Use(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             ["match", new[] { Token.Match(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["while", new[] { Token.While(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["break", new[] { Token.Break(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
