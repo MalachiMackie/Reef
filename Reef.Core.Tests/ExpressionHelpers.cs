@@ -53,9 +53,9 @@ public static class ExpressionHelpers
         return UnaryOperatorExpression(UnaryOperatorType.Negate, value);
     }
 
-    public static BlockExpression Block(IReadOnlyList<IExpression>? expressions = null)
+    public static BlockExpression Block(IReadOnlyList<IExpression>? expressions = null, IReadOnlyList<ModuleImport>? moduleImports = null)
     {
-        return new BlockExpression(new Block(expressions ?? [], []), SourceRange.Default);
+        return new BlockExpression(new Block(expressions ?? [], [], moduleImports ?? []), SourceRange.Default);
     }
 
     public static LangProgram Program(
@@ -63,14 +63,16 @@ public static class ExpressionHelpers
         IReadOnlyList<IExpression>? expressions = null,
         IReadOnlyList<LangFunction>? functions = null,
         IReadOnlyList<ProgramClass>? classes = null,
-        IReadOnlyList<ProgramUnion>? unions = null)
+        IReadOnlyList<ProgramUnion>? unions = null,
+        IReadOnlyList<ModuleImport>? moduleImports = null)
     {
         return new LangProgram(
             moduleId,
             expressions ?? [],
             functions ?? [],
             classes ?? [],
-            unions ?? []);
+            unions ?? [],
+            moduleImports ?? []);
     }
 
     public static BreakExpression Break()
@@ -120,6 +122,14 @@ public static class ExpressionHelpers
             SourceRange.Default);
     }
 
+    public static ModuleImport ModuleImport(IEnumerable<string> moduleIdentifiers, bool isGlobal = false, bool useAll = false)
+    {
+        return new ModuleImport(
+            isGlobal,
+            moduleIdentifiers.Select(x => Token.Identifier(x, SourceSpan.Default)).ToArray(),
+            useAll);
+    }
+
     public static VariableDeclarationExpression VariableDeclaration(
         string name,
         IExpression? value = null,
@@ -137,7 +147,7 @@ public static class ExpressionHelpers
     
     public static NamedTypeIdentifier IntType(Token? boxedSpecifier = null)
     {
-        return new NamedTypeIdentifier(Identifier("int"), [], boxedSpecifier, SourceRange.Default);
+        return new NamedTypeIdentifier(Identifier("int"), [], boxedSpecifier, [], false, SourceRange.Default);
     }
 
     public static ValueAccessorExpression True() =>
@@ -145,7 +155,7 @@ public static class ExpressionHelpers
 
     public static NamedTypeIdentifier StringType(Token? boxedSpecifier = null)
     {
-        return new NamedTypeIdentifier(Identifier("string"), [], boxedSpecifier, SourceRange.Default);
+        return new NamedTypeIdentifier(Identifier("string"), [], boxedSpecifier, [], false, SourceRange.Default);
     }
 
     public static ClassField ClassField(
@@ -225,7 +235,7 @@ public static class ExpressionHelpers
             parameters ?? [],
             returnType,
             isMutableReturn ? Token.Mut(SourceSpan.Default) : null,
-            new Block([], []));
+            new Block([], [], []));
     }
 
     public static FunctionParameter FunctionParameter(string name, ITypeIdentifier? type = null, bool isMutable = false)
@@ -355,9 +365,20 @@ public static class ExpressionHelpers
             SourceRange.Default);
     }
 
-    public static NamedTypeIdentifier NamedTypeIdentifier(string typeName, IReadOnlyList<ITypeIdentifier>? typeArguments = null, Token? boxedSpecifier = null)
+    public static NamedTypeIdentifier NamedTypeIdentifier(
+        string typeName,
+        IReadOnlyList<ITypeIdentifier>? typeArguments = null,
+        Token? boxedSpecifier = null,
+        IReadOnlyList<string>? modulePath = null,
+        bool modulePathIsGlobal = false)
     {
-        return new NamedTypeIdentifier(Token.Identifier(typeName, SourceSpan.Default), typeArguments ?? [], boxedSpecifier, SourceRange.Default);
+        return new NamedTypeIdentifier(
+            Token.Identifier(typeName, SourceSpan.Default),
+            typeArguments ?? [],
+            boxedSpecifier,
+            modulePath?.Select(x => Token.Identifier(x, SourceSpan.Default)).ToArray() ?? [],
+            modulePathIsGlobal,
+            SourceRange.Default);
     }
 
     public static ArrayTypeIdentifier ArrayTypeIdentifier(

@@ -74,13 +74,20 @@ public sealed class Parser : IDisposable
     {
         if (!MoveNext())
         {
-            return new ParseResult(new LangProgram(_moduleId, [], [], [], []), []);
+            return new ParseResult(new LangProgram(_moduleId, [], [], [], [], []), []);
         }
 
-        var scope = GetScope(null, [Scope.ScopeType.TypeDefinition, Scope.ScopeType.Expression, Scope.ScopeType.Function]);
+        var scope = GetScope(
+            null,
+            [
+                Scope.ScopeType.TypeDefinition,
+                Scope.ScopeType.Expression,
+                Scope.ScopeType.Function,
+                Scope.ScopeType.ModuleImport
+            ]);
 
         return new ParseResult(
-            new LangProgram(_moduleId, scope.Expressions, scope.Functions, scope.Classes, scope.Unions),
+            new LangProgram(_moduleId, scope.Expressions, scope.Functions, scope.Classes, scope.Unions, scope.ModuleImports),
             _errors
         );
     }
@@ -118,6 +125,7 @@ public sealed class Parser : IDisposable
                 Functions = [],
                 Unions = [],
                 Variants = [],
+                ModuleImports = [],
                 SourceRange = new SourceRange(start, start)
             };
         }
@@ -204,6 +212,7 @@ public sealed class Parser : IDisposable
             Fields = fields,
             Unions = [],
             Variants = variants,
+            ModuleImports = [],
             SourceRange = new SourceRange(start, endToken.SourceSpan)
         };
 
@@ -232,6 +241,7 @@ public sealed class Parser : IDisposable
                 Scope.ScopeType.Function => [TokenType.Fn, TokenType.Pub, TokenType.Static],
                 Scope.ScopeType.TypeDefinition => [TokenType.Class, TokenType.Union, TokenType.Pub],
                 Scope.ScopeType.Expression => [],
+                Scope.ScopeType.ModuleImport => [TokenType.Use],
                 _ => throw new ArgumentOutOfRangeException()
             });
         }
@@ -261,6 +271,7 @@ public sealed class Parser : IDisposable
                 Functions = [],
                 Unions = [],
                 Variants = [],
+                ModuleImports = [],
                 SourceRange = new SourceRange(start, start)
             };
         }
@@ -274,6 +285,7 @@ public sealed class Parser : IDisposable
         var classes = new List<ProgramClass>();
         var unions = new List<ProgramUnion>();
         var variants = new List<IProgramUnionVariant>();
+        var moduleImports = new List<ModuleImport>();
 
         while (_hasNext)
         {
@@ -347,6 +359,7 @@ public sealed class Parser : IDisposable
                         Functions = [],
                         Unions = [],
                         Variants = [],
+                        ModuleImports = [],
                         SourceRange = new SourceRange(start, start)
                     };
                 }
@@ -432,6 +445,7 @@ public sealed class Parser : IDisposable
             Fields = fields,
             Unions = unions,
             Variants = variants,
+            ModuleImports = moduleImports,
             SourceRange = new SourceRange(start, endToken.SourceSpan)
         };
     }
@@ -872,7 +886,16 @@ public sealed class Parser : IDisposable
         if (!MoveNext())
         {
             _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftAngleBracket, TokenType.LeftParenthesis));
-            return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, [], [], null, null, new Block([], []));
+            return new LangFunction(
+                accessModifier,
+                staticModifier,
+                mutabilityModifier,
+                nameToken,
+                [],
+                [],
+                null,
+                null,
+                new Block([], [], []));
         }
 
         IReadOnlyList<StringToken>? typeParameters = null;
@@ -888,7 +911,7 @@ public sealed class Parser : IDisposable
                     _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftParenthesis));
                 }
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, [], null,
-                    null, new Block([], []));
+                    null, new Block([], [], []));
             }
         }
 
@@ -897,7 +920,7 @@ public sealed class Parser : IDisposable
             _errors.Add(ParserError.ExpectedToken(Current, typeParameters is null ? [TokenType.LeftParenthesis, TokenType.LeftAngleBracket] : [TokenType.LeftParenthesis]));
             MoveNext();
             return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters ?? [], [], null,
-                null, new Block([], []));
+                null, new Block([], [], []));
         }
         typeParameters ??= [];
 
@@ -948,7 +971,7 @@ public sealed class Parser : IDisposable
             }
 
             return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
-                null, new Block([], []));
+                null, new Block([], [], []));
         }
 
         Token? returnMutModifier = null;
@@ -959,7 +982,7 @@ public sealed class Parser : IDisposable
                 _errors.Add(ParserError.ExpectedTypeOrToken(null, TokenType.Mut));
                 
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
-                    null, new Block([], []));
+                    null, new Block([], [], []));
             }
 
             if (Current.Type == TokenType.Mut)
@@ -969,7 +992,7 @@ public sealed class Parser : IDisposable
                 {
                     _errors.Add(ParserError.ExpectedType(null));
                     return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
-                        returnMutModifier, new Block([], []));
+                        returnMutModifier, new Block([], [], []));
                 }
             }
             
@@ -977,14 +1000,14 @@ public sealed class Parser : IDisposable
             {
                 MoveNext();
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
-                    returnMutModifier, new Block([], []));
+                    returnMutModifier, new Block([], [], []));
             }
 
             if (!_hasNext)
             {
                 _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace));
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
-                    returnMutModifier, new Block([], []));
+                    returnMutModifier, new Block([], [], []));
             }
         }
 
@@ -993,13 +1016,13 @@ public sealed class Parser : IDisposable
             _errors.Add(ParserError.ExpectedToken(Current, returnType is null ? [TokenType.Colon, TokenType.LeftBrace] : [TokenType.LeftBrace]));
             MoveNext();
             return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
-                returnMutModifier, new Block([], []));
+                returnMutModifier, new Block([], [], []));
         }
 
-        var scope = GetScope(TokenType.RightBrace, [Scope.ScopeType.Expression, Scope.ScopeType.Function]);
+        var scope = GetScope(TokenType.RightBrace, [Scope.ScopeType.Expression, Scope.ScopeType.Function, Scope.ScopeType.ModuleImport]);
 
         return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
-            returnMutModifier, new Block(scope.Expressions, scope.Functions));
+            returnMutModifier, new Block(scope.Expressions, scope.Functions, scope.ModuleImports));
     }
 
     private ITypeIdentifier? GetTypeIdentifier(Token? boxingSpecifier = null)
@@ -1197,7 +1220,12 @@ public sealed class Parser : IDisposable
                 });
         }
 
-        return new NamedTypeIdentifier(typeIdentifier, typeArguments, boxingSpecifier,
+        return new NamedTypeIdentifier(
+            typeIdentifier,
+            typeArguments,
+            boxingSpecifier,
+            [],
+            false,
             new SourceRange(boxingSpecifier?.SourceSpan ?? typeIdentifier.SourceSpan, lastToken?.SourceSpan ?? typeIdentifier.SourceSpan));
     }
 
@@ -1980,7 +2008,7 @@ public sealed class Parser : IDisposable
                 }
             })
         {
-            type = new NamedTypeIdentifier(token, typeArguments ?? [], null, previousExpression.SourceRange);
+            type = new NamedTypeIdentifier(token, typeArguments ?? [], null, [], false, previousExpression.SourceRange);
         }
         else
         {
@@ -2310,9 +2338,9 @@ public sealed class Parser : IDisposable
 
     private BlockExpression GetBlockExpression()
     {
-        var scope = GetScope(TokenType.RightBrace, [Scope.ScopeType.Expression, Scope.ScopeType.Function]);
+        var scope = GetScope(TokenType.RightBrace, [Scope.ScopeType.Expression, Scope.ScopeType.Function, Scope.ScopeType.ModuleImport]);
 
-        return new BlockExpression(new Block(scope.Expressions, scope.Functions), scope.SourceRange);
+        return new BlockExpression(new Block(scope.Expressions, scope.Functions, scope.ModuleImports), scope.SourceRange);
     }
     
     private BreakExpression GetBreak()
@@ -2544,10 +2572,12 @@ public sealed class Parser : IDisposable
             Expression,
             Function,
             TypeDefinition,
+            ModuleImport
         }
 
         public required IReadOnlyList<IExpression> Expressions { get; init; }
         public required IReadOnlyList<LangFunction> Functions { get; init; }
+        public required IReadOnlyList<ModuleImport> ModuleImports { get; init; }
         public required IReadOnlyList<ProgramClass> Classes { get; init; }
         public required IReadOnlyList<ClassField> Fields { get; init; }
         public required IReadOnlyList<ProgramUnion> Unions { get; init; }

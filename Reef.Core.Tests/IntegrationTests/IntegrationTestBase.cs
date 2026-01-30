@@ -9,6 +9,7 @@ public class IntegrationTestBase
     protected static async Task SetupTest(
         string reefSource,
         string? testCaseName = null,
+        string? fileName = null,
         [CallerMemberName] string testName = "",
         [CallerFilePath] string callerFilePath = "")
     {
@@ -20,7 +21,7 @@ public class IntegrationTestBase
         }
         Directory.CreateDirectory(testRunFolder);
 
-        var fileName = $"{testName}.rf";
+        fileName ??= $"{testName}.rf";
         await File.WriteAllTextAsync(Path.Join(testRunFolder, fileName), reefSource);
     }
 

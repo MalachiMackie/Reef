@@ -9,7 +9,8 @@ public record LangProgram(
     IReadOnlyList<IExpression> Expressions,
     IReadOnlyList<LangFunction> Functions,
     IReadOnlyCollection<ProgramClass> Classes,
-    IReadOnlyCollection<ProgramUnion> Unions)
+    IReadOnlyCollection<ProgramUnion> Unions,
+    IReadOnlyList<ModuleImport> TopLevelImports)
 {
     public override string ToString()
     {
@@ -36,6 +37,8 @@ public record LangProgram(
     public List<TypeChecker.LocalVariable> TopLevelLocalVariables { get; } = [];
     public List<TypeChecker.FunctionSignature> TopLevelLocalFunctions { get; } = [];
 }
+
+public record ModuleImport(bool UsGlobal, IReadOnlyList<StringToken> ModuleIdentifiers, bool UseAll);
 
 public interface ITypeIdentifier
 {
@@ -117,6 +120,8 @@ public record NamedTypeIdentifier(
     StringToken Identifier,
     IReadOnlyList<ITypeIdentifier> TypeArguments,
     Token? BoxedSpecifier,
+    IReadOnlyList<StringToken> ModulePath,
+    bool ModulePathIsGlobal,
     SourceRange SourceRange) : ITypeIdentifier
 {
     public override string ToString()

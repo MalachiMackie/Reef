@@ -522,7 +522,7 @@ public record IfExpression(
     }
 }
 
-public record Block(IReadOnlyList<IExpression> Expressions, IReadOnlyList<LangFunction> Functions)
+public record Block(IReadOnlyList<IExpression> Expressions, IReadOnlyList<LangFunction> Functions, IReadOnlyList<ModuleImport> ScopedImports)
 {
     public bool HasTailExpression => false;
     

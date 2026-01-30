@@ -94,7 +94,7 @@ public static class PopExpressionTestCases
                                     "c")
                             ],
                             "b"), SourceRange.Default),
-                    new BlockExpression(new Block([], []), SourceRange.Default),
+                    new BlockExpression(new Block([], [], []), SourceRange.Default),
                     [],
                     null), SourceRange.Default)
             ),
@@ -495,13 +495,13 @@ public static class PopExpressionTestCases
                 null,
                 new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                     Token.StringLiteral("thing", SourceSpan.Default), null))), SourceRange.Default)),
-            ("{}", new BlockExpression(new Block([], []), SourceRange.Default)),
+            ("{}", new BlockExpression(new Block([], [], []), SourceRange.Default)),
             ("{var a = 1;}", new BlockExpression(new Block([
                 new VariableDeclarationExpression(new VariableDeclaration(Identifier("a"),
                     null, null,
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                         Token.IntLiteral(1, SourceSpan.Default), null))), SourceRange.Default)
-            ], []), SourceRange.Default)),
+            ], [], []), SourceRange.Default)),
             // tail expression
             ("{var a = 1}", new BlockExpression(new Block(
             [
@@ -509,7 +509,7 @@ public static class PopExpressionTestCases
                     null, null,
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                         Token.IntLiteral(1, SourceSpan.Default), null))), SourceRange.Default)
-            ], []), SourceRange.Default)),
+            ], [], []), SourceRange.Default)),
             // tail expression
             ("{var a = 1;var b = 2}", new BlockExpression(new Block(
             [
@@ -521,7 +521,7 @@ public static class PopExpressionTestCases
                     null, null,
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                         Token.IntLiteral(2, SourceSpan.Default), null))), SourceRange.Default)
-            ], []), SourceRange.Default)),
+            ], [], []), SourceRange.Default)),
             ("{var a = 1; var b = 2;}", new BlockExpression(new Block([
                 new VariableDeclarationExpression(new VariableDeclaration(Identifier("a"),
                     null, null,
@@ -531,7 +531,7 @@ public static class PopExpressionTestCases
                     null, null,
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                         Token.IntLiteral(2, SourceSpan.Default), null))), SourceRange.Default)
-            ], []), SourceRange.Default)),
+            ], [], []), SourceRange.Default)),
             ("if (a) var c = 2;", new IfExpressionExpression(new IfExpression(
                     VariableAccessor("a"),
                     new VariableDeclarationExpression(new VariableDeclaration(
@@ -554,10 +554,10 @@ public static class PopExpressionTestCases
                         null,
                         new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                             Token.StringLiteral("value", SourceSpan.Default), null))), SourceRange.Default)
-                ], []), SourceRange.Default), [], null), SourceRange.Default)),
+                ], [], []), SourceRange.Default), [], null), SourceRange.Default)),
             ("if (a) {} else {var b = 2;}", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
-                new BlockExpression(new Block([], []), SourceRange.Default),
+                new BlockExpression(new Block([], [], []), SourceRange.Default),
                 [],
                 new BlockExpression(new Block([
                     new VariableDeclarationExpression(new VariableDeclaration(
@@ -566,32 +566,32 @@ public static class PopExpressionTestCases
                         null,
                         new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                             Token.IntLiteral(2, SourceSpan.Default), null))), SourceRange.Default)
-                ], []), SourceRange.Default)), SourceRange.Default)),
+                ], [], []), SourceRange.Default)), SourceRange.Default)),
             ("if (a) {} else if (b) {}", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
-                new BlockExpression(new Block([], []), SourceRange.Default),
-                [new ElseIf(VariableAccessor("b"), new BlockExpression(new Block([], []), SourceRange.Default))],
+                new BlockExpression(new Block([], [], []), SourceRange.Default),
+                [new ElseIf(VariableAccessor("b"), new BlockExpression(new Block([], [], []), SourceRange.Default))],
                 null), SourceRange.Default)),
             ("if (a) {} else if (b) {} else {}", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
-                new BlockExpression(new Block([], []), SourceRange.Default),
+                new BlockExpression(new Block([], [], []), SourceRange.Default),
                 [
-                    new ElseIf(VariableAccessor("b"), new BlockExpression(new Block([], []), SourceRange.Default))
+                    new ElseIf(VariableAccessor("b"), new BlockExpression(new Block([], [], []), SourceRange.Default))
                 ],
-                new BlockExpression(new Block([], []), SourceRange.Default)), SourceRange.Default)),
+                new BlockExpression(new Block([], [], []), SourceRange.Default)), SourceRange.Default)),
             ("if (a) {} else if (b) {} else if (c) {} else {}", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
-                new BlockExpression(new Block([], []), SourceRange.Default),
+                new BlockExpression(new Block([], [], []), SourceRange.Default),
                 [
-                    new ElseIf(VariableAccessor("b"), new BlockExpression(new Block([], []), SourceRange.Default)),
-                    new ElseIf(VariableAccessor("c"), new BlockExpression(new Block([], []), SourceRange.Default))
+                    new ElseIf(VariableAccessor("b"), new BlockExpression(new Block([], [], []), SourceRange.Default)),
+                    new ElseIf(VariableAccessor("c"), new BlockExpression(new Block([], [], []), SourceRange.Default))
                 ],
-                new BlockExpression(new Block([], []), SourceRange.Default)), SourceRange.Default)),
+                new BlockExpression(new Block([], [], []), SourceRange.Default)), SourceRange.Default)),
             ("if (a) {b} else {c}", new IfExpressionExpression(new IfExpression(
                     VariableAccessor("a"),
-                    new BlockExpression(new Block([VariableAccessor("b")], []), SourceRange.Default),
+                    new BlockExpression(new Block([VariableAccessor("b")], [], []), SourceRange.Default),
                     [],
-                    new BlockExpression(new Block([VariableAccessor("c")], []), SourceRange.Default)),
+                    new BlockExpression(new Block([VariableAccessor("c")], [], []), SourceRange.Default)),
                 SourceRange.Default)),
             ("if (a) b else c", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
@@ -607,20 +607,20 @@ public static class PopExpressionTestCases
                         [
                             new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                                 Token.IntLiteral(1, SourceSpan.Default), null))
-                        ], []), SourceRange.Default),
+                        ], [], []), SourceRange.Default),
                         [],
                         new BlockExpression(new Block(
                         [
                             new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                                 Token.IntLiteral(2, SourceSpan.Default), null))
-                        ], []), SourceRange.Default)), SourceRange.Default)
-                ], []), SourceRange.Default),
+                        ], [], []), SourceRange.Default)), SourceRange.Default)
+                ], [], []), SourceRange.Default),
                 [],
                 new BlockExpression(new Block(
                 [
                     new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                         Token.IntLiteral(3, SourceSpan.Default), null))
-                ], []), SourceRange.Default)), SourceRange.Default)),
+                ], [], []), SourceRange.Default)), SourceRange.Default)),
             ("if (a) if (b) 1 else 2 else 3", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
                 new IfExpressionExpression(new IfExpression(
@@ -654,13 +654,13 @@ public static class PopExpressionTestCases
                     [
                         new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                             Token.IntLiteral(1, SourceSpan.Default), null))
-                    ], []), SourceRange.Default),
+                    ], [], []), SourceRange.Default),
                     [],
                     new BlockExpression(new Block(
                     [
                         new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
                             Token.IntLiteral(2, SourceSpan.Default), null))
-                    ], []), SourceRange.Default)), SourceRange.Default)), SourceRange.Default)),
+                    ], [], []), SourceRange.Default)), SourceRange.Default)), SourceRange.Default)),
             ("a()", new MethodCallExpression(new MethodCall(VariableAccessor("a"), []), SourceRange.Default)),
             ("a.b::<int>()", new MethodCallExpression(new MethodCall(
                     new MemberAccessExpression(new MemberAccess(
