@@ -43,7 +43,7 @@ public class ArrayTests : IntegrationTestBase
 
         var result = await Run();
         result.ExitCode.Should().Be(0);
-        result.StandardOutput.Should().Be("012");
+        result.StandardOutput.Should().Be("666");
     }
 
     [Fact]

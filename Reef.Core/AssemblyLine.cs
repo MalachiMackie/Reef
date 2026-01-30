@@ -889,6 +889,27 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                 MoveOperandToDestination(use.Operand, place);
                 break;
             }
+            case Fill fill:
+            {
+                // todo: this is naive, do something smarter 
+                var elementType = GetOperandType(fill.Value);
+                var elementSize = GetTypeSize(elementType, _currentTypeArguments);
+                Debug.Assert(place.IsMemoryPlace);
+                var (remainingOffset, addressRegister, freeRegister) = FollowOffsetPointerChain(place);
+                for (var i = 0; i < fill.Count; i++)
+                {
+                    MoveOperandToDestination(
+                        fill.Value,
+                        new MemoryOffset(new PointerTo(addressRegister), null, (i * (int)elementSize.Size) + remainingOffset));
+                }
+
+                if (freeRegister)
+                {
+                    FreeRegister(addressRegister);
+                }
+
+                break;
+            }
             default:
                 throw new ArgumentOutOfRangeException(rValue.GetType().ToString());
         }
@@ -1741,24 +1762,23 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             return;
         }
         
-        if (size % PointerSize != 0)
-        {
-            throw new NotImplementedException();
-        }
-        
-        var sizeSpecifier = SizeSpecifiers[PointerSize];
+        IReadOnlyList<uint> chunkSizes = [1, 2, 4, 8];
         
         switch (place)
         {
             case PointerTo or MemoryOffset:
             {
                 var (remainingOffset, addressRegister, freeAddressRegister) = FollowOffsetPointerChain(place);
-                
-                for (var i = 0; i < size; i += (int)PointerSize)
+
+                var i = 0;
+                while (i < size)
                 {
+                    var chunkSize = chunkSizes.Where(x => i + x <= size).Max();
+                    var sizeSpecifier = SizeSpecifiers[chunkSize];
                     _codeSegment.AppendLine($"    mov     {sizeSpecifier} [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset + i)}], {constantValue}");
+                    i += (int)chunkSize;
                 }
-                
+
                 if (freeAddressRegister)
                 {
                     FreeRegister(addressRegister);
