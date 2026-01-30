@@ -1543,7 +1543,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
                     {
                         var tempRegister = AllocateRegister();
 
-                        foreach (var getOffsetInRegister in getOffsetInRegisters)
+                        foreach (var getOffsetInRegister in getOffsetInRegisters.Skip(1))
                         {
                             getOffsetInRegister(tempRegister);
                             _codeSegment.AppendLine($"    add     {offsetRegister.ToAsm(PointerSize)}, {tempRegister.ToAsm(PointerSize)}");
@@ -1581,7 +1581,7 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
             {
                 var tempRegister = AllocateRegister();
 
-                foreach (var getOffsetInRegister in getOffsetInRegisters)
+                foreach (var getOffsetInRegister in getOffsetInRegisters.Skip(1))
                 {
                     getOffsetInRegister(tempRegister);
                     _codeSegment.AppendLine(
@@ -1646,10 +1646,12 @@ public class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> u
         {
             case PointerTo or MemoryOffset:
             {
-                var destinationRegister = AllocateRegister();
-                StorePlaceAddress(destinationRegister, place);
-                _codeSegment.AppendLine($"    mov     [{destinationRegister.ToAsm(PointerSize)}], {register.ToAsm(size)}");
-                FreeRegister(destinationRegister);
+                var (remainingOffset, addressRegister, freeRegister) = FollowOffsetPointerChain(place);
+                _codeSegment.AppendLine($"    mov     [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset)}], {register.ToAsm(size)}");
+                if (freeRegister)
+                {
+                    FreeRegister(addressRegister);
+                }
                 break;
             }
             case Register destinationRegister when destinationRegister == register:

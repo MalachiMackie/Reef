@@ -93,8 +93,8 @@ public class ArrayTests : IntegrationTestBase
             
             print_string(a[0][0][0].MyString);
             print_string(a[0][0][1].MyString);
-            print_string(a[0][1][0].MyString);
-            print_string(a[0][1][1].MyString);
+            print_string(a[1][0][0].MyString);
+            print_string(a[1][0][1].MyString);
             """);
 
         var result = await Run();
