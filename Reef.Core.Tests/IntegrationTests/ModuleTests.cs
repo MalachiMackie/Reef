@@ -13,7 +13,7 @@ public class ModuleTests : IntegrationTestBase
 
         await SetupTest(
             """
-            use ::otherModule::MyClass;
+            use :::otherModule:::MyClass;
             
             var a = new MyClass{MyString = "hi"};
             print_string(a.MyString);

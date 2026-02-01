@@ -58,26 +58,18 @@ public class Tests(ITestOutputHelper testOutputHelper)
     [Fact]
     public void SingleTest()
     {
+        var source = "var a: string = b";
+        var expectedExpression = new VariableDeclarationExpression(new VariableDeclaration(
+            Identifier("a"),
+            null,
+            NamedTypeIdentifier("string"),
+            VariableAccessor("b")), SourceRange.Default);
         
-        var source = "var a = b[0]";
-                var expectedProgram = new LangProgram("ParseTestCases",
-                    [
-                        VariableDeclaration(
-                            "a",
-                            IndexExpression(VariableAccessor("b"), Literal(0)))
-                    ],
-                    [],
-                    [],
-                    [],
-                    []);
-        
-        var result = Parser.Parse("ParseTestCases", Tokenizer.Tokenize(source)).NotNull();
+        var result = Parser.PopExpression("ParseTestCases", Tokenizer.Tokenize(source)).NotNull();
 
-        result.Errors.Should().BeEmpty();
+        testOutputHelper.WriteLine("Expected {0}, found {1}", expectedExpression, result);
         
-        testOutputHelper.WriteLine("Expected {0}, found {1}", expectedProgram, result);
-        
-        result.ParsedProgram.Should().BeEquivalentTo(expectedProgram, opts => opts
+        result.Should().BeEquivalentTo(expectedExpression, opts => opts
             .Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
     }
 

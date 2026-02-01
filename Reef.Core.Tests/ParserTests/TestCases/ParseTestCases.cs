@@ -10,24 +10,35 @@ public static class ParseTestCases
         return new (string Source, LangProgram ExpectedProgram)[]
         {
             (
-                "use ::someModule::subModule::MyClass;",
-                Program("ParseTests",
+                "var a = someModule:::subModule:::SomeClass::<string>::B",
+                Program("ParseTestCases",
+                    [
+                        VariableDeclaration(
+                            "a",
+                            StaticMemberAccess(
+                                NamedTypeIdentifier("SomeClass", [StringType()], modulePath: ["someModule", "subModule"]),
+                                "B"))
+                    ])
+            ),
+            (
+                "use :::someModule:::subModule:::MyClass;",
+                Program("ParseTestCases",
                     moduleImports: [ModuleImport(["someModule", "subModule", "MyClass"], true)])
             ),
             (
-                "use subModule::MyClass;",
+                "use subModule:::MyClass;",
                 Program(
-                    "ParseTests",
+                    "ParseTestCases",
                     moduleImports: [ModuleImport(["subModule", "MyClass"])])
             ),
             (
-                "use ::someModule::*;",
-                Program("ParseTests",
-                    moduleImports: [ModuleImport(["subModule"], true, true)])
+                "use :::someModule:::*;",
+                Program("ParseTestCases",
+                    moduleImports: [ModuleImport(["someModule"], true, true)])
             ),
             (
-                "var a = new someModule::MyClass{}",
-                Program("ParseTests",
+                "var a = new someModule:::MyClass{}",
+                Program("ParseTestCases",
                     [
                         VariableDeclaration(
                             "a",
@@ -36,8 +47,8 @@ public static class ParseTestCases
                     ])
             ),
             (
-                "var a = ::someModule::SomeClass::StaticField",
-                Program("ParseTests",
+                "var a = :::someModule:::SomeClass::StaticField",
+                Program("ParseTestCases",
                     [
                         VariableDeclaration("a",
                             StaticMemberAccess(
@@ -46,8 +57,8 @@ public static class ParseTestCases
                     ])
             ),
             (
-                "var a = someModule::SomeClass::StaticField",
-                Program("ParseTests",
+                "var a = someModule:::SomeClass::StaticField",
+                Program("ParseTestCases",
                     [
                         VariableDeclaration("a",
                             StaticMemberAccess(
@@ -58,10 +69,10 @@ public static class ParseTestCases
             (
                 """
                 {
-                    use someModule::SomeClass;
+                    use someModule:::SomeClass;
                 }
                 """,
-                Program("ParseTests",
+                Program("ParseTestCases",
                     [
                         Block([], [ModuleImport(["someModule", "SomeClass"])])
                     ])

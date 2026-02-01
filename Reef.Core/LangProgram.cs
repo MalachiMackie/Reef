@@ -38,7 +38,7 @@ public record LangProgram(
     public List<TypeChecker.FunctionSignature> TopLevelLocalFunctions { get; } = [];
 }
 
-public record ModuleImport(bool UsGlobal, IReadOnlyList<StringToken> ModuleIdentifiers, bool UseAll);
+public record ModuleImport(bool IsGlobal, IReadOnlyList<StringToken> ModuleIdentifiers, bool UseAll);
 
 public interface ITypeIdentifier
 {

@@ -93,6 +93,7 @@ public record Token
             TokenType.Boxed => "boxed",
             TokenType.LeftSquareBracket => "[",
             TokenType.RightSquareBracket => "]",
+            TokenType.Use => "use",
             _ => throw new UnreachableException(Type.ToString())
         };
     }
@@ -133,6 +134,8 @@ public record Token
     {
         return new Token { Type = TokenType.DoubleColon, SourceSpan = sourceSpan };
     }
+
+    public static Token TripleColon(SourceSpan sourceSpan) => new() { Type = TokenType.TripleColon, SourceSpan = sourceSpan };
 
     public static Token Fn(SourceSpan sourceSpan)
     {

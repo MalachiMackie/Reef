@@ -279,6 +279,8 @@ public class Tokenizer
             TokenType.Boxed when source is "boxed" => Token.Boxed(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Break when source is "break" => Token.Break(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Continue when source is "continue" => Token.Continue(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.TripleColon when source is ":::" => Token.TripleColon(new SourceSpan(position,
+                (ushort)source.Length)),
             TokenType.DoubleColon when source is "::" => Token.DoubleColon(new SourceSpan(position,
                 (ushort)source.Length)),
             TokenType.Class when source is "class" => Token.Class(new SourceSpan(position, (ushort)source.Length)),
@@ -396,8 +398,9 @@ public class Tokenizer
                 break;
             case ':':
                 tokens[i++] = TokenType.Colon;
-                tokens[i++] = TokenType.Turbofish;
                 tokens[i++] = TokenType.DoubleColon;
+                tokens[i++] = TokenType.TripleColon;
+                tokens[i++] = TokenType.Turbofish;
                 break;
             case '<':
                 tokens[i++] = TokenType.LeftAngleBracket;
@@ -567,6 +570,7 @@ public class Tokenizer
             TokenType.True => Matches(source, "true"),
             TokenType.False => Matches(source, "false"),
             TokenType.DoubleColon => Matches(source, "::"),
+            TokenType.TripleColon => Matches(source, ":::"),
             TokenType.Star => Matches(source, "*"),
             TokenType.ForwardSlash => Matches(source, "/"),
             TokenType.Plus => Matches(source, "+"),

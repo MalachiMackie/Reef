@@ -9,24 +9,29 @@ public static class ParseErrorTestCases
         IEnumerable<(string, LangProgram, IEnumerable<ParserError>)> data =
         [
             (
-                "use ::",
+                "use :::",
                 Program("ParseErrorTestCases"),
                 [ParserError.ExpectedToken(null, TokenType.Identifier)]
             ),
             (
-                "use ::something::",
-                Program("ParseErrorTestCases"),
-                [ParserError.ExpectedToken(null, TokenType.Identifier)]
+                "use :::something:::",
+                Program("ParseErrorTestCases",
+                    moduleImports: [ModuleImport(["something"], true)]),
+                [ParserError.ExpectedToken(null, TokenType.Star, TokenType.Identifier)]
             ),
             (
                 "use something",
-                Program("ParseErrorTestCases"),
-                [ParserError.ExpectedToken(null, TokenType.DoubleColon)]
+                Program(
+                    "ParseErrorTestCases",
+                    moduleImports: [
+                        ModuleImport(["something"])
+                    ]),
+                [ParserError.ExpectedToken(null, TokenType.TripleColon, TokenType.Semicolon)]
             ),
             (
-                "use something::A",
-                Program("ParserErrorTestCases", moduleImports: [ModuleImport(["something", "A"])]),
-                [ParserError.ExpectedToken(null, TokenType.Semicolon)]
+                "use something:::A",
+                Program("ParseErrorTestCases", moduleImports: [ModuleImport(["something", "A"])]),
+                [ParserError.ExpectedToken(null, TokenType.TripleColon, TokenType.Semicolon)]
             ),
             (
                 "a[0",
