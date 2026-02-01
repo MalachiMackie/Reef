@@ -1,4 +1,5 @@
-﻿using Reef.Core.Expressions;
+﻿using System.IO.Abstractions.TestingHelpers;
+using Reef.Core.Expressions;
 using static Reef.Core.Tests.ExpressionHelpers;
 using static Reef.Core.TypeChecking.TypeChecker;
 
@@ -6,31 +7,43 @@ namespace Reef.Core.Tests;
 
 public class TypeCheckerTests
 {
+    private readonly MockFileSystem _fileSystem = new();
+    
     [Theory]
     [MemberData(nameof(SuccessfulExpressionTestCases))]
-    public void Should_SuccessfullyTypeCheckExpressions(Dictionary<string, string> sourceFiles)
+    public async Task Should_SuccessfullyTypeCheckExpressions(Dictionary<string, string> sourceFiles)
     {
-        var program = Parser.Parse("TypeCheckerTests", Tokenizer.Tokenize(sourceFiles["main.rf"]));
-        program.Errors.Should().BeEmpty();
-        var errors = TypeCheck(program.ParsedProgram, true);
-        errors.Should().BeEmpty();
+        foreach (var (path, contents) in sourceFiles)
+        {
+            _fileSystem.AddFile(path, new MockFileData(contents));
+        }
+
+        var typeCheckResult = await new ReefCompiler(_fileSystem).TypeCheck("main.rf");
+
+        typeCheckResult.ParserErrors.Should().BeEmpty();
+        typeCheckResult.TypeCheckerErrors.Should().BeEmpty();
     }
 
     [Theory]
     [MemberData(nameof(FailedExpressionTestCases))]
-    public void Should_FailTypeChecking_When_ExpressionsAreNotValid(
+    public async Task Should_FailTypeChecking_When_ExpressionsAreNotValid(
         string description,
         Dictionary<string, string> sourceFiles,
         IReadOnlyList<TypeCheckerError> expectedErrors)
     {
         description.Should().NotBeNull();
-        var program = Parser.Parse("TypeCheckerTests", Tokenizer.Tokenize(sourceFiles["main.rf"]));
-        program.Errors.Should().BeEmpty();
-        var errors = TypeCheck(program.ParsedProgram);
+        
+        foreach (var (path, contents) in sourceFiles)
+        {
+            _fileSystem.AddFile(path, new MockFileData(contents));
+        }
 
+        var typeCheckResult = await new ReefCompiler(_fileSystem).TypeCheck("main.rf");
+        typeCheckResult.ParserErrors.Should().BeEmpty();
+        
         expectedErrors.Should().NotBeEmpty();
 
-        errors.Should().BeEquivalentTo(expectedErrors,
+        typeCheckResult.TypeCheckerErrors.Should().BeEquivalentTo(expectedErrors,
                 opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan))).And
             .NotBeEmpty();
     }
