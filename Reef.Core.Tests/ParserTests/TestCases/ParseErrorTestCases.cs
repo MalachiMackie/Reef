@@ -4,9 +4,9 @@ using static ExpressionHelpers;
 
 public static class ParseErrorTestCases
 {
-    public static TheoryData<string, LangProgram, IEnumerable<ParserError>> TestCases()
+    public static TheoryData<string, LangModule, IEnumerable<ParserError>> TestCases()
     {
-        IEnumerable<(string, LangProgram, IEnumerable<ParserError>)> data =
+        IEnumerable<(string, LangModule, IEnumerable<ParserError>)> data =
         [
             (
                 "use :::",
@@ -2083,7 +2083,7 @@ public static class ParseErrorTestCases
             )
         ];
 
-        var theoryData = new TheoryData<string, LangProgram, IEnumerable<ParserError>>();
+        var theoryData = new TheoryData<string, LangModule, IEnumerable<ParserError>>();
         foreach (var item in data)
         {
             theoryData.Add(item.Item1, item.Item2, item.Item3);

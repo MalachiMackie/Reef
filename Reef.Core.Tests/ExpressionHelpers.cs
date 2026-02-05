@@ -59,7 +59,7 @@ public static class ExpressionHelpers
         return new BlockExpression(new Block(expressions ?? [], [], moduleImports ?? []), SourceRange.Default);
     }
 
-    public static LangProgram Program(
+    public static LangModule Program(
         string moduleId,
         IReadOnlyList<IExpression>? expressions = null,
         IReadOnlyList<LangFunction>? functions = null,
@@ -67,7 +67,7 @@ public static class ExpressionHelpers
         IReadOnlyList<ProgramUnion>? unions = null,
         IReadOnlyList<ModuleImport>? moduleImports = null)
     {
-        return new LangProgram(
+        return new LangModule(
             moduleId,
             expressions ?? [],
             functions ?? [],

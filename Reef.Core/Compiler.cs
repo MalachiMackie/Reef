@@ -55,7 +55,7 @@ public class Compiler
         }
 
         logger.LogInformation("TypeChecking...");
-        var typeCheckErrors = TypeChecker.TypeCheck(parsedProgram.ParsedProgram);
+        var typeCheckErrors = TypeChecker.TypeCheck(parsedProgram.ParsedModule);
         if (typeCheckErrors.Count > 0)
         {
             foreach (var error in typeCheckErrors)
@@ -67,7 +67,7 @@ public class Compiler
         }
 
         logger.LogInformation("Lowering...");
-        var (loweredProgram, importedModules) = ProgramAbseil.Lower(parsedProgram.ParsedProgram);
+        var (loweredProgram, importedModules) = ProgramAbseil.Lower(parsedProgram.ParsedModule);
 
 
         if (outputIr)

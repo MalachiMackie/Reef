@@ -7,7 +7,7 @@ public static class ParseTestCases
 {
     public static IEnumerable<object[]> TestCases()
     {
-        return new (string Source, LangProgram ExpectedProgram)[]
+        return new (string Source, LangModule ExpectedProgram)[]
         {
             (
                 "use :::someModule:::{A, B};",

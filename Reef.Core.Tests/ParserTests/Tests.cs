@@ -16,7 +16,7 @@ public class Tests(ITestOutputHelper testOutputHelper)
 
     public static IEnumerable<object[]> ParseTestCases => TestCases.ParseTestCases.TestCases();
 
-    public static TheoryData<string, LangProgram, IEnumerable<ParserError>> ParseErrorTestCases =>
+    public static TheoryData<string, LangModule, IEnumerable<ParserError>> ParseErrorTestCases =>
         TestCases.ParseErrorTestCases.TestCases();
 
     [Theory]
@@ -66,9 +66,9 @@ public class Tests(ITestOutputHelper testOutputHelper)
 
         var result = Parser.Parse("ParseTestCases", Tokenizer.Tokenize(source)).NotNull();
 
-        testOutputHelper.WriteLine("Expected {0}, found {1}", expectedProgram, result.ParsedProgram);
+        testOutputHelper.WriteLine("Expected {0}, found {1}", expectedProgram, result.ParsedModule);
 
-        result.ParsedProgram.Should().BeEquivalentTo(expectedProgram, opts => opts
+        result.ParsedModule.Should().BeEquivalentTo(expectedProgram, opts => opts
             .Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
         result.Errors.Should().BeEquivalentTo(expectedErrors, opts => opts
             .Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
@@ -80,7 +80,7 @@ public class Tests(ITestOutputHelper testOutputHelper)
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
         string source,
         IEnumerable<Token> tokens,
-        LangProgram expectedProgram)
+        LangModule expectedProgram)
     {
         var result = Parser.Parse("ParseTestCases", tokens);
 
@@ -90,19 +90,19 @@ public class Tests(ITestOutputHelper testOutputHelper)
 
         try
         {
-            result.ParsedProgram.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion()
+            result.ParsedModule.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion()
                 .Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
         }
         catch
         {
-            testOutputHelper.WriteLine("Expected [{0}], found [{1}]", expectedProgram, result.ParsedProgram);
+            testOutputHelper.WriteLine("Expected [{0}], found [{1}]", expectedProgram, result.ParsedModule);
             throw;
         }
     }
 
     [Theory]
     [MemberData(nameof(ParseErrorTestCases))]
-    public void ParseErrorTests(string source, LangProgram expectedProgram, IEnumerable<ParserError> expectedErrors)
+    public void ParseErrorTests(string source, LangModule expectedProgram, IEnumerable<ParserError> expectedErrors)
     {
         var tokens = Tokenizer.Tokenize(source);
 
@@ -113,6 +113,6 @@ public class Tests(ITestOutputHelper testOutputHelper)
         output.Errors.Should().BeEquivalentTo(
             expectedErrors,
             opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
-        output.ParsedProgram.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion().Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
+        output.ParsedModule.Should().BeEquivalentTo(expectedProgram, opts => opts.AllowingInfiniteRecursion().Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
     }
 }

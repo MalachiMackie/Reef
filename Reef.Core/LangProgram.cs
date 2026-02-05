@@ -4,7 +4,7 @@ using Reef.Core.TypeChecking;
 
 namespace Reef.Core;
 
-public record LangProgram(
+public record LangModule(
     string ModuleId,
     IReadOnlyList<IExpression> Expressions,
     IReadOnlyList<LangFunction> Functions,

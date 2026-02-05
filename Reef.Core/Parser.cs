@@ -74,7 +74,7 @@ public sealed class Parser : IDisposable
     {
         if (!MoveNext())
         {
-            return new ParseResult(new LangProgram(_moduleId, [], [], [], [], []), []);
+            return new ParseResult(new LangModule(_moduleId, [], [], [], [], []), []);
         }
 
         var scope = GetScope(
@@ -87,7 +87,7 @@ public sealed class Parser : IDisposable
             ]);
 
         return new ParseResult(
-            new LangProgram(_moduleId, scope.Expressions, scope.Functions, scope.Classes, scope.Unions, scope.ModuleImports),
+            new LangModule(_moduleId, scope.Expressions, scope.Functions, scope.Classes, scope.Unions, scope.ModuleImports),
             _errors
         );
     }
@@ -2771,7 +2771,7 @@ public sealed class Parser : IDisposable
         };
     }
 
-    public record ParseResult(LangProgram ParsedProgram, IReadOnlyList<ParserError> Errors);
+    public record ParseResult(LangModule ParsedModule, IReadOnlyList<ParserError> Errors);
 
     public class Scope
     {

@@ -392,6 +392,14 @@ public record TypeCheckerError
             sourceRange,
             "Mismatched return type mutability for function object");
     }
+
+    public static TypeCheckerError ImportedItemNotPublic(StringToken itemToken)
+    {
+        return new(
+            TypeCheckerErrorType.ImportedItemNotPublic,
+            new SourceRange(itemToken.SourceSpan, itemToken.SourceSpan),
+            $"Imported item {itemToken.StringValue} is not public");
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -451,5 +459,6 @@ public enum TypeCheckerErrorType
     ArrayLengthMismatch,
     BoxedOnlyTypeCannotBeUnboxed,
     NonMutableExpressionPassedToMutableReturn,
-    FunctionObjectReturnTypeMutabilityMismatch
+    FunctionObjectReturnTypeMutabilityMismatch,
+    ImportedItemNotPublic,
 }

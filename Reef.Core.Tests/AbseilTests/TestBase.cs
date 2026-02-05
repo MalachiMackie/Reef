@@ -11,12 +11,12 @@ public class TestBase
         TestOutput = testOutputHelper;
     }
 
-    protected static LangProgram CreateProgram(string moduleId, string source)
+    protected static LangModule CreateProgram(string moduleId, string source)
     {
         var tokens = Tokenizer.Tokenize(source);
         var parseResult = Parser.Parse(moduleId, tokens);
         parseResult.Errors.Should().BeEmpty();
-        var program = parseResult.ParsedProgram;
+        var program = parseResult.ParsedModule;
         var typeCheckErrors = TypeChecking.TypeChecker.TypeCheck(program);
         typeCheckErrors.Should().BeEmpty();
 

@@ -33,7 +33,7 @@ public class TypeTwoTypeChecker(bool throwOnError)
         return false;
     }
 
-    public static IReadOnlyList<TypeCheckerError> TypeTwoTypeCheck(LangProgram program, bool throwOnError = false)
+    public static IReadOnlyList<TypeCheckerError> TypeTwoTypeCheck(LangModule program, bool throwOnError = false)
     {
         var checker = new TypeTwoTypeChecker(throwOnError);
         checker.InnerTypeTwoTypeCheck(program);
@@ -41,7 +41,7 @@ public class TypeTwoTypeChecker(bool throwOnError)
         return checker._errors;
     }
 
-    private void InnerTypeTwoTypeCheck(LangProgram program)
+    private void InnerTypeTwoTypeCheck(LangModule program)
     {
         foreach (var union in program.Unions)
         {

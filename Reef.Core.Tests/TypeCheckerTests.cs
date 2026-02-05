@@ -8,7 +8,7 @@ namespace Reef.Core.Tests;
 public class TypeCheckerTests
 {
     private readonly MockFileSystem _fileSystem = new();
-    
+
     [Theory]
     [MemberData(nameof(SuccessfulExpressionTestCases))]
     public async Task Should_SuccessfullyTypeCheckExpressions(Dictionary<string, string> sourceFiles)
@@ -18,59 +18,320 @@ public class TypeCheckerTests
             _fileSystem.AddFile(path, new MockFileData(contents));
         }
 
-        var typeCheckResult = await new ReefCompiler(_fileSystem).TypeCheck("main.rf");
+        var typeCheckResult = await new ReefCompiler(_fileSystem).TypeCheck();
 
-        typeCheckResult.ParserErrors.Should().BeEmpty();
-        typeCheckResult.TypeCheckerErrors.Should().BeEmpty();
+        foreach (var (fileName, innerTypeCheckResult) in typeCheckResult)
+        {
+            innerTypeCheckResult.ParserErrors.Should().BeEmpty(because: $"{fileName} should have no parser errors");
+            innerTypeCheckResult.TypeCheckerErrors.Should().BeEmpty(because: $"{fileName} should have no type checking errors");
+        }
     }
 
     [Theory]
     [MemberData(nameof(FailedExpressionTestCases))]
     public async Task Should_FailTypeChecking_When_ExpressionsAreNotValid(
         string description,
-        Dictionary<string, string> sourceFiles,
-        IReadOnlyList<TypeCheckerError> expectedErrors)
+        Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)> sourceFiles)
     {
         description.Should().NotBeNull();
-        
-        foreach (var (path, contents) in sourceFiles)
+
+        foreach (var (path, (contents, _)) in sourceFiles)
         {
             _fileSystem.AddFile(path, new MockFileData(contents));
         }
 
-        var typeCheckResult = await new ReefCompiler(_fileSystem).TypeCheck("main.rf");
-        typeCheckResult.ParserErrors.Should().BeEmpty();
-        
-        expectedErrors.Should().NotBeEmpty();
+        sourceFiles.SelectMany(x => x.Value.expectedErrors).Should().NotBeEmpty();
 
-        typeCheckResult.TypeCheckerErrors.Should().BeEquivalentTo(expectedErrors,
-                opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan))).And
-            .NotBeEmpty();
+        foreach (var (fileName, typeCheckResult) in await new ReefCompiler(_fileSystem).TypeCheck())
+        {
+            typeCheckResult.ParserErrors.Should().BeEmpty();
+            var expectedErrors = sourceFiles.TryGetValue(fileName, out var result) ? result.expectedErrors : [];
+            typeCheckResult.TypeCheckerErrors.Should().BeEquivalentTo(expectedErrors,
+                    opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan))).And
+                .NotBeEmpty();
+        }
     }
 
+    [TestMe]
     [Fact]
-    public void SingleTest()
+    public async Task SingleTest()
     {
-        const string src = """
-                           fn someFn(): string { return ""; }
-                           var a: Fn(): mut string = someFn;
-                           """;
+        // var files = new()
+        //             {
+        //                 {
+        //                     "main.rf",
+        //                     """
+        //                     use :::otherModule:::{MyClass, MyUnion, SomeFn};
 
-        IReadOnlyList<TypeCheckerError> expectedErrors =
-            [TypeCheckerError.FunctionObjectReturnTypeMutabilityMismatch(SourceRange.Default)];
+        //                     var a = new MyClass{};
+        //                     var b = MyUnion::A;
+        //                     var c = SomeFn();
+        //                     """
+        //                 },
+        //                 {
+        //                     "otherModule.rf",
+        //                     """
+        //                     pub class MyClass{}
+        //                     pub union MyUnion{A}
+        //                     pub fn SomeFn(){}
+        //                     """
+        //                 }
+        //             };
 
+        // IReadOnlyList<TypeCheckerError> expectedErrors =
+        //     [];
 
-        var program = Parser.Parse("TypeCheckerTests", Tokenizer.Tokenize(src));
-        var result = TypeCheck(program.ParsedProgram);
+        // foreach (var (path, contents) in files)
+        // {
+        //     _fileSystem.AddFile(path, new MockFileData(contents));
+        // }
 
-        result.Should().BeEquivalentTo(expectedErrors,
-            opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
+        // var typeCheckResult = await new ReefCompiler(_fileSystem).TypeCheck();
+        // typeCheckResult.ParserErrors.Should().BeEmpty();
+
+        // typeCheckResult.TypeCheckerErrors.Should().BeEquivalentTo(expectedErrors,
+        //     opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
     }
 
     public static TheoryData<Dictionary<string, string>> SuccessfulExpressionTestCases()
     {
         IEnumerable<Dictionary<string, string>> sources =
         [
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    use :::otherModule:::{MyClass, MyUnion, SomeFn};
+
+                    var a = new MyClass{};
+                    var b = MyUnion::A;
+                    var c = SomeFn();
+                    """
+                },
+                {
+                    "otherModule.rf",
+                    """
+                    class MyClass{}
+                    union MyUnion{A}
+                    pub fn SomeFn(){}
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    use :::someModule:::subModule:::{MyClass, MyUnion, SomeFn};
+
+                    var a = new MyClass{};
+                    var b = MyUnion::A;
+                    var c = SomeFn();
+                    """
+                },
+                {
+                    "someModule/subModule.rf",
+                    """
+                    pub class MyClass{}
+                    pub union MyUnion{A}
+                    pub fn SomeFn(){}
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    use :::someModule:::{MyUnion, SomeFn, otherModule:::MyClass};
+
+                    var a = new MyClass{};
+                    var b = MyUnion::A;
+                    SomeFn();
+                    """
+                },
+                {
+                    "someModule/someModule.rf",
+                    """
+                    pub union MyUnion{A}
+                    pub fn SomeFn(){}
+                    """
+                },
+                {
+                    "someModule/otherModule.rf",
+                    """
+                    pub class MyClass{}
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    use :::someModule:::otherModule:::SomeFn;
+
+                    pub class MyClass{};
+
+                    SomeFn();
+                    """
+                },
+                {
+                    "someModule/otherModule.rf",
+                    """
+                    use :::main:::MyClass;
+
+                    pub fn SomeFn() {
+                        var a = new MyClass{};
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    use :::otherModule:::*;
+
+                    var a = new MyClass{};
+                    var b = MyUnion::A;
+                    var c = SomeFn();
+                    """
+                },
+                {
+                    "otherModule.rf",
+                    """
+                    class MyClass{}
+                    union MyUnion{A}
+                    pub fn SomeFn(){}
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    use :::otherModule:::{MyClass, MyUnion};
+
+                    var a = new MyClass{};
+                    var b = MyUnion::A;
+                    {
+                        use :::otherModule:::SomeFn;
+                        SomeFn();
+                    }
+                    """
+                },
+                {
+                    "otherModule.rf",
+                    """
+                    class MyClass{}
+                    union MyUnion{A}
+                    pub fn SomeFn(){}
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    use :::otherModule:::MyClass;
+
+                    pub fn SomeFn(): MyClass {
+                        return new MyClass{};
+                    }
+
+                    """
+                },
+                {
+                    "otherModule.rf",
+                    """
+                    use :::main:::SomeFn;
+
+                    pub class MyClass{};
+
+                    fn OtherFn() {
+                        var a = SomeFn();
+                    }
+
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    use someModule:::{subModule1:::MyClass, subModule2:::SomeFn};
+
+                    var a = new MyClass{};
+                    SomeFn();
+                    """
+                },
+                {
+                    "someModule/subModule1.rf",
+                    """
+                    pub class MyClass{};
+                    """
+                },
+                {
+                    "someModule/subModule2.rf",
+                    """
+                    use subModule1:::MyClass;
+
+                    pub fn SomeFn() {
+                        var a = new MyClass{};
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    use someModule:::SomeFn;
+
+                    var a = SomeFn();
+                    print_string(a.Something);
+                    """
+                },
+                {
+                    "someModule.rf",
+                    """
+                    pub class MyClass{pub fn Something: string}
+                    pub fn SomeFn(): MyClass {
+                        return new MyClass{Something = "hi"};
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub class MyClass{};
+
+                    var a = SomeFn();
+
+                    """
+                },
+                {
+                    "otherModule.rf",
+                    """
+                    use :::main:::MyClass;
+
+                    pub fn SomeFn(): MyClass
+                    {
+                        return new MyClass{};
+                    }
+                    """
+                }
+            },
             new()
             {
                 {
@@ -86,7 +347,7 @@ public class TypeCheckerTests
             {
                 {
                     "main.rf", """
-                               class MyClass { pub mut field MyField: string, } 
+                               class MyClass { pub mut field MyField: string, }
                                var mut a = [new MyClass{MyField = "hi"}];
                                a[0].MyField = "bye";
                                """
@@ -245,7 +506,7 @@ public class TypeCheckerTests
                 {
                     "main.rf", """
                                union MyUnion{A}
-                               var a: unboxed MyUnion = unboxed MyUnion::A; 
+                               var a: unboxed MyUnion = unboxed MyUnion::A;
                                """
                 }
             },
@@ -580,11 +841,11 @@ public class TypeCheckerTests
                 {
                     "main.rf", """
                                class MyClass {
-                                   field MyField: string, 
-                                   
+                                   field MyField: string,
+
                                    fn MyFn() {
                                        var a = MyField;
-                                   } 
+                                   }
                                }
                                """
                 }
@@ -742,7 +1003,7 @@ public class TypeCheckerTests
                                        fn InnerFn(param: T): T {
                                            return param;
                                        }
-                                       
+
                                        var a = InnerFn(todo!);
                                    }
                                }
@@ -844,7 +1105,7 @@ public class TypeCheckerTests
                                                var b = a;
                                                var d = c;
                                            }
-                                           
+
                                            Fourth();
                                        }
                                        Third();
@@ -898,7 +1159,7 @@ public class TypeCheckerTests
                 {
                     "main.rf", """
                                union MyUnion {A, B}
-                               class MyClass { pub field MyField: MyUnion } 
+                               class MyClass { pub field MyField: MyUnion }
 
                                var a = new MyClass { MyField = MyUnion::A };
                                match (a) {
@@ -1158,7 +1419,7 @@ public class TypeCheckerTests
                     "main.rf", """
                                // single field match fully exhaustive
                                union MyUnion {A, B}
-                               class MyClass { pub field MyField: MyUnion } 
+                               class MyClass { pub field MyField: MyUnion }
 
                                var a = new MyClass { MyField = MyUnion::A };
                                match (a) {
@@ -1228,7 +1489,7 @@ public class TypeCheckerTests
                     "main.rf", """
                                union MyUnion {
                                    A(i64)
-                               }  
+                               }
 
                                var a = MyUnion::A(1);
                                if (a matches MyUnion::A(_) var b) {
@@ -1379,7 +1640,7 @@ public class TypeCheckerTests
                                class MyClass {
                                    pub field MyField: string,
                                    field OtherField: bool,
-                                   
+
                                    pub static fn Create(): MyClass {
                                        return new MyClass {
                                            MyField = "",
@@ -1558,7 +1819,7 @@ public class TypeCheckerTests
                                    if (true) {
                                        return ok(1);
                                    }
-                                   
+
                                    return error(false);
                                }
                                """
@@ -1596,7 +1857,7 @@ public class TypeCheckerTests
                     "main.rf", """
                                union MyUnion {
                                    A,
-                                   
+
                                    fn SomeFn() {
                                        var a: MyUnion = this;
                                    }
@@ -1776,7 +2037,7 @@ public class TypeCheckerTests
                     "main.rf", """
                                class MyClass {
                                    mut field MyField: string,
-                                   
+
                                    mut fn MyFn() {
                                        MyField = "";
                                    }
@@ -1790,7 +2051,7 @@ public class TypeCheckerTests
                     "main.rf", """
                                class MyClass {
                                    mut field MyField: string,
-                                   
+
                                    mut fn MyFn() {
                                        mut fn InnerFn() {
                                            MyField = "";
@@ -1806,7 +2067,7 @@ public class TypeCheckerTests
                     "main.rf", """
                                class MyClass {
                                    static field MyField: string = "",
-                                   
+
                                    // instance functions have access to static fields
                                    fn MyFn(): string {
                                        return MyField;
@@ -1821,7 +2082,7 @@ public class TypeCheckerTests
                     "main.rf", """
                                class MyClass {
                                    field MyField: string,
-                                   
+
                                    // instance functions have access to instance fields
                                    fn MyFn(): string {
                                        return MyField;
@@ -1886,7 +2147,7 @@ public class TypeCheckerTests
                                class MyClass {
                                    pub mut field MyField: string
                                }
-                               fn MyFn(mut param: MyClass) { 
+                               fn MyFn(mut param: MyClass) {
                                    param.MyField = "";
                                }
                                """
@@ -1897,7 +2158,7 @@ public class TypeCheckerTests
                 {
                     "main.rf", """
                                fn MyFn(mut param: string) {
-                                  param = ""; 
+                                  param = "";
                                }
                                """
                 }
@@ -1994,7 +2255,7 @@ public class TypeCheckerTests
                 {
                     "main.rf", """
                                union MyUnion {
-                                   A { 
+                                   A {
                                        field myField: string
                                    }
                                }
@@ -2253,7 +2514,7 @@ public class TypeCheckerTests
                     "main.rf", """
                                union MyUnion {
                                    A,
-                                   
+
                                    fn SomeMethod() {
                                    }
                                }
@@ -2264,9 +2525,9 @@ public class TypeCheckerTests
             {
                 {
                     "main.rf", """
-                               class MyClass { 
+                               class MyClass {
                                    field someField: string,
-                                   
+
                                    pub static fn New(): MyClass {
                                        return new MyClass {
                                            someField = ""
@@ -2304,7 +2565,7 @@ public class TypeCheckerTests
                 {
                     "main.rf", """
                                fn OuterFn() {
-                                  var a = new MyClass{}; 
+                                  var a = new MyClass{};
                                   a.MyFn();
                                }
                                class MyClass {
@@ -2346,7 +2607,7 @@ public class TypeCheckerTests
                                    if (true) {
                                        return result::<string, i64>::Ok("someValue");
                                    }
-                                   
+
                                    return result::<string, i64>::Error(1);
                                }
                                """
@@ -2615,47 +2876,149 @@ public class TypeCheckerTests
         return new TheoryData<Dictionary<string, string>>(sources);
     }
 
-    public static TheoryData<string, Dictionary<string, string>, IReadOnlyList<TypeCheckerError>>
+    public static TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         FailedExpressionTestCases()
     {
-        return new TheoryData<string, Dictionary<string, string>, IReadOnlyList<TypeCheckerError>>
+        return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
             {
-                "Function object return type mutability mismatch",
-                new Dictionary<string, string>
+                "Referencing Symbols not imported",
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf",
+                        ("""
+                        var a = new MyClass{};
+                        var b = MyUnion::A;
+                        SomeFn();
+                        """,
+                        [
+                            TypeCheckerError.SymbolNotFound(Identifier("MyClass")),
+                            TypeCheckerError.SymbolNotFound(Identifier("MyUnion")),
+                            TypeCheckerError.SymbolNotFound(Identifier("SomeFn")),
+                        ])
+                    },
+                    {
+                        "otherModule.rf",
+                        ("""
+                        pub class MyClass{}
+                        pub union MyUnion{A}
+                        pub fn SomeFn(){}
+                        """, [])
+                    }
+                }
+            },
+            {
+                "Imported item not public",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+                        use :::otherModule:::{MyClass, MyUnion, SomeFn};
+                        """, [
+                                            TypeCheckerError.ImportedItemNotPublic(Identifier("MyClass")),
+                                            TypeCheckerError.ImportedItemNotPublic(Identifier("MyUnion")),
+                                            TypeCheckerError.ImportedItemNotPublic(Identifier("SomeFn")),
+                                        ])
+                    },
+                    {
+                        "otherModule.rf",
+                        ("""
+                        class MyClass{}
+                        union MyUnion{A}
+                        fn SomeFn(){}
+                        """, [])
+                    }
+                }
+            },
+            {
+                "Reference non public item when using star import",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+                        use :::otherModule:::*;
+                        var a = new MyClass{};
+                        var b = MyUnion::A;
+                        SomeFn();
+                        """,
+                        [
+                            TypeCheckerError.SymbolNotFound(Identifier("SomeFn")),
+                        ])
+                    },
+                    {
+                        "otherModule.rf",
+                        ("""
+                        pub class MyClass{}
+                        pub union MyUnion{A}
+                        fn SomeFn(){}
+                        """, [])
+                    }
+                }
+            },
+            {
+                "Reference non public item when using star import",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+                        use :::otherModule:::*;
+                        var a = new MyClass{};
+                        var b = MyUnion::A;
+                        SomeFn();
+                        """, [
+                                            TypeCheckerError.SymbolNotFound(Identifier("SomeFn")),
+                                        ])
+                    },
+                    {
+                        "otherModule.rf",
+                        ("""
+                        pub class MyClass{}
+                        pub union MyUnion{A}
+                        fn SomeFn(){}
+                        """, [])
+                    }
+                }
+            },
+            {
+                "Function object return type mutability mismatch",
+                new()
+                {
+                    {
+                        "main.rf", ("""
                                    fn someFn(): string { return ""; }
                                    var a: Fn(): mut string = someFn;
-                                   """
+                                   """, [TypeCheckerError.FunctionObjectReturnTypeMutabilityMismatch(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.FunctionObjectReturnTypeMutabilityMismatch(SourceRange.Default)]
+                }
+
             },
             {
                 "assign non mutable variable to mutable field",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class FirstClass{ pub mut field FirstClassField: string }
                                    class MyClass{pub mut field MyField: FirstClass}
                                    var firstClass = new FirstClass{FirstClassField = ""};
                                    var secondClass = new MyClass{MyField = firstClass}
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("firstClass", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("firstClass", SourceRange.Default)]
+                }
+
             },
             {
                 "return non mutable variable through mutable return",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {pub mut field MyField: string, }
-                                   fn someFn(myClass: MyClass): mut MyClass 
+                                   fn someFn(myClass: MyClass): mut MyClass
                                    {
                                        return myClass;
                                    }
@@ -2663,432 +3026,432 @@ public class TypeCheckerTests
                                    var outer = new MyClass{MyField = ""};
                                    var mut a = someFn(outer);
                                    a.MyField = "bye";
-                                   """
+                                   """, [TypeCheckerError.NonMutableExpressionPassedToMutableReturn(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableExpressionPassedToMutableReturn(SourceRange.Default)]
+                }
+
             },
             {
                 "assign non mutable variable to mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass{pub mut field MyField: string, }
                                    var a = new MyClass{MyField = ""};
                                    var mut b = a;
                                    b.MyField = "bye";
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "assign to field of object inside non mutable array",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
-                                   class MyClass { pub mut field MyField: string, } 
+                        "main.rf", ("""
+                                   class MyClass { pub mut field MyField: string, }
                                    var a = [new MyClass{MyField = "hi"}];
                                    a[0].MyField = "bye";
-                                   """
+                                   """, [
+                                                       TypeCheckerError.NonMutableMemberOwnerAssignment(
+                                                           IndexExpression(
+                                                               VariableAccessor("a"),
+                                                               Literal(0)))
+                                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.NonMutableMemberOwnerAssignment(
-                        IndexExpression(
-                            VariableAccessor("a"),
-                            Literal(0)))
-                ]
+                }
+
             },
             {
                 "assign to non mutable array",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = [""];
                                    a[0] = "hi";
-                                   """
+                                   """, [
+                                   TypeCheckerError.NonMutableMemberOwnerAssignment(VariableAccessor("a"))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.NonMutableMemberOwnerAssignment(VariableAccessor("a"))
-                ]
+                }
+
             },
             {
                 "Incorrect array element type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: [string; 3] = [1, 2, 3];
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "Incorrect array length",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: [string; 3] = ["hi", "bye"];
-                                   """
+                                   """, [TypeCheckerError.ArrayLengthMismatch(3, 2, SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.ArrayLengthMismatch(3, 2, SourceRange.Default)]
+                }
+
             },
             {
                 "Incorrect array length - fill collection expression",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: [string; 3] = ["hi"; 2];
-                                   """
+                                   """, [TypeCheckerError.ArrayLengthMismatch(3, 2, SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.ArrayLengthMismatch(3, 2, SourceRange.Default)]
+                }
+
             },
             {
                 "different array element types",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = ["", 1];
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "Incorrect array boxing - boxed",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: unboxed [string; 2] = ["", ""];
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypeBoxing(
+                                   SourceRange.Default,
+                                   new ArrayType(String, false, 2),
+                                   false,
+                                   new ArrayType(String, true, 2),
+                                   true)
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypeBoxing(
-                        SourceRange.Default,
-                        new ArrayType(String, false, 2),
-                        false,
-                        new ArrayType(String, true, 2),
-                        true)
-                ]
+                }
+
             },
             {
                 "Incorrect array boxing - unboxed",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: [string; 2] = [unboxed; "", ""];
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypeBoxing(
+                                   SourceRange.Default,
+                                   new ArrayType(String, true, 2),
+                                   true,
+                                   new ArrayType(String, false, 2),
+                                   false)
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypeBoxing(
-                        SourceRange.Default,
-                        new ArrayType(String, true, 2),
-                        true,
-                        new ArrayType(String, false, 2),
-                        false)
-                ]
+                }
+
             },
             {
                 "Incorrect array element boxing - unboxed",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass{}
                                    var a: [MyClass; 1] = [new unboxed MyClass{}];
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypeBoxing(
+                                   SourceRange.Default,
+                                   new TestClassReference("MyClass"),
+                                   true,
+                                   new TestClassReference("MyClass", false),
+                                   false)
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypeBoxing(
-                        SourceRange.Default,
-                        new TestClassReference("MyClass"),
-                        true,
-                        new TestClassReference("MyClass", false),
-                        false)
-                ]
+                }
+
             },
             {
                 "Incorrect array element boxing - boxed",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: [i32; 1] = [box(1)];
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypeBoxing(
+                                   SourceRange.Default,
+                                   Int32,
+                                   false,
+                                   new UnspecifiedSizedIntType { Boxed = true },
+                                   true)
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypeBoxing(
-                        SourceRange.Default,
-                        Int32,
-                        false,
-                        new UnspecifiedSizedIntType { Boxed = true },
-                        true)
-                ]
+                }
+
             },
             {
                 "mismatched boxing for unbox method return value",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass{}
                                    var a: boxed MyClass = unbox(new MyClass{});
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass", true),
+                                   true, new TestClassReference("MyClass", false), false)
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass", true),
-                        true, new TestClassReference("MyClass", false), false)
-                ]
+                }
+
             },
             {
                 "mismatched boxing for unbox method parameter",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass{}
                                    var a: unboxed MyClass = unbox(new unboxed MyClass{});
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass", true),
+                                   true, new TestClassReference("MyClass", false), false)
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass", true),
-                        true, new TestClassReference("MyClass", false), false)
-                ]
+                }
+
             },
             {
                 "mismatched boxing for box method return value",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: unboxed i32 = box(1);
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("i32", false),
+                                   false, UnspecifiedSizedIntType, true)
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("i32", false),
-                        false, UnspecifiedSizedIntType, true)
-                ]
+                }
+
             },
             {
                 "mismatched boxing for box method parameter",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var number: boxed i32 = todo!;
                                    var a: boxed i32 = box(number);
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("i32", false),
+                                   false, new TestClassReference("i32", true), true)
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("i32", false),
-                        false, new TestClassReference("i32", true), true)
-                ]
+                }
+
             },
             {
                 "incorrect while loop check expression type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    while (1) {
                                    }
-                                   """
+                                   """, [MismatchedTypes(Boolean, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "break outside of loop",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    break;
-                                   """
+                                   """, [TypeCheckerError.BreakUsedOutsideOfLoop(new BreakExpression(SourceRange.Default))])
                     }
-                },
-                [TypeCheckerError.BreakUsedOutsideOfLoop(new BreakExpression(SourceRange.Default))]
+                }
+
             },
             {
                 "continue outside of loop",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
-                                   continue; 
-                                   """
+                        "main.rf", ("""
+                                   continue;
+                                   """, [TypeCheckerError.ContinueUsedOutsideOfLoop(new ContinueExpression(SourceRange.Default))])
                     }
-                },
-                [TypeCheckerError.ContinueUsedOutsideOfLoop(new ContinueExpression(SourceRange.Default))]
+                }
+
             },
             {
                 "incompatible int types",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: i64 = 1;
                                    var b: i32 = a;
-                                   """
+                                   """, [MismatchedTypes(Int32, Int64)])
                     }
-                },
-                [MismatchedTypes(Int32, Int64)]
+                }
+
             },
             {
                 "incompatible inferred int types through generic",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 1;
                                    fn SomeFn<T>(param: T): T { return param; }
                                    var b: i32 = SomeFn(a);
                                    var c: u8 = a;
-                                   """
+                                   """, [MismatchedTypes(UInt8, Int32)])
                     }
-                },
-                [MismatchedTypes(UInt8, Int32)]
+                }
+
             },
             {
                 "incompatible inferred int types through int operation",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 1;
                                    var b = 2;
                                    var c: u8 = a * b;
                                    var d: u16 = a;
                                    var e: i32 = b;
-                                   """
+                                   """, [
+                                   MismatchedTypes(UInt16, UInt8),
+                                   MismatchedTypes(Int32, UInt8)
+                                   ])
                     }
-                },
-                [
-                    MismatchedTypes(UInt16, UInt8),
-                    MismatchedTypes(Int32, UInt8)
-                ]
+                }
+
             },
             {
                 "too many arguments for function object from tuple variant",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion{A(string)}
                                    var a = MyUnion::A;
                                    var b = a("", "");
-                                   """
+                                   """, [
+                                   TypeCheckerError.IncorrectNumberOfMethodArguments(
+                                   MethodCall(VariableAccessor("a"), Literal(""), Literal("")), 1)
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.IncorrectNumberOfMethodArguments(
-                        MethodCall(VariableAccessor("a"), Literal(""), Literal("")), 1)
-                ]
+                }
+
             },
             {
                 "not enough arguments for function object from tuple variant",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion{A(string)}
                                    var a = MyUnion::A;
                                    var b = a();
-                                   """
+                                   """, [TypeCheckerError.IncorrectNumberOfMethodArguments(MethodCall(VariableAccessor("a")), 1)])
                     }
-                },
-                [TypeCheckerError.IncorrectNumberOfMethodArguments(MethodCall(VariableAccessor("a")), 1)]
+                }
+
             },
             {
                 "incorrect type argument for function object from tuple variant",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion{A(string)}
                                    var a = MyUnion::A;
                                    var b = a(1);
-                                   """
+                                   """, [TypeCheckerError.MismatchedTypes(SourceRange.Default, String, UnspecifiedSizedIntType)])
                     }
-                },
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "union tuple variant with no members",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion{A()}
-                                   """
+                                   """, [TypeCheckerError.EmptyUnionTupleVariant("MyUnion", Identifier("A"))])
                     }
-                },
-                [TypeCheckerError.EmptyUnionTupleVariant("MyUnion", Identifier("A"))]
+                }
+
             },
             {
                 "assign else if to variable without else",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = if (true) {} else if (true) {};
-                                   """
+                                   """, [TypeCheckerError.IfExpressionValueUsedWithoutElseBranch(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.IfExpressionValueUsedWithoutElseBranch(SourceRange.Default)]
+                }
+
             },
             {
                 "assign if to variable without else",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = if (true) {};
-                                   """
+                                   """, [TypeCheckerError.IfExpressionValueUsedWithoutElseBranch(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.IfExpressionValueUsedWithoutElseBranch(SourceRange.Default)]
+                }
+
             },
             {
                 "duplicate variable declaration",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = "";
                                    var a = "";
-                                   """
+                                   """, [TypeCheckerError.DuplicateVariableDeclaration(Identifier("a"))])
                     }
-                },
-                [TypeCheckerError.DuplicateVariableDeclaration(Identifier("a"))]
+                }
+
             },
             {
                 "assigning to 'this'",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass
                                    {
                                        mut fn SomeFn()
@@ -3096,17 +3459,17 @@ public class TypeCheckerTests
                                            this = new MyClass{};
                                        }
                                    }
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("this", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("this", SourceRange.Default)]
+                }
+
             },
             {
                 "closure accesses variable before declaration",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn()
                                    {
                                        var b = a;
@@ -3114,20 +3477,20 @@ public class TypeCheckerTests
                                    MyFn();
 
                                    var a = 1;
-                                   """
+                                   """, [
+                                   TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("MyFn"),
+                                   [Identifier("a")])
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("MyFn"),
-                        [Identifier("a")])
-                ]
+                }
+
             },
             {
                 "closure accesses variable before declaration",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn()
                                    {
                                        var b = a;
@@ -3135,124 +3498,124 @@ public class TypeCheckerTests
                                    var c = MyFn;
 
                                    var a = 1;
-                                   """
+                                   """, [
+                                   TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("MyFn"),
+                                   [Identifier("a")])
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("MyFn"),
-                        [Identifier("a")])
-                ]
+                }
+
             },
             {
                 "accessing closure before captured variables have been declared",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    MyFn();
                                    var a = 1;
                                    fn MyFn()
                                    {
                                        var b = a;
                                    }
-                                   """
+                                   """, [
+                                   TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("MyFn"),
+                                   [Identifier("a")])
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("MyFn"),
-                        [Identifier("a")])
-                ]
+                }
+
             },
             {
                 "matches - mutable variable declaration on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 1;
                                    if (a matches var mut b) {}
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "matches - type pattern mutable variable on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 1;
                                    if (a matches i64 var mut b) {}
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "matches - class pattern mutable variable on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
-                                   class MyClass{} 
+                        "main.rf", ("""
+                                   class MyClass{}
                                    var a = new MyClass{};
                                    if (a matches MyClass{} var mut b) {}
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "matches - class pattern field mutable variable on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {pub field MyField: string}
                                    var a = new MyClass { MyField = "" };
                                    if (a matches MyClass{MyField: var mut b}) {}
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "matches - mutable union variant pattern on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion{A}
                                    var a = MyUnion::A;
                                    if (a matches MyUnion::A var mut b) {
                                    }
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "matches - mutable tuple variant pattern variable on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A(string) }
                                    var a = MyUnion::A("");
                                    if (a matches MyUnion::A(_) var mut b) {
                                    }
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "matches - mutable variable declaration tuple member pattern on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        A(string)
                                    }
@@ -3260,171 +3623,171 @@ public class TypeCheckerTests
                                    if (a matches MyUnion::A(var mut str)) {
                                        str = "hi";
                                    }
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "matches - mutable class variant pattern variable on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {A{field MyField: string}}
                                    var a = new MyUnion::A { MyField = "" };
                                    if (a matches MyUnion::A{_} var mut b) {}
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "matches - mutable class variant field pattern on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
-                                   union MyUnion { A { field MyField: string } } 
+                        "main.rf", ("""
+                                   union MyUnion { A { field MyField: string } }
                                    var a = new MyUnion::A { MyField = "" };
                                    if (a matches MyUnion::A { MyField: var mut b }) {}
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "match - mutable variable declaration on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 1;
                                    match (a) { var mut b => {}}
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "match - type pattern mutable variable on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 1;
                                    match (a) { i64 var mut b => {}}
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "match - class pattern mutable variable on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
-                                   class MyClass{} 
+                        "main.rf", ("""
+                                   class MyClass{}
                                    var a = new MyClass{};
                                    match (a) { MyClass{} var mut b => {}}
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "match - class pattern field mutable variable on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {pub field MyField: string}
                                    var a = new MyClass { MyField = "" };
                                    match (a) { MyClass{MyField: var mut b} => {}}
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "match - mutable union variant pattern on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion{A}
                                    var a = MyUnion::A;
                                    match (a) { MyUnion::A var mut b => {}}
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "match - mutable tuple variant pattern variable on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A(string) }
                                    var a = MyUnion::A("");
                                    match (a) { MyUnion::A(_) var mut b => {}}
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "match - mutable variable declaration tuple member pattern on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        A(string)
                                    }
                                    var a = MyUnion::A("");
                                    match (a) { MyUnion::A(var mut str) => {}}
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "match - mutable class variant pattern variable on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {A{field MyField: string}}
                                    var a = new MyUnion::A { MyField = "" };
                                    match (a) { MyUnion::A{_} var mut b => {}}
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "match - mutable class variant field pattern on non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
-                                   union MyUnion { A { field MyField: string } } 
+                        "main.rf", ("""
+                                   union MyUnion { A { field MyField: string } }
                                    var a = new MyUnion::A { MyField = "" };
-                                   match (a) {MyUnion::A { MyField: var mut b } => {}} 
-                                   """
+                                   match (a) {MyUnion::A { MyField: var mut b } => {}}
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "mutating non mutable pattern variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        A(string)
                                    }
@@ -3432,344 +3795,344 @@ public class TypeCheckerTests
                                    if (a matches MyUnion::A(var str)) {
                                        str = "hi";
                                    }
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("str", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("str", SourceRange.Default)]
+                }
+
             },
             {
                 "static field used in class pattern",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        pub static field MyField: string = ""
                                    }
                                    var a = new MyClass{};
                                    if (a matches MyClass { MyField }){}
-                                   """
+                                   """, [TypeCheckerError.StaticFieldInClassPattern(Identifier("MyField"))])
                     }
-                },
-                [TypeCheckerError.StaticFieldInClassPattern(Identifier("MyField"))]
+                }
+
             },
             {
                 "non bool used in or",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 1 || true
-                                   """
+                                   """, [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)])
                     }
-                },
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "non bool used in or",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = true || 1
-                                   """
+                                   """, [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)])
                     }
-                },
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "non bool used in and",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 1 && true
-                                   """
+                                   """, [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)])
                     }
-                },
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "non bool used in and",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = true && 1
-                                   """
+                                   """, [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)])
                     }
-                },
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "missing field in instance method",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        field MyField: string,
-                                       
+
                                        fn MyFn() {
                                            var a = MyField_;
                                        }
                                    }
-                                   """
+                                   """, [TypeCheckerError.SymbolNotFound(Identifier("MyField_"))])
                     }
-                },
-                [TypeCheckerError.SymbolNotFound(Identifier("MyField_"))]
+                }
+
             },
             {
                 "closure mutates non mutable variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 1;
                                    fn MyFn() {
                                        a = 2;
-                                   } 
-                                   """
+                                   }
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "missing class static member",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass{}
                                    var a = MyClass::A;
-                                   """
+                                   """, [TypeCheckerError.UnknownTypeMember(Identifier("A"), "MyClass")])
                     }
-                },
-                [TypeCheckerError.UnknownTypeMember(Identifier("A"), "MyClass")]
+                }
+
             },
             {
                 "missing class instance member",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass{}
                                    var a = new MyClass{};
                                    var b = a.b;
-                                   """
+                                   """, [TypeCheckerError.UnknownTypeMember(Identifier("b"), "MyClass")])
                     }
-                },
-                [TypeCheckerError.UnknownTypeMember(Identifier("b"), "MyClass")]
+                }
+
             },
             {
                 "missing union static member",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion{}
                                    var a = MyUnion::A;
-                                   """
+                                   """, [TypeCheckerError.UnknownTypeMember(Identifier("A"), "MyUnion")])
                     }
-                },
-                [TypeCheckerError.UnknownTypeMember(Identifier("A"), "MyUnion")]
+                }
+
             },
             {
                 "missing union instance member",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion{A}
                                    var a = MyUnion::A;
                                    var b = a.b;
-                                   """
+                                   """, [TypeCheckerError.UnknownTypeMember(Identifier("b"), "MyUnion")])
                     }
-                },
-                [TypeCheckerError.UnknownTypeMember(Identifier("b"), "MyUnion")]
+                }
+
             },
             {
                 "union class variant missing initializer",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        A {field MyField: string}
                                    }
                                    var a = MyUnion::A;
-                                   """
+                                   """, [TypeCheckerError.UnionClassVariantWithoutInitializer(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.UnionClassVariantWithoutInitializer(SourceRange.Default)]
+                }
+
             },
             {
                 "static class function accessed through member access",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass{pub static fn MyFn(){}}
                                    var a = new MyClass{};
                                    a.MyFn();
-                                   """
+                                   """, [TypeCheckerError.InstanceMemberAccessOnStaticMember(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.InstanceMemberAccessOnStaticMember(SourceRange.Default)]
+                }
+
             },
             {
                 "static class field accessed through member access",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass{pub static field MyField: string = ""}
                                    var a = new MyClass{};
                                    a.MyField;
-                                   """
+                                   """, [TypeCheckerError.InstanceMemberAccessOnStaticMember(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.InstanceMemberAccessOnStaticMember(SourceRange.Default)]
+                }
+
             },
             {
                 "static union function accessed through member access",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A, pub static fn MyFn(){} }
                                    var a = MyUnion::A;
                                    a.MyFn();
-                                   """
+                                   """, [TypeCheckerError.InstanceMemberAccessOnStaticMember(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.InstanceMemberAccessOnStaticMember(SourceRange.Default)]
+                }
+
             },
             {
                 "instance class function accessed through static access",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {pub fn MyFn(){}}
                                    MyClass::MyFn();
-                                   """
+                                   """, [TypeCheckerError.StaticMemberAccessOnInstanceMember(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.StaticMemberAccessOnInstanceMember(SourceRange.Default)]
+                }
+
             },
             {
                 "instance class field accessed through static access",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {pub field MyField: string}
                                    var a = MyClass::MyField;
-                                   """
+                                   """, [TypeCheckerError.StaticMemberAccessOnInstanceMember(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.StaticMemberAccessOnInstanceMember(SourceRange.Default)]
+                }
+
             },
             {
                 "instance union function accessed through static access",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {A, pub fn MyFn(){}}
                                    MyUnion::MyFn();
-                                   """
+                                   """, [TypeCheckerError.StaticMemberAccessOnInstanceMember(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.StaticMemberAccessOnInstanceMember(SourceRange.Default)]
+                }
+
             },
             {
                 "non function variable has type arguments",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 1;
                                    var b = a::<string>;
-                                   """
+                                   """, [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)]
+                }
+
             },
             {
                 "function variable has type arguments",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn<T>(){}
                                    var a = MyFn::<string>;
                                    var b = a::<string>;
-                                   """
+                                   """, [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)]
+                }
+
             },
             {
                 "non function class member access has type arguments",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass{pub field MyField: string};
                                    var a = new MyClass{MyField = ""};
                                    var b = a.MyField::<string>;
-                                   """
+                                   """, [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)]
+                }
+
             },
             {
                 "union variant has type arguments",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion{A}
                                    var a = MyUnion::A::<>;
-                                   """
+                                   """, [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)]
+                }
+
             },
             {
                 "union tuple variant has type arguments",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion{A(string)}
                                    var a = MyUnion::A::<>("");
-                                   """
+                                   """, [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)]
+                }
+
             },
             {
                 "union unit variant has type arguments",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion{A}
                                    var a = MyUnion::A::<>;
-                                   """
+                                   """, [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(SourceRange.Default)]
+                }
+
             },
             {
                 "creating mutable function object",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        pub mut field MyField: string,
 
@@ -3779,315 +4142,315 @@ public class TypeCheckerTests
                                    }
                                    var a = new MyClass {MyField = ""};
                                    var b = a.MyFn;
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "assigning value to unit type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: () = 1;
-                                   """
+                                   """, [TypeCheckerError.MismatchedTypes(SourceRange.Default, Unit, UnspecifiedSizedIntType)])
                     }
-                },
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Unit, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "incorrect tuple types",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: (i64, string) = ("", 1);
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(null, Int64, String),
+                                   TupleType(null, String, UnspecifiedSizedIntType))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(null, Int64, String),
-                        TupleType(null, String, UnspecifiedSizedIntType))
-                ]
+                }
+
             },
             {
                 "too many tuple members",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: (i64, string) = (1, "", 2);
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(null, Int64, String),
+                                   TupleType(null, UnspecifiedSizedIntType, String, UnspecifiedSizedIntType))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(null, Int64, String),
-                        TupleType(null, UnspecifiedSizedIntType, String, UnspecifiedSizedIntType))
-                ]
+                }
+
             },
             {
                 "not enough tuple members",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: (i64, string, string) = (1, "");
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(null, Int64, String, String),
+                                   TupleType(null, UnspecifiedSizedIntType, String))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypes(SourceRange.Default, TupleType(null, Int64, String, String),
-                        TupleType(null, UnspecifiedSizedIntType, String))
-                ]
+                }
+
             },
             {
                 "function type too many parameters",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn SomeFn(a: i64){}
                                    var a: Fn() = SomeFn;
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypes(
+                                   SourceRange.Default,
+                                   FunctionObject(),
+                                   FunctionObject([(isMut: false, parameterType: Int64)]))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypes(
-                        SourceRange.Default,
-                        FunctionObject(),
-                        FunctionObject([(isMut: false, parameterType: Int64)]))
-                ]
+                }
+
             },
             {
                 "function type incorrect parameter type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn SomeFn(a: i64){}
                                    var a: Fn(string) = SomeFn;
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypes(
+                                   SourceRange.Default,
+                                   FunctionObject([(isMut: false, parameterType: String)]),
+                                   FunctionObject([(isMut: false, parameterType: Int64)]))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypes(
-                        SourceRange.Default,
-                        FunctionObject([(isMut: false, parameterType: String)]),
-                        FunctionObject([(isMut: false, parameterType: Int64)]))
-                ]
+                }
+
             },
             {
                 "function type not enough parameters",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn SomeFn(){}
                                    var a: Fn(i64) = SomeFn;
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypes(
+                                   SourceRange.Default,
+                                   FunctionObject([(isMut: false, parameterType: Int64)]),
+                                   FunctionObject())
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypes(
-                        SourceRange.Default,
-                        FunctionObject([(isMut: false, parameterType: Int64)]),
-                        FunctionObject())
-                ]
+                }
+
             },
             {
                 "function type incorrect return type when expected unit",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn SomeFn(a: i64): string {return "";}
                                    var a: Fn(i64) = SomeFn;
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypes(
+                                   SourceRange.Default,
+                                   FunctionObject([(isMut: false, parameterType: Int64)]),
+                                   FunctionObject([(isMut: false, parameterType: Int64)], String))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypes(
-                        SourceRange.Default,
-                        FunctionObject([(isMut: false, parameterType: Int64)]),
-                        FunctionObject([(isMut: false, parameterType: Int64)], String))
-                ]
+                }
+
             },
             {
                 "function type expected return type but used void",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn SomeFn(a: i64) {}
                                    var a: Fn(i64): string = SomeFn;
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypes(
+                                   SourceRange.Default,
+                                   FunctionObject([(isMut: false, parameterType: Int64)], String),
+                                   FunctionObject([(isMut: false, parameterType: Int64)], Unit))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypes(
-                        SourceRange.Default,
-                        FunctionObject([(isMut: false, parameterType: Int64)], String),
-                        FunctionObject([(isMut: false, parameterType: Int64)], Unit))
-                ]
+                }
+
             },
             {
                 "function type incorrect return type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn SomeFn(a: i64): i64 {return 1;}
                                    var a: Fn(i64): string = SomeFn;
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypes(
+                                   SourceRange.Default,
+                                   FunctionObject([(isMut: false, parameterType: Int64)], String),
+                                   FunctionObject([(isMut: false, parameterType: Int64)], Int64))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypes(
-                        SourceRange.Default,
-                        FunctionObject([(isMut: false, parameterType: Int64)], String),
-                        FunctionObject([(isMut: false, parameterType: Int64)], Int64))
-                ]
+                }
+
             },
             {
                 "function type incorrect parameter mutability",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn SomeFn(mut a: i64){}
                                    var a: Fn(i64) = SomeFn;
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypes(
+                                   SourceRange.Default,
+                                   FunctionObject([(isMut: false, parameterType: Int64)], Unit),
+                                   FunctionObject([(isMut: true, parameterType: Int64)], Unit))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypes(
-                        SourceRange.Default,
-                        FunctionObject([(isMut: false, parameterType: Int64)], Unit),
-                        FunctionObject([(isMut: true, parameterType: Int64)], Unit))
-                ]
+                }
+
             },
             {
                 "function type incorrect parameter mutability",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn SomeFn(a: i64){}
                                    var a: Fn(mut i64) = SomeFn;
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypes(
+                                   SourceRange.Default,
+                                   FunctionObject([(isMut: true, parameterType: Int64)], Unit),
+                                   FunctionObject([(isMut: false, parameterType: Int64)], Unit))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypes(
-                        SourceRange.Default,
-                        FunctionObject([(isMut: true, parameterType: Int64)], Unit),
-                        FunctionObject([(isMut: false, parameterType: Int64)], Unit))
-                ]
+                }
+
             },
             {
                 "reassigning incompatible inferred function type ",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn SomeFn(){}
                                    fn OtherFn(): i64{return 1}
                                    var mut a = SomeFn;
                                    a = OtherFn;
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypes(
+                                   SourceRange.Default,
+                                   FunctionObject(),
+                                   FunctionObject(returnType: Int64))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypes(
-                        SourceRange.Default,
-                        FunctionObject(),
-                        FunctionObject(returnType: Int64))
-                ]
+                }
+
             },
             {
                 "assign unknown variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    a = 2;
-                                   """
+                                   """, [TypeCheckerError.SymbolNotFound(Identifier("a"))])
                     }
-                },
-                [TypeCheckerError.SymbolNotFound(Identifier("a"))]
+                }
+
             },
             {
                 "unresolved generic type when referencing the same generic type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn<T>() {
                                        MyFn();
                                    }
-                                   """
+                                   """, [
+                                   TypeCheckerError.UnresolvedInferredGenericType(MethodCall(VariableAccessor("MyFn")), "T")
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.UnresolvedInferredGenericType(MethodCall(VariableAccessor("MyFn")), "T")
-                ]
+                }
+
             },
             {
                 "access instance method in static method - class",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        static fn StaticFn() {
                                            InstanceFn();
-                                       } 
-                                       
+                                       }
+
                                        fn InstanceFn() {}
                                    }
-                                   """
+                                   """, [TypeCheckerError.AccessInstanceMemberInStaticContext(Identifier("InstanceFn"))])
                     }
-                },
-                [TypeCheckerError.AccessInstanceMemberInStaticContext(Identifier("InstanceFn"))]
+                }
+
             },
             {
                 "access instance method in static method - union",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        static fn StaticFn() {
                                            InstanceFn();
-                                       } 
-                                       
+                                       }
+
                                        fn InstanceFn() {}
                                    }
-                                   """
+                                   """, [TypeCheckerError.AccessInstanceMemberInStaticContext(Identifier("InstanceFn"))])
                     }
-                },
-                [TypeCheckerError.AccessInstanceMemberInStaticContext(Identifier("InstanceFn"))]
+                }
+
             },
             {
                 "global function marked as mutable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    mut fn MyFn() {
                                    }
-                                   """
+                                   """, [TypeCheckerError.GlobalFunctionMarkedAsMutable(Identifier("MyFn"))])
                     }
-                },
-                [TypeCheckerError.GlobalFunctionMarkedAsMutable(Identifier("MyFn"))]
+                }
+
             },
             {
                 "deeply nested if branch doesn't return",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    static fn SomeFn(): i64 {
                                        if (true) {
                                            match (true) {
@@ -4103,69 +4466,69 @@ public class TypeCheckerTests
                                            }
                                        }
                                    }
-                                   """
+                                   """, [TypeCheckerError.MismatchedTypes(SourceRange.Default, Int64, Unit)])
                     }
-                },
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Int64, Unit)]
+                }
+
             },
             {
                 "static method doesn't return value",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    static fn SomeFn(): i64 {}
-                                   """
+                                   """, [TypeCheckerError.MismatchedTypes(SourceRange.Default, Int64, Unit)])
                     }
-                },
-                [TypeCheckerError.MismatchedTypes(SourceRange.Default, Int64, Unit)]
+                }
+
             },
             {
                 "static class method doesn't return value",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass { static fn SomeFn(): i64 {}}
-                                   """
+                                   """, [MismatchedTypes(Int64, Unit)])
                     }
-                },
-                [MismatchedTypes(Int64, Unit)]
+                }
+
             },
             {
                 "static union method doesn't return value",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { static fn SomeFn(): i64 {}}
-                                   """
+                                   """, [MismatchedTypes(Int64, Unit)])
                     }
-                },
-                [MismatchedTypes(Int64, Unit)]
+                }
+
             },
             {
                 "method doesn't return from all if branches",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    static fn SomeFn(): i64 {
                                        if (true) {
                                            return 1;
                                        }
                                    }
-                                   """
+                                   """, [MismatchedTypes(Int64, Unit)])
                     }
-                },
-                [MismatchedTypes(Int64, Unit)]
+                }
+
             },
             {
                 "method doesn't return from all if branches",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    static fn SomeFn(): i64 {
                                        if (true) {
                                            return 1;
@@ -4173,17 +4536,17 @@ public class TypeCheckerTests
                                            return 1;
                                        }
                                    }
-                                   """
+                                   """, [MismatchedTypes(Int64, Unit)])
                     }
-                },
-                [MismatchedTypes(Int64, Unit)]
+                }
+
             },
             {
                 "method doesn't return from all if branches",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    static fn SomeFn(): i64 {
                                        if (true) {
                                        }
@@ -4191,17 +4554,17 @@ public class TypeCheckerTests
                                            return 1;
                                        }
                                    }
-                                   """
+                                   """, [MismatchedTypes(Int64, Unit)])
                     }
-                },
-                [MismatchedTypes(Int64, Unit)]
+                }
+
             },
             {
                 "method doesn't return from all if branches",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    static fn SomeFn(): i64 {
                                        if (true) {
                                            return 1;
@@ -4212,135 +4575,135 @@ public class TypeCheckerTests
                                            return 1;
                                        }
                                    }
-                                   """
+                                   """, [MismatchedTypes(Int64, Unit)])
                     }
-                },
-                [MismatchedTypes(Int64, Unit)]
+                }
+
             },
             {
                 "mutating instance field from non mutable inner function",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        mut field MyField: string,
-                                       
+
                                        mut fn MyFn() {
                                            fn InnerFn() {
                                                MyField = "";
                                            }
                                        }
                                    }
-                                   """
+                                   """, [TypeCheckerError.MutatingInstanceInNonMutableFunction("InnerFn", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.MutatingInstanceInNonMutableFunction("InnerFn", SourceRange.Default)]
+                }
+
             },
             {
                 "creating mutable inner function from non mutable parent function",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        mut field MyField: string,
-                                       
+
                                        fn MyFn() {
                                            mut fn InnerFn() {
                                                MyField = "";
                                            }
                                        }
                                    }
-                                   """
+                                   """, [TypeCheckerError.MutableFunctionWithinNonMutableFunction(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.MutableFunctionWithinNonMutableFunction(SourceRange.Default)]
+                }
+
             },
             {
                 "static method marked as mutable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        pub static mut fn SomeFn() {}
                                    }
-                                   """
+                                   """, [TypeCheckerError.StaticFunctionMarkedAsMutable("SomeFn", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.StaticFunctionMarkedAsMutable("SomeFn", SourceRange.Default)]
+                }
+
             },
             {
                 "Calling mut instance function with non mut variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        pub mut field SomeField: string,
-                                       
+
                                        pub mut fn DoSomething() {
                                            SomeField = "";
                                        }
                                    }
                                    var a = new MyClass { SomeField = "" };
                                    a.DoSomething();
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "negate non integer",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = -"";
-                                   """
+                                   """, [MismatchedTypes([Int8, Int16, Int32, Int64], String)])
                     }
-                },
-                [MismatchedTypes([Int8, Int16, Int32, Int64], String)]
+                }
+
             },
             {
                 "negate unsigned value",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: u16 = 1;
                                    var b = -a;
-                                   """
+                                   """, [MismatchedTypes([Int8, Int16, Int32, Int64], UInt16)])
                     }
-                },
-                [MismatchedTypes([Int8, Int16, Int32, Int64], UInt16)]
+                }
+
             },
             {
                 "Assigning mut instance reference with non mut variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        pub mut fn DoSomething() {}
                                    }
                                    var a = new MyClass{};
                                    var b = a.DoSomething;
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "Mutating from non mutable instance function",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        pub mut field SomeField: string,
-                                       
+
                                        pub fn DoSomething() {
                                            SomeField = "";
                                        }
@@ -4348,35 +4711,35 @@ public class TypeCheckerTests
 
                                    var a = new MyClass { SomeField = "" };
                                    a.DoSomething();
-                                   """
+                                   """, [TypeCheckerError.MutatingInstanceInNonMutableFunction("DoSomething", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.MutatingInstanceInNonMutableFunction("DoSomething", SourceRange.Default)]
+                }
+
             },
             {
                 "Single field class exhaustive fail",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {A, B}
-                                   class MyClass { pub field MyField: MyUnion } 
+                                   class MyClass { pub field MyField: MyUnion }
 
                                    var a = new MyClass { MyField = MyUnion::A };
                                    match (a) {
                                        MyClass { MyField: MyUnion::A } => 1,
                                    }
-                                   """
+                                   """, [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)]
+                }
+
             },
             {
                 "double field class not all combinations of union variants are matched",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union OtherUnion {A, B}
                                    class MyClass {
                                        pub field MyField: OtherUnion,
@@ -4388,17 +4751,17 @@ public class TypeCheckerTests
                                        MyClass { MyField: OtherUnion::B, OtherField: OtherUnion::A } => 1,
                                        MyClass { MyField: OtherUnion::A, OtherField: OtherUnion::B } => 1,
                                    }
-                                   """
+                                   """, [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)]
+                }
+
             },
             {
                 "Deeply nested non exhaustive match",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union ThirdUnion { A, B }
                                    union OtherUnion {
                                        A { field MyField: ThirdUnion },
@@ -4414,17 +4777,17 @@ public class TypeCheckerTests
                                        MyUnion::A { MyField: OtherUnion::B } => 1,
                                        MyUnion::B => 1,
                                    }
-                                   """
+                                   """, [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)]
+                }
+
             },
             {
                 "tuple pattern match not exhaustive",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union OtherUnion {A, B}
                                    union MyUnion {
                                        A(OtherUnion)
@@ -4433,17 +4796,17 @@ public class TypeCheckerTests
                                    match (a) {
                                        MyUnion::A(OtherUnion::A) => 1,
                                    }
-                                   """
+                                   """, [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)]
+                }
+
             },
             {
                 "type inference from same function variable into two variables",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = SomeFn;
 
                                    var b: string = a();
@@ -4452,129 +4815,129 @@ public class TypeCheckerTests
                                    fn SomeFn<T>(): T {
                                        return todo!;
                                    }
-                                   """
+                                   """, [MismatchedTypes(Int64, String)])
                     }
-                },
-                [MismatchedTypes(Int64, String)]
+                }
+
             },
             {
                 "Static local function cannot access local variables",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    pub static fn SomeFn() {
                                        var a = "";
                                        static fn InnerFn(): string {
                                            return a;
                                        }
                                    }
-                                   """
+                                   """, [TypeCheckerError.StaticLocalFunctionAccessesOuterVariable(Identifier("a"))])
                     }
-                },
-                [TypeCheckerError.StaticLocalFunctionAccessesOuterVariable(Identifier("a"))]
+                }
+
             },
             {
                 "nested function parameter mismatched types return types",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn SomeFn<T>(param: T) {
                                        fn OtherFn<T2>(param2: T2) {
                                            fn ThirdFn<T3>(param3: T3): T2 {
                                                var a: T = param;
                                                var b: T2 = param2;
                                                var c: T3 = param3;
-                                               
+
                                                return a;
                                            }
                                        }
                                    }
-                                   """
+                                   """, [MismatchedTypes(GenericPlaceholder("T2"), GenericPlaceholder("T"))])
                     }
-                },
-                [MismatchedTypes(GenericPlaceholder("T2"), GenericPlaceholder("T"))]
+                }
+
             },
             {
                 "incompatible inferred types",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var mut a = ok(1);
                                    a = ok(true);
                                    a = error("");
-                                   """
+                                   """, [
+                                   MismatchedTypes(Result(UnspecifiedSizedIntType, GenericTypeReference("TError")),
+                                   Result(Boolean, GenericTypeReference("TError")))
+                                   ])
                     }
-                },
-                [
-                    MismatchedTypes(Result(UnspecifiedSizedIntType, GenericTypeReference("TError")),
-                        Result(Boolean, GenericTypeReference("TError")))
-                ]
+                }
+
             },
             {
                 "incompatible inferred result type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: result::<i64, string> = error(1);
-                                   """
+                                   """, [MismatchedTypes(Result(Int64, String), Result(Int64, UnspecifiedSizedIntType))])
                     }
-                },
-                [MismatchedTypes(Result(Int64, String), Result(Int64, UnspecifiedSizedIntType))]
+                }
+
             },
             {
                 "this used outside of class instance",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = this;
-                                   """
+                                   """, [TypeCheckerError.SymbolNotFound(Identifier("this"))])
                     }
-                },
-                [TypeCheckerError.SymbolNotFound(Identifier("this"))]
+                }
+
             },
             {
                 "this used in static class function",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        static fn SomeFn() {
                                            var a = this;
                                        }
                                    }
-                                   """
+                                   """, [TypeCheckerError.SymbolNotFound(Identifier("this"))])
                     }
-                },
-                [TypeCheckerError.SymbolNotFound(Identifier("this"))]
+                }
+
             },
             {
                 "this used in static union function",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        static fn SomeFn() {
                                            var a = this;
                                        }
                                    }
-                                   """
+                                   """, [TypeCheckerError.SymbolNotFound(Identifier("this"))])
                     }
-                },
-                [TypeCheckerError.SymbolNotFound(Identifier("this"))]
+                }
+
             },
             {
                 "pattern variable used in wrong match arm",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        A,
                                        B(i64),
@@ -4586,17 +4949,17 @@ public class TypeCheckerTests
                                        MyUnion::B(var b) => b,
                                        MyUnion::C { MyField } => b,// b not available in this arm
                                    }
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "match expression not exhaustive",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        A,
                                        B(i64),
@@ -4608,352 +4971,352 @@ public class TypeCheckerTests
                                        MyUnion::B(var b) => b,
                                        // non exhaustive
                                    }
-                                   """
+                                   """, [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)]
+                }
+
             },
             {
                 "match expression not exhaustive",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {A, B}
                                    class MyClass {pub field MyField: MyUnion}
                                    var a = new MyClass {MyField = MyUnion::A};
                                    match (a) {
                                        MyClass { MyField: MyUnion::A } => 1
                                    }
-                                   """
+                                   """, [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.MatchNonExhaustive(SourceRange.Default)]
+                }
+
             },
             {
                 "incompatible pattern type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = "";
                                    match (a) {
                                        i64 => 1, // incompatible pattern
                                        _ => 2
                                    }
-                                   """
+                                   """, [MismatchedTypes(String, Int64)])
                     }
-                },
-                [MismatchedTypes(String, Int64)]
+                }
+
             },
             {
                 "Unknown type used in pattern",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = "";
                                    match (a) {
                                        SomeType => 1, // missing type
                                        _ => 1
                                    }
-                                   """
+                                   """, [TypeCheckerError.SymbolNotFound(Identifier("SomeType"))])
                     }
-                },
-                [TypeCheckerError.SymbolNotFound(Identifier("SomeType"))]
+                }
+
             },
             {
                 "match arms provide incompatible types",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {A, B}
                                    var a = MyUnion::A;
                                    var b = match (a) {
                                        MyUnion::A => 1,
                                        MyUnion::B => "" // mismatched arm expression types
                                    }
-                                   """
+                                   """, [MismatchedTypes(UnspecifiedSizedIntType, String)])
                     }
-                },
-                [MismatchedTypes(UnspecifiedSizedIntType, String)]
+                }
+
             },
             {
                 "matches pattern variable used outside of true if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A }
                                    var a = MyUnion::A;
                                    var z = a matches MyUnion::A var b;
 
                                    var c: MyUnion = b;
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "matches pattern variable used outside of true if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A(string) }
                                    var a = MyUnion::A("hi");
                                    var z = a matches MyUnion::A(_) var b;
                                    var c: MyUnion = b;
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "matches pattern variable used outside of true if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A(string) }
                                    var a = MyUnion::A("hi");
                                    var z = a matches MyUnion::A(string var b);
                                    var c: string = b;
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "matches pattern variable used outside of true if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A(string) }
                                    var a = MyUnion::A("hi");
                                    var z = a matches MyUnion::A(string var b);
                                    var c: string = b;
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "union class pattern field used outside of true if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A { field MyField: string } }
                                    var a = new MyUnion::A { MyField = "" };
                                    var z = a matches MyUnion::A { MyField };
                                    var c: string = MyField;
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("MyField"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("MyField"))]
+                }
+
             },
             {
                 "matches pattern variable used outside of true if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A { field MyField: string } }
                                    var a = new MyUnion::A { MyField = "" };
                                    var z = a matches MyUnion::A { MyField: var b };
                                    var c: string = b;
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "matches pattern variable used outside of true if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A }
                                    var a = MyUnion::A;
                                    var z = a matches var b;
                                    var c: MyUnion = b;
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "matches pattern variable used outside of true if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A }
                                    var a = MyUnion::A;
                                    var z = a matches MyUnion var b;
                                    var c: MyUnion = b;
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "matches pattern variable used outside of true if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A }
                                    union OtherUnion { B(MyUnion) }
                                    var a = OtherUnion::B(MyUnion::A);
                                    var z = a matches OtherUnion::B(MyUnion::A var c) var b;
                                    var d: OtherUnion = b;
                                    var e: MyUnion = c;
-                                   """
+                                   """, [
+                                   TypeCheckerError.AccessUninitializedVariable(Identifier("b")),
+                                   TypeCheckerError.AccessUninitializedVariable(Identifier("c"))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.AccessUninitializedVariable(Identifier("b")),
-                    TypeCheckerError.AccessUninitializedVariable(Identifier("c"))
-                ]
+                }
+
             },
             {
                 "matches pattern variable used in false if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A }
                                    var a = MyUnion::A;
                                    if (!(a matches MyUnion::A var b)) {
                                        var c: MyUnion = b;
                                    }
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "matches pattern variable used in false if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A(string) }
                                    var a = MyUnion::A("hi");
                                    if (!(a matches MyUnion::A(_) var b)) {
                                        var c: MyUnion = b;
                                    }
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "matches pattern variable used in false if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A(string) }
                                    var a = MyUnion::A("hi");
                                    if (!(a matches MyUnion::A(string var b))) {
                                        var c: string = b;
                                    }
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "matches pattern variable used in false if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A(string) }
                                    var a = MyUnion::A("hi");
                                    if (!(a matches MyUnion::A(string var b))) {
                                        var c: string = b;
                                    }
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "matches pattern variable used in false if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A { field MyField: string } }
                                    var a = new MyUnion::A { MyField = "" };
                                    if (!(a matches MyUnion::A { MyField })) {
                                        var c: string = MyField;
                                    }
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("MyField"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("MyField"))]
+                }
+
             },
             {
                 "matches pattern variable used in false if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A { field MyField: string } }
                                    var a = new MyUnion::A { MyField = "" };
                                    if (!(a matches MyUnion::A { MyField: var b })) {
                                        var c: string = b;
                                    }
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "matches pattern variable used in false if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A }
                                    var a = MyUnion::A;
                                    if (!(a matches var b)) {
                                        var c: MyUnion = b;
                                    }
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "matches pattern variable used in false if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A }
                                    var a = MyUnion::A;
                                    if (!(a matches MyUnion var b)) {
                                        var c: MyUnion = b;
                                    }
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "matches pattern variable used in false if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion { A }
                                    union OtherUnion { B(MyUnion) }
                                    var a = OtherUnion::B(MyUnion::A);
@@ -4961,195 +5324,195 @@ public class TypeCheckerTests
                                        var d: OtherUnion = b;
                                        var e: MyUnion = c;
                                    }
-                                   """
+                                   """, [
+                                   TypeCheckerError.AccessUninitializedVariable(Identifier("b")),
+                                   TypeCheckerError.AccessUninitializedVariable(Identifier("c"))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.AccessUninitializedVariable(Identifier("b")),
-                    TypeCheckerError.AccessUninitializedVariable(Identifier("c"))
-                ]
+                }
+
             },
             {
                 "mismatched variable declaration assignment in union method",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        A,
-                                       
+
                                        fn SomeMethod() {
                                            var a: bool = 1;
                                        }
                                    }
-                                   """
+                                   """, [MismatchedTypes(Boolean, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "incorrect not operator expression type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = !1
-                                   """
+                                   """, [MismatchedTypes(Boolean, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "missing type in pattern",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var b: bool = 1 matches MissingType;
-                                   """
+                                   """, [TypeCheckerError.SymbolNotFound(Identifier("MissingType"))])
                     }
-                },
-                [TypeCheckerError.SymbolNotFound(Identifier("MissingType"))]
+                }
+
             },
             {
                 "extra patterns in union tuple pattern",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {A, B(string)}
                                    var a = MyUnion::B("");
                                    var b: bool = a matches MyUnion::B(_, _);
-                                   """
+                                   """, [
+                                   TypeCheckerError.IncorrectNumberOfPatternsInTupleVariantUnionPattern(UnionTupleVariantPattern(
+                                   NamedTypeIdentifier("MyUnion"),
+                                   "B",
+                                   [new DiscardPattern(SourceRange.Default), new DiscardPattern(SourceRange.Default)]),
+                                   1)
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.IncorrectNumberOfPatternsInTupleVariantUnionPattern(UnionTupleVariantPattern(
-                            NamedTypeIdentifier("MyUnion"),
-                            "B",
-                            [new DiscardPattern(SourceRange.Default), new DiscardPattern(SourceRange.Default)]),
-                        1)
-                ]
+                }
+
             },
             {
                 "missing patterns in union tuple pattern",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {A, B(string, bool, i64)}
                                    var a = MyUnion::B("", true, 1);
                                    var b: bool = a matches MyUnion::B(_, _);
-                                   """
+                                   """, [
+                                   TypeCheckerError.IncorrectNumberOfPatternsInTupleVariantUnionPattern(UnionTupleVariantPattern(
+                                   NamedTypeIdentifier("MyUnion"),
+                                   "B",
+                                   [new DiscardPattern(SourceRange.Default), new DiscardPattern(SourceRange.Default)]),
+                                   3)
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.IncorrectNumberOfPatternsInTupleVariantUnionPattern(UnionTupleVariantPattern(
-                            NamedTypeIdentifier("MyUnion"),
-                            "B",
-                            [new DiscardPattern(SourceRange.Default), new DiscardPattern(SourceRange.Default)]),
-                        3)
-                ]
+                }
+
             },
             {
                 "Unknown variant used in matches union variant pattern",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {A, B(string)}
                                    var a = MyUnion::B("");
                                    var b: bool = a matches MyUnion::C;
-                                   """
+                                   """, [TypeCheckerError.UnknownTypeMember(Identifier("C"), "MyUnion")])
                     }
-                },
-                [TypeCheckerError.UnknownTypeMember(Identifier("C"), "MyUnion")]
+                }
+
             },
             {
                 "mismatched type used for field in class variant pattern",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {A { field MyField: string }}
                                    var a = new MyUnion::A { MyField = "" };
                                    var b: bool = a matches MyUnion::A { MyField: i64 };
-                                   """
+                                   """, [MismatchedTypes(String, Int64)])
                     }
-                },
-                [MismatchedTypes(String, Int64)]
+                }
+
             },
             {
                 "variant name not specified for class variant pattern",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {A { field MyField: string }}
                                    var a = new MyUnion::A { MyField = "" };
                                    var b: bool = a matches MyUnion { MyField: i64 };
-                                   """
+                                   """, [TypeCheckerError.NonClassUsedInClassPattern(NamedTypeIdentifier("MyUnion"))])
                     }
-                },
-                [TypeCheckerError.NonClassUsedInClassPattern(NamedTypeIdentifier("MyUnion"))]
+                }
+
             },
             {
                 "class variant pattern does not list all fields",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {A { field MyField: string, field OtherField: bool }}
                                    var a = new MyUnion::A { MyField = "", OtherField = true };
                                    var b: bool = a matches MyUnion::A { MyField: _ };
-                                   """
+                                   """, [
+                                   TypeCheckerError.MissingFieldsInUnionClassVariantPattern(UnionClassVariantPattern(
+                                   NamedTypeIdentifier("MyUnion"),
+                                   "A"),
+                                   ["OtherField"])
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MissingFieldsInUnionClassVariantPattern(UnionClassVariantPattern(
-                            NamedTypeIdentifier("MyUnion"),
-                            "A"),
-                        ["OtherField"])
-                ]
+                }
+
             },
             {
                 "incompatible field type used in class pattern",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {pub field MyField: string}
                                    var a = new MyClass { MyField = "" };
                                    var b: bool = a matches MyClass { MyField: i64 };
-                                   """
+                                   """, [MismatchedTypes(String, Int64)])
                     }
-                },
-                [MismatchedTypes(String, Int64)]
+                }
+
             },
             {
                 "class pattern does not list all fields",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {pub field MyField: string, pub field OtherField: bool}
                                    var a = new MyClass { MyField = "", OtherField = true };
                                    var b: bool = a matches MyClass { MyField: string };
-                                   """
+                                   """, [TypeCheckerError.MissingFieldsInClassPattern(["OtherField"], NamedTypeIdentifier("MyClass"))])
                     }
-                },
-                [TypeCheckerError.MissingFieldsInClassPattern(["OtherField"], NamedTypeIdentifier("MyClass"))]
+                }
+
             },
             {
                 "non public field in class pattern",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        pub field MyField: string,
                                        field OtherField: bool,
-                                       
+
                                        pub static fn Create(): MyClass {
                                            return new MyClass {
                                                MyField = "",
@@ -5159,100 +5522,100 @@ public class TypeCheckerTests
                                    }
                                    var a = MyClass::Create();
                                    var b: bool = a matches MyClass { MyField: string, OtherField: _ };
-                                   """
+                                   """, [TypeCheckerError.PrivateFieldReferenced(Identifier("OtherField"))])
                     }
-                },
-                [TypeCheckerError.PrivateFieldReferenced(Identifier("OtherField"))]
+                }
+
             },
             {
                 "mismatched pattern type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {pub field MyField: string, pub field OtherField: bool}
                                    var a = new MyClass { MyField = "", OtherField = true };
                                    var b: bool = a matches string;
-                                   """
+                                   """, [MismatchedTypes(new TestClassReference("MyClass"), String)])
                     }
-                },
-                [MismatchedTypes(new TestClassReference("MyClass"), String)]
+                }
+
             },
             {
                 "class initializer sets private field",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        field MyField: string
                                    }
 
                                    // MyField is not accessible
                                    var a = new MyClass { MyField = "" };
-                                   """
+                                   """, [TypeCheckerError.PrivateFieldReferenced(Identifier("MyField"))])
                     }
-                },
-                [TypeCheckerError.PrivateFieldReferenced(Identifier("MyField"))]
+                }
+
             },
             {
                 "non mutable field assigned in class method",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        field MyField: string,
-                                       
+
                                        mut fn MyFn() {
                                            MyField = "";
                                        }
                                    }
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("MyField", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("MyField", SourceRange.Default)]
+                }
+
             },
             {
                 "instance field used in static class method",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        field MyField: string,
-                                       
+
                                        static fn MyFn() {
                                            var a = MyField;
                                        }
                                    }
-                                   """
+                                   """, [TypeCheckerError.SymbolNotFound(Identifier("MyField"))])
                     }
-                },
-                [TypeCheckerError.SymbolNotFound(Identifier("MyField"))]
+                }
+
             },
             {
                 "non mutable variable assigned twice",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: string;
                                    // initial assignment succeeds
                                    a = "";
                                    // second assignment fails because it's not mutable
                                    a = ";";
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "non mutable field assigned through member access",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        pub field MyField: string
                                    }
@@ -5263,117 +5626,117 @@ public class TypeCheckerTests
 
                                    // MyField is not mutable
                                    a.MyField = "";
-                                   """
+                                   """, [TypeCheckerError.NonMutableMemberAssignment(MemberAccess(VariableAccessor("a"), "MyField"))])
                     }
-                },
-                [TypeCheckerError.NonMutableMemberAssignment(MemberAccess(VariableAccessor("a"), "MyField"))]
+                }
+
             },
             {
                 "mutable field assigned from non mutable instance variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass { pub mut field MyField: string }
                                    var a = new MyClass { MyField = "" };
 
                                    // a is not marked as mutable
                                    a.MyField = "";
-                                   """
+                                   """, [TypeCheckerError.NonMutableMemberOwnerAssignment(VariableAccessor("a"))])
                     }
-                },
-                [TypeCheckerError.NonMutableMemberOwnerAssignment(VariableAccessor("a"))]
+                }
+
             },
             {
                 "non mutable variable assigned",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = "";
                                    // a is not marked as mutable
                                    a = "";
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "non mutable static field assigned through static member access",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        pub static field MyField: string = ""
                                    }
 
                                    // MyField is not marked as mutable
                                    MyClass::MyField = "";
-                                   """
+                                   """, [
+                                   TypeCheckerError.NonMutableMemberAssignment(StaticMemberAccess(NamedTypeIdentifier("MyClass"),
+                                   "MyField"))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.NonMutableMemberAssignment(StaticMemberAccess(NamedTypeIdentifier("MyClass"),
-                        "MyField"))
-                ]
+                }
+
             },
             {
                 "non mutable param member assigned",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        pub mut field MyField: string
                                    }
-                                   fn MyFn(param: MyClass) { 
+                                   fn MyFn(param: MyClass) {
                                        // param is not marked as mutable
                                        param.MyField = "";
                                    }
-                                   """
+                                   """, [TypeCheckerError.NonMutableMemberOwnerAssignment(VariableAccessor("param"))])
                     }
-                },
-                [TypeCheckerError.NonMutableMemberOwnerAssignment(VariableAccessor("param"))]
+                }
+
             },
             {
                 "not mutable param assigned",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn(param: string) {
                                       // param is not marked as mutable
-                                      param = ""; 
+                                      param = "";
                                    }
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("param", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("param", SourceRange.Default)]
+                }
+
             },
             {
                 "non mutable variable passed to mutable function parameter",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn(mut param: string) {
                                    }
                                    var a = "";
 
                                    // param is mut, but a is not marked as mutable
                                    MyFn(a);
-                                   """
+                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
-                },
-                [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)]
+                }
+
             },
             {
                 "mismatched type when assigning field to generic field",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion<T> {
                                        A {
                                            field MyField: T,
@@ -5382,17 +5745,17 @@ public class TypeCheckerTests
                                    var a: MyUnion::<string> = new MyUnion::<string>::A {
                                        MyField = 2
                                    };
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "unknown field assigned in class variant initializer",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        A {
                                            field MyField: string
@@ -5401,17 +5764,17 @@ public class TypeCheckerTests
                                    var a: MyUnion = new MyUnion::A {
                                        MyField_ = ""
                                    };
-                                   """
+                                   """, [TypeCheckerError.UnknownField(Identifier("MyField_"), "union variant MyUnion::A")])
                     }
-                },
-                [TypeCheckerError.UnknownField(Identifier("MyField_"), "union variant MyUnion::A")]
+                }
+
             },
             {
                 "Unknown variant name used in union class variant initializer",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        A {
                                            field MyField: string
@@ -5420,17 +5783,17 @@ public class TypeCheckerTests
                                    var a: MyUnion = new MyUnion::B {
                                        MyField = ""
                                    };
-                                   """
+                                   """, [TypeCheckerError.UnknownTypeMember(Identifier("B"), "MyUnion")])
                     }
-                },
-                [TypeCheckerError.UnknownTypeMember(Identifier("B"), "MyUnion")]
+                }
+
             },
             {
                 "incorrect expression type used in union class variant initializer",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        A {
                                            field MyField: string
@@ -5439,34 +5802,34 @@ public class TypeCheckerTests
                                    var a: MyUnion = new MyUnion::A {
                                        MyField = 2
                                    };
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "Union class variant initializer used for tuple union variant",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        A(string)
                                    }
                                    var a: MyUnion = new MyUnion::A {
                                        MyField = 2
                                    };
-                                   """
+                                   """, [TypeCheckerError.UnionClassVariantInitializerNotClassVariant(Identifier("A"))])
                     }
-                },
-                [TypeCheckerError.UnionClassVariantInitializerNotClassVariant(Identifier("A"))]
+                }
+
             },
             {
                 "incorrect expression type used in union class variant initializer",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        A {
                                            field MyField: string,
@@ -5475,87 +5838,87 @@ public class TypeCheckerTests
                                    var a: MyUnion = new MyUnion::A {
                                        MyField = 2
                                    };
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "incorrect expression type used in union tuple",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        A(string)
                                    }
                                    var a = MyUnion::A(1);
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "duplicate union variant name in union declaration",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        A,
                                        A
                                    }
-                                   """
+                                   """, [TypeCheckerError.DuplicateVariantName(Identifier("A"))])
                     }
-                },
-                [TypeCheckerError.DuplicateVariantName(Identifier("A"))]
+                }
+
             },
             {
                 "duplicate union names",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {} union MyUnion {}
-                                   """
+                                   """, [TypeCheckerError.ConflictingTypeName(Identifier("MyUnion"))])
                     }
-                },
-                [TypeCheckerError.ConflictingTypeName(Identifier("MyUnion"))]
+                }
+
             },
             {
                 "duplicate union names with type errors",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {A, A} union MyUnion {B, B}
-                                   """
+                                   """, [
+                                   TypeCheckerError.ConflictingTypeName(Identifier("MyUnion")),
+                                   TypeCheckerError.DuplicateVariantName(Identifier("A")),
+                                   TypeCheckerError.DuplicateVariantName(Identifier("B"))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.ConflictingTypeName(Identifier("MyUnion")),
-                    TypeCheckerError.DuplicateVariantName(Identifier("A")),
-                    TypeCheckerError.DuplicateVariantName(Identifier("B"))
-                ]
+                }
+
             },
             {
                 "union name conflicts with class name",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {} class MyUnion {}
-                                   """
+                                   """, [TypeCheckerError.ConflictingTypeName(Identifier("MyUnion"))])
                     }
-                },
-                [TypeCheckerError.ConflictingTypeName(Identifier("MyUnion"))]
+                }
+
             },
             {
                 "duplicate class name with inner errors",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        fn MyFn() {},
                                        fn MyFn() {}
@@ -5564,76 +5927,76 @@ public class TypeCheckerTests
                                        fn OtherFn() {},
                                        fn OtherFn() {}
                                    }
-                                   """
+                                   """, [
+                                   TypeCheckerError.ConflictingTypeName(Identifier("MyClass")),
+                                   TypeCheckerError.ConflictingFunctionName(Identifier("MyFn")),
+                                   TypeCheckerError.ConflictingFunctionName(Identifier("OtherFn"))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.ConflictingTypeName(Identifier("MyClass")),
-                    TypeCheckerError.ConflictingFunctionName(Identifier("MyFn")),
-                    TypeCheckerError.ConflictingFunctionName(Identifier("OtherFn"))
-                ]
+                }
+
             },
             {
                 "duplicate field in union class variant",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {
                                        A {
                                            field MyField: string,
                                            field MyField: string,
                                        }
                                    }
-                                   """
+                                   """, [
+                                   TypeCheckerError.DuplicateFieldInUnionClassVariant(
+                                   Identifier("MyUnion"),
+                                   Identifier("A"),
+                                   Identifier("MyField"))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.DuplicateFieldInUnionClassVariant(
-                        Identifier("MyUnion"),
-                        Identifier("A"),
-                        Identifier("MyField"))
-                ]
+                }
+
             },
             {
                 "incorrect type arguments for return value of same type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn(): result::<i64, string> {
                                        if (true) {
                                            return result::<string, i64>::Ok("someValue");
                                        }
-                                       
+
                                        return result::<string, i64>::Error(1);
                                    }
-                                   """
+                                   """, [
+                                   MismatchedTypes(Result(Int64, String), Result(String, Int64)),
+                                   MismatchedTypes(Result(Int64, String), Result(String, Int64))
+                                   ])
                     }
-                },
-                [
-                    MismatchedTypes(Result(Int64, String), Result(String, Int64)),
-                    MismatchedTypes(Result(Int64, String), Result(String, Int64))
-                ]
+                }
+
             },
             {
                 "incorrect expression type for generic type in union tuple variant",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = result::<string, i64>::Ok(1);
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "incorrect expression type for generic type in generic class and generic method call",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass<T> {
                                        fn MyFn<T2>(param1: T, param2: T2) {
                                        }
@@ -5641,17 +6004,17 @@ public class TypeCheckerTests
 
                                    var a = new MyClass::<i64>{};
                                    a.MyFn::<string>("", 1);
-                                   """
+                                   """, [MismatchedTypes(Int64, String), MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(Int64, String), MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "incorrect type used in generic class and generic method call",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass<T> {
                                        fn MyFn<T2>(param1: T, param2: T2) {
                                        }
@@ -5659,17 +6022,17 @@ public class TypeCheckerTests
 
                                    var a = new MyClass::<i64>{};
                                    a.MyFn::<string>("", "");
-                                   """
+                                   """, [MismatchedTypes(Int64, String)])
                     }
-                },
-                [MismatchedTypes(Int64, String)]
+                }
+
             },
             {
                 "incorrect expression type used in generic class and generic method",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass<T> {
                                        fn MyFn<T2>(param1: T, param2: T2) {
                                        }
@@ -5677,53 +6040,53 @@ public class TypeCheckerTests
 
                                    var a = new MyClass::<i64>{};
                                    a.MyFn::<string>(1, 1);
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "incorrect expression type in variable assignment",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: string = 2
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "incorrect expression type in variable assignment",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: i64 = "somestring"
-                                   """
+                                   """, [MismatchedTypes(Int64, String)])
                     }
-                },
-                [MismatchedTypes(Int64, String)]
+                }
+
             },
             {
                 "variable declaration without type or assignment never inferred",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var b;
-                                   """
+                                   """, [TypeCheckerError.UnresolvedInferredVariableType(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.UnresolvedInferredVariableType(Identifier("b"))]
+                }
+
             },
             {
                 "variable declaration without type or assignment never inferred",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a;
                                    if (true) {
                                        a = "";
@@ -5732,33 +6095,33 @@ public class TypeCheckerTests
                                        a = "";
                                    }
                                    var b = a;
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("a"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("a"))]
+                }
+
             },
             {
                 "variable declaration without type or assignment never inferred",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var b;
                                    if (true) {
                                        b = "";
                                    }
                                    var a: string = b;
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "variable declaration without type or assignment never inferred",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var b;
                                    if (true) {
                                        b = "";
@@ -5766,1192 +6129,1201 @@ public class TypeCheckerTests
                                    else {
                                        var c = b;
                                    }
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("b"))]
+                }
+
             },
             {
                 "incorrect type in return value",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn(): i64 { return "something"; }
-                                   """
+                                   """, [MismatchedTypes(Int64, String)])
                     }
-                },
-                [MismatchedTypes(Int64, String)]
+                }
+
             },
             {
                 "return value for function without return type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn() { return 1; }
-                                   """
+                                   """, [MismatchedTypes(Unit, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(Unit, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "duplicate function declaration",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn() {} fn MyFn() {}
-                                   """
+                                   """, [TypeCheckerError.ConflictingFunctionName(Identifier("MyFn"))])
                     }
-                },
-                [TypeCheckerError.ConflictingFunctionName(Identifier("MyFn"))]
+                }
+
             },
             {
                 "duplicate function declaration in union",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion {fn MyFn() {} fn MyFn() {}}
-                                   """
+                                   """, [TypeCheckerError.ConflictingFunctionName(Identifier("MyFn"))])
                     }
-                },
-                [TypeCheckerError.ConflictingFunctionName(Identifier("MyFn"))]
+                }
+
             },
             {
                 "duplicate function declaration in class",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {fn MyFn() {} fn MyFn() {}}
-                                   """
+                                   """, [TypeCheckerError.ConflictingFunctionName(Identifier("MyFn"))])
                     }
-                },
-                [TypeCheckerError.ConflictingFunctionName(Identifier("MyFn"))]
+                }
+
             },
             {
                 "function contains duplicate parameter",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn SomeFn(a: i64, a: string) {
                                        // verify first duplicate parameter is accepted
                                        var b: i64 = a;
                                        var c: string = a;
                                    }
-                                   """
+                                   """, [
+                                   TypeCheckerError.DuplicateFunctionParameter(Identifier("a"), Identifier("SomeFn")),
+                                   MismatchedTypes(String, Int64)
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.DuplicateFunctionParameter(Identifier("a"), Identifier("SomeFn")),
-                    MismatchedTypes(String, Int64)
-                ]
+                }
+
             },
             {
                 "no return value provided when return value expected",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn(): string { return; }
-                                   """
+                                   """, [MismatchedTypes(String, Unit)])
                     }
-                },
-                [MismatchedTypes(String, Unit)]
+                }
+
             },
             {
                 "incorrect expression type in variable assignment",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 2; var b: string = a
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "variable used before initialization",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: i64; var b = a
-                                   """
+                                   """, [TypeCheckerError.AccessUninitializedVariable(Identifier("a"))])
                     }
-                },
-                [TypeCheckerError.AccessUninitializedVariable(Identifier("a"))]
+                }
+
             },
             {
                 "function used outside of declaration scope",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn(){fn InnerFn() {}} InnerFn();
-                                   """
+                                   """, [TypeCheckerError.SymbolNotFound(Identifier("InnerFn"))])
                     }
-                },
-                [TypeCheckerError.SymbolNotFound(Identifier("InnerFn"))]
+                }
+
             },
             {
                 "call missing method",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    CallMissingMethod(b);
-                                   """
+                                   """, [
+                                   TypeCheckerError.SymbolNotFound(Identifier("CallMissingMethod")),
+                                   TypeCheckerError.SymbolNotFound(Identifier("b"))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.SymbolNotFound(Identifier("CallMissingMethod")),
-                    TypeCheckerError.SymbolNotFound(Identifier("b"))
-                ]
+                }
+
             },
             {
                 "object initializer for unknown type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = new MyClass::<i64> {someField = true};
-                                   """
+                                   """, [TypeCheckerError.SymbolNotFound(Identifier("MyClass"))])
                     }
-                },
-                [TypeCheckerError.SymbolNotFound(Identifier("MyClass"))]
+                }
+
             },
             {
                 "object initializer for unknown type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = new MyClass::<i64> {someField = b};
-                                   """
+                                   """, [
+                                   TypeCheckerError.SymbolNotFound(Identifier("MyClass")),
+                                   TypeCheckerError.SymbolNotFound(Identifier("b"))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.SymbolNotFound(Identifier("MyClass")),
-                    TypeCheckerError.SymbolNotFound(Identifier("b"))
-                ]
+                }
+
             },
             {
                 "incorrect expression types in method call",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn(param1: string, param2: i64) {} MyFn(3, "value");
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType), MismatchedTypes(Int64, String)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType), MismatchedTypes(Int64, String)]
+                }
+
             },
             {
                 "missing function arguments",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn(param1: string, param2: i64) {} MyFn();
-                                   """
+                                   """, [TypeCheckerError.IncorrectNumberOfMethodArguments(MethodCall(VariableAccessor("MyFn")), 2)])
                     }
-                },
-                [TypeCheckerError.IncorrectNumberOfMethodArguments(MethodCall(VariableAccessor("MyFn")), 2)]
+                }
+
             },
             {
                 "too many function arguments",
-                new Dictionary<string, string>
-                    { { "main.rf", """fn MyFn(param1: string, param2: i64) {} MyFn("value", 3, 2);""" } },
-                [
-                    TypeCheckerError.IncorrectNumberOfMethodArguments(
-                        MethodCall(VariableAccessor("MyFn"), Literal("value"), Literal(3), Literal(2)), 2)
-                ]
+                new()
+                {
+                    {
+                            "main.rf", ("""fn MyFn(param1: string, param2: i64) {} MyFn("value", 3, 2);""", [
+                                TypeCheckerError.IncorrectNumberOfMethodArguments(
+                                MethodCall(VariableAccessor("MyFn"), Literal("value"), Literal(3), Literal(2)), 2)
+                                ])
+                    }
+                }
+
             },
             {
                 "member accessed on generic instance variable",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn<T1>(param: T1) {var a = param.something;}
-                                   """
+                                   """, [TypeCheckerError.MemberAccessOnGenericExpression(MemberAccess(VariableAccessor("param"), "something"))])
                     }
-                },
-                [TypeCheckerError.MemberAccessOnGenericExpression(MemberAccess(VariableAccessor("param"), "something"))]
+                }
+
             },
             {
                 "static member accessed on generic type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn<T1>() {var a = T1::something;}
-                                   """
+                                   """, [
+                                   TypeCheckerError.StaticMemberAccessOnGenericReference(StaticMemberAccess(NamedTypeIdentifier("T1"),
+                                   "something"))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.StaticMemberAccessOnGenericReference(StaticMemberAccess(NamedTypeIdentifier("T1"),
-                        "something"))
-                ]
+                }
+
             },
             {
                 "generic variable returned as concrete class",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn<T1>(param: T1): i64 { return param; }
-                                   """
+                                   """, [MismatchedTypes(Int64, GenericPlaceholder("T1"))])
                     }
-                },
-                [MismatchedTypes(Int64, GenericPlaceholder("T1"))]
+                }
+
             },
             {
                 "duplicate function generic parameter",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn<T, T>() {}
-                                   """
+                                   """, [TypeCheckerError.DuplicateTypeParameter(Identifier("T"))])
                     }
-                },
-                [TypeCheckerError.DuplicateTypeParameter(Identifier("T"))]
+                }
+
             },
             {
                 "duplicate function generic parameter",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn<T, T, T1, T1>() {}
-                                   """
+                                   """, [
+                                   TypeCheckerError.DuplicateTypeParameter(Identifier("T")),
+                                   TypeCheckerError.DuplicateTypeParameter(Identifier("T1"))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.DuplicateTypeParameter(Identifier("T")),
-                    TypeCheckerError.DuplicateTypeParameter(Identifier("T1"))
-                ]
+                }
+
             },
             {
                 "duplicate function generic parameter",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn MyFn<T, T, T>() {}
-                                   """
+                                   """, [
+                                   TypeCheckerError.DuplicateTypeParameter(Identifier("T")),
+                                   TypeCheckerError.DuplicateTypeParameter(Identifier("T"))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.DuplicateTypeParameter(Identifier("T")),
-                    TypeCheckerError.DuplicateTypeParameter(Identifier("T"))
-                ]
+                }
+
             },
             {
                 "incorrect type in if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    if (1) {}
-                                   """
+                                   """, [MismatchedTypes(Boolean, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "incorrect type in else if check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    if (true) {} else if (1) {}
-                                   """
+                                   """, [MismatchedTypes(Boolean, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "incorrect type in variable declaration in if body",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    if (true) {var a: string = 1;}
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "incorrect type in variable declaration in else if body",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    if (true) {} else if (true) {var a: string = 1}
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "incorrect type in variable declaration in else body",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    if (true) {} else if (true) {} else {var a: string = 1}
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "incorrect type in second else if body",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    if (true) {} else if (true) {} else if (true) {var a: string = 1}
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "unresolved inferred types",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: result::<>
-                                   """
+                                   """, [
+                                   TypeCheckerError.UnresolvedInferredGenericType(
+                                   VariableDeclaration("a", type: NamedTypeIdentifier("result")), "TValue"),
+                                   TypeCheckerError.UnresolvedInferredGenericType(
+                                   VariableDeclaration("a", type: NamedTypeIdentifier("result")), "TError")
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.UnresolvedInferredGenericType(
-                        VariableDeclaration("a", type: NamedTypeIdentifier("result")), "TValue"),
-                    TypeCheckerError.UnresolvedInferredGenericType(
-                        VariableDeclaration("a", type: NamedTypeIdentifier("result")), "TError")
-                ]
+                }
+
             },
             {
                 "unresolved inferred types",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: result
-                                   """
+                                   """, [
+                                   TypeCheckerError.UnresolvedInferredGenericType(
+                                   VariableDeclaration("a", type: NamedTypeIdentifier("result")), "TValue"),
+                                   TypeCheckerError.UnresolvedInferredGenericType(
+                                   VariableDeclaration("a", type: NamedTypeIdentifier("result")), "TError")
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.UnresolvedInferredGenericType(
-                        VariableDeclaration("a", type: NamedTypeIdentifier("result")), "TValue"),
-                    TypeCheckerError.UnresolvedInferredGenericType(
-                        VariableDeclaration("a", type: NamedTypeIdentifier("result")), "TError")
-                ]
+                }
+
             },
             {
                 "unresolved inferred types",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = ok(1)
-                                   """
+                                   """, [
+                                   TypeCheckerError.UnresolvedInferredGenericType(
+                                   VariableDeclaration("a",
+                                   MethodCall(VariableAccessor("ok"), Literal(1))), "TError")
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.UnresolvedInferredGenericType(
-                        VariableDeclaration("a",
-                            MethodCall(VariableAccessor("ok"), Literal(1))), "TError")
-                ]
+                }
+
             },
             {
                 "incorrect number of type arguments",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: result::<string>
-                                   """
+                                   """, [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 2)])
                     }
-                },
-                [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 2)]
+                }
+
             },
             {
                 "incorrect number of type arguments",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union MyUnion{A} var a = MyUnion::<string>::A
-                                   """
+                                   """, [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 0)])
                     }
-                },
-                [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 0)]
+                }
+
             },
             {
                 "incorrect number of type arguments",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass{} var a = new MyClass::<string>{}
-                                   """
+                                   """, [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 0)])
                     }
-                },
-                [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 0)]
+                }
+
             },
             {
                 "incorrect number of type arguments",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass<T, T2>{} var a = new MyClass::<string>{}
-                                   """
+                                   """, [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 2)])
                     }
-                },
-                [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 2)]
+                }
+
             },
             {
                 "too many type arguments",
-                new Dictionary<string, string> { { "main.rf", """var a: result::<string, string, string>""" } },
-                [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 3, 2)]
+                new()
+                {
+                    {
+                        "main.rf", ("""var a: result::<string, string, string>""", [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 3, 2)])
+                    }
+                }
+
             },
             {
                 "unresolved global function generic type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn Fn1<T1>(){} Fn1::<>();
-                                   """
+                                   """, [TypeCheckerError.UnresolvedInferredGenericType(MethodCall(VariableAccessor("Fn1")), "T1")])
                     }
-                },
-                [TypeCheckerError.UnresolvedInferredGenericType(MethodCall(VariableAccessor("Fn1")), "T1")]
+                }
+
             },
             {
                 "unresolved instance function generic type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass
                                    {
                                        pub fn MyFn<T>(){}
                                    }
                                    var a = new MyClass{};
                                    a.MyFn();
-                                   """
+                                   """, [
+                                   TypeCheckerError.UnresolvedInferredGenericType(
+                                   MethodCall(MemberAccess(VariableAccessor("a"), "MyFn")), "T")
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.UnresolvedInferredGenericType(
-                        MethodCall(MemberAccess(VariableAccessor("a"), "MyFn")), "T")
-                ]
+                }
+
             },
             {
                 "unresolved static function generic type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass
                                    {
                                        pub static fn MyFn<T>(){}
                                    }
                                    MyClass::MyFn();
-                                   """
+                                   """, [
+                                   TypeCheckerError.UnresolvedInferredGenericType(
+                                   MethodCall(StaticMemberAccess(NamedTypeIdentifier("MyClass"), "MyFn")), "T")
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.UnresolvedInferredGenericType(
-                        MethodCall(StaticMemberAccess(NamedTypeIdentifier("MyClass"), "MyFn")), "T")
-                ]
+                }
+
             },
             {
                 "too many function type arguments",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn Fn1<T1>(){} Fn1::<string, bool>();
-                                   """
+                                   """, [
+                                   TypeCheckerError.IncorrectNumberOfTypeArguments(
+                                   SourceRange.Default,
+                                   2,
+                                   1)
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.IncorrectNumberOfTypeArguments(
-                        SourceRange.Default,
-                        2,
-                        1)
-                ]
+                }
+
             },
             {
                 "unresolved function type argument",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    fn Fn1<T1>(){} Fn1();
-                                   """
+                                   """, [TypeCheckerError.UnresolvedInferredGenericType(MethodCall(VariableAccessor("Fn1")), "T1")])
                     }
-                },
-                [TypeCheckerError.UnresolvedInferredGenericType(MethodCall(VariableAccessor("Fn1")), "T1")]
+                }
+
             },
             {
                 "incorrect type for class initializer field assignment",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        pub field someField: string,
                                    }
                                    var a = new MyClass { someField = 1 };
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "field assigned twice in object initializer",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        pub field someField: string,
                                    }
                                    var a = new MyClass { someField = "value", someField = "value" };
-                                   """
+                                   """, [TypeCheckerError.ClassFieldSetMultipleTypesInInitializer(Identifier("someField"))])
                     }
-                },
-                [TypeCheckerError.ClassFieldSetMultipleTypesInInitializer(Identifier("someField"))]
+                }
+
             },
             {
                 "unknown field assigned in object initializer",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        pub field someField: string,
                                    }
                                    var a = new MyClass { someField = "value", extraField = 1 };
-                                   """
+                                   """, [TypeCheckerError.UnknownField(Identifier("extraField"), "class MyClass")])
                     }
-                },
-                [TypeCheckerError.UnknownField(Identifier("extraField"), "class MyClass")]
+                }
+
             },
             {
                 "field not assigned in object initializer",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        pub field someField: string,
                                    }
                                    var a = new MyClass {};
-                                   """
+                                   """, [
+                                   TypeCheckerError.FieldsLeftUnassignedInClassInitializer(new ObjectInitializerExpression(
+                                   new ObjectInitializer(NamedTypeIdentifier("MyClass"), []), SourceRange.Default),
+                                   ["someField"])
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.FieldsLeftUnassignedInClassInitializer(new ObjectInitializerExpression(
-                            new ObjectInitializer(NamedTypeIdentifier("MyClass"), []), SourceRange.Default),
-                        ["someField"])
-                ]
+                }
+
             },
             {
                 "incorrect expression type in static field initializer",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass { static field someField: string = 1, }
-                                   """
+                                   """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(String, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "function generic type conflict with parent class",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass<T> {
                                        fn MyFn<T>(){}
                                    }
-                                   """
+                                   """, [TypeCheckerError.ConflictingTypeParameter(Identifier("T"))])
                     }
-                },
-                [TypeCheckerError.ConflictingTypeParameter(Identifier("T"))]
+                }
+
             },
             {
                 "duplicate generic type in class definition",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass<T, T>{}
-                                   """
+                                   """, [TypeCheckerError.DuplicateTypeParameter(Identifier("T"))])
                     }
-                },
-                [TypeCheckerError.DuplicateTypeParameter(Identifier("T"))]
+                }
+
             },
             {
                 "duplicate generic type in class definition",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass<T, T, T1, T1>{}
-                                   """
+                                   """, [
+                                   TypeCheckerError.DuplicateTypeParameter(Identifier("T")),
+                                   TypeCheckerError.DuplicateTypeParameter(Identifier("T1"))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.DuplicateTypeParameter(Identifier("T")),
-                    TypeCheckerError.DuplicateTypeParameter(Identifier("T1"))
-                ]
+                }
+
             },
             {
                 "duplicate generic type in class definition",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass<T, T, T>{}
-                                   """
+                                   """, [
+                                   TypeCheckerError.DuplicateTypeParameter(Identifier("T")),
+                                   TypeCheckerError.DuplicateTypeParameter(Identifier("T"))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.DuplicateTypeParameter(Identifier("T")),
-                    TypeCheckerError.DuplicateTypeParameter(Identifier("T"))
-                ]
+                }
+
             },
             {
                 "Generic type conflicts with existing type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass{}
                                    class OtherClass<MyClass>{}
-                                   """
+                                   """, [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))])
                     }
-                },
-                [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
+                }
+
             },
             {
                 "Generic type conflicts with existing type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass{}
                                    fn MyFn<MyClass>(){}
-                                   """
+                                   """, [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))])
                     }
-                },
-                [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
+                }
+
             },
             {
                 "Generic type conflicts with existing type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass{}
                                    class SomeClass {fn MyFn<MyClass>(){}}
-                                   """
+                                   """, [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))])
                     }
-                },
-                [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
+                }
+
             },
             {
                 "Generic type conflicts with existing type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass{}
                                    union SomeUnion {fn MyFn<MyClass>(){}}
-                                   """
+                                   """, [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))])
                     }
-                },
-                [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
+                }
+
             },
             {
                 "Generic type conflicts with existing type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass{}
                                    fn SomeFn() {fn MyFn<MyClass>(){}}
-                                   """
+                                   """, [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))])
                     }
-                },
-                [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
+                }
+
             },
             {
                 "Generic type conflicts with existing type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass{}
                                    union MyUnion<MyClass>{}
-                                   """
+                                   """, [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))])
                     }
-                },
-                [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
+                }
+
             },
             {
                 "Generic type conflicts with existing type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    union OtherUnion{}
                                    union MyUnion<OtherUnion>{}
-                                   """
+                                   """, [TypeCheckerError.TypeParameterConflictsWithType(Identifier("OtherUnion"))])
                     }
-                },
-                [TypeCheckerError.TypeParameterConflictsWithType(Identifier("OtherUnion"))]
+                }
+
             },
             {
                 "Generic type conflicts with existing type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class OtherClass<MyClass>{}
                                    class MyClass{}
-                                   """
+                                   """, [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))])
                     }
-                },
-                [TypeCheckerError.TypeParameterConflictsWithType(Identifier("MyClass"))]
+                }
+
             },
             {
                 "incorrect return type",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {
                                        fn MyFn(): i64 { return ""; }
                                    }
-                                   """
+                                   """, [MismatchedTypes(Int64, String)])
                     }
-                },
-                [MismatchedTypes(Int64, String)]
+                }
+
             },
             // binary operators
             // less than
             {
                 "incorrect type for less than",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 1 < true;
-                                   """
+                                   """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
-                },
-                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
+                }
+
             },
             {
                 "incorrect type for less than",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = true < 1;
-                                   """
+                                   """, [MismatchedTypes(IntTypes, Boolean)])
                     }
-                },
-                [MismatchedTypes(IntTypes, Boolean)]
+                }
+
             },
             {
                 "incorrect type for less than variable declaration",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: i64 = 1 < 2
-                                   """
+                                   """, [MismatchedTypes(Int64, Boolean)])
                     }
-                },
-                [MismatchedTypes(Int64, Boolean)]
+                }
+
             },
             {
                 // GreaterThan,
                 "incorrect type for greater than",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = true > 1;
-                                   """
+                                   """, [MismatchedTypes(IntTypes, Boolean)])
                     }
-                },
-                [MismatchedTypes(IntTypes, Boolean)]
+                }
+
             },
             {
                 "incorrect type for greater than",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 2 > true
-                                   """
+                                   """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
-                },
-                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
+                }
+
             },
             {
                 "incorrect type for greater than in variable declaration",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: i64 = 2 > 2
-                                   """
+                                   """, [MismatchedTypes(Int64, Boolean)])
                     }
-                },
-                [MismatchedTypes(Int64, Boolean)]
+                }
+
             },
             {
                 // Plus,
                 "incorrect type for plus",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = true + 1;
-                                   """
+                                   """, [MismatchedTypes(IntTypes, Boolean)])
                     }
-                },
-                [MismatchedTypes(IntTypes, Boolean)]
+                }
+
             },
             {
                 "incorrect type for plus",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 2 + true
-                                   """
+                                   """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
-                },
-                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
+                }
+
             },
             {
                 "incorrect type for plus in variable declaration",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: bool = 2 + 2
-                                   """
+                                   """, [MismatchedTypes(Boolean, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 // Minus,
                 "incorrect type for minus",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = true - 1;
-                                   """
+                                   """, [MismatchedTypes(IntTypes, Boolean)])
                     }
-                },
-                [MismatchedTypes(IntTypes, Boolean)]
+                }
+
             },
             {
                 "incorrect type for minus",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 2 - true
-                                   """
+                                   """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
-                },
-                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
+                }
+
             },
             {
                 "incorrect type for minus in variable declaration",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: bool = 2 - 2
-                                   """
+                                   """, [MismatchedTypes(Boolean, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 // Multiply,
                 "incorrect type for multiply",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = true * 1;
-                                   """
+                                   """, [MismatchedTypes(IntTypes, Boolean)])
                     }
-                },
-                [MismatchedTypes(IntTypes, Boolean)]
+                }
+
             },
             {
                 "incorrect type for multiply",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 2 * true
-                                   """
+                                   """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
-                },
-                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
+                }
+
             },
             {
                 "incorrect type for multiply in variable declaration",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: bool = 2 * 2
-                                   """
+                                   """, [MismatchedTypes(Boolean, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 // Divide,
                 "incorrect type for divide",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = true / 1;
-                                   """
+                                   """, [MismatchedTypes(IntTypes, Boolean)])
                     }
-                },
-                [MismatchedTypes(IntTypes, Boolean)]
+                }
+
             },
             {
                 "incorrect type for divide",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 2 / true
-                                   """
+                                   """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
-                },
-                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
+                }
+
             },
             {
                 "incorrect type for divide in variable declaration",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: bool = 2 / 2
-                                   """
+                                   """, [MismatchedTypes(Boolean, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 // Equality Check
                 "incorrect type for equality check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = true == 1;
-                                   """
+                                   """, [MismatchedTypes(Boolean, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "incorrect type for negative equality check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = true != 1;
-                                   """
+                                   """, [MismatchedTypes(Boolean, UnspecifiedSizedIntType)])
                     }
-                },
-                [MismatchedTypes(Boolean, UnspecifiedSizedIntType)]
+                }
+
             },
             {
                 "incorrect type for equality check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 2 == true
-                                   """
+                                   """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
-                },
-                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
+                }
+
             },
             {
                 "incorrect type for negative equality check",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a = 2 != true
-                                   """
+                                   """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
-                },
-                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
+                }
+
             },
             {
                 "incorrect type for equality check in variable declaration",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: i64 = 2 == 2
-                                   """
+                                   """, [MismatchedTypes(Int64, Boolean)])
                     }
-                },
-                [MismatchedTypes(Int64, Boolean)]
+                }
+
             },
             {
                 "incorrect type for negative equality check in variable declaration",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: i64 = 2 != 2
-                                   """
+                                   """, [MismatchedTypes(Int64, Boolean)])
                     }
-                },
-                [MismatchedTypes(Int64, Boolean)]
+                }
+
             },
             {
                 // ValueAssignment,
                 "incompatible type used for variable assignment",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var mut a = 2; a = true
-                                   """
+                                   """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
-                },
-                [MismatchedTypes(UnspecifiedSizedIntType, Boolean)]
+                }
+
             },
             {
                 "assignment to literal",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    true = false
-                                   """
+                                   """, [
+                                   TypeCheckerError.ExpressionNotAssignable(new ValueAccessorExpression(
+                                   new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default), [])))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.ExpressionNotAssignable(new ValueAccessorExpression(
-                        new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default), [])))
-                ]
+                }
+
             },
             {
                 // MemberAccess,
                 "incorrect type in variable declaration",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass { pub static field someField: i64 = 3, }
                                    var a: string = MyClass::someField;
-                                   """
+                                   """, [MismatchedTypes(String, Int64)])
                     }
-                },
-                [MismatchedTypes(String, Int64)]
+                }
+
             },
             {
                 // StaticMemberAccess
                 "incorrect type in variable declaration",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass { pub field someField: i64, }
                                    var a: MyClass = new MyClass { someField = 3 };
                                    var b: string = a.someField;
-                                   """
+                                   """, [MismatchedTypes(String, Int64)])
                     }
-                },
-                [MismatchedTypes(String, Int64)]
+                }
+
             },
             {
                 "no fields provided in class pattern",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass { pub field someField: i64, }
                                    var a: MyClass = new MyClass { someField = 3 };
                                    var b = a matches MyClass {};
-                                   """
+                                   """, [TypeCheckerError.MissingFieldsInClassPattern(["someField"], NamedTypeIdentifier("MyClass"))])
                     }
-                },
-                [TypeCheckerError.MissingFieldsInClassPattern(["someField"], NamedTypeIdentifier("MyClass"))]
+                }
+
             },
             {
                 "calling closure when variable is uninitialized",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: i64;
                                    fn SomeFn() {
                                        var b = a;
                                    }
                                    SomeFn();
                                    a = 1;
-                                   """
+                                   """, [
+                                   TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("SomeFn"),
+                                   [Identifier("a")])
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("SomeFn"),
-                        [Identifier("a")])
-                ]
+                }
+
             },
             {
                 "calling deep closure when variable is uninitialized",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: i64;
                                    fn SomeFn()
                                    {
@@ -6963,139 +7335,139 @@ public class TypeCheckerTests
                                    }
                                    SomeFn();
                                    a = 1;
-                                   """
+                                   """, [
+                                   TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("SomeFn"),
+                                   [Identifier("a")])
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("SomeFn"),
-                        [Identifier("a")])
-                ]
+                }
+
             },
             {
                 "assigning closure to variable when variable is uninitialized",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: i64;
                                    fn SomeFn() {
                                        var b = a;
                                    }
                                    var c = SomeFn;
                                    a = 1;
-                                   """
+                                   """, [
+                                   TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("SomeFn"),
+                                   [Identifier("a")])
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("SomeFn"),
-                        [Identifier("a")])
-                ]
+                }
+
             },
             {
                 "Mismatched type boxing",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: boxed i32 = todo!;
                                    var b: unboxed i32 = a;
-                                   """
+                                   """, [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32, false, Int32, true)])
                     }
-                },
-                [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32, false, Int32, true)]
+                }
+
             },
             {
                 "Mismatched type boxing",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: unboxed i32 = todo!;
                                    var b: boxed i32 = a;
-                                   """
+                                   """, [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32, true, Int32, false)])
                     }
-                },
-                [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32, true, Int32, false)]
+                }
+
             },
             {
                 "Mismatched type boxing",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    var a: i32 = todo!;
                                    var b: boxed i32 = a;
-                                   """
+                                   """, [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32, true, Int32, false)])
                     }
-                },
-                [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32, true, Int32, false)]
+                }
+
             },
             {
                 "Mismatched type boxing",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {}
                                    var a: unboxed MyClass = todo!;
                                    var b: boxed MyClass = a;
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass"), true,
+                                   new TestClassReference("MyClass"), false)
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass"), true,
-                        new TestClassReference("MyClass"), false)
-                ]
+                }
+
             },
             {
                 "Mismatched type boxing",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {}
                                    var a: MyClass = todo!;
                                    var b: unboxed MyClass = a;
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass"), false,
+                                   new TestClassReference("MyClass"), true)
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass"), false,
-                        new TestClassReference("MyClass"), true)
-                ]
+                }
+
             },
             {
                 "Mismatched type boxing",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {}
                                    var a: unboxed MyClass = todo!;
                                    var b: MyClass = a;
-                                   """
+                                   """, [
+                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass"), true,
+                                   new TestClassReference("MyClass"), false)
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass"), true,
-                        new TestClassReference("MyClass"), false)
-                ]
+                }
+
             },
             {
                 "TypeIdentifier without static access",
-                new Dictionary<string, string>
+                new()
                 {
                     {
-                        "main.rf", """
+                        "main.rf", ("""
                                    class MyClass {}
                                    unboxed MyClass
-                                   """
+                                   """, [
+                                   TypeCheckerError.TypeIsNotExpression(SourceRange.Default,
+                                   NamedTypeIdentifier("MyClass", boxedSpecifier: Token.Unboxed(SourceSpan.Default)))
+                                   ])
                     }
-                },
-                [
-                    TypeCheckerError.TypeIsNotExpression(SourceRange.Default,
-                        NamedTypeIdentifier("MyClass", boxedSpecifier: Token.Unboxed(SourceSpan.Default)))
-                ]
+                }
+
             }
         };
     }
@@ -7104,7 +7476,7 @@ public class TypeCheckerTests
         """
         pub fn DoSomething(inner_a: i64): result::<i64, string> {
             var mut inner_b: i64 = 2;
-            
+
             if (inner_a > inner_b) {
                 return ok(inner_a);
             }
@@ -7121,7 +7493,7 @@ public class TypeCheckerTests
             MyClass::StaticMethod();
 
             PrivateFn::<string>();
-            
+
             if (false) {
                 // lowercase error keyword
                 return error("something wrong");
@@ -7137,7 +7509,7 @@ public class TypeCheckerTests
         pub fn SomethingElse(inner_a: i64): result::<i64, string> {
             var inner_b = DoSomething(inner_a)?;
             var mut inner_d = 2;
-            
+
             return result::<i64, string>::Ok(inner_b);
         }
 
@@ -7148,7 +7520,7 @@ public class TypeCheckerTests
             pub static fn StaticMethod() {
 
             }
-            
+
             field FieldA: string,
             mut field FieldB: string,
             pub mut field FieldC: string,
@@ -7174,14 +7546,14 @@ public class TypeCheckerTests
             A,
             B { field MyField: string, },
             C(string),
-            
+
             fn SomeMethod() {
                 var foo = match (this) {
                     MyUnion::A => "",
                     MyUnion::B { MyField } => MyField,
                     MyUnion::C(var value) => value
                 };
-                
+
                 var bar = match (this) {
                     MyUnion::A => 1,
                     MyUnion::B => 2,
@@ -7195,7 +7567,7 @@ public class TypeCheckerTests
             }
             else if (param matches MyUnion::B { MyField }) {
             }
-            
+
             var inner_a = match (param) {
                 MyUnion::A => 1,
                 MyUnion::B { MyField } => 2,

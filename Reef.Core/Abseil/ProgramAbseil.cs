@@ -29,7 +29,7 @@ public partial class ProgramAbseil
             bool needsLowering
         )> _methods = [];
     private readonly Dictionary<DefId, DataType> _types = [];
-    private readonly LangProgram _program;
+    private readonly LangModule _program;
     private LoweredConcreteTypeReference? _currentType;
     private (LoweredMethod LoweredMethod, TypeChecker.FunctionSignature FunctionSignature)? _currentFunction;
 
@@ -38,7 +38,7 @@ public partial class ProgramAbseil
     private List<IStatement> _basicBlockStatements = [];
     private List<MethodLocal> _locals = [];
 
-    public static (LoweredModule Module, IReadOnlyList<LoweredModule> ImportedModules) Lower(LangProgram program)
+    public static (LoweredModule Module, IReadOnlyList<LoweredModule> ImportedModules) Lower(LangModule program)
     {
         var abseil = new ProgramAbseil(program);
         return (abseil.LowerInner(), abseil._importedModules);
@@ -139,7 +139,7 @@ public partial class ProgramAbseil
         return loweredMethod;
     }
 
-    private ProgramAbseil(LangProgram program)
+    private ProgramAbseil(LangModule program)
     {
         var importedDataTypes = new List<DataType>();
         var importedMethods = new List<IMethod>

@@ -5,9 +5,9 @@ namespace Reef.Core.TypeChecking;
 
 public partial class TypeChecker
 {
-    private readonly LangProgram _program;
+    private readonly Dictionary<string, LangModule> _modules;
     private readonly bool _throwOnError;
-    private readonly List<TypeCheckerError> _errors = [];
+    private readonly Dictionary<string, List<TypeCheckerError>> _errors;
 
     private void AddError(TypeCheckerError error)
     {
@@ -15,7 +15,7 @@ public partial class TypeChecker
         {
             throw new InvalidOperationException(error.ToString());
         }
-        
+
         _errors.Add(error);
     }
 
@@ -25,10 +25,11 @@ public partial class TypeChecker
         .Concat(UnionSignature.BuiltInTypes)
         .ToDictionary(x => x.Name);
 
-    private TypeChecker(LangProgram program, bool throwOnError = false)
+    private TypeChecker(Dictionary<string, LangModule> modules, bool throwOnError = false)
     {
-        _program = program;
+        _modules = modules;
         _throwOnError = throwOnError;
+        _errors = modules.ToDictionary(x => x.Key, _ => new List<TypeCheckerError>());
     }
 
     private Dictionary<string, FunctionSignature> ScopedFunctions => _typeCheckingScopes.Peek().Functions;
@@ -36,19 +37,19 @@ public partial class TypeChecker
     private ITypeSignature? CurrentTypeSignature => _typeCheckingScopes.Peek().CurrentTypeSignature;
     private FunctionSignature? CurrentFunctionSignature => _typeCheckingScopes.Peek().CurrentFunctionSignature;
     private ITypeReference ExpectedReturnType => _typeCheckingScopes.Peek().ExpectedReturnType;
-    private DefId? CurrentDefId => _typeCheckingScopes.Peek().CurrentDefId; 
+    private DefId? CurrentDefId => _typeCheckingScopes.Peek().CurrentDefId;
 
-    public static IReadOnlyList<TypeCheckerError> TypeCheck(LangProgram program, bool throwOnError = false)
+    public static Dictionary<string, IReadOnlyList<TypeCheckerError>> TypeCheck(Dictionary<string, LangModule> modules, bool throwOnError = false)
     {
-        var typeChecker = new TypeChecker(program, throwOnError);
+        var typeChecker = new TypeChecker(modules, throwOnError);
         typeChecker.TypeCheckInner();
 
-        return typeChecker._errors;
+        return typeChecker._errors.ToDictionary(x => x.Key, x => (IReadOnlyList<TypeCheckerError>)x.Value);
     }
 
     private void TypeCheckInner()
     {
-        var builtInFunctions = new [] 
+        var builtInFunctions = new[]
         {
             FunctionSignature.Box,
             FunctionSignature.Unbox,
@@ -62,7 +63,7 @@ public partial class TypeChecker
             FunctionSignature.PrintU32,
             FunctionSignature.PrintU64,
         };
-        
+
         // initial scope
         _typeCheckingScopes.Push(new TypeCheckingScope(
             null,
@@ -294,9 +295,9 @@ public partial class TypeChecker
             AddScopedVariable(varName.StringValue, variable);
         }
         expression.VariableDeclaration.Variable = variable;
-        
-        // todo: need a way to be able to reassign a variable, but mutate any inner fields in case the parent expression is not mutable 
-        if (expression.VariableDeclaration is { MutabilityModifier.Modifier.Type: TokenType.Mut, Value: {} expressionValue })
+
+        // todo: need a way to be able to reassign a variable, but mutate any inner fields in case the parent expression is not mutable
+        if (expression.VariableDeclaration is { MutabilityModifier.Modifier.Type: TokenType.Mut, Value: { } expressionValue })
         {
             ExpectMutableExpression(expressionValue);
         }
@@ -443,7 +444,7 @@ public partial class TypeChecker
             BlockExpression blockExpression => ExpectBlockExpressionType(blockExpression),
             IfExpressionExpression ifExpressionExpression => ExpectIfExpressionType(ifExpressionExpression),
             // these expression types are considered to provide their own types, rather than deferring to inner expressions
-            BinaryOperatorExpression 
+            BinaryOperatorExpression
                 or MatchesExpression
                 or MemberAccessExpression
                 or MethodCallExpression
@@ -576,7 +577,7 @@ public partial class TypeChecker
                         }
 
                         result &= argumentsPassed;
-                        
+
                         if (result && actualUnion.Boxed != expectedUnion.Boxed)
                         {
                             result = false;
@@ -648,7 +649,7 @@ public partial class TypeChecker
                             result = false;
                             AddError(TypeCheckerError.FunctionObjectReturnTypeMutabilityMismatch(actualSourceRange));
                         }
-                        
+
                         result &= functionObject1.Parameters.Count == functionObject2.Parameters.Count;
                         result &= functionObject1.Parameters.Zip(functionObject2.Parameters)
                             .All(z => z.First.Mutable == z.Second.Mutable
@@ -682,120 +683,120 @@ public partial class TypeChecker
         switch (constraint)
         {
             case BoxedTypeConstraint boxedTypeConstraint:
-            {
-                switch (boxedTypeConstraint.BoxedOfType)
                 {
-                    case FunctionObject functionObject:
-                        throw new NotImplementedException();
-                    case GenericPlaceholder genericPlaceholder:
+                    switch (boxedTypeConstraint.BoxedOfType)
                     {
-                        var result = true;
-                        var referencedTypeArgument = instantiatedGeneric.TypeArguments.First(x => x.GenericName == genericPlaceholder.GenericName);
-                        
-                        result &= ExpectTypeBoxing(typeReference, actualSourceRange, expectedBoxing: true, reportError);
-
-                        ITypeReference unboxedTypeReference = typeReference switch
-                        {
-                            FunctionObject functionObject => throw new NotImplementedException(),
-                            GenericPlaceholder genericPlaceholder1 => throw new NotImplementedException(),
-                            GenericTypeReference genericTypeReference => throw new NotImplementedException(),
-                            InstantiatedClass instantiatedClass => InstantiatedClass.Create(instantiatedClass.Signature, instantiatedClass.TypeArguments, boxed: false),
-                            InstantiatedUnion instantiatedUnion => InstantiatedUnion.Create(instantiatedUnion.Signature, instantiatedUnion.TypeArguments, boxed: false),
-                            ArrayType array => new ArrayType(array.ElementType.ResolvedType, boxed: false, array.Length),
-                            UnknownInferredType unknownInferredType => throw new NotImplementedException(),
-                            UnknownType unknownType => throw new NotImplementedException(),
-                            UnspecifiedSizedIntType {ResolvedIntType: null} => new UnspecifiedSizedIntType{Boxed = false},
-                            UnspecifiedSizedIntType {ResolvedIntType: var resolvedIntType} => new UnspecifiedSizedIntType
+                        case FunctionObject functionObject:
+                            throw new NotImplementedException();
+                        case GenericPlaceholder genericPlaceholder:
                             {
-                                Boxed = false,
-                                ResolvedIntType = InstantiatedClass.Create(resolvedIntType.Signature, resolvedIntType.TypeArguments, boxed: false)
-                            },
-                            _ => throw new ArgumentOutOfRangeException(nameof(typeReference))
-                        };
-                        
-                        result &= ExpectType(referencedTypeArgument, unboxedTypeReference, actualSourceRange, reportError: false, checkConstraints: false);
+                                var result = true;
+                                var referencedTypeArgument = instantiatedGeneric.TypeArguments.First(x => x.GenericName == genericPlaceholder.GenericName);
 
-                        return result;
+                                result &= ExpectTypeBoxing(typeReference, actualSourceRange, expectedBoxing: true, reportError);
+
+                                ITypeReference unboxedTypeReference = typeReference switch
+                                {
+                                    FunctionObject functionObject => throw new NotImplementedException(),
+                                    GenericPlaceholder genericPlaceholder1 => throw new NotImplementedException(),
+                                    GenericTypeReference genericTypeReference => throw new NotImplementedException(),
+                                    InstantiatedClass instantiatedClass => InstantiatedClass.Create(instantiatedClass.Signature, instantiatedClass.TypeArguments, boxed: false),
+                                    InstantiatedUnion instantiatedUnion => InstantiatedUnion.Create(instantiatedUnion.Signature, instantiatedUnion.TypeArguments, boxed: false),
+                                    ArrayType array => new ArrayType(array.ElementType.ResolvedType, boxed: false, array.Length),
+                                    UnknownInferredType unknownInferredType => throw new NotImplementedException(),
+                                    UnknownType unknownType => throw new NotImplementedException(),
+                                    UnspecifiedSizedIntType { ResolvedIntType: null } => new UnspecifiedSizedIntType { Boxed = false },
+                                    UnspecifiedSizedIntType { ResolvedIntType: var resolvedIntType } => new UnspecifiedSizedIntType
+                                    {
+                                        Boxed = false,
+                                        ResolvedIntType = InstantiatedClass.Create(resolvedIntType.Signature, resolvedIntType.TypeArguments, boxed: false)
+                                    },
+                                    _ => throw new ArgumentOutOfRangeException(nameof(typeReference))
+                                };
+
+                                result &= ExpectType(referencedTypeArgument, unboxedTypeReference, actualSourceRange, reportError: false, checkConstraints: false);
+
+                                return result;
+                            }
+                        case ArrayType:
+                            throw new NotImplementedException();
+                        case GenericTypeReference genericTypeReference:
+                            throw new NotImplementedException();
+                        case InstantiatedClass instantiatedClass:
+                            throw new NotImplementedException();
+                        case InstantiatedUnion instantiatedUnion:
+                            throw new NotImplementedException();
+                        case UnknownInferredType unknownInferredType:
+                            throw new NotImplementedException();
+                        case UnknownType unknownType:
+                            throw new NotImplementedException();
+                        case UnspecifiedSizedIntType unspecifiedSizedIntType:
+                            throw new NotImplementedException();
+                        default:
+                            throw new ArgumentOutOfRangeException(nameof(typeReference));
                     }
-                    case ArrayType:
-                        throw new NotImplementedException();
-                    case GenericTypeReference genericTypeReference:
-                        throw new NotImplementedException();
-                    case InstantiatedClass instantiatedClass:
-                        throw new NotImplementedException();
-                    case InstantiatedUnion instantiatedUnion:
-                        throw new NotImplementedException();
-                    case UnknownInferredType unknownInferredType:
-                        throw new NotImplementedException();
-                    case UnknownType unknownType:
-                        throw new NotImplementedException();
-                    case UnspecifiedSizedIntType unspecifiedSizedIntType:
-                        throw new NotImplementedException();
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(typeReference));
                 }
-            }
             case UnboxedTypeConstraint unboxedTypeConstraint:
-            {
-                switch (unboxedTypeConstraint.BoxedOfType)
                 {
-                    case FunctionObject functionObject:
-                        throw new NotImplementedException();
-                    case GenericPlaceholder genericPlaceholder:
+                    switch (unboxedTypeConstraint.BoxedOfType)
                     {
-                        /*
-                         * pub fn unbox<TParam, TResult>(param: TParam): TResult
-                         *  where TParam: boxed TResult,
-                         *        TResult: unboxed TParam
-                         * {}
-                         */
-                        
-                        var result = true;
-                        var referencedTypeArgument = instantiatedGeneric.TypeArguments.First(x => x.GenericName == genericPlaceholder.GenericName);
-
-                        result &= ExpectTypeBoxing(typeReference, actualSourceRange, expectedBoxing: false, reportError);
-                        
-                        ITypeReference boxedTypeReference = typeReference switch
-                        {
-                            FunctionObject functionObject => throw new NotImplementedException(),
-                            GenericPlaceholder genericPlaceholder1 => throw new NotImplementedException(),
-                            GenericTypeReference genericTypeReference => throw new NotImplementedException(),
-                            InstantiatedClass instantiatedClass => InstantiatedClass.Create(instantiatedClass.Signature, instantiatedClass.TypeArguments, boxed: true),
-                            InstantiatedUnion instantiatedUnion => InstantiatedUnion.Create(instantiatedUnion.Signature, instantiatedUnion.TypeArguments, boxed: true),
-                            ArrayType arrayType => new ArrayType(arrayType.ElementType.ResolvedType, boxed: true, arrayType.Length),
-                            UnknownInferredType unknownInferredType => throw new NotImplementedException(),
-                            UnknownType unknownType => throw new NotImplementedException(),
-                            UnspecifiedSizedIntType {ResolvedIntType: null} => new UnspecifiedSizedIntType{Boxed = true},
-                            UnspecifiedSizedIntType {ResolvedIntType: var resolvedIntType} => new UnspecifiedSizedIntType
+                        case FunctionObject functionObject:
+                            throw new NotImplementedException();
+                        case GenericPlaceholder genericPlaceholder:
                             {
-                                Boxed = true,
-                                ResolvedIntType = InstantiatedClass.Create(resolvedIntType.Signature, resolvedIntType.TypeArguments, boxed: true)
-                            },
-                            _ => throw new ArgumentOutOfRangeException(nameof(typeReference))
-                        };
-                        
-                        result &= ExpectType(referencedTypeArgument, boxedTypeReference, actualSourceRange, reportError: false, checkConstraints: false);
+                                /*
+                                 * pub fn unbox<TParam, TResult>(param: TParam): TResult
+                                 *  where TParam: boxed TResult,
+                                 *        TResult: unboxed TParam
+                                 * {}
+                                 */
 
-                        return result;
+                                var result = true;
+                                var referencedTypeArgument = instantiatedGeneric.TypeArguments.First(x => x.GenericName == genericPlaceholder.GenericName);
+
+                                result &= ExpectTypeBoxing(typeReference, actualSourceRange, expectedBoxing: false, reportError);
+
+                                ITypeReference boxedTypeReference = typeReference switch
+                                {
+                                    FunctionObject functionObject => throw new NotImplementedException(),
+                                    GenericPlaceholder genericPlaceholder1 => throw new NotImplementedException(),
+                                    GenericTypeReference genericTypeReference => throw new NotImplementedException(),
+                                    InstantiatedClass instantiatedClass => InstantiatedClass.Create(instantiatedClass.Signature, instantiatedClass.TypeArguments, boxed: true),
+                                    InstantiatedUnion instantiatedUnion => InstantiatedUnion.Create(instantiatedUnion.Signature, instantiatedUnion.TypeArguments, boxed: true),
+                                    ArrayType arrayType => new ArrayType(arrayType.ElementType.ResolvedType, boxed: true, arrayType.Length),
+                                    UnknownInferredType unknownInferredType => throw new NotImplementedException(),
+                                    UnknownType unknownType => throw new NotImplementedException(),
+                                    UnspecifiedSizedIntType { ResolvedIntType: null } => new UnspecifiedSizedIntType { Boxed = true },
+                                    UnspecifiedSizedIntType { ResolvedIntType: var resolvedIntType } => new UnspecifiedSizedIntType
+                                    {
+                                        Boxed = true,
+                                        ResolvedIntType = InstantiatedClass.Create(resolvedIntType.Signature, resolvedIntType.TypeArguments, boxed: true)
+                                    },
+                                    _ => throw new ArgumentOutOfRangeException(nameof(typeReference))
+                                };
+
+                                result &= ExpectType(referencedTypeArgument, boxedTypeReference, actualSourceRange, reportError: false, checkConstraints: false);
+
+                                return result;
+                            }
+                        case GenericTypeReference genericTypeReference:
+                            throw new NotImplementedException();
+                        case ArrayType:
+                            throw new NotImplementedException();
+                        case InstantiatedClass instantiatedClass:
+                            throw new NotImplementedException();
+                        case InstantiatedUnion instantiatedUnion:
+                            throw new NotImplementedException();
+                        case UnknownInferredType unknownInferredType:
+                            throw new NotImplementedException();
+                        case UnknownType unknownType:
+                            throw new NotImplementedException();
+                        case UnspecifiedSizedIntType unspecifiedSizedIntType:
+                            throw new NotImplementedException();
+                        default:
+                            throw new ArgumentOutOfRangeException(nameof(typeReference));
                     }
-                    case GenericTypeReference genericTypeReference:
-                        throw new NotImplementedException();
-                    case ArrayType:
-                        throw new NotImplementedException();
-                    case InstantiatedClass instantiatedClass:
-                        throw new NotImplementedException();
-                    case InstantiatedUnion instantiatedUnion:
-                        throw new NotImplementedException();
-                    case UnknownInferredType unknownInferredType:
-                        throw new NotImplementedException();
-                    case UnknownType unknownType:
-                        throw new NotImplementedException();
-                    case UnspecifiedSizedIntType unspecifiedSizedIntType:
-                        throw new NotImplementedException();
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(typeReference));
                 }
-            }
             default:
                 throw new ArgumentOutOfRangeException(nameof(constraint));
         }
@@ -806,68 +807,68 @@ public partial class TypeChecker
         switch (actual)
         {
             case FunctionObject functionObject:
-            {
-                if (!expectedBoxing && reportError)
                 {
-                    AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, actual, expectedBoxing, actual, actualBoxed: true));
-                }
+                    if (!expectedBoxing && reportError)
+                    {
+                        AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, actual, expectedBoxing, actual, actualBoxed: true));
+                    }
 
-                // for now, FunctionObjects are always boxed
-                return expectedBoxing;
-            }
+                    // for now, FunctionObjects are always boxed
+                    return expectedBoxing;
+                }
             case ArrayType arrayType:
-            {
-                if (expectedBoxing != arrayType.Boxed)
                 {
-                    AddError(TypeCheckerError.MismatchedTypeBoxing(
-                        actualSourceRange, actual, expectedBoxing, actual, arrayType.Boxed));
-                    return false;
-                }
+                    if (expectedBoxing != arrayType.Boxed)
+                    {
+                        AddError(TypeCheckerError.MismatchedTypeBoxing(
+                            actualSourceRange, actual, expectedBoxing, actual, arrayType.Boxed));
+                        return false;
+                    }
 
-                return true;
-            }
+                    return true;
+                }
             case GenericPlaceholder genericPlaceholder:
                 throw new NotImplementedException();
             case GenericTypeReference genericTypeReference:
                 throw new NotImplementedException();
             case InstantiatedClass instantiatedClass:
-            {
-                if (expectedBoxing != instantiatedClass.Boxed)
                 {
-                    AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, actual, expectedBoxing, actual,
-                        instantiatedClass.Boxed));
-                    return false;
-                }
+                    if (expectedBoxing != instantiatedClass.Boxed)
+                    {
+                        AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, actual, expectedBoxing, actual,
+                            instantiatedClass.Boxed));
+                        return false;
+                    }
 
-                return true;
-            }
+                    return true;
+                }
             case InstantiatedUnion instantiatedUnion:
-            {
-                if (expectedBoxing != instantiatedUnion.Boxed)
                 {
-                    AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, actual, expectedBoxing, actual,
-                        instantiatedUnion.Boxed));
-                    return false;
-                }
+                    if (expectedBoxing != instantiatedUnion.Boxed)
+                    {
+                        AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, actual, expectedBoxing, actual,
+                            instantiatedUnion.Boxed));
+                        return false;
+                    }
 
-                return true;
-            }
+                    return true;
+                }
 
             case UnknownInferredType unknownInferredType:
                 throw new NotImplementedException();
             case UnknownType unknownType:
                 return true;
             case UnspecifiedSizedIntType unspecifiedSizedIntType:
-            {
-                if (expectedBoxing != unspecifiedSizedIntType.Boxed)
                 {
-                    AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, actual, expectedBoxing, actual,
-                        unspecifiedSizedIntType.Boxed));
-                    return false;
-                }
+                    if (expectedBoxing != unspecifiedSizedIntType.Boxed)
+                    {
+                        AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, actual, expectedBoxing, actual,
+                            unspecifiedSizedIntType.Boxed));
+                        return false;
+                    }
 
-                return true;
-            }
+                    return true;
+                }
             default:
                 throw new ArgumentOutOfRangeException(nameof(actual));
         }
@@ -968,7 +969,7 @@ public partial class TypeChecker
                                 actualIntType, actualIntType.Boxed));
                         }
                     }
-                    
+
                     break;
                 }
             case (UnspecifiedSizedIntType actualIntType, InstantiatedClass expectedClass):
@@ -993,7 +994,7 @@ public partial class TypeChecker
                     {
                         actualIntType.ResolvedIntType = expectedClass;
                     }
-                    
+
                     if (actualIntType.Boxed != expectedClass.Boxed)
                     {
                         result = false;
@@ -1030,7 +1031,7 @@ public partial class TypeChecker
                     {
                         expectedIntType.ResolvedIntType = actualClass;
                     }
-                    
+
                     if (actualClass.Boxed != expectedIntType.Boxed)
                     {
                         result = false;
@@ -1107,30 +1108,30 @@ public partial class TypeChecker
                     break;
                 }
             case (ArrayType actualArray, ArrayType expectedArray):
-            {
-                result = ExpectType(actualArray.ElementType, expectedArray.ElementType, actualSourceRange, reportError,
-                    assignInferredTypes);
-
-                if (actualArray.Boxed != expectedArray.Boxed)
                 {
-                    result = false;
-                    AddError(TypeCheckerError.MismatchedTypeBoxing(
-                        actualSourceRange,
-                        expectedArray,
-                        expectedArray.Boxed,
-                        actualArray,
-                        actualArray.Boxed));
-                }
+                    result = ExpectType(actualArray.ElementType, expectedArray.ElementType, actualSourceRange, reportError,
+                        assignInferredTypes);
 
-                if (actualArray.Length != expectedArray.Length)
-                {
-                    result = false;
-                    AddError(TypeCheckerError.ArrayLengthMismatch(
-                        expectedArray.Length, actualArray.Length, actualSourceRange));
+                    if (actualArray.Boxed != expectedArray.Boxed)
+                    {
+                        result = false;
+                        AddError(TypeCheckerError.MismatchedTypeBoxing(
+                            actualSourceRange,
+                            expectedArray,
+                            expectedArray.Boxed,
+                            actualArray,
+                            actualArray.Boxed));
+                    }
+
+                    if (actualArray.Length != expectedArray.Length)
+                    {
+                        result = false;
+                        AddError(TypeCheckerError.ArrayLengthMismatch(
+                            expectedArray.Length, actualArray.Length, actualSourceRange));
+                    }
+
+                    break;
                 }
-                
-                break;
-            }
             case (InstantiatedClass actualClass, InstantiatedClass expectedClass):
                 {
                     if (!actualClass.IsSameSignature(expectedClass))
@@ -1154,7 +1155,7 @@ public partial class TypeChecker
                     }
 
                     result &= argumentsPassed;
-                    
+
                     if (actualClass.Boxed != expectedClass.Boxed)
                     {
                         result = false;
@@ -1192,7 +1193,7 @@ public partial class TypeChecker
                         AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
                     }
                     result &= argumentsPassed;
-                    
+
                     if (actualUnion.Boxed != expectedUnion.Boxed)
                     {
                         result = false;
@@ -1208,57 +1209,57 @@ public partial class TypeChecker
                     break;
                 }
             case (ArrayType array, GenericTypeReference generic):
-            {
-                if (generic.ResolvedType is {} resolvedGeneric)
                 {
-                    result &= ExpectType(array, resolvedGeneric, actualSourceRange, reportError, assignInferredTypes);
+                    if (generic.ResolvedType is { } resolvedGeneric)
+                    {
+                        result &= ExpectType(array, resolvedGeneric, actualSourceRange, reportError, assignInferredTypes);
+                        break;
+                    }
+
+                    if (checkConstraints)
+                    {
+                        var genericPlaceholder =
+                            generic.OwnerType.TypeParameters.First(z => z.GenericName == generic.GenericName);
+                        foreach (var constraint in genericPlaceholder.Constraints)
+                        {
+                            result &= ExpectTypeConstraint(constraint, generic.InstantiatedFrom, array, actualSourceRange,
+                                reportError);
+                        }
+                    }
+
+                    if (assignInferredTypes)
+                    {
+                        generic.ResolvedType = array;
+                    }
+
                     break;
                 }
-
-                if (checkConstraints)
-                {
-                    var genericPlaceholder =
-                        generic.OwnerType.TypeParameters.First(z => z.GenericName == generic.GenericName);
-                    foreach (var constraint in genericPlaceholder.Constraints)
-                    {
-                        result &= ExpectTypeConstraint(constraint, generic.InstantiatedFrom, array, actualSourceRange,
-                            reportError);
-                    }
-                }
-
-                if (assignInferredTypes)
-                {
-                    generic.ResolvedType = array;
-                }
-                
-                break;
-            }
             case (GenericTypeReference generic, ArrayType array):
-            {
-                if (generic.ResolvedType is {} resolvedGeneric)
                 {
-                    result &= ExpectType(array, resolvedGeneric, actualSourceRange, reportError, assignInferredTypes);
+                    if (generic.ResolvedType is { } resolvedGeneric)
+                    {
+                        result &= ExpectType(array, resolvedGeneric, actualSourceRange, reportError, assignInferredTypes);
+                        break;
+                    }
+
+                    if (checkConstraints)
+                    {
+                        var genericPlaceholder =
+                            generic.OwnerType.TypeParameters.First(z => z.GenericName == generic.GenericName);
+                        foreach (var constraint in genericPlaceholder.Constraints)
+                        {
+                            result &= ExpectTypeConstraint(constraint, generic.InstantiatedFrom, array, actualSourceRange,
+                                reportError);
+                        }
+                    }
+
+                    if (assignInferredTypes)
+                    {
+                        generic.ResolvedType = array;
+                    }
+
                     break;
                 }
-
-                if (checkConstraints)
-                {
-                    var genericPlaceholder =
-                        generic.OwnerType.TypeParameters.First(z => z.GenericName == generic.GenericName);
-                    foreach (var constraint in genericPlaceholder.Constraints)
-                    {
-                        result &= ExpectTypeConstraint(constraint, generic.InstantiatedFrom, array, actualSourceRange,
-                            reportError);
-                    }
-                }
-
-                if (assignInferredTypes)
-                {
-                    generic.ResolvedType = array;
-                }
-                
-                break;
-            }
             case (InstantiatedUnion union, GenericTypeReference generic):
                 {
                     if (generic.ResolvedType is not null)
@@ -1367,7 +1368,7 @@ public partial class TypeChecker
 
                     break;
                 }
-            
+
             case (GenericTypeReference genericTypeReference, GenericTypeReference expectedGeneric):
                 {
                     if (genericTypeReference.ResolvedType is not null && expectedGeneric.ResolvedType is not null)
@@ -1409,7 +1410,7 @@ public partial class TypeChecker
                     {
                         AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
                     }
-                    
+
                     if (functionObject2.MutableReturn && !functionObject1.MutableReturn)
                     {
                         result = false;
@@ -1444,10 +1445,10 @@ public partial class TypeChecker
                 }
             case (UnknownType, _):
             case (_, UnknownType):
-            {
+                {
                     // just bail out
                     break;
-            }
+                }
             default:
                 {
                     AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
