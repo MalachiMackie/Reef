@@ -10,7 +10,33 @@ public static class ParseTestCases
         return new (string Source, LangProgram ExpectedProgram)[]
         {
             (
-                "var a = someModule:::subModule:::SomeClass::<string>::B",
+                "use :::someModule:::{A, B};",
+                Program("ParseTestCases",
+                    moduleImports: [
+                        ModuleImport(
+                            ModulePathSegment(
+                                "someModule",
+                                [ModulePathSegment("A"), ModulePathSegment("B")]),
+                            true
+                        )
+                    ])
+            ),
+            (
+                "use :::someModule:::{A:::B, C:::D};",
+                Program("ParseTestCases",
+                    moduleImports: [
+                        ModuleImport(
+                            ModulePathSegment(
+                                "someModule",
+                                [
+                                    ModulePathSegment("A", [ModulePathSegment("B")]),
+                                    ModulePathSegment("C", [ModulePathSegment("D")]),
+                                ]),
+                            true)
+                    ])
+            ),
+            (
+                "var a = someModule:::subModule:::SomeClass::<string>::B;",
                 Program("ParseTestCases",
                     [
                         VariableDeclaration(
@@ -34,7 +60,7 @@ public static class ParseTestCases
             (
                 "use :::someModule:::*;",
                 Program("ParseTestCases",
-                    moduleImports: [ModuleImport(["someModule"], true, true)])
+                    moduleImports: [ModuleImport(ModulePathSegment("someModule", useAll: true), true)])
             ),
             (
                 "var a = new someModule:::MyClass{}",
@@ -290,7 +316,7 @@ public static class ParseTestCases
 
                 var a = new MyUnion::<string>::A {};
                 """,
-                Program("ParseTestCases", 
+                Program("ParseTestCases",
                     [
                         new VariableDeclarationExpression(new VariableDeclaration(
                             Identifier("a"),
@@ -332,7 +358,7 @@ public static class ParseTestCases
                     Field2 = 2
                 };
                 """,
-                Program("ParseTestCases", 
+                Program("ParseTestCases",
                     [
                         new VariableDeclarationExpression(new VariableDeclaration(
                             Identifier("a"),
@@ -403,7 +429,7 @@ public static class ParseTestCases
                 union MyUnion {
                 }
                 """,
-                Program("ParseTestCases", 
+                Program("ParseTestCases",
                     unions: [
                         new ProgramUnion(
                             null,
@@ -415,7 +441,7 @@ public static class ParseTestCases
             ),
             (
                 "pub union MyUnion {}",
-                Program("ParseTestCases", 
+                Program("ParseTestCases",
                     unions: [
                         new ProgramUnion(
                             new AccessModifier(Token.Pub(SourceSpan.Default)),
@@ -460,7 +486,7 @@ public static class ParseTestCases
                     A
                 }
                 """,
-                Program("ParseTestCases", 
+                Program("ParseTestCases",
                     unions: [
                         new ProgramUnion(
                             null,
@@ -476,7 +502,7 @@ public static class ParseTestCases
                     A,
                 }
                 """,
-                Program("ParseTestCases", 
+                Program("ParseTestCases",
                     unions: [
                         new ProgramUnion(
                             null,
@@ -493,7 +519,7 @@ public static class ParseTestCases
                     B(string, int, MyClass::<string>)
                 }
                 """,
-                Program("ParseTestCases", 
+                Program("ParseTestCases",
                     unions: [
                         new ProgramUnion(
                             null,
@@ -519,12 +545,12 @@ public static class ParseTestCases
             (
                 """
                 union MyUnion {
-                    A { 
+                    A {
                         field MyField: string,
                     }
                 }
                 """,
-                Program("ParseTestCases", 
+                Program("ParseTestCases",
                     unions: [
                         new ProgramUnion(
                             null,
@@ -717,14 +743,14 @@ public static class ParseTestCases
                                 Identifier("ok"), null)), []), SourceRange.Default),
                         Identifier("b"), null)), []), SourceRange.Default)
             ])),
-            ("if (a) {} b = c;", Program("ParseTestCases", 
+            ("if (a) {} b = c;", Program("ParseTestCases",
                 [
                     new IfExpressionExpression(new IfExpression(VariableAccessor("a"),
                         new BlockExpression(new Block([], [], []), SourceRange.Default), [], null), SourceRange.Default),
                     new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
                         VariableAccessor("b"), VariableAccessor("c"), Token.Equals(SourceSpan.Default)))
                 ])),
-            ("{} b = c;", Program("ParseTestCases", 
+            ("{} b = c;", Program("ParseTestCases",
                 [
                     new BlockExpression(new Block([], [], []), SourceRange.Default),
                     new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
@@ -1163,7 +1189,7 @@ public static class ParseTestCases
                             NamedTypeIdentifier("string"), null)
                     ])
             ])),
-            ("pub fn DoSomething(a: int): result::<int, string> {}", Program("ParseTestCases", 
+            ("pub fn DoSomething(a: int): result::<int, string> {}", Program("ParseTestCases",
                 functions: [
                     new LangFunction(
                         new AccessModifier(Token.Pub(SourceSpan.Default)),
@@ -1186,7 +1212,7 @@ public static class ParseTestCases
                 ])),
             (
                 "class MyClass { static field someField: int = 3, }",
-                Program("ParseTestCases", 
+                Program("ParseTestCases",
                     classes: [
                         new ProgramClass(
                             null,
@@ -1208,7 +1234,7 @@ public static class ParseTestCases
             ),
             (
                 """
-                boxed int::something 
+                boxed int::something
                 """,
                 Program("ParseTestCases",
                     [new StaticMemberAccessExpression(
@@ -1225,7 +1251,7 @@ public static class ParseTestCases
             ),
             (
                 """
-                unboxed int::something 
+                unboxed int::something
                 """,
                 Program("ParseTestCases",
                     [new StaticMemberAccessExpression(
@@ -1265,7 +1291,7 @@ public static class ParseTestCases
             ("""
              pub fn DoSomething(a: int): result::<int, string> {
                  var b: int = 2;
-                 
+
                  if (a > b) {
                      return ok(a);
                  }
@@ -1298,7 +1324,7 @@ public static class ParseTestCases
              pub fn SomethingElse(a: int): result::<int, string> {
                  var b = DoSomething(a)?;
                  var mut c = 2;
-                 
+
                  return b;
              }
 
@@ -1313,7 +1339,7 @@ public static class ParseTestCases
                  pub static fn StaticMethod() {
 
                  }
-                 
+
                  field FieldA: string,
                  mut field FieldB: string,
                  pub mut field FieldC: string,
@@ -1328,7 +1354,7 @@ public static class ParseTestCases
              pub class Class2 {
                  pub field A: string,
              }
-             """, Program("ParseTestCases", 
+             """, Program("ParseTestCases",
                 [
                     new MethodCallExpression(new MethodCall(VariableAccessor("Println"),
                     [

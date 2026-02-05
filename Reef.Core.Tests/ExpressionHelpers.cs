@@ -1,4 +1,5 @@
-﻿using Reef.Core.Expressions;
+﻿using System.Diagnostics;
+using Reef.Core.Expressions;
 using Reef.Core.TypeChecking;
 
 namespace Reef.Core.Tests;
@@ -79,12 +80,12 @@ public static class ExpressionHelpers
     {
         return new(SourceRange.Default);
     }
-    
+
     public static WhileExpression While(IExpression? check = null, IExpression? body = null)
     {
         return new(check, body, SourceRange.Default);
     }
-    
+
     public static ContinueExpression Continue()
     {
         return new(SourceRange.Default);
@@ -122,12 +123,30 @@ public static class ExpressionHelpers
             SourceRange.Default);
     }
 
-    public static ModuleImport ModuleImport(IEnumerable<string> moduleIdentifiers, bool isGlobal = false, bool useAll = false)
+    public static ModulePathSegment ModulePathSegment(string identifier, IReadOnlyList<ModulePathSegment>? subSegments = null, bool useAll = false)
+    {
+        return new ModulePathSegment(Token.Identifier(identifier, SourceSpan.Default), subSegments ?? [], useAll);
+    }
+
+    public static ModuleImport ModuleImport(IEnumerable<string> segments, bool isGlobal = false)
+    {
+        ModulePathSegment? nextSegment = null;
+        foreach (var segment in segments.Reverse())
+        {
+            nextSegment = new ModulePathSegment(
+                Token.Identifier(segment, SourceSpan.Default), nextSegment is null ? [] : [nextSegment], false);
+        }
+
+        Debug.Assert(nextSegment is not null);
+
+        return new ModuleImport(isGlobal, nextSegment);
+    }
+
+    public static ModuleImport ModuleImport(ModulePathSegment rootModulePathSegment, bool isGlobal = false)
     {
         return new ModuleImport(
             isGlobal,
-            moduleIdentifiers.Select(x => Token.Identifier(x, SourceSpan.Default)).ToArray(),
-            useAll);
+            rootModulePathSegment);
     }
 
     public static VariableDeclarationExpression VariableDeclaration(
@@ -144,7 +163,7 @@ public static class ExpressionHelpers
             type,
             value), SourceRange.Default);
     }
-    
+
     public static NamedTypeIdentifier IntType(Token? boxedSpecifier = null)
     {
         return new NamedTypeIdentifier(Identifier("int"), [], boxedSpecifier, [], false, SourceRange.Default);

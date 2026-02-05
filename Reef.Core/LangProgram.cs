@@ -38,7 +38,8 @@ public record LangProgram(
     public List<TypeChecker.FunctionSignature> TopLevelLocalFunctions { get; } = [];
 }
 
-public record ModuleImport(bool IsGlobal, IReadOnlyList<StringToken> ModuleIdentifiers, bool UseAll);
+public record ModulePathSegment(StringToken Identifier, IReadOnlyList<ModulePathSegment> SubSegments, bool UseAll);
+public record ModuleImport(bool IsGlobal, ModulePathSegment RootModulePathSegment);
 
 public interface ITypeIdentifier
 {
@@ -134,7 +135,7 @@ public record NamedTypeIdentifier(
         }
 
         sb.Append(Identifier.StringValue);
-        
+
         if (TypeArguments.Count > 0)
         {
             sb.Append("::<");

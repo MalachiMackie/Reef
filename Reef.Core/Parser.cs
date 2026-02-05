@@ -258,7 +258,7 @@ public sealed class Parser : IDisposable
             : foundToken => _errors.Add(ParserError.ExpectedToken(foundToken, expectedTokens));
 
         var start = Current.SourceSpan;
-        // if there's a closing token, then we're expecting 
+        // if there's a closing token, then we're expecting
         if (closingToken.HasValue && !MoveNext())
         {
             logError(null);
@@ -467,6 +467,52 @@ public sealed class Parser : IDisposable
         };
     }
 
+    private ModulePathSegment? GetModulePathSegment()
+    {
+        if (!ExpectCurrentIdentifier(out var identifier))
+        {
+            return null;
+        }
+
+        if (!MoveNext() || Current.Type is not TokenType.TripleColon)
+        {
+            return new ModulePathSegment(identifier, [], false);
+        }
+
+        if (!MoveNext() || Current.Type is not (TokenType.Star or TokenType.Identifier or TokenType.LeftBrace))
+        {
+            _errors.Add(ParserError.ExpectedToken(null, TokenType.Star, TokenType.Identifier, TokenType.LeftBrace));
+            return new ModulePathSegment(identifier, [], false);
+        }
+
+        if (Current.Type == TokenType.Star)
+        {
+            MoveNext();
+            return new ModulePathSegment(identifier, [], true);
+        }
+
+        if (Current.Type == TokenType.Identifier)
+        {
+            var subSegment = GetModulePathSegment();
+            return new ModulePathSegment(identifier, subSegment is null ? [] : [subSegment], false);
+        }
+
+        var (subSegments, lastToken) = GetCommaSeparatedList(
+            TokenType.RightBrace,
+            [TokenType.Identifier],
+            false,
+            false,
+            false,
+            () =>
+            {
+                var segment = GetModulePathSegment();
+
+                return segment;
+            });
+
+        return new ModulePathSegment(identifier, subSegments, false);
+    }
+
     private ModuleImport? GetModuleImport()
     {
         if (!MoveNext() || Current.Type is not (TokenType.TripleColon or TokenType.Identifier))
@@ -475,42 +521,21 @@ public sealed class Parser : IDisposable
             return null;
         }
 
-        var modulePath = new List<StringToken>();
-        var isGlobalModulePath = Current.Type == TokenType.TripleColon;
-        if (Current is StringToken { Type: TokenType.Identifier } stringToken)
+        var isGlobalModulePath = false;
+        if (Current.Type == TokenType.TripleColon)
         {
-            modulePath.Add(stringToken);
-        }
-        else
-        {
-            if (!ExpectNextIdentifier(out var firstModuleId))
+            isGlobalModulePath = true;
+            if (!MoveNext())
             {
+                _errors.Add(ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.LeftBrace));
                 return null;
             }
-            modulePath.Add(firstModuleId);
         }
 
-        var useAll = false;
-        while (MoveNext() && Current.Type == TokenType.TripleColon)
+        var segment = GetModulePathSegment();
+        if (segment is null)
         {
-            if (!MoveNext() || Current.Type is not (TokenType.Identifier or TokenType.Star))
-            {
-                _errors.Add(ParserError.ExpectedToken(_hasNext ? Current : null, TokenType.Identifier, TokenType.Star));
-                return new ModuleImport(isGlobalModulePath, modulePath, false);
-            }
-
-            if (Current.Type == TokenType.Star)
-            {
-                useAll = true;
-                MoveNext();
-                break;
-            }
-
-            if (!ExpectCurrentIdentifier(out var nextModuleId))
-            {
-                return new ModuleImport(isGlobalModulePath, modulePath, false);
-            }
-            modulePath.Add(nextModuleId);
+            return null;
         }
 
         if (!_hasNext || Current.Type != TokenType.Semicolon)
@@ -522,7 +547,7 @@ public sealed class Parser : IDisposable
             MoveNext();
         }
 
-        return new ModuleImport(isGlobalModulePath, modulePath, useAll);
+        return new ModuleImport(isGlobalModulePath, segment);
     }
 
     private static bool IsMember(TokenType tokenType, bool allowVariant)
@@ -773,7 +798,7 @@ public sealed class Parser : IDisposable
                 return false;
             }
         }
-        
+
         typeIdentifier = GetNamedTypeIdentifier(boxingSpecifier);
 
         return typeIdentifier is not null;
@@ -1055,7 +1080,7 @@ public sealed class Parser : IDisposable
             if (!MoveNext())
             {
                 _errors.Add(ParserError.ExpectedTypeOrToken(null, TokenType.Mut));
-                
+
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
                     null, new Block([], [], []));
             }
@@ -1070,7 +1095,7 @@ public sealed class Parser : IDisposable
                         returnMutModifier, new Block([], [], []));
                 }
             }
-            
+
             if (!ExpectCurrentTypeIdentifier(out returnType))
             {
                 MoveNext();
@@ -1105,8 +1130,8 @@ public sealed class Parser : IDisposable
         return Current switch
         {
             StringToken { Type: TokenType.Identifier, StringValue: "Fn" } stringToken => GetFunctionTypeIdentifier(stringToken),
-            {Type: TokenType.Boxed or TokenType.Unboxed} => BoxingSpecifier(),
-            StringToken { Type: TokenType.Identifier } or {Type: TokenType.TripleColon} => GetNamedTypeIdentifier(boxingSpecifier),
+            { Type: TokenType.Boxed or TokenType.Unboxed } => BoxingSpecifier(),
+            StringToken { Type: TokenType.Identifier } or { Type: TokenType.TripleColon } => GetNamedTypeIdentifier(boxingSpecifier),
             { Type: TokenType.LeftParenthesis } => GetTupleTypeIdentifier(boxingSpecifier),
             { Type: TokenType.LeftSquareBracket } => GetArrayTypeIdentifier(boxingSpecifier),
             _ => DefaultCase()
@@ -1125,7 +1150,7 @@ public sealed class Parser : IDisposable
                 _errors.Add(ParserError.ExpectedTypeName(null));
                 return null;
             }
-            
+
             return GetTypeIdentifier(innerBoxingSpecifier);
         }
 
@@ -1156,7 +1181,7 @@ public sealed class Parser : IDisposable
         }
 
         ExpectNextToken(TokenType.RightSquareBracket);
-        
+
         var end = _hasNext ? Current : lengthSpecifier;
 
         MoveNext();
@@ -1259,7 +1284,7 @@ public sealed class Parser : IDisposable
         }
 
         ExpectCurrentTypeIdentifier(out var returnType);
-        
+
         return new FnTypeIdentifier(parameters, ReturnType: returnType, returnMutabilityModifier, new SourceRange(fnToken.SourceSpan, lastToken.SourceSpan));
     }
 
@@ -1267,7 +1292,7 @@ public sealed class Parser : IDisposable
     {
         var isGlobalPath = false;
 
-        var identifiers = new List<StringToken>(); 
+        var identifiers = new List<StringToken>();
         if (Current.Type == TokenType.TripleColon)
         {
             isGlobalPath = true;
@@ -1302,14 +1327,14 @@ public sealed class Parser : IDisposable
                     boxingSpecifier?.SourceSpan ?? identifiers[0].SourceSpan,
                     identifiers[0].SourceSpan));
         }
-        
+
         while (_hasNext && Current.Type == TokenType.TripleColon)
         {
             if (!ExpectNextIdentifier(out var identifier))
             {
                 return null;
             }
-            
+
             identifiers.Add(identifier);
 
             MoveNext();
@@ -1343,12 +1368,12 @@ public sealed class Parser : IDisposable
         }
 
         var lastIdentifier = identifiers[^1];
-        
+
         return new NamedTypeIdentifier(
             lastIdentifier,
             typeArguments,
             boxingSpecifier,
-            [..identifiers[..^1]],
+            [.. identifiers[..^1]],
             isGlobalPath,
             new SourceRange(boxingSpecifier?.SourceSpan ?? lastIdentifier.SourceSpan, lastToken?.SourceSpan ?? lastIdentifier.SourceSpan));
     }
@@ -1394,7 +1419,7 @@ public sealed class Parser : IDisposable
                 previousExpression, Current, unaryOperatorType.Value),
             _ => DefaultCase(out consumedToken)
         };
-        
+
         return expression;
 
         static IExpression? DefaultCase(out bool consumedToken)
@@ -1403,7 +1428,7 @@ public sealed class Parser : IDisposable
             return null;
         }
     }
-    
+
     private IndexExpression GetIndexExpression(IExpression collection)
     {
         var end = Current.SourceSpan;
@@ -1415,7 +1440,7 @@ public sealed class Parser : IDisposable
 
         end = index.SourceRange.End;
 
-        if (ExpectCurrentToken(TokenType.RightSquareBracket)) 
+        if (ExpectCurrentToken(TokenType.RightSquareBracket))
         {
             end = Current.SourceSpan;
             MoveNext();
@@ -1454,7 +1479,7 @@ public sealed class Parser : IDisposable
         {
             var end = Current;
             MoveNext();
-            
+
             return new CollectionExpression([], boxingSpecifier, new SourceRange(
                 start.SourceSpan, end.SourceSpan));
         }
@@ -1472,42 +1497,42 @@ public sealed class Parser : IDisposable
             _errors.Add(ParserError.ExpectedToken(null, TokenType.Semicolon, TokenType.Comma, TokenType.RightSquareBracket));
             return null;
         }
-        
+
         switch (Current.Type)
         {
             case TokenType.Comma:
                 break;
             case TokenType.RightSquareBracket:
-            {
-                var end = Current;
-                MoveNext();
-            
-                return new CollectionExpression(
-                    [firstElement],
-                    boxingSpecifier,
-                    new SourceRange(start.SourceSpan, end.SourceSpan));
-            }
-            case TokenType.Semicolon:
-            {
-                if (!ExpectNextToken(TokenType.IntLiteral) || Current is not IntToken intToken)
                 {
+                    var end = Current;
+                    MoveNext();
+
+                    return new CollectionExpression(
+                        [firstElement],
+                        boxingSpecifier,
+                        new SourceRange(start.SourceSpan, end.SourceSpan));
+                }
+            case TokenType.Semicolon:
+                {
+                    if (!ExpectNextToken(TokenType.IntLiteral) || Current is not IntToken intToken)
+                    {
+                        return null;
+                    }
+
+                    ExpectNextToken(TokenType.RightSquareBracket);
+
+                    var lastToken = _hasNext ? Current : intToken;
+
+                    MoveNext();
+
+                    return new FillCollectionExpression(firstElement, intToken, boxingSpecifier, new SourceRange(
+                        start.SourceSpan, lastToken.SourceSpan));
+                }
+            default:
+                {
+                    _errors.Add(ParserError.ExpectedToken(Current, TokenType.Semicolon, TokenType.Comma, TokenType.RightSquareBracket));
                     return null;
                 }
-
-                ExpectNextToken(TokenType.RightSquareBracket);
-
-                var lastToken = _hasNext ? Current : intToken;
-            
-                MoveNext();
-
-                return new FillCollectionExpression(firstElement, intToken, boxingSpecifier, new SourceRange(
-                    start.SourceSpan, lastToken.SourceSpan));
-            }
-            default:
-            {
-                _errors.Add(ParserError.ExpectedToken(Current, TokenType.Semicolon, TokenType.Comma, TokenType.RightSquareBracket));
-                return null;
-            }
         }
 
         var comma = Current;
@@ -2102,20 +2127,20 @@ public sealed class Parser : IDisposable
         {
             return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, variableToken, GetTypeArguments()));
         }
-        
+
         if (Current.Type != TokenType.TripleColon)
         {
             return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, variableToken, null));
         }
 
         var identifiers = new List<StringToken> { (variableToken as StringToken).NotNull() };
-        
+
         if (!ExpectNextIdentifier(out var nextIdentifier))
         {
             return null;
         }
         identifiers.Add(nextIdentifier);
-        
+
         while (MoveNext() && Current.Type == TokenType.TripleColon)
         {
             var tripleColon = Current;
@@ -2126,7 +2151,7 @@ public sealed class Parser : IDisposable
                         identifiers[^1],
                         [],
                         null,
-                        [..identifiers[..^1]],
+                        [.. identifiers[..^1]],
                         false,
                         new SourceRange(variableToken.SourceSpan, tripleColon.SourceSpan)));
             }
@@ -2143,13 +2168,13 @@ public sealed class Parser : IDisposable
                 lastToken = innerLastToken;
             }
         }
-        
+
         return new TypeIdentifierExpression(
             new NamedTypeIdentifier(
                 identifiers[^1],
                 typeArguments ?? [],
                 null,
-                [..identifiers[..^1]],
+                [.. identifiers[..^1]],
                 false,
                 new SourceRange(variableToken.SourceSpan, lastToken.SourceSpan)));
     }
@@ -2166,7 +2191,7 @@ public sealed class Parser : IDisposable
         }
 
         NamedTypeIdentifier type;
-        
+
         if (previousExpression is TypeIdentifierExpression(var typeIdentifier))
         {
             if (typeIdentifier is not NamedTypeIdentifier named)
@@ -2177,12 +2202,12 @@ public sealed class Parser : IDisposable
             type = named;
         }
         else if (previousExpression is ValueAccessorExpression
+        {
+            ValueAccessor:
             {
-                ValueAccessor:
-                {
-                    AccessType: ValueAccessType.Variable, Token: StringToken token, TypeArguments: var typeArguments
-                }
-            })
+                AccessType: ValueAccessType.Variable, Token: StringToken token, TypeArguments: var typeArguments
+            }
+        })
         {
             type = new NamedTypeIdentifier(token, typeArguments ?? [], null, [], false, previousExpression.SourceRange);
         }
@@ -2224,7 +2249,7 @@ public sealed class Parser : IDisposable
 
                 return typeIdentifier;
             });
-        
+
         lastToken = innerLastToken;
 
         return typeArguments;
@@ -2405,7 +2430,7 @@ public sealed class Parser : IDisposable
         return new MethodCallExpression(new MethodCall(method, argumentList),
             method.SourceRange with { End = lastToken?.SourceSpan ?? leftParenthesis.SourceSpan });
     }
-    
+
     private WhileExpression? GetWhile()
     {
         var start = Current.SourceSpan;
@@ -2433,7 +2458,7 @@ public sealed class Parser : IDisposable
             return new WhileExpression(checkExpression, null, new SourceRange(start, rightParenthesis.SourceSpan));
         }
 
-        return new(checkExpression, body, body.SourceRange with {Start = start});
+        return new(checkExpression, body, body.SourceRange with { Start = start });
     }
 
     private IfExpressionExpression? GetIfExpression()
@@ -2525,22 +2550,22 @@ public sealed class Parser : IDisposable
 
         return new BlockExpression(new Block(scope.Expressions, scope.Functions, scope.ModuleImports), scope.SourceRange);
     }
-    
+
     private BreakExpression GetBreak()
     {
         var start = Current.SourceSpan;
 
         MoveNext();
-        
+
         return new BreakExpression(new SourceRange(start, start));
     }
-    
+
     private ContinueExpression GetContinue()
     {
         var start = Current.SourceSpan;
 
         MoveNext();
-        
+
         return new ContinueExpression(new SourceRange(start, start));
     }
 
@@ -2662,7 +2687,7 @@ public sealed class Parser : IDisposable
         bindingStrengths = token.Type switch
         {
             _ when TryGetUnaryOperatorType(token.Type, out var unaryOperatorType)
-                && TryGetBinaryOperatorType(token.Type, out var binaryOperatorType) => 
+                && TryGetBinaryOperatorType(token.Type, out var binaryOperatorType) =>
                 [GetUnaryOperatorBindingStrength(unaryOperatorType.Value), GetBinaryOperatorBindingStrength(binaryOperatorType.Value)],
             _ when TryGetUnaryOperatorType(token.Type, out var unaryOperatorType) => [GetUnaryOperatorBindingStrength(
                 unaryOperatorType.Value)],

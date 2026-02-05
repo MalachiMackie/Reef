@@ -11,13 +11,16 @@ public static class ParseErrorTestCases
             (
                 "use :::",
                 Program("ParseErrorTestCases"),
-                [ParserError.ExpectedToken(null, TokenType.Identifier)]
+                [ParserError.ExpectedToken(null, TokenType.Identifier, TokenType.LeftBrace)]
             ),
             (
                 "use :::something:::",
                 Program("ParseErrorTestCases",
                     moduleImports: [ModuleImport(["something"], true)]),
-                [ParserError.ExpectedToken(null, TokenType.Star, TokenType.Identifier)]
+                [
+                    ParserError.ExpectedToken(null, TokenType.Star, TokenType.Identifier, TokenType.LeftBrace),
+                    ParserError.ExpectedToken(null, TokenType.Semicolon, TokenType.TripleColon)
+                ]
             ),
             (
                 "use something",

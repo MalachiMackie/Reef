@@ -94,6 +94,7 @@ public record Token
             TokenType.LeftSquareBracket => "[",
             TokenType.RightSquareBracket => "]",
             TokenType.Use => "use",
+            TokenType.TripleColon => ":::",
             _ => throw new UnreachableException(Type.ToString())
         };
     }
@@ -266,12 +267,12 @@ public record Token
     {
         return new Token { Type = TokenType.QuestionMark, SourceSpan = sourceSpan };
     }
-    
+
     public static Token LeftSquareBracket(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.LeftSquareBracket, SourceSpan = sourceSpan };
     }
-    
+
     public static Token RightSquareBracket(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.RightSquareBracket, SourceSpan = sourceSpan };

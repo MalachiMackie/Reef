@@ -58,18 +58,19 @@ public class Tests(ITestOutputHelper testOutputHelper)
     [Fact]
     public void SingleTest()
     {
-        var source = "var a: string = b";
-        var expectedExpression = new VariableDeclarationExpression(new VariableDeclaration(
-            Identifier("a"),
-            null,
-            NamedTypeIdentifier("string"),
-            VariableAccessor("b")), SourceRange.Default);
-        
-        var result = Parser.PopExpression("ParseTestCases", Tokenizer.Tokenize(source)).NotNull();
 
-        testOutputHelper.WriteLine("Expected {0}, found {1}", expectedExpression, result);
-        
-        result.Should().BeEquivalentTo(expectedExpression, opts => opts
+        var source =
+        "use something:::A";
+        var expectedProgram = Program("ParseTestCases", moduleImports: [ModuleImport(["something", "A"])]);
+        IEnumerable<ParserError> expectedErrors = [ParserError.ExpectedToken(null, TokenType.TripleColon, TokenType.Semicolon)];
+
+        var result = Parser.Parse("ParseTestCases", Tokenizer.Tokenize(source)).NotNull();
+
+        testOutputHelper.WriteLine("Expected {0}, found {1}", expectedProgram, result.ParsedProgram);
+
+        result.ParsedProgram.Should().BeEquivalentTo(expectedProgram, opts => opts
+            .Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
+        result.Errors.Should().BeEquivalentTo(expectedErrors, opts => opts
             .Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
     }
 
@@ -82,6 +83,8 @@ public class Tests(ITestOutputHelper testOutputHelper)
         LangProgram expectedProgram)
     {
         var result = Parser.Parse("ParseTestCases", tokens);
+
+        testOutputHelper.WriteLine(source);
 
         result.Errors.Should().BeEmpty();
 
@@ -104,6 +107,8 @@ public class Tests(ITestOutputHelper testOutputHelper)
         var tokens = Tokenizer.Tokenize(source);
 
         var output = Parser.Parse("ParseErrorTestCases", tokens);
+
+        testOutputHelper.WriteLine(source);
 
         output.Errors.Should().BeEquivalentTo(
             expectedErrors,

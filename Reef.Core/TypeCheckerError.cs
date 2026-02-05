@@ -18,7 +18,7 @@ public record TypeCheckerError
 
     public static TypeCheckerError ContinueUsedOutsideOfLoop(ContinueExpression expression) =>
         new(TypeCheckerErrorType.ContinueUsedOutsideOfLoop, expression.SourceRange, "continue used outside of a loop");
-    
+
     public static TypeCheckerError BreakUsedOutsideOfLoop(BreakExpression expression) =>
         new(TypeCheckerErrorType.BreakUsedOutsideOfLoop, expression.SourceRange, "break used outside of a loop");
 
@@ -38,7 +38,7 @@ public record TypeCheckerError
             TypeCheckerErrorType.MismatchedTypeBoxing,
             range,
             $"Expected {(expectedBoxed ? "" : "un")}boxed {expectedType}, but got {(actualBoxed ? "un" : "")}boxed {actualType}");
-    
+
     public static TypeCheckerError TypeIsNotExpression(
         SourceRange range, ITypeIdentifier type)
     {

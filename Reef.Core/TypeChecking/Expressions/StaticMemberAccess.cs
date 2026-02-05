@@ -128,6 +128,8 @@ public partial class TypeChecker
             case GenericTypeReference or GenericPlaceholder:
                 AddError(TypeCheckerError.StaticMemberAccessOnGenericReference(staticMemberAccessExpression));
                 return UnknownType.Instance;
+            case UnknownType:
+                return UnknownType.Instance;
             default:
                 throw new UnreachableException(type.GetType().ToString());
         }
