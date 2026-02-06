@@ -145,7 +145,7 @@ public partial class TypeChecker
             null,
             null));
 
-        SetupSignatures2();
+        SetupSignatures();
 
         foreach (var (moduleId, (functions, unions, classes)) in _moduleSignatures)
         {
@@ -246,9 +246,6 @@ public partial class TypeChecker
             }
         }
 
-        // SetupModuleSignatures();
-
-
         foreach (var (fileName, module) in _modules)
         {
             using var _ = PushScope(
@@ -281,114 +278,6 @@ public partial class TypeChecker
             if (moduleErrors.Count == 0)
             {
                 moduleErrors.AddRange(TypeTwoTypeChecker.TypeTwoTypeCheck(module, _throwOnError));
-            }
-        }
-    }
-
-    private void SetupModuleSignatures()
-    {
-        var signatures = new Dictionary<string, (LangModule module, List<(ProgramClass, ClassSignature)>, List<UnionSignature>)>();
-        foreach (var (fileName, module) in _modules)
-        {
-            using var _ = PushScope(moduleId: module.ModuleId, fileName: fileName);
-            var (classes, unions) = SetupSignatures(module);
-            signatures[fileName] = (module, classes, unions);
-        }
-
-        foreach (var (fileName, (module, classes, unions)) in signatures)
-        {
-            using var __ = PushScope(moduleId: module.ModuleId, fileName: fileName);
-
-            foreach (var unionSignature in unions)
-            {
-                using var _ = PushScope(unionSignature, genericPlaceholders: unionSignature.TypeParameters);
-
-                foreach (var function in unionSignature.Functions)
-                {
-                    TypeCheckFunctionBody(function);
-                }
-            }
-
-            foreach (var (@class, classSignature) in classes)
-            {
-                using var _ = PushScope(genericPlaceholders: classSignature.TypeParameters);
-
-                var instanceFieldVariables = new List<IVariable>();
-                var staticFieldVariables = new List<IVariable>();
-
-                foreach (var (fieldIndex, field) in @class.Fields.Index())
-                {
-                    var isStatic = field.StaticModifier is not null;
-
-                    var fieldTypeReference = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type);
-
-                    if (isStatic)
-                    {
-                        // todo: static constructor?
-                        if (field.InitializerValue is null)
-                        {
-                            throw new InvalidOperationException("Expected field initializer for static field");
-                        }
-
-                        var valueType = TypeCheckExpression(field.InitializerValue);
-                        field.InitializerValue.ValueUseful = true;
-
-                        ExpectType(valueType, fieldTypeReference, field.InitializerValue.SourceRange);
-
-                        staticFieldVariables.Add(new FieldVariable(
-                            classSignature,
-                            field.Name,
-                            fieldTypeReference,
-                            field.MutabilityModifier is not null,
-                            IsStaticField: true,
-                            (uint)fieldIndex));
-                    }
-                    else
-                    {
-                        if (field.InitializerValue is not null)
-                        {
-                            throw new InvalidOperationException("Instance fields cannot have initializers");
-                        }
-
-                        instanceFieldVariables.Add(new FieldVariable(
-                            classSignature,
-                            field.Name,
-                            fieldTypeReference,
-                            field.MutabilityModifier is not null,
-                            IsStaticField: false,
-                            (uint)fieldIndex));
-                    }
-                }
-
-                // static functions
-                using (PushScope(classSignature))
-                {
-                    // static functions only have access to static fields
-                    foreach (var variable in staticFieldVariables)
-                    {
-                        AddScopedVariable(variable.Name.StringValue, variable);
-                    }
-
-                    foreach (var function in classSignature.Functions.Where(x => x.IsStatic))
-                    {
-                        TypeCheckFunctionBody(function);
-                    }
-                }
-
-                // instance functions
-                using (PushScope(classSignature))
-                {
-                    // instance functions have access to both instance and static fields
-                    foreach (var variable in instanceFieldVariables.Concat(staticFieldVariables))
-                    {
-                        AddScopedVariable(variable.Name.StringValue, variable);
-                    }
-
-                    foreach (var function in classSignature.Functions.Where(x => !x.IsStatic))
-                    {
-                        TypeCheckFunctionBody(function);
-                    }
-                }
             }
         }
     }
