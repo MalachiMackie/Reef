@@ -5,7 +5,7 @@ using static Reef.Core.TypeChecking.TypeChecker;
 
 namespace Reef.Core.Tests;
 
-public class TypeCheckerTests
+public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 {
     private readonly MockFileSystem _fileSystem = new();
 
@@ -15,6 +15,9 @@ public class TypeCheckerTests
     {
         foreach (var (path, contents) in sourceFiles)
         {
+            testOutputHelper.WriteLine($"{path}:");
+            testOutputHelper.WriteLine(contents);
+
             _fileSystem.AddFile(path, new MockFileData(contents));
         }
 
@@ -37,12 +40,17 @@ public class TypeCheckerTests
 
         foreach (var (path, (contents, _)) in sourceFiles)
         {
+            testOutputHelper.WriteLine($"{path}:");
+            testOutputHelper.WriteLine("");
+            testOutputHelper.WriteLine(contents);
+            testOutputHelper.WriteLine("");
             _fileSystem.AddFile(path, new MockFileData(contents));
         }
 
         sourceFiles.SelectMany(x => x.Value.expectedErrors).Should().NotBeEmpty();
 
-        foreach (var (fileName, typeCheckResult) in await new ReefCompiler(_fileSystem).TypeCheck())
+        var typeCheckResults = await new ReefCompiler(_fileSystem).TypeCheck();
+        foreach (var (fileName, typeCheckResult) in typeCheckResults)
         {
             typeCheckResult.ParserErrors.Should().BeEmpty();
             var expectedErrors = sourceFiles.TryGetValue(fileName, out var result) ? result.expectedErrors : [];
@@ -52,45 +60,32 @@ public class TypeCheckerTests
         }
     }
 
-    [TestMe]
     [Fact]
+    [TestMe]
     public async Task SingleTest()
     {
-        // var files = new()
-        //             {
-        //                 {
-        //                     "main.rf",
-        //                     """
-        //                     use :::otherModule:::{MyClass, MyUnion, SomeFn};
+        var sourceFiles = new Dictionary<string, (string, IReadOnlyList<TypeCheckerError> expectedErrors)>()
+        {
+            {
+                "main.rf", ("""
+                            fn MyFn<T1>(param: T1): i64 { return param; }
+                            """, [MismatchedTypes(Int64, GenericPlaceholder("T1"))])
+            }
+        };
 
-        //                     var a = new MyClass{};
-        //                     var b = MyUnion::A;
-        //                     var c = SomeFn();
-        //                     """
-        //                 },
-        //                 {
-        //                     "otherModule.rf",
-        //                     """
-        //                     pub class MyClass{}
-        //                     pub union MyUnion{A}
-        //                     pub fn SomeFn(){}
-        //                     """
-        //                 }
-        //             };
+        foreach (var (path, (contents, _)) in sourceFiles)
+        {
+            _fileSystem.AddFile(path, new MockFileData(contents));
+        }
 
-        // IReadOnlyList<TypeCheckerError> expectedErrors =
-        //     [];
-
-        // foreach (var (path, contents) in files)
-        // {
-        //     _fileSystem.AddFile(path, new MockFileData(contents));
-        // }
-
-        // var typeCheckResult = await new ReefCompiler(_fileSystem).TypeCheck();
-        // typeCheckResult.ParserErrors.Should().BeEmpty();
-
-        // typeCheckResult.TypeCheckerErrors.Should().BeEquivalentTo(expectedErrors,
-        //     opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
+        var typeCheckResults = await new ReefCompiler(_fileSystem).TypeCheck();
+        foreach (var (fileName, typeCheckResult) in typeCheckResults)
+        {
+            typeCheckResult.ParserErrors.Should().BeEmpty();
+            var expectedErrors = sourceFiles.TryGetValue(fileName, out var result) ? result.expectedErrors : [];
+            typeCheckResult.TypeCheckerErrors.Should().BeEquivalentTo(expectedErrors,
+                    opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
+        }
     }
 
     public static TheoryData<Dictionary<string, string>> SuccessfulExpressionTestCases()

@@ -31,7 +31,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 "var a: [string; 0] = []",
                 LoweredProgram(ModuleId,
                     methods: [
-                        Method(new DefId(ModuleId, $"{ModuleId}._Main"),
+                        Method(new DefId(ModuleId, $"{ModuleId}:::_Main"),
                             "_Main",
                             [
                                 new BasicBlock(
@@ -72,7 +72,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     ModuleId,
                     [
                         Method(
-                            new DefId(ModuleId, $"{ModuleId}._Main"),
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
                             "_Main",
                             [
                                 new BasicBlock(
@@ -119,7 +119,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     ModuleId,
                     [
                         Method(
-                            new DefId(ModuleId, $"{ModuleId}._Main"),
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
                             "_Main",
                             [
                                 new BasicBlock(
@@ -167,7 +167,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     ],
                     methods: [
                         Method(
-                            new DefId(ModuleId, $"{ModuleId}._Main"),
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
                             "_Main",
                             [
                                 new BasicBlock(
@@ -235,7 +235,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     ModuleId,
                     [
                         Method(
-                            new DefId(ModuleId, $"{ModuleId}._Main"),
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
                             "_Main",
                             [
                                 new BasicBlock(
@@ -282,7 +282,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     ModuleId,
                     [
                         Method(
-                            new DefId(ModuleId, $"{ModuleId}._Main"),
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
                             "_Main",
                             [
                                 new BasicBlock(
@@ -329,7 +329,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     ModuleId,
                     [
                         Method(
-                            new DefId(ModuleId, $"{ModuleId}._Main"),
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
                             "_Main",
                             [
                                 new BasicBlock(
@@ -398,7 +398,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     ModuleId,
                     [
                         Method(
-                            new DefId(ModuleId, $"{ModuleId}._Main"),
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
                             "_Main",
                             [
                                 new BasicBlock(

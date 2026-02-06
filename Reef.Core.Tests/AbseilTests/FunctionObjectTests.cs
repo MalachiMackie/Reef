@@ -40,7 +40,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                              ])
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), "MyUnion__Create__A",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -57,7 +57,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                              new CreateObject(
                                                  new LoweredConcreteTypeReference(
                                                      "MyUnion",
-                                                     new DefId(ModuleId, $"{ModuleId}.MyUnion"),
+                                                     new DefId(ModuleId, $"{ModuleId}:::MyUnion"),
                                                      []))),
                                          new Assign(
                                              new Field(
@@ -77,8 +77,8 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                      new Return())
                              ],
                              parameters: [("Item0", StringT)],
-                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -93,14 +93,14 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          new Assign(
                                              new Deref(Local0),
                                              new CreateObject(
-                                                 FunctionObject([StringT], new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))))),
+                                                 FunctionObject([StringT], new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))),
                                          new Assign(
                                              new Field(new Deref(Local0), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
-                                                 new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), []))))
+                                                 new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), []))))
                                      ],
                                      new MethodCall(
-                                         FunctionObjectCall([StringT], new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                         FunctionObjectCall([StringT], new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          [new Copy(Local0), new StringConstant("")],
                                          Local1,
                                          BB2)),
@@ -114,11 +114,11 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                      new LoweredPointer(new LoweredConcreteTypeReference(
                                          "Function`2",
                                          DefId.FunctionObject(1),
-                                         [StringT, new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))]))),
+                                         [StringT, new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))]))),
                                  new MethodLocal(
                                      "_local1",
                                      "b",
-                                     new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                     new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                              ])
                      ]);
         var program = CreateProgram(ModuleId, source);
@@ -155,7 +155,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                              ])
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), "MyUnion__Create__A",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), "MyUnion__Create__A",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -172,7 +172,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                              new CreateObject(
                                                  new LoweredConcreteTypeReference(
                                                      "MyUnion",
-                                                     new DefId(ModuleId, $"{ModuleId}.MyUnion"),
+                                                     new DefId(ModuleId, $"{ModuleId}:::MyUnion"),
                                                      []))),
                                          new Assign(
                                              new Field(
@@ -192,8 +192,8 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                      new Return())
                              ],
                              parameters: [("Item0", StringT)],
-                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -208,14 +208,14 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          new Assign(
                                              new Deref(Local0),
                                              new CreateObject(
-                                                 FunctionObject([StringT], new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))))),
+                                                 FunctionObject([StringT], new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))),
                                          new Assign(
                                              new Field(new Deref(Local0), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
-                                                 new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__A"), []))))
+                                                 new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), []))))
                                      ],
                                      new MethodCall(
-                                         FunctionObjectCall([StringT], new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                         FunctionObjectCall([StringT], new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          [new Copy(Local0), new StringConstant("")],
                                          Local1,
                                          BB2)),
@@ -229,11 +229,11 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                      new LoweredPointer(new LoweredConcreteTypeReference(
                                          "Function`2",
                                          DefId.FunctionObject(1),
-                                         [StringT, new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))]))),
+                                         [StringT, new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))]))),
                                  new MethodLocal(
                                      "_local1",
                                      "b",
-                                     new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                     new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                              ])
                      ])
              },
@@ -245,12 +245,12 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  """,
                  LoweredProgram(ModuleId, 
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}.SomeFn"), "SomeFn",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::SomeFn"), "SomeFn",
                              [
                                  new BasicBlock(BB0, [], new Return())
                              ],
                              Unit),
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -272,7 +272,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                  "FunctionReference",
                                                  "_classVariant"),
                                              new Use(new FunctionPointerConstant(
-                                                 new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.SomeFn"), []))))
+                                                 new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::SomeFn"), []))))
                                      ],
                                      new GoTo(BB2)),
                                  new BasicBlock(BB2, [], new Return())
@@ -299,10 +299,10 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                              variants: [Variant("_classVariant")])
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__OtherFn"), "MyClass__OtherFn",
                              [new BasicBlock(BB0, [], new Return())],
                              Unit),
-                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"), "MyClass__MyFn",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -324,7 +324,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                  "FunctionReference",
                                                  "_classVariant"),
                                              new Use(new FunctionPointerConstant(
-                                                 new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), []))))
+                                                 new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__OtherFn"), []))))
                                      ],
                                      new GoTo(BB2)),
                                  new BasicBlock(BB2, [], new Return())
@@ -349,10 +349,10 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                              variants: [Variant("_classVariant")])
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), "MyClass__OtherFn",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__OtherFn"), "MyClass__OtherFn",
                              [new BasicBlock(BB0, [], new Return())],
                              Unit),
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -374,7 +374,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                  "FunctionReference",
                                                  "_classVariant"),
                                              new Use(new FunctionPointerConstant(
-                                                 new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__OtherFn"), []))))
+                                                 new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__OtherFn"), []))))
                                      ],
                                      new GoTo(BB2)),
                                  new BasicBlock(BB2, [], new Return())
@@ -399,11 +399,11 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                          DataType(ModuleId, "MyClass", variants: [Variant("_classVariant")])
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"), "MyClass__MyFn",
                              [new BasicBlock(BB0, [], new Return())],
                              Unit,
-                             parameters: [("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))]),
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             parameters: [("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))]),
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -418,7 +418,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          new Assign(
                                              new Deref(Local0),
                                              new CreateObject(new LoweredConcreteTypeReference(
-                                                 "MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
+                                                 "MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
                                      ],
                                      AllocateMethodCall(
                                          FunctionObject([], Unit),
@@ -433,7 +433,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          new Assign(
                                              new Field(new Deref(Local1), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
-                                                 new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), [])))),
+                                                 new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"), [])))),
                                          new Assign(
                                              new Field(new Deref(Local1), "FunctionParameter", "_classVariant"),
                                              new Use(new Copy(Local0)))
@@ -446,7 +446,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                  new MethodLocal(
                                      "_local0",
                                      "a",
-                                     new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                     new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
                                  new MethodLocal("_local1", "b", new LoweredPointer(FunctionObject([], Unit)))
                              ])
                      ])
@@ -491,15 +491,15 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                  Variant(
                                      "_classVariant",
                                      [
-                                         Field("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                         Field("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
                                          Field(
                                              "MyClass__MyFn__Locals",
-                                             new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), [])))
+                                             new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), [])))
                                      ])
                              ])
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn"), "MyClass__MyFn__InnerFn",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn"), "MyClass__MyFn__InnerFn",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -547,10 +547,10 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                              parameters: [
                                  ("closure", new LoweredPointer(new LoweredConcreteTypeReference(
                                      "MyClass__MyFn__InnerFn__Closure",
-                                     new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"),
+                                     new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"),
                                      [])))
                              ]),
-                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn"), "MyClass__MyFn",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"), "MyClass__MyFn",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -567,7 +567,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                              new CreateObject(
                                                  new LoweredConcreteTypeReference(
                                                      "MyClass__MyFn__Locals",
-                                                     new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"),
+                                                     new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"),
                                                      []))),
                                          new Assign(
                                              new Field(
@@ -594,7 +594,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                              new CreateObject(
                                                  new LoweredConcreteTypeReference(
                                                      "MyClass__MyFn__InnerFn__Closure",
-                                                     new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"),
+                                                     new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"),
                                                      []))),
                                          new Assign(
                                              new Field(new Deref(Local2), "this", "_classVariant"),
@@ -616,7 +616,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          new Assign(
                                              new Field(new Deref(Local1), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(
-                                                 new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn"), [])))),
+                                                 new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn"), [])))),
                                          new Assign(
                                              new Field(new Deref(Local1), "FunctionParameter", "_classVariant"),
                                              new Use(new Copy(Local2)))
@@ -627,13 +627,13 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                              ],
                              Unit,
                              parameters: [
-                                 ("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                 ("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
                                  ("param", StringT)],
                              locals: [
                                  new MethodLocal(
                                      "_localsObject",
                                      null,
-                                     new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__Locals"), []))),
+                                     new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), []))),
                                  new MethodLocal(
                                      "_local1",
                                      "b",
@@ -643,7 +643,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                      null,
                                      new LoweredPointer(new LoweredConcreteTypeReference(
                                          "MyClass__MyFn__InnerFn__Closure",
-                                         new DefId(ModuleId, $"{ModuleId}.MyClass__MyFn__InnerFn__Closure"),
+                                         new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"),
                                          [])))
                              ])
                      ])
@@ -658,11 +658,11 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  LoweredProgram(ModuleId, 
                      methods: [
                          Method(
-                             new DefId(ModuleId, $"{ModuleId}.SomeFn"),
+                             new DefId(ModuleId, $"{ModuleId}:::SomeFn"),
                              "SomeFn",
                              [new BasicBlock(BB0, [], new Return())],
                              Unit),
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -680,7 +680,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          new Assign(
                                              new Field(new Deref(Local0), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
-                                                 new DefId(ModuleId, $"{ModuleId}.SomeFn"), [])))),
+                                                 new DefId(ModuleId, $"{ModuleId}:::SomeFn"), [])))),
                                      ],
                                      new MethodCall(
                                          FunctionObjectCall([], Unit),
@@ -711,7 +711,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  """,
                  LoweredProgram(ModuleId, 
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}.SomeFn"), "SomeFn",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::SomeFn"), "SomeFn",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -720,7 +720,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                              ],
                              parameters: [("a", StringT)],
                              returnType: Int64T),
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -738,7 +738,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          new Assign(
                                              new Field(new Deref(Local0), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
-                                                 new DefId(ModuleId, $"{ModuleId}.SomeFn"), [])))),
+                                                 new DefId(ModuleId, $"{ModuleId}:::SomeFn"), [])))),
                                      ],
                                      new MethodCall(
                                          FunctionObjectCall([StringT], Int64T),
@@ -771,11 +771,11 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                          DataType(ModuleId, "MyClass", ["T"], [Variant("_classVariant")])
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "MyClass__SomeFn",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__SomeFn"), "MyClass__SomeFn",
                              [new BasicBlock(BB0, [], new Return())],
                              Unit,
-                             [(new DefId(ModuleId, $"{ModuleId}.MyClass"), "T"), (new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), "T2")]),
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             [(new DefId(ModuleId, $"{ModuleId}:::MyClass"), "T"), (new DefId(ModuleId, $"{ModuleId}:::MyClass__SomeFn"), "T2")]),
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -793,7 +793,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          new Assign(
                                              new Field(new Deref(Local0), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
-                                                 new DefId(ModuleId, $"{ModuleId}.MyClass__SomeFn"), [StringT, Int64T])))),
+                                                 new DefId(ModuleId, $"{ModuleId}:::MyClass__SomeFn"), [StringT, Int64T])))),
                                      ],
                                      new GoTo(BB2)),
                                  new BasicBlock(BB2, [], new Return())

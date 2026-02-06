@@ -59,7 +59,7 @@ public partial class TypeChecker
             type = generic.ResolvedType;
         }
         var arrayType = (type as ArrayType).NotNull();
-        if (e.Index is {} indexExpression)
+        if (e.Index is { } indexExpression)
         {
             var indexType = TypeCheckExpression(indexExpression);
             ExpectType(indexType, InstantiatedClass.UInt64, indexExpression.SourceRange);
@@ -77,7 +77,7 @@ public partial class TypeChecker
             firstElementType ??= elementType;
             ExpectType(elementType, firstElementType, element.SourceRange);
         }
-        
+
         return new ArrayType(
             firstElementType,
             boxed: e.BoxingSpecifier?.Type switch
@@ -108,12 +108,12 @@ public partial class TypeChecker
     private InstantiatedClass TypeCheckTypeIdentifierExpression(TypeIdentifierExpression e)
     {
         AddError(TypeCheckerError.TypeIsNotExpression(e.SourceRange, e.TypeIdentifier));
-        
+
         return InstantiatedClass.Never;
     }
-    
+
     private uint _loopDepth;
-    
+
     private InstantiatedClass TypeCheckContinueExpression(ContinueExpression continueExpression)
     {
         if (_loopDepth == 0)
@@ -123,7 +123,7 @@ public partial class TypeChecker
 
         return InstantiatedClass.Never;
     }
-    
+
     private InstantiatedClass TypeCheckBreakExpression(BreakExpression breakExpression)
     {
         if (_loopDepth == 0)
@@ -153,7 +153,7 @@ public partial class TypeChecker
         }
 
         _loopDepth--;
-        
+
         return InstantiatedClass.Unit;
     }
 
@@ -164,18 +164,18 @@ public partial class TypeChecker
             case BinaryOperatorExpression:
                 return true;
             case BlockExpression blockExpression:
-            {
-                var result = blockExpression.Block.Expressions.Count == 0
-                             || !blockExpression.Block.HasTailExpression
-                             || ExpectMutableExpression(blockExpression.Block.Expressions[^1], report: false);
-
-                if (!result && report)
                 {
-                    AddError(TypeCheckerError.ExpressionNotAssignable(blockExpression.Block.Expressions[^1]));
-                }
+                    var result = blockExpression.Block.Expressions.Count == 0
+                                 || !blockExpression.Block.HasTailExpression
+                                 || ExpectMutableExpression(blockExpression.Block.Expressions[^1], report: false);
 
-                return result;
-            }
+                    if (!result && report)
+                    {
+                        AddError(TypeCheckerError.ExpressionNotAssignable(blockExpression.Block.Expressions[^1]));
+                    }
+
+                    return result;
+                }
             case BreakExpression:
                 return false;
             case CollectionExpression:
@@ -185,24 +185,24 @@ public partial class TypeChecker
             case FillCollectionExpression:
                 return true;
             case IfExpressionExpression ifExpression:
-            {
-                IEnumerable<IExpression?> nullExpressions =
-                [
-                    ifExpression.IfExpression.Body,
+                {
+                    IEnumerable<IExpression?> nullExpressions =
+                    [
+                        ifExpression.IfExpression.Body,
                     ifExpression.IfExpression.ElseBody,
                     ..ifExpression.IfExpression.ElseIfs.Select(x => x.Body)
-                ];
-                var expressions = nullExpressions.Where(x => x is not null).Cast<IExpression>();
+                    ];
+                    var expressions = nullExpressions.Where(x => x is not null).Cast<IExpression>();
 
-                var result = expressions.All(x => ExpectMutableExpression(x, report: false));
+                    var result = expressions.All(x => ExpectMutableExpression(x, report: false));
 
-                if (!result && report)
-                {
-                    AddError(TypeCheckerError.ExpressionNotAssignable(expression));
+                    if (!result && report)
+                    {
+                        AddError(TypeCheckerError.ExpressionNotAssignable(expression));
+                    }
+
+                    return result;
                 }
-
-                return result;
-            }
             case ValueAccessorExpression { ValueAccessor.AccessType: ValueAccessType.Literal }:
                 return true;
             case ValueAccessorExpression
@@ -214,191 +214,191 @@ public partial class TypeChecker
             {
                 ValueAccessor: { AccessType: ValueAccessType.Variable, Token: StringToken valueToken }
             }:
-            {
-                if (!TryGetScopedVariable(valueToken, out var variable))
                 {
-                    if (ScopedFunctions.ContainsKey(valueToken.StringValue))
+                    if (!TryGetScopedVariable(valueToken, out var variable))
+                    {
+                        if (GetFunctionSignature(valueToken.StringValue) is not null)
+                        {
+                            return true;
+                        }
+
+                        AddError(TypeCheckerError.SymbolNotFound(valueToken));
+                        return false;
+                    }
+
+                    if (variable is LocalVariable { Instantiated: false }
+                        or LocalVariable { Mutable: true }
+                        or FieldVariable { Mutable: true }
+                        or FunctionSignatureParameter { Mutable: true })
                     {
                         return true;
                     }
 
-                    AddError(TypeCheckerError.SymbolNotFound(valueToken));
+                    if (report)
+                    {
+                        AddError(TypeCheckerError.NonMutableAssignment(variable.Name.StringValue,
+                            new SourceRange(valueToken.SourceSpan, valueToken.SourceSpan)));
+                    }
+
                     return false;
+
                 }
-
-                if (variable is LocalVariable { Instantiated: false }
-                    or LocalVariable { Mutable: true }
-                    or FieldVariable { Mutable: true }
-                    or FunctionSignatureParameter { Mutable: true })
-                {
-                    return true;
-                }
-
-                if (report)
-                {
-                    AddError(TypeCheckerError.NonMutableAssignment(variable.Name.StringValue,
-                        new SourceRange(valueToken.SourceSpan, valueToken.SourceSpan)));
-                }
-
-                return false;
-
-            }
             case MemberAccessExpression memberAccess:
-            {
-                var owner = memberAccess.MemberAccess.Owner;
-
-                if (memberAccess.MemberAccess.MemberName is null)
                 {
-                    return false;
-                }
+                    var owner = memberAccess.MemberAccess.Owner;
 
-                var isOwnerMutable = ExpectMutableExpression(owner, report: false);
+                    if (memberAccess.MemberAccess.MemberName is null)
+                    {
+                        return false;
+                    }
 
-                var ownerType = owner.ResolvedType;
-                while (ownerType is GenericTypeReference generic)
-                {
-                    ownerType = generic.ResolvedType ?? throw new NotImplementedException();
-                }
+                    var isOwnerMutable = ExpectMutableExpression(owner, report: false);
 
-                if (ownerType is not InstantiatedClass { Fields: var fields })
-                {
+                    var ownerType = owner.ResolvedType;
+                    while (ownerType is GenericTypeReference generic)
+                    {
+                        ownerType = generic.ResolvedType ?? throw new NotImplementedException();
+                    }
+
+                    if (ownerType is not InstantiatedClass { Fields: var fields })
+                    {
+                        if (report)
+                            AddError(TypeCheckerError.ExpressionNotAssignable(memberAccess));
+                        return false;
+                    }
+
+                    var field = fields.FirstOrDefault(x => x.Name == memberAccess.MemberAccess.MemberName.StringValue);
+                    if (field is null)
+                    {
+                        if (report)
+                            AddError(TypeCheckerError.ExpressionNotAssignable(memberAccess));
+                        return false;
+                    }
+
+                    if (!field.IsMutable)
+                    {
+                        if (report)
+                            AddError(TypeCheckerError.NonMutableMemberAssignment(memberAccess));
+                        return false;
+                    }
+
+                    if (isOwnerMutable)
+                    {
+                        return true;
+                    }
+
                     if (report)
-                        AddError(TypeCheckerError.ExpressionNotAssignable(memberAccess));
+                        AddError(TypeCheckerError.NonMutableMemberOwnerAssignment(owner));
                     return false;
+
                 }
-
-                var field = fields.FirstOrDefault(x => x.Name == memberAccess.MemberAccess.MemberName.StringValue);
-                if (field is null)
-                {
-                    if (report)
-                        AddError(TypeCheckerError.ExpressionNotAssignable(memberAccess));
-                    return false;
-                }
-
-                if (!field.IsMutable)
-                {
-                    if (report)
-                        AddError(TypeCheckerError.NonMutableMemberAssignment(memberAccess));
-                    return false;
-                }
-
-                if (isOwnerMutable)
-                {
-                    return true;
-                }
-
-                if (report)
-                    AddError(TypeCheckerError.NonMutableMemberOwnerAssignment(owner));
-                return false;
-
-            }
             case MethodCallExpression methodCall:
-            {
-                var methodType = (methodCall.MethodCall.Method.ResolvedType as IFunction).NotNull();
-
-                var result = methodType.MutableReturn;
-                if (!result && report)
                 {
-                    AddError(TypeCheckerError.ExpressionNotAssignable(methodCall));
-                }
+                    var methodType = (methodCall.MethodCall.Method.ResolvedType as IFunction).NotNull();
 
-                return result;
-            }
+                    var result = methodType.MutableReturn;
+                    if (!result && report)
+                    {
+                        AddError(TypeCheckerError.ExpressionNotAssignable(methodCall));
+                    }
+
+                    return result;
+                }
             case MethodReturnExpression:
                 return true;
             case ObjectInitializerExpression:
                 return true;
             case StaticMemberAccessExpression staticMemberAccess:
-            {
-                var ownerType = GetTypeReference(staticMemberAccess.StaticMemberAccess.Type);
+                {
+                    var ownerType = GetTypeReference(staticMemberAccess.StaticMemberAccess.Type);
 
-                if (staticMemberAccess.StaticMemberAccess.MemberName is null)
-                {
-                    return false;
-                }
-                
-                if (ownerType is not InstantiatedClass { Fields: var fields })
-                {
+                    if (staticMemberAccess.StaticMemberAccess.MemberName is null)
+                    {
+                        return false;
+                    }
+
+                    if (ownerType is not InstantiatedClass { Fields: var fields })
+                    {
+                        if (report)
+                            AddError(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
+                        return false;
+                    }
+
+                    var staticField = fields.FirstOrDefault(x =>
+                        x.Name == staticMemberAccess.StaticMemberAccess.MemberName.StringValue && x.IsStatic);
+                    if (staticField is null)
+                    {
+                        if (report)
+                            AddError(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
+                        return false;
+                    }
+
+                    if (staticField.IsMutable)
+                    {
+                        return true;
+                    }
+
                     if (report)
-                        AddError(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
+                        AddError(TypeCheckerError.NonMutableMemberAssignment(staticMemberAccess));
                     return false;
-                }
 
-                var staticField = fields.FirstOrDefault(x =>
-                    x.Name == staticMemberAccess.StaticMemberAccess.MemberName.StringValue && x.IsStatic);
-                if (staticField is null)
-                {
-                    if (report)
-                        AddError(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
-                    return false;
                 }
-                
-                if (staticField.IsMutable)
-                {
-                    return true;
-                }
-
-                if (report)
-                    AddError(TypeCheckerError.NonMutableMemberAssignment(staticMemberAccess));
-                return false;
-
-            }
             case TupleExpression:
                 return true;
             case TypeIdentifierExpression:
                 throw new UnreachableException();
             case UnaryOperatorExpression unary:
-            {
-                if (unary.UnaryOperator.Operand is { } operand)
                 {
-                    return ExpectMutableExpression(operand, report);
+                    if (unary.UnaryOperator.Operand is { } operand)
+                    {
+                        return ExpectMutableExpression(operand, report);
+                    }
+
+                    return true;
                 }
-
-                return true;
-            }
             case UnionClassVariantInitializerExpression:
-            {
-                return true;
-            }
-            case VariableDeclarationExpression:
-                return true;
-            case WhileExpression:
-                // todo: need to change if we ever can return a value out of a loop 
-                return true;
-            case IndexExpression indexExpression:
-            {
-                var owner = indexExpression.Collection;
-
-                var isOwnerMutable = ExpectMutableExpression(owner, report: false);
-
-                if (isOwnerMutable)
                 {
                     return true;
                 }
-
-                if (report)
-                    AddError(TypeCheckerError.NonMutableMemberOwnerAssignment(owner));
-                return false;
-            }
-            case MatchesExpression:
-            {
+            case VariableDeclarationExpression:
                 return true;
-            }
-            case MatchExpression match:
-            {
-                var expressions = match.Arms.Select(x => x.Expression)
-                    .Where(x => x is not null)
-                    .Cast<IExpression>();
-
-                var result = expressions.All(x => ExpectMutableExpression(x, report: false));
-
-                if (!result && report)
+            case WhileExpression:
+                // todo: need to change if we ever can return a value out of a loop
+                return true;
+            case IndexExpression indexExpression:
                 {
-                    AddError(TypeCheckerError.ExpressionNotAssignable(expression));
-                }
+                    var owner = indexExpression.Collection;
 
-                return result;
-            }
+                    var isOwnerMutable = ExpectMutableExpression(owner, report: false);
+
+                    if (isOwnerMutable)
+                    {
+                        return true;
+                    }
+
+                    if (report)
+                        AddError(TypeCheckerError.NonMutableMemberOwnerAssignment(owner));
+                    return false;
+                }
+            case MatchesExpression:
+                {
+                    return true;
+                }
+            case MatchExpression match:
+                {
+                    var expressions = match.Arms.Select(x => x.Expression)
+                        .Where(x => x is not null)
+                        .Cast<IExpression>();
+
+                    var result = expressions.All(x => ExpectMutableExpression(x, report: false));
+
+                    if (!result && report)
+                    {
+                        AddError(TypeCheckerError.ExpressionNotAssignable(expression));
+                    }
+
+                    return result;
+                }
         }
 
         throw new UnreachableException($"{expression.GetType()}. {expression}");
@@ -438,7 +438,7 @@ public partial class TypeChecker
                     {
                         return false;
                     }
-                    
+
                     var owner = memberAccess.MemberAccess.Owner;
 
                     var isOwnerMutable = ExpectMutableExpression(owner, report: false);
@@ -517,22 +517,22 @@ public partial class TypeChecker
 
                 }
             case IndexExpression indexExpression:
-            {
-                var owner = indexExpression.Collection;
-
-                var isOwnerMutable = ExpectMutableExpression(owner, report: false);
-
-                if (isOwnerMutable)
                 {
-                    return true;
-                }
+                    var owner = indexExpression.Collection;
 
-                if (report)
-                    AddError(TypeCheckerError.NonMutableMemberOwnerAssignment(owner));
-                return false;
-            }
+                    var isOwnerMutable = ExpectMutableExpression(owner, report: false);
+
+                    if (isOwnerMutable)
+                    {
+                        return true;
+                    }
+
+                    if (report)
+                        AddError(TypeCheckerError.NonMutableMemberOwnerAssignment(owner));
+                    return false;
+                }
         }
-        
+
         if (report)
             AddError(TypeCheckerError.ExpressionNotAssignable(expression));
 

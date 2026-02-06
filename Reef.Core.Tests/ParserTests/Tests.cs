@@ -8,7 +8,7 @@ using static Reef.Core.Tests.ExpressionHelpers;
 
 namespace Reef.Core.Tests.ParserTests;
 
-public class Tests(ITestOutputHelper testOutputHelper)
+public class ParserTests(ITestOutputHelper testOutputHelper)
 {
     public static IEnumerable<object[]> FailTestCases => TestCases.FailTestCases.TestCases();
 

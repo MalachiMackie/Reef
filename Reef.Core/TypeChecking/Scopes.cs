@@ -50,7 +50,7 @@ public partial class TypeChecker
     {
         if (variable is LocalVariable localVariable)
         {
-            var localVariables = CurrentFunctionSignature?.LocalVariables ?? _program.TopLevelLocalVariables;
+            var localVariables = CurrentFunctionSignature?.LocalVariables ?? _modules[CurrentFileName].TopLevelLocalVariables;
             localVariables.Add(localVariable);
         }
 
@@ -61,7 +61,7 @@ public partial class TypeChecker
     {
         if (variable is LocalVariable localVariable)
         {
-            var localVariables = CurrentFunctionSignature?.LocalVariables ?? _program.TopLevelLocalVariables;
+            var localVariables = CurrentFunctionSignature?.LocalVariables ?? _modules[CurrentFileName].TopLevelLocalVariables;
             localVariables.Add(localVariable);
         }
 
@@ -78,18 +78,23 @@ public partial class TypeChecker
         FunctionSignature? currentFunctionSignature = null,
         ITypeReference? expectedReturnType = null,
         IEnumerable<GenericPlaceholder>? genericPlaceholders = null,
-        DefId? defId = null)
+        DefId? defId = null,
+        string? moduleId = null,
+        string? fileName = null,
+        List<FunctionSignature>? functionSignatures = null)
     {
         var currentScope = _typeCheckingScopes.Peek();
 
         _typeCheckingScopes.Push(new TypeCheckingScope(
             currentScope,
-            new Dictionary<string, FunctionSignature>(currentScope.Functions),
+            functionSignatures ?? [],
             expectedReturnType ?? currentScope.ExpectedReturnType,
             currentTypeSignature ?? currentScope.CurrentTypeSignature,
             currentFunctionSignature ?? currentScope.CurrentFunctionSignature,
             [.. currentScope.GenericPlaceholders, .. genericPlaceholders ?? []],
-            defId ?? currentScope.CurrentDefId));
+            defId ?? currentScope.CurrentDefId,
+            moduleId ?? currentScope.ModuleId,
+            fileName ?? currentScope.FileName));
 
         return new ScopeDisposable(PopScope);
     }
@@ -98,12 +103,14 @@ public partial class TypeChecker
 
     private record TypeCheckingScope(
         TypeCheckingScope? ParentScope,
-        Dictionary<string, FunctionSignature> Functions,
+        List<FunctionSignature> Functions,
         ITypeReference ExpectedReturnType,
         ITypeSignature? CurrentTypeSignature,
         FunctionSignature? CurrentFunctionSignature,
         HashSet<GenericPlaceholder> GenericPlaceholders,
-        DefId? CurrentDefId)
+        DefId? CurrentDefId,
+        string? ModuleId,
+        string? FileName)
     {
         private Dictionary<string, IVariable> CurrentScopeVariables { get; } = new();
 

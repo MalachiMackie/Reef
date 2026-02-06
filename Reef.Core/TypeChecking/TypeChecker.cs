@@ -16,28 +16,97 @@ public partial class TypeChecker
             throw new InvalidOperationException(error.ToString());
         }
 
-        _errors.Add(error);
+        _errors[CurrentFileName].Add(error);
     }
 
     private readonly Stack<TypeCheckingScope> _typeCheckingScopes = new();
 
-    private readonly Dictionary<string, ITypeSignature> _types = ClassSignature.BuiltInTypes
+    private readonly Dictionary<string, Dictionary<string, ITypeSignature>> ___types = ClassSignature.BuiltInTypes
         .Concat(UnionSignature.BuiltInTypes)
-        .ToDictionary(x => x.Name);
+        .GroupBy(x => x.Id.ModuleId)
+        .ToDictionary(x => x.Key, x => x.ToDictionary(y => y.Name));
+
+    private ITypeSignature? SearchForType(string name)
+    {
+        var matchedTypes = new List<ITypeSignature>();
+        foreach (var moduleId in new[] { CurrentModuleId, DefId.CoreLibModuleId })
+        {
+            var moduleTypes = GetModuleTypes(moduleId);
+            if (moduleTypes.TryGetValue(name, out var foundType))
+            {
+                matchedTypes.Add(foundType);
+            }
+        }
+
+        if (matchedTypes.Count > 1)
+        {
+            throw new NotImplementedException();
+        }
+
+        return matchedTypes.FirstOrDefault();
+    }
+
+    private Dictionary<string, ITypeSignature> GetModuleTypes(string? moduleId = null)
+    {
+        moduleId ??= CurrentModuleId;
+        if (!___types.TryGetValue(moduleId, out var moduleTypes))
+        {
+            moduleTypes = [];
+            ___types[moduleId] = moduleTypes;
+        }
+
+        return moduleTypes;
+    }
+
+    private bool AddType(ITypeSignature typeSignature)
+    {
+        return GetModuleTypes()
+            .TryAdd(typeSignature.Name, typeSignature);
+    }
 
     private TypeChecker(Dictionary<string, LangModule> modules, bool throwOnError = false)
     {
+        if (modules.Count == 0)
+        {
+            throw new InvalidOperationException("At least one module is required");
+        }
+
         _modules = modules;
         _throwOnError = throwOnError;
         _errors = modules.ToDictionary(x => x.Key, _ => new List<TypeCheckerError>());
     }
 
-    private Dictionary<string, FunctionSignature> ScopedFunctions => _typeCheckingScopes.Peek().Functions;
     private HashSet<GenericPlaceholder> GenericPlaceholders => _typeCheckingScopes.Peek().GenericPlaceholders;
     private ITypeSignature? CurrentTypeSignature => _typeCheckingScopes.Peek().CurrentTypeSignature;
     private FunctionSignature? CurrentFunctionSignature => _typeCheckingScopes.Peek().CurrentFunctionSignature;
     private ITypeReference ExpectedReturnType => _typeCheckingScopes.Peek().ExpectedReturnType;
     private DefId? CurrentDefId => _typeCheckingScopes.Peek().CurrentDefId;
+    private string CurrentModuleId => _typeCheckingScopes.Peek().ModuleId ?? throw new InvalidOperationException("No current module id");
+    private string CurrentFileName => _typeCheckingScopes.Peek().FileName ?? throw new InvalidOperationException("No current file name");
+    private Dictionary<string, (List<FunctionSignature> Functions, List<UnionSignature> Unions, List<ClassSignature> Classes)> _moduleSignatures = [];
+
+    private bool AddScopedFunction(FunctionSignature functionSignature)
+    {
+        if (GetFunctionSignature(functionSignature.Name) is not null)
+        {
+            return false;
+        }
+        _typeCheckingScopes.Peek().Functions.Add(functionSignature);
+        return true;
+    }
+
+    private FunctionSignature? GetFunctionSignature(string name)
+    {
+        foreach (var scope in _typeCheckingScopes.Reverse())
+        {
+            if (scope.Functions.FirstOrDefault(x => x.Name == name) is { } foundFunction)
+            {
+                return foundFunction;
+            }
+        }
+
+        return null;
+    }
 
     public static Dictionary<string, IReadOnlyList<TypeCheckerError>> TypeCheck(Dictionary<string, LangModule> modules, bool throwOnError = false)
     {
@@ -49,7 +118,7 @@ public partial class TypeChecker
 
     private void TypeCheckInner()
     {
-        var builtInFunctions = new[]
+        var builtInFunctions = new List<FunctionSignature>
         {
             FunctionSignature.Box,
             FunctionSignature.Unbox,
@@ -67,125 +136,260 @@ public partial class TypeChecker
         // initial scope
         _typeCheckingScopes.Push(new TypeCheckingScope(
             null,
-            builtInFunctions.ToDictionary(x => x.Name),
+            builtInFunctions,
             InstantiatedClass.Unit,
             null,
             null,
             [],
+            null,
+            null,
             null));
 
-        var (classes, unions) = SetupSignatures();
+        SetupSignatures2();
 
-        foreach (var unionSignature in unions)
+        foreach (var (moduleId, (functions, unions, classes)) in _moduleSignatures)
         {
-            using var _ = PushScope(unionSignature, genericPlaceholders: unionSignature.TypeParameters);
+            using var __ = PushScope(moduleId: moduleId, fileName: _modules.First(x => x.Value.ModuleId == moduleId).Key);
 
-            foreach (var function in unionSignature.Functions)
+            foreach (var unionSignature in unions)
             {
-                TypeCheckFunctionBody(function);
-            }
-        }
+                using var _ = PushScope(unionSignature, genericPlaceholders: unionSignature.TypeParameters);
 
-        foreach (var (@class, classSignature) in classes)
-        {
-            using var _ = PushScope(genericPlaceholders: classSignature.TypeParameters);
-
-            var instanceFieldVariables = new List<IVariable>();
-            var staticFieldVariables = new List<IVariable>();
-
-            foreach (var (fieldIndex, field) in @class.Fields.Index())
-            {
-                var isStatic = field.StaticModifier is not null;
-
-                var fieldTypeReference = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type);
-
-                if (isStatic)
-                {
-                    // todo: static constructor?
-                    if (field.InitializerValue is null)
-                    {
-                        throw new InvalidOperationException("Expected field initializer for static field");
-                    }
-
-                    var valueType = TypeCheckExpression(field.InitializerValue);
-                    field.InitializerValue.ValueUseful = true;
-
-                    ExpectType(valueType, fieldTypeReference, field.InitializerValue.SourceRange);
-
-                    staticFieldVariables.Add(new FieldVariable(
-                        classSignature,
-                        field.Name,
-                        fieldTypeReference,
-                        field.MutabilityModifier is not null,
-                        IsStaticField: true,
-                        (uint)fieldIndex));
-                }
-                else
-                {
-                    if (field.InitializerValue is not null)
-                    {
-                        throw new InvalidOperationException("Instance fields cannot have initializers");
-                    }
-
-                    instanceFieldVariables.Add(new FieldVariable(
-                        classSignature,
-                        field.Name,
-                        fieldTypeReference,
-                        field.MutabilityModifier is not null,
-                        IsStaticField: false,
-                        (uint)fieldIndex));
-                }
-            }
-
-            // static functions
-            using (PushScope(classSignature))
-            {
-                // static functions only have access to static fields
-                foreach (var variable in staticFieldVariables)
-                {
-                    AddScopedVariable(variable.Name.StringValue, variable);
-                }
-
-                foreach (var function in classSignature.Functions.Where(x => x.IsStatic))
+                foreach (var function in unionSignature.Functions)
                 {
                     TypeCheckFunctionBody(function);
                 }
             }
 
-            // instance functions
-            using (PushScope(classSignature))
+            foreach (var classSignature in classes)
             {
-                // instance functions have access to both instance and static fields
-                foreach (var variable in instanceFieldVariables.Concat(staticFieldVariables))
+                using var _ = PushScope(genericPlaceholders: classSignature.TypeParameters);
+
+                var instanceFieldVariables = new List<IVariable>();
+                var staticFieldVariables = new List<IVariable>();
+
+                var @class = _modules.First(x => x.Value.ModuleId == moduleId).Value.Classes.First(x => x.Name.StringValue == classSignature.Name);
+
+                foreach (var (fieldIndex, field) in @class.Fields.Index())
                 {
-                    AddScopedVariable(variable.Name.StringValue, variable);
+                    var isStatic = field.StaticModifier is not null;
+
+                    var fieldTypeReference = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type);
+
+                    if (isStatic)
+                    {
+                        // todo: static constructor?
+                        if (field.InitializerValue is null)
+                        {
+                            throw new InvalidOperationException("Expected field initializer for static field");
+                        }
+
+                        var valueType = TypeCheckExpression(field.InitializerValue);
+                        field.InitializerValue.ValueUseful = true;
+
+                        ExpectType(valueType, fieldTypeReference, field.InitializerValue.SourceRange);
+
+                        staticFieldVariables.Add(new FieldVariable(
+                            classSignature,
+                            field.Name,
+                            fieldTypeReference,
+                            field.MutabilityModifier is not null,
+                            IsStaticField: true,
+                            (uint)fieldIndex));
+                    }
+                    else
+                    {
+                        if (field.InitializerValue is not null)
+                        {
+                            throw new InvalidOperationException("Instance fields cannot have initializers");
+                        }
+
+                        instanceFieldVariables.Add(new FieldVariable(
+                            classSignature,
+                            field.Name,
+                            fieldTypeReference,
+                            field.MutabilityModifier is not null,
+                            IsStaticField: false,
+                            (uint)fieldIndex));
+                    }
                 }
 
-                foreach (var function in classSignature.Functions.Where(x => !x.IsStatic))
+                // static functions
+                using (PushScope(classSignature))
                 {
-                    TypeCheckFunctionBody(function);
+                    // static functions only have access to static fields
+                    foreach (var variable in staticFieldVariables)
+                    {
+                        AddScopedVariable(variable.Name.StringValue, variable);
+                    }
+
+                    foreach (var function in classSignature.Functions.Where(x => x.IsStatic))
+                    {
+                        TypeCheckFunctionBody(function);
+                    }
+                }
+
+                // instance functions
+                using (PushScope(classSignature))
+                {
+                    // instance functions have access to both instance and static fields
+                    foreach (var variable in instanceFieldVariables.Concat(staticFieldVariables))
+                    {
+                        AddScopedVariable(variable.Name.StringValue, variable);
+                    }
+
+                    foreach (var function in classSignature.Functions.Where(x => !x.IsStatic))
+                    {
+                        TypeCheckFunctionBody(function);
+                    }
                 }
             }
         }
 
-        PushScope(defId: DefId.Main(_program.ModuleId));
+        // SetupModuleSignatures();
 
-        foreach (var expression in _program.Expressions)
+
+        foreach (var (fileName, module) in _modules)
         {
-            TypeCheckExpression(expression);
+            using var _ = PushScope(
+                moduleId: module.ModuleId,
+                fileName: fileName,
+                functionSignatures: _moduleSignatures[module.ModuleId].Functions,
+                defId: DefId.Main(module.ModuleId));
+
+            if (fileName != "main.rf")
+            {
+                // todo: add error. Non main.rf cannot have top level expressions
+            }
+
+            foreach (var expression in module.Expressions)
+            {
+                TypeCheckExpression(expression);
+            }
+
+            foreach (var functionSignature in _moduleSignatures[module.ModuleId].Functions)
+            {
+                TypeCheckFunctionBody(functionSignature);
+            }
         }
 
-        foreach (var functionSignature in ScopedFunctions.Values.Where(x => !x.Extern))
+        PopScope();
+
+        foreach (var (fileName, module) in _modules)
         {
-            TypeCheckFunctionBody(functionSignature);
+            var moduleErrors = _errors[fileName];
+            if (moduleErrors.Count == 0)
+            {
+                moduleErrors.AddRange(TypeTwoTypeChecker.TypeTwoTypeCheck(module, _throwOnError));
+            }
         }
-        PopScope();
+    }
 
-        PopScope();
-
-        if (_errors.Count == 0)
+    private void SetupModuleSignatures()
+    {
+        var signatures = new Dictionary<string, (LangModule module, List<(ProgramClass, ClassSignature)>, List<UnionSignature>)>();
+        foreach (var (fileName, module) in _modules)
         {
-            _errors.AddRange(TypeTwoTypeChecker.TypeTwoTypeCheck(_program, _throwOnError));
+            using var _ = PushScope(moduleId: module.ModuleId, fileName: fileName);
+            var (classes, unions) = SetupSignatures(module);
+            signatures[fileName] = (module, classes, unions);
+        }
+
+        foreach (var (fileName, (module, classes, unions)) in signatures)
+        {
+            using var __ = PushScope(moduleId: module.ModuleId, fileName: fileName);
+
+            foreach (var unionSignature in unions)
+            {
+                using var _ = PushScope(unionSignature, genericPlaceholders: unionSignature.TypeParameters);
+
+                foreach (var function in unionSignature.Functions)
+                {
+                    TypeCheckFunctionBody(function);
+                }
+            }
+
+            foreach (var (@class, classSignature) in classes)
+            {
+                using var _ = PushScope(genericPlaceholders: classSignature.TypeParameters);
+
+                var instanceFieldVariables = new List<IVariable>();
+                var staticFieldVariables = new List<IVariable>();
+
+                foreach (var (fieldIndex, field) in @class.Fields.Index())
+                {
+                    var isStatic = field.StaticModifier is not null;
+
+                    var fieldTypeReference = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type);
+
+                    if (isStatic)
+                    {
+                        // todo: static constructor?
+                        if (field.InitializerValue is null)
+                        {
+                            throw new InvalidOperationException("Expected field initializer for static field");
+                        }
+
+                        var valueType = TypeCheckExpression(field.InitializerValue);
+                        field.InitializerValue.ValueUseful = true;
+
+                        ExpectType(valueType, fieldTypeReference, field.InitializerValue.SourceRange);
+
+                        staticFieldVariables.Add(new FieldVariable(
+                            classSignature,
+                            field.Name,
+                            fieldTypeReference,
+                            field.MutabilityModifier is not null,
+                            IsStaticField: true,
+                            (uint)fieldIndex));
+                    }
+                    else
+                    {
+                        if (field.InitializerValue is not null)
+                        {
+                            throw new InvalidOperationException("Instance fields cannot have initializers");
+                        }
+
+                        instanceFieldVariables.Add(new FieldVariable(
+                            classSignature,
+                            field.Name,
+                            fieldTypeReference,
+                            field.MutabilityModifier is not null,
+                            IsStaticField: false,
+                            (uint)fieldIndex));
+                    }
+                }
+
+                // static functions
+                using (PushScope(classSignature))
+                {
+                    // static functions only have access to static fields
+                    foreach (var variable in staticFieldVariables)
+                    {
+                        AddScopedVariable(variable.Name.StringValue, variable);
+                    }
+
+                    foreach (var function in classSignature.Functions.Where(x => x.IsStatic))
+                    {
+                        TypeCheckFunctionBody(function);
+                    }
+                }
+
+                // instance functions
+                using (PushScope(classSignature))
+                {
+                    // instance functions have access to both instance and static fields
+                    foreach (var variable in instanceFieldVariables.Concat(staticFieldVariables))
+                    {
+                        AddScopedVariable(variable.Name.StringValue, variable);
+                    }
+
+                    foreach (var function in classSignature.Functions.Where(x => !x.IsStatic))
+                    {
+                        TypeCheckFunctionBody(function);
+                    }
+                }
+            }
         }
     }
 
@@ -201,16 +405,16 @@ public partial class TypeChecker
             var signature = fn.Signature ?? TypeCheckFunctionSignature(new DefId(currentDefId.ModuleId, currentDefId.FullName + $"__{fn.Name}"), fn, ownerType: null);
 
             var localFunctions = CurrentFunctionSignature?.LocalFunctions
-                ?? _program.TopLevelLocalFunctions;
+                ?? _modules[CurrentFileName].TopLevelLocalFunctions;
 
             localFunctions.Add(signature);
 
-            ScopedFunctions[fn.Name.StringValue] = signature;
+            AddScopedFunction(signature);
         }
 
         foreach (var fn in block.Functions)
         {
-            TypeCheckFunctionBody(ScopedFunctions[fn.Name.StringValue]);
+            TypeCheckFunctionBody(GetFunctionSignature(fn.Name.StringValue).NotNull());
         }
 
         foreach (var expression in block.Expressions)
@@ -355,7 +559,7 @@ public partial class TypeChecker
     {
         var identifierName = typeIdentifier.Identifier.StringValue;
 
-        if (_types.TryGetValue(identifierName, out var nameMatchingType))
+        if (SearchForType(identifierName) is { } nameMatchingType)
         {
             switch (nameMatchingType)
             {

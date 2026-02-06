@@ -3,6 +3,7 @@
 public class FunctionTests : IntegrationTestBase
 {
     [Fact]
+    [TestMe]
     public async Task CallFunctionWithNoArgumentsOrReturnType()
     {
         await SetupTest("""

@@ -59,7 +59,7 @@ public partial class TypeChecker
                 AddError(TypeCheckerError.ConflictingTypeParameter(typeParameter));
             }
 
-            if (_types.ContainsKey(typeParameter.StringValue))
+            if (SearchForType(typeParameter.StringValue) is not null)
             {
                 AddError(TypeCheckerError.TypeParameterConflictsWithType(typeParameter));
             }
@@ -103,7 +103,7 @@ public partial class TypeChecker
         {
             return;
         }
-        
+
         using var _ = PushScope(null, fnSignature, fnSignature.ReturnType,
             genericPlaceholders: fnSignature.TypeParameters, fnSignature.Id);
         foreach (var parameter in fnSignature.Parameters.Values)
@@ -117,16 +117,17 @@ public partial class TypeChecker
         {
             AddScopedVariable(
                     "this",
-                    new ThisVariable(fnSignature.OwnerType switch {
-                            ClassSignature c => InstantiateClass(c, boxedSpecifier: null),
-                            UnionSignature u => InstantiateUnion(u, boxingSpecifier: null),
-                            _ => throw new UnreachableException()
-                        }));
+                    new ThisVariable(fnSignature.OwnerType switch
+                    {
+                        ClassSignature c => InstantiateClass(c, boxedSpecifier: null),
+                        UnionSignature u => InstantiateUnion(u, boxingSpecifier: null),
+                        _ => throw new UnreachableException()
+                    }));
         }
 
         foreach (var fn in fnSignature.LocalFunctions)
         {
-            ScopedFunctions[fn.Name] = fn;
+            AddScopedFunction(fn);
         }
 
         var expressionsDiverge = false;
@@ -154,7 +155,7 @@ public partial class TypeChecker
                     && accessedOuterVariable switch
                     {
                         // need to add the field and this as a captured variable if we're not the top level function in the type
-                        FieldVariable or ThisVariable => fnSignature.OwnerType is null, 
+                        FieldVariable or ThisVariable => fnSignature.OwnerType is null,
                         FunctionSignatureParameter functionParameterVariable => functionParameterVariable.ContainingFunction !=
                                                                        fnSignature,
                         LocalVariable localVariable => localVariable.ContainingFunction != fnSignature,
@@ -183,7 +184,7 @@ public partial class TypeChecker
     {
         public IReadOnlyList<FunctionParameter> Parameters { get; } = parameters;
         public ITypeReference ReturnType { get; } = returnType;
-        public bool MutableReturn { get; } = isMutableReturn; 
+        public bool MutableReturn { get; } = isMutableReturn;
 
         public override string ToString()
         {
@@ -197,7 +198,7 @@ public partial class TypeChecker
 
     public interface IInstantiatedGeneric
     {
-        IReadOnlyList<GenericTypeReference> TypeArguments { get; } 
+        IReadOnlyList<GenericTypeReference> TypeArguments { get; }
     }
 
     public class InstantiatedFunction : IFunction, IInstantiatedGeneric
@@ -321,7 +322,7 @@ public partial class TypeChecker
         public static FunctionSignature PrintU16 { get; } = CreatePrintInt(InstantiatedClass.UInt16, DefId.PrintU16);
         public static FunctionSignature PrintU32 { get; } = CreatePrintInt(InstantiatedClass.UInt32, DefId.PrintU32);
         public static FunctionSignature PrintU64 { get; } = CreatePrintInt(InstantiatedClass.UInt64, DefId.PrintU64);
-        
+
         public static FunctionSignature Allocate { get; }
         public static FunctionSignature Box { get; }
         public static FunctionSignature Unbox { get; }
@@ -371,7 +372,7 @@ public partial class TypeChecker
                 OwnerType = null,
                 ReturnType = InstantiatedClass.RawPointer
             };
-            
+
             allocateParameters["byteSize"] = new FunctionSignatureParameter(
                 Allocate,
                 Token.Identifier("byteSize", SourceSpan.Default),
@@ -418,17 +419,17 @@ public partial class TypeChecker
                 OwnerType = null,
                 ReturnType = null!
             };
-            
+
             /*
              * pub fn box<TParam, TResult>(param: TParam): TResult
              *  where TParam: unboxed TResult,
              *        TResult: boxed TParam
              * {}
              */
-            
+
             var boxTParamConstraints = new List<ITypeConstraint>();
-            boxTypeParameters.Add(new GenericPlaceholder{GenericName = "TParam", OwnerType = Box, Constraints = boxTParamConstraints});
-            boxTypeParameters.Add(new GenericPlaceholder{GenericName = "TReturn", OwnerType = Box, Constraints = [new BoxedTypeConstraint(boxTypeParameters[0])]});
+            boxTypeParameters.Add(new GenericPlaceholder { GenericName = "TParam", OwnerType = Box, Constraints = boxTParamConstraints });
+            boxTypeParameters.Add(new GenericPlaceholder { GenericName = "TReturn", OwnerType = Box, Constraints = [new BoxedTypeConstraint(boxTypeParameters[0])] });
             boxTParamConstraints.Add(new UnboxedTypeConstraint(boxTypeParameters[1]));
             Box.ReturnType = boxTypeParameters[1];
             boxParameters["value"] = new FunctionSignatureParameter(
@@ -437,7 +438,7 @@ public partial class TypeChecker
                 boxTypeParameters[0],
                 false,
                 0);
-            
+
             var unboxParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
             var unboxTypeParameters = new List<GenericPlaceholder>();
             Unbox = new FunctionSignature(
@@ -454,17 +455,17 @@ public partial class TypeChecker
                 OwnerType = null,
                 ReturnType = null!
             };
-            
+
             /*
              * pub fn unbox<TParam, TResult>(param: TParam): TResult
              *  where TParam: boxed TResult,
              *        TResult: unboxed TParam
              * {}
              */
-            
+
             var unboxTParamConstraints = new List<ITypeConstraint>();
-            unboxTypeParameters.Add(new GenericPlaceholder{GenericName = "TParam", OwnerType = Unbox, Constraints = unboxTParamConstraints});
-            unboxTypeParameters.Add(new GenericPlaceholder{GenericName = "TReturn", OwnerType = Unbox, Constraints = [new UnboxedTypeConstraint(unboxTypeParameters[0])]});
+            unboxTypeParameters.Add(new GenericPlaceholder { GenericName = "TParam", OwnerType = Unbox, Constraints = unboxTParamConstraints });
+            unboxTypeParameters.Add(new GenericPlaceholder { GenericName = "TReturn", OwnerType = Unbox, Constraints = [new UnboxedTypeConstraint(unboxTypeParameters[0])] });
             unboxTParamConstraints.Add(new BoxedTypeConstraint(unboxTypeParameters[1]));
             Unbox.ReturnType = unboxTypeParameters[1];
             unboxParameters["value"] = new FunctionSignatureParameter(
@@ -477,7 +478,7 @@ public partial class TypeChecker
     }
 
     public interface ITypeConstraint;
-    
+
     public record BoxedTypeConstraint(ITypeReference BoxedOfType) : ITypeConstraint;
     public record UnboxedTypeConstraint(ITypeReference BoxedOfType) : ITypeConstraint;
 

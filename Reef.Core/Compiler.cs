@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.IO.Abstractions;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Reef.Core.Abseil;
@@ -11,63 +12,61 @@ namespace Reef.Core;
 public class Compiler
 {
     public static async Task Compile(
-        string inputFile, 
+        string workingDirectory,
         bool outputIr,
         ILogger logger,
         CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(inputFile)
-            || Path.GetExtension(inputFile) is not ".rf")
+        if (string.IsNullOrEmpty(workingDirectory))
         {
-            logger.LogError("Expected a single .rf file as an argument");
-            return;
+            workingDirectory = "./";
         }
-
-        var buildDirectory = Path.GetDirectoryName(inputFile);
-        if (string.IsNullOrEmpty(buildDirectory))
-        {
-            buildDirectory = "./";
-        }
-        buildDirectory = Path.Join(buildDirectory, "build");
+        var buildDirectory = Path.Join(workingDirectory, "build");
 
         if (!Directory.Exists(buildDirectory))
         {
             Directory.CreateDirectory(buildDirectory);
         }
 
-        var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(inputFile);
+        var innerCompiler = new ReefCompiler(new FileSystem(), workingDirectory);
 
-        var contents = await File.ReadAllTextAsync(inputFile, ct);
+        var typeCheckResults = await innerCompiler.TypeCheck();
 
-        logger.LogInformation("Tokenizing...");
-        var tokens = Tokenizer.Tokenize(contents);
-
-        logger.LogInformation("Parsing...");
-        var parsedProgram = Parser.Parse(fileNameWithoutExtension, tokens);
-        if (parsedProgram.Errors.Count > 0)
+        var hadError = false;
+        foreach (var (fileName, typeCheckResult) in typeCheckResults)
         {
-            foreach (var error in parsedProgram.Errors)
+            foreach (var error in typeCheckResult.ParserErrors)
             {
-                logger.LogError("Error: {Error}", error.Format());
+                logger.LogError("{fileName}({lineNumber}): Parser Error: {Error}", fileName, error.ReceivedToken?.SourceSpan.Position.LineNumber, error.Format());
+                hadError = true;
             }
+        }
 
+        foreach (var (fileName, typeCheckResult) in typeCheckResults)
+        {
+            foreach (var error in typeCheckResult.TypeCheckerErrors)
+            {
+                logger.LogError(
+                    "{FileName}({LineNumber}): TypeCheckError: {Message}",
+                    fileName,
+                    error.Range.Start.Position.LineNumber,
+                    error.Message);
+                hadError = true;
+            }
+        }
+
+        if (hadError)
+        {
             return;
         }
 
-        logger.LogInformation("TypeChecking...");
-        var typeCheckErrors = TypeChecker.TypeCheck(parsedProgram.ParsedModule);
-        if (typeCheckErrors.Count > 0)
-        {
-            foreach (var error in typeCheckErrors)
-            {
-                logger.LogError("Error: {Message}. {Contents}", error.Message, GetSourceRange(contents, error.Range).ToString());
-            }
+        var programName = "main";
 
-            return;
-        }
+        Debug.Assert(typeCheckResults.Count == 1);
+        var parsedProgram = typeCheckResults["main.rf"].Module;
 
         logger.LogInformation("Lowering...");
-        var (loweredProgram, importedModules) = ProgramAbseil.Lower(parsedProgram.ParsedModule);
+        var (loweredProgram, importedModules) = ProgramAbseil.Lower(parsedProgram);
 
 
         if (outputIr)
@@ -82,12 +81,12 @@ public class Compiler
                     stringBuilder.AppendLine(importedModuleIrStr);
                 }
             }
-            
-            await File.WriteAllTextAsync(Path.Join(buildDirectory, $"{fileNameWithoutExtension}.ir"), stringBuilder.ToString(), ct);
+
+            await File.WriteAllTextAsync(Path.Join(buildDirectory, $"{programName}.ir"), stringBuilder.ToString(), ct);
         }
 
         logger.LogInformation("Generating Assembly...");
-        IReadOnlyList<LoweredModule> allModules = [..importedModules.Append(loweredProgram)];
+        IReadOnlyList<LoweredModule> allModules = [.. importedModules.Append(loweredProgram)];
 
         var usefulMethodIds = new TreeShaker(allModules).Shake();
 
@@ -99,10 +98,10 @@ public class Compiler
 
         var assembly =
             AssemblyLine.Process(allModules, usefulMethodIds, logger);
-        var asmFile = $"{fileNameWithoutExtension}.nasm";
+        var asmFile = $"{programName}.nasm";
         await File.WriteAllTextAsync(Path.Join(buildDirectory, asmFile), assembly, ct);
 
-        var objFile = $"{fileNameWithoutExtension}.obj";
+        var objFile = $"{programName}.obj";
         // todo: move out to its own process, so Reef.Core doesn't interact with the file system
         var nasmProcess = new Process
         {
@@ -123,7 +122,7 @@ public class Compiler
 
         logger.LogInformation("Assembling...");
         nasmProcess.Start();
-        
+
         ct.Register(() =>
         {
             nasmProcess.Kill(true);
@@ -149,10 +148,10 @@ public class Compiler
 
         logger.LogInformation("Linking...");
 
-        var runtimeLibraryLocation = 
+        var runtimeLibraryLocation =
             Path.Join(Path.GetDirectoryName(typeof(Compiler).Assembly.Location),
                 "libreef_runtime.a");
-        
+
         var linkProcess = new Process
         {
             StartInfo = new ProcessStartInfo(
@@ -161,7 +160,7 @@ public class Compiler
                     Path.Join(buildDirectory, objFile),
                     "/nologo",
                     "/subsystem:console",
-                    $"/out:{Path.Join(buildDirectory, $"{fileNameWithoutExtension}.exe")}",
+                    $"/out:{Path.Join(buildDirectory, $"{programName}.exe")}",
                     "/machine:x64",
                     runtimeLibraryLocation,
                     $@"C:\Program Files (x86)\Windows Kits\10\Lib\{windowsKitsVersion}\um\x64\kernel32.lib",
@@ -182,10 +181,7 @@ public class Compiler
 
         linkProcess.Start();
 
-        ct.Register(() =>
-        {
-            linkProcess.Kill();
-        });
+        ct.Register(linkProcess.Kill);
 
         var linkOutput = await linkProcess.StandardOutput.ReadToEndAsync(ct);
         var linkError = await linkProcess.StandardError.ReadToEndAsync(ct);

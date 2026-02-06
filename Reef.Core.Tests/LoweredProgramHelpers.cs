@@ -25,11 +25,11 @@ public static class LoweredProgramHelpers
         IReadOnlyList<DataTypeVariant>? variants = null,
         IReadOnlyList<StaticDataTypeField>? staticFields = null)
     {
-        var defId = new DefId(moduleId, $"{moduleId}.{name}");
+        var defId = new DefId(moduleId, $"{moduleId}:::{name}");
         return new DataType(
             defId,
             name,
-            [..(typeParameters ?? []).Select(x => new LoweredGenericPlaceholder(defId, x))],
+            [.. (typeParameters ?? []).Select(x => new LoweredGenericPlaceholder(defId, x))],
             variants ?? [],
             staticFields ?? []);
     }
@@ -56,37 +56,37 @@ public static class LoweredProgramHelpers
             new MethodLocal("_returnValue", null, type));
     }
 
-    public static readonly Local LocalsObject = new ("_localsObject");
-    public static readonly Local Local0 = new ("_local0");
-    public static readonly Local Local1 = new ("_local1");
-    public static readonly Local Local2 = new ("_local2");
-    public static readonly Local Local3 = new ("_local3");
-    public static readonly Local ReturnValue = new ("_returnValue");
-    
-    public static readonly Local Param0 = new ("_param0");
-    public static readonly Local Param1 = new ("_param1");
-    public static readonly Local Param2 = new ("_param2");
-    
-    public static readonly BasicBlockId BB0 = new ("bb0");
-    public static readonly BasicBlockId BB1 = new ("bb1");
-    public static readonly BasicBlockId BB2 = new ("bb2");
-    public static readonly BasicBlockId BB3 = new ("bb3");
-    public static readonly BasicBlockId BB4 = new ("bb4");
-    public static readonly BasicBlockId BB5 = new ("bb5");
-    public static readonly BasicBlockId BB6 = new ("bb6");
-    public static readonly BasicBlockId BB7 = new ("bb7");
-    public static readonly BasicBlockId BB8 = new ("bb8");
-    public static readonly BasicBlockId BB9 = new ("bb9");
-    public static readonly BasicBlockId BB10 = new ("bb10");
-    public static readonly BasicBlockId BB11 = new ("bb11");
-    public static readonly BasicBlockId BB12 = new ("bb12");
-    
+    public static readonly Local LocalsObject = new("_localsObject");
+    public static readonly Local Local0 = new("_local0");
+    public static readonly Local Local1 = new("_local1");
+    public static readonly Local Local2 = new("_local2");
+    public static readonly Local Local3 = new("_local3");
+    public static readonly Local ReturnValue = new("_returnValue");
+
+    public static readonly Local Param0 = new("_param0");
+    public static readonly Local Param1 = new("_param1");
+    public static readonly Local Param2 = new("_param2");
+
+    public static readonly BasicBlockId BB0 = new("bb0");
+    public static readonly BasicBlockId BB1 = new("bb1");
+    public static readonly BasicBlockId BB2 = new("bb2");
+    public static readonly BasicBlockId BB3 = new("bb3");
+    public static readonly BasicBlockId BB4 = new("bb4");
+    public static readonly BasicBlockId BB5 = new("bb5");
+    public static readonly BasicBlockId BB6 = new("bb6");
+    public static readonly BasicBlockId BB7 = new("bb7");
+    public static readonly BasicBlockId BB8 = new("bb8");
+    public static readonly BasicBlockId BB9 = new("bb9");
+    public static readonly BasicBlockId BB10 = new("bb10");
+    public static readonly BasicBlockId BB11 = new("bb11");
+    public static readonly BasicBlockId BB12 = new("bb12");
+
 
     public static LoweredConcreteTypeReference ConcreteTypeReference(string name, string moduleId, IReadOnlyList<ILoweredTypeReference>? typeArguments = null)
     {
         return new LoweredConcreteTypeReference(
             name,
-            new DefId(moduleId, $"{moduleId}.{name}"),
+            new DefId(moduleId, $"{moduleId}:::{name}"),
             typeArguments ?? []);
     }
 
@@ -111,45 +111,45 @@ public static class LoweredProgramHelpers
         return new LoweredMethod(
             id,
             name,
-            [..(typeParameters ?? []).Select(x => new LoweredGenericPlaceholder(x.Item1, x.Item2))],
+            [.. (typeParameters ?? []).Select(x => new LoweredGenericPlaceholder(x.Item1, x.Item2))],
             basicBlocks,
             new MethodLocal("_returnValue", null, returnType),
-            [..(parameters ?? []).Select((x, i) => new MethodLocal($"_param{i}", x.Item1, x.Item2))],
+            [.. (parameters ?? []).Select((x, i) => new MethodLocal($"_param{i}", x.Item1, x.Item2))],
             locals ?? []);
     }
-    
+
     public static LoweredConcreteTypeReference BooleanT { get; }
-        = new (
+        = new(
             TypeChecker.ClassSignature.Boolean.Name,
             TypeChecker.ClassSignature.Boolean.Id,
             []);
-    
+
     public static LoweredConcreteTypeReference Unit { get; }
-        = new (
+        = new(
             TypeChecker.ClassSignature.Unit.Name,
             TypeChecker.ClassSignature.Unit.Id,
             []);
-    
+
     public static LoweredConcreteTypeReference StringT { get; }
-        = new (
+        = new(
             TypeChecker.ClassSignature.String.Name,
             TypeChecker.ClassSignature.String.Id,
             []);
-    
+
     public static LoweredConcreteTypeReference Int32T { get; }
-        = new (
+        = new(
             TypeChecker.ClassSignature.Int32.Name,
             TypeChecker.ClassSignature.Int32.Id,
             []);
-    
+
     public static LoweredConcreteTypeReference Int64T { get; }
-        = new (
+        = new(
             TypeChecker.ClassSignature.Int64.Name,
             TypeChecker.ClassSignature.Int64.Id,
             []);
-    
+
     public static LoweredConcreteTypeReference UInt16T { get; }
-        = new (
+        = new(
             TypeChecker.ClassSignature.UInt16.Name,
             TypeChecker.ClassSignature.UInt16.Id,
             []);
@@ -172,7 +172,7 @@ public static class LoweredProgramHelpers
         return new LoweredConcreteTypeReference(
             signature.Name,
             signature.Id,
-            [..parameterTypes, returnType]);
+            [.. parameterTypes, returnType]);
     }
 
     public static LoweredFunctionReference FunctionObjectCall(
@@ -181,6 +181,6 @@ public static class LoweredProgramHelpers
     {
         return new LoweredFunctionReference(
             DefId.FunctionObject_Call(parameterTypes.Count),
-            [..parameterTypes, returnType]);
+            [.. parameterTypes, returnType]);
     }
 }

@@ -34,7 +34,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
         var expectedProgram = LoweredProgram(ModuleId, 
         [
             Method(
-                new DefId(ModuleId, $"{ModuleId}._Main"),
+                new DefId(ModuleId, $"{ModuleId}:::_Main"),
                 "_Main",
                 [
                     new BasicBlock(
@@ -126,7 +126,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                  """,
                  LoweredProgram(ModuleId, 
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}.SomeFn"), "SomeFn",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::SomeFn"), "SomeFn",
                              [
                                  new BasicBlock(
                                      new BasicBlockId("bb0"),
@@ -141,13 +141,13 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                  new BasicBlock(new BasicBlockId("bb1"), [], new Return())
                              ],
                              returnType: new LoweredConcreteTypeReference("result", DefId.Result, [Int32T, Int64T])),
-                         Method(new DefId(ModuleId, $"{ModuleId}.OtherFn"), "OtherFn",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::OtherFn"), "OtherFn",
                              [
                                  new BasicBlock(
                                      new BasicBlockId("bb0"),
                                      [],
                                      new MethodCall(
-                                         new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.SomeFn"), []),
+                                         new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::SomeFn"), []),
                                          [],
                                          new Local("_local1"),
                                          new BasicBlockId("bb1"))),
@@ -205,7 +205,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                  """,
                  LoweredProgram(ModuleId, 
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      new BasicBlockId("bb0"),
@@ -238,7 +238,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                  """,
                  LoweredProgram(ModuleId, 
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      new BasicBlockId("bb0"),
@@ -272,7 +272,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                  """,
                  LoweredProgram(ModuleId, 
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      new BasicBlockId("bb0"),
@@ -314,7 +314,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                  """,
                  LoweredProgram(ModuleId, 
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      new BasicBlockId("bb0"),
@@ -363,7 +363,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                  """,
                  LoweredProgram(ModuleId, 
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      new BasicBlockId("bb0"),
@@ -413,7 +413,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                  LoweredProgram(ModuleId, 
                      [
                          Method(
-                             new DefId(ModuleId, $"{ModuleId}._Main"),
+                             new DefId(ModuleId, $"{ModuleId}:::_Main"),
                              "_Main",
                              [
                                  new BasicBlock(
@@ -473,7 +473,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                  LoweredProgram(ModuleId, 
                      [
                          Method(
-                             new DefId(ModuleId, $"{ModuleId}._Main"),
+                             new DefId(ModuleId, $"{ModuleId}:::_Main"),
                              "_Main",
                              [
                                  new BasicBlock(
@@ -549,7 +549,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                  LoweredProgram(ModuleId, 
                      [
                          Method(
-                             new DefId(ModuleId, $"{ModuleId}._Main"),
+                             new DefId(ModuleId, $"{ModuleId}:::_Main"),
                              "_Main",
                              [
                                  new BasicBlock(

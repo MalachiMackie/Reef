@@ -21,7 +21,7 @@ public class IntegrationTestBase
         }
         Directory.CreateDirectory(testRunFolder);
 
-        fileName ??= $"{testName}.rf";
+        fileName ??= "main.rf";
         await File.WriteAllTextAsync(Path.Join(testRunFolder, fileName), reefSource);
     }
 
@@ -32,14 +32,14 @@ public class IntegrationTestBase
     {
         var testRunFolder = TestRunFolder(testName, testCaseName, callerFilePath);
         var testLogger = new TestLogger(TestContext.Current.TestOutputHelper ?? throw new UnreachableException());
-        await Compiler.Compile(Path.Join(testRunFolder, $"{testName}.rf"), true, testLogger, TestContext.Current.CancellationToken);
+        await Compiler.Compile(testRunFolder, true, testLogger, TestContext.Current.CancellationToken);
 
-        var exeFileName = Path.Join(testRunFolder, "build", $"{testName}.exe");
+        var exeFileName = Path.Join(testRunFolder, "build", $"main.exe");
         if (!File.Exists(exeFileName))
         {
             Assert.Fail($"Expected Exe file to exist: {exeFileName}");
         }
-        
+
         var process = new Process
         {
             StartInfo = new ProcessStartInfo(exeFileName)
@@ -52,7 +52,7 @@ public class IntegrationTestBase
 
         var output = await process.StandardOutput.ReadToEndAsync();
         await process.WaitForExitAsync();
-        
+
         testLogger.LogInformation(output);
 
         return new TestRunOutput(process.ExitCode, output);

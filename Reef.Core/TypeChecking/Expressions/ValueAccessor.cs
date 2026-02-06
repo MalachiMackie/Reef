@@ -11,7 +11,7 @@ public partial class TypeChecker
     {
         var type = valueAccessorExpression.ValueAccessor switch
         {
-            { AccessType: ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral } } => new UnspecifiedSizedIntType{Boxed = false},
+            { AccessType: ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral } } => new UnspecifiedSizedIntType { Boxed = false },
             { AccessType: ValueAccessType.Literal, Token: StringToken { Type: TokenType.StringLiteral } } =>
                 InstantiatedClass.String,
             { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True or TokenType.False } => InstantiatedClass
@@ -37,7 +37,7 @@ public partial class TypeChecker
             var okVariant = instantiatedUnion.Variants.FirstOrDefault(x => x.Name == variantName)
                             ?? throw new UnreachableException($"{variantName} is a built in variant of Result");
 
-            if (okVariant is not TupleUnionVariant {CreateFunction: var tupleVariantFunctionSignature})
+            if (okVariant is not TupleUnionVariant { CreateFunction: var tupleVariantFunctionSignature })
             {
                 throw new UnreachableException($"{variantName} is a tuple variant");
             }
@@ -61,7 +61,7 @@ public partial class TypeChecker
             .Select<ITypeIdentifier, (ITypeReference, SourceRange SourceRange)>(x => (GetTypeReference(x), x.SourceRange))
             .ToArray();
 
-        if (ScopedFunctions.TryGetValue(variableName.StringValue, out var function))
+        if (GetFunctionSignature(variableName.StringValue) is { } function)
         {
             var instantiatedFunction = InstantiateFunction(
                 function,
@@ -143,7 +143,7 @@ public partial class TypeChecker
         expression.ReferencedVariable = valueVariable;
 
         if (!allowUninstantiated && valueVariable is LocalVariable { Instantiated: false, ContainingFunction: var containingFunction }
-            // if we're accessing an outer variable, then we can assume it's been assigned                     
+            // if we're accessing an outer variable, then we can assume it's been assigned
             && containingFunction == CurrentFunctionSignature)
         {
             AddError(TypeCheckerError.AccessUninitializedVariable(variableName));
@@ -152,4 +152,3 @@ public partial class TypeChecker
         return valueVariable.Type;
     }
 }
-

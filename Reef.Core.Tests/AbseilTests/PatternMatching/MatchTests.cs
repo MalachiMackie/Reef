@@ -51,26 +51,26 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                  Variant(
                                       "_classVariant",
                                       [
-                                          Field("MyField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-                                          Field("SecondField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))
+                                          Field("MyField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
+                                          Field("SecondField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))
                                       ])
                               ])
                       ],
                       methods: [
-                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                               [
                                   new BasicBlock(
                                       BB0,
                                       [
                                           new Assign(
                                               Local0,
-                                              new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                              new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
                                           new Assign(
                                               new Field(
                                                   Local0,
                                                   "MyField",
                                                   "_classVariant"),
-                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                           new Assign(
                                               new Field(
                                                   new Field(
@@ -85,7 +85,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                   Local0,
                                                   "SecondField",
                                                   "_classVariant"),
-                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                           new Assign(
                                               new Field(
                                                   new Field(
@@ -188,7 +188,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                               ],
                               Unit,
                               locals: [
-                                  new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                  new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])),
                                   new MethodLocal("_local1", "b", Int32T),
                               ])
                       ]);
@@ -229,7 +229,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             ])
                     ],
                     methods: [
-                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
                                 new BasicBlock(
                                     BB0,
@@ -244,7 +244,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         new Assign(
                                             new Deref(Local0),
                                             new CreateObject(
-                                                new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                                new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                         new Assign(
                                             new Field(new Deref(Local0), "_variantIdentifier", "A"),
                                             new Use(new UIntConstant(0, 2)))
@@ -280,7 +280,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             ],
                             Unit,
                             locals: [
-                                new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                 new MethodLocal("_local1", "b", Int32T)
                             ])
                     ])
@@ -305,7 +305,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ])
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -320,7 +320,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                          new Assign(
                                              new Deref(Local0),
                                              new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          new Assign(
                                              new Field(new Deref(Local0), "_variantIdentifier", "A"),
                                              new Use(new UIntConstant(0, 2))),
@@ -348,7 +348,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                  new MethodLocal("_local1", "b", Int32T)
                              ])
                      ])
@@ -384,14 +384,14 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      "X",
                                      [
                                          Field("_variantIdentifier", UInt16T),
-                                         Field("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])))
+                                         Field("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))
                                      ]),
                                 Variant("Y", [Field("_variantIdentifier", UInt16T)]),
                              ]),
                      ],
                      methods:
                      [
-                         Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__X"), "MyUnion__Create__X",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__X"), "MyUnion__Create__X",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -406,7 +406,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                          new Assign(
                                              new Deref(ReturnValue),
                                              new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          new Assign(
                                              new Field(new Deref(ReturnValue), "_variantIdentifier", "X"),
                                              new Use(new UIntConstant(0, 2))),
@@ -416,9 +416,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      ],
                                      new Return())
                              ],
-                             parameters: [("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])))],
-                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             parameters: [("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))],
+                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -433,7 +433,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                          new Assign(
                                              new Deref(Local0),
                                              new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          new Assign(
                                              new Field(new Deref(Local0), "_variantIdentifier", "Y"),
                                              new Use(new UIntConstant(1, 2)))
@@ -502,7 +502,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              Unit,
                              locals:
                              [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                  new MethodLocal("_local1", "b", Int32T)
                              ])
                      ])
@@ -533,13 +533,13 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      "X",
                                      [
                                          Field("_variantIdentifier", UInt16T),
-                                         Field("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))),
+                                         Field("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))),
                                      ]),
                                 Variant("Y", [Field("_variantIdentifier", UInt16T)])
                              ])
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__X"), "MyUnion__Create__X",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__X"), "MyUnion__Create__X",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -553,7 +553,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      [
                                          new Assign(
                                              new Deref(ReturnValue),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          new Assign(
                                              new Field(new Deref(ReturnValue), "_variantIdentifier", "X"),
                                              new Use(new UIntConstant(0, 2))),
@@ -563,9 +563,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      ],
                                      new Return())
                              ],
-                             parameters: [("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])))],
-                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             parameters: [("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))],
+                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -579,7 +579,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      [
                                          new Assign(
                                              new Deref(Local0),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          new Assign(
                                              new Field(new Deref(Local0), "_variantIdentifier", "Y"),
                                              new Use(new UIntConstant(1, 2)))
@@ -636,7 +636,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                  new MethodLocal("_local1", "b", Int32T)
                              ])
                      ])
@@ -670,14 +670,14 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      "X",
                                      [
                                          Field("_variantIdentifier", UInt16T),
-                                         Field("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])))
+                                         Field("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))
                                      ]),
                                 Variant("Y", [Field("_variantIdentifier", UInt16T)]),
                                 Variant("Z", [Field("_variantIdentifier", UInt16T)]),
                              ]),
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__X"), "MyUnion__Create__X",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__X"), "MyUnion__Create__X",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -692,7 +692,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                          new Assign(
                                              new Deref(ReturnValue),
                                              new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          new Assign(
                                              new Field(new Deref(ReturnValue), "_variantIdentifier", "X"),
                                              new Use(new UIntConstant(0, 2))),
@@ -702,9 +702,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      ],
                                      new Return())
                              ],
-                             parameters: [("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])))],
-                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                             parameters: [("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))],
+                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -719,7 +719,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                          new Assign(
                                              new Deref(Local0),
                                              new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          new Assign(
                                              new Field(new Deref(Local0), "_variantIdentifier", "Y"),
                                              new Use(new UIntConstant(1, 2)))
@@ -777,7 +777,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                  new MethodLocal("_local1", "b", Int32T)
                              ])
                      ])
@@ -809,14 +809,14 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      "X",
                                      [
                                          Field("_variantIdentifier", UInt16T),
-                                         Field("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))),
-                                         Field("Item1", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))),
+                                         Field("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))),
+                                         Field("Item1", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))),
                                      ]),
                                 Variant("Y", [Field("_variantIdentifier", UInt16T)])
                              ])
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}.MyUnion__Create__X"), "MyUnion__Create__X",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__X"), "MyUnion__Create__X",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -830,7 +830,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      [
                                          new Assign(
                                              new Deref(ReturnValue),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          new Assign(
                                              new Field(new Deref(ReturnValue), "_variantIdentifier", "X"),
                                              new Use(new UIntConstant(0, 2))),
@@ -844,10 +844,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new Return())
                              ],
                              parameters: [
-                                 ("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))),
-                                 ("Item1", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])))],
-                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                                 ("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))),
+                                 ("Item1", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))],
+                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -861,7 +861,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      [
                                          new Assign(
                                              new Deref(Local0),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          new Assign(
                                              new Field(new Deref(Local0), "_variantIdentifier", "Y"),
                                              new Use(new UIntConstant(1, 2)))
@@ -942,7 +942,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                  new MethodLocal("_local1", "b", Int32T),
                              ])
                      ])
@@ -975,13 +975,13 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      "X",
                                      [
                                          Field("_variantIdentifier", UInt16T),
-                                         Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), [])))
+                                         Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))
                                      ]),
                                 Variant("Y", [Field("_variantIdentifier", UInt16T)]),
                              ]),
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -995,7 +995,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      [
                                          new Assign(
                                              new Deref(Local0),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          new Assign(
                                              new Field(new Deref(Local0), "_variantIdentifier", "Y"),
                                              new Use(new UIntConstant(1, 2)))
@@ -1070,11 +1070,11 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
-                                 new MethodLocal("_local1", "something", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
-                                 new MethodLocal("_local2", "myField", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}.OtherUnion"), []))),
-                                 new MethodLocal("_local3", "somethingElse", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
-                                 new MethodLocal("_local4", "myUnion", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                 new MethodLocal("_local1", "something", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                 new MethodLocal("_local2", "myField", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))),
+                                 new MethodLocal("_local3", "somethingElse", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                 new MethodLocal("_local4", "myUnion", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                  new MethodLocal("_local5", "b", Int32T),
                              ])
                      ])
@@ -1088,7 +1088,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                  """,
                  LoweredProgram(ModuleId, 
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -1114,7 +1114,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                  """,
                  LoweredProgram(ModuleId, 
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}.GetI64"), "GetI64",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::GetI64"), "GetI64",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -1122,13 +1122,13 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new Return())
                              ],
                              Int64T),
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
                                      [],
                                      new MethodCall(
-                                         new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}.GetI64"), []),
+                                         new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::GetI64"), []),
                                          [],
                                          Local1,
                                          BB1)),
@@ -1169,11 +1169,11 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ]),
                          DataType(ModuleId, "MyClass",
                              variants: [
-                                Variant("_classVariant", [Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])))])
+                                Variant("_classVariant", [Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))])
                              ])
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -1188,7 +1188,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                          new Assign(
                                              new Deref(Local0),
                                              new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
+                                                 new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
                                      ],
                                      AllocateMethodCall(
                                         ConcreteTypeReference("MyUnion", ModuleId),
@@ -1199,7 +1199,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      [
                                          new Assign(
                                              new Deref(new Field(new Deref(Local0), "MyField", "_classVariant")),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          new Assign(
                                              new Field(
                                                  new Deref(new Field(
@@ -1240,8 +1240,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
-                                 new MethodLocal("_local1", "something", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
+                                 new MethodLocal("_local1", "something", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
                                  new MethodLocal("_local2", "b", Int32T),
                              ])
                      ])
@@ -1267,11 +1267,11 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ]),
                          DataType(ModuleId, "MyClass",
                              variants: [
-                                Variant("_classVariant", [Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])))])
+                                Variant("_classVariant", [Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))])
                              ])
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -1285,7 +1285,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      [
                                          new Assign(
                                              new Deref(Local0),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
+                                             new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
                                      ],
                                      AllocateMethodCall(
                                         ConcreteTypeReference("MyUnion", ModuleId),
@@ -1299,7 +1299,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                  new Deref(Local0),
                                                  "MyField",
                                                  "_classVariant")),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          new Assign(
                                              new Field(
                                                  new Deref(new Field(
@@ -1336,7 +1336,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
                                  new MethodLocal("_local1", "b", Int32T),
                              ])
                      ])
@@ -1371,13 +1371,13 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 Variant(
                                      "_classVariant",
                                      [
-                                         Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
-                                         Field("SecondField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                         Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                         Field("SecondField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                      ])
                              ])
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -1391,7 +1391,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      [
                                          new Assign(
                                              new Deref(Local0),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
+                                             new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
                                      ],
                                      AllocateMethodCall(
                                          ConcreteTypeReference("MyUnion", ModuleId),
@@ -1408,7 +1408,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                  new Deref(Local0),
                                                  "MyField",
                                                  "_classVariant")),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          new Assign(
                                              new Field(
                                                  new Deref(new Field(
@@ -1434,7 +1434,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                  new Deref(Local0),
                                                  "SecondField",
                                                  "_classVariant")),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          new Assign(
                                              new Field(
                                                  new Deref(new Field(
@@ -1535,7 +1535,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
                                  new MethodLocal("_local1", "b", Int32T),
                              ])
                      ])
@@ -1571,13 +1571,13 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 Variant(
                                      "_classVariant",
                                      [
-                                         Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
-                                         Field("SecondField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])))
+                                         Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                         Field("SecondField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))
                                      ])
                              ])
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -1591,7 +1591,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      [
                                          new Assign(
                                              new Deref(Local0),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
+                                             new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
                                      ],
                                      AllocateMethodCall(
                                          ConcreteTypeReference("MyUnion", ModuleId),
@@ -1608,7 +1608,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                  new Deref(Local0),
                                                  "MyField",
                                                  "_classVariant")),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          new Assign(
                                              new Field(
                                                  new Deref(new Field(
@@ -1634,7 +1634,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                  new Deref(Local0),
                                                  "SecondField",
                                                  "_classVariant")),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                          new Assign(
                                              new Field(
                                                  new Deref(new Field(
@@ -1737,7 +1737,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
                                  new MethodLocal("_local1", "b", Int32T),
                              ])
                      ])
@@ -1773,26 +1773,26 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                  Variant(
                                       "_classVariant",
                                       [
-                                          Field("MyField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])),
-                                          Field("SecondField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))
+                                          Field("MyField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
+                                          Field("SecondField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))
                                       ])
                               ])
                       ],
                       methods: [
-                          Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                               [
                                   new BasicBlock(
                                       BB0,
                                       [
                                           new Assign(
                                               Local0,
-                                              new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                              new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
                                           new Assign(
                                               new Field(
                                                   Local0,
                                                   "MyField",
                                                   "_classVariant"),
-                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                           new Assign(
                                               new Field(
                                                   new Field(
@@ -1807,7 +1807,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                   Local0,
                                                   "SecondField",
                                                   "_classVariant"),
-                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                              new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                           new Assign(
                                               new Field(
                                                   new Field(
@@ -1910,7 +1910,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                               ],
                               Unit,
                               locals: [
-                                  new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])),
+                                  new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])),
                                   new MethodLocal("_local1", "b", Int32T),
                               ])
                       ])

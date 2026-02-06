@@ -132,6 +132,7 @@ public record NamedTypeIdentifier(
         if (BoxedSpecifier is not null)
         {
             sb.Append(BoxedSpecifier);
+            sb.Append(' ');
         }
 
         sb.Append(Identifier.StringValue);

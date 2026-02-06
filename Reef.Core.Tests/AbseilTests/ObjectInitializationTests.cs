@@ -36,7 +36,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                 ])
                         ],
                         methods: [
-                            Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                                 [
                                     new BasicBlock(
                                         BB0,
@@ -49,7 +49,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                         new Assign(
                                             new Deref(Local0),
                                             new CreateObject(new LoweredConcreteTypeReference(
-                                                "MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
+                                                "MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
                                     ], new GoTo(BB2)),
                                     new BasicBlock(BB2, [], new Return())
                                 ],
@@ -58,7 +58,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                     new MethodLocal(
                                         "_local0",
                                         "a",
-                                        new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
+                                        new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
                                 ])
                         ])
             },
@@ -73,13 +73,13 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                             ])
                     ],
                     methods: [
-                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
                                 new BasicBlock(BB0, [
                                     new Assign(
                                         Local0,
                                         new CreateObject(new LoweredConcreteTypeReference(
-                                            "MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
+                                            "MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
                                 ], new GoTo(BB1)),
                                 new BasicBlock(BB1, [], new Return())
                             ],
@@ -88,7 +88,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                 new MethodLocal(
                                     "_local0",
                                     "a",
-                                    new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))
+                                    new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))
                             ])
                     ])
             },
@@ -103,7 +103,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                 ])
                         ],
                         methods: [
-                            Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                            Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                                 [
                                     new BasicBlock(
                                         BB0,
@@ -118,7 +118,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                             new Assign(
                                                 new Deref(Local0),
                                                 new CreateObject(
-                                                    new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), []))),
+                                                    new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
                                             new Assign(
                                                 new Field(
                                                     new Deref(Local0),
@@ -134,7 +134,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                     new MethodLocal(
                                         "_local0",
                                         "a",
-                                        new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}.MyClass"), [])))
+                                        new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
                                 ])
                         ])
             },
@@ -147,7 +147,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                             variants: [Variant("A", [Field("_variantIdentifier", UInt16T)])])
                     ],
                     methods: [
-                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
                                 new BasicBlock(
                                     BB0,
@@ -162,7 +162,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                         new Assign(
                                             new Deref(Local0),
                                             new CreateObject(
-                                                new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                                new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                         new Assign(
                                             new Field(new Deref(Local0), "_variantIdentifier", "A"),
                                             new Use(new UIntConstant(0, 2)))
@@ -177,7 +177,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                             locals: [new MethodLocal(
                                 "_local0",
                                 "a",
-                                new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])))])
+                                new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))])
                     ])
             },
             {
@@ -195,7 +195,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                             ])
                     ],
                     methods: [
-                        Method(new DefId(ModuleId, $"{ModuleId}._Main"), "_Main",
+                        Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
                                 new BasicBlock(
                                     BB0,
@@ -209,7 +209,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                     [
                                         new Assign(
                                             new Deref(Local0),
-                                            new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), []))),
+                                            new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                                         new Assign(
                                             new Field(
                                                 new Deref(Local0),
@@ -231,7 +231,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                 new MethodLocal(
                                     "_local0",
                                     "a",
-                                    new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}.MyUnion"), [])))
+                                    new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))
                             ])
                     ])
             }

@@ -17,8 +17,8 @@ public class TestBase
         var parseResult = Parser.Parse(moduleId, tokens);
         parseResult.Errors.Should().BeEmpty();
         var program = parseResult.ParsedModule;
-        var typeCheckErrors = TypeChecking.TypeChecker.TypeCheck(program);
-        typeCheckErrors.Should().BeEmpty();
+        var typeCheckErrors = TypeChecking.TypeChecker.TypeCheck(new() { { "main.rf", program } });
+        typeCheckErrors["main.rf"].Should().BeEmpty();
 
         return program;
     }
