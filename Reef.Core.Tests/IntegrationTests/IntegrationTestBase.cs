@@ -25,6 +25,28 @@ public class IntegrationTestBase
         await File.WriteAllTextAsync(Path.Join(testRunFolder, fileName), reefSource);
     }
 
+    protected static async Task SetupTest(
+        Dictionary<string, string> sourceFiles,
+        string? testCaseName = null,
+        [CallerMemberName] string testName = "",
+        [CallerFilePath] string callerFilePath = "")
+    {
+        var testRunFolder = TestRunFolder(testName, testCaseName, callerFilePath);
+
+        if (Directory.Exists(testRunFolder))
+        {
+            DeleteDirectory(testRunFolder);
+        }
+        Directory.CreateDirectory(testRunFolder);
+
+        var tasks = sourceFiles.Select(x => File.WriteAllTextAsync(
+            Path.Join(testRunFolder, x.Key),
+            x.Value
+        ));
+
+        await Task.WhenAll(tasks);
+    }
+
     protected static async Task<TestRunOutput> Run(
         string? testCaseName = null,
         [CallerMemberName] string testName = "",

@@ -138,6 +138,47 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    var a = new :::otherModule:::MyClass{};
+                    var b = :::otherModule:::MyUnion::A;
+                    var c = :::otherModule:::SomeFn();
+                    """
+                },
+                {
+                    "otherModule.rf",
+                    """
+                    class MyClass{}
+                    union MyUnion{A}
+                    pub fn SomeFn(){}
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass{}
+
+                    var a = new :::otherModule:::MyClass{};
+                    var b = :::otherModule:::MyUnion::A;
+                    var c = :::otherModule:::SomeFn();
+                    var d = new MyClass{};
+                    """
+                },
+                {
+                    "otherModule.rf",
+                    """
+                    class MyClass{}
+                    union MyUnion{A}
+                    pub fn SomeFn(){}
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     use :::someModule:::subModule:::{MyClass, MyUnion, SomeFn};
 
                     var a = new MyClass{};
