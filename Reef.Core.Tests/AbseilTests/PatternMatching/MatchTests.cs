@@ -18,7 +18,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
 
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
-    
+
     [Fact]
     public void Single()
     {
@@ -38,9 +38,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                       _ => 5
                   }
                   """;
-                  var expectedProgram = LoweredProgram(ModuleId, 
-                      types: [
-                          DataType(ModuleId, "MyUnion",
+        var expectedProgram = LoweredProgram(ModuleId,
+            types: [
+                DataType(ModuleId, "MyUnion",
                               variants: [
                                  Variant("A", [Field("_variantIdentifier", UInt16T)]),
                                  Variant("B", [Field("_variantIdentifier", UInt16T)]),
@@ -55,9 +55,9 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                           Field("SecondField", new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))
                                       ])
                               ])
-                      ],
-                      methods: [
-                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
+            ],
+            methods: [
+                Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                               [
                                   new BasicBlock(
                                       BB0,
@@ -191,7 +191,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                   new MethodLocal("_local0", "a", new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])),
                                   new MethodLocal("_local1", "b", Int32T),
                               ])
-                      ]);
+            ]);
         var program = CreateProgram(ModuleId, source);
         var (loweredProgram, _) = ProgramAbseil.Lower(program);
 
@@ -199,10 +199,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
 
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
-    
-    
 
-    private const string ModuleId = "MatchTests";
+
+
+    private static readonly ModuleId ModuleId = new("main");
 
     public static TheoryData<string, string, LoweredModule> TestCases()
     {
@@ -219,7 +219,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     MyUnion::C => 3,
                 };
                 """,
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     types: [
                         DataType(ModuleId, "MyUnion",
                             variants: [
@@ -295,7 +295,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      _ => 2
                  };
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "MyUnion",
                              variants: [
@@ -367,7 +367,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      MyUnion::Y => 4,
                  };
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types:
                      [
                          DataType(ModuleId, "OtherUnion",
@@ -455,8 +455,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                  new Deref(new Field(
                                                      new Deref(Local0),
                                                      "Item0",
-                                                     "X")), 
-                                                 "_variantIdentifier", 
+                                                     "X")),
+                                                 "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
@@ -512,7 +512,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                  """
                  union OtherUnion{A, B}
                  union MyUnion {X(OtherUnion), Y}
-                 
+
                  var a = MyUnion::Y;
                  var b = match (a) {
                      MyUnion::X(OtherUnion::A) => 1,
@@ -520,7 +520,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      MyUnion::Y => 3
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "OtherUnion",
                              variants: [
@@ -655,7 +655,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      _ => 4,
                  };
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "OtherUnion",
                              variants: [
@@ -796,7 +796,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      MyUnion::X(OtherUnion::B, OtherUnion::B) => 4,
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "OtherUnion",
                              variants: [
@@ -960,7 +960,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      var myUnion => 4,
                  };
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "OtherUnion",
                              variants: [
@@ -1086,7 +1086,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      i64 => 2
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
@@ -1112,7 +1112,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      i64 => 2
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}:::GetI64"), "GetI64",
                              [
@@ -1160,7 +1160,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      MyClass{MyField: MyUnion::B} var something => 2,
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "MyUnion",
                              variants: [
@@ -1258,7 +1258,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      _ => 2
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "MyUnion",
                              variants: [
@@ -1358,7 +1358,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      _ => 4
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "MyUnion",
                              variants: [
@@ -1558,7 +1558,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      _ => 5
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "MyUnion",
                              variants: [
@@ -1760,7 +1760,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                       _ => 5
                   }
                   """,
-                  LoweredProgram(ModuleId, 
+                  LoweredProgram(ModuleId,
                       types: [
                           DataType(ModuleId, "MyUnion",
                               variants: [

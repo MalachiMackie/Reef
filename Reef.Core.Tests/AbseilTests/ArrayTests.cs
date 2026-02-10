@@ -20,7 +20,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
 
-    private const string ModuleId = "ArrayTests";
+    private static readonly ModuleId ModuleId = new("main");
 
     public static TheoryData<string, string, LoweredModule> TestCases()
     {
@@ -154,7 +154,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 "collection expression with boxed values",
                 """
                 class MyClass{}
-                var a = [new MyClass{}, new MyClass{}]; 
+                var a = [new MyClass{}, new MyClass{}];
                 """,
                 LoweredProgram(
                     ModuleId,
@@ -229,7 +229,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "fill collection expression",
                 """
-                var a = [4; 3]; 
+                var a = [4; 3];
                 """,
                 LoweredProgram(
                     ModuleId,
@@ -276,7 +276,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "unboxed fill collection expression",
                 """
-                var a = [4; 3]; 
+                var a = [4; 3];
                 """,
                 LoweredProgram(
                     ModuleId,

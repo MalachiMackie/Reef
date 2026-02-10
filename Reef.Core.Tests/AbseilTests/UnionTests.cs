@@ -19,17 +19,17 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
 
-    private const string ModuleId = "UnionTests";
+    private static readonly ModuleId ModuleId = new("main");
 
     [Fact]
     public void SingleTest()
     {
-        const string source = 
+        const string source =
                 "union MyUnion{}";
         var expectedProgram = LoweredProgram(ModuleId, types: [
             DataType(ModuleId, "MyUnion")
         ]);
-        
+
         var program = CreateProgram(ModuleId, source);
         var (loweredProgram, _) = ProgramAbseil.Lower(program);
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
@@ -199,7 +199,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "union with method",
                 "union MyUnion { pub fn MyFn(){} }",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                 [
                             Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__MyFn"), "MyUnion__MyFn",
                                 [new BasicBlock(BB0, []) {Terminator = new Return()}],
@@ -212,7 +212,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "union with method and tuple variants",
                 "union MyUnion { A(string), pub static fn MyFn() {}, B(string) }",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__MyFn"), "MyUnion__MyFn",
                             [new BasicBlock(BB0, []){Terminator = new Return()}],

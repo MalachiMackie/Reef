@@ -6,28 +6,33 @@ namespace Reef.Core;
 
 public class ReefCompiler(IFileSystem fileSystem, string? workingDirectory = null)
 {
-    public async Task<Dictionary<string, TypeCheckResult>> TypeCheck()
+    public async Task<(Dictionary<ModuleId, TypeCheckResult>, Dictionary<ModuleId, string>)> TypeCheck()
     {
-        var parseErrors = new Dictionary<string, IReadOnlyList<ParserError>>();
-
         var currentDirectory = workingDirectory ?? fileSystem.Directory.GetCurrentDirectory();
 
         var parsedModules = await GetReefModules(currentDirectory, currentDirectory).ToArrayAsync();
-        var modulesDictionary = new Dictionary<string, LangModule>();
+        var modules = new List<LangModule>();
+        var moduleIdToFileName = new Dictionary<ModuleId, string>();
 
+        var parseErrors = new Dictionary<ModuleId, IReadOnlyList<ParserError>>();
         foreach (var (parseResult, fileName) in parsedModules)
         {
-            modulesDictionary[fileName] = parseResult.ParsedModule;
+            var moduleId = parseResult.ParsedModule.ModuleId;
+            moduleIdToFileName[moduleId] = fileName;
+            modules.Add(parseResult.ParsedModule);
             if (parseResult.Errors.Count > 0)
             {
-                parseErrors[fileName] = parseResult.Errors;
+                parseErrors[moduleId] = parseResult.Errors;
             }
         }
 
-        var typeCheckErrors = TypeChecker.TypeCheck(modulesDictionary);
+        var typeCheckErrors = TypeChecker.TypeCheck(modules);
 
-        return parsedModules
-            .ToDictionary(x => x.fileName, x => new TypeCheckResult(x.Item1.ParsedModule, parseErrors.GetValueOrDefault(x.fileName, []), typeCheckErrors.GetValueOrDefault(x.fileName, [])));
+        return (parsedModules
+            .ToDictionary(x => x.Item1.ParsedModule.ModuleId, x => new TypeCheckResult(
+                x.Item1.ParsedModule,
+                parseErrors.GetValueOrDefault(x.Item1.ParsedModule.ModuleId, []),
+                typeCheckErrors.GetValueOrDefault(x.Item1.ParsedModule.ModuleId, []))), moduleIdToFileName);
     }
 
     private async IAsyncEnumerable<(Parser.ParseResult, string fileName)> GetReefModules(string projectDir, string directory)
@@ -57,7 +62,7 @@ public class ReefCompiler(IFileSystem fileSystem, string? workingDirectory = nul
         }
     }
 
-    private static string GetModuleIdFromProjectRelativeFileName(string fileName)
+    private static ModuleId GetModuleIdFromProjectRelativeFileName(string fileName)
     {
         var withoutExtension = Path.GetFileNameWithoutExtension(fileName);
 
@@ -65,7 +70,7 @@ public class ReefCompiler(IFileSystem fileSystem, string? workingDirectory = nul
 
         Debug.Assert(segments.Length > 0);
 
-        return string.Join(":::", segments);
+        return new ModuleId(string.Join(":::", segments));
     }
 
     private static string GetProjectRelativeFileName(string projectDir, string fileName)

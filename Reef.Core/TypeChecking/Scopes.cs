@@ -50,7 +50,7 @@ public partial class TypeChecker
     {
         if (variable is LocalVariable localVariable)
         {
-            var localVariables = CurrentFunctionSignature?.LocalVariables ?? _modules[CurrentFileName].TopLevelLocalVariables;
+            var localVariables = CurrentFunctionSignature?.LocalVariables ?? _modules[CurrentModuleId].TopLevelLocalVariables;
             localVariables.Add(localVariable);
         }
 
@@ -61,7 +61,7 @@ public partial class TypeChecker
     {
         if (variable is LocalVariable localVariable)
         {
-            var localVariables = CurrentFunctionSignature?.LocalVariables ?? _modules[CurrentFileName].TopLevelLocalVariables;
+            var localVariables = CurrentFunctionSignature?.LocalVariables ?? _modules[CurrentModuleId].TopLevelLocalVariables;
             localVariables.Add(localVariable);
         }
 
@@ -79,22 +79,22 @@ public partial class TypeChecker
         ITypeReference? expectedReturnType = null,
         IEnumerable<GenericPlaceholder>? genericPlaceholders = null,
         DefId? defId = null,
-        string? moduleId = null,
-        string? fileName = null,
-        List<FunctionSignature>? functionSignatures = null)
+        ModuleId? moduleId = null,
+        IReadOnlyList<FunctionSignature>? functionSignatures = null,
+        IReadOnlyList<ModuleImport>? moduleImports = null)
     {
         var currentScope = _typeCheckingScopes.Peek();
 
         _typeCheckingScopes.Push(new TypeCheckingScope(
             currentScope,
-            functionSignatures ?? [],
+            functionSignatures is null ? [] : [.. functionSignatures],
             expectedReturnType ?? currentScope.ExpectedReturnType,
             currentTypeSignature ?? currentScope.CurrentTypeSignature,
             currentFunctionSignature ?? currentScope.CurrentFunctionSignature,
             [.. currentScope.GenericPlaceholders, .. genericPlaceholders ?? []],
             defId ?? currentScope.CurrentDefId,
             moduleId ?? currentScope.ModuleId,
-            fileName ?? currentScope.FileName));
+            moduleImports ?? []));
 
         return new ScopeDisposable(PopScope);
     }
@@ -109,8 +109,8 @@ public partial class TypeChecker
         FunctionSignature? CurrentFunctionSignature,
         HashSet<GenericPlaceholder> GenericPlaceholders,
         DefId? CurrentDefId,
-        string? ModuleId,
-        string? FileName)
+        ModuleId? ModuleId,
+        IReadOnlyList<ModuleImport> ModuleImports)
     {
         private Dictionary<string, IVariable> CurrentScopeVariables { get; } = new();
 

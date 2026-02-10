@@ -6,7 +6,7 @@ namespace Reef.Core.Tests;
 public static class LoweredProgramHelpers
 {
     public static LoweredModule LoweredProgram(
-        string moduleId,
+        ModuleId moduleId,
         IReadOnlyList<LoweredMethod>? methods = null,
         IReadOnlyList<DataType>? types = null)
     {
@@ -19,7 +19,7 @@ public static class LoweredProgramHelpers
     }
 
     public static DataType DataType(
-        string moduleId,
+        ModuleId moduleId,
         string name,
         IReadOnlyList<string>? typeParameters = null,
         IReadOnlyList<DataTypeVariant>? variants = null,
@@ -82,7 +82,7 @@ public static class LoweredProgramHelpers
     public static readonly BasicBlockId BB12 = new("bb12");
 
 
-    public static LoweredConcreteTypeReference ConcreteTypeReference(string name, string moduleId, IReadOnlyList<ILoweredTypeReference>? typeArguments = null)
+    public static LoweredConcreteTypeReference ConcreteTypeReference(string name, ModuleId moduleId, IReadOnlyList<ILoweredTypeReference>? typeArguments = null)
     {
         return new LoweredConcreteTypeReference(
             name,

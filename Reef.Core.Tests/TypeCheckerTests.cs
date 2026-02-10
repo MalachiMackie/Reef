@@ -21,12 +21,12 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             _fileSystem.AddFile(path, new MockFileData(contents));
         }
 
-        var typeCheckResult = await new ReefCompiler(_fileSystem).TypeCheck();
+        var (typeCheckResult, _) = await new ReefCompiler(_fileSystem).TypeCheck();
 
-        foreach (var (fileName, innerTypeCheckResult) in typeCheckResult)
+        foreach (var (moduleId, innerTypeCheckResult) in typeCheckResult)
         {
-            innerTypeCheckResult.ParserErrors.Should().BeEmpty(because: $"{fileName} should have no parser errors");
-            innerTypeCheckResult.TypeCheckerErrors.Should().BeEmpty(because: $"{fileName} should have no type checking errors");
+            innerTypeCheckResult.ParserErrors.Should().BeEmpty(because: $"{moduleId.Value} should have no parser errors");
+            innerTypeCheckResult.TypeCheckerErrors.Should().BeEmpty(because: $"{moduleId.Value} should have no type checking errors");
         }
     }
 
@@ -49,11 +49,11 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
         sourceFiles.SelectMany(x => x.Value.expectedErrors).Should().NotBeEmpty();
 
-        var typeCheckResults = await new ReefCompiler(_fileSystem).TypeCheck();
-        foreach (var (fileName, typeCheckResult) in typeCheckResults)
+        var (typeCheckResults, moduleIdToFileName) = await new ReefCompiler(_fileSystem).TypeCheck();
+        foreach (var (moduleId, typeCheckResult) in typeCheckResults)
         {
             typeCheckResult.ParserErrors.Should().BeEmpty();
-            var expectedErrors = sourceFiles.TryGetValue(fileName, out var result) ? result.expectedErrors : [];
+            var expectedErrors = sourceFiles.TryGetValue(moduleIdToFileName[moduleId], out var result) ? result.expectedErrors : [];
             typeCheckResult.TypeCheckerErrors.Should().BeEquivalentTo(expectedErrors,
                     opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan))).And
                 .NotBeEmpty();
@@ -67,10 +67,23 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         var sourceFiles = new Dictionary<string, (string, IReadOnlyList<TypeCheckerError> expectedErrors)>()
         {
             {
-                "main.rf", ("""
-                            fn MyFn<T1>(param: T1): i64 { return param; }
-                            """, [MismatchedTypes(Int64, GenericPlaceholder("T1"))])
-            }
+                                    "main.rf", ("""
+                                               var a: i64;
+                                               fn SomeFn()
+                                               {
+                                                   fn InnerFn()
+                                                   {
+                                                       var b = a;
+                                                   }
+                                                   InnerFn();
+                                               }
+                                               SomeFn();
+                                               a = 1;
+                                               """, [
+                                               TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("SomeFn"),
+                                               [Identifier("a")])
+                                               ])
+                                }
         };
 
         foreach (var (path, (contents, _)) in sourceFiles)
@@ -78,11 +91,11 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             _fileSystem.AddFile(path, new MockFileData(contents));
         }
 
-        var typeCheckResults = await new ReefCompiler(_fileSystem).TypeCheck();
-        foreach (var (fileName, typeCheckResult) in typeCheckResults)
+        var (typeCheckResults, moduleIdToFileName) = await new ReefCompiler(_fileSystem).TypeCheck();
+        foreach (var (moduleId, typeCheckResult) in typeCheckResults)
         {
             typeCheckResult.ParserErrors.Should().BeEmpty();
-            var expectedErrors = sourceFiles.TryGetValue(fileName, out var result) ? result.expectedErrors : [];
+            var expectedErrors = sourceFiles.TryGetValue(moduleIdToFileName[moduleId], out var result) ? result.expectedErrors : [];
             typeCheckResult.TypeCheckerErrors.Should().BeEquivalentTo(expectedErrors,
                     opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
         }
@@ -2868,7 +2881,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             new() { { "main.rf", Mvp } }
         ];
 
-        return new TheoryData<Dictionary<string, string>>(sources);
+        return [.. sources];
     }
 
     public static TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
@@ -2876,6 +2889,30 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
+            {
+                "Top level statements in non main module",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            var a = "";
+                            """,
+                            []
+                        )
+                    },
+                    {
+                        "other.rf",
+                        (
+                            """
+                            var b = 2;
+                            """,
+                            [TypeCheckerError.TopLevelStatementsInNonMainModule(SourceRange.Default, new ModuleId("other"))]
+                        )
+                    }
+                }
+            },
             {
                 "Referencing Symbols not imported",
                 new()

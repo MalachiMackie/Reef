@@ -26,7 +26,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         string source,
         IEnumerable<Token> tokens)
     {
-        var result = Parser.Parse("Tests", tokens);
+        var result = Parser.Parse(new ModuleId("Tests"), tokens);
 
         result.Errors.Should().NotBeEmpty();
     }
@@ -39,7 +39,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         IEnumerable<Token> tokens,
         IExpression expectedExpression)
     {
-        var result = Parser.PopExpression("Tests", tokens);
+        var result = Parser.PopExpression(new ModuleId("Tests"), tokens);
         result.Should().NotBeNull();
 
         try
@@ -64,7 +64,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         var expectedProgram = Program("ParseTestCases", moduleImports: [ModuleImport(["something", "A"])]);
         IEnumerable<ParserError> expectedErrors = [ParserError.ExpectedToken(null, TokenType.TripleColon, TokenType.Semicolon)];
 
-        var result = Parser.Parse("ParseTestCases", Tokenizer.Tokenize(source)).NotNull();
+        var result = Parser.Parse(new ModuleId("ParseTestCases"), Tokenizer.Tokenize(source)).NotNull();
 
         testOutputHelper.WriteLine("Expected {0}, found {1}", expectedProgram, result.ParsedModule);
 
@@ -82,7 +82,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         IEnumerable<Token> tokens,
         LangModule expectedProgram)
     {
-        var result = Parser.Parse("ParseTestCases", tokens);
+        var result = Parser.Parse(new ModuleId("ParseTestCases"), tokens);
 
         testOutputHelper.WriteLine(source);
 
@@ -106,7 +106,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
         var tokens = Tokenizer.Tokenize(source);
 
-        var output = Parser.Parse("ParseErrorTestCases", tokens);
+        var output = Parser.Parse(new ModuleId("ParseErrorTestCases"), tokens);
 
         testOutputHelper.WriteLine(source);
 

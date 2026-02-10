@@ -90,7 +90,7 @@ public class ArrayTests : IntegrationTestBase
                     [new MyClass{MyString = "c"}, new MyClass{MyString = "d"}]
                 ]
             ];
-            
+
             print_string(a[0][0][0].MyString);
             print_string(a[0][0][1].MyString);
             print_string(a[1][0][0].MyString);
@@ -108,7 +108,7 @@ public class ArrayTests : IntegrationTestBase
     {
         await SetupTest("""
                         class MyClass{pub field MyProp: i32}
-                        
+
                         var a = [
                             unboxed;
                             [
@@ -120,7 +120,7 @@ public class ArrayTests : IntegrationTestBase
                                 [unboxed; new unboxed MyClass{MyProp = 3}, new unboxed MyClass{MyProp = 4}]
                             ]
                         ];
-                        
+
                         print_i32(a[0][0][0].MyProp);
                         print_i32(a[0][0][1].MyProp);
                         print_i32(a[0][1][0].MyProp);

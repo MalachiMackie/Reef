@@ -5,7 +5,7 @@ using Reef.Core.TypeChecking;
 namespace Reef.Core;
 
 public record LangModule(
-    string ModuleId,
+    ModuleId ModuleId,
     IReadOnlyList<IExpression> Expressions,
     IReadOnlyList<LangFunction> Functions,
     IReadOnlyCollection<ProgramClass> Classes,
@@ -38,6 +38,10 @@ public record LangModule(
     public List<TypeChecker.FunctionSignature> TopLevelLocalFunctions { get; } = [];
 }
 
+public record ModuleId(string Value)
+{
+    public override string ToString() => Value;
+}
 public record ModulePathSegment(StringToken Identifier, IReadOnlyList<ModulePathSegment> SubSegments, bool UseAll);
 public record ModuleImport(bool IsGlobal, ModulePathSegment RootModulePathSegment);
 

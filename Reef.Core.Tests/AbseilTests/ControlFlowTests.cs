@@ -18,7 +18,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
 
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
-    
+
     [Fact]
     public void Single()
     {
@@ -31,7 +31,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                     }
                  }
                  """;
-        var expectedProgram = LoweredProgram(ModuleId, 
+        var expectedProgram = LoweredProgram(ModuleId,
         [
             Method(
                 new DefId(ModuleId, $"{ModuleId}:::_Main"),
@@ -95,7 +95,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                     new MethodLocal("_local1", null, BooleanT)
                 ])
         ]);
-        
+
         var program = CreateProgram(ModuleId, source);
         var (loweredProgram, _) = ProgramAbseil.Lower(program);
 
@@ -104,7 +104,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
 
-    private const string ModuleId = "ControlFlowTests";
+    private static readonly ModuleId ModuleId = new("main");
 
     public static TheoryData<string, string, LoweredModule> TestCases()
     {
@@ -124,7 +124,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                      return ok(1);
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}:::SomeFn"), "SomeFn",
                              [
@@ -203,7 +203,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                  var mut a = 0;
                  if (true) a = 1;
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
@@ -236,7 +236,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                  if (true) {a = 1}
                  else {a = 2}
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
@@ -270,7 +270,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                  """
                  var a = if (true) 1 else 2;
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
@@ -312,7 +312,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                      a = 2;
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
@@ -361,7 +361,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                  else
                  {a = 3;}
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
@@ -410,7 +410,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                     a = a + 1;
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      [
                          Method(
                              new DefId(ModuleId, $"{ModuleId}:::_Main"),
@@ -470,7 +470,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                     }
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      [
                          Method(
                              new DefId(ModuleId, $"{ModuleId}:::_Main"),
@@ -546,7 +546,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                     print_string("hi")
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      [
                          Method(
                              new DefId(ModuleId, $"{ModuleId}:::_Main"),

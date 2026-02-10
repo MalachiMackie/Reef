@@ -30,14 +30,14 @@ public class Compiler
 
         var innerCompiler = new ReefCompiler(new FileSystem(), workingDirectory);
 
-        var typeCheckResults = await innerCompiler.TypeCheck();
+        var (typeCheckResults, moduleIdToFileName) = await innerCompiler.TypeCheck();
 
         var hadError = false;
-        foreach (var (fileName, typeCheckResult) in typeCheckResults)
+        foreach (var (moduleId, typeCheckResult) in typeCheckResults)
         {
             foreach (var error in typeCheckResult.ParserErrors)
             {
-                logger.LogError("{fileName}({lineNumber}): Parser Error: {Error}", fileName, error.ReceivedToken?.SourceSpan.Position.LineNumber, error.Format());
+                logger.LogError("{fileName}({lineNumber}): Parser Error: {Error}", moduleIdToFileName[moduleId], error.ReceivedToken?.SourceSpan.Position.LineNumber, error.Format());
                 hadError = true;
             }
         }
@@ -63,7 +63,7 @@ public class Compiler
         var programName = "main";
 
         Debug.Assert(typeCheckResults.Count == 1);
-        var parsedProgram = typeCheckResults["main.rf"].Module;
+        var parsedProgram = typeCheckResults[new ModuleId("main")].Module;
 
         logger.LogInformation("Lowering...");
         var (loweredProgram, importedModules) = ProgramAbseil.Lower(parsedProgram);

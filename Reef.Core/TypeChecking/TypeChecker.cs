@@ -5,9 +5,9 @@ namespace Reef.Core.TypeChecking;
 
 public partial class TypeChecker
 {
-    private readonly Dictionary<string, LangModule> _modules;
+    private readonly Dictionary<ModuleId, LangModule> _modules;
     private readonly bool _throwOnError;
-    private readonly Dictionary<string, List<TypeCheckerError>> _errors;
+    private readonly Dictionary<ModuleId, List<TypeCheckerError>> _errors;
 
     private void AddError(TypeCheckerError error)
     {
@@ -16,25 +16,62 @@ public partial class TypeChecker
             throw new InvalidOperationException(error.ToString());
         }
 
-        _errors[CurrentFileName].Add(error);
+        _errors[CurrentModuleId].Add(error);
     }
 
     private readonly Stack<TypeCheckingScope> _typeCheckingScopes = new();
 
-    private readonly Dictionary<string, Dictionary<string, ITypeSignature>> ___types = ClassSignature.BuiltInTypes
-        .Concat(UnionSignature.BuiltInTypes)
-        .GroupBy(x => x.Id.ModuleId)
-        .ToDictionary(x => x.Key, x => x.ToDictionary(y => y.Name));
+    private bool ModuleIdAndNameMatchesImport(ModuleId moduleId, string itemName, ModuleImport moduleImport)
+    {
+        var apparentModuleId = moduleImport.IsGlobal ? "" : CurrentModuleId.Value;
+
+        return SegmentMatches(moduleId, itemName, apparentModuleId, moduleImport.RootModulePathSegment);
+
+        static bool SegmentMatches(ModuleId moduleId, string itemName, string apparentModuleId, ModulePathSegment pathSegment)
+        {
+            if (!moduleId.Value.StartsWith(apparentModuleId))
+            {
+                return false;
+            }
+
+            if (pathSegment.UseAll)
+            {
+                return true;
+            }
+
+            if (pathSegment.SubSegments.Count == 0)
+            {
+                return moduleId.Value == apparentModuleId
+                    && pathSegment.Identifier.StringValue == itemName;
+            }
+
+            return pathSegment.SubSegments.Any(
+                x => SegmentMatches(
+                    moduleId,
+                    itemName,
+                    apparentModuleId == ""
+                        ? pathSegment.Identifier.StringValue
+                        : $"{apparentModuleId}:::{pathSegment.Identifier.StringValue}",
+                        x)
+            );
+        }
+    }
 
     private ITypeSignature? SearchForType(string name)
     {
         var matchedTypes = new List<ITypeSignature>();
-        foreach (var moduleId in new[] { CurrentModuleId, DefId.CoreLibModuleId })
+
+        var imports = _typeCheckingScopes.SelectMany(x => x.ModuleImports).ToArray();
+        foreach (var moduleId in _modules.Keys.Append(DefId.CoreLibModuleId))
         {
-            var moduleTypes = GetModuleTypes(moduleId);
-            if (moduleTypes.TryGetValue(name, out var foundType))
+            if (moduleId == CurrentModuleId
+                || moduleId == DefId.CoreLibModuleId
+                || imports.Any(import => ModuleIdAndNameMatchesImport(moduleId, name, import)))
             {
-                matchedTypes.Add(foundType);
+                if (GetModuleTypes(moduleId).TryGetValue(name, out var found))
+                {
+                    matchedTypes.Add(found);
+                }
             }
         }
 
@@ -46,16 +83,27 @@ public partial class TypeChecker
         return matchedTypes.FirstOrDefault();
     }
 
-    private Dictionary<string, ITypeSignature> GetModuleTypes(string? moduleId = null)
+    private Dictionary<string, ITypeSignature> GetModuleTypes(ModuleId? moduleId = null)
     {
         moduleId ??= CurrentModuleId;
-        if (!___types.TryGetValue(moduleId, out var moduleTypes))
+        if (!_moduleSignatures.TryGetValue(moduleId, out var moduleSignatures))
         {
-            moduleTypes = [];
-            ___types[moduleId] = moduleTypes;
+            return [];
         }
 
-        return moduleTypes;
+        return moduleSignatures.Unions.Cast<ITypeSignature>().Concat(moduleSignatures.Classes).ToDictionary(x => x.Name);
+    }
+
+    private Dictionary<string, FunctionSignature> GetModuleFunctions(ModuleId? moduleId = null)
+    {
+
+        moduleId ??= CurrentModuleId;
+        if (!_moduleSignatures.TryGetValue(moduleId, out var moduleSignatures))
+        {
+            return [];
+        }
+
+        return moduleSignatures.Functions.ToDictionary(x => x.Name);
     }
 
     private bool AddType(ITypeSignature typeSignature)
@@ -64,7 +112,7 @@ public partial class TypeChecker
             .TryAdd(typeSignature.Name, typeSignature);
     }
 
-    private TypeChecker(Dictionary<string, LangModule> modules, bool throwOnError = false)
+    private TypeChecker(Dictionary<ModuleId, LangModule> modules, bool throwOnError = false)
     {
         if (modules.Count == 0)
         {
@@ -81,9 +129,29 @@ public partial class TypeChecker
     private FunctionSignature? CurrentFunctionSignature => _typeCheckingScopes.Peek().CurrentFunctionSignature;
     private ITypeReference ExpectedReturnType => _typeCheckingScopes.Peek().ExpectedReturnType;
     private DefId? CurrentDefId => _typeCheckingScopes.Peek().CurrentDefId;
-    private string CurrentModuleId => _typeCheckingScopes.Peek().ModuleId ?? throw new InvalidOperationException("No current module id");
-    private string CurrentFileName => _typeCheckingScopes.Peek().FileName ?? throw new InvalidOperationException("No current file name");
-    private Dictionary<string, (List<FunctionSignature> Functions, List<UnionSignature> Unions, List<ClassSignature> Classes)> _moduleSignatures = [];
+    private ModuleId CurrentModuleId => _typeCheckingScopes.Peek().ModuleId ?? throw new InvalidOperationException("No current module id");
+    private Dictionary<ModuleId, (List<FunctionSignature> Functions, List<UnionSignature> Unions, List<ClassSignature> Classes)> _moduleSignatures = new()
+    {
+        {
+            DefId.CoreLibModuleId,
+            (
+                [
+                    FunctionSignature.Box,
+                    FunctionSignature.Unbox,
+                    FunctionSignature.PrintString,
+                    FunctionSignature.PrintI8,
+                    FunctionSignature.PrintI16,
+                    FunctionSignature.PrintI32,
+                    FunctionSignature.PrintI64,
+                    FunctionSignature.PrintU8,
+                    FunctionSignature.PrintU16,
+                    FunctionSignature.PrintU32,
+                    FunctionSignature.PrintU64,
+                ],
+                [..UnionSignature.BuiltInTypes],
+                [..ClassSignature.BuiltInTypes])
+        }
+    };
 
     private bool AddScopedFunction(FunctionSignature functionSignature)
     {
@@ -97,20 +165,37 @@ public partial class TypeChecker
 
     private FunctionSignature? GetFunctionSignature(string name)
     {
-        foreach (var scope in _typeCheckingScopes.Reverse())
+        var matchedFunctions = new List<FunctionSignature>();
+        var imports = _typeCheckingScopes.SelectMany(x => x.ModuleImports).ToArray();
+        foreach (var moduleId in _modules.Keys.Append(DefId.CoreLibModuleId))
         {
-            if (scope.Functions.FirstOrDefault(x => x.Name == name) is { } foundFunction)
+            if (moduleId == CurrentModuleId && _typeCheckingScopes.SelectMany(x => x.Functions).FirstOrDefault(x => x.Name == name) is { } foundFunction)
             {
-                return foundFunction;
+                matchedFunctions.Add(foundFunction);
+                continue;
+            }
+
+            if ((moduleId == DefId.CoreLibModuleId
+                || moduleId == CurrentModuleId
+                || imports.Any(import => ModuleIdAndNameMatchesImport(moduleId, name, import)))
+                && GetModuleFunctions(moduleId).TryGetValue(name, out var nextFoundFunction))
+            {
+                matchedFunctions.Add(nextFoundFunction);
+                continue;
             }
         }
 
-        return null;
+        if (matchedFunctions.Count > 1)
+        {
+            throw new NotImplementedException();
+        }
+
+        return matchedFunctions.FirstOrDefault();
     }
 
-    public static Dictionary<string, IReadOnlyList<TypeCheckerError>> TypeCheck(Dictionary<string, LangModule> modules, bool throwOnError = false)
+    public static Dictionary<ModuleId, IReadOnlyList<TypeCheckerError>> TypeCheck(IEnumerable<LangModule> modules, bool throwOnError = false)
     {
-        var typeChecker = new TypeChecker(modules, throwOnError);
+        var typeChecker = new TypeChecker(modules.ToDictionary(x => x.ModuleId), throwOnError);
         typeChecker.TypeCheckInner();
 
         return typeChecker._errors.ToDictionary(x => x.Key, x => (IReadOnlyList<TypeCheckerError>)x.Value);
@@ -118,38 +203,28 @@ public partial class TypeChecker
 
     private void TypeCheckInner()
     {
-        var builtInFunctions = new List<FunctionSignature>
-        {
-            FunctionSignature.Box,
-            FunctionSignature.Unbox,
-            FunctionSignature.PrintString,
-            FunctionSignature.PrintI8,
-            FunctionSignature.PrintI16,
-            FunctionSignature.PrintI32,
-            FunctionSignature.PrintI64,
-            FunctionSignature.PrintU8,
-            FunctionSignature.PrintU16,
-            FunctionSignature.PrintU32,
-            FunctionSignature.PrintU64,
-        };
-
         // initial scope
         _typeCheckingScopes.Push(new TypeCheckingScope(
             null,
-            builtInFunctions,
+            [],
             InstantiatedClass.Unit,
             null,
             null,
             [],
             null,
             null,
-            null));
+            []));
 
         SetupSignatures();
 
         foreach (var (moduleId, (functions, unions, classes)) in _moduleSignatures)
         {
-            using var __ = PushScope(moduleId: moduleId, fileName: _modules.First(x => x.Value.ModuleId == moduleId).Key);
+            if (moduleId == DefId.CoreLibModuleId)
+            {
+                continue;
+            }
+
+            using var __ = PushScope(moduleId: moduleId);
 
             foreach (var unionSignature in unions)
             {
@@ -246,17 +321,21 @@ public partial class TypeChecker
             }
         }
 
-        foreach (var (fileName, module) in _modules)
+        foreach (var (moduleId, module) in _modules)
         {
             using var _ = PushScope(
                 moduleId: module.ModuleId,
-                fileName: fileName,
                 functionSignatures: _moduleSignatures[module.ModuleId].Functions,
                 defId: DefId.Main(module.ModuleId));
 
-            if (fileName != "main.rf")
+            if (moduleId.Value != "main" && module.Expressions.Count > 0)
             {
-                // todo: add error. Non main.rf cannot have top level expressions
+                _errors[moduleId].Add(TypeCheckerError.TopLevelStatementsInNonMainModule(
+                    new SourceRange(
+                        module.Expressions[0].SourceRange.Start,
+                        module.Expressions[^1].SourceRange.End
+                    ),
+                    module.ModuleId));
             }
 
             foreach (var expression in module.Expressions)
@@ -285,7 +364,7 @@ public partial class TypeChecker
     private InstantiatedClass TypeCheckBlock(
         Block block)
     {
-        using var _ = PushScope();
+        using var _ = PushScope(moduleImports: block.ScopedImports);
 
         var currentDefId = CurrentDefId.NotNull(expectedReason: "Block must be in a type");
 
@@ -294,7 +373,7 @@ public partial class TypeChecker
             var signature = fn.Signature ?? TypeCheckFunctionSignature(new DefId(currentDefId.ModuleId, currentDefId.FullName + $"__{fn.Name}"), fn, ownerType: null);
 
             var localFunctions = CurrentFunctionSignature?.LocalFunctions
-                ?? _modules[CurrentFileName].TopLevelLocalFunctions;
+                ?? _modules[CurrentModuleId].TopLevelLocalFunctions;
 
             localFunctions.Add(signature);
 

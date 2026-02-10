@@ -68,7 +68,7 @@ public partial class TypeChecker
         public static ClassSignature Never => new()
         { Id = DefId.Never, TypeParameters = [], Name = "!", Fields = [], Functions = [], Boxed = false };
 
-        public static IEnumerable<ITypeSignature> BuiltInTypes { get; } = [
+        public static IEnumerable<ClassSignature> BuiltInTypes { get; } = [
             Unit,
             String,
             Int64,
@@ -222,8 +222,8 @@ public partial class TypeChecker
             [],
             boxedSpecifier switch
             {
-                {Type: TokenType.Boxed} => true,
-                {Type: TokenType.Unboxed} => false,
+                { Type: TokenType.Boxed } => true,
+                { Type: TokenType.Unboxed } => false,
                 _ => signature.Boxed
             });
     }
@@ -251,7 +251,7 @@ public partial class TypeChecker
             AddError(TypeCheckerError.IncorrectNumberOfTypeArguments(sourceRange, typeArguments.Count, signature.TypeParameters.Count));
         }
 
-        var instantiatedClass = InstantiatedClass.Create(signature, [..typeArguments.Select(x => x.Item1)], boxed);
+        var instantiatedClass = InstantiatedClass.Create(signature, [.. typeArguments.Select(x => x.Item1)], boxed);
 
         for (var i = 0; i < Math.Min(instantiatedClass.TypeArguments.Count, typeArguments.Count); i++)
         {
@@ -315,7 +315,7 @@ public partial class TypeChecker
         }
     }
 
-    // TODO: arrayType and ArrayTypeSignature can't be generic classes until we implement const generics  
+    // TODO: arrayType and ArrayTypeSignature can't be generic classes until we implement const generics
     public class ArrayType : ITypeReference, IInstantiatedGeneric
     {
         public ArrayType(
@@ -341,10 +341,10 @@ public partial class TypeChecker
 
         public IReadOnlyList<GenericTypeReference> TypeArguments => [ElementType];
         public GenericTypeReference ElementType { get; }
-        public uint Length { get; } 
-        
+        public uint Length { get; }
+
         public bool Boxed { get; }
-        
+
         public IReadOnlyList<TypeField> Fields { get; }
     }
 
@@ -383,7 +383,7 @@ public partial class TypeChecker
             fields.AddRange(signature.Fields.Select(x => x with { Type = HandleType(x.Type) }));
 
             return instantiatedClass;
-            
+
             ITypeReference HandleType(ITypeReference type)
             {
                 return type switch
@@ -395,7 +395,7 @@ public partial class TypeChecker
                     InstantiatedUnion union => union.CloneWithTypeArguments([
                         ..union.TypeArguments.Select(HandleType).Cast<GenericTypeReference>()
                     ]),
-                    InstantiatedClass klass => klass.CloneWithTypeArguments([..klass.TypeArguments.Select(HandleType).Cast<GenericTypeReference>()]),
+                    InstantiatedClass klass => klass.CloneWithTypeArguments([.. klass.TypeArguments.Select(HandleType).Cast<GenericTypeReference>()]),
                     _ => type
                 };
             }
@@ -430,7 +430,7 @@ public partial class TypeChecker
         public static InstantiatedClass Unit { get; } = new(ClassSignature.Unit, [], [], boxed: ClassSignature.Unit.Boxed);
 
         public static InstantiatedClass Never { get; } = new(ClassSignature.Never, [], [], boxed: ClassSignature.Never.Boxed);
-        
+
         public bool Boxed { get; }
 
         public IReadOnlyList<GenericTypeReference> TypeArguments { get; }

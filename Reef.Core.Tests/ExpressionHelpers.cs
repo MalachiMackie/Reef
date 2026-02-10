@@ -68,7 +68,7 @@ public static class ExpressionHelpers
         IReadOnlyList<ModuleImport>? moduleImports = null)
     {
         return new LangModule(
-            moduleId,
+            new ModuleId(moduleId),
             expressions ?? [],
             functions ?? [],
             classes ?? [],

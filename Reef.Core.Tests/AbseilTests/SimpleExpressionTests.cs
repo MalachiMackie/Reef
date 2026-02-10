@@ -37,7 +37,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                         new LoweredPointer(Int32T))
                 ])
         ]);
-        
+
         var program = CreateProgram(ModuleId, source);
         var (loweredProgram, _) = ProgramAbseil.Lower(program);
 
@@ -45,7 +45,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
 
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
-    
+
     [Theory]
     [MemberData(nameof(TestCases))]
     public void SimpleExpressionAbseilTest(string description, string source, LoweredModule expectedProgram)
@@ -59,7 +59,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
 
-    private const string ModuleId = "SimpleExpressionTests";
+    private static readonly ModuleId ModuleId = new("main");
 
     public static TheoryData<string, string, LoweredModule> TestCases()
     {
@@ -155,7 +155,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "local assignment",
                 "var a;a = 2;",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(
                             new DefId(ModuleId, $"{ModuleId}:::_Main"),
@@ -180,7 +180,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "int plus",
                 "var a = 1 + 2;",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -211,7 +211,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "int minus",
                 "var a = 1 - 2;",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -242,7 +242,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "int divide",
                 "var a = 1 / 2;",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -273,7 +273,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "int multiply",
                 "var a = 1 * 2;",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -304,7 +304,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "int not equals",
                 "var a = 1 != 2;",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -335,7 +335,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "int equals",
                 "var a = 1 == 2;",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -366,7 +366,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "int greater than",
                 "var a = 1 > 2;",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -397,7 +397,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "int less than",
                 "var a = 1 < 2;",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -428,7 +428,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "bool or",
                 "var a = false || false",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -474,7 +474,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "bool and",
                 "var a = false && false",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -520,7 +520,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "bool not",
                 "var a = !true",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -588,7 +588,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "empty block",
                 "{}",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -603,7 +603,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "block with one expression",
                 "{var a = true;}",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -625,7 +625,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "block with multiple expressions",
                 "{var a = true; var b = 1;}",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -651,7 +651,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "local access",
                 "var a = 1; var b = a;",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -679,7 +679,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "method call",
                 "fn MyFn(){} MyFn();",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(
                             new DefId(ModuleId, $"{ModuleId}:::MyFn"),
@@ -721,7 +721,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 MyFn::<string>();
                 MyFn::<i64>();
                 """,
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(
                             new DefId(ModuleId, $"{ModuleId}:::MyFn"),
@@ -764,7 +764,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "function parameter access",
                 "fn MyFn(a: string): string { return a; }",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(
                             new DefId(ModuleId, $"{ModuleId}:::MyFn"),
@@ -784,7 +784,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "single element tuple",
                 "var a = (1);",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -808,7 +808,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             {
                 "two element tuple",
                 """var a = (1, "");""",
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
@@ -844,7 +844,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                     fn SomeFn(){}
                 }
                 """,
-                LoweredProgram(ModuleId, 
+                LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main__SomeFn"), "_Main__SomeFn",
                             [

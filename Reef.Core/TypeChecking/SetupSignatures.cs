@@ -6,15 +6,14 @@ public partial class TypeChecker
 {
     private sealed record ClassInfo(ProgramClass ProgramClass, ClassSignature Signature, List<FunctionSignature> Functions, List<TypeField> Fields);
     private sealed record UnionInfo(ProgramUnion ProgramUnion, UnionSignature Signature, List<FunctionSignature> Functions, List<IUnionVariant> Variants);
-    private sealed record ModuleInfo(string ModuleId, IReadOnlyList<ClassInfo> Classes, IReadOnlyList<UnionInfo> Unions);
+    private sealed record ModuleInfo(ModuleId ModuleId, IReadOnlyList<ClassInfo> Classes, IReadOnlyList<UnionInfo> Unions);
 
     private List<ModuleInfo> CreateBareSignatures()
     {
         var moduleInfos = new List<ModuleInfo>();
-        foreach (var (fileName, module) in _modules)
+        foreach (var (moduleId, module) in _modules)
         {
-            var moduleId = module.ModuleId;
-            using var _ = PushScope(moduleId: moduleId, fileName: fileName);
+            using var _ = PushScope(moduleId: moduleId);
 
             var classes = new List<ClassInfo>();
             var unions = new List<UnionInfo>();
@@ -37,7 +36,18 @@ public partial class TypeChecker
                     Boxed = true
                 };
 
-                _moduleSignatures[moduleId].Unions.Add(unionSignature);
+                var (moduleFunctions, moduleUnions, moduleClasses) = _moduleSignatures[CurrentModuleId];
+                if (moduleUnions.Cast<ITypeSignature>()
+                    .Concat(moduleClasses)
+                    .Concat(moduleFunctions)
+                    .Any(x => x.Name == unionSignature.Name))
+                {
+                    AddError(TypeCheckerError.ConflictingTypeName(union.Name));
+                }
+                else
+                {
+                    moduleUnions.Add(unionSignature);
+                }
 
                 union.Signature = unionSignature;
 
@@ -50,11 +60,6 @@ public partial class TypeChecker
                 { GenericName = typeParameter.StringValue, OwnerType = unionSignature, Constraints = [] }));
 
                 unions.Add(new UnionInfo(union, unionSignature, functions, variants));
-
-                if (!AddType(unionSignature))
-                {
-                    AddError(TypeCheckerError.ConflictingTypeName(union.Name));
-                }
             }
 
             foreach (var klass in module.Classes)
@@ -63,7 +68,7 @@ public partial class TypeChecker
                 var functions = new List<FunctionSignature>(klass.Functions.Count);
                 var fields = new List<TypeField>(klass.Fields.Count);
                 var typeParameters = new List<GenericPlaceholder>(klass.TypeParameters.Count);
-                var signature = new ClassSignature
+                var classSignature = new ClassSignature
                 {
                     Id = new DefId(CurrentModuleId, $"{CurrentModuleId}:::{klass.Name.StringValue}"),
                     Name = name,
@@ -73,12 +78,23 @@ public partial class TypeChecker
                     Boxed = true
                 };
 
-                _moduleSignatures[CurrentModuleId].Classes.Add(signature);
+                var (moduleFunctions, moduleUnions, moduleClasses) = _moduleSignatures[CurrentModuleId];
+                if (moduleUnions.Cast<ITypeSignature>()
+                    .Concat(moduleClasses)
+                    .Concat(moduleFunctions)
+                    .Any(x => x.Name == classSignature.Name))
+                {
+                    AddError(TypeCheckerError.ConflictingTypeName(klass.Name));
+                }
+                else
+                {
+                    moduleClasses.Add(classSignature);
+                }
 
                 typeParameters.AddRange(klass.TypeParameters.Select(typeParameter => new GenericPlaceholder
-                { GenericName = typeParameter.StringValue, OwnerType = signature, Constraints = [] }));
+                { GenericName = typeParameter.StringValue, OwnerType = classSignature, Constraints = [] }));
 
-                klass.Signature = signature;
+                klass.Signature = classSignature;
 
                 var typeParametersLookup = klass.TypeParameters.ToLookup(x => x.StringValue);
 
@@ -90,12 +106,7 @@ public partial class TypeChecker
                     }
                 }
 
-                classes.Add(new ClassInfo(klass, signature, functions, fields));
-
-                if (!AddType(signature))
-                {
-                    AddError(TypeCheckerError.ConflictingTypeName(klass.Name));
-                }
+                classes.Add(new ClassInfo(klass, classSignature, functions, fields));
             }
         }
 
@@ -108,7 +119,7 @@ public partial class TypeChecker
 
         foreach (var (moduleId, classes, unions) in moduleInfos)
         {
-            using var __ = PushScope(moduleId: moduleId, fileName: _modules.First(x => x.Value.ModuleId == moduleId).Key);
+            using var __ = PushScope(moduleId: moduleId);
 
             foreach (var (union, unionSignature, functions, variants) in unions)
             {
@@ -290,9 +301,9 @@ public partial class TypeChecker
             }
         }
 
-        foreach (var (fileName, module) in _modules)
+        foreach (var (moduleId, module) in _modules)
         {
-            using var _ = PushScope(moduleId: module.ModuleId, fileName: fileName);
+            using var _ = PushScope(moduleId: module.ModuleId);
             foreach (var fn in module.Functions)
             {
                 var name = fn.Name.StringValue;

@@ -18,7 +18,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
 
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
-    
+
     [Fact]
     public void SingleTest()
     {
@@ -29,7 +29,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      var b = a;
                  }
                  """;
-        var expectedProgram = LoweredProgram(ModuleId, 
+        var expectedProgram = LoweredProgram(ModuleId,
             types:
             [
                 DataType(ModuleId, "_Main__Locals",
@@ -116,7 +116,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                         new MethodLocal("_local0", "b", StringT)
                     ])
             ]);
-        
+
         var program = CreateProgram(ModuleId, source);
         var (loweredProgram, _) = ProgramAbseil.Lower(program);
 
@@ -125,8 +125,8 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
 
-    private const string ModuleId = "ClosureTests";
-    
+    private static readonly ModuleId ModuleId = new("main");
+
     public static TheoryData<string, string, LoweredModule> TestCases()
     {
         return new()
@@ -142,7 +142,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      }
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "MyFn__Locals",
                              variants: [
@@ -220,7 +220,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      var b = a;
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "_Main__Locals",
                              variants: [
@@ -303,12 +303,12 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      }
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
-                         DataType(ModuleId, 
+                         DataType(ModuleId,
                              "MyFn__Locals",
                              variants: [Variant("_classVariant", [Field("a", StringT)])]),
-                         DataType(ModuleId, 
+                         DataType(ModuleId,
                              "MyFn__InnerFn__Closure",
                              variants: [
                                  Variant(
@@ -390,15 +390,15 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      }
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
-                         DataType(ModuleId, 
+                         DataType(ModuleId,
                              "MyClass",
                              variants: [
                                  Variant("_classVariant",
                                      [Field("MyField", StringT)])
                              ]),
-                         DataType(ModuleId, 
+                         DataType(ModuleId,
                              "MyClass__MyFn__InnerFn__Closure",
                              variants: [
                                  Variant("_classVariant", [Field("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))])
@@ -461,9 +461,9 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      }
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
-                         DataType(ModuleId, 
+                         DataType(ModuleId,
                              "MyClass",
                              variants: [
                                  Variant("_classVariant")
@@ -474,10 +474,10 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                  [
                                      new BasicBlock(
                                          BB0,
-                                         [new Assign(new Local("_returnValue"), new Use(new StringConstant("")))], 
+                                         [new Assign(new Local("_returnValue"), new Use(new StringConstant("")))],
                                          new GoTo(BB1)),
                                      new BasicBlock(BB1, [], new Return())
-                                 ], 
+                                 ],
                                  [])]),
                      ],
                      methods: [
@@ -517,14 +517,14 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      a = "bye";
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "_Main__Locals",
                              variants: [
                                  Variant("_classVariant",
                                      [Field("a", StringT)])
                              ]),
-                         DataType(ModuleId, 
+                         DataType(ModuleId,
                              "InnerFn__Closure",
                              variants: [
                                  Variant("_classVariant",
@@ -601,12 +601,12 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      }
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
-                         DataType(ModuleId, 
+                         DataType(ModuleId,
                              "MyClass",
                              variants: [Variant("_classVariant")]),
-                         DataType(ModuleId, 
+                         DataType(ModuleId,
                              "MyClass__MyFn__InnerFn__Closure",
                              variants: [
                                  Variant(
@@ -693,16 +693,16 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      }
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
-                         DataType(ModuleId, 
+                         DataType(ModuleId,
                              "MyClass",
                              variants: [
                                  Variant(
                                      "_classVariant",
                                      [Field("MyField", StringT)])
                              ]),
-                         DataType(ModuleId, 
+                         DataType(ModuleId,
                              "MyClass__MyFn__InnerFn__Closure",
                              variants: [
                                  Variant(
@@ -772,9 +772,9 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      }
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
-                         DataType(ModuleId, 
+                         DataType(ModuleId,
                              "MyClass",
                              variants: [
                                  Variant(
@@ -783,7 +783,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                          Field("MyField", StringT)
                                      ])
                              ]),
-                         DataType(ModuleId, 
+                         DataType(ModuleId,
                              "MyClass__MyFn__Locals",
                              variants: [
                                  Variant(
@@ -793,7 +793,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                          Field("a", StringT),
                                      ])
                              ]),
-                         DataType(ModuleId, 
+                         DataType(ModuleId,
                              "MyClass__MyFn__InnerFn__Closure",
                              variants: [
                                  Variant(
@@ -951,7 +951,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                      }
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "MyClass",
                              variants: [

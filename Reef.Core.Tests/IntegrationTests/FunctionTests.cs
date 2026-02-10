@@ -3,7 +3,6 @@
 public class FunctionTests : IntegrationTestBase
 {
     [Fact]
-    [TestMe]
     public async Task CallFunctionWithNoArgumentsOrReturnType()
     {
         await SetupTest("""
@@ -102,7 +101,7 @@ public class FunctionTests : IntegrationTestBase
                 print_string(g);
                 print_string(h);
             }
-            
+
             SomeFn("a", "b", "c", "d", "e", "f", "g", "h");
             """
         );
@@ -111,7 +110,7 @@ public class FunctionTests : IntegrationTestBase
         Assert.Equal(0, result.ExitCode);
         Assert.Equal("abcdefgh", result.StandardOutput);
     }
-    
+
     [Fact]
     public async Task GenericFunction()
     {
@@ -120,10 +119,10 @@ public class FunctionTests : IntegrationTestBase
             fn SomeFn<T>(param: T): T {
                 return param;
             }
-            
+
             var a = SomeFn(1);
             var b = SomeFn("hi");
-            
+
             if (a == 1) {
                 print_string("a == 1. ");
             }
@@ -143,21 +142,21 @@ public class FunctionTests : IntegrationTestBase
             fn Fn1<T>(param: T): T {
                 return param;
             }
-            
+
             fn Fn2<T>(param: T): T {
                 return Fn1(param);
             }
-            
+
             var a = Fn2(1);
             var b = Fn2("hi");
-            
+
             if (a == 1) {
                 print_string("a == 1. ");
             }
             print_string(b);
             """
         );
-        
+
         var result = await Run();
         Assert.Equal(0, result.ExitCode);
         Assert.Equal("a == 1. hi", result.StandardOutput);

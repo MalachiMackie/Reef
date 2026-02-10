@@ -11,14 +11,14 @@ public class TestBase
         TestOutput = testOutputHelper;
     }
 
-    protected static LangModule CreateProgram(string moduleId, string source)
+    protected static LangModule CreateProgram(ModuleId moduleId, string source)
     {
         var tokens = Tokenizer.Tokenize(source);
         var parseResult = Parser.Parse(moduleId, tokens);
         parseResult.Errors.Should().BeEmpty();
         var program = parseResult.ParsedModule;
-        var typeCheckErrors = TypeChecking.TypeChecker.TypeCheck(new() { { "main.rf", program } });
-        typeCheckErrors["main.rf"].Should().BeEmpty();
+        var typeCheckErrors = TypeChecking.TypeChecker.TypeCheck([program]);
+        typeCheckErrors[moduleId].Should().BeEmpty();
 
         return program;
     }

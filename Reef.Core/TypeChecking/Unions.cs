@@ -7,7 +7,7 @@ public partial class TypeChecker
 {
     public class UnionSignature : ITypeSignature
     {
-        public static readonly IReadOnlyList<ITypeSignature> BuiltInTypes;
+        public static readonly IReadOnlyList<UnionSignature> BuiltInTypes;
 
         static UnionSignature()
         {
@@ -158,8 +158,8 @@ public partial class TypeChecker
             [],
             boxingSpecifier switch
             {
-                {Type: TokenType.Boxed} => true,
-                {Type: TokenType.Unboxed} => false,
+                { Type: TokenType.Boxed } => true,
+                { Type: TokenType.Unboxed } => false,
                 _ => signature.Boxed
             });
     }
@@ -174,8 +174,8 @@ public partial class TypeChecker
         {
             return InstantiatedUnion.Create(signature, [], boxingSpecifier switch
             {
-                {Type: TokenType.Boxed} => true,
-                {Type: TokenType.Unboxed} => false,
+                { Type: TokenType.Boxed } => true,
+                { Type: TokenType.Unboxed } => false,
                 _ => signature.Boxed
             });
         }
@@ -185,13 +185,13 @@ public partial class TypeChecker
             AddError(TypeCheckerError.IncorrectNumberOfTypeArguments(sourceRange, typeArguments.Count, signature.TypeParameters.Count));
         }
 
-        var instantiatedUnion = InstantiatedUnion.Create(signature, [..typeArguments.Select(x => x.Item1)], boxingSpecifier switch
-            {
-                {Type: TokenType.Boxed} => true,
-                {Type: TokenType.Unboxed} => false,
-                _ => signature.Boxed
-            });
-        
+        var instantiatedUnion = InstantiatedUnion.Create(signature, [.. typeArguments.Select(x => x.Item1)], boxingSpecifier switch
+        {
+            { Type: TokenType.Boxed } => true,
+            { Type: TokenType.Unboxed } => false,
+            _ => signature.Boxed
+        });
+
         for (var i = 0; i < Math.Min(instantiatedUnion.TypeArguments.Count, typeArguments.Count); i++)
         {
             var (typeArgument, referenceSourceRange) = typeArguments[i];
@@ -229,12 +229,12 @@ public partial class TypeChecker
             Variants = variants;
             Boxed = boxed;
         }
-        
+
         public static InstantiatedUnion Create(UnionSignature signature, IReadOnlyList<ITypeReference> typeArguments, bool boxed)
         {
             var variants = new List<IUnionVariant>();
             var typeArgumentReferences = new List<GenericTypeReference>();
-            
+
             var instantiatedUnion = new InstantiatedUnion(signature, typeArgumentReferences, variants, boxed);
 
             typeArgumentReferences.AddRange(signature.TypeParameters.Select((x, i) =>
@@ -242,7 +242,7 @@ public partial class TypeChecker
 
             variants.AddRange(
             [
-                ..signature.Variants.Select(x => 
+                ..signature.Variants.Select(x =>
                 {
                     switch (x)
                     {
@@ -293,8 +293,8 @@ public partial class TypeChecker
                 {
                     GenericTypeReference genericTypeReference => typeArgumentReferences.First(z => z.GenericName == genericTypeReference.GenericName),
                     GenericPlaceholder placeholder => typeArgumentReferences.First(z => z.GenericName == placeholder.GenericName),
-                    InstantiatedUnion union => union.CloneWithTypeArguments([..union.TypeArguments.Select(HandleType).Cast<GenericTypeReference>()]),
-                    InstantiatedClass klass => klass.CloneWithTypeArguments([..klass.TypeArguments.Select(HandleType).Cast<GenericTypeReference>()]),
+                    InstantiatedUnion union => union.CloneWithTypeArguments([.. union.TypeArguments.Select(HandleType).Cast<GenericTypeReference>()]),
+                    InstantiatedClass klass => klass.CloneWithTypeArguments([.. klass.TypeArguments.Select(HandleType).Cast<GenericTypeReference>()]),
                     _ => type
                 };
             }
@@ -303,7 +303,7 @@ public partial class TypeChecker
         public UnionSignature Signature { get; }
 
         public IReadOnlyList<IUnionVariant> Variants { get; }
-        
+
         public bool Boxed { get; }
 
         public string Name => Signature.Name;

@@ -9,10 +9,10 @@ public sealed class Parser : IDisposable
 {
     private readonly List<ParserError> _errors = [];
     private readonly IEnumerator<Token> _tokens;
-    private readonly string _moduleId;
+    private readonly ModuleId _moduleId;
     private bool _hasNext;
 
-    private Parser(string moduleId, IEnumerable<Token> tokens)
+    private Parser(ModuleId moduleId, IEnumerable<Token> tokens)
     {
         _tokens = tokens.GetEnumerator();
         _moduleId = moduleId;
@@ -26,7 +26,7 @@ public sealed class Parser : IDisposable
         _tokens.Dispose();
     }
 
-    public static ParseResult Parse(string moduleId, IEnumerable<Token> tokens)
+    public static ParseResult Parse(ModuleId moduleId, IEnumerable<Token> tokens)
     {
         using var parser = new Parser(moduleId, tokens);
 
@@ -37,7 +37,7 @@ public sealed class Parser : IDisposable
     ///     static entry point for a single expression. Used for testing
     /// </summary>
     /// <returns></returns>
-    public static IExpression? PopExpression(string moduleId, IEnumerable<Token> tokens)
+    public static IExpression? PopExpression(ModuleId moduleId, IEnumerable<Token> tokens)
     {
         using var parser = new Parser(moduleId, tokens);
 

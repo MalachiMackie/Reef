@@ -400,6 +400,15 @@ public record TypeCheckerError
             new SourceRange(itemToken.SourceSpan, itemToken.SourceSpan),
             $"Imported item {itemToken.StringValue} is not public");
     }
+
+    public static TypeCheckerError TopLevelStatementsInNonMainModule(SourceRange sourceRange, ModuleId moduleId)
+    {
+        return new(
+            TypeCheckerErrorType.TopLevelStatementsInNonMainModule,
+            sourceRange,
+            $"Non main module {moduleId.Value} cannot have top level statements");
+    }
+
 }
 
 public enum TypeCheckerErrorType
@@ -461,4 +470,6 @@ public enum TypeCheckerErrorType
     NonMutableExpressionPassedToMutableReturn,
     FunctionObjectReturnTypeMutabilityMismatch,
     ImportedItemNotPublic,
+    TopLevelStatementsInNonMainModule,
+
 }

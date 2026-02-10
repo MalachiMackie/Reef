@@ -18,7 +18,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
 
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
-    
+
     [Fact]
     public void Single()
     {
@@ -27,9 +27,9 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  var a = MyUnion::A;
                  var b = a("");
                  """;
-                 var expectedProgram = LoweredProgram(ModuleId, 
-                     types: [
-                         DataType(ModuleId, "MyUnion",
+        var expectedProgram = LoweredProgram(ModuleId,
+            types: [
+                DataType(ModuleId, "MyUnion",
                              variants: [
                                  Variant(
                                      "A",
@@ -38,9 +38,9 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          Field("Item0", StringT)
                                      ])
                              ])
-                     ],
-                     methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), "MyUnion__Create__A",
+            ],
+            methods: [
+                Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), "MyUnion__Create__A",
                              [
                                  new BasicBlock(
                                      BB0,
@@ -120,7 +120,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                      "b",
                                      new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                              ])
-                     ]);
+            ]);
         var program = CreateProgram(ModuleId, source);
         var (loweredProgram, _) = ProgramAbseil.Lower(program);
 
@@ -129,8 +129,8 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
 
-    private const string ModuleId = "FunctionObjectTests";
-    
+    private static readonly ModuleId ModuleId = new("main");
+
     public static TheoryData<string, string, LoweredModule> TestCases()
     {
         return new()
@@ -142,7 +142,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  var a = MyUnion::A;
                  var b = a("");
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "MyUnion",
                              variants: [
@@ -243,7 +243,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  fn SomeFn(){}
                  var a = SomeFn;
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}:::SomeFn"), "SomeFn",
                              [
@@ -293,7 +293,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                      }
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "MyClass",
                              variants: [Variant("_classVariant")])
@@ -343,7 +343,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  }
                  var a = MyClass::OtherFn;
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "MyClass",
                              variants: [Variant("_classVariant")])
@@ -394,7 +394,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  var a = new MyClass{};
                  var b = a.MyFn;
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "MyClass", variants: [Variant("_classVariant")])
                      ],
@@ -471,7 +471,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                      }
                  }
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "MyClass",
                              variants: [
@@ -655,7 +655,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  var a = SomeFn;
                  a();
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      methods: [
                          Method(
                              new DefId(ModuleId, $"{ModuleId}:::SomeFn"),
@@ -709,7 +709,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  var a = SomeFn;
                  var b = a("");
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      methods: [
                          Method(new DefId(ModuleId, $"{ModuleId}:::SomeFn"), "SomeFn",
                              [
@@ -766,7 +766,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  }
                  var a = MyClass::<string>::SomeFn::<i64>;
                  """,
-                 LoweredProgram(ModuleId, 
+                 LoweredProgram(ModuleId,
                      types: [
                          DataType(ModuleId, "MyClass", ["T"], [Variant("_classVariant")])
                      ],
@@ -807,7 +807,6 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
              }
         };
 
-        
+
     }
 }
-
