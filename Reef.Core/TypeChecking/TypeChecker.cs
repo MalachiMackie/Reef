@@ -326,7 +326,8 @@ public partial class TypeChecker
             using var _ = PushScope(
                 moduleId: module.ModuleId,
                 functionSignatures: _moduleSignatures[module.ModuleId].Functions,
-                defId: DefId.Main(module.ModuleId));
+                defId: DefId.Main(module.ModuleId),
+                moduleImports: module.TopLevelImports);
 
             if (moduleId.Value != "main" && module.Expressions.Count > 0)
             {

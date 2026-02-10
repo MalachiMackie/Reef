@@ -64,13 +64,18 @@ public class ReefCompiler(IFileSystem fileSystem, string? workingDirectory = nul
 
     private static ModuleId GetModuleIdFromProjectRelativeFileName(string fileName)
     {
-        var withoutExtension = Path.GetFileNameWithoutExtension(fileName);
-
-        var segments = withoutExtension.Split(Path.DirectorySeparatorChar);
-
+        var segments = fileName.Split(Path.DirectorySeparatorChar);
         Debug.Assert(segments.Length > 0);
 
-        return new ModuleId(string.Join(":::", segments));
+        var withoutExtension = Path.GetFileNameWithoutExtension(segments[^1]);
+
+        // If the fileName matches the directory it's in, then the module name is that directory name
+        if (segments.Length >= 2 && segments[^2] == withoutExtension)
+        {
+            segments = [.. segments[..^1]];
+        }
+
+        return new ModuleId(string.Join(":::", [.. segments[..^1], withoutExtension]));
     }
 
     private static string GetProjectRelativeFileName(string projectDir, string fileName)

@@ -67,23 +67,30 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         var sourceFiles = new Dictionary<string, (string, IReadOnlyList<TypeCheckerError> expectedErrors)>()
         {
             {
-                                    "main.rf", ("""
-                                               var a: i64;
-                                               fn SomeFn()
-                                               {
-                                                   fn InnerFn()
-                                                   {
-                                                       var b = a;
-                                                   }
-                                                   InnerFn();
-                                               }
-                                               SomeFn();
-                                               a = 1;
-                                               """, [
-                                               TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("SomeFn"),
-                                               [Identifier("a")])
-                                               ])
-                                }
+                "main.rf",
+                ("""
+                use :::someModule:::{subModule:::{SomeFn, subSubModule:::MyClass}};
+
+                var a = new MyClass{};
+                SomeFn();
+                """, [])
+            },
+            {
+                "someModule/subModule/subSubModule.rf",
+                ("""
+                pub class MyClass{};
+                """, [])
+            },
+            {
+                "someModule/subModule/subModule.rf",
+                ("""
+                use subSubModule:::MyClass;
+
+                pub fn SomeFn() {
+                    var a = new MyClass{};
+                }
+                """, [])
+                }
         };
 
         foreach (var (path, (contents, _)) in sourceFiles)
@@ -273,22 +280,22 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use someModule:::{subModule1:::MyClass, subModule2:::SomeFn};
+                    use :::someModule:::{subModule:::{SomeFn, subSubModule:::MyClass}};
 
                     var a = new MyClass{};
                     SomeFn();
                     """
                 },
                 {
-                    "someModule/subModule1.rf",
+                    "someModule/subModule/subSubModule.rf",
                     """
                     pub class MyClass{};
                     """
                 },
                 {
-                    "someModule/subModule2.rf",
+                    "someModule/subModule/subModule.rf",
                     """
-                    use subModule1:::MyClass;
+                    use subSubModule:::MyClass;
 
                     pub fn SomeFn() {
                         var a = new MyClass{};
@@ -301,7 +308,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use someModule:::SomeFn;
+                    use :::someModule:::SomeFn;
 
                     var a = SomeFn();
                     print_string(a.Something);
@@ -310,7 +317,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "someModule.rf",
                     """
-                    pub class MyClass{pub fn Something: string}
+                    pub class MyClass{pub field Something: string}
                     pub fn SomeFn(): MyClass {
                         return new MyClass{Something = "hi"};
                     }
@@ -322,6 +329,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    use :::otherModule:::SomeFn;
+
                     pub class MyClass{};
 
                     var a = SomeFn();

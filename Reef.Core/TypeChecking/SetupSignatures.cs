@@ -303,7 +303,7 @@ public partial class TypeChecker
 
         foreach (var (moduleId, module) in _modules)
         {
-            using var _ = PushScope(moduleId: module.ModuleId);
+            using var _ = PushScope(moduleId: module.ModuleId, moduleImports: module.TopLevelImports);
             foreach (var fn in module.Functions)
             {
                 var name = fn.Name.StringValue;
