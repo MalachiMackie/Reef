@@ -9,7 +9,7 @@ public static class ExpressionHelpers
     public static ValueAccessorExpression Literal(int value)
     {
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-            Token.IntLiteral(value, SourceSpan.Default), null));
+            Token.IntLiteral(value, SourceSpan.Default), null, [], false));
     }
 
     public static StringToken Identifier(string identifier) => Token.Identifier(identifier, SourceSpan.Default);
@@ -17,7 +17,7 @@ public static class ExpressionHelpers
     public static ValueAccessorExpression Literal(string value)
     {
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-            Token.StringLiteral(value, SourceSpan.Default), null));
+            Token.StringLiteral(value, SourceSpan.Default), null, [], false));
     }
 
     public static ValueAccessorExpression Literal(bool value)
@@ -26,7 +26,7 @@ public static class ExpressionHelpers
             value
                 ? Token.True(SourceSpan.Default)
                 : Token.False(SourceSpan.Default),
-            null));
+            null, [], false));
     }
 
     public static BinaryOperatorExpression Multiply(IExpression? left, IExpression? right)
@@ -170,7 +170,7 @@ public static class ExpressionHelpers
     }
 
     public static ValueAccessorExpression True() =>
-        new(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default), null));
+        new(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default), null, [], false));
 
     public static NamedTypeIdentifier StringType(Token? boxedSpecifier = null)
     {
@@ -194,10 +194,19 @@ public static class ExpressionHelpers
             value);
     }
 
-    public static ValueAccessorExpression VariableAccessor(string name, IReadOnlyList<ITypeIdentifier>? typeArguments = null)
+    public static ValueAccessorExpression VariableAccessor(
+        string name,
+        IReadOnlyList<string>? modulePath = null,
+        bool modulePathIsGlobal = false,
+        IReadOnlyList<ITypeIdentifier>? typeArguments = null)
     {
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-            Token.Identifier(name, SourceSpan.Default), typeArguments));
+            Token.Identifier(
+                name,
+                SourceSpan.Default),
+            typeArguments,
+            [.. modulePath?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
+            modulePathIsGlobal));
     }
 
     public static ProgramClass Class(string name, bool isPublic = false, IReadOnlyList<ClassField>? fields = null, IReadOnlyList<string>? typeParameters = null)

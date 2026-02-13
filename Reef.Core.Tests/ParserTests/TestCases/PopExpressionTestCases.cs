@@ -12,7 +12,7 @@ public static class PopExpressionTestCases
             (
                 "todo!",
                 new ValueAccessorExpression(new ValueAccessor(
-                    ValueAccessType.Variable, Token.Todo(SourceSpan.Default), null))
+                    ValueAccessType.Variable, Token.Todo(SourceSpan.Default), null, [], false))
             ),
             (
                 """
@@ -348,25 +348,19 @@ public static class PopExpressionTestCases
 
             // value access expressions
             ("a",
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                    Identifier("a"), null))),
+                VariableAccessor("a")),
             ("this",
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                    Identifier("this"), null))),
+                VariableAccessor("this")),
             ("1",
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.IntLiteral(1, SourceSpan.Default), null))),
+                Literal(1)),
             ("\"my string\"",
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.StringLiteral("my string", SourceSpan.Default), null))),
+                Literal("my string")),
             ("true",
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.True(SourceSpan.Default), null))),
+                Literal(true)),
             ("false",
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.False(SourceSpan.Default), null))),
+                Literal(false)),
             ("ok",
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Identifier("ok"), null))),
+                VariableAccessor("ok")),
             ("a == b",
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.EqualityCheck, VariableAccessor("a"),
                     VariableAccessor("b"), Token.DoubleEquals(SourceSpan.Default)))),
@@ -375,8 +369,7 @@ public static class PopExpressionTestCases
                     VariableAccessor("b"), Token.NotEquals(SourceSpan.Default)))),
             ("ok()",
                 new MethodCallExpression(new MethodCall(
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("ok"), null)), []), SourceRange.Default)),
+                    VariableAccessor("ok"), []), SourceRange.Default)),
             ("(a)", new TupleExpression([VariableAccessor("a")], SourceRange.Default)),
             ("(a, b)", new TupleExpression([VariableAccessor("a"), VariableAccessor("b")], SourceRange.Default)),
             ("-a", Negate(VariableAccessor("a"))),
@@ -386,22 +379,18 @@ public static class PopExpressionTestCases
                 FallOut(FallOut(VariableAccessor("a")))
             ),
             ("return 1", new MethodReturnExpression(
-                new MethodReturn(new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.IntLiteral(1, SourceSpan.Default), null))), SourceRange.Default)),
+                new MethodReturn(Literal(1)), SourceRange.Default)),
             ("return", new MethodReturnExpression(new MethodReturn(null), SourceRange.Default)),
             // binary operator expressions
             ("a < 5", new BinaryOperatorExpression(new BinaryOperator(
                 BinaryOperatorType.LessThan,
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                    Identifier("a"), null)),
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.IntLiteral(5, SourceSpan.Default), null)),
+                VariableAccessor("a"),
+                Literal(5),
                 Token.LeftAngleBracket(SourceSpan.Default)))),
             ("\"thing\" > true", new BinaryOperatorExpression(new BinaryOperator(
                 BinaryOperatorType.GreaterThan,
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.StringLiteral("thing", SourceSpan.Default), null)),
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default), null)),
+                Literal("thing"),
+                Literal(true),
                 Token.RightAngleBracket(SourceSpan.Default)))),
             ("a + b", new BinaryOperatorExpression(new BinaryOperator(
                 BinaryOperatorType.Plus,
@@ -441,8 +430,7 @@ public static class PopExpressionTestCases
                 Identifier("a"),
                 new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                 null,
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.IntLiteral(2, SourceSpan.Default), null))), SourceRange.Default)),
+                Literal(2)), SourceRange.Default)),
             ("a = b",
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
                     VariableAccessor("a"), VariableAccessor("b"), Token.Equals(SourceSpan.Default)))),
@@ -450,8 +438,7 @@ public static class PopExpressionTestCases
                 Identifier("a"),
                 new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                 NamedTypeIdentifier("int"),
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.IntLiteral(2, SourceSpan.Default), null))), SourceRange.Default)),
+                Literal(2)), SourceRange.Default)),
             ("var a: bool = b", new VariableDeclarationExpression(new VariableDeclaration(
                 Identifier("a"),
                 null,
@@ -481,56 +468,47 @@ public static class PopExpressionTestCases
                 Identifier("a"),
                 null,
                 null,
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.IntLiteral(1, SourceSpan.Default), null))), SourceRange.Default)),
+                Literal(1)), SourceRange.Default)),
             ("var a = true", new VariableDeclarationExpression(new VariableDeclaration(
                 Identifier("a"),
                 null,
                 null,
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.True(SourceSpan.Default), null))), SourceRange.Default)),
+                Literal(true)), SourceRange.Default)),
             ("var a = \"thing\"", new VariableDeclarationExpression(new VariableDeclaration(
                 Identifier("a"),
                 null,
                 null,
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.StringLiteral("thing", SourceSpan.Default), null))), SourceRange.Default)),
+                Literal("thing")), SourceRange.Default)),
             ("{}", new BlockExpression(new Block([], [], []), SourceRange.Default)),
             ("{var a = 1;}", new BlockExpression(new Block([
                 new VariableDeclarationExpression(new VariableDeclaration(Identifier("a"),
                     null, null,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(1, SourceSpan.Default), null))), SourceRange.Default)
+                    Literal(1)), SourceRange.Default)
             ], [], []), SourceRange.Default)),
             // tail expression
             ("{var a = 1}", new BlockExpression(new Block(
             [
                 new VariableDeclarationExpression(new VariableDeclaration(Identifier("a"),
                     null, null,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(1, SourceSpan.Default), null))), SourceRange.Default)
+                    Literal(1)), SourceRange.Default)
             ], [], []), SourceRange.Default)),
             // tail expression
             ("{var a = 1;var b = 2}", new BlockExpression(new Block(
             [
                 new VariableDeclarationExpression(new VariableDeclaration(Identifier("a"),
                     null, null,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(1, SourceSpan.Default), null))), SourceRange.Default),
+                    Literal(1)), SourceRange.Default),
                 new VariableDeclarationExpression(new VariableDeclaration(Identifier("b"),
                     null, null,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(2, SourceSpan.Default), null))), SourceRange.Default)
+                    Literal(2)), SourceRange.Default)
             ], [], []), SourceRange.Default)),
             ("{var a = 1; var b = 2;}", new BlockExpression(new Block([
                 new VariableDeclarationExpression(new VariableDeclaration(Identifier("a"),
                     null, null,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(1, SourceSpan.Default), null))), SourceRange.Default),
+                    Literal(1)), SourceRange.Default),
                 new VariableDeclarationExpression(new VariableDeclaration(Identifier("b"),
                     null, null,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(2, SourceSpan.Default), null))), SourceRange.Default)
+                    Literal(2)), SourceRange.Default)
             ], [], []), SourceRange.Default)),
             ("if (a) var c = 2;", new IfExpressionExpression(new IfExpression(
                     VariableAccessor("a"),
@@ -538,8 +516,7 @@ public static class PopExpressionTestCases
                         Identifier("c"),
                         null,
                         null,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                            Token.IntLiteral(2, SourceSpan.Default), null))), SourceRange.Default), [], null),
+                        Literal(2)), SourceRange.Default), [], null),
                 SourceRange.Default)),
             ("if (a > b) {var c = \"value\";}", new IfExpressionExpression(new IfExpression(
                 new BinaryOperatorExpression(new BinaryOperator(
@@ -552,8 +529,7 @@ public static class PopExpressionTestCases
                         Identifier("c"),
                         null,
                         null,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                            Token.StringLiteral("value", SourceSpan.Default), null))), SourceRange.Default)
+                        Literal("value")), SourceRange.Default)
                 ], [], []), SourceRange.Default), [], null), SourceRange.Default)),
             ("if (a) {} else {var b = 2;}", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
@@ -564,8 +540,7 @@ public static class PopExpressionTestCases
                         Identifier("b"),
                         null,
                         null,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                            Token.IntLiteral(2, SourceSpan.Default), null))), SourceRange.Default)
+                        Literal(2)), SourceRange.Default)
                 ], [], []), SourceRange.Default)), SourceRange.Default)),
             ("if (a) {} else if (b) {}", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
@@ -605,45 +580,37 @@ public static class PopExpressionTestCases
                         VariableAccessor("b"),
                         new BlockExpression(new Block(
                         [
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                Token.IntLiteral(1, SourceSpan.Default), null))
+                            Literal(1)
                         ], [], []), SourceRange.Default),
                         [],
                         new BlockExpression(new Block(
                         [
-                            new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                                Token.IntLiteral(2, SourceSpan.Default), null))
+                            Literal(2)
                         ], [], []), SourceRange.Default)), SourceRange.Default)
                 ], [], []), SourceRange.Default),
                 [],
                 new BlockExpression(new Block(
                 [
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(3, SourceSpan.Default), null))
+                    Literal(3)
                 ], [], []), SourceRange.Default)), SourceRange.Default)),
             ("if (a) if (b) 1 else 2 else 3", new IfExpressionExpression(new IfExpression(
                 VariableAccessor("a"),
                 new IfExpressionExpression(new IfExpression(
                     VariableAccessor("b"),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(1, SourceSpan.Default), null)),
+                    Literal(1),
                     [],
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(2, SourceSpan.Default), null))), SourceRange.Default),
+                    Literal(2)), SourceRange.Default),
                 [],
-                new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                    Token.IntLiteral(3, SourceSpan.Default), null))), SourceRange.Default)),
+                Literal(3)), SourceRange.Default)),
             ("var a = if (b) 1 else 2;", new VariableDeclarationExpression(new VariableDeclaration(
                 Identifier("a"),
                 null,
                 null,
                 new IfExpressionExpression(new IfExpression(
                     VariableAccessor("b"),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(1, SourceSpan.Default), null)),
+                    Literal(1),
                     [],
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                        Token.IntLiteral(2, SourceSpan.Default), null))), SourceRange.Default)), SourceRange.Default)),
+                    Literal(2)), SourceRange.Default)), SourceRange.Default)),
             ("var a = if (b) {1} else {2};", new VariableDeclarationExpression(new VariableDeclaration(
                 Identifier("a"),
                 null,
@@ -652,46 +619,43 @@ public static class PopExpressionTestCases
                     VariableAccessor("b"),
                     new BlockExpression(new Block(
                     [
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                            Token.IntLiteral(1, SourceSpan.Default), null))
+                        Literal(1)
                     ], [], []), SourceRange.Default),
                     [],
                     new BlockExpression(new Block(
                     [
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
-                            Token.IntLiteral(2, SourceSpan.Default), null))
+                        Literal(2)
                     ], [], []), SourceRange.Default)), SourceRange.Default)), SourceRange.Default)),
             ("a()", new MethodCallExpression(new MethodCall(VariableAccessor("a"), []), SourceRange.Default)),
             ("a.b::<int>()", new MethodCallExpression(new MethodCall(
                     new MemberAccessExpression(new MemberAccess(
-                        new ValueAccessorExpression(new ValueAccessor(
-                            ValueAccessType.Variable,
-                            Identifier("a"), null)),
+                        VariableAccessor("a"),
                         Identifier("b"),
                         [IntType()]
                     )),
                 []
             ), SourceRange.Default)),
-            ("a::<>", VariableAccessor("a", [])),
+            ("a::<>", VariableAccessor("a", typeArguments: [])),
             ("a", VariableAccessor("a")),
             ("a::<string>()", new MethodCallExpression(new MethodCall(
                         new ValueAccessorExpression(new ValueAccessor(
                             ValueAccessType.Variable,
-                            Identifier("a"), [StringType()])),
+                            Identifier("a"), [StringType()], [], false)),
                 []), SourceRange.Default)),
             ("a::<string, int>()", new MethodCallExpression(new MethodCall(
                 new ValueAccessorExpression(
                     new ValueAccessor(
                         ValueAccessType.Variable,
                         Identifier("a"),
-                        [StringType(), IntType()]
-                    )), []), SourceRange.Default)),
+                        [StringType(), IntType()],
+                        [], false)), []), SourceRange.Default)),
             ("a::<string, int, result::<int>>()", new MethodCallExpression(new MethodCall(
                 new ValueAccessorExpression(
                     new ValueAccessor(
                         ValueAccessType.Variable,
                         Identifier("a"),
-                        [StringType(), IntType(), NamedTypeIdentifier("result", [IntType()])]
+                        [StringType(), IntType(), NamedTypeIdentifier("result", [IntType()])],
+                        [], false
                     )),
                 []), SourceRange.Default)),
             ("a(b)", new MethodCallExpression(new MethodCall(VariableAccessor("a"), [
@@ -742,13 +706,9 @@ public static class PopExpressionTestCases
                     [new FieldInitializer(Identifier("A"), VariableAccessor("a"))]),
                 SourceRange.Default)),
             ("myFn(a,)", new MethodCallExpression(new MethodCall(
-                new ValueAccessorExpression(new ValueAccessor(
-                    ValueAccessType.Variable,
-                    Identifier("myFn"), null)),
+                VariableAccessor("myFn"),
                 [
-                    new ValueAccessorExpression(new ValueAccessor(
-                        ValueAccessType.Variable,
-                        Identifier("a"), null))
+                    VariableAccessor("a")
                 ]), SourceRange.Default)),
             ("new SomeType::<string,>{}", new ObjectInitializerExpression(new ObjectInitializer(
                 NamedTypeIdentifier("SomeType", [
@@ -758,7 +718,7 @@ public static class PopExpressionTestCases
             ("SomeFn::<string,>()", new MethodCallExpression(new MethodCall(
                         new ValueAccessorExpression(new ValueAccessor(
                             ValueAccessType.Variable,
-                            Identifier("SomeFn"), [StringType()])),
+                            Identifier("SomeFn"), [StringType()], [], false)),
                 []
             ), SourceRange.Default)),
             ("new Thing {A = a,}", new ObjectInitializerExpression(new ObjectInitializer(
@@ -815,13 +775,10 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.GreaterThan,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.GreaterThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.RightAngleBracket(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.RightAngleBracket(SourceSpan.Default)))
             ),
             ( // less than
@@ -830,27 +787,21 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.LessThan,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.GreaterThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.RightAngleBracket(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.LeftAngleBracket(SourceSpan.Default)))
             ),
             ( // multiply
                 "a > b * c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.GreaterThan,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Multiply,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Star(SourceSpan.Default))),
                     Token.RightAngleBracket(SourceSpan.Default)))
             ),
@@ -858,14 +809,11 @@ public static class PopExpressionTestCases
                 "a > b / c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.GreaterThan,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Divide,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.ForwardSlash(SourceSpan.Default))),
                     Token.RightAngleBracket(SourceSpan.Default)))
             ),
@@ -873,14 +821,11 @@ public static class PopExpressionTestCases
                 "a > b + c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.GreaterThan,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Plus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Plus(SourceSpan.Default))),
                     Token.RightAngleBracket(SourceSpan.Default)))
             ),
@@ -888,14 +833,11 @@ public static class PopExpressionTestCases
                 "a > b - c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.GreaterThan,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Minus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Dash(SourceSpan.Default))),
                     Token.RightAngleBracket(SourceSpan.Default)))
             ),
@@ -903,12 +845,10 @@ public static class PopExpressionTestCases
                 "a > b?",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.GreaterThan,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new UnaryOperatorExpression(new UnaryOperator(
                         UnaryOperatorType.FallOut,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("b"),
                         Token.QuestionMark(SourceSpan.Default))),
                     Token.RightAngleBracket(SourceSpan.Default)))
             ),
@@ -986,7 +926,7 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
             ),
-            ( // and 
+            ( // and
                 "a > b && c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
                     BinaryOperatorExpression(BinaryOperatorType.GreaterThan,
@@ -994,7 +934,7 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
-            ( // or 
+            ( // or
                 "a > b || c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     BinaryOperatorExpression(BinaryOperatorType.GreaterThan,
@@ -1009,13 +949,10 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.GreaterThan,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.LessThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.LeftAngleBracket(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.RightAngleBracket(SourceSpan.Default)))
             ),
             ( // less than
@@ -1024,27 +961,21 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.LessThan,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.LessThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.LeftAngleBracket(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.LeftAngleBracket(SourceSpan.Default)))
             ),
             ( // multiply
                 "a < b * c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.LessThan,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Multiply,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Star(SourceSpan.Default))),
                     Token.LeftAngleBracket(SourceSpan.Default)))
             ),
@@ -1052,14 +983,11 @@ public static class PopExpressionTestCases
                 "a < b / c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.LessThan,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Divide,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.ForwardSlash(SourceSpan.Default))),
                     Token.LeftAngleBracket(SourceSpan.Default)))
             ),
@@ -1067,14 +995,11 @@ public static class PopExpressionTestCases
                 "a < b + c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.LessThan,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Plus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Plus(SourceSpan.Default))),
                     Token.LeftAngleBracket(SourceSpan.Default)))
             ),
@@ -1082,14 +1007,11 @@ public static class PopExpressionTestCases
                 "a < b - c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.LessThan,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Minus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Dash(SourceSpan.Default))),
                     Token.LeftAngleBracket(SourceSpan.Default)))
             ),
@@ -1097,12 +1019,10 @@ public static class PopExpressionTestCases
                 "a < b?",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.LessThan,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new UnaryOperatorExpression(new UnaryOperator(
                         UnaryOperatorType.FallOut,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("b"),
                         Token.QuestionMark(SourceSpan.Default))),
                     Token.LeftAngleBracket(SourceSpan.Default)))
             ),
@@ -1170,7 +1090,7 @@ public static class PopExpressionTestCases
                         Token.Bang(SourceSpan.Default))),
                     Token.LeftAngleBracket(SourceSpan.Default)))
             ),
-            ( // and 
+            ( // and
                 "a < b && c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
                     BinaryOperatorExpression(BinaryOperatorType.LessThan,
@@ -1178,7 +1098,7 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
-            ( // or 
+            ( // or
                 "a < b || c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     BinaryOperatorExpression(BinaryOperatorType.LessThan,
@@ -1224,13 +1144,10 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Multiply,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Multiply,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.Star(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.Star(SourceSpan.Default)))
             ),
             ( // divide
@@ -1239,13 +1156,10 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Divide,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Multiply,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.Star(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.ForwardSlash(SourceSpan.Default)))
             ),
             ( // plus
@@ -1254,13 +1168,10 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Plus,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Multiply,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.Star(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.Plus(SourceSpan.Default)))
             ),
             ( // minus
@@ -1269,13 +1180,10 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Minus,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Multiply,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.Star(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.Dash(SourceSpan.Default)))
             ),
             ( // fallOut
@@ -1353,7 +1261,7 @@ public static class PopExpressionTestCases
                         Token.Bang(SourceSpan.Default))),
                     Token.Star(SourceSpan.Default)))
             ),
-            ( // and 
+            ( // and
                 "a * b && c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
                     BinaryOperatorExpression(BinaryOperatorType.Multiply,
@@ -1361,7 +1269,7 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
-            ( // or 
+            ( // or
                 "a * b || c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     BinaryOperatorExpression(BinaryOperatorType.Multiply,
@@ -1383,13 +1291,10 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.GreaterThan,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Divide,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.ForwardSlash(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.RightAngleBracket(SourceSpan.Default)))
             ),
             ( // less than
@@ -1398,13 +1303,10 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.LessThan,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Divide,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.ForwardSlash(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.LeftAngleBracket(SourceSpan.Default)))
             ),
             ( // multiply
@@ -1413,13 +1315,10 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Multiply,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Divide,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.ForwardSlash(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.Star(SourceSpan.Default)))
             ),
             ( // divide
@@ -1428,13 +1327,10 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Divide,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Divide,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.ForwardSlash(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.ForwardSlash(SourceSpan.Default)))
             ),
             ( // plus
@@ -1443,13 +1339,10 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Plus,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Divide,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.ForwardSlash(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.Plus(SourceSpan.Default)))
             ),
             ( // minus
@@ -1458,25 +1351,20 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Minus,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Divide,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.ForwardSlash(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.Dash(SourceSpan.Default)))
             ),
             ( // fallOut
                 "a / b?",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.Divide,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new UnaryOperatorExpression(new UnaryOperator(
                         UnaryOperatorType.FallOut,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("b"),
                         Token.QuestionMark(SourceSpan.Default))),
                     Token.ForwardSlash(SourceSpan.Default)))
             ),
@@ -1544,7 +1432,7 @@ public static class PopExpressionTestCases
                         Token.Bang(SourceSpan.Default))),
                     Token.ForwardSlash(SourceSpan.Default)))
             ),
-            ( // and 
+            ( // and
                 "a / b && c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
                     BinaryOperatorExpression(BinaryOperatorType.Divide,
@@ -1552,7 +1440,7 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
-            ( // or 
+            ( // or
                 "a / b || c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     BinaryOperatorExpression(BinaryOperatorType.Divide,
@@ -1574,13 +1462,10 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.GreaterThan,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Plus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.Plus(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.RightAngleBracket(SourceSpan.Default)))
             ),
             ( // less than
@@ -1589,27 +1474,21 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.LessThan,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Plus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.Plus(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.LeftAngleBracket(SourceSpan.Default)))
             ),
             ( // multiply
                 "a + b * c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.Plus,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Multiply,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Star(SourceSpan.Default))),
                     Token.Plus(SourceSpan.Default)))
             ),
@@ -1617,14 +1496,11 @@ public static class PopExpressionTestCases
                 "a + b / c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.Plus,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Divide,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.ForwardSlash(SourceSpan.Default))),
                     Token.Plus(SourceSpan.Default)))
             ),
@@ -1634,13 +1510,10 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Plus,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Plus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.Plus(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.Plus(SourceSpan.Default)))
             ),
             ( // minus
@@ -1649,25 +1522,20 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Minus,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Plus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.Plus(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.Dash(SourceSpan.Default)))
             ),
             ( // fallOut
                 "a + b?",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.Plus,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new UnaryOperatorExpression(new UnaryOperator(
                         UnaryOperatorType.FallOut,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("b"),
                         Token.QuestionMark(SourceSpan.Default))),
                     Token.Plus(SourceSpan.Default)))
             ),
@@ -1735,7 +1603,7 @@ public static class PopExpressionTestCases
                         Token.Bang(SourceSpan.Default))),
                     Token.Plus(SourceSpan.Default)))
             ),
-            ( // and 
+            ( // and
                 "a + b && c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
                     BinaryOperatorExpression(BinaryOperatorType.Plus,
@@ -1743,7 +1611,7 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
-            ( // or 
+            ( // or
                 "a + b || c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     BinaryOperatorExpression(BinaryOperatorType.Plus,
@@ -1765,13 +1633,10 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.GreaterThan,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Minus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.Dash(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.RightAngleBracket(SourceSpan.Default)))
             ),
             ( // less than
@@ -1780,27 +1645,21 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.LessThan,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Minus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.Dash(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.LeftAngleBracket(SourceSpan.Default)))
             ),
             ( // multiply
                 "a - b * c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.Minus,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Multiply,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Star(SourceSpan.Default))),
                     Token.Dash(SourceSpan.Default)))
             ),
@@ -1808,14 +1667,11 @@ public static class PopExpressionTestCases
                 "a - b / c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.Minus,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Divide,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.ForwardSlash(SourceSpan.Default))),
                     Token.Dash(SourceSpan.Default)))
             ),
@@ -1825,13 +1681,10 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Plus,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Minus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.Dash(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.Plus(SourceSpan.Default)))
             ),
             ( // minus
@@ -1840,25 +1693,20 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Minus,
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Minus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("a"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
                         Token.Dash(SourceSpan.Default))),
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("c"), null)),
+                    VariableAccessor("c"),
                     Token.Dash(SourceSpan.Default)))
             ),
             ( // fallOut
                 "a - b?",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.Minus,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new UnaryOperatorExpression(new UnaryOperator(
                         UnaryOperatorType.FallOut,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("b"),
                         Token.QuestionMark(SourceSpan.Default))),
                     Token.Dash(SourceSpan.Default)))
             ),
@@ -1926,7 +1774,7 @@ public static class PopExpressionTestCases
                         Token.Bang(SourceSpan.Default))),
                     Token.Dash(SourceSpan.Default)))
             ),
-            ( // and 
+            ( // and
                 "a - b && c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
                     BinaryOperatorExpression(BinaryOperatorType.Minus,
@@ -1934,7 +1782,7 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
-            ( // or 
+            ( // or
                 "a - b || c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     BinaryOperatorExpression(BinaryOperatorType.Minus,
@@ -2077,13 +1925,13 @@ public static class PopExpressionTestCases
                         Token.QuestionMark(SourceSpan.Default))),
                     Token.Bang(SourceSpan.Default)))
             ),
-            ( // and 
+            ( // and
                 "a? && b",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
                     FallOut(VariableAccessor("a")),
                     VariableAccessor("b"))
             ),
-            ( // or 
+            ( // or
                 "a? || b",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     FallOut(VariableAccessor("a")),
@@ -2097,90 +1945,70 @@ public static class PopExpressionTestCases
             ( // greater than
                 "a = b > c",
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.GreaterThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.RightAngleBracket(SourceSpan.Default))), Token.Equals(SourceSpan.Default)))
             ),
             ( // less than
                 "a = b < c",
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.LessThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.LeftAngleBracket(SourceSpan.Default))), Token.Equals(SourceSpan.Default)))
             ),
             ( // multiply
                 "a = b * c",
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Multiply,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Star(SourceSpan.Default))), Token.Equals(SourceSpan.Default)))
             ),
             ( // divide
                 "a = b / c",
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Divide,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.ForwardSlash(SourceSpan.Default))), Token.Equals(SourceSpan.Default)))
             ),
             ( // plus
                 "a = b + c",
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Plus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Plus(SourceSpan.Default))), Token.Equals(SourceSpan.Default)))
             ),
             ( // minus
                 "a = b - c",
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Minus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Dash(SourceSpan.Default))), Token.Equals(SourceSpan.Default)))
             ),
             ( // fallOut
                 "a = b?",
                 new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new UnaryOperatorExpression(new UnaryOperator(
                         UnaryOperatorType.FallOut,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("b"),
                         Token.QuestionMark(SourceSpan.Default))), Token.Equals(SourceSpan.Default)))
             ),
             ( // value assignment
@@ -2240,7 +2068,7 @@ public static class PopExpressionTestCases
                         Token.Bang(SourceSpan.Default))),
                     Token.Equals(SourceSpan.Default)))
             ),
-            ( // and 
+            ( // and
                 "a = b && c",
                 BinaryOperatorExpression(BinaryOperatorType.ValueAssignment,
                     VariableAccessor("a"),
@@ -2248,7 +2076,7 @@ public static class PopExpressionTestCases
                         VariableAccessor("b"),
                         VariableAccessor("c")))
             ),
-            ( // or 
+            ( // or
                 "a = b || c ",
                 BinaryOperatorExpression(BinaryOperatorType.ValueAssignment,
                     VariableAccessor("a"),
@@ -2268,14 +2096,11 @@ public static class PopExpressionTestCases
                 "a == b > c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.EqualityCheck,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.GreaterThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.RightAngleBracket(SourceSpan.Default))),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
@@ -2283,14 +2108,11 @@ public static class PopExpressionTestCases
                 "a == b < c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.EqualityCheck,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.LessThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.LeftAngleBracket(SourceSpan.Default))),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
@@ -2298,14 +2120,11 @@ public static class PopExpressionTestCases
                 "a == b * c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.EqualityCheck,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Multiply,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Star(SourceSpan.Default))),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
@@ -2313,14 +2132,11 @@ public static class PopExpressionTestCases
                 "a == b / c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.EqualityCheck,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Divide,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.ForwardSlash(SourceSpan.Default))),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
@@ -2328,14 +2144,11 @@ public static class PopExpressionTestCases
                 "a == b + c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.EqualityCheck,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Plus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Plus(SourceSpan.Default))),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
@@ -2343,14 +2156,11 @@ public static class PopExpressionTestCases
                 "a == b - c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.EqualityCheck,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Minus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Dash(SourceSpan.Default))),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
@@ -2358,12 +2168,10 @@ public static class PopExpressionTestCases
                 "a == b?",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.EqualityCheck,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new UnaryOperatorExpression(new UnaryOperator(
                         UnaryOperatorType.FallOut,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("b"),
                         Token.QuestionMark(SourceSpan.Default))),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
@@ -2431,7 +2239,7 @@ public static class PopExpressionTestCases
                         Token.Bang(SourceSpan.Default))),
                     Token.DoubleEquals(SourceSpan.Default)))
             ),
-            ( // and 
+            ( // and
                 "a == b && c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
                     BinaryOperatorExpression(BinaryOperatorType.EqualityCheck,
@@ -2439,7 +2247,7 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
-            ( // or 
+            ( // or
                 "a == b || c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     BinaryOperatorExpression(BinaryOperatorType.EqualityCheck,
@@ -2459,14 +2267,11 @@ public static class PopExpressionTestCases
                 "a != b > c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.NegativeEqualityCheck,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.GreaterThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.RightAngleBracket(SourceSpan.Default))),
                     Token.NotEquals(SourceSpan.Default)))
             ),
@@ -2474,14 +2279,11 @@ public static class PopExpressionTestCases
                 "a != b < c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.NegativeEqualityCheck,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.LessThan,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.LeftAngleBracket(SourceSpan.Default))),
                     Token.NotEquals(SourceSpan.Default)))
             ),
@@ -2489,14 +2291,11 @@ public static class PopExpressionTestCases
                 "a != b * c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.NegativeEqualityCheck,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Multiply,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Star(SourceSpan.Default))),
                     Token.NotEquals(SourceSpan.Default)))
             ),
@@ -2504,14 +2303,11 @@ public static class PopExpressionTestCases
                 "a != b / c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.NegativeEqualityCheck,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Divide,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.ForwardSlash(SourceSpan.Default))),
                     Token.NotEquals(SourceSpan.Default)))
             ),
@@ -2519,14 +2315,11 @@ public static class PopExpressionTestCases
                 "a != b + c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.NegativeEqualityCheck,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Plus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Plus(SourceSpan.Default))),
                     Token.NotEquals(SourceSpan.Default)))
             ),
@@ -2534,14 +2327,11 @@ public static class PopExpressionTestCases
                 "a != b - c",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.NegativeEqualityCheck,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new BinaryOperatorExpression(new BinaryOperator(
                         BinaryOperatorType.Minus,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("c"), null)),
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
                         Token.Dash(SourceSpan.Default))),
                     Token.NotEquals(SourceSpan.Default)))
             ),
@@ -2549,12 +2339,10 @@ public static class PopExpressionTestCases
                 "a != b?",
                 new BinaryOperatorExpression(new BinaryOperator(
                     BinaryOperatorType.NegativeEqualityCheck,
-                    new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                        Identifier("a"), null)),
+                    VariableAccessor("a"),
                     new UnaryOperatorExpression(new UnaryOperator(
                         UnaryOperatorType.FallOut,
-                        new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable,
-                            Identifier("b"), null)),
+                        VariableAccessor("b"),
                         Token.QuestionMark(SourceSpan.Default))),
                     Token.NotEquals(SourceSpan.Default)))
             ),
@@ -2622,7 +2410,7 @@ public static class PopExpressionTestCases
                         Token.Bang(SourceSpan.Default))),
                     Token.NotEquals(SourceSpan.Default)))
             ),
-            ( // and 
+            ( // and
                 "a != b && c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
                     BinaryOperatorExpression(BinaryOperatorType.NegativeEqualityCheck,
@@ -2630,7 +2418,7 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
-            ( // or 
+            ( // or
                 "a != b || c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     BinaryOperatorExpression(BinaryOperatorType.NegativeEqualityCheck,
@@ -2753,13 +2541,13 @@ public static class PopExpressionTestCases
                         Identifier("b"), null)),
                     Identifier("c"), null))
             ),
-            ( // and 
+            ( // and
                 "a.b && c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
                     MemberAccess(VariableAccessor("a"), "b"),
                     VariableAccessor("c"))
             ),
-            ( // or 
+            ( // or
                 "a.b || c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     MemberAccess(VariableAccessor("a"), "b"),
@@ -2880,13 +2668,13 @@ public static class PopExpressionTestCases
                         Identifier("b"), null)),
                     Identifier("c"), null))
             ),
-            ( // and 
+            ( // and
                 "a::b && c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
                     StaticMemberAccess(NamedTypeIdentifier("a"), "b"),
                     VariableAccessor("c"))
             ),
-            ( // or 
+            ( // or
                 "a::b || c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     StaticMemberAccess(NamedTypeIdentifier("a"), "b"),
@@ -3025,13 +2813,13 @@ public static class PopExpressionTestCases
                         Token.Bang(SourceSpan.Default))),
                     Token.Bang(SourceSpan.Default)))
             ),
-            ( // and 
+            ( // and
                 "!a && b",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
                     Not(VariableAccessor("a")),
                     VariableAccessor("b"))
             ),
-            ( // or 
+            ( // or
                 "!a || b",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     Not(VariableAccessor("a")),
@@ -3140,7 +2928,7 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     FallOut(VariableAccessor("b")))
             ),
-            ( // and 
+            ( // and
                 "a && b && c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
                     BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
@@ -3148,7 +2936,7 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
-            ( // or 
+            ( // or
                 "a && b || c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
@@ -3262,7 +3050,7 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     FallOut(VariableAccessor("b")))
             ),
-            ( // and 
+            ( // and
                 "a || b && c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
                     BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
@@ -3270,7 +3058,7 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
-            ( // or 
+            ( // or
                 "a || b || c",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
@@ -3359,13 +3147,13 @@ public static class PopExpressionTestCases
                 "-!b",
                 Negate(Not(VariableAccessor("b")))
             ),
-            ( // and 
+            ( // and
                 "-a && b",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
                     Negate(VariableAccessor("a")),
                     VariableAccessor("b"))
             ),
-            ( // or 
+            ( // or
                 "-a || b",
                 BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
                     Negate(VariableAccessor("a")),
@@ -3374,7 +3162,7 @@ public static class PopExpressionTestCases
             ( // negate
                 "--a",
                 Negate(Negate(VariableAccessor("a")))
-            ),
+            )
         }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedExpression });
     }
 }

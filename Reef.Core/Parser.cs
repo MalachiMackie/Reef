@@ -1318,10 +1318,10 @@ public sealed class Parser : IDisposable
         if (!MoveNext())
         {
             return new NamedTypeIdentifier(
-                identifiers[0],
+                identifiers[^1],
                 [],
                 boxingSpecifier,
-                [],
+                identifiers[..^1],
                 false,
                 new SourceRange(
                     boxingSpecifier?.SourceSpan ?? identifiers[0].SourceSpan,
@@ -1402,10 +1402,10 @@ public sealed class Parser : IDisposable
             TokenType.DoubleColon => GetStaticMemberAccess(previousExpression),
             TokenType.LeftSquareBracket when previousExpression is null => GetCollectionExpression(),
             TokenType.LeftSquareBracket => GetIndexExpression(previousExpression),
-            TokenType.Todo or TokenType.Identifier => GetVariableAccess(),
+            TokenType.Todo or TokenType.Identifier or TokenType.TripleColon => GetVariableAccess(),
             TokenType.Matches => GetMatchesExpression(previousExpression),
             TokenType.Match => GetMatchExpression(),
-            TokenType.Unboxed or TokenType.Boxed or TokenType.TripleColon => GetTypeIdentifierExpression(),
+            TokenType.Unboxed or TokenType.Boxed => GetTypeIdentifierExpression(),
             _ when TryGetBinaryOperatorType(Current.Type, out var binaryOperatorType)
                 && TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOrBinaryOperatorExpression(
                 previousExpression,
@@ -1572,7 +1572,7 @@ public sealed class Parser : IDisposable
     }
 
 
-    private IExpression? GetTypeIdentifierExpression()
+    private TypeIdentifierExpression? GetTypeIdentifierExpression()
     {
         var typeIdentifier = GetTypeIdentifier();
         if (typeIdentifier is null)
@@ -1980,7 +1980,7 @@ public sealed class Parser : IDisposable
 
     private ValueAccessorExpression GetLiteralExpression()
     {
-        var expression = new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Current, null));
+        var expression = new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Current, null, [], false));
 
         MoveNext();
 
@@ -2116,24 +2116,47 @@ public sealed class Parser : IDisposable
 
     private IExpression? GetVariableAccess()
     {
-        var variableToken = Current;
+        var isGlobalModulePath = false;
+        if (Current.Type == TokenType.TripleColon)
+        {
+            isGlobalModulePath = true;
+            if (!MoveNext())
+            {
+                _errors.Add(ParserError.ExpectedToken(null, TokenType.Identifier));
+                return null;
+            }
+        }
+
+        if (Current.Type == TokenType.Todo)
+        {
+            if (isGlobalModulePath)
+            {
+                _errors.Add(ParserError.ExpectedToken(Current, TokenType.Identifier));
+            }
+            return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Current, null, [], false));
+        }
+
+        if (!ExpectCurrentIdentifier(out var variableToken))
+        {
+            return null;
+        }
 
         if (!MoveNext())
         {
-            return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, variableToken, null));
+            return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, variableToken, null, [], isGlobalModulePath));
         }
 
         if (Current.Type == TokenType.Turbofish)
         {
-            return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, variableToken, GetTypeArguments()));
+            return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, variableToken, GetTypeArguments(), [], isGlobalModulePath));
         }
 
         if (Current.Type != TokenType.TripleColon)
         {
-            return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, variableToken, null));
+            return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, variableToken, null, [], isGlobalModulePath));
         }
 
-        var identifiers = new List<StringToken> { (variableToken as StringToken).NotNull() };
+        var identifiers = new List<StringToken> { variableToken.NotNull() };
 
         if (!ExpectNextIdentifier(out var nextIdentifier))
         {
@@ -2143,17 +2166,17 @@ public sealed class Parser : IDisposable
 
         while (MoveNext() && Current.Type == TokenType.TripleColon)
         {
-            var tripleColon = Current;
             if (!ExpectNextIdentifier(out nextIdentifier))
             {
-                return new TypeIdentifierExpression(
-                    new NamedTypeIdentifier(
+                return new ValueAccessorExpression(
+                    new ValueAccessor(
+                        ValueAccessType.Variable,
                         identifiers[^1],
-                        [],
                         null,
                         [.. identifiers[..^1]],
-                        false,
-                        new SourceRange(variableToken.SourceSpan, tripleColon.SourceSpan)));
+                        isGlobalModulePath
+                    )
+                );
             }
             identifiers.Add(nextIdentifier);
         }
@@ -2169,14 +2192,14 @@ public sealed class Parser : IDisposable
             }
         }
 
-        return new TypeIdentifierExpression(
-            new NamedTypeIdentifier(
+        return new ValueAccessorExpression(
+            new ValueAccessor(
+                ValueAccessType.Variable,
                 identifiers[^1],
-                typeArguments ?? [],
-                null,
-                [.. identifiers[..^1]],
-                false,
-                new SourceRange(variableToken.SourceSpan, lastToken.SourceSpan)));
+                typeArguments,
+                identifiers[..^1],
+                isGlobalModulePath)
+        );
     }
 
     private StaticMemberAccessExpression? GetStaticMemberAccess(
@@ -2205,11 +2228,15 @@ public sealed class Parser : IDisposable
         {
             ValueAccessor:
             {
-                AccessType: ValueAccessType.Variable, Token: StringToken token, TypeArguments: var typeArguments
+                AccessType: ValueAccessType.Variable,
+                Token: StringToken token,
+                TypeArguments: var typeArguments,
+                ModulePath: var modulePath,
+                ModulePathIsGlobal: var modulePathIsGlobal
             }
         })
         {
-            type = new NamedTypeIdentifier(token, typeArguments ?? [], null, [], false, previousExpression.SourceRange);
+            type = new NamedTypeIdentifier(token, typeArguments ?? [], null, modulePath, modulePathIsGlobal, previousExpression.SourceRange);
         }
         else
         {

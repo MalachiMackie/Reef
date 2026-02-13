@@ -139,6 +139,16 @@ public record NamedTypeIdentifier(
             sb.Append(' ');
         }
 
+        if (ModulePathIsGlobal)
+        {
+            sb.Append(":::");
+        }
+        foreach (var moduleId in ModulePath)
+        {
+            sb.Append(moduleId.StringValue);
+            sb.Append(":::");
+        }
+
         sb.Append(Identifier.StringValue);
 
         if (TypeArguments.Count > 0)

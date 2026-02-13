@@ -950,28 +950,28 @@ public static class ParseErrorTestCases
             ),
             (
                 "A::<",
-                Program("ParseErrorTestCases", [VariableAccessor("A", [])]),
+                Program("ParseErrorTestCases", [VariableAccessor("A", typeArguments: [])]),
                 [
                     ParserError.ExpectedTypeOrToken(null, TokenType.RightAngleBracket)
                 ]
             ),
             (
                 "A::<int",
-                Program("ParseErrorTestCases", [VariableAccessor("A", [IntType()])]),
+                Program("ParseErrorTestCases", [VariableAccessor("A", typeArguments: [IntType()])]),
                 [
                     ParserError.ExpectedToken(null, TokenType.RightAngleBracket, TokenType.Comma)
                 ]
             ),
             (
                 "A::<int,",
-                Program("ParseErrorTestCases", [VariableAccessor("A", [IntType()])]),
+                Program("ParseErrorTestCases", [VariableAccessor("A", typeArguments: [IntType()])]),
                 [
                     ParserError.ExpectedTypeOrToken(null, TokenType.RightAngleBracket)
                 ]
             ),
             (
                 "A::<>",
-                Program("ParseErrorTestCases", [VariableAccessor("A", [])]),
+                Program("ParseErrorTestCases", [VariableAccessor("A", typeArguments: [])]),
                 []
             ),
             (
@@ -998,7 +998,7 @@ public static class ParseErrorTestCases
             (
                 "var a = SomeFn::<string>;",
                 Program("ParseErrorTestCases", [
-                    VariableDeclaration("a", VariableAccessor("SomeFn", [StringType()]))
+                    VariableDeclaration("a", VariableAccessor("SomeFn", typeArguments: [StringType()]))
                 ]),
                 []
             ),

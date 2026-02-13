@@ -14,7 +14,7 @@ public interface IExpression
     bool ValueUseful { get; set; }
 }
 
-// Only used during parsing, should not exist turing type checking phase 
+// Only used during parsing, should not exist turing type checking phase
 public record TypeIdentifierExpression(ITypeIdentifier TypeIdentifier) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.TypeIdentifier;
@@ -169,11 +169,11 @@ public record WhileExpression(IExpression? Check, IExpression? Body, SourceRange
 {
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
     public ExpressionType ExpressionType => ExpressionType.While;
-    
+
     public bool Diverges => Check is { Diverges: true } || Body is { Diverges: true };
-    
+
     public bool ValueUseful { get; set; }
-    
+
     public override string ToString()
     {
         return $"while ({Check}) {Body}";
@@ -215,8 +215,8 @@ public record FillCollectionExpression(
     public ExpressionType ExpressionType => ExpressionType.FillCollection;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
     public bool Diverges => Element.Diverges;
-    public bool ValueUseful { get; set; }   
-    
+    public bool ValueUseful { get; set; }
+
     public override string ToString()
     {
         var sb = new StringBuilder("[");
@@ -237,8 +237,8 @@ public record CollectionExpression(
     public ExpressionType ExpressionType => ExpressionType.Collection;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
     public bool Diverges => Elements.Any(x => x.Diverges);
-    public bool ValueUseful { get; set; }   
-    
+    public bool ValueUseful { get; set; }
+
     public override string ToString()
     {
         var sb = new StringBuilder("[");
@@ -263,7 +263,7 @@ public record IndexExpression(
     public ExpressionType ExpressionType => ExpressionType.Index;
     public TypeChecker.ITypeReference? ResolvedType { get; set; }
 
-    public bool Diverges { get; } = Collection.Diverges || Index is {Diverges: true};
+    public bool Diverges { get; } = Collection.Diverges || Index is { Diverges: true };
     public bool ValueUseful { get; set; }
 
     public override string ToString()
@@ -525,7 +525,7 @@ public record IfExpression(
 public record Block(IReadOnlyList<IExpression> Expressions, IReadOnlyList<LangFunction> Functions, IReadOnlyList<ModuleImport> ScopedImports)
 {
     public bool HasTailExpression => false;
-    
+
     public override string ToString()
     {
         var sb = new StringBuilder("{\n");
@@ -545,10 +545,20 @@ public record Block(IReadOnlyList<IExpression> Expressions, IReadOnlyList<LangFu
     }
 }
 
-public record ValueAccessor(ValueAccessType AccessType, Token Token, IReadOnlyList<ITypeIdentifier>? TypeArguments)
+public record ValueAccessor(ValueAccessType AccessType, Token Token, IReadOnlyList<ITypeIdentifier>? TypeArguments, IReadOnlyList<StringToken> ModulePath, bool ModulePathIsGlobal)
 {
     public override string ToString()
     {
+        var sb = new StringBuilder();
+        if (ModulePathIsGlobal)
+        {
+            sb.Append(":::");
+        }
+        foreach (var moduleSegment in ModulePath)
+        {
+            sb.Append(moduleSegment);
+            sb.Append(":::");
+        }
         return Token.ToString();
     }
 }
