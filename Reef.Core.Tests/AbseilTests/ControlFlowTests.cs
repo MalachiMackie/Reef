@@ -12,7 +12,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
     {
         description.Should().NotBeEmpty();
         var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = ProgramAbseil.Lower(program);
+        var (loweredProgram, _) = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -97,7 +97,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
         ]);
 
         var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = ProgramAbseil.Lower(program);
+        var (loweredProgram, _) = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 

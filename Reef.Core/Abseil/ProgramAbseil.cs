@@ -17,7 +17,7 @@ public partial class ProgramAbseil
     private static string ParameterLocalName(uint parameterIndex) => $"_param{parameterIndex}";
     private static string LocalName(uint localIndex) => $"_local{localIndex}";
     private static string TupleElementName(uint memberIndex) => $"Item{memberIndex}";
-        
+
     private readonly Dictionary<
         LoweredMethod,
         (
@@ -29,7 +29,8 @@ public partial class ProgramAbseil
             bool needsLowering
         )> _methods = [];
     private readonly Dictionary<DefId, DataType> _types = [];
-    private readonly LangModule _program;
+    private readonly Dictionary<ModuleId, LangModule> _modules;
+    private readonly LangModule _mainModule;
     private LoweredConcreteTypeReference? _currentType;
     private (LoweredMethod LoweredMethod, TypeChecker.FunctionSignature FunctionSignature)? _currentFunction;
 
@@ -38,9 +39,10 @@ public partial class ProgramAbseil
     private List<IStatement> _basicBlockStatements = [];
     private List<MethodLocal> _locals = [];
 
-    public static (LoweredModule Module, IReadOnlyList<LoweredModule> ImportedModules) Lower(LangModule program)
+    public static (LoweredModule Module, IReadOnlyList<LoweredModule> ImportedModules) Lower(
+        Dictionary<ModuleId, LangModule> modules, ModuleId mainModuleId)
     {
-        var abseil = new ProgramAbseil(program);
+        var abseil = new ProgramAbseil(modules, mainModuleId);
         return (abseil.LowerInner(), abseil._importedModules);
     }
 
@@ -49,7 +51,7 @@ public partial class ProgramAbseil
         return new LoweredExternMethod(
             signature.Id,
             signature.Name,
-            [..signature.TypeParameters.Select(x => new LoweredGenericPlaceholder(signature.Id, x.GenericName))],
+            [.. signature.TypeParameters.Select(x => new LoweredGenericPlaceholder(signature.Id, x.GenericName))],
             ReturnValue: new MethodLocal(ReturnValueLocalName, null, GetTypeReference(signature.ReturnType)),
             ParameterLocals: [..signature.Parameters.Select((x, i) => new MethodLocal(
                 ParameterLocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))]);
@@ -58,17 +60,17 @@ public partial class ProgramAbseil
     private LoweredMethod CreateBoxMethod(TypeChecker.FunctionSignature signature)
     {
         var basicBlocks = new List<BasicBlock>();
-        
+
         var loweredMethod = new LoweredMethod(
             signature.Id,
             signature.Name,
-            [..signature.TypeParameters.Select(GetGenericPlaceholder)],
+            [.. signature.TypeParameters.Select(GetGenericPlaceholder)],
             basicBlocks,
             new MethodLocal(ReturnValueLocalName, null, GetTypeReference(signature.ReturnType)),
             [..signature.Parameters.Select((x, i) => new MethodLocal(
                 LocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))],
             []);
-        
+
         /*
          *
          * pub fn box<TParam, TReturn>(TParam param): TReturn
@@ -79,9 +81,9 @@ public partial class ProgramAbseil
          *     *_returnValue = param;
          *     return;
          * }
-         * 
+         *
          */
-        
+
         basicBlocks.Add(new BasicBlock(
             new BasicBlockId("bb0"),
             [],
@@ -99,24 +101,24 @@ public partial class ProgramAbseil
                     new Use(new Copy(new Local(loweredMethod.ParameterLocals[0].CompilerGivenName))))
             ],
             new Return()));
-        
+
         return loweredMethod;
     }
-    
+
     private LoweredMethod CreateUnboxMethod(TypeChecker.FunctionSignature signature)
     {
         var basicBlocks = new List<BasicBlock>();
-        
+
         var loweredMethod = new LoweredMethod(
             signature.Id,
             signature.Name,
-            [..signature.TypeParameters.Select(GetGenericPlaceholder)],
+            [.. signature.TypeParameters.Select(GetGenericPlaceholder)],
             basicBlocks,
             new MethodLocal(ReturnValueLocalName, null, GetTypeReference(signature.ReturnType)),
             [..signature.Parameters.Select((x, i) => new MethodLocal(
                 LocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))],
             []);
-        
+
         /*
          *
          * pub fn unbox<TParam, TReturn>(TParam param): TReturn
@@ -128,18 +130,18 @@ public partial class ProgramAbseil
          * }
          *
          */
-        
+
         basicBlocks.Add(new BasicBlock(
             new BasicBlockId("bb0"),
             [new Assign(
                 new Local(loweredMethod.ReturnValue.CompilerGivenName),
                 new Use(new Copy(new Deref(new Local(loweredMethod.ParameterLocals[0].CompilerGivenName)))))],
             new Return()));
-        
+
         return loweredMethod;
     }
 
-    private ProgramAbseil(LangModule program)
+    private ProgramAbseil(Dictionary<ModuleId, LangModule> modules, ModuleId mainModuleId)
     {
         var importedDataTypes = new List<DataType>();
         var importedMethods = new List<IMethod>
@@ -170,7 +172,7 @@ public partial class ProgramAbseil
                 new DataType(
                     fnClass.Id,
                     fnClass.Name,
-                    [..fnClass.TypeParameters.Select(GetGenericPlaceholder)],
+                    [.. fnClass.TypeParameters.Select(GetGenericPlaceholder)],
                     [
                         new DataTypeVariant(
                             "_classVariant",
@@ -208,10 +210,10 @@ public partial class ProgramAbseil
                 new LoweredMethod(
                     call.Id,
                     $"{fnClass.Name}__{call.Name}",
-                    [..fnClass.TypeParameters.Select(GetGenericPlaceholder)],
+                    [.. fnClass.TypeParameters.Select(GetGenericPlaceholder)],
                     [],
                     ReturnValue: new MethodLocal(ReturnValueLocalName, null, GetTypeReference(call.ReturnType)),
-                    ParameterLocals: [..call.Parameters.Values.Select((x, j) => new MethodLocal(ParameterLocalName((uint)j), x.Name.StringValue, GetTypeReference(x.Type)))],
+                    ParameterLocals: [.. call.Parameters.Values.Select((x, j) => new MethodLocal(ParameterLocalName((uint)j), x.Name.StringValue, GetTypeReference(x.Type)))],
                     []));
         }
 
@@ -225,11 +227,11 @@ public partial class ProgramAbseil
                                     TypeChecker.ClassSignature.Int64.Name,
                                     TypeChecker.ClassSignature.Int64.Id,
                                     []);
-        
+
         var resultDataType = new DataType(
             TypeChecker.UnionSignature.Result.Id,
             TypeChecker.UnionSignature.Result.Name,
-            [..TypeChecker.UnionSignature.Result.TypeParameters.Select(GetGenericPlaceholder)],
+            [.. TypeChecker.UnionSignature.Result.TypeParameters.Select(GetGenericPlaceholder)],
             [
                 new DataTypeVariant(
                     "Ok",
@@ -263,7 +265,7 @@ public partial class ProgramAbseil
                     resultDataType.TypeParameters,
                     [],
                     new MethodLocal(ReturnValueLocalName, null, GetTypeReference(variant.CreateFunction.ReturnType)),
-                    [..variant.CreateFunction.Parameters.Values.Select((x, i) => new MethodLocal(ParameterLocalName((uint)i), x.Name.StringValue, GetTypeReference(x.Type)))],
+                    [.. variant.CreateFunction.Parameters.Values.Select((x, i) => new MethodLocal(ParameterLocalName((uint)i), x.Name.StringValue, GetTypeReference(x.Type)))],
                     []));
         }
 
@@ -279,7 +281,7 @@ public partial class ProgramAbseil
                     [..stringSignature.Fields.Select(x => new DataTypeField(x.Name, GetTypeReference(x.Type)))])
             ],
             []));
-        
+
         _importedModules = [
             new LoweredModule
             {
@@ -288,43 +290,48 @@ public partial class ProgramAbseil
                 Methods = importedMethods
             }
         ];
-        _program = program;
+        _modules = modules;
+        _mainModule = modules[mainModuleId];
     }
 
     private LoweredModule LowerInner()
     {
-        foreach (var dataType in _program.Unions.Select(x => LowerUnion(x.Signature.NotNull())))
+        foreach (var (moduleId, module) in _modules)
         {
-            _types.Add(dataType.Id, dataType);
-        }
+            foreach (var dataType in module.Unions.Select(x => LowerUnion(x.Signature.NotNull())))
+            {
+                _types.Add(dataType.Id, dataType);
+            }
 
-        foreach (var dataType in _program.Classes.Select(x => LowerClass(x.Signature.NotNull())))
-        {
-            _types.Add(dataType.Id, dataType);
+            foreach (var dataType in module.Classes.Select(x => LowerClass(x.Signature.NotNull())))
+            {
+                _types.Add(dataType.Id, dataType);
+            }
         }
 
         var mainSignature = new TypeChecker.FunctionSignature(
-                DefId.Main(_program.ModuleId),
+                DefId.Main(_mainModule.ModuleId),
                 Token.Identifier("_Main", SourceSpan.Default),
                 [],
                 [],
                 IsStatic: true,
                 IsMutable: false,
-                _program.Expressions,
+                _mainModule.Expressions,
                 Extern: false,
-                false)
+                false,
+                IsPublic: true)
         {
             ReturnType = TypeChecker.InstantiatedClass.Unit,
             OwnerType = null,
-            LocalVariables = _program.TopLevelLocalVariables,
-            LocalFunctions = _program.TopLevelLocalFunctions
+            LocalVariables = _mainModule.TopLevelLocalVariables,
+            LocalFunctions = _mainModule.TopLevelLocalFunctions
         };
-        foreach (var local in _program.TopLevelLocalVariables)
+        foreach (var local in _mainModule.TopLevelLocalVariables)
         {
             local.ContainingFunction = mainSignature;
         }
 
-        var fnSignaturesToGenerate = _program.Functions.Select<LangFunction, TypeChecker.FunctionSignature>(x => x.Signature.NotNull());
+        var fnSignaturesToGenerate = _modules.Values.SelectMany(x => x.Functions.Select(x => x.Signature.NotNull()));
         if (mainSignature.Expressions.Count > 0)
         {
             fnSignaturesToGenerate = fnSignaturesToGenerate.Prepend(mainSignature);
@@ -344,9 +351,9 @@ public partial class ProgramAbseil
 
         return new LoweredModule
         {
-            Id = _program.ModuleId,
-            DataTypes = [.._types.Values],
-            Methods = [.._methods.Keys]
+            Id = _mainModule.ModuleId,
+            DataTypes = [.. _types.Values],
+            Methods = [.. _methods.Keys]
         };
     }
 
@@ -371,7 +378,7 @@ public partial class ProgramAbseil
         else
         {
             var basicBlock = basicBlocks[^1];
-            _basicBlockStatements = [..basicBlock.Statements];
+            _basicBlockStatements = [.. basicBlock.Statements];
             basicBlocks[^1] = new BasicBlock(basicBlock.Id, _basicBlockStatements, basicBlock.Terminator);
         }
 
@@ -379,7 +386,7 @@ public partial class ProgramAbseil
         {
             LowerExpression(expression, destination: null);
         }
-        
+
         TerminateBasicBlocks();
     }
 
@@ -387,7 +394,7 @@ public partial class ProgramAbseil
     {
         var lastBasicBlock = _basicBlocks[^1];
         var isLastBasicBlockEmpty = lastBasicBlock.Statements.Count == 0 && lastBasicBlock.Terminator is null;
-        
+
         var returnBasicBlockId = (isLastBasicBlockEmpty || lastBasicBlock.Terminator is Return)
             ? lastBasicBlock.Id
             : new BasicBlockId($"bb{_basicBlocks.Count}");
@@ -400,39 +407,39 @@ public partial class ProgramAbseil
             switch (basicBlock.Terminator)
             {
                 case GoTo goTo:
-                {
-                    if (goTo.BasicBlockId.Id == TempReturnBasicBlockId)
                     {
-                        goTo.BasicBlockId.Id = returnBasicBlockId.Id;
+                        if (goTo.BasicBlockId.Id == TempReturnBasicBlockId)
+                        {
+                            goTo.BasicBlockId.Id = returnBasicBlockId.Id;
+                        }
+                        break;
                     }
-                    break;
-                }
                 case MethodCall methodCall:
-                {
-                    if (methodCall.GoToAfter.Id == TempReturnBasicBlockId)
                     {
-                        methodCall.GoToAfter.Id = returnBasicBlockId.Id;
+                        if (methodCall.GoToAfter.Id == TempReturnBasicBlockId)
+                        {
+                            methodCall.GoToAfter.Id = returnBasicBlockId.Id;
+                        }
+                        break;
                     }
-                    break;
-                }
                 case Return:
                     break;
                 case SwitchInt switchInt:
-                {
-                    foreach (var bbId in switchInt.Cases.Values.Append(switchInt.Otherwise).Where(x => x.Id == TempReturnBasicBlockId))
                     {
-                        bbId.Id = returnBasicBlockId.Id;
+                        foreach (var bbId in switchInt.Cases.Values.Append(switchInt.Otherwise).Where(x => x.Id == TempReturnBasicBlockId))
+                        {
+                            bbId.Id = returnBasicBlockId.Id;
+                        }
+                        break;
                     }
-                    break;
-                }
                 case Assert assert:
-                {
-                    if (assert.GoTo.Id == TempReturnBasicBlockId)
                     {
-                        assert.GoTo.Id = returnBasicBlockId.Id;
+                        if (assert.GoTo.Id == TempReturnBasicBlockId)
+                        {
+                            assert.GoTo.Id = returnBasicBlockId.Id;
+                        }
+                        break;
                     }
-                    break;
-                }
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -470,9 +477,9 @@ public partial class ProgramAbseil
                 _basicBlockStatements = [];
                 _basicBlocks = [new BasicBlock(new BasicBlockId("bb0"), _basicBlockStatements)];
                 _locals = [];
-                
+
                 LowerExpression(x.StaticInitializer.NotNull(), destination: new Local(ReturnValueLocalName));
-                
+
                 TerminateBasicBlocks();
 
                 var type = GetTypeReference(x.Type);
@@ -608,7 +615,7 @@ public partial class ProgramAbseil
                                 ],
                                 []);
                         }
-                        
+
                         // add the tuple variant as a method
                         _methods.Add(
                                 method,
@@ -632,7 +639,7 @@ public partial class ProgramAbseil
                 StaticFields: []);
     }
 
-    // instead of lowering the methods expressions right here, we return the list of expressions 
+    // instead of lowering the methods expressions right here, we return the list of expressions
     // to add to later so that all the type and function references are available to be used
     private (LoweredMethod, List<BasicBlock>, List<MethodLocal>, IReadOnlyList<Expressions.IExpression>) GenerateLoweredMethod(
             string? ownerName,
@@ -691,17 +698,17 @@ public partial class ProgramAbseil
                                 localTypeId,
                                 []);
 
-                            // try to add because we might have already added this function's 
+                            // try to add because we might have already added this function's
                             // local type if we're referencing multiple variables from
                             // the owner function
                             fields.TryAdd(
                                 localTypeId,
-                                new DataTypeField(localType.Name, new LoweredPointer(localTypeReference))); 
+                                new DataTypeField(localType.Name, new LoweredPointer(localTypeReference)));
                             break;
                         }
                     case TypeChecker.FunctionSignatureParameter parameterVariable:
                         {
-                            var containingFunction = parameterVariable.ContainingFunction.NotNull(); 
+                            var containingFunction = parameterVariable.ContainingFunction.NotNull();
                             var localTypeId = containingFunction
                                 .LocalsTypeId.NotNull();
                             var localType = _types[localTypeId];
@@ -710,7 +717,7 @@ public partial class ProgramAbseil
                                 localTypeId,
                                 []);
 
-                            // try to add because we might have already added this function's 
+                            // try to add because we might have already added this function's
                             // local type if we're referencing multiple variables from
                             // the owner function
                             fields.TryAdd(
@@ -762,7 +769,7 @@ public partial class ProgramAbseil
 
         foreach (var localSignature in fnSignature.LocalFunctions)
         {
-            var (localMethod, localFnBasicBlocks, localFnLocals, localExpressions) = 
+            var (localMethod, localFnBasicBlocks, localFnLocals, localExpressions) =
                 GenerateLoweredMethod(ownerName: name, localSignature, null, parentTypeReference);
 
             _methods.Add(localMethod, (localSignature, localFnBasicBlocks, localFnLocals, localExpressions, parentTypeReference, true));
@@ -785,7 +792,7 @@ public partial class ProgramAbseil
                         LocalsObjectLocalName,
                         null,
                         new LoweredPointer(localsTypeReference)));
-            var hasCompilerInsertedFirstParameter = 
+            var hasCompilerInsertedFirstParameter =
                 (!fnSignature.IsStatic && ownerTypeReference is not null)
                 || closureType is not null;
 
@@ -877,8 +884,8 @@ public partial class ProgramAbseil
             ?? _importedModules.SelectMany(x => x.Methods)
                 .First(x => x.Id == functionId);
 
-        IReadOnlyList<ILoweredTypeReference> resultingTypeArguments = [..typeArguments, ..ownerTypeArguments];
-        
+        IReadOnlyList<ILoweredTypeReference> resultingTypeArguments = [.. typeArguments, .. ownerTypeArguments];
+
         Debug.Assert(resultingTypeArguments.Count == loweredMethod.TypeParameters.Count);
 
         return new LoweredFunctionReference(
@@ -908,8 +915,8 @@ public partial class ProgramAbseil
                 u.Signature.Name,
                 u.Signature.Id,
                 [.. u.TypeArguments.Select(GetTypeReference)]),
-            TypeChecker.GenericTypeReference {ResolvedType: {} resolvedType} => GetTypeReference(resolvedType),
-            TypeChecker.GenericTypeReference {ResolvedType: null} g => new LoweredGenericPlaceholder(
+            TypeChecker.GenericTypeReference { ResolvedType: { } resolvedType } => GetTypeReference(resolvedType),
+            TypeChecker.GenericTypeReference { ResolvedType: null } g => new LoweredGenericPlaceholder(
                 g.OwnerType.Id,
                 g.GenericName),
             TypeChecker.GenericPlaceholder g => new LoweredGenericPlaceholder(
@@ -935,7 +942,7 @@ public partial class ProgramAbseil
             var type = _importedModules
                 .SelectMany(x => x.DataTypes.Where(y => y.Name == $"Function`{f.Parameters.Count + 1}"))
                 .First();
-            
+
             return new LoweredConcreteTypeReference(
                 type.Name,
                 type.Id,

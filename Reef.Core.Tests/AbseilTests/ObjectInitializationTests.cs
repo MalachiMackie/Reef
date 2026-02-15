@@ -12,7 +12,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
     {
         description.Should().NotBeEmpty();
         var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = ProgramAbseil.Lower(program);
+        var (loweredProgram, _) = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 

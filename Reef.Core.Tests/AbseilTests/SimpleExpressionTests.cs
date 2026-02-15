@@ -39,7 +39,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
         ]);
 
         var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = ProgramAbseil.Lower(program);
+        var (loweredProgram, _) = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -52,7 +52,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
     {
         description.Should().NotBeEmpty();
         var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = ProgramAbseil.Lower(program);
+        var (loweredProgram, _) = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 

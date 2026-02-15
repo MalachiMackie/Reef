@@ -1,3 +1,4 @@
+using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
 
 namespace Reef.Core.Tests.AbseilTests;
@@ -9,6 +10,11 @@ public class TestBase
     protected TestBase(ITestOutputHelper testOutputHelper)
     {
         TestOutput = testOutputHelper;
+    }
+
+    protected static (LoweredModule loweredModule, IReadOnlyList<LoweredModule> importedModules) Lower(LangModule module)
+    {
+        return ProgramAbseil.Lower(new() { { module.ModuleId, module } }, module.ModuleId);
     }
 
     protected static LangModule CreateProgram(ModuleId moduleId, string source)

@@ -12,7 +12,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
     {
         description.Should().NotBeEmpty();
         var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = ProgramAbseil.Lower(program);
+        var (loweredProgram, _) = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -64,7 +64,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     locals: [new MethodLocal("_local0", "a", StringT)])
             ]);
         var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = ProgramAbseil.Lower(program);
+        var (loweredProgram, _) = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 

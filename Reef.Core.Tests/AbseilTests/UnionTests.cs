@@ -12,7 +12,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
     {
         description.Should().NotBeEmpty();
         var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = ProgramAbseil.Lower(program);
+        var (loweredProgram, _) = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -31,7 +31,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
         ]);
 
         var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = ProgramAbseil.Lower(program);
+        var (loweredProgram, _) = Lower(program);
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
 

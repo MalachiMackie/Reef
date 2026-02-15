@@ -11,16 +11,20 @@ public class ModuleTests : IntegrationTestBase
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::MyClass;
+                    use :::otherModule:::{MyClass, SomeFn};
 
-                    var a = new MyClass{MyString = "hi"};
+                    var a = new MyClass{MyString = "hi. "};
                     print_string(a.MyString);
+                    SomeFn();
                     """
                 },
                 {
                     "otherModule.rf",
                     """
-                    class MyClass{pub field MyString: string}
+                    pub class MyClass{pub field MyString: string}
+                    pub fn SomeFn() {
+                        print_string("Hello world from otherModule");
+                    }
                     """
                 }
             }
@@ -28,7 +32,7 @@ public class ModuleTests : IntegrationTestBase
 
         var result = await Run();
         result.ExitCode.Should().Be(0);
-        result.StandardOutput.Should().Be("hi");
+        result.StandardOutput.Should().Be("hi. Hello world from otherModule");
     }
 
     [Fact]

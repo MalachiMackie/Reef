@@ -12,7 +12,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
     {
         description.Should().NotBeEmpty();
         var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = ProgramAbseil.Lower(program);
+        var (loweredProgram, _) = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram, false, false);
 
@@ -193,7 +193,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                               ])
             ]);
         var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = ProgramAbseil.Lower(program);
+        var (loweredProgram, _) = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram, false, false);
 

@@ -4,7 +4,6 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
-using Reef.Core.TypeChecking;
 
 namespace Reef.Core;
 
@@ -62,11 +61,10 @@ public class Compiler
 
         var programName = "main";
 
-        Debug.Assert(typeCheckResults.Count == 1);
-        var parsedProgram = typeCheckResults[new ModuleId("main")].Module;
-
         logger.LogInformation("Lowering...");
-        var (loweredProgram, importedModules) = ProgramAbseil.Lower(parsedProgram);
+        var (loweredProgram, importedModules) = ProgramAbseil.Lower(
+            typeCheckResults.ToDictionary(x => x.Key, x => x.Value.Module),
+            new ModuleId("main"));
 
 
         if (outputIr)
@@ -194,10 +192,5 @@ public class Compiler
         await linkProcess.WaitForExitAsync(ct);
 
         logger.LogInformation("Done!");
-    }
-
-    private static ReadOnlySpan<char> GetSourceRange(string source, SourceRange range)
-    {
-        return source.AsSpan()[(int)range.Start.Position.Start..(int)(range.End.Position.Start + range.End.Length)];
     }
 }

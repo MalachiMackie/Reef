@@ -55,13 +55,11 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             typeCheckResult.ParserErrors.Should().BeEmpty();
             var expectedErrors = sourceFiles.TryGetValue(moduleIdToFileName[moduleId], out var result) ? result.expectedErrors : [];
             typeCheckResult.TypeCheckerErrors.Should().BeEquivalentTo(expectedErrors,
-                    opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan))).And
-                .NotBeEmpty();
+                    opts => opts.Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
         }
     }
 
     [Fact]
-    [TestMe]
     public async Task SingleTest()
     {
         var sourceFiles = new Dictionary<string, (string, IReadOnlyList<TypeCheckerError> expectedErrors)>()
@@ -69,28 +67,24 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             {
                 "main.rf",
                 ("""
-                use :::someModule:::{subModule:::{SomeFn, subSubModule:::MyClass}};
+                use :::otherModule:::SomeFn;
 
-                var a = new MyClass{};
-                SomeFn();
-                """, [])
-            },
-            {
-                "someModule/subModule/subSubModule.rf",
-                ("""
                 pub class MyClass{};
+
+                var a = SomeFn();
                 """, [])
             },
             {
-                "someModule/subModule/subModule.rf",
+                "otherModule.rf",
                 ("""
-                use subSubModule:::MyClass;
+                use :::main:::MyClass;
 
-                pub fn SomeFn() {
-                    var a = new MyClass{};
+                pub fn SomeFn(): MyClass
+                {
+                    return new MyClass{};
                 }
                 """, [])
-                }
+            }
         };
 
         foreach (var (path, (contents, _)) in sourceFiles)
@@ -117,6 +111,82 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    use :::otherModule;
+
+                    otherModule:::subModule:::SomeFn();
+                    var a = new otherModule:::subModule:::MyClass{};
+                    """
+                },
+                {
+                    "otherModule/subModule.rf",
+                    """
+                    pub fn SomeFn(){}
+                    pub class MyClass{}
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    use :::otherModule:::subModule;
+
+                    subModule:::subSubModule:::SomeFn();
+                    var a = new subModule:::subSubModule:::MyClass{};
+                    """
+                },
+                {
+                    "otherModule/subModule/subSubModule.rf",
+                    """
+                    pub fn SomeFn(){}
+                    pub class MyClass{}
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    use :::otherModule:::subModule;
+
+                    subModule:::SomeFn();
+                    var a = new subModule:::MyClass{};
+                    """
+                },
+                {
+                    "otherModule/subModule.rf",
+                    """
+                    pub fn SomeFn(){}
+                    pub class MyClass{}
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    use :::otherModule:::subModule;
+
+                    otherModule:::subModule:::SomeFn();
+                    var a = new otherModule:::subModule:::MyClass{};
+                    """
+                },
+                {
+                    "otherModule/subModule.rf",
+                    """
+                    pub fn SomeFn(){}
+                    pub class MyClass{}
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     use :::otherModule:::{MyClass, MyUnion, SomeFn};
 
                     var a = new MyClass{};
@@ -127,8 +197,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "otherModule.rf",
                     """
-                    class MyClass{}
-                    union MyUnion{A}
+                    pub class MyClass{}
+                    pub union MyUnion{A}
                     pub fn SomeFn(){}
                     """
                 }
@@ -146,8 +216,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "otherModule.rf",
                     """
-                    class MyClass{}
-                    union MyUnion{A}
+                    pub class MyClass{}
+                    pub union MyUnion{A}
                     pub fn SomeFn(){}
                     """
                 }
@@ -158,18 +228,21 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     "main.rf",
                     """
                     class MyClass{}
+                    fn SomeFn(){}
 
                     var a = new :::otherModule:::MyClass{};
                     var b = :::otherModule:::MyUnion::A;
-                    var c = :::otherModule:::SomeFn();
+                    :::otherModule:::SomeFn();
                     var d = new MyClass{};
+                    SomeFn();
+
                     """
                 },
                 {
                     "otherModule.rf",
                     """
-                    class MyClass{}
-                    union MyUnion{A}
+                    pub class MyClass{}
+                    pub union MyUnion{A}
                     pub fn SomeFn(){}
                     """
                 }
@@ -259,8 +332,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "otherModule.rf",
                     """
-                    class MyClass{}
-                    union MyUnion{A}
+                    pub class MyClass{}
+                    pub union MyUnion{A}
                     pub fn SomeFn(){}
                     """
                 }
@@ -283,8 +356,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "otherModule.rf",
                     """
-                    class MyClass{}
-                    union MyUnion{A}
+                    pub class MyClass{}
+                    pub union MyUnion{A}
                     pub fn SomeFn(){}
                     """
                 }
@@ -2989,6 +3062,62 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                         """, [])
                     }
                 }
+            },
+            {
+                "relative import not relative to current module",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+                        use subModule:::*;
+                        """,
+                        [TypeCheckerError.SymbolNotFound(Identifier("subModule"))])
+                    },
+                    {
+                        "otherModule/otherModule.rf",
+                        ("""
+                        use subModule:::*;
+                        """,
+                        [])
+                    },
+                    {
+                        "otherModule/subModule.rf",
+                        ("""
+                        pub fn SomeFn(){}
+                        """,
+                        [])
+                    },
+                }
+            },
+            {
+                "Import non existent item",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+                        use :::missing;
+                        use :::otherModule:::foo;
+                        {
+                            use :::otherModule:::bar;
+                        }
+                        """,
+                        [
+                            TypeCheckerError.SymbolNotFound(Identifier("missing")),
+                            TypeCheckerError.SymbolNotFound(Identifier("foo")),
+                            TypeCheckerError.SymbolNotFound(Identifier("bar")),
+                        ])
+                    },
+                    {
+                        "otherModule.rf",
+                        ("""
+
+                        """,
+                        [])
+                    },
+                }
+
             },
             {
                 "Imported item not public",
@@ -7330,8 +7459,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                         "main.rf", ("""
                                    true = false
                                    """, [
-                                   TypeCheckerError.ExpressionNotAssignable(new ValueAccessorExpression(
-                                   new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default), [])))
+                                   TypeCheckerError.ExpressionNotAssignable(Literal(true))
                                    ])
                     }
                 }

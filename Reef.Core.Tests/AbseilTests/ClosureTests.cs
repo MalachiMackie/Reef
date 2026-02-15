@@ -12,7 +12,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
     {
         description.Should().NotBeEmpty();
         var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = ProgramAbseil.Lower(program);
+        var (loweredProgram, _) = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -118,7 +118,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
             ]);
 
         var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = ProgramAbseil.Lower(program);
+        var (loweredProgram, _) = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
