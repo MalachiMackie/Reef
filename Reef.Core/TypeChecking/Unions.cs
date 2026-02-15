@@ -21,6 +21,7 @@ public partial class TypeChecker
                 Variants = variants,
                 Functions = [],
                 Boxed = false,
+                IsPublic = true
             };
 
             typeParameters[0] = new GenericPlaceholder
@@ -47,7 +48,8 @@ public partial class TypeChecker
                     IsMutable: false,
                     Expressions: [],
                     true,
-                    IsMutableReturn: true)
+                    IsMutableReturn: true,
+                    IsPublic: true)
             {
                 ReturnType = InstantiatedUnion.Create(resultSignature, typeParameters, resultSignature.Boxed),
                 OwnerType = resultSignature
@@ -61,7 +63,8 @@ public partial class TypeChecker
                 IsMutable: false,
                 Expressions: [],
                 true,
-                IsMutableReturn: true)
+                IsMutableReturn: true,
+                IsPublic: true)
             {
                 ReturnType = InstantiatedUnion.Create(resultSignature, typeParameters, resultSignature.Boxed),
                 OwnerType = resultSignature
@@ -104,6 +107,7 @@ public partial class TypeChecker
         public required IReadOnlyList<IUnionVariant> Variants { get; init; }
         public required IReadOnlyList<FunctionSignature> Functions { get; init; }
         public required bool Boxed { get; init; }
+        public required bool IsPublic { get; init; }
 
         public required string Name { get; init; }
     }

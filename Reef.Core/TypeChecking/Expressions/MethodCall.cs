@@ -25,7 +25,7 @@ public partial class TypeChecker
 
         if (methodType is not IFunction functionType)
         {
-            throw new InvalidOperationException($"{methodType} is not callable");
+            throw new InvalidOperationException($"{methodType.GetType()} is not callable");
         }
 
         if (methodCall.ArgumentList.Count != functionType.Parameters.Count)

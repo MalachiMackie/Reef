@@ -21,13 +21,20 @@ public partial class TypeChecker
 
     private readonly Stack<TypeCheckingScope> _typeCheckingScopes = new();
 
-    private bool ModuleIdAndNameMatchesImport(ModuleId moduleId, string itemName, ModuleImport moduleImport)
+    private bool ModuleIdAndNameMatchesImport(
+        ModuleId moduleId,
+        string itemName,
+        ModuleImport moduleImport)
     {
         var apparentModuleId = moduleImport.IsGlobal ? "" : CurrentModuleId.Value;
 
         return SegmentMatches(moduleId, itemName, apparentModuleId, moduleImport.RootModulePathSegment);
 
-        static bool SegmentMatches(ModuleId moduleId, string itemName, string apparentModuleId, ModulePathSegment pathSegment)
+        static bool SegmentMatches(
+            ModuleId moduleId,
+            string itemName,
+            string apparentModuleId,
+            ModulePathSegment pathSegment)
         {
             if (!moduleId.Value.StartsWith(apparentModuleId))
             {
@@ -41,8 +48,7 @@ public partial class TypeChecker
 
             if (pathSegment.SubSegments.Count == 0)
             {
-                return moduleId.Value == apparentModuleId
-                    && pathSegment.Identifier.StringValue == itemName;
+                return pathSegment.Identifier.StringValue == itemName;
             }
 
             return pathSegment.SubSegments.Any(
@@ -57,21 +63,30 @@ public partial class TypeChecker
         }
     }
 
-    private ITypeSignature? SearchForType(string name)
+    private ITypeSignature? SearchForType(string name, IReadOnlyList<string>? modulePath = null, bool modulePathIsGlobal = false)
     {
-        var matchedTypes = new List<ITypeSignature>();
+        var modulePathStr = string.Join(":::", modulePath ?? []);
 
+        var matchedTypes = new List<ITypeSignature>();
         var imports = _typeCheckingScopes.SelectMany(x => x.ModuleImports).ToArray();
+
         foreach (var moduleId in _modules.Keys.Append(DefId.CoreLibModuleId))
         {
-            if (moduleId == CurrentModuleId
-                || moduleId == DefId.CoreLibModuleId
-                || imports.Any(import => ModuleIdAndNameMatchesImport(moduleId, name, import)))
+            var canMatchModule = (modulePathStr, modulePathIsGlobal) switch
             {
-                if (GetModuleTypes(moduleId).TryGetValue(name, out var found))
-                {
-                    matchedTypes.Add(found);
-                }
+                ({ Length: > 0 }, true) => moduleId.Value == modulePathStr,
+                ({ Length: > 0 }, false) => moduleId.Value == modulePathStr
+                                            || imports.Any(import => ModuleIdAndNameMatchesImport(moduleId, modulePath?.FirstOrDefault() ?? name, import)),
+                _ => moduleId == DefId.CoreLibModuleId
+                    || moduleId == CurrentModuleId
+                    || imports.Any(import => ModuleIdAndNameMatchesImport(moduleId, name, import))
+            };
+
+            if (canMatchModule
+                && GetModuleTypes(moduleId).TryGetValue(name, out var type)
+                && (moduleId == CurrentModuleId || type.IsPublic))
+            {
+                matchedTypes.Add(type);
             }
         }
 
@@ -104,12 +119,6 @@ public partial class TypeChecker
         }
 
         return moduleSignatures.Functions.ToDictionary(x => x.Name);
-    }
-
-    private bool AddType(ITypeSignature typeSignature)
-    {
-        return GetModuleTypes()
-            .TryAdd(typeSignature.Name, typeSignature);
     }
 
     private TypeChecker(Dictionary<ModuleId, LangModule> modules, bool throwOnError = false)
@@ -163,25 +172,40 @@ public partial class TypeChecker
         return true;
     }
 
-    private FunctionSignature? GetFunctionSignature(string name)
+    private FunctionSignature? GetFunctionSignature(string name, IReadOnlyList<string>? modulePath = null, bool modulePathIsGlobal = false)
     {
+        var modulePathStr = string.Join(":::", modulePath ?? []);
+
         var matchedFunctions = new List<FunctionSignature>();
         var imports = _typeCheckingScopes.SelectMany(x => x.ModuleImports).ToArray();
-        foreach (var moduleId in _modules.Keys.Append(DefId.CoreLibModuleId))
+
+        if (string.IsNullOrWhiteSpace(modulePathStr))
         {
-            if (moduleId == CurrentModuleId && _typeCheckingScopes.SelectMany(x => x.Functions).FirstOrDefault(x => x.Name == name) is { } foundFunction)
+            if (_typeCheckingScopes.SelectMany(x => x.Functions).FirstOrDefault(x => x.Name == name) is { } foundFunction)
             {
                 matchedFunctions.Add(foundFunction);
-                continue;
             }
+        }
+        else if (modulePathStr == CurrentModuleId.Value
+            && GetModuleFunctions(CurrentModuleId).TryGetValue(name, out var x))
+        {
+            matchedFunctions.Add(x);
+        }
 
-            if ((moduleId == DefId.CoreLibModuleId
-                || moduleId == CurrentModuleId
-                || imports.Any(import => ModuleIdAndNameMatchesImport(moduleId, name, import)))
-                && GetModuleFunctions(moduleId).TryGetValue(name, out var nextFoundFunction))
+        foreach (var moduleId in _modules.Keys.Append(DefId.CoreLibModuleId).Except([CurrentModuleId]))
+        {
+            var canMatchModule = (modulePathStr, modulePathIsGlobal) switch
             {
-                matchedFunctions.Add(nextFoundFunction);
-                continue;
+                ({ Length: > 0 }, true) => moduleId.Value == modulePathStr,
+                ({ Length: > 0 }, false) => moduleId.Value == modulePathStr
+                                            || imports.Any(import => ModuleIdAndNameMatchesImport(moduleId, modulePath?.FirstOrDefault() ?? name, import)),
+                _ => moduleId == DefId.CoreLibModuleId
+                    || imports.Any(import => ModuleIdAndNameMatchesImport(moduleId, name, import))
+            };
+
+            if (canMatchModule && GetModuleFunctions(moduleId).TryGetValue(name, out var fn) && fn.IsPublic)
+            {
+                matchedFunctions.Add(fn);
             }
         }
 
@@ -191,6 +215,54 @@ public partial class TypeChecker
         }
 
         return matchedFunctions.FirstOrDefault();
+    }
+
+    private void TypeCheckImport(ModuleImport moduleImport)
+    {
+        var apparentModuleId = moduleImport.IsGlobal ? "" : CurrentModuleId.Value;
+        TypeCheckModulePathSegment(moduleImport.RootModulePathSegment, new ModuleId(apparentModuleId));
+    }
+
+    private void TypeCheckModulePathSegment(ModulePathSegment segment, ModuleId apparentModuleId)
+    {
+        // var succeed = _modules.ContainsKey(apparentModuleId)
+        //     && (GetModuleFunctions(apparentModuleId).ContainsKey(segment.Identifier.StringValue)
+        //         || GetModuleTypes(apparentModuleId).ContainsKey(segment.Identifier.StringValue));
+
+        var found = false;
+        if (_modules.ContainsKey(apparentModuleId))
+        {
+            if (GetModuleFunctions(apparentModuleId).TryGetValue(segment.Identifier.StringValue, out var fn))
+            {
+                if (!fn.IsPublic && apparentModuleId != CurrentModuleId)
+                {
+                    AddError(TypeCheckerError.ImportedItemNotPublic(segment.Identifier));
+                }
+                found = true;
+            }
+            if (GetModuleTypes(apparentModuleId).TryGetValue(segment.Identifier.StringValue, out var type))
+            {
+                if (!type.IsPublic && apparentModuleId != CurrentModuleId)
+                {
+                    AddError(TypeCheckerError.ImportedItemNotPublic(segment.Identifier));
+                }
+                found = true;
+            }
+        }
+
+        var nextModuleId = new ModuleId(apparentModuleId.Value == "" ? segment.Identifier.StringValue : $"{apparentModuleId.Value}:::{segment.Identifier.StringValue}");
+
+        found |= _modules.Keys.Any(x => x.Value.StartsWith(nextModuleId.Value));
+
+        if (!found)
+        {
+            AddError(TypeCheckerError.SymbolNotFound(segment.Identifier));
+        }
+
+        foreach (var subSegment in segment.SubSegments)
+        {
+            TypeCheckModulePathSegment(subSegment, nextModuleId);
+        }
     }
 
     public static Dictionary<ModuleId, IReadOnlyList<TypeCheckerError>> TypeCheck(IEnumerable<LangModule> modules, bool throwOnError = false)
@@ -217,6 +289,17 @@ public partial class TypeChecker
 
         SetupSignatures();
 
+        foreach (var module in _modules.Values)
+        {
+            using var _ = PushScope(moduleId: module.ModuleId);
+
+            foreach (var import in module.TopLevelImports)
+            {
+                TypeCheckImport(import);
+            }
+        }
+
+
         foreach (var (moduleId, (functions, unions, classes)) in _moduleSignatures)
         {
             if (moduleId == DefId.CoreLibModuleId)
@@ -224,7 +307,9 @@ public partial class TypeChecker
                 continue;
             }
 
-            using var __ = PushScope(moduleId: moduleId);
+            var module = _modules[moduleId];
+
+            using var __ = PushScope(moduleId: moduleId, moduleImports: module.TopLevelImports, functionSignatures: functions);
 
             foreach (var unionSignature in unions)
             {
@@ -366,6 +451,11 @@ public partial class TypeChecker
         Block block)
     {
         using var _ = PushScope(moduleImports: block.ScopedImports);
+
+        foreach (var import in block.ScopedImports)
+        {
+            TypeCheckImport(import);
+        }
 
         var currentDefId = CurrentDefId.NotNull(expectedReason: "Block must be in a type");
 
@@ -528,7 +618,10 @@ public partial class TypeChecker
     {
         var identifierName = typeIdentifier.Identifier.StringValue;
 
-        if (SearchForType(identifierName) is { } nameMatchingType)
+        if (SearchForType(
+            identifierName,
+            [.. typeIdentifier.ModulePath.Select(x => x.StringValue)],
+            typeIdentifier.ModulePathIsGlobal) is { } nameMatchingType)
         {
             switch (nameMatchingType)
             {
@@ -1637,6 +1730,7 @@ public partial class TypeChecker
         string Name { get; }
         DefId Id { get; }
         IReadOnlyList<GenericPlaceholder> TypeParameters { get; }
+        bool IsPublic { get; }
     }
 
     public record TypeField

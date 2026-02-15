@@ -21,7 +21,8 @@ public partial class TypeChecker
             fn.MutabilityModifier is not null,
             fn.Block.Expressions,
             false,
-            fn.ReturnMutabilityModifier?.Type == TokenType.Mut)
+            fn.ReturnMutabilityModifier is { Type: TokenType.Mut },
+            fn.AccessModifier is { Token.Type: TokenType.Pub })
         {
             ReturnType = null!,
             OwnerType = ownerType
@@ -299,7 +300,8 @@ public partial class TypeChecker
         bool IsMutable,
         IReadOnlyList<IExpression> Expressions,
         bool Extern,
-        bool IsMutableReturn) : ITypeSignature
+        bool IsMutableReturn,
+        bool IsPublic) : ITypeSignature
     {
         public DefId? LocalsTypeId { get; set; }
         public DefId? ClosureTypeId { get; set; }
@@ -339,7 +341,8 @@ public partial class TypeChecker
                 IsMutable: false,
                 Expressions: [],
                 Extern: true,
-                true)
+                true,
+                IsPublic: true)
             {
                 OwnerType = null,
                 ReturnType = InstantiatedClass.Unit
@@ -367,7 +370,8 @@ public partial class TypeChecker
                 IsMutable: false,
                 [],
                 Extern: true,
-                IsMutableReturn: true)
+                IsMutableReturn: true,
+                IsPublic: true)
             {
                 OwnerType = null,
                 ReturnType = InstantiatedClass.RawPointer
@@ -390,7 +394,8 @@ public partial class TypeChecker
                 IsMutable: false,
                 Expressions: [],
                 Extern: true,
-                IsMutableReturn: true)
+                IsMutableReturn: true,
+                IsPublic: true)
             {
                 OwnerType = null,
                 ReturnType = InstantiatedClass.Unit
@@ -414,7 +419,8 @@ public partial class TypeChecker
                 IsMutable: false,
                 Expressions: [],
                 Extern: true,
-                IsMutableReturn: true)
+                IsMutableReturn: true,
+                IsPublic: true)
             {
                 OwnerType = null,
                 ReturnType = null!
@@ -450,7 +456,8 @@ public partial class TypeChecker
                 IsMutable: false,
                 Expressions: [],
                 Extern: true,
-                IsMutableReturn: true)
+                IsMutableReturn: true,
+                IsPublic: true)
             {
                 OwnerType = null,
                 ReturnType = null!

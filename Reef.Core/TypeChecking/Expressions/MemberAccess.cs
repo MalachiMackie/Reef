@@ -25,7 +25,7 @@ public partial class TypeChecker
 
             ownerType = genericTypeReference.ResolvedType;
         }
-        
+
         switch (ownerType)
         {
             case InstantiatedClass classType:
@@ -34,10 +34,14 @@ public partial class TypeChecker
             case InstantiatedUnion instantiatedUnion:
                 return TypeCheckUnionMemberAccess(instantiatedUnion, memberAccessExpression, stringToken, typeArgumentsIdentifiers,
                     ownerExpression);
-            default:
+            case GenericTypeReference or GenericPlaceholder:
                 // todo: generic parameter constraints with interfaces?
                 AddError(TypeCheckerError.MemberAccessOnGenericExpression(memberAccessExpression));
                 return UnknownType.Instance;
+            case UnknownType:
+                return UnknownType.Instance;
+            default:
+                throw new InvalidOperationException(ownerType.GetType().ToString());
         }
     }
 

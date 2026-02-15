@@ -33,7 +33,8 @@ public partial class TypeChecker
                     TypeParameters = typeParameters,
                     Functions = functions,
                     Variants = variants,
-                    Boxed = true
+                    Boxed = true,
+                    IsPublic = union.AccessModifier is { Token.Type: TokenType.Pub }
                 };
 
                 var (moduleFunctions, moduleUnions, moduleClasses) = _moduleSignatures[CurrentModuleId];
@@ -75,7 +76,8 @@ public partial class TypeChecker
                     TypeParameters = typeParameters,
                     Functions = functions,
                     Fields = fields,
-                    Boxed = true
+                    Boxed = true,
+                    IsPublic = klass.AccessModifier is { Token.Type: TokenType.Pub }
                 };
 
                 var (moduleFunctions, moduleUnions, moduleClasses) = _moduleSignatures[CurrentModuleId];
@@ -174,13 +176,14 @@ public partial class TypeChecker
                             new DefId(unionSignature.Id.ModuleId, unionSignature.Id.FullName + $"__Create__{variant.Name.StringValue}"),
                             Token.Identifier($"{unionSignature.Name}__Create__{variant.Name.StringValue}",
                                 SourceSpan.Default),
-                            [],
+                            TypeParameters: [],
                             createFunctionParameters,
                             IsStatic: true,
                             IsMutable: false,
-                            [],
-                            true,
-                            IsMutableReturn: true)
+                            Expressions: [],
+                            Extern: true,
+                            IsMutableReturn: true,
+                            IsPublic: true)
                         {
                             OwnerType = unionSignature,
                             ReturnType = createFunctionReturnType

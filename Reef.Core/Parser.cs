@@ -2133,7 +2133,12 @@ public sealed class Parser : IDisposable
             {
                 _errors.Add(ParserError.ExpectedToken(Current, TokenType.Identifier));
             }
-            return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, Current, null, [], false));
+
+            var todo = Current;
+
+            MoveNext();
+
+            return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Variable, todo, null, [], false));
         }
 
         if (!ExpectCurrentIdentifier(out var variableToken))

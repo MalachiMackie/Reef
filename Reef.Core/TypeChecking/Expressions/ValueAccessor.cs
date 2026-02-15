@@ -25,7 +25,7 @@ public partial class TypeChecker
                 AccessType: ValueAccessType.Variable,
                 Token: StringToken { Type: TokenType.Identifier } variableNameToken
             } => TypeCheckVariableAccess(valueAccessorExpression, variableNameToken, allowUninstantiatedVariables),
-            _ => throw new UnreachableException($"{valueAccessorExpression}")
+            _ => throw new UnreachableException($"{valueAccessorExpression}: {valueAccessorExpression.ValueAccessor.AccessType}, {valueAccessorExpression.ValueAccessor.Token.Type}")
         };
 
         return type;
@@ -58,10 +58,13 @@ public partial class TypeChecker
         bool allowUninstantiated)
     {
         var typeArguments = (expression.ValueAccessor.TypeArguments ?? [])
-            .Select<ITypeIdentifier, (ITypeReference, SourceRange SourceRange)>(x => (GetTypeReference(x), x.SourceRange))
+            .Select(x => (GetTypeReference(x), x.SourceRange))
             .ToArray();
 
-        if (GetFunctionSignature(variableName.StringValue) is { } function)
+        if (GetFunctionSignature(
+            variableName.StringValue,
+            [.. expression.ValueAccessor.ModulePath.Select(x => x.StringValue)],
+            expression.ValueAccessor.ModulePathIsGlobal) is { } function)
         {
             var instantiatedFunction = InstantiateFunction(
                 function,

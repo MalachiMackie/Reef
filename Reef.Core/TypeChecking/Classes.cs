@@ -11,7 +11,7 @@ public partial class TypeChecker
         public static string TupleFieldName(int index) => $"Item{index}";
 
         public static ClassSignature Unit { get; } = new()
-        { Id = DefId.Unit, TypeParameters = [], Name = "Unit", Fields = [], Functions = [], Boxed = false };
+        { Id = DefId.Unit, TypeParameters = [], Name = "Unit", Fields = [], Functions = [], Boxed = false, IsPublic = true };
 
         public static ClassSignature String { get; } = new()
         {
@@ -39,34 +39,35 @@ public partial class TypeChecker
                 }
             ],
             Functions = [],
-            Boxed = false
+            Boxed = false,
+            IsPublic = true
         };
 
         public static ClassSignature Int64 => new()
-        { Id = DefId.Int64, TypeParameters = [], Name = "i64", Fields = [], Functions = [], Boxed = false };
+        { Id = DefId.Int64, TypeParameters = [], Name = "i64", Fields = [], Functions = [], Boxed = false, IsPublic = true };
         public static ClassSignature Int32 => new()
-        { Id = DefId.Int32, TypeParameters = [], Name = "i32", Fields = [], Functions = [], Boxed = false };
+        { Id = DefId.Int32, TypeParameters = [], Name = "i32", Fields = [], Functions = [], Boxed = false, IsPublic = true };
         public static ClassSignature Int16 => new()
-        { Id = DefId.Int16, TypeParameters = [], Name = "i16", Fields = [], Functions = [], Boxed = false };
+        { Id = DefId.Int16, TypeParameters = [], Name = "i16", Fields = [], Functions = [], Boxed = false, IsPublic = true };
         public static ClassSignature Int8 => new()
-        { Id = DefId.Int8, TypeParameters = [], Name = "i8", Fields = [], Functions = [], Boxed = false };
+        { Id = DefId.Int8, TypeParameters = [], Name = "i8", Fields = [], Functions = [], Boxed = false, IsPublic = true };
         public static ClassSignature UInt64 => new()
-        { Id = DefId.UInt64, TypeParameters = [], Name = "u64", Fields = [], Functions = [], Boxed = false };
+        { Id = DefId.UInt64, TypeParameters = [], Name = "u64", Fields = [], Functions = [], Boxed = false, IsPublic = true };
         public static ClassSignature UInt32 => new()
-        { Id = DefId.UInt32, TypeParameters = [], Name = "u32", Fields = [], Functions = [], Boxed = false };
+        { Id = DefId.UInt32, TypeParameters = [], Name = "u32", Fields = [], Functions = [], Boxed = false, IsPublic = true };
         public static ClassSignature UInt16 => new()
-        { Id = DefId.UInt16, TypeParameters = [], Name = "u16", Fields = [], Functions = [], Boxed = false };
+        { Id = DefId.UInt16, TypeParameters = [], Name = "u16", Fields = [], Functions = [], Boxed = false, IsPublic = true };
         public static ClassSignature UInt8 => new()
-        { Id = DefId.UInt8, TypeParameters = [], Name = "u8", Fields = [], Functions = [], Boxed = false };
+        { Id = DefId.UInt8, TypeParameters = [], Name = "u8", Fields = [], Functions = [], Boxed = false, IsPublic = true };
 
         public static ClassSignature RawPointer => new()
-        { Id = DefId.RawPointer, TypeParameters = [], Name = "rawPointer", Fields = [], Functions = [], Boxed = false };
+        { Id = DefId.RawPointer, TypeParameters = [], Name = "rawPointer", Fields = [], Functions = [], Boxed = false, IsPublic = true };
 
         public static ClassSignature Boolean => new()
-        { Id = DefId.Boolean, TypeParameters = [], Name = "bool", Fields = [], Functions = [], Boxed = false };
+        { Id = DefId.Boolean, TypeParameters = [], Name = "bool", Fields = [], Functions = [], Boxed = false, IsPublic = true };
 
         public static ClassSignature Never => new()
-        { Id = DefId.Never, TypeParameters = [], Name = "!", Fields = [], Functions = [], Boxed = false };
+        { Id = DefId.Never, TypeParameters = [], Name = "!", Fields = [], Functions = [], Boxed = false, IsPublic = true };
 
         public static IEnumerable<ClassSignature> BuiltInTypes { get; } = [
             Unit,
@@ -89,6 +90,7 @@ public partial class TypeChecker
         public required IReadOnlyList<FunctionSignature> Functions { get; init; }
         public required string Name { get; init; }
         public required DefId Id { get; init; }
+        public required bool IsPublic { get; init; }
 
         private static readonly ConcurrentDictionary<int, ClassSignature> CachedFunctionClasses = [];
 
@@ -110,6 +112,7 @@ public partial class TypeChecker
 
             var signature = new ClassSignature
             {
+                IsPublic = true,
                 Id = DefId.FunctionObject(parameterCount),
                 Name = functionName,
                 TypeParameters = typeParameters,
@@ -131,7 +134,8 @@ public partial class TypeChecker
                 IsMutable: false,
                 Expressions: [],
                 true,
-                IsMutableReturn: false) // todo: I don't know what to do with this, how can a function object specify mutable return?
+                IsMutableReturn: false, // todo: I don't know what to do with this, how can a function object specify mutable return?
+                IsPublic: true)
             {
                 ReturnType = null!,
                 OwnerType = signature
@@ -189,7 +193,8 @@ public partial class TypeChecker
                 Name = name,
                 Fields = fields,
                 Functions = [],
-                Boxed = false
+                Boxed = false,
+                IsPublic = true
             };
             typeParameters.AddRange(Enumerable.Range(0, elementCount).Select(x => new GenericPlaceholder
             {
@@ -302,6 +307,7 @@ public partial class TypeChecker
         public GenericPlaceholder ElementGenericPlaceholder { get; }
         public IReadOnlyList<GenericPlaceholder> TypeParameters => [ElementGenericPlaceholder];
         public bool Boxed => true;
+        public bool IsPublic => true;
 
         private ArrayTypeSignature()
         {

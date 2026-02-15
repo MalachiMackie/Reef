@@ -105,11 +105,11 @@ public partial class TypeChecker
             length: (uint)e.LengthSpecifier.IntValue);
     }
 
-    private InstantiatedClass TypeCheckTypeIdentifierExpression(TypeIdentifierExpression e)
+    private ITypeReference TypeCheckTypeIdentifierExpression(TypeIdentifierExpression e)
     {
         AddError(TypeCheckerError.TypeIsNotExpression(e.SourceRange, e.TypeIdentifier));
 
-        return InstantiatedClass.Never;
+        return UnknownType.Instance;
     }
 
     private uint _loopDepth;
