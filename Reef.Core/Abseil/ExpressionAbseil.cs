@@ -28,7 +28,7 @@ public partial class ProgramAbseil
     {
         public IOperand ToOperand() => new Copy(Value);
     }
-    
+
     private IExpressionResult LowerExpression(IExpression expression, IPlace? destination)
     {
         Debug.Assert(_basicBlocks[^1].Terminator is null);
@@ -82,7 +82,7 @@ public partial class ProgramAbseil
             LoweredPointer(LoweredArray x) => x,
             _ => throw new InvalidOperationException()
         };
-        
+
         _basicBlockStatements.Add(
             new Assign(new Local(boundsCheckResultLocalName),
                 new BinaryOperation(
@@ -91,7 +91,7 @@ public partial class ProgramAbseil
                     BinaryOperationKind.LessThan)));
 
         var nextBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
-        
+
         _basicBlocks[^1].Terminator = new Assert(
             new Copy(new Local(boundsCheckResultLocalName)),
             nextBasicBlockId);
@@ -117,14 +117,14 @@ public partial class ProgramAbseil
         {
             throw new UnreachableException();
         }
-        
+
         if (collectionType is LoweredPointer)
         {
             collectionPlace = new Deref(collectionPlace);
         }
 
         var indexPlace = new Index(collectionPlace, index.ToOperand());
-        
+
         if (destination is not null)
         {
             _basicBlockStatements.Add(new Assign(
@@ -135,7 +135,7 @@ public partial class ProgramAbseil
         {
             destination = indexPlace;
         }
-        
+
         return new PlaceResult(destination);
     }
 
@@ -150,7 +150,7 @@ public partial class ProgramAbseil
             _locals.Add(local);
             destination = new Local(localName);
         }
-        
+
         if (type is LoweredPointer(var pointerTo))
         {
             _basicBlocks[^1].Terminator = new MethodCall(
@@ -158,19 +158,19 @@ public partial class ProgramAbseil
                 [new SizeOf(pointerTo)],
                 destination,
                 new BasicBlockId($"bb{_basicBlocks.Count}"));
-            
+
             _basicBlockStatements = [];
             _basicBlocks.Add(new BasicBlock(new BasicBlockId($"bb{_basicBlocks.Count}"), _basicBlockStatements));
-            
+
             destination = new Deref(destination);
             type = pointerTo;
         }
-        
+
         if (type is not LoweredArray arrayType)
         {
             throw new InvalidOperationException("Expected array type");
         }
-        
+
         _basicBlockStatements.Add(new Assign(
             destination,
             new CreateArray(arrayType)));
@@ -183,7 +183,7 @@ public partial class ProgramAbseil
 
         return new PlaceResult(destination);
     }
-    
+
     private IExpressionResult LowerCollectionExpression(CollectionExpression collectionExpression, IPlace? destination)
     {
         var type = GetTypeReference(collectionExpression.ResolvedType.NotNull());
@@ -202,10 +202,10 @@ public partial class ProgramAbseil
                 [new SizeOf(pointerTo)],
                 destination,
                 new BasicBlockId($"bb{_basicBlocks.Count}"));
-            
+
             _basicBlockStatements = [];
             _basicBlocks.Add(new BasicBlock(new BasicBlockId($"bb{_basicBlocks.Count}"), _basicBlockStatements));
-            
+
             destination = new Deref(destination);
             type = pointerTo;
         }
@@ -214,7 +214,7 @@ public partial class ProgramAbseil
         {
             throw new InvalidOperationException("Expected array type");
         }
-        
+
         _basicBlockStatements.Add(new Assign(
             destination,
             new CreateArray(arrayType)));
@@ -232,7 +232,7 @@ public partial class ProgramAbseil
         var loopBasicBlocks = _loopBasicBlocksStack.Peek();
         _basicBlocks[^1].Terminator = new GoTo(loopBasicBlocks.Beginning);
         GetNextEmptyBasicBlock();
-        
+
         return new OperandResult(new UnitConstant());
     }
 
@@ -241,7 +241,7 @@ public partial class ProgramAbseil
         var loopBasicBlocks = _loopBasicBlocksStack.Peek();
         _basicBlocks[^1].Terminator = new GoTo(loopBasicBlocks.After);
         GetNextEmptyBasicBlock();
-        
+
         return new OperandResult(new UnitConstant());
     }
 
@@ -250,10 +250,10 @@ public partial class ProgramAbseil
         var beginningBasicBlockId = GetNextEmptyBasicBlock();
         var afterBasicBlockId = new BasicBlockId("after");
         var bodyBasicBlockId = new BasicBlockId("body");
-        
+
         _controlFlowDepth++;
         _loopBasicBlocksStack.Push(new LoopBasicBlocks(beginningBasicBlockId, afterBasicBlockId));
-        
+
         var checkValue = LowerExpression(expression.Check.NotNull(), null);
 
         _basicBlocks[^1].Terminator = new SwitchInt(
@@ -284,7 +284,7 @@ public partial class ProgramAbseil
             _locals.Add(new MethodLocal(localName, null, GetTypeReference(expression.ResolvedType.NotNull())));
             destination = new Local(localName);
         }
-        
+
         var valueOperand = LowerExpression(expression.IfExpression.CheckExpression, null).ToOperand();
 
         _controlFlowDepth++;
@@ -293,7 +293,7 @@ public partial class ProgramAbseil
         var afterBasicBlockId = new BasicBlockId("after");
         var elseBasicBlockId = expression.IfExpression.ElseBody is null ? afterBasicBlockId : new BasicBlockId("else");
         var elseIfBasicBlockIds = Enumerable.Range(0, expression.IfExpression.ElseIfs.Count).Select(x => new BasicBlockId($"elseIf{x}")).ToArray();
-        
+
         _basicBlocks[^1].Terminator = new SwitchInt(
             valueOperand,
             new Dictionary<int, BasicBlockId>
@@ -312,7 +312,7 @@ public partial class ProgramAbseil
             basicBlockId.Id = GetNextEmptyBasicBlock().Id;
 
             var elseIfCheck = LowerExpression(elseIf.CheckExpression, null);
-            
+
             var elseIfBodyBasicBlockId = new BasicBlockId("elseIfBody");
 
             _basicBlocks[^1].Terminator = new SwitchInt(
@@ -345,7 +345,7 @@ public partial class ProgramAbseil
 
     private BasicBlockId GetNextEmptyBasicBlock()
     {
-        if (_basicBlocks[^1] is {Statements.Count: 0, Terminator: null, Id: var id})
+        if (_basicBlocks[^1] is { Statements.Count: 0, Terminator: null, Id: var id })
         {
             return id;
         }
@@ -356,7 +356,7 @@ public partial class ProgramAbseil
 
         return id;
     }
-    
+
     private IExpressionResult LowerMatchPatterns(
             List<(IPattern Pattern, IExpression Expression)> patterns,
             IExpressionResult accessExpression,
@@ -382,31 +382,31 @@ public partial class ProgramAbseil
         var typeNodes = new List<TypeNode>();
         var discardNodes = new List<DiscardNode>();
         var variantNodes = new List<VariantNode>();
-        
+
         foreach (var node in tree)
         {
             switch (node)
             {
                 case DiscardNode discardNode:
-                {
-                    discardNodes.Add(discardNode);
-                    break;
-                }
+                    {
+                        discardNodes.Add(discardNode);
+                        break;
+                    }
                 case TypeNode typeNode:
-                {
-                    typeNodes.Add(typeNode);
-                    break;
-                }
+                    {
+                        typeNodes.Add(typeNode);
+                        break;
+                    }
                 case VariantNode variantNode:
-                {
-                    variantNodes.Add(variantNode);
-                    break;
-                }
+                    {
+                        variantNodes.Add(variantNode);
+                        break;
+                    }
                 default:
                     throw new ArgumentOutOfRangeException(nameof(node));
             }
         }
-        
+
         Debug.Assert(discardNodes.Count <= 1);
 
         if (discardNodes.Count == 1)
@@ -419,13 +419,13 @@ public partial class ProgramAbseil
                     _basicBlockStatements.Add(
                         new Assign(GetLocalVariablePlace(variable), new Use(accessor.ToOperand())));
                 }
-                
+
                 LowerExpression(discardNode.Expression.NotNull(), destination);
                 return;
             }
 
             otherwiseBasicBlockId = new BasicBlockId("otherwise");
-            
+
         }
 
         if (variantNodes.Count > 0)
@@ -451,7 +451,7 @@ public partial class ProgramAbseil
             {
                 accessorPlace = new Deref(accessorPlace);
             }
-            
+
             // if we have variant nodes, then all the nodes must be variant nodes (except for any discard nodes), and they must all be for the same type
             Debug.Assert(typeNodes.Count == 0);
             Debug.Assert(variantNodes.Skip(1).All(x => EqualTypeReferences(x.Type, type) && x.Accessor.Equals(accessor)));
@@ -463,7 +463,7 @@ public partial class ProgramAbseil
                 new Copy(new Field(accessorPlace, VariantIdentifierFieldName, dataType.Variants[0].Name)),
                 caseResults,
                 otherwiseBasicBlockId);
-            
+
             foreach (var variantNode in variantNodes)
             {
                 _basicBlocks[^1].Terminator ??= new GoTo(afterBasicBlockId);
@@ -497,7 +497,7 @@ public partial class ProgramAbseil
                         ]
                      }
                      */
-                    
+
                     if (variantNode.Branches.Count > 0)
                     {
                         otherwiseBasicBlockId = new BasicBlockId("after");
@@ -522,13 +522,13 @@ public partial class ProgramAbseil
                         _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
 
                         otherwiseBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
-                        
+
                         foreach (var (variable, variableAccessor) in GetAncestorVariableAssignments(variantNode))
                         {
                             _basicBlockStatements.Add(
                                 new Assign(GetLocalVariablePlace(variable), new Use(variableAccessor.ToOperand())));
                         }
-                        
+
                         LowerExpression(variantNode.Expression, destination);
                     }
                 }
@@ -539,7 +539,7 @@ public partial class ProgramAbseil
         {
             // for now there can only be a single type node. when interfaces are introduced and there are multiple type nodes, this will need a runtime check
             Debug.Assert(typeNodes.Count == 1);
-            
+
             var typeNode = typeNodes[0];
 
             if (typeNode.Expression is not null)
@@ -554,7 +554,7 @@ public partial class ProgramAbseil
                  }
                  This will end up with like TypeNode {type: MyUnion, expression: 2, branches: [VariantNode{variant: A, expression: 1}]}
                  */
-                
+
                 if (typeNode.Branches.Count > 0)
                 {
                     otherwiseBasicBlockId = new BasicBlockId("otherwise");
@@ -569,7 +569,7 @@ public partial class ProgramAbseil
                     LowerExpression(typeNode.Expression, destination);
                 }
             }
-            
+
             if (typeNode.Branches.Count > 0)
             {
                 LowerMatchTree(typeNode.Branches, destination, otherwiseBasicBlockId, afterBasicBlockId);
@@ -578,7 +578,7 @@ public partial class ProgramAbseil
                 {
                     _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
                     otherwiseBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
-                    
+
                     foreach (var (variable, variableAccessor) in GetAncestorVariableAssignments(typeNode))
                     {
                         _basicBlockStatements.Add(
@@ -594,7 +594,7 @@ public partial class ProgramAbseil
             var discardNode = discardNodes[0];
             _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
             otherwiseBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
-            
+
             foreach (var (variable, variableAccessor) in GetAncestorVariableAssignments(discardNode))
             {
                 _basicBlockStatements.Add(
@@ -609,13 +609,13 @@ public partial class ProgramAbseil
     {
         return node switch
         {
-            {Ancestor: null, Variable: null} => [],
-            {Ancestor: null, Variable: {} variable, Accessor: var accessor} => [(variable, accessor)],
-            {Ancestor: {} ancestor, Variable: null} => GetAncestorVariableAssignments(ancestor),
-            {Ancestor: {} ancestor, Variable: {} variable, Accessor: var accessor} => [(variable, accessor), ..GetAncestorVariableAssignments(ancestor)]
+            { Ancestor: null, Variable: null } => [],
+            { Ancestor: null, Variable: { } variable, Accessor: var accessor } => [(variable, accessor)],
+            { Ancestor: { } ancestor, Variable: null } => GetAncestorVariableAssignments(ancestor),
+            { Ancestor: { } ancestor, Variable: { } variable, Accessor: var accessor } => [(variable, accessor), .. GetAncestorVariableAssignments(ancestor)]
         };
     }
-    
+
     private interface INode
     {
         IExpressionResult Accessor { get; }
@@ -666,7 +666,7 @@ public partial class ProgramAbseil
             var patternNode = CreateNodeFromPattern(ancestor: null, pattern, ref accessExpression, valueType);
             InsertNodeIntoMatchTree(rootNodes, patternNode, expression);
         }
-        
+
         return rootNodes;
     }
 
@@ -681,12 +681,12 @@ public partial class ProgramAbseil
             var local = new MethodLocal(LocalName((uint)_locals.Count), null, valueType);
             _locals.Add(local);
             var place = new Local(local.CompilerGivenName);
-            
+
             _basicBlockStatements.Add(new Assign(place, new Use(operandValue)));
 
             return place;
         }
-        
+
         throw new UnreachableException();
     }
 
@@ -694,7 +694,7 @@ public partial class ProgramAbseil
     {
         // incoming nodes will either have one or 0 branches 
         Debug.Assert(patternNode.Branches.Count <= 1);
-        
+
         foreach (var node in tree.Where(node => AreNodesShallowEqual(node, patternNode)))
         {
             Debug.Assert(node.Accessor.Equals(patternNode.Accessor));
@@ -705,13 +705,13 @@ public partial class ProgramAbseil
 
                 return;
             }
-            
+
             InsertNodeIntoMatchTree(node.Branches, patternNode.Branches[0], expression);
-            
+
             return;
         }
         tree.Add(patternNode);
-        
+
         var leaf = GetNodeLeafs(patternNode).Single();
         Debug.Assert(leaf.Expression is null);
         leaf.Expression = expression;
@@ -734,214 +734,216 @@ public partial class ProgramAbseil
         switch (pattern)
         {
             case ClassPattern classPattern:
-            {
-                var typeReference = GetTypeReference(classPattern.TypeReference.NotNull());
-                var concreteType = GetConcreteTypeReference(typeReference);
-                
-                var variant = GetDataType(concreteType.DefinitionId)
-                    .Variants[0];
-                
-                var typeNode = new TypeNode(ancestor, concreteType, accessor, [], classPattern.Variable);
-                
-                INode previousNode = typeNode;
-                
-                IPlace accessorPlace;
-                if (accessor is PlaceResult(var placeValue))
                 {
-                    accessorPlace = placeValue;
-                }
-                else if (accessor is OperandResult)
-                {
-                    accessorPlace = ExpressionResultIntoPlace(accessor, valueType);
-                    accessor = new PlaceResult(accessorPlace);
-                }
-                else
-                {
-                    throw new UnreachableException();
-                }
-                
-                if (valueType is LoweredPointer && accessorPlace is not Deref)
-                {
-                    accessorPlace = new Deref(accessorPlace);
-                }
-                
-                // loop through the variant's fields rather that the field patterns so that we every branch has the same order and number of fields
-                foreach (var field in variant.Fields)
-                {
-                    var fieldPattern =
-                        classPattern.FieldPatterns.FirstOrDefault(x =>
-                            x.FieldName.StringValue == field.Name)
-                        ?? new FieldPattern(Token.Identifier(field.Name, SourceSpan.Default), new DiscardPattern(SourceRange.Default));
+                    var typeReference = GetTypeReference(classPattern.TypeReference.NotNull());
+                    var concreteType = GetConcreteTypeReference(typeReference);
 
-                    IExpressionResult fieldPlace = new PlaceResult(new Field(accessorPlace, fieldPattern.FieldName.StringValue, ClassVariantName));
-                    
-                    var newNode = CreateNodeFromPattern(previousNode, fieldPattern.Pattern ??
-                                                        new VariableDeclarationPattern(fieldPattern.FieldName,
-                                                            SourceRange.Default, IsMut: false){Variable = fieldPattern.Variable},
-                        ref fieldPlace,
-                        field.Type);
+                    var variant = GetDataType(concreteType.DefinitionId)
+                        .Variants[0];
 
-                    var leaf = GetNodeLeafs(newNode).Single();
-                    
-                    previousNode.Branches.Add(newNode);
-                    previousNode = leaf;
+                    var typeNode = new TypeNode(ancestor, concreteType, accessor, [], classPattern.Variable);
+
+                    INode previousNode = typeNode;
+
+                    IPlace accessorPlace;
+                    if (accessor is PlaceResult(var placeValue))
+                    {
+                        accessorPlace = placeValue;
+                    }
+                    else if (accessor is OperandResult)
+                    {
+                        accessorPlace = ExpressionResultIntoPlace(accessor, valueType);
+                        accessor = new PlaceResult(accessorPlace);
+                    }
+                    else
+                    {
+                        throw new UnreachableException();
+                    }
+
+                    if (valueType is LoweredPointer && accessorPlace is not Deref)
+                    {
+                        accessorPlace = new Deref(accessorPlace);
+                    }
+
+                    // loop through the variant's fields rather that the field patterns so that we every branch has the same order and number of fields
+                    foreach (var field in variant.Fields)
+                    {
+                        var fieldPattern =
+                            classPattern.FieldPatterns.FirstOrDefault(x =>
+                                x.FieldName.StringValue == field.Name)
+                            ?? new FieldPattern(Token.Identifier(field.Name, SourceSpan.Default), new DiscardPattern(SourceRange.Default));
+
+                        IExpressionResult fieldPlace = new PlaceResult(new Field(accessorPlace, fieldPattern.FieldName.StringValue, ClassVariantName));
+
+                        var newNode = CreateNodeFromPattern(previousNode, fieldPattern.Pattern ??
+                                                            new VariableDeclarationPattern(fieldPattern.FieldName,
+                                                                SourceRange.Default, IsMut: false)
+                                                            { Variable = fieldPattern.Variable },
+                            ref fieldPlace,
+                            field.Type);
+
+                        var leaf = GetNodeLeafs(newNode).Single();
+
+                        previousNode.Branches.Add(newNode);
+                        previousNode = leaf;
+                    }
+
+                    return typeNode;
                 }
-
-                return typeNode;
-            }
             case DiscardPattern:
                 return new DiscardNode(ancestor, accessor, [], null);
             case TypePattern typePattern:
                 return new TypeNode(ancestor, GetConcreteTypeReference(GetTypeReference(typePattern.TypeReference.NotNull())), accessor, [], typePattern.Variable);
             case UnionClassVariantPattern unionClassVariantPattern:
-            {
-                var typeReference = GetConcreteTypeReference(GetTypeReference(unionClassVariantPattern.TypeReference.NotNull()));
-                var typeNode = new TypeNode(ancestor, typeReference, accessor, [], null);
-                
-                var node = new VariantNode(
-                    typeNode,
-                    typeReference,
-                    unionClassVariantPattern.TypeReference.NotNull(),
-                    unionClassVariantPattern.VariantName.StringValue,
-                    accessor,
-                    [],
-                    unionClassVariantPattern.Variable);
-
-                typeNode.Branches.Add(node);
-
-                INode previousNode = node;
-
-                var variant = GetDataType(node.Type.NotNull().DefinitionId)
-                    .Variants.First(x => x.Name == node.VariantName);
-                
-                IPlace accessorPlace;
-                if (accessor is PlaceResult(var placeValue))
                 {
-                    accessorPlace = placeValue;
-                }
-                else if (accessor is OperandResult)
-                {
-                    accessorPlace = ExpressionResultIntoPlace(accessor, valueType);
-                    accessor = new PlaceResult(accessorPlace);
-                }
-                else
-                {
-                    throw new UnreachableException();
-                }
+                    var typeReference = GetConcreteTypeReference(GetTypeReference(unionClassVariantPattern.TypeReference.NotNull()));
+                    var typeNode = new TypeNode(ancestor, typeReference, accessor, [], null);
 
-                if (valueType is LoweredPointer && accessorPlace is not Deref)
-                {
-                    accessorPlace = new Deref(accessorPlace);
-                }
+                    var node = new VariantNode(
+                        typeNode,
+                        typeReference,
+                        unionClassVariantPattern.TypeReference.NotNull(),
+                        unionClassVariantPattern.VariantName.StringValue,
+                        accessor,
+                        [],
+                        unionClassVariantPattern.Variable);
 
-                // loop through the variant's fields rather that the field patterns so that we every branch has the same order and number of fields
-                foreach (var field in variant.Fields.Where(x => x.Name != VariantIdentifierFieldName))
-                {
-                    var fieldPattern =
-                        unionClassVariantPattern.FieldPatterns.FirstOrDefault(x =>
-                            x.FieldName.StringValue == field.Name)
-                        ?? new FieldPattern(Token.Identifier(field.Name, SourceSpan.Default), new DiscardPattern(SourceRange.Default));
-                    
-                    IExpressionResult fieldPlace = new PlaceResult(new Field(accessorPlace, fieldPattern.FieldName.StringValue, unionClassVariantPattern.VariantName.StringValue));
-                    
-                    var newNode = CreateNodeFromPattern(previousNode, fieldPattern.Pattern ??
-                                                        new VariableDeclarationPattern(fieldPattern.FieldName,
-                                                            SourceRange.Default, IsMut: false){Variable = fieldPattern.Variable},
-                        ref fieldPlace,
-                        field.Type);
+                    typeNode.Branches.Add(node);
 
-                    var leafs = GetNodeLeafs(newNode);
-                    var leaf = leafs.Single();
-                    
-                    previousNode.Branches.Add(newNode);
-                    previousNode = leaf;
+                    INode previousNode = node;
+
+                    var variant = GetDataType(node.Type.NotNull().DefinitionId)
+                        .Variants.First(x => x.Name == node.VariantName);
+
+                    IPlace accessorPlace;
+                    if (accessor is PlaceResult(var placeValue))
+                    {
+                        accessorPlace = placeValue;
+                    }
+                    else if (accessor is OperandResult)
+                    {
+                        accessorPlace = ExpressionResultIntoPlace(accessor, valueType);
+                        accessor = new PlaceResult(accessorPlace);
+                    }
+                    else
+                    {
+                        throw new UnreachableException();
+                    }
+
+                    if (valueType is LoweredPointer && accessorPlace is not Deref)
+                    {
+                        accessorPlace = new Deref(accessorPlace);
+                    }
+
+                    // loop through the variant's fields rather that the field patterns so that we every branch has the same order and number of fields
+                    foreach (var field in variant.Fields.Where(x => x.Name != VariantIdentifierFieldName))
+                    {
+                        var fieldPattern =
+                            unionClassVariantPattern.FieldPatterns.FirstOrDefault(x =>
+                                x.FieldName.StringValue == field.Name)
+                            ?? new FieldPattern(Token.Identifier(field.Name, SourceSpan.Default), new DiscardPattern(SourceRange.Default));
+
+                        IExpressionResult fieldPlace = new PlaceResult(new Field(accessorPlace, fieldPattern.FieldName.StringValue, unionClassVariantPattern.VariantName.StringValue));
+
+                        var newNode = CreateNodeFromPattern(previousNode, fieldPattern.Pattern ??
+                                                            new VariableDeclarationPattern(fieldPattern.FieldName,
+                                                                SourceRange.Default, IsMut: false)
+                                                            { Variable = fieldPattern.Variable },
+                            ref fieldPlace,
+                            field.Type);
+
+                        var leafs = GetNodeLeafs(newNode);
+                        var leaf = leafs.Single();
+
+                        previousNode.Branches.Add(newNode);
+                        previousNode = leaf;
+                    }
+
+                    return typeNode;
                 }
-                
-                return typeNode;
-            }
             case UnionTupleVariantPattern unionTupleVariantPattern:
-            {
-                var typeReference = GetConcreteTypeReference(GetTypeReference(unionTupleVariantPattern.TypeReference.NotNull()));
-                var typeNode = new TypeNode(ancestor, typeReference, accessor, [], null);
-                
-                var node = new VariantNode(
-                    typeNode,
-                    typeReference,
-                    unionTupleVariantPattern.TypeReference.NotNull(),
-                    unionTupleVariantPattern.VariantName.StringValue,
-                    accessor,
-                    [],
-                    unionTupleVariantPattern.Variable);
-
-                var dataType = GetDataType(typeReference.DefinitionId);
-                var variant = dataType.Variants.First(x => x.Name == unionTupleVariantPattern.VariantName.StringValue);
-                
-                typeNode.Branches.Add(node);
-
-                INode previousNode = node;
-                
-                IPlace accessorPlace;
-                if (accessor is PlaceResult(var placeValue))
                 {
-                    accessorPlace = placeValue;
-                }
-                else if (accessor is OperandResult)
-                {
-                    accessorPlace = ExpressionResultIntoPlace(accessor, valueType);
-                    accessor = new PlaceResult(accessorPlace);
-                }
-                else
-                {
-                    throw new UnreachableException();
-                }
-                
-                if (valueType is LoweredPointer && accessorPlace is not Deref)
-                {
-                    accessorPlace = new Deref(accessorPlace);
-                }
+                    var typeReference = GetConcreteTypeReference(GetTypeReference(unionTupleVariantPattern.TypeReference.NotNull()));
+                    var typeNode = new TypeNode(ancestor, typeReference, accessor, [], null);
 
-                // tuple patterns have to have the same number of patterns and in the same order, so just loop through the param patterns
-                foreach (var (i, memberPattern) in unionTupleVariantPattern.TupleParamPatterns.Index())
-                {
-                    IExpressionResult fieldPlace = new PlaceResult(new Field(accessorPlace, TupleElementName((uint)i), unionTupleVariantPattern.VariantName.StringValue));
-                    
-                    var newNode = CreateNodeFromPattern(
-                        previousNode,
-                        memberPattern,
-                        ref fieldPlace,
-                        variant.Fields.First(x => x.Name == TupleElementName((uint)i)).Type);
+                    var node = new VariantNode(
+                        typeNode,
+                        typeReference,
+                        unionTupleVariantPattern.TypeReference.NotNull(),
+                        unionTupleVariantPattern.VariantName.StringValue,
+                        accessor,
+                        [],
+                        unionTupleVariantPattern.Variable);
 
-                    var leafs = GetNodeLeafs(newNode);
-                    var leaf = leafs.Single();
+                    var dataType = GetDataType(typeReference.DefinitionId);
+                    var variant = dataType.Variants.First(x => x.Name == unionTupleVariantPattern.VariantName.StringValue);
 
-                    previousNode.Branches.Add(newNode);
-                    previousNode = leaf;
+                    typeNode.Branches.Add(node);
+
+                    INode previousNode = node;
+
+                    IPlace accessorPlace;
+                    if (accessor is PlaceResult(var placeValue))
+                    {
+                        accessorPlace = placeValue;
+                    }
+                    else if (accessor is OperandResult)
+                    {
+                        accessorPlace = ExpressionResultIntoPlace(accessor, valueType);
+                        accessor = new PlaceResult(accessorPlace);
+                    }
+                    else
+                    {
+                        throw new UnreachableException();
+                    }
+
+                    if (valueType is LoweredPointer && accessorPlace is not Deref)
+                    {
+                        accessorPlace = new Deref(accessorPlace);
+                    }
+
+                    // tuple patterns have to have the same number of patterns and in the same order, so just loop through the param patterns
+                    foreach (var (i, memberPattern) in unionTupleVariantPattern.TupleParamPatterns.Index())
+                    {
+                        IExpressionResult fieldPlace = new PlaceResult(new Field(accessorPlace, TupleElementName((uint)i), unionTupleVariantPattern.VariantName.StringValue));
+
+                        var newNode = CreateNodeFromPattern(
+                            previousNode,
+                            memberPattern,
+                            ref fieldPlace,
+                            variant.Fields.First(x => x.Name == TupleElementName((uint)i)).Type);
+
+                        var leafs = GetNodeLeafs(newNode);
+                        var leaf = leafs.Single();
+
+                        previousNode.Branches.Add(newNode);
+                        previousNode = leaf;
+                    }
+
+                    return typeNode;
                 }
-
-                return typeNode;
-            }
             case UnionVariantPattern unionVariantPattern:
-            {
-                var typeReference = GetConcreteTypeReference(GetTypeReference(unionVariantPattern.TypeReference.NotNull()));
-                var typeNode = new TypeNode(ancestor, typeReference, accessor, [], null);
+                {
+                    var typeReference = GetConcreteTypeReference(GetTypeReference(unionVariantPattern.TypeReference.NotNull()));
+                    var typeNode = new TypeNode(ancestor, typeReference, accessor, [], null);
 
-                var variantNode = new VariantNode(
-                    typeNode,
-                    typeReference,
-                    unionVariantPattern.TypeReference.NotNull(),
-                    unionVariantPattern.VariantName.NotNull().StringValue,
-                    accessor,
-                    [],
-                    unionVariantPattern.Variable);
-                
-                typeNode.Branches.Add(variantNode);
-                
-                return typeNode;
-            }
+                    var variantNode = new VariantNode(
+                        typeNode,
+                        typeReference,
+                        unionVariantPattern.TypeReference.NotNull(),
+                        unionVariantPattern.VariantName.NotNull().StringValue,
+                        accessor,
+                        [],
+                        unionVariantPattern.Variable);
+
+                    typeNode.Branches.Add(variantNode);
+
+                    return typeNode;
+                }
             case VariableDeclarationPattern variableDeclarationPattern:
-            {
-                return new DiscardNode(ancestor, accessor, [], variableDeclarationPattern.Variable);
-            }
+                {
+                    return new DiscardNode(ancestor, accessor, [], variableDeclarationPattern.Variable);
+                }
             default:
                 throw new UnreachableException();
         }
@@ -959,9 +961,9 @@ public partial class ProgramAbseil
         var accessResult = LowerExpression(e.Value, destination: null);
 
         var afterBasicBlockId = new BasicBlockId("after");
-        
+
         var result = LowerMatchPatterns(
-            [..e.Arms.Select(x => (x.Pattern, x.Expression.NotNull()))],
+            [.. e.Arms.Select(x => (x.Pattern, x.Expression.NotNull()))],
             accessResult,
             GetTypeReference(e.Value.ResolvedType.NotNull()),
             destination,
@@ -971,7 +973,7 @@ public partial class ProgramAbseil
 
         return result;
     }
-    
+
     private IExpressionResult LowerMatchesPattern(
             IExpressionResult value,
             IPattern pattern,
@@ -981,104 +983,104 @@ public partial class ProgramAbseil
         switch (pattern)
         {
             case DiscardPattern:
-            {
-                if (destination is not null)
                 {
-                    _basicBlockStatements.Add(new Assign(destination, new Use(new BoolConstant(true))));
-                }
+                    if (destination is not null)
+                    {
+                        _basicBlockStatements.Add(new Assign(destination, new Use(new BoolConstant(true))));
+                    }
 
-                return new OperandResult(new BoolConstant(true));
-            }
+                    return new OperandResult(new BoolConstant(true));
+                }
             case VariableDeclarationPattern { Variable: var variable }:
-            {
-                var localPlace = GetLocalVariablePlace(variable.NotNull());
-                _basicBlockStatements.Add(new Assign(localPlace, new Use(value.ToOperand())));
-                
-                if (destination is not null)
                 {
-                    _basicBlockStatements.Add(new Assign(destination, new Use(new BoolConstant(true))));
-                }
+                    var localPlace = GetLocalVariablePlace(variable.NotNull());
+                    _basicBlockStatements.Add(new Assign(localPlace, new Use(value.ToOperand())));
 
-                return new OperandResult(new BoolConstant(true));
-            }
+                    if (destination is not null)
+                    {
+                        _basicBlockStatements.Add(new Assign(destination, new Use(new BoolConstant(true))));
+                    }
+
+                    return new OperandResult(new BoolConstant(true));
+                }
             case TypePattern { Variable: var variable, TypeReference: var typeReference }:
-            {
-                var loweredTypeReference = GetTypeReference(typeReference.NotNull());
-                if (loweredTypeReference is not LoweredConcreteTypeReference)
                 {
-                    throw new NotImplementedException(
-                        "Only concrete type patterns are currently supported. This needs to be implemented when interfaces are added");
-                }
+                    var loweredTypeReference = GetTypeReference(typeReference.NotNull());
+                    if (loweredTypeReference is not LoweredConcreteTypeReference)
+                    {
+                        throw new NotImplementedException(
+                            "Only concrete type patterns are currently supported. This needs to be implemented when interfaces are added");
+                    }
 
-                if (variable is not null)
-                {
-                    _basicBlockStatements.Add(new Assign(GetLocalVariablePlace(variable), new Use(value.ToOperand())));
-                }
+                    if (variable is not null)
+                    {
+                        _basicBlockStatements.Add(new Assign(GetLocalVariablePlace(variable), new Use(value.ToOperand())));
+                    }
 
-                if (destination is not null)
-                {
-                    _basicBlockStatements.Add(new Assign(destination, new Use(new BoolConstant(true))));
-                }
+                    if (destination is not null)
+                    {
+                        _basicBlockStatements.Add(new Assign(destination, new Use(new BoolConstant(true))));
+                    }
 
-                return new OperandResult(new BoolConstant(true));
-            }
+                    return new OperandResult(new BoolConstant(true));
+                }
             case UnionVariantPattern
             {
                 Variable: var variable,
                 TypeReference: var unionType,
                 VariantName: var variantName
             }:
-            {
-                IPlace? valuePlace = null;
-                if (variable is not null)
                 {
-                    valuePlace = GetLocalVariablePlace(variable);
-                    _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
-                }
-                
-                var isBoxed = IsTypeReferenceBoxed(unionType.NotNull());
-                
-                var type = GetConcreteTypeReference(GetTypeReference(unionType.NotNull()));
-                var dataType = GetDataType(type.DefinitionId);
-                var (variantIndex, variant) = dataType.Variants.Index()
-                    .First(x => x.Item.Name == variantName.NotNull().StringValue);
+                    IPlace? valuePlace = null;
+                    if (variable is not null)
+                    {
+                        valuePlace = GetLocalVariablePlace(variable);
+                        _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
+                    }
 
-                if (destination is null)
-                {
-                    var localName = LocalName((uint)_locals.Count);
-                    _locals.Add(new MethodLocal(localName, null, boolType));
-                    destination = new Local(localName);
-                }
+                    var isBoxed = IsTypeReferenceBoxed(unionType.NotNull());
 
-                if (value is PlaceResult { Value: var place })
-                {
-                    // always prefer the original value place
-                    valuePlace = place;
-                }
-                else if (valuePlace is null)
-                {
-                    var localName = LocalName((uint)_locals.Count);
-                    _locals.Add(new MethodLocal(localName, null, type));
-                    valuePlace = new Local(localName);
-                    _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
-                    throw new NotImplementedException("I don't know if this is actually ever hit");
-                }
+                    var type = GetConcreteTypeReference(GetTypeReference(unionType.NotNull()));
+                    var dataType = GetDataType(type.DefinitionId);
+                    var (variantIndex, variant) = dataType.Variants.Index()
+                        .First(x => x.Item.Name == variantName.NotNull().StringValue);
 
-                if (isBoxed)
-                {
-                    valuePlace = new Deref(valuePlace);
-                }
-                
-                _basicBlockStatements.Add(
-                    new Assign(
-                        destination,
-                        new BinaryOperation(
-                            new Copy(new Field(valuePlace, VariantIdentifierFieldName, variant.Name)),
-                            new UIntConstant((uint)variantIndex, 2),
-                            BinaryOperationKind.Equal)));
+                    if (destination is null)
+                    {
+                        var localName = LocalName((uint)_locals.Count);
+                        _locals.Add(new MethodLocal(localName, null, boolType));
+                        destination = new Local(localName);
+                    }
 
-                return new PlaceResult(destination);
-            }
+                    if (value is PlaceResult { Value: var place })
+                    {
+                        // always prefer the original value place
+                        valuePlace = place;
+                    }
+                    else if (valuePlace is null)
+                    {
+                        var localName = LocalName((uint)_locals.Count);
+                        _locals.Add(new MethodLocal(localName, null, type));
+                        valuePlace = new Local(localName);
+                        _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
+                        throw new NotImplementedException("I don't know if this is actually ever hit");
+                    }
+
+                    if (isBoxed)
+                    {
+                        valuePlace = new Deref(valuePlace);
+                    }
+
+                    _basicBlockStatements.Add(
+                        new Assign(
+                            destination,
+                            new BinaryOperation(
+                                new Copy(new Field(valuePlace, VariantIdentifierFieldName, variant.Name)),
+                                new UIntConstant((uint)variantIndex, 2),
+                                BinaryOperationKind.Equal)));
+
+                    return new PlaceResult(destination);
+                }
             case UnionTupleVariantPattern
             {
                 VariantName: var variantName,
@@ -1086,101 +1088,101 @@ public partial class ProgramAbseil
                 TupleParamPatterns: var tupleParamPatterns,
                 TypeReference: var unionType,
             }:
-            {
-                IPlace? valuePlace = null;
-                if (variable is not null)
                 {
-                    valuePlace = GetLocalVariablePlace(variable);
-                    _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
-                }
-                
-                var isBoxed = IsTypeReferenceBoxed(unionType.NotNull());
-                
-                var type = GetConcreteTypeReference(GetTypeReference(unionType.NotNull()));
-                var dataType = GetDataType(type.DefinitionId);
-                var (variantIndex, variant) = dataType.Variants.Index()
-                    .First(x => x.Item.Name == variantName.NotNull().StringValue);
-
-                if (destination is null)
-                {
-                    var localName = LocalName((uint)_locals.Count);
-                    _locals.Add(new MethodLocal(localName, null, boolType));
-                    destination = new Local(localName);
-                }
-
-                if (value is PlaceResult { Value: var place })
-                {
-                    // always prefer the original value place
-                    valuePlace = place;
-                }
-                else if (valuePlace is null)
-                {
-                    var localName = LocalName((uint)_locals.Count);
-                    _locals.Add(new MethodLocal(localName, null, type));
-                    valuePlace = new Local(localName);
-                    _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
-                    throw new NotImplementedException("I don't know if this is actually ever hit");
-                }
-                
-                if (isBoxed)
-                {
-                    valuePlace = new Deref(valuePlace);
-                }
-                
-                _basicBlockStatements.Add(
-                    new Assign(
-                        destination,
-                        new BinaryOperation(
-                            new Copy(new Field(valuePlace, VariantIdentifierFieldName, variant.Name)),
-                            new UIntConstant((uint)variantIndex, 2),
-                            BinaryOperationKind.Equal)));
-
-                Debug.Assert(tupleParamPatterns.Count > 0);
-                var initialBasicBlock = _basicBlocks[^1];
-
-                GetNextEmptyBasicBlock();
-                var nextBasicBlock = _basicBlocks[^1];
-
-                var afterBasicBlockId = new BasicBlockId("after");
-
-                initialBasicBlock.Terminator = new SwitchInt(
-                    new Copy(destination),
-                    new Dictionary<int, BasicBlockId>
+                    IPlace? valuePlace = null;
+                    if (variable is not null)
                     {
+                        valuePlace = GetLocalVariablePlace(variable);
+                        _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
+                    }
+
+                    var isBoxed = IsTypeReferenceBoxed(unionType.NotNull());
+
+                    var type = GetConcreteTypeReference(GetTypeReference(unionType.NotNull()));
+                    var dataType = GetDataType(type.DefinitionId);
+                    var (variantIndex, variant) = dataType.Variants.Index()
+                        .First(x => x.Item.Name == variantName.NotNull().StringValue);
+
+                    if (destination is null)
+                    {
+                        var localName = LocalName((uint)_locals.Count);
+                        _locals.Add(new MethodLocal(localName, null, boolType));
+                        destination = new Local(localName);
+                    }
+
+                    if (value is PlaceResult { Value: var place })
+                    {
+                        // always prefer the original value place
+                        valuePlace = place;
+                    }
+                    else if (valuePlace is null)
+                    {
+                        var localName = LocalName((uint)_locals.Count);
+                        _locals.Add(new MethodLocal(localName, null, type));
+                        valuePlace = new Local(localName);
+                        _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
+                        throw new NotImplementedException("I don't know if this is actually ever hit");
+                    }
+
+                    if (isBoxed)
+                    {
+                        valuePlace = new Deref(valuePlace);
+                    }
+
+                    _basicBlockStatements.Add(
+                        new Assign(
+                            destination,
+                            new BinaryOperation(
+                                new Copy(new Field(valuePlace, VariantIdentifierFieldName, variant.Name)),
+                                new UIntConstant((uint)variantIndex, 2),
+                                BinaryOperationKind.Equal)));
+
+                    Debug.Assert(tupleParamPatterns.Count > 0);
+                    var initialBasicBlock = _basicBlocks[^1];
+
+                    GetNextEmptyBasicBlock();
+                    var nextBasicBlock = _basicBlocks[^1];
+
+                    var afterBasicBlockId = new BasicBlockId("after");
+
+                    initialBasicBlock.Terminator = new SwitchInt(
+                        new Copy(destination),
+                        new Dictionary<int, BasicBlockId>
+                        {
                         { 0, afterBasicBlockId }
-                    },
-                    nextBasicBlock.Id);
-                
-                foreach (var (i, tupleParamPattern) in tupleParamPatterns.Index())
-                {
-                    LowerMatchesPattern(
-                        new PlaceResult(new Field(valuePlace, TupleElementName((uint)i), variant.Name)),
-                        tupleParamPattern,
-                        destination);
+                        },
+                        nextBasicBlock.Id);
 
-                    var nextBasicBlockId = GetNextEmptyBasicBlock(); 
-                    if (i + 1 < tupleParamPatterns.Count)
+                    foreach (var (i, tupleParamPattern) in tupleParamPatterns.Index())
                     {
-                        nextBasicBlock.Terminator = new SwitchInt(
-                            new Copy(destination),
-                            new Dictionary<int, BasicBlockId>
-                            {
+                        LowerMatchesPattern(
+                            new PlaceResult(new Field(valuePlace, TupleElementName((uint)i), variant.Name)),
+                            tupleParamPattern,
+                            destination);
+
+                        var nextBasicBlockId = GetNextEmptyBasicBlock();
+                        if (i + 1 < tupleParamPatterns.Count)
+                        {
+                            nextBasicBlock.Terminator = new SwitchInt(
+                                new Copy(destination),
+                                new Dictionary<int, BasicBlockId>
+                                {
                                 { 0, afterBasicBlockId },
-                            },
-                            nextBasicBlockId);
-                    }
-                    else
-                    {
-                        nextBasicBlock.Terminator = new GoTo(nextBasicBlockId);
+                                },
+                                nextBasicBlockId);
+                        }
+                        else
+                        {
+                            nextBasicBlock.Terminator = new GoTo(nextBasicBlockId);
+                        }
+
+                        nextBasicBlock = _basicBlocks[^1];
                     }
 
-                    nextBasicBlock = _basicBlocks[^1];
+                    afterBasicBlockId.Id = nextBasicBlock.Id.Id;
+
+                    return new PlaceResult(destination);
                 }
-
-                afterBasicBlockId.Id = nextBasicBlock.Id.Id;
-
-                return new PlaceResult(destination);
-            }
             case UnionClassVariantPattern
             {
                 VariantName: var variantName,
@@ -1188,192 +1190,192 @@ public partial class ProgramAbseil
                 FieldPatterns: var fieldPatterns,
                 TypeReference: var unionType,
             }:
-            {
-                IPlace? valuePlace = null;
-                if (variable is not null)
                 {
-                    valuePlace = GetLocalVariablePlace(variable);
-                    _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
-                }
-                
-                var isBoxed = IsTypeReferenceBoxed(unionType.NotNull());
-                var type = GetConcreteTypeReference(GetTypeReference(unionType.NotNull()));
-                var dataType = GetDataType(type.DefinitionId);
-                var (variantIndex, variant) = dataType.Variants.Index()
-                    .First(x => x.Item.Name == variantName.NotNull().StringValue);
+                    IPlace? valuePlace = null;
+                    if (variable is not null)
+                    {
+                        valuePlace = GetLocalVariablePlace(variable);
+                        _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
+                    }
 
-                if (destination is null)
-                {
-                    var localName = LocalName((uint)_locals.Count);
-                    _locals.Add(new MethodLocal(localName, null, boolType));
-                    destination = new Local(localName);
-                }
+                    var isBoxed = IsTypeReferenceBoxed(unionType.NotNull());
+                    var type = GetConcreteTypeReference(GetTypeReference(unionType.NotNull()));
+                    var dataType = GetDataType(type.DefinitionId);
+                    var (variantIndex, variant) = dataType.Variants.Index()
+                        .First(x => x.Item.Name == variantName.NotNull().StringValue);
 
-                if (value is PlaceResult { Value: var place })
-                {
-                    // always prefer the original value place
-                    valuePlace = place;
-                }
-                else if (valuePlace is null)
-                {
-                    var localName = LocalName((uint)_locals.Count);
-                    _locals.Add(new MethodLocal(localName, null, type));
-                    valuePlace = new Local(localName);
-                    _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
-                    throw new NotImplementedException("I don't know if this is actually ever hit");
-                }
-                
-                if (isBoxed)
-                {
-                    valuePlace = new Deref(valuePlace);
-                }
-                
-                _basicBlockStatements.Add(
-                    new Assign(
-                        destination,
-                        new BinaryOperation(
-                            new Copy(new Field(valuePlace, VariantIdentifierFieldName, variant.Name)),
-                            new UIntConstant((uint)variantIndex, 2),
-                            BinaryOperationKind.Equal)));
+                    if (destination is null)
+                    {
+                        var localName = LocalName((uint)_locals.Count);
+                        _locals.Add(new MethodLocal(localName, null, boolType));
+                        destination = new Local(localName);
+                    }
 
-                if (fieldPatterns.Count == 0)
-                {
+                    if (value is PlaceResult { Value: var place })
+                    {
+                        // always prefer the original value place
+                        valuePlace = place;
+                    }
+                    else if (valuePlace is null)
+                    {
+                        var localName = LocalName((uint)_locals.Count);
+                        _locals.Add(new MethodLocal(localName, null, type));
+                        valuePlace = new Local(localName);
+                        _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
+                        throw new NotImplementedException("I don't know if this is actually ever hit");
+                    }
+
+                    if (isBoxed)
+                    {
+                        valuePlace = new Deref(valuePlace);
+                    }
+
+                    _basicBlockStatements.Add(
+                        new Assign(
+                            destination,
+                            new BinaryOperation(
+                                new Copy(new Field(valuePlace, VariantIdentifierFieldName, variant.Name)),
+                                new UIntConstant((uint)variantIndex, 2),
+                                BinaryOperationKind.Equal)));
+
+                    if (fieldPatterns.Count == 0)
+                    {
+                        return new PlaceResult(destination);
+                    }
+
+                    var initialBasicBlock = _basicBlocks[^1];
+
+                    GetNextEmptyBasicBlock();
+                    var nextBasicBlock = _basicBlocks[^1];
+
+                    var afterBasicBlockId = new BasicBlockId("after");
+
+                    initialBasicBlock.Terminator = new SwitchInt(
+                        new Copy(destination),
+                        new Dictionary<int, BasicBlockId>
+                        {
+                        { 0, afterBasicBlockId }
+                        },
+                        nextBasicBlock.Id);
+
+                    foreach (var (i, fieldPattern) in fieldPatterns.Index())
+                    {
+                        LowerMatchesPattern(
+                            new PlaceResult(new Field(valuePlace, fieldPattern.FieldName.ToString(), variant.Name)),
+                            fieldPattern.Pattern ??
+                            new VariableDeclarationPattern(fieldPattern.FieldName, SourceRange.Default, IsMut: false) { Variable = fieldPattern.Variable.NotNull() },
+                            destination);
+
+                        var nextBasicBlockId = GetNextEmptyBasicBlock();
+                        if (i + 1 < fieldPatterns.Count)
+                        {
+                            nextBasicBlock.Terminator = new SwitchInt(
+                                new Copy(destination),
+                                new Dictionary<int, BasicBlockId>
+                                {
+                                { 0, afterBasicBlockId },
+                                },
+                                nextBasicBlockId);
+                        }
+                        else
+                        {
+                            nextBasicBlock.Terminator = new GoTo(nextBasicBlockId);
+                        }
+
+                        nextBasicBlock = _basicBlocks[^1];
+                    }
+
+                    afterBasicBlockId.Id = nextBasicBlock.Id.Id;
+
                     return new PlaceResult(destination);
                 }
-
-                var initialBasicBlock = _basicBlocks[^1];
-
-                GetNextEmptyBasicBlock();
-                var nextBasicBlock = _basicBlocks[^1];
-
-                var afterBasicBlockId = new BasicBlockId("after");
-
-                initialBasicBlock.Terminator = new SwitchInt(
-                    new Copy(destination),
-                    new Dictionary<int, BasicBlockId>
-                    {
-                        { 0, afterBasicBlockId }
-                    },
-                    nextBasicBlock.Id);
-                
-                foreach (var (i, fieldPattern) in fieldPatterns.Index())
-                {
-                    LowerMatchesPattern(
-                        new PlaceResult(new Field(valuePlace, fieldPattern.FieldName.ToString(), variant.Name)),
-                        fieldPattern.Pattern ?? 
-                        new VariableDeclarationPattern(fieldPattern.FieldName, SourceRange.Default, IsMut: false){Variable = fieldPattern.Variable.NotNull()},
-                        destination);
-
-                    var nextBasicBlockId = GetNextEmptyBasicBlock();
-                    if (i + 1 < fieldPatterns.Count)
-                    {
-                        nextBasicBlock.Terminator = new SwitchInt(
-                            new Copy(destination),
-                            new Dictionary<int, BasicBlockId>
-                            {
-                                { 0, afterBasicBlockId },
-                            },
-                            nextBasicBlockId);
-                    }
-                    else
-                    {
-                        nextBasicBlock.Terminator = new GoTo(nextBasicBlockId);
-                    }
-
-                    nextBasicBlock = _basicBlocks[^1];
-                }
-
-                afterBasicBlockId.Id = nextBasicBlock.Id.Id;
-
-                return new PlaceResult(destination);
-            }
-        case ClassPattern
+            case ClassPattern
             {
                 Variable: var variable,
                 FieldPatterns: var fieldPatterns,
                 TypeReference: var unionType,
             }:
-            {
-                IPlace? valuePlace = null;
-                if (variable is not null)
                 {
-                    valuePlace = GetLocalVariablePlace(variable);
-                    _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
-                }
-                
-                var isBoxed = IsTypeReferenceBoxed(unionType.NotNull());
-                var type = GetConcreteTypeReference(GetTypeReference(unionType.NotNull()));
+                    IPlace? valuePlace = null;
+                    if (variable is not null)
+                    {
+                        valuePlace = GetLocalVariablePlace(variable);
+                        _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
+                    }
 
-                if (destination is null)
-                {
-                    var localName = LocalName((uint)_locals.Count);
-                    _locals.Add(new MethodLocal(localName, null, boolType));
-                    destination = new Local(localName);
-                }
+                    var isBoxed = IsTypeReferenceBoxed(unionType.NotNull());
+                    var type = GetConcreteTypeReference(GetTypeReference(unionType.NotNull()));
 
-                if (value is PlaceResult { Value: var place })
-                {
-                    // always prefer the original value place
-                    valuePlace = place;
-                }
-                else if (valuePlace is null)
-                {
-                    var localName = LocalName((uint)_locals.Count);
-                    _locals.Add(new MethodLocal(localName, null, type));
-                    valuePlace = new Local(localName);
-                    _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
-                    throw new NotImplementedException("I don't know if this is actually ever hit");
-                }
-                
-                if (isBoxed)
-                {
-                    valuePlace = new Deref(valuePlace);
-                }
+                    if (destination is null)
+                    {
+                        var localName = LocalName((uint)_locals.Count);
+                        _locals.Add(new MethodLocal(localName, null, boolType));
+                        destination = new Local(localName);
+                    }
 
-                if (fieldPatterns.Count == 0)
-                {
-                    _basicBlockStatements.Add(
-                        new Assign(
-                            destination,
-                            new Use(new BoolConstant(true))));
+                    if (value is PlaceResult { Value: var place })
+                    {
+                        // always prefer the original value place
+                        valuePlace = place;
+                    }
+                    else if (valuePlace is null)
+                    {
+                        var localName = LocalName((uint)_locals.Count);
+                        _locals.Add(new MethodLocal(localName, null, type));
+                        valuePlace = new Local(localName);
+                        _basicBlockStatements.Add(new Assign(valuePlace, new Use(value.ToOperand())));
+                        throw new NotImplementedException("I don't know if this is actually ever hit");
+                    }
+
+                    if (isBoxed)
+                    {
+                        valuePlace = new Deref(valuePlace);
+                    }
+
+                    if (fieldPatterns.Count == 0)
+                    {
+                        _basicBlockStatements.Add(
+                            new Assign(
+                                destination,
+                                new Use(new BoolConstant(true))));
+
+                        return new PlaceResult(destination);
+                    }
+
+                    var afterBasicBlockId = new BasicBlockId("after");
+
+                    foreach (var (i, fieldPattern) in fieldPatterns.Index())
+                    {
+                        LowerMatchesPattern(
+                            new PlaceResult(new Field(valuePlace, fieldPattern.FieldName.ToString(), ClassVariantName)),
+                            fieldPattern.Pattern ??
+                            new VariableDeclarationPattern(fieldPattern.FieldName, SourceRange.Default, IsMut: false) { Variable = fieldPattern.Variable.NotNull() },
+                            destination);
+
+                        var basicBlock = _basicBlocks[^1];
+                        var nextBasicBlockId = GetNextEmptyBasicBlock();
+                        if (i + 1 < fieldPatterns.Count)
+                        {
+                            basicBlock.Terminator = new SwitchInt(
+                                new Copy(destination),
+                                new Dictionary<int, BasicBlockId>
+                                {
+                                { 0, afterBasicBlockId },
+                                },
+                                nextBasicBlockId);
+                        }
+                        else
+                        {
+                            basicBlock.Terminator = new GoTo(nextBasicBlockId);
+                        }
+
+                        afterBasicBlockId.Id = nextBasicBlockId.Id;
+                    }
 
                     return new PlaceResult(destination);
                 }
-                
-                var afterBasicBlockId = new BasicBlockId("after");
-
-                foreach (var (i, fieldPattern) in fieldPatterns.Index())
-                {
-                    LowerMatchesPattern(
-                        new PlaceResult(new Field(valuePlace, fieldPattern.FieldName.ToString(), ClassVariantName)),
-                        fieldPattern.Pattern ?? 
-                        new VariableDeclarationPattern(fieldPattern.FieldName, SourceRange.Default, IsMut: false){Variable = fieldPattern.Variable.NotNull()},
-                        destination);
-
-                    var basicBlock = _basicBlocks[^1];
-                    var nextBasicBlockId = GetNextEmptyBasicBlock();
-                    if (i + 1 < fieldPatterns.Count)
-                    {
-                        basicBlock.Terminator = new SwitchInt(
-                            new Copy(destination),
-                            new Dictionary<int, BasicBlockId>
-                            {
-                                { 0, afterBasicBlockId },
-                            },
-                            nextBasicBlockId);
-                    }
-                    else
-                    {
-                        basicBlock.Terminator = new GoTo(nextBasicBlockId);
-                    }
-
-                    afterBasicBlockId.Id = nextBasicBlockId.Id;
-                }
-
-                return new PlaceResult(destination);
-            }
         }
-        throw new NotImplementedException(); 
+        throw new NotImplementedException();
     }
 
     private IExpressionResult LowerMatches(
@@ -1395,13 +1397,13 @@ public partial class ProgramAbseil
             TypeChecker.InstantiatedClass instantiatedClass => instantiatedClass.Boxed,
             TypeChecker.InstantiatedUnion instantiatedUnion => instantiatedUnion.Boxed,
             TypeChecker.UnspecifiedSizedIntType unspecifiedSizedIntType => unspecifiedSizedIntType.Boxed,
-            TypeChecker.UnknownInferredType {ResolvedType: var resolvedType} => IsTypeReferenceBoxed(resolvedType.NotNull()),
+            TypeChecker.UnknownInferredType { ResolvedType: var resolvedType } => IsTypeReferenceBoxed(resolvedType.NotNull()),
             TypeChecker.UnknownType => throw new UnreachableException($"{typeReference.GetType()}"),
             TypeChecker.ArrayType arrayType => arrayType.Boxed,
             _ => throw new ArgumentOutOfRangeException(nameof(typeReference))
         };
     }
-    
+
     private IExpressionResult LowerUnionClassVariantInitializer(
         UnionClassVariantInitializerExpression e,
         IPlace? destination)
@@ -1414,12 +1416,12 @@ public partial class ProgramAbseil
             LoweredConcreteTypeReference unboxedTypeReference => unboxedTypeReference.DefinitionId,
             _ => throw new InvalidOperationException()
         };
-        
+
         var dataType = _types[definitionId];
-        
+
         var variantIdentifier = dataType.Variants.Index()
             .First(x => x.Item.Name == e.UnionInitializer.VariantIdentifier.StringValue).Index;
-        
+
         return CreateObject(
             typeReference,
             e.UnionInitializer.VariantIdentifier.StringValue,
@@ -1428,7 +1430,7 @@ public partial class ProgramAbseil
                 .Prepend(new CreateObjectField(VariantIdentifierFieldName, new UIntConstant((ulong)variantIdentifier, 2))),
             destination);
     }
-    
+
     private IExpressionResult LowerStaticMemberAccess(
             StaticMemberAccessExpression e,
             IPlace? destination)
@@ -1436,174 +1438,174 @@ public partial class ProgramAbseil
         switch (e.StaticMemberAccess.MemberType)
         {
             case MemberType.Variant:
-            {
-                var unionType = GetTypeReference(e.OwnerType.NotNull());
-                
-                var concreteType = unionType switch
                 {
-                    LoweredPointer(LoweredConcreteTypeReference pointerTo) => pointerTo,
-                    LoweredConcreteTypeReference unboxedTypeReference => unboxedTypeReference,
-                    _ => throw new InvalidOperationException()
-                };
+                    var unionType = GetTypeReference(e.OwnerType.NotNull());
 
-                var dataType = _types[concreteType.DefinitionId];
-                var variantName = e.StaticMemberAccess.MemberName.NotNull().StringValue;
-                var (variantIdentifier, variant) = dataType.Variants.Index()
-                    .First(x => x.Item.Name == variantName);
+                    var concreteType = unionType switch
+                    {
+                        LoweredPointer(LoweredConcreteTypeReference pointerTo) => pointerTo,
+                        LoweredConcreteTypeReference unboxedTypeReference => unboxedTypeReference,
+                        _ => throw new InvalidOperationException()
+                    };
 
-                if (variant.Fields is [{ Name: VariantIdentifierFieldName }])
-                {
-                    return CreateObject(
-                        unionType,
-                        variantName: e.StaticMemberAccess.MemberName.NotNull().StringValue,
-                        [
-                            new CreateObjectField(VariantIdentifierFieldName,
+                    var dataType = _types[concreteType.DefinitionId];
+                    var variantName = e.StaticMemberAccess.MemberName.NotNull().StringValue;
+                    var (variantIdentifier, variant) = dataType.Variants.Index()
+                        .First(x => x.Item.Name == variantName);
+
+                    if (variant.Fields is [{ Name: VariantIdentifierFieldName }])
+                    {
+                        return CreateObject(
+                            unionType,
+                            variantName: e.StaticMemberAccess.MemberName.NotNull().StringValue,
+                            [
+                                new CreateObjectField(VariantIdentifierFieldName,
                                 new UIntConstant((ulong)variantIdentifier, 2))
-                        ],
-                        destination);
-                }
-                
-                // we're statically accessing this variant, and there's at least one field. It must be a tuple variant
-                // because you can't access a class variant directly outside creating it. We're returning a 
-                // function object for this tuple create function
+                            ],
+                            destination);
+                    }
 
-                if (e.ResolvedType is not TypeChecker.FunctionObject)
-                {
-                    throw new InvalidOperationException($"Expected a function object, got a {e.ResolvedType?.GetType()}");
-                }
-                
-                var ownerTypeArguments = concreteType.TypeArguments;
+                    // we're statically accessing this variant, and there's at least one field. It must be a tuple variant
+                    // because you can't access a class variant directly outside creating it. We're returning a 
+                    // function object for this tuple create function
 
-                var fn = e.StaticMemberAccess.InstantiatedFunction.NotNull();
+                    if (e.ResolvedType is not TypeChecker.FunctionObject)
+                    {
+                        throw new InvalidOperationException($"Expected a function object, got a {e.ResolvedType?.GetType()}");
+                    }
 
-                var functionObjectType =
-                    GetTypeReference(e.ResolvedType.NotNull());
+                    var ownerTypeArguments = concreteType.TypeArguments;
 
-                return CreateObject(
-                    functionObjectType,
-                    ClassVariantName,
-                    [
-                        new CreateObjectField("FunctionReference", new FunctionPointerConstant(
+                    var fn = e.StaticMemberAccess.InstantiatedFunction.NotNull();
+
+                    var functionObjectType =
+                        GetTypeReference(e.ResolvedType.NotNull());
+
+                    return CreateObject(
+                        functionObjectType,
+                        ClassVariantName,
+                        [
+                            new CreateObjectField("FunctionReference", new FunctionPointerConstant(
                             GetFunctionReference(
                                 fn.FunctionId,
                                 [..fn.TypeArguments.Select(GetTypeReference)],
                                 ownerTypeArguments))),
-                    ],
-                    destination);
+                        ],
+                        destination);
 
-            }
+                }
             case MemberType.Function:
-            {
-                var ownerTypeArguments = GetConcreteTypeReference(GetTypeReference(e.OwnerType.NotNull())).TypeArguments;
-                var fn = e.StaticMemberAccess.InstantiatedFunction.NotNull();
+                {
+                    var ownerTypeArguments = GetConcreteTypeReference(GetTypeReference(e.OwnerType.NotNull())).TypeArguments;
+                    var fn = e.StaticMemberAccess.InstantiatedFunction.NotNull();
 
-                return CreateObject(
-                    GetTypeReference(e.ResolvedType.NotNull()),
-                    ClassVariantName,
-                    [new CreateObjectField("FunctionReference", new FunctionPointerConstant(
+                    return CreateObject(
+                        GetTypeReference(e.ResolvedType.NotNull()),
+                        ClassVariantName,
+                        [new CreateObjectField("FunctionReference", new FunctionPointerConstant(
                         GetFunctionReference(fn.FunctionId,
                             [..fn.TypeArguments.Select(GetTypeReference)],
                             ownerTypeArguments)))],
-                    destination);
-            }
-            case MemberType.Field:
-            {
-                var staticField = new StaticField(
-                    GetConcreteTypeReference(GetTypeReference(e.OwnerType.NotNull())),
-                    e.StaticMemberAccess.MemberName.NotNull().StringValue);
-
-                if (destination is not null)
-                {
-                    _basicBlockStatements.Add(new Assign(
-                        destination,
-                        new Use(new Copy(staticField))));
+                        destination);
                 }
-                
-                return new PlaceResult(destination ?? staticField);
-            }
+            case MemberType.Field:
+                {
+                    var staticField = new StaticField(
+                        GetConcreteTypeReference(GetTypeReference(e.OwnerType.NotNull())),
+                        e.StaticMemberAccess.MemberName.NotNull().StringValue);
+
+                    if (destination is not null)
+                    {
+                        _basicBlockStatements.Add(new Assign(
+                            destination,
+                            new Use(new Copy(staticField))));
+                    }
+
+                    return new PlaceResult(destination ?? staticField);
+                }
             default:
                 throw new UnreachableException();
         }
     }
-    
+
     private IExpressionResult LowerMemberAccess(
             MemberAccessExpression e,
             IPlace? destination)
     {
         var ownerResult = LowerExpression(e.MemberAccess.Owner, null);
-        
+
         switch (e.MemberAccess.MemberType.NotNull())
         {
             case MemberType.Field:
-            {
-                IPlace ownerPlace;
-
-                var ownerType = GetTypeReference(e.MemberAccess.OwnerType.NotNull());
-
-                switch (ownerResult)
                 {
-                    case OperandResult{Value: var operand}:
+                    IPlace ownerPlace;
+
+                    var ownerType = GetTypeReference(e.MemberAccess.OwnerType.NotNull());
+
+                    switch (ownerResult)
                     {
-                        var localName = LocalName((uint)_locals.Count);
-                        _locals.Add(new MethodLocal(localName, null, ownerType));
-            
-                        ownerPlace = new Local(localName);
-            
-                        _basicBlockStatements.Add(new Assign(
-                            ownerPlace,
-                            new Use(operand)));
-                        break;
+                        case OperandResult { Value: var operand }:
+                            {
+                                var localName = LocalName((uint)_locals.Count);
+                                _locals.Add(new MethodLocal(localName, null, ownerType));
+
+                                ownerPlace = new Local(localName);
+
+                                _basicBlockStatements.Add(new Assign(
+                                    ownerPlace,
+                                    new Use(operand)));
+                                break;
+                            }
+                        case PlaceResult { Value: var place }:
+                            ownerPlace = place;
+                            break;
+                        default:
+                            throw new UnreachableException();
                     }
-                    case PlaceResult{Value: var place}:
-                        ownerPlace = place;
-                        break;
-                    default:
-                        throw new UnreachableException();
-                }
 
-                if (IsTypeReferenceBoxed(e.MemberAccess.OwnerType.NotNull()))
-                {
-                    ownerPlace = new Deref(ownerPlace);
-                }
-                
-                var field = new Field(ownerPlace, e.MemberAccess.MemberName.NotNull().StringValue, ClassVariantName);
+                    if (IsTypeReferenceBoxed(e.MemberAccess.OwnerType.NotNull()))
+                    {
+                        ownerPlace = new Deref(ownerPlace);
+                    }
 
-                if (destination is not null)
-                {
-                    _basicBlockStatements.Add(new Assign(
-                        destination,
-                        new Use(new Copy(field))));
+                    var field = new Field(ownerPlace, e.MemberAccess.MemberName.NotNull().StringValue, ClassVariantName);
+
+                    if (destination is not null)
+                    {
+                        _basicBlockStatements.Add(new Assign(
+                            destination,
+                            new Use(new Copy(field))));
+                    }
+
+                    return new PlaceResult(destination ?? field);
                 }
-                
-                return new PlaceResult(destination ?? field);
-            }
             case MemberType.Function:
-            {
-                var concreteType = GetTypeReference(e.MemberAccess.OwnerType.NotNull()) switch
                 {
-                    LoweredPointer(LoweredConcreteTypeReference pointerTo) => pointerTo,
-                    LoweredConcreteTypeReference unboxedTypeReference => unboxedTypeReference,
-                    _ => throw new InvalidOperationException()
-                };
-                
-                var fn = e.MemberAccess.InstantiatedFunction.NotNull();
+                    var concreteType = GetTypeReference(e.MemberAccess.OwnerType.NotNull()) switch
+                    {
+                        LoweredPointer(LoweredConcreteTypeReference pointerTo) => pointerTo,
+                        LoweredConcreteTypeReference unboxedTypeReference => unboxedTypeReference,
+                        _ => throw new InvalidOperationException()
+                    };
 
-                var functionObjectType =
-                    GetTypeReference(e.ResolvedType.NotNull());
+                    var fn = e.MemberAccess.InstantiatedFunction.NotNull();
 
-                return CreateObject(
-                    functionObjectType,
-                    ClassVariantName,
-                    [
-                        new CreateObjectField("FunctionReference", new FunctionPointerConstant(
+                    var functionObjectType =
+                        GetTypeReference(e.ResolvedType.NotNull());
+
+                    return CreateObject(
+                        functionObjectType,
+                        ClassVariantName,
+                        [
+                            new CreateObjectField("FunctionReference", new FunctionPointerConstant(
                                 GetFunctionReference(
                                     fn.FunctionId,
                                     [..fn.TypeArguments.Select(GetTypeReference)],
                                     concreteType.TypeArguments))),
                         new CreateObjectField("FunctionParameter", ownerResult.ToOperand())
-                    ],
-                    destination);
-            }
+                        ],
+                        destination);
+                }
             case MemberType.Variant:
                 throw new InvalidOperationException("Can never access a variant through instance member access");
             default:
@@ -1635,7 +1637,7 @@ public partial class ProgramAbseil
             Expression = expression;
             Operand = null;
         }
-        
+
         public CreateObjectField(string fieldName, IOperand? operand)
         {
             FieldName = fieldName;
@@ -1671,13 +1673,13 @@ public partial class ProgramAbseil
                 [new SizeOf(concreteType)],
                 destination,
                 new BasicBlockId($"bb{_basicBlocks.Count}"));
-            
+
             _basicBlockStatements = [];
             _basicBlocks.Add(new BasicBlock(new BasicBlockId($"bb{_basicBlocks.Count}"), _basicBlockStatements));
-            
+
             destination = new Deref(destination);
         }
-        
+
         _basicBlockStatements.Add(new Assign(
             destination,
             new CreateObject(concreteType)));
@@ -1685,18 +1687,18 @@ public partial class ProgramAbseil
         foreach (var createObjectField in fields)
         {
             var field = new Field(destination, createObjectField.FieldName, variantName);
-            if (createObjectField.Expression is {} expression)
+            if (createObjectField.Expression is { } expression)
             {
                 LowerExpression(expression, field);
             }
-            else if (createObjectField.Operand is {} operand)
+            else if (createObjectField.Operand is { } operand)
             {
                 _basicBlockStatements.Add(new Assign(
                     field,
                     new Use(operand)));
             }
         }
-        
+
         return new PlaceResult(destination);
     }
 
@@ -1744,10 +1746,10 @@ public partial class ProgramAbseil
             var localName = $"_local{_locals.Count}";
             var local = new MethodLocal(localName, null, returnType);
             _locals.Add(local);
-            
+
             destination = new Local(localName);
         }
-        
+
         var instantiatedFunction = e.MethodCall.Method switch
         {
             MemberAccessExpression { MemberAccess.InstantiatedFunction: var fn } => fn,
@@ -1756,7 +1758,7 @@ public partial class ProgramAbseil
             _ => null
         };
 
-        IReadOnlyList<IOperand> originalArguments = [..e.MethodCall.ArgumentList.Select(x => LowerExpression(x, destination: null).ToOperand())];
+        IReadOnlyList<IOperand> originalArguments = [.. e.MethodCall.ArgumentList.Select(x => LowerExpression(x, destination: null).ToOperand())];
 
         var arguments = new List<IOperand>(e.MethodCall.ArgumentList.Count);
         LoweredFunctionReference functionReference;
@@ -1765,20 +1767,20 @@ public partial class ProgramAbseil
         if (instantiatedFunction is null)
         {
             var functionObjectResult = LowerExpression(e.MethodCall.Method, destination: null);
-            
+
             var methodType = GetConcreteTypeReference(GetTypeReference(e.MethodCall.Method.ResolvedType.NotNull()));
 
             var fn = _importedModules.SelectMany(x =>
                 x.Methods.Where(y => y.Name == $"Function`{e.MethodCall.ArgumentList.Count + 1}__Call"))
                 .First();
-            
+
             functionReference = GetFunctionReference(
                     fn.Id,
                     [],
                     methodType.TypeArguments);
 
             arguments.Add(functionObjectResult.ToOperand());
-            
+
             arguments.AddRange(originalArguments);
 
             var nextBasicBlockId = new BasicBlockId("after");
@@ -1789,7 +1791,7 @@ public partial class ProgramAbseil
 
             return new PlaceResult(destination);
         }
-        
+
         IReadOnlyList<ILoweredTypeReference> ownerTypeArguments = [];
         if (e.MethodCall.Method is MemberAccessExpression memberAccess)
         {
@@ -1802,7 +1804,7 @@ public partial class ProgramAbseil
         else if (instantiatedFunction.ClosureTypeId is not null)
         {
             var type = GetDataType(instantiatedFunction.ClosureTypeId);
-            
+
             var localName = LocalName((uint)_locals.Count);
             _locals.Add(new MethodLocal(
                 localName,
@@ -1834,7 +1836,7 @@ public partial class ProgramAbseil
                 ownerTypeArguments = _currentType.TypeArguments;
             }
             else if (valueAccessor.FunctionInstantiation.NotNull()
-                    .OwnerType is {} ownerType)
+                    .OwnerType is { } ownerType)
             {
                 var ownerTypeReference = GetTypeReference(ownerType);
                 if (ownerTypeReference is LoweredConcreteTypeReference
@@ -1848,7 +1850,7 @@ public partial class ProgramAbseil
         }
 
         functionReference = GetFunctionReference(instantiatedFunction.FunctionId,
-            [..instantiatedFunction.TypeArguments.Select<TypeChecker.GenericTypeReference, ILoweredTypeReference>(GetTypeReference)],
+            [.. instantiatedFunction.TypeArguments.Select<TypeChecker.GenericTypeReference, ILoweredTypeReference>(GetTypeReference)],
             ownerTypeArguments);
 
         arguments.AddRange(originalArguments);
@@ -1883,9 +1885,9 @@ public partial class ProgramAbseil
             _basicBlockStatements));
 
         destination = new Deref(destination);
-        
+
         Debug.Assert(_currentFunction.HasValue);
-        
+
         _basicBlockStatements.Add(
             new Assign(
                 destination,
@@ -1936,7 +1938,7 @@ public partial class ProgramAbseil
 
                             break;
                         }
-                        
+
                         Debug.Assert(_currentFunction.Value.FunctionSignature.LocalsTypeId is not null);
                         var localsType = _types[_currentFunction.Value.FunctionSignature.LocalsTypeId];
 
@@ -1947,7 +1949,7 @@ public partial class ProgramAbseil
                                     new Field(destination, localsType.Name, ClassVariantName),
                                     new Use(new Copy(new Local(LocalsObjectLocalName)))));
                         }
-                        
+
                         break;
                     }
                 case TypeChecker.ThisVariable:
@@ -2091,13 +2093,13 @@ public partial class ProgramAbseil
                     { 0, okBasicBlockId }
                 },
                 errBasicBlockId);
-        
+
         var currentMethod = _currentFunction.NotNull().LoweredMethod;
         var returnType = GetConcreteTypeReference(currentMethod.ReturnValue.Type);
 
         Debug.Assert(returnType.DefinitionId == DefId.Result);
 
-        
+
 
         errBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
         _basicBlocks[^1].Terminator = new MethodCall(
@@ -2105,7 +2107,7 @@ public partial class ProgramAbseil
             [new Copy(new Field(resultValuePlace, TupleElementName(0), "Error"))],
             new Local(ReturnValueLocalName),
             new BasicBlockId(TempReturnBasicBlockId));
-        
+
         _controlFlowDepth--;
 
         okBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
@@ -2130,7 +2132,7 @@ public partial class ProgramAbseil
         {
             return LowerFallOut(unaryOperatorExpression.UnaryOperator.Operand.NotNull(), destination);
         }
-        
+
         var valueOperand = LowerExpression(unaryOperatorExpression.UnaryOperator.Operand.NotNull(), destination: null).NotNull();
 
         if (destination is null)
@@ -2161,17 +2163,17 @@ public partial class ProgramAbseil
             return FunctionAccess(fn, (e.ResolvedType as TypeChecker.FunctionObject).NotNull(),
                 destination);
         }
-        
+
         var operand = e switch
         {
             { ValueAccessor: { AccessType: ValueAccessType.Literal, Token: StringToken { StringValue: var stringLiteral } } } => new OperandResult(new StringConstant(stringLiteral)),
-            { ValueAccessor: { AccessType: ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue} }, ResolvedType: var resolvedType} =>
+            { ValueAccessor: { AccessType: ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue } }, ResolvedType: var resolvedType } =>
                 new OperandResult(IsIntSigned(resolvedType.NotNull())
                     ? new IntConstant(intValue, GetIntSize(resolvedType.NotNull()))
                     : new UIntConstant((ulong)intValue, GetIntSize(resolvedType.NotNull()))),
-            { ValueAccessor: { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True }} => new OperandResult(new BoolConstant(true)),
-            { ValueAccessor: { AccessType: ValueAccessType.Literal, Token.Type: TokenType.False }} => new OperandResult(new BoolConstant(false)),
-            { ValueAccessor.AccessType: ValueAccessType.Variable, ReferencedVariable: {} variable} => VariableAccess(variable),
+            { ValueAccessor: { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True } } => new OperandResult(new BoolConstant(true)),
+            { ValueAccessor: { AccessType: ValueAccessType.Literal, Token.Type: TokenType.False } } => new OperandResult(new BoolConstant(false)),
+            { ValueAccessor.AccessType: ValueAccessType.Variable, ReferencedVariable: { } variable } => VariableAccess(variable),
             _ => throw new UnreachableException($"{e}")
         };
 
@@ -2181,7 +2183,7 @@ public partial class ProgramAbseil
         }
 
         return operand;
-        
+
         IExpressionResult FunctionAccess(
                 TypeChecker.InstantiatedFunction innerFn,
                 TypeChecker.FunctionObject typeReference,
@@ -2198,13 +2200,13 @@ public partial class ProgramAbseil
                             [..innerFn.TypeArguments.Select(GetTypeReference)],
                             ownerTypeArguments)))
             };
-            
+
             if (innerFn.ClosureTypeId is not null)
             {
                 var dataType = GetDataType(innerFn.ClosureTypeId).NotNull();
-                
+
                 var localName = LocalName((uint)_locals.Count);
-                
+
                 // todo - I think closure type might be able to be generic, so will need to pass in all type parameters here
                 _locals.Add(new MethodLocal(localName, null, new LoweredPointer(new LoweredConcreteTypeReference(
                     dataType.Name,
@@ -2212,7 +2214,7 @@ public partial class ProgramAbseil
                     []))));
 
                 CreateClosureObject(innerFn, new Local(localName));
-                
+
                 functionObjectParameters.Add(new CreateObjectField("FunctionParameter", new Copy(new Local(localName))));
             }
             else if (innerFn is { IsStatic: false, OwnerType: not null }
@@ -2237,9 +2239,9 @@ public partial class ProgramAbseil
             switch (variable)
             {
                 case TypeChecker.LocalVariable localVariable:
-                {
-                    return new PlaceResult(GetLocalVariablePlace(localVariable));
-                }
+                    {
+                        return new PlaceResult(GetLocalVariablePlace(localVariable));
+                    }
                 case TypeChecker.ThisVariable thisVariable:
                     {
                         Debug.Assert(_currentFunction is not null);
@@ -2249,7 +2251,7 @@ public partial class ProgramAbseil
                                 && _currentFunction.Value.FunctionSignature.ClosureTypeId is not null)
                         {
                             var closureType = _types[_currentFunction.Value.FunctionSignature.ClosureTypeId];
-                            var closureTypeReference = new  LoweredConcreteTypeReference(
+                            var closureTypeReference = new LoweredConcreteTypeReference(
                                         closureType.Name,
                                         closureType.Id,
                                         []);
@@ -2279,90 +2281,90 @@ public partial class ProgramAbseil
                 case TypeChecker.FieldVariable fieldVariable
                     when fieldVariable.ContainingSignature.Id == _currentType?.DefinitionId
                         && _currentFunction is not null:
-                {
-                    if (fieldVariable.IsStaticField)
                     {
-                        return new PlaceResult(new StaticField(_currentType, fieldVariable.Name.StringValue));
+                        if (fieldVariable.IsStaticField)
+                        {
+                            return new PlaceResult(new StaticField(_currentType, fieldVariable.Name.StringValue));
+                        }
+
+                        if (_currentFunction.Value.FunctionSignature.ClosureTypeId is not null)
+                        {
+                            var loweredMethod = _currentFunction.Value.LoweredMethod;
+                            var fnSignature = _currentFunction.Value.FunctionSignature;
+                            var closureType = _types[fnSignature.ClosureTypeId];
+                            var closureTypeReference = new LoweredConcreteTypeReference(closureType.Name, closureType.Id, []);
+
+                            // we're a closure, so reference the value through the "this" field
+                            // of the closure type
+                            Debug.Assert(loweredMethod.ParameterLocals.Count > 0);
+                            Debug.Assert(
+                                loweredMethod.ParameterLocals[0].Type is LoweredPointer(var pointerTo2)
+                                &&
+                                    EqualTypeReferences(
+                                        pointerTo2,
+                                        closureTypeReference));
+
+                            return new PlaceResult(new Field(
+                                new Deref(new Field(
+                                    new Deref(new Local(ParameterLocalName(0))),
+                                    ClosureThisFieldName,
+                                    ClassVariantName)),
+                                fieldVariable.Name.StringValue,
+                                ClassVariantName)
+                            );
+                        }
+
+                        if (_currentFunction.Value.LoweredMethod.ParameterLocals.Count == 0
+                            || _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type is not LoweredPointer(var pointerTo)
+                            || !EqualTypeReferences(
+                                pointerTo,
+                                _currentType))
+                        {
+                            throw new InvalidOperationException("Expected to be in instance function");
+                        }
+
+                        // todo: assert we're in a class and have _classVariant
+
+                        return new PlaceResult(
+                            new Field(
+                                new Deref(new Local(ParameterLocalName(0))),
+                                fieldVariable.Name.StringValue,
+                                ClassVariantName));
                     }
-                    
-                    if (_currentFunction.Value.FunctionSignature.ClosureTypeId is not null)
+                case TypeChecker.FunctionSignatureParameter argument:
                     {
-                        var loweredMethod = _currentFunction.Value.LoweredMethod;
-                        var fnSignature = _currentFunction.Value.FunctionSignature;
-                        var closureType = _types[fnSignature.ClosureTypeId];
-                        var closureTypeReference = new LoweredConcreteTypeReference(closureType.Name, closureType.Id, []);
-                    
-                        // we're a closure, so reference the value through the "this" field
-                        // of the closure type
-                        Debug.Assert(loweredMethod.ParameterLocals.Count > 0);
-                        Debug.Assert(
-                            loweredMethod.ParameterLocals[0].Type is LoweredPointer(var pointerTo2)
-                            && 
-                                EqualTypeReferences(
-                                    pointerTo2,
-                                    closureTypeReference));
+                        Debug.Assert(_currentFunction is not null);
+
+                        var argumentIndex = argument.ParameterIndex;
+                        if (!argument.ReferencedInClosure)
+                        {
+                            if (argument.ContainingFunction.AccessedOuterVariables.Count > 0
+                                    || (argument.ContainingFunction.OwnerType is not null
+                                        && !argument.ContainingFunction.IsStatic))
+                            {
+                                argumentIndex++;
+                            }
+
+                            return new PlaceResult(new Local(ParameterLocalName(argumentIndex)));
+                        }
+
+                        var currentFunction = _currentFunction.NotNull();
+                        var containingFunction = argument.ContainingFunction.NotNull();
+                        var containingFunctionLocals = _types[containingFunction.LocalsTypeId.NotNull()];
+                        if (containingFunction.Id == currentFunction.FunctionSignature.Id)
+                        {
+                            return new PlaceResult(new Field(new Deref(new Local(LocalsObjectLocalName)), argument.Name.StringValue,
+                                ClassVariantName));
+                        }
 
                         return new PlaceResult(new Field(
                             new Deref(new Field(
                                 new Deref(new Local(ParameterLocalName(0))),
-                                ClosureThisFieldName,
+                                containingFunctionLocals.Name,
                                 ClassVariantName)),
-                            fieldVariable.Name.StringValue,
-                            ClassVariantName)
-                        );
-                    }
-                    
-                    if (_currentFunction.Value.LoweredMethod.ParameterLocals.Count == 0
-                        || _currentFunction.Value.LoweredMethod.ParameterLocals[0].Type is not LoweredPointer(var pointerTo)
-                        || !EqualTypeReferences(
-                            pointerTo,
-                            _currentType))
-                    {
-                        throw new InvalidOperationException("Expected to be in instance function");
-                    }
-                    
-                    // todo: assert we're in a class and have _classVariant
-
-                    return new PlaceResult(
-                        new Field(
-                            new Deref(new Local(ParameterLocalName(0))),
-                            fieldVariable.Name.StringValue,
-                            ClassVariantName));
-                }
-                case TypeChecker.FunctionSignatureParameter argument:
-                {
-                    Debug.Assert(_currentFunction is not null);
-                    
-                    var argumentIndex = argument.ParameterIndex;
-                    if (!argument.ReferencedInClosure)
-                    {
-                        if (argument.ContainingFunction.AccessedOuterVariables.Count > 0
-                                || (argument.ContainingFunction.OwnerType is not null
-                                    && !argument.ContainingFunction.IsStatic))
-                        {
-                            argumentIndex++;
-                        }
-
-                        return new PlaceResult(new Local(ParameterLocalName(argumentIndex)));
-                    }
-                    
-                    var currentFunction = _currentFunction.NotNull();
-                    var containingFunction = argument.ContainingFunction.NotNull();
-                    var containingFunctionLocals = _types[containingFunction.LocalsTypeId.NotNull()];
-                    if (containingFunction.Id == currentFunction.FunctionSignature.Id)
-                    {
-                        return new PlaceResult(new Field(new Deref(new Local(LocalsObjectLocalName)), argument.Name.StringValue,
+                            argument.Name.StringValue,
                             ClassVariantName));
                     }
-
-                    return new PlaceResult(new Field(
-                        new Deref(new Field(
-                            new Deref(new Local(ParameterLocalName(0))),
-                            containingFunctionLocals.Name,
-                            ClassVariantName)),
-                        argument.Name.StringValue,
-                        ClassVariantName));
-                }
             }
 
             throw new UnreachableException($"{variable.GetType()}");
@@ -2387,14 +2389,14 @@ public partial class ProgramAbseil
                 variable.Name.StringValue,
                 ClassVariantName);
         }
-                        
+
         return new Field(
             new Deref(new Field(
                 new Deref(new Local("_param0")),
                 containingFunctionLocals.Name,
                 ClassVariantName)),
             variable.Name.StringValue,
-            ClassVariantName);  
+            ClassVariantName);
     }
 
     private static byte GetIntSize(TypeChecker.ITypeReference type)
@@ -2430,14 +2432,14 @@ public partial class ProgramAbseil
 
         throw new UnreachableException();
     }
-    
+
     private static bool IsIntSigned(TypeChecker.ITypeReference type)
     {
         if (type is TypeChecker.UnspecifiedSizedIntType unspecifiedSizedIntType)
         {
             type = unspecifiedSizedIntType.ResolvedIntType.NotNull();
         }
-        
+
         if (type is not TypeChecker.InstantiatedClass klass)
         {
             throw new InvalidOperationException($"{type} must be instantiated class");
@@ -2458,7 +2460,7 @@ public partial class ProgramAbseil
     private IExpressionResult LowerVariableDeclaration(VariableDeclarationExpression e)
     {
         var result = new OperandResult(new UnitConstant());
-        
+
         var variableName = e.VariableDeclaration.Variable.NotNull()
             .Name.StringValue;
 
@@ -2469,7 +2471,7 @@ public partial class ProgramAbseil
             // noop
             return result;
         }
-        
+
         if (!referencedInClosure)
         {
             var variable = _locals.First(x =>
@@ -2482,7 +2484,7 @@ public partial class ProgramAbseil
 
         return result;
     }
-    
+
     private IExpressionResult LowerBinaryExpression(BinaryOperatorExpression binaryOperatorExpression, IPlace? destination)
     {
         if (binaryOperatorExpression.BinaryOperator.OperatorType == BinaryOperatorType.ValueAssignment)
@@ -2492,7 +2494,7 @@ public partial class ProgramAbseil
             {
                 throw new InvalidOperationException("Value Assignment left operand must be a place");
             }
-        
+
             LowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull(), destination: leftPlace);
 
             if (destination is not null)
@@ -2502,104 +2504,104 @@ public partial class ProgramAbseil
 
             return new PlaceResult(destination ?? leftPlace);
         }
-        
+
         if (destination is null)
         {
             var localName = $"_local{_locals.Count}";
             _locals.Add(new MethodLocal(localName, null, GetTypeReference(binaryOperatorExpression.ResolvedType.NotNull())));
             destination = new Local(localName);
         }
-        
+
         switch (binaryOperatorExpression.BinaryOperator.OperatorType)
         {
             case BinaryOperatorType.BooleanAnd:
-            {
-                var leftOperand = LowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull(), null).NotNull();
-
-                var trueBasicBlockId = new BasicBlockId("true");
-                var falseBasicBlockId = new BasicBlockId("false");
-                var afterBasicBlockId = new BasicBlockId("after");
-                
-                _basicBlocks[^1].Terminator = new SwitchInt(
-                    leftOperand.ToOperand(),
-                    new Dictionary<int, BasicBlockId>
-                    {
-                        { 0, falseBasicBlockId }
-                    },
-                    trueBasicBlockId);
-
-                trueBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
-
-                _controlFlowDepth++;
-                var rightOperand = LowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull(), destination: null)
-                    .NotNull();
-                _controlFlowDepth--;
-                
-                _basicBlockStatements.Add(new Assign(destination, new Use(rightOperand.ToOperand())));
-                _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
-
-                falseBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
-                _basicBlockStatements.Add(new Assign(destination, new Use(new BoolConstant(false))));
-                _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
-
-                afterBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
-                break;
-            }
-            case BinaryOperatorType.BooleanOr:
-            {
-                var leftOperand = LowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull(), destination: null).NotNull();
-
-                var falseBasicBlockId = new BasicBlockId("false");
-                var trueBasicBlockId = new BasicBlockId("true");
-                var afterBasicBlockId = new BasicBlockId("after");
-                
-                _basicBlocks[^1].Terminator = new SwitchInt(
-                    leftOperand.ToOperand(),
-                    new Dictionary<int, BasicBlockId>
-                    {
-                        { 0, falseBasicBlockId }
-                    },
-                    trueBasicBlockId);
-
-                falseBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
-
-                _controlFlowDepth++;
-                var rightOperand = LowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull(), destination: null)
-                    .NotNull();
-                _controlFlowDepth--;
-                _basicBlockStatements.Add(new Assign(destination, new Use(rightOperand.ToOperand())));
-                _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
-
-                trueBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
-                _basicBlockStatements.Add(new Assign(destination, new Use(new BoolConstant(true))));
-                _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
-
-                afterBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
-                break;
-            }
-            default:
-            {
-                var leftOperand = LowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull(), destination: null).NotNull();
-                var rightOperand = LowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull(), destination: null).NotNull();
-                
-                var binaryOperatorKind = binaryOperatorExpression.BinaryOperator.OperatorType switch
                 {
-                    BinaryOperatorType.LessThan => BinaryOperationKind.LessThan,
-                    BinaryOperatorType.GreaterThan => BinaryOperationKind.GreaterThan,
-                    BinaryOperatorType.Plus => BinaryOperationKind.Add,
-                    BinaryOperatorType.Minus => BinaryOperationKind.Subtract,
-                    BinaryOperatorType.Multiply => BinaryOperationKind.Multiply,
-                    BinaryOperatorType.Divide => BinaryOperationKind.Divide,
-                    BinaryOperatorType.EqualityCheck => BinaryOperationKind.Equal,
-                    BinaryOperatorType.NegativeEqualityCheck => BinaryOperationKind.NotEqual,
-                    _ => throw new ArgumentOutOfRangeException()
-                };
+                    var leftOperand = LowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull(), null).NotNull();
 
-                _basicBlockStatements.Add(new Assign(
-                    destination,
-                    new BinaryOperation(leftOperand.ToOperand(), rightOperand.ToOperand(), binaryOperatorKind)));
-                break;
-            }
+                    var trueBasicBlockId = new BasicBlockId("true");
+                    var falseBasicBlockId = new BasicBlockId("false");
+                    var afterBasicBlockId = new BasicBlockId("after");
+
+                    _basicBlocks[^1].Terminator = new SwitchInt(
+                        leftOperand.ToOperand(),
+                        new Dictionary<int, BasicBlockId>
+                        {
+                        { 0, falseBasicBlockId }
+                        },
+                        trueBasicBlockId);
+
+                    trueBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
+
+                    _controlFlowDepth++;
+                    var rightOperand = LowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull(), destination: null)
+                        .NotNull();
+                    _controlFlowDepth--;
+
+                    _basicBlockStatements.Add(new Assign(destination, new Use(rightOperand.ToOperand())));
+                    _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
+
+                    falseBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
+                    _basicBlockStatements.Add(new Assign(destination, new Use(new BoolConstant(false))));
+                    _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
+
+                    afterBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
+                    break;
+                }
+            case BinaryOperatorType.BooleanOr:
+                {
+                    var leftOperand = LowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull(), destination: null).NotNull();
+
+                    var falseBasicBlockId = new BasicBlockId("false");
+                    var trueBasicBlockId = new BasicBlockId("true");
+                    var afterBasicBlockId = new BasicBlockId("after");
+
+                    _basicBlocks[^1].Terminator = new SwitchInt(
+                        leftOperand.ToOperand(),
+                        new Dictionary<int, BasicBlockId>
+                        {
+                        { 0, falseBasicBlockId }
+                        },
+                        trueBasicBlockId);
+
+                    falseBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
+
+                    _controlFlowDepth++;
+                    var rightOperand = LowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull(), destination: null)
+                        .NotNull();
+                    _controlFlowDepth--;
+                    _basicBlockStatements.Add(new Assign(destination, new Use(rightOperand.ToOperand())));
+                    _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
+
+                    trueBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
+                    _basicBlockStatements.Add(new Assign(destination, new Use(new BoolConstant(true))));
+                    _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
+
+                    afterBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
+                    break;
+                }
+            default:
+                {
+                    var leftOperand = LowerExpression(binaryOperatorExpression.BinaryOperator.Left.NotNull(), destination: null).NotNull();
+                    var rightOperand = LowerExpression(binaryOperatorExpression.BinaryOperator.Right.NotNull(), destination: null).NotNull();
+
+                    var binaryOperatorKind = binaryOperatorExpression.BinaryOperator.OperatorType switch
+                    {
+                        BinaryOperatorType.LessThan => BinaryOperationKind.LessThan,
+                        BinaryOperatorType.GreaterThan => BinaryOperationKind.GreaterThan,
+                        BinaryOperatorType.Plus => BinaryOperationKind.Add,
+                        BinaryOperatorType.Minus => BinaryOperationKind.Subtract,
+                        BinaryOperatorType.Multiply => BinaryOperationKind.Multiply,
+                        BinaryOperatorType.Divide => BinaryOperationKind.Divide,
+                        BinaryOperatorType.EqualityCheck => BinaryOperationKind.Equal,
+                        BinaryOperatorType.NegativeEqualityCheck => BinaryOperationKind.NotEqual,
+                        _ => throw new ArgumentOutOfRangeException()
+                    };
+
+                    _basicBlockStatements.Add(new Assign(
+                        destination,
+                        new BinaryOperation(leftOperand.ToOperand(), rightOperand.ToOperand(), binaryOperatorKind)));
+                    break;
+                }
         }
 
         return new PlaceResult(destination);

@@ -26,7 +26,7 @@ public partial class TypeChecker
         }
 
         private readonly HashSet<UnspecifiedSizedIntType> _links = [];
-        
+
         public required bool Boxed { get; init; }
 
         internal void Link(UnspecifiedSizedIntType other)
@@ -73,7 +73,7 @@ public partial class TypeChecker
         public required string GenericName { get; init; }
 
         public required ITypeSignature OwnerType { get; init; }
-        
+
         public required IInstantiatedGeneric InstantiatedFrom { get; init; }
 
         public ITypeReference? ResolvedType

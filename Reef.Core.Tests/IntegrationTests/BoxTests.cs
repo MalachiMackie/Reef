@@ -19,7 +19,7 @@ public class BoxTests : IntegrationTestBase
         output.ExitCode.Should().Be(0);
         output.StandardOutput.Should().Be("hibye");
     }
-    
+
     [Fact]
     public async Task ModifyUnboxedClassInFunction()
     {
@@ -47,7 +47,7 @@ public class BoxTests : IntegrationTestBase
         output.ExitCode.Should().Be(0);
         output.StandardOutput.Should().Be("param.MyField == bye. a.MyField == hi. ");
     }
-    
+
     [Fact]
     public async Task ModifyBoxedClassInFunction()
     {
@@ -127,7 +127,7 @@ public class BoxTests : IntegrationTestBase
         output.ExitCode.Should().Be(0);
         output.StandardOutput.Should().Be("unbox(param) == 2. unbox(a) == 1");
     }
-    
+
     [Fact]
     public async Task ModifyUnboxedPrimitiveInMethod()
     {

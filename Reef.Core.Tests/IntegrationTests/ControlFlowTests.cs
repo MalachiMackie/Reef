@@ -94,7 +94,7 @@ public class ControlFlowTests : IntegrationTestBase
         Assert.Equal(0, output.ExitCode);
         Assert.Equal("hi. hi. hi. hi. hi. hi. hi. hi. hi. hi. ", output.StandardOutput);
     }
-    
+
     [Fact]
     public async Task WhileWithBreakAndContinue()
     {

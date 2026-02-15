@@ -54,14 +54,14 @@ public class TypeTwoTypeChecker(bool throwOnError)
         }
 
         _localVariablesInitialized.Push(program.TopLevelLocalVariables.ToDictionary(x => x, _ => true));
-        
+
         foreach (var function in program.Functions)
         {
             CheckFunction(function);
         }
 
         _localVariablesInitialized.Pop();
-        
+
         _localVariablesInitialized.Push(program.TopLevelLocalVariables.ToDictionary(x => x, _ => false));
 
         foreach (var expression in program.Expressions)
@@ -120,7 +120,7 @@ public class TypeTwoTypeChecker(bool throwOnError)
         }
 
         _localVariablesInitialized.Pop();
-        
+
         _localVariablesInitialized.Push(function.Signature.LocalVariables.ToDictionary(x => x, _ => true));
 
         foreach (var blockFunction in function.Block.Functions)
@@ -545,7 +545,7 @@ public class TypeTwoTypeChecker(bool throwOnError)
                         AddError(TypeCheckerError.UnresolvedInferredGenericType(expression, genericTypeReference.GenericName));
                     }
 
-                    if (genericTypeReference.ResolvedType is {} resolvedType)
+                    if (genericTypeReference.ResolvedType is { } resolvedType)
                     {
                         CheckTypeReferenceIsResolved(resolvedType, expression);
                     }
@@ -553,10 +553,10 @@ public class TypeTwoTypeChecker(bool throwOnError)
                     break;
                 }
             case TypeChecker.UnspecifiedSizedIntType unspecifiedIntType:
-            {
-                unspecifiedIntType.ResolvedIntType ??= TypeChecker.InstantiatedClass.Int32;
-                break;
-            }
+                {
+                    unspecifiedIntType.ResolvedIntType ??= TypeChecker.InstantiatedClass.Int32;
+                    break;
+                }
             case TypeChecker.UnknownInferredType unknownInferredType:
                 {
                     if (unknownInferredType.ResolvedType is null)
@@ -570,14 +570,14 @@ public class TypeTwoTypeChecker(bool throwOnError)
                     break;
                 }
             case TypeChecker.ArrayType arrayType:
-            {
-                foreach (var typeArgument in arrayType.TypeArguments)
                 {
-                    CheckTypeReferenceIsResolved(typeArgument, expression);
-                }
+                    foreach (var typeArgument in arrayType.TypeArguments)
+                    {
+                        CheckTypeReferenceIsResolved(typeArgument, expression);
+                    }
 
-                break;
-            }
+                    break;
+                }
             case TypeChecker.FunctionObject:
                 break;
             case TypeChecker.GenericPlaceholder:

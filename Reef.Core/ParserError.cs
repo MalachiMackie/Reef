@@ -77,7 +77,7 @@ public record ParserError
     {
         return new ParserError(receivedToken, ParserErrorType.ExpectedType);
     }
-    
+
     public static ParserError ExpectedTypeName(Token? receivedToken)
     {
         return new ParserError(receivedToken, ParserErrorType.ExpectedTypeName);

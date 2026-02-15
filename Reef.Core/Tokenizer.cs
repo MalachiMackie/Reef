@@ -585,7 +585,7 @@ public class Tokenizer
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
 
-        
+
 
         static bool PossiblyMatchesStringLiteral(ReadOnlySpan<char> stringSource)
         {
@@ -630,7 +630,7 @@ public class Tokenizer
             return expected.StartsWith(source) && source.Length <= expected.Length;
         }
     }
-    
+
     private static bool ExactlyMatchesStringLiteral(ReadOnlySpan<char> stringSource)
     {
         if (stringSource[0] != '"')

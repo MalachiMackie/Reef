@@ -29,8 +29,8 @@ file class ConsoleLogger : ILogger
 
 file sealed class NoopDisposable : IDisposable
 {
-    public static readonly NoopDisposable Instance = new(); 
-        
+    public static readonly NoopDisposable Instance = new();
+
     private NoopDisposable()
     {
     }

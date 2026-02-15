@@ -8,7 +8,7 @@ public partial class TypeChecker
         MethodReturnExpression methodReturnExpression)
     {
         methodReturnExpression.ValueUseful = true;
-        if (methodReturnExpression.MethodReturn.Expression is {} value)
+        if (methodReturnExpression.MethodReturn.Expression is { } value)
         {
             value.ValueUseful = true;
             TypeCheckExpression(value);

@@ -60,7 +60,7 @@ public partial class TypeChecker
                     if (@operator.Right is not null)
                         TypeCheckExpression(@operator.Right);
 
-                    if (ExpectExpressionType([..InstantiatedClass.IntTypes, InstantiatedClass.Boolean], @operator.Left))
+                    if (ExpectExpressionType([.. InstantiatedClass.IntTypes, InstantiatedClass.Boolean], @operator.Left))
                     {
                         ExpectExpressionType(@operator.Left.NotNull().ResolvedType.NotNull(), @operator.Right);
                     }
@@ -115,7 +115,7 @@ public partial class TypeChecker
                             }
                         }
 
-                        if (variable is FieldVariable { IsStaticField: false } 
+                        if (variable is FieldVariable { IsStaticField: false }
                             && CurrentFunctionSignature is not { IsMutable: true })
                         {
                             AddError(TypeCheckerError.MutatingInstanceInNonMutableFunction(

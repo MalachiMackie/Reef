@@ -4,7 +4,7 @@ namespace Reef.Core.Tests.IntegrationTests;
 
 public class TestLogger(ITestOutputHelper testOutputHelper) : ILogger
 {
-    
+
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
     {
         testOutputHelper.WriteLine($"[{logLevel}] {formatter(state, exception)}");
@@ -28,6 +28,6 @@ public class TestLogger(ITestOutputHelper testOutputHelper) : ILogger
         {
         }
 
-        public void Dispose(){}
+        public void Dispose() { }
     }
 }

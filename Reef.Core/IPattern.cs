@@ -7,7 +7,7 @@ public interface IPattern
     SourceRange SourceRange { get; }
 
     TypeChecker.ITypeReference? TypeReference { get; }
-    
+
     bool IsRedundant { get; set; }
 }
 
@@ -19,7 +19,7 @@ public record UnionVariantPattern(
     SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference? TypeReference { get; set; }
-    
+
     public TypeChecker.LocalVariable? Variable { get; set; }
     public bool IsRedundant { get; set; }
 }
@@ -33,9 +33,9 @@ public record UnionTupleVariantPattern(
     SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference? TypeReference { get; set; }
-    
+
     public TypeChecker.LocalVariable? Variable { get; set; }
-    
+
     public bool IsRedundant { get; set; }
 }
 
@@ -49,9 +49,9 @@ public record UnionClassVariantPattern(
     SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference? TypeReference { get; set; }
-    
+
     public TypeChecker.LocalVariable? Variable { get; set; }
-    
+
     public bool IsRedundant { get; set; }
 }
 
@@ -66,16 +66,16 @@ public record VariableDeclarationPattern(
     bool IsMut) : IPattern
 {
     public TypeChecker.ITypeReference TypeReference => TypeChecker.InstantiatedClass.Never;
-    
+
     public TypeChecker.LocalVariable? Variable { get; set; }
-    
+
     public bool IsRedundant { get; set; }
 }
 
 public record DiscardPattern(SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference TypeReference => TypeChecker.InstantiatedClass.Never;
-    
+
     public bool IsRedundant { get; set; }
 
     public override string ToString()
@@ -93,17 +93,17 @@ public record ClassPattern(
     SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference? TypeReference { get; set; }
-    
+
     public TypeChecker.LocalVariable? Variable { get; set; }
-    
+
     public bool IsRedundant { get; set; }
 }
 
 public record TypePattern(ITypeIdentifier Type, StringToken? VariableName, bool IsVariableMutable, SourceRange SourceRange) : IPattern
 {
     public TypeChecker.ITypeReference? TypeReference { get; set; }
-    
+
     public TypeChecker.LocalVariable? Variable { get; set; }
-    
+
     public bool IsRedundant { get; set; }
 }

@@ -24,7 +24,7 @@ public class IntOperations : IntegrationTestBase
         result.ExitCode.Should().Be(0);
         result.StandardOutput.Should().Be("3");
     }
-    
+
 
     [Theory]
     [InlineData("i64")]
@@ -238,7 +238,7 @@ public class IntOperations : IntegrationTestBase
         Assert.Equal(0, result.ExitCode);
         Assert.Equal("2 > 1", result.StandardOutput);
     }
-    
+
     [Theory]
     [MemberData(nameof(IntTypes))]
     public async Task LessThan(string typeSpecifier)

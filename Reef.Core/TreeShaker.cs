@@ -22,7 +22,7 @@ public class TreeShaker(IReadOnlyList<LoweredModule> modules)
         ShakeMethod(mainMethod);
 
         return _usefulMethodDefIds;
-    } 
+    }
 
     private void ShakeMethod(IMethod method)
     {
@@ -33,7 +33,7 @@ public class TreeShaker(IReadOnlyList<LoweredModule> modules)
 
         foreach (var basicBlock in loweredMethod.BasicBlocks)
         {
-            if (basicBlock.Terminator is MethodCall{Function: var function})
+            if (basicBlock.Terminator is MethodCall { Function: var function })
             {
                 ShakeMethod(_methods[function.DefinitionId]);
             }

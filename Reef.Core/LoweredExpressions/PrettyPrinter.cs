@@ -80,7 +80,7 @@ public class PrettyPrinter(LoweredModule module)
         _stringBuilder.AppendLine(",");
     }
 
-    
+
 
     private void PrettyPrintTypeReference(ILoweredTypeReference typeReference)
     {
@@ -110,40 +110,40 @@ public class PrettyPrinter(LoweredModule module)
                     break;
                 }
             case LoweredPointer ptr:
-            {
-                _stringBuilder.Append('*');
-                PrettyPrintTypeReference(ptr.PointerTo);
-                break;
-            }
-            case LoweredFunctionReference functionReference:
-            {
-                var method = module.Methods.First(x => x.Id == functionReference.DefinitionId);
-                _stringBuilder.Append(method.Name);
-                if (functionReference.TypeArguments.Count > 0)
                 {
-                    _stringBuilder.Append("::<");
-                    for (var i = 0; i < functionReference.TypeArguments.Count; i++)
-                    {
-                        if (i > 0)
-                            _stringBuilder.Append(", ");
-                        PrettyPrintTypeReference(functionReference.TypeArguments[i]);
-                    }
+                    _stringBuilder.Append('*');
+                    PrettyPrintTypeReference(ptr.PointerTo);
+                    break;
                 }
+            case LoweredFunctionReference functionReference:
+                {
+                    var method = module.Methods.First(x => x.Id == functionReference.DefinitionId);
+                    _stringBuilder.Append(method.Name);
+                    if (functionReference.TypeArguments.Count > 0)
+                    {
+                        _stringBuilder.Append("::<");
+                        for (var i = 0; i < functionReference.TypeArguments.Count; i++)
+                        {
+                            if (i > 0)
+                                _stringBuilder.Append(", ");
+                            PrettyPrintTypeReference(functionReference.TypeArguments[i]);
+                        }
+                    }
 
-                break;
-            }
+                    break;
+                }
             case RawPointer:
-            {
-                _stringBuilder.Append("void*");
-                break;
-            }
+                {
+                    _stringBuilder.Append("void*");
+                    break;
+                }
             case LoweredArray loweredArray:
-            {
-                _stringBuilder.Append("[");
-                PrettyPrintTypeReference(loweredArray.ElementType);
-                _stringBuilder.Append($"; {loweredArray.Length}]");
-                break;
-            }
+                {
+                    _stringBuilder.Append("[");
+                    PrettyPrintTypeReference(loweredArray.ElementType);
+                    _stringBuilder.Append($"; {loweredArray.Length}]");
+                    break;
+                }
             default:
                 throw new UnreachableException($"{typeReference}: {typeReference.GetType()}");
         }
@@ -208,7 +208,7 @@ public class PrettyPrinter(LoweredModule module)
 
         PrettyPrintCodeBlock(method.BasicBlocks, method.Locals, method.ReturnValue);
 
-        
+
 
         _indentationLevel--;
         Indent();
@@ -236,7 +236,7 @@ public class PrettyPrinter(LoweredModule module)
             Indent();
             _stringBuilder.AppendLine($"{basicBlock.Id.Id}: {{");
             _indentationLevel++;
-            
+
             PrettyPrintJoin(
                 basicBlock.Statements,
                 statement =>
@@ -270,45 +270,45 @@ public class PrettyPrinter(LoweredModule module)
         switch (terminator)
         {
             case MethodCall methodCall:
-            {
-                PrettyPrintPlace(methodCall.PlaceDestination);
-                _stringBuilder.Append(" = ");
-                PrettyPrintFunctionReference(methodCall.Function);
-                _stringBuilder.Append('(');
-                PrettyPrintJoin(methodCall.Arguments, PrettyPrintOperand, ", ");
-                _stringBuilder.Append($") -> [return: {methodCall.GoToAfter.Id}];");
+                {
+                    PrettyPrintPlace(methodCall.PlaceDestination);
+                    _stringBuilder.Append(" = ");
+                    PrettyPrintFunctionReference(methodCall.Function);
+                    _stringBuilder.Append('(');
+                    PrettyPrintJoin(methodCall.Arguments, PrettyPrintOperand, ", ");
+                    _stringBuilder.Append($") -> [return: {methodCall.GoToAfter.Id}];");
 
-                break;
-            }
+                    break;
+                }
             case Return:
-            {
-                _stringBuilder.Append("return;");
-                break;
-            }
+                {
+                    _stringBuilder.Append("return;");
+                    break;
+                }
             case SwitchInt switchInt:
-            {
-                _stringBuilder.Append("switchInt(");
-                PrettyPrintOperand(switchInt.Operand);
-                _stringBuilder.Append(") -> [");
-                PrettyPrintJoin(
-                    switchInt.Cases.OrderBy(x => x.Key).ToArray(),
-                    branch => _stringBuilder.Append($"{branch.Key}: {branch.Value.Id}"),
-                    ", ");
-                _stringBuilder.Append($", otherwise {switchInt.Otherwise.Id}];");
-                break;
-            }
+                {
+                    _stringBuilder.Append("switchInt(");
+                    PrettyPrintOperand(switchInt.Operand);
+                    _stringBuilder.Append(") -> [");
+                    PrettyPrintJoin(
+                        switchInt.Cases.OrderBy(x => x.Key).ToArray(),
+                        branch => _stringBuilder.Append($"{branch.Key}: {branch.Value.Id}"),
+                        ", ");
+                    _stringBuilder.Append($", otherwise {switchInt.Otherwise.Id}];");
+                    break;
+                }
             case GoTo goTo:
-            {
-                _stringBuilder.Append($"goto -> {goTo.BasicBlockId.Id};");
-                break;
-            }
+                {
+                    _stringBuilder.Append($"goto -> {goTo.BasicBlockId.Id};");
+                    break;
+                }
             case Assert assert:
-            {
-                _stringBuilder.Append("Assert(");
-                PrettyPrintOperand(assert.Value);
-                _stringBuilder.Append($") -> [ok: {assert.GoTo.Id}]");
-                break;
-            }
+                {
+                    _stringBuilder.Append("Assert(");
+                    PrettyPrintOperand(assert.Value);
+                    _stringBuilder.Append($") -> [ok: {assert.GoTo.Id}]");
+                    break;
+                }
             default:
                 throw new ArgumentOutOfRangeException(nameof(terminator));
         }
@@ -319,37 +319,37 @@ public class PrettyPrinter(LoweredModule module)
         switch (place)
         {
             case Field field:
-            {
-                _stringBuilder.Append('(');
-                PrettyPrintPlace(field.FieldOwner);
-                _stringBuilder.Append($" as {field.VariantName}).{field.FieldName}");
-                break;
-            }
+                {
+                    _stringBuilder.Append('(');
+                    PrettyPrintPlace(field.FieldOwner);
+                    _stringBuilder.Append($" as {field.VariantName}).{field.FieldName}");
+                    break;
+                }
             case Local local:
-            {
-                _stringBuilder.Append(local.LocalName);
-                break;
-            }
+                {
+                    _stringBuilder.Append(local.LocalName);
+                    break;
+                }
             case StaticField staticField:
-            {
-                PrettyPrintTypeReference(staticField.Type);
-                _stringBuilder.Append($"::{staticField.FieldName}");
-                break;
-            }
+                {
+                    PrettyPrintTypeReference(staticField.Type);
+                    _stringBuilder.Append($"::{staticField.FieldName}");
+                    break;
+                }
             case Deref deref:
-            {
-                _stringBuilder.Append('*');
-                PrettyPrintPlace(deref.PointerPlace);
-                break;
-            }
+                {
+                    _stringBuilder.Append('*');
+                    PrettyPrintPlace(deref.PointerPlace);
+                    break;
+                }
             case Index index:
-            {
-                PrettyPrintPlace(index.ArrayPlace);
-                _stringBuilder.Append('[');
-                PrettyPrintOperand(index.ArrayIndex);
-                _stringBuilder.Append(']');
-                break;
-            }
+                {
+                    PrettyPrintPlace(index.ArrayPlace);
+                    _stringBuilder.Append('[');
+                    PrettyPrintOperand(index.ArrayIndex);
+                    _stringBuilder.Append(']');
+                    break;
+                }
             default:
                 throw new ArgumentOutOfRangeException(place.GetType().ToString());
         }
@@ -366,19 +366,19 @@ public class PrettyPrinter(LoweredModule module)
             }
         }
     }
-    
+
     private void PrettyPrintStatement(IStatement statement)
     {
         switch (statement)
         {
             case Assign assign:
-            {
-                PrettyPrintPlace(assign.Place);
-                _stringBuilder.Append(" = ");
-                PrettyPrintRValue(assign.RValue);
-                _stringBuilder.Append(';');
-                break;
-            }
+                {
+                    PrettyPrintPlace(assign.Place);
+                    _stringBuilder.Append(" = ");
+                    PrettyPrintRValue(assign.RValue);
+                    _stringBuilder.Append(';');
+                    break;
+                }
             case LocalAlive localAlive:
                 throw new NotImplementedException();
             case LocalDead localDead:
@@ -393,26 +393,26 @@ public class PrettyPrinter(LoweredModule module)
         switch (rValue)
         {
             case BinaryOperation binaryOperation:
-            {
-                _stringBuilder.Append(binaryOperation.Kind switch
                 {
-                    BinaryOperationKind.Add => "Add",
-                    BinaryOperationKind.Subtract => "Subtract",
-                    BinaryOperationKind.Multiply => "Multiply",
-                    BinaryOperationKind.Divide => "Divide",
-                    BinaryOperationKind.LessThan => "LessThan",
-                    BinaryOperationKind.LessThanOrEqual => "LessThanOrEqual",
-                    BinaryOperationKind.GreaterThan => "GreaterThan",
-                    BinaryOperationKind.GreaterThanOrEqual => "GreaterThanOrEqual",
-                    BinaryOperationKind.Equal => "Equal",
-                    BinaryOperationKind.NotEqual => "NotEqual",
-                    _ => throw new ArgumentOutOfRangeException()
-                });
-                _stringBuilder.Append('(');
-                PrettyPrintJoin([binaryOperation.LeftOperand, binaryOperation.RightOperand], PrettyPrintOperand, ", ");
-                _stringBuilder.Append(')');
-                break;
-            }
+                    _stringBuilder.Append(binaryOperation.Kind switch
+                    {
+                        BinaryOperationKind.Add => "Add",
+                        BinaryOperationKind.Subtract => "Subtract",
+                        BinaryOperationKind.Multiply => "Multiply",
+                        BinaryOperationKind.Divide => "Divide",
+                        BinaryOperationKind.LessThan => "LessThan",
+                        BinaryOperationKind.LessThanOrEqual => "LessThanOrEqual",
+                        BinaryOperationKind.GreaterThan => "GreaterThan",
+                        BinaryOperationKind.GreaterThanOrEqual => "GreaterThanOrEqual",
+                        BinaryOperationKind.Equal => "Equal",
+                        BinaryOperationKind.NotEqual => "NotEqual",
+                        _ => throw new ArgumentOutOfRangeException()
+                    });
+                    _stringBuilder.Append('(');
+                    PrettyPrintJoin([binaryOperation.LeftOperand, binaryOperation.RightOperand], PrettyPrintOperand, ", ");
+                    _stringBuilder.Append(')');
+                    break;
+                }
             case UnaryOperation unaryOperation:
                 _stringBuilder.Append(unaryOperation.Kind switch
                 {
@@ -426,24 +426,24 @@ public class PrettyPrinter(LoweredModule module)
                 PrettyPrintOperand(use.Operand);
                 break;
             case CreateObject createObject:
-            {
-                _stringBuilder.Append("new ");
-                PrettyPrintTypeReference(createObject.Type);
-                break;
-            }
+                {
+                    _stringBuilder.Append("new ");
+                    PrettyPrintTypeReference(createObject.Type);
+                    break;
+                }
             case CreateArray createArray:
-            {
-                _stringBuilder.Append("new ");
-                PrettyPrintTypeReference(createArray.Array);
-                break;
-            }
+                {
+                    _stringBuilder.Append("new ");
+                    PrettyPrintTypeReference(createArray.Array);
+                    break;
+                }
             case Fill fill:
-            {
-                _stringBuilder.Append("[");
-                PrettyPrintOperand(fill.Value);
-                _stringBuilder.Append($"; {fill.Count}]");
-                break;
-            }
+                {
+                    _stringBuilder.Append("[");
+                    PrettyPrintOperand(fill.Value);
+                    _stringBuilder.Append($"; {fill.Count}]");
+                    break;
+                }
             default:
                 throw new ArgumentOutOfRangeException(rValue.GetType().ToString());
         }
@@ -469,22 +469,22 @@ public class PrettyPrinter(LoweredModule module)
             case UnitConstant:
                 _stringBuilder.Append("()");
                 break;
-            case BoolConstant{Value: var boolValue}:
+            case BoolConstant { Value: var boolValue }:
                 _stringBuilder.Append(boolValue ? "true" : "false");
                 break;
-            case Copy{Place: var place}:
-            {
-                _stringBuilder.Append("copy ");
-                PrettyPrintPlace(place);
-                break;
-            }
+            case Copy { Place: var place }:
+                {
+                    _stringBuilder.Append("copy ");
+                    PrettyPrintPlace(place);
+                    break;
+                }
             case SizeOf(var sizeOf):
-            {
-                _stringBuilder.Append("sizeof(");
-                PrettyPrintTypeReference(sizeOf);
-                _stringBuilder.Append(')');
-                break;
-            }
+                {
+                    _stringBuilder.Append("sizeof(");
+                    PrettyPrintTypeReference(sizeOf);
+                    _stringBuilder.Append(')');
+                    break;
+                }
             default:
                 throw new ArgumentOutOfRangeException(operand.ToString());
         }
