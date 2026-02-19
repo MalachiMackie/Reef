@@ -445,7 +445,7 @@ public sealed class Parser : IDisposable
             else
             {
                 tailCallExpression =
-                    expression.ExpressionType is not (ExpressionType.IfExpression or ExpressionType.Block)
+                    expression.ExpressionType is not (ExpressionType.IfExpression or ExpressionType.Block or ExpressionType.While)
                         ? expression
                         : null;
             }

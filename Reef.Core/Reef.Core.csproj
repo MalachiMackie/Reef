@@ -16,9 +16,13 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Update="libreef_runtime.a">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
+        <None Include="..\reef-runtime\cmake-build-debug-visual-studio\reef-runtime.pdb">
+            <Link>reef-runtime.pdb</Link>
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Include="..\reef-runtime\cmake-build-debug-visual-studio\reef-runtime.lib">
+            <Link>reef-runtime.lib</Link>
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
-
 </Project>

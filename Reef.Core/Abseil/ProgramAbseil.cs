@@ -143,8 +143,8 @@ public partial class ProgramAbseil
 
     private ProgramAbseil(Dictionary<ModuleId, LangModule> modules, ModuleId mainModuleId)
     {
-        var importedDataTypes = new List<DataType>();
-        var importedMethods = new List<IMethod>
+        var coreLibDataTypes = new List<DataType>();
+        var coreLibMethods = new List<IMethod>
         {
             ExternMethodFromSignature(TypeChecker.FunctionSignature.PrintString),
             ExternMethodFromSignature(TypeChecker.FunctionSignature.PrintI8),
@@ -168,7 +168,7 @@ public partial class ProgramAbseil
         for (var i = 0; i < 7; i++)
         {
             var fnClass = TypeChecker.ClassSignature.Function(i);
-            importedDataTypes.Add(
+            coreLibDataTypes.Add(
                 new DataType(
                     fnClass.Id,
                     fnClass.Name,
@@ -206,7 +206,7 @@ public partial class ProgramAbseil
 
             var call = fnClass.Functions[0];
 
-            importedMethods.Add(
+            coreLibMethods.Add(
                 new LoweredMethod(
                     call.Id,
                     $"{fnClass.Name}__{call.Name}",
@@ -255,10 +255,10 @@ public partial class ProgramAbseil
                     ])
             ],
             []);
-        importedDataTypes.Add(resultDataType);
+        coreLibDataTypes.Add(resultDataType);
         foreach (var variant in TypeChecker.UnionSignature.Result.Variants.OfType<TypeChecker.TupleUnionVariant>())
         {
-            importedMethods.Add(
+            coreLibMethods.Add(
                 new LoweredMethod(
                     variant.CreateFunction.Id,
                     variant.CreateFunction.Name,
@@ -271,7 +271,7 @@ public partial class ProgramAbseil
 
         var stringSignature = TypeChecker.InstantiatedClass.String.Signature;
 
-        importedDataTypes.Add(new DataType(
+        coreLibDataTypes.Add(new DataType(
             DefId.String,
             stringSignature.Name,
             [],
@@ -286,8 +286,17 @@ public partial class ProgramAbseil
             new LoweredModule
             {
                 Id = DefId.CoreLibModuleId,
-                DataTypes = importedDataTypes,
-                Methods = importedMethods
+                DataTypes = coreLibDataTypes,
+                Methods = coreLibMethods
+            },
+            new LoweredModule
+            {
+                Id = DefId.DiagnosticsModuleId,
+                DataTypes = [],
+                Methods = [
+                    ExternMethodFromSignature(TypeChecker.FunctionSignature.GetMemoryUsage),
+                    ExternMethodFromSignature(TypeChecker.FunctionSignature.TriggerGC),
+                ]
             }
         ];
         _modules = modules;

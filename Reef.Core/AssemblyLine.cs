@@ -25,6 +25,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                                                       global main
                                                       extern ExitProcess
                                                       extern _CRT_INIT
+                                                      extern init_runtime
 
                                                       """);
 
@@ -129,6 +130,10 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
         _codeSegment.AppendLine("    call    _CRT_INIT");
         // put rsp back
+        _codeSegment.AppendLine($"    add     rsp, {ShadowSpaceBytes}");
+
+        _codeSegment.AppendLine($"    sub     rsp, {ShadowSpaceBytes}");
+        _codeSegment.AppendLine($"    call    init_runtime");
         _codeSegment.AppendLine($"    add     rsp, {ShadowSpaceBytes}");
 
         // give main it's shadow space

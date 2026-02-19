@@ -315,6 +315,40 @@ public partial class TypeChecker
         public List<LocalVariable> LocalVariables { get; init; } = [];
         public List<IVariable> AccessedOuterVariables { get; } = [];
 
+        // Diagnostics
+        public static FunctionSignature GetMemoryUsage { get; } = new FunctionSignature(
+            DefId.GetMemoryUsageBytes,
+            Token.Identifier("get_memory_usage_bytes", SourceSpan.Default),
+            [],
+            [],
+            IsStatic: true,
+            IsMutable: false,
+            Expressions: [],
+            Extern: true,
+            IsMutableReturn: true,
+            IsPublic: true)
+        {
+            OwnerType = null,
+            ReturnType = InstantiatedClass.UInt64
+        };
+
+        public static FunctionSignature TriggerGC { get; } = new FunctionSignature(
+                    DefId.TriggerGC,
+                    Token.Identifier("trigger_gc", SourceSpan.Default),
+                    [],
+                    [],
+                    IsStatic: true,
+                    IsMutable: false,
+                    Expressions: [],
+                    Extern: true,
+                    IsMutableReturn: true,
+                    IsPublic: true)
+        {
+            OwnerType = null,
+            ReturnType = InstantiatedClass.Unit
+        };
+
+        // Core
         public static FunctionSignature PrintString { get; }
         public static FunctionSignature PrintI8 { get; } = CreatePrintInt(InstantiatedClass.Int8, DefId.PrintI8);
         public static FunctionSignature PrintI16 { get; } = CreatePrintInt(InstantiatedClass.Int16, DefId.PrintI16);

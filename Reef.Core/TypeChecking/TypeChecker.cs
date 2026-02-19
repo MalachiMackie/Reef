@@ -139,8 +139,16 @@ public partial class TypeChecker
     private ITypeReference ExpectedReturnType => _typeCheckingScopes.Peek().ExpectedReturnType;
     private DefId? CurrentDefId => _typeCheckingScopes.Peek().CurrentDefId;
     private ModuleId CurrentModuleId => _typeCheckingScopes.Peek().ModuleId ?? throw new InvalidOperationException("No current module id");
-    private Dictionary<ModuleId, (List<FunctionSignature> Functions, List<UnionSignature> Unions, List<ClassSignature> Classes)> _moduleSignatures = new()
+    private readonly Dictionary<ModuleId, (List<FunctionSignature> Functions, List<UnionSignature> Unions, List<ClassSignature> Classes)> _moduleSignatures = new()
     {
+        {
+            DefId.DiagnosticsModuleId,
+            (
+                [FunctionSignature.GetMemoryUsage, FunctionSignature.TriggerGC],
+                [],
+                []
+            )
+        },
         {
             DefId.CoreLibModuleId,
             (
@@ -192,7 +200,7 @@ public partial class TypeChecker
             matchedFunctions.Add(x);
         }
 
-        foreach (var moduleId in _modules.Keys.Append(DefId.CoreLibModuleId).Except([CurrentModuleId]))
+        foreach (var moduleId in _modules.Keys.Concat([DefId.CoreLibModuleId, DefId.DiagnosticsModuleId]).Except([CurrentModuleId]))
         {
             var canMatchModule = (modulePathStr, modulePathIsGlobal) switch
             {
@@ -200,6 +208,7 @@ public partial class TypeChecker
                 ({ Length: > 0 }, false) => moduleId.Value == modulePathStr
                                             || imports.Any(import => ModuleIdAndNameMatchesImport(moduleId, modulePath?.FirstOrDefault() ?? name, import)),
                 _ => moduleId == DefId.CoreLibModuleId
+                    || moduleId == DefId.DiagnosticsModuleId
                     || imports.Any(import => ModuleIdAndNameMatchesImport(moduleId, name, import))
             };
 
@@ -302,7 +311,7 @@ public partial class TypeChecker
 
         foreach (var (moduleId, (functions, unions, classes)) in _moduleSignatures)
         {
-            if (moduleId == DefId.CoreLibModuleId)
+            if (moduleId == DefId.CoreLibModuleId || moduleId == DefId.DiagnosticsModuleId)
             {
                 continue;
             }

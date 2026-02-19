@@ -2,7 +2,12 @@
 
 public record DefId(ModuleId ModuleId, string FullName)
 {
-    public static ModuleId CoreLibModuleId => new("Reef:::Core");
+    public static ModuleId CoreLibModuleId { get; } = new("Reef:::Core");
+
+    public static ModuleId DiagnosticsModuleId { get; } = new("Reef:::Core:::Diagnostics");
+
+    public static DefId GetMemoryUsageBytes { get; } = new(DiagnosticsModuleId, "get_memory_usage_bytes");
+    public static DefId TriggerGC { get; } = new(DiagnosticsModuleId, "trigger_gc");
 
     public static DefId Unbox { get; } = new(CoreLibModuleId, "unbox");
     public static DefId Box { get; } = new(CoreLibModuleId, "box");

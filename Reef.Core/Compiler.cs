@@ -146,9 +146,11 @@ public class Compiler
 
         logger.LogInformation("Linking...");
 
-        var runtimeLibraryLocation =
-            Path.Join(Path.GetDirectoryName(typeof(Compiler).Assembly.Location),
-                "libreef_runtime.a");
+        var assemblyDirectory = Path.GetDirectoryName(typeof(Compiler).Assembly.Location).NotNull();
+
+        var runtimeLibraryLocation = Path.Combine(assemblyDirectory, "reef-runtime.lib");
+        var runtimeLibraryPdb = Path.Combine(assemblyDirectory, "reef-runtime.pdb");
+        File.Copy(runtimeLibraryPdb, Path.Combine(buildDirectory, "reef-runtime.pdb"));
 
         var linkProcess = new Process
         {
@@ -166,6 +168,8 @@ public class Compiler
                     @$"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\{msvcVersion}\lib\x64\legacy_stdio_wide_specifiers.lib",
                     @$"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\{msvcVersion}\lib\x64\vcruntime.lib",
                     @$"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\{msvcVersion}\lib\x64\msvcrt.lib",
+                    @$"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\{msvcVersion}\lib\x64\msvcrtd.lib",
+                    @$"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\{msvcVersion}\lib\x64\oldnames.lib",
                     $@"C:\Program Files (x86)\Windows Kits\10\Lib\{windowsKitsVersion}\ucrt\x64\ucrt.lib",
                     "/debug:full",
                     "/incremental:no"
