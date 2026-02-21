@@ -3,11 +3,15 @@
 public record DefId(ModuleId ModuleId, string FullName)
 {
     public static ModuleId CoreLibModuleId { get; } = new("Reef:::Core");
-
     public static ModuleId DiagnosticsModuleId { get; } = new("Reef:::Core:::Diagnostics");
+    public static ModuleId ReflectionModuleId { get; } = new("Reef:::Core:::Reflection");
 
     public static DefId GetMemoryUsageBytes { get; } = new(DiagnosticsModuleId, "get_memory_usage_bytes");
     public static DefId TriggerGC { get; } = new(DiagnosticsModuleId, "trigger_gc");
+
+    public static DefId TypeInfo { get; } = new(ReflectionModuleId, "TypeInfo");
+    public static DefId VariantInfo { get; } = new(ReflectionModuleId, "VariantInfo");
+    public static DefId FieldInfo { get; } = new(ReflectionModuleId, "FieldInfo");
 
     public static DefId Unbox { get; } = new(CoreLibModuleId, "unbox");
     public static DefId Box { get; } = new(CoreLibModuleId, "box");

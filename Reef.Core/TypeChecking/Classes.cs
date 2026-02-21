@@ -13,6 +13,98 @@ public partial class TypeChecker
         public static ClassSignature Unit { get; } = new()
         { Id = DefId.Unit, TypeParameters = [], Name = "Unit", Fields = [], Functions = [], Boxed = false, IsPublic = true };
 
+        public static ClassSignature FieldInfo { get; } = new()
+        {
+            Id = DefId.FieldInfo,
+            TypeParameters = [],
+            Name = "FieldInfo",
+            Fields = [
+                new TypeField {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "Name",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.String
+                },
+                new TypeField {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "Type",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.TypeInfo
+                },
+            ],
+            Functions = [],
+            Boxed = true,
+            IsPublic = true
+        };
+
+        public static ClassSignature VariantInfo { get; } = new()
+        {
+            Id = DefId.VariantInfo,
+            TypeParameters = [],
+            Name = "VariantInfo",
+            Fields = [
+                new TypeField {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "Name",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.String
+                },
+                new TypeField {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "Fields",
+                    StaticInitializer = null,
+                    Type = new ArrayType(InstantiatedClass.FieldInfo, boxed: true, length: 10)
+                },
+            ],
+            Functions = [],
+            Boxed = true,
+            IsPublic = true
+        };
+
+        public static ClassSignature TypeInfo { get; } = new()
+        {
+            Id = DefId.TypeInfo,
+            TypeParameters = [],
+            Name = "TypeInfo",
+            Fields = [
+                new TypeField {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "Name",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.String
+                },
+                new TypeField {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "StaticFields",
+                    StaticInitializer = null,
+                    Type = new ArrayType(InstantiatedClass.FieldInfo, boxed: false, length: 10)
+                },
+                new TypeField {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "Variants",
+                    StaticInitializer = null,
+                    Type = new ArrayType(InstantiatedClass.VariantInfo, boxed: false, length: 10)
+                }
+            ],
+            Functions = [],
+            Boxed = true,
+            IsPublic = true
+        };
+
         public static ClassSignature String { get; } = new()
         {
             Id = DefId.String,
@@ -419,6 +511,9 @@ public partial class TypeChecker
         public static InstantiatedClass UInt16 => new(ClassSignature.UInt16, [], [], boxed: ClassSignature.UInt16.Boxed);
         public static InstantiatedClass UInt8 => new(ClassSignature.UInt8, [], [], boxed: ClassSignature.UInt8.Boxed);
         public static InstantiatedClass RawPointer => new(ClassSignature.RawPointer, [], [], boxed: ClassSignature.RawPointer.Boxed);
+        public static InstantiatedClass TypeInfo => Create(ClassSignature.TypeInfo, [], ClassSignature.TypeInfo.Boxed);
+        public static InstantiatedClass VariantInfo => Create(ClassSignature.VariantInfo, [], ClassSignature.VariantInfo.Boxed);
+        public static InstantiatedClass FieldInfo => Create(ClassSignature.FieldInfo, [], ClassSignature.FieldInfo.Boxed);
 
         // todo: need some sort of inferred int type
 
