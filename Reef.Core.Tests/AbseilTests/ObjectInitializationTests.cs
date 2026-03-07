@@ -76,10 +76,10 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
                                 new BasicBlock(BB0, [
-                                    ..CreateBoxedObject(
+                                    new Assign(
                                         Local0,
-                                        new LoweredConcreteTypeReference(
-                                            "MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))
+                                        new CreateObject(new LoweredConcreteTypeReference(
+                                            "MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
                                 ], new GoTo(BB1)),
                                 new BasicBlock(BB1, [], new Return())
                             ],
