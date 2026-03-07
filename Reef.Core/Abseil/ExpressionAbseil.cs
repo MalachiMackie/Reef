@@ -2377,6 +2377,9 @@ public partial class ProgramAbseil
 
                         // todo: assert we're in a class and have _classVariant
 
+                        Debug.Assert(_currentType is not null);
+                        Debug.Assert(GetDataType(_currentType.DefinitionId).Variants is [{ Name: ClassVariantName }]);
+
                         return new PlaceResult(
                             new Field(
                                 new Field(new Deref(new Local(ParameterLocalName(0))), "Value", ClassVariantName),
@@ -2399,17 +2402,6 @@ public partial class ProgramAbseil
 
                             IPlace place = new Local(ParameterLocalName(argumentIndex));
 
-
-                            if (IsTypeReferenceBoxed(argument.Type))
-                            {
-                                Debug.Assert(
-                                    _currentFunction.Value.LoweredMethod.ParameterLocals[(int)argumentIndex].Type
-                                        is LoweredPointer(LoweredConcreteTypeReference pointerTo)
-                                        && pointerTo.DefinitionId == DefId.BoxedValue);
-
-                                place = new Field(place, "Value", ClassVariantName);
-                            }
-
                             return new PlaceResult(place);
                         }
 
@@ -2422,13 +2414,17 @@ public partial class ProgramAbseil
                                 ClassVariantName));
                         }
 
-                        return new PlaceResult(new Field(
-                            new Field(new Deref(new Field(
-                                new Field(new Deref(new Local(ParameterLocalName(0))), "Value", ClassVariantName),
-                                containingFunctionLocals.Name,
-                                ClassVariantName)), "Value", ClassVariantName),
-                            argument.Name.StringValue,
-                            ClassVariantName));
+                        return new PlaceResult(
+                            new Field(
+                                new Field(new Deref(
+                                    new Field(
+                                        new Field(new Deref(new Local(ParameterLocalName(0))), "Value", ClassVariantName),
+                                        containingFunctionLocals.Name,
+                                        ClassVariantName)
+                                ), "Value", ClassVariantName),
+                                argument.Name.StringValue,
+                                ClassVariantName)
+                        );
                     }
             }
 

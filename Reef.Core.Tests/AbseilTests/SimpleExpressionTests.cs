@@ -4,39 +4,37 @@ using static Reef.Core.Tests.LoweredProgramHelpers;
 
 namespace Reef.Core.Tests.AbseilTests;
 
-
 public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutputHelper)
 {
-
     [Fact]
-    [TestMe]
     public void SingleTest()
     {
-        var source = "var a: boxed i32 = box(1)";
-        var expectedProgram = LoweredProgram(ModuleId, methods:
-        [
-            Method(new DefId(ModuleId, $"{ModuleId}:::_Main"),
-                "_Main",
-                [
-                    new BasicBlock(
-                        BB0,
-                        [],
-                        new MethodCall(
-                            new LoweredFunctionReference(
-                                DefId.Box, [Int32T, new LoweredPointer(BoxedValue(Int32T))]),
-                            [new IntConstant(1, 4)],
-                            new Local("_local0"),
-                            BB1)),
-                    new BasicBlock(BB1, [], new Return()),
-                ],
-                Unit,
-                locals:
-                [
-                    new MethodLocal(
-                        "_local0",
-                        "a",
-                        new LoweredPointer(BoxedValue(Int32T)))
-                ])
+        var source = "fn SomeFn(a: boxed i32){var b = unbox(a);}";
+        var expectedProgram = LoweredProgram(ModuleId, methods: [
+            Method(new DefId(ModuleId, $"{ModuleId}:::SomeFn"),
+                                "SomeFn",
+                                [
+                                    new BasicBlock(
+                                        BB0,
+                                        [],
+                                        new MethodCall(
+                                            new LoweredFunctionReference(
+                                                DefId.Unbox, [new LoweredPointer(BoxedValue(Int32T)), Int32T]),
+                                            [new Copy(new Local("_param0"))],
+                                            new Local("_local0"),
+                                            BB1)),
+                                    new BasicBlock(BB1, [], new Return()),
+                                ],
+                                Unit,
+                                parameters: [
+                                    ("a", new LoweredPointer(BoxedValue(Int32T)))
+                                ],
+                                locals: [
+                                    new MethodLocal(
+                                        "_local0",
+                                        "b",
+                                        Int32T),
+                                ])
         ]);
 
         var program = CreateProgram(ModuleId, source);
@@ -125,6 +123,78 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                             "_local0",
                             "a",
                             new LoweredPointer(BoxedValue(Int32T)))
+                        ])
+                ])
+            },
+            {
+                "unbox number parameter",
+                "fn SomeFn(a: boxed i32){var b = unbox(a);}",
+                LoweredProgram(ModuleId, methods: [
+                    Method(new DefId(ModuleId, $"{ModuleId}:::SomeFn"),
+                        "SomeFn",
+                        [
+                            new BasicBlock(
+                                BB0,
+                                [],
+                                new MethodCall(
+                                    new LoweredFunctionReference(
+                                        DefId.Unbox, [new LoweredPointer(BoxedValue(Int32T)), Int32T]),
+                                    [new Copy(new Local("_param0"))],
+                                    new Local("_local0"),
+                                    BB1)),
+                            new BasicBlock(BB1, [], new Return()),
+                        ],
+                        Unit,
+                        parameters: [
+                            ("a", new LoweredPointer(BoxedValue(Int32T)))
+                        ],
+                        locals: [
+                            new MethodLocal(
+                                "_local0",
+                                "b",
+                                Int32T),
+                        ])
+                ])
+            },
+            {
+                "unbox number",
+                "var a: i32 = unbox(box(1))",
+                LoweredProgram(ModuleId, methods: [
+                    Method(new DefId(ModuleId, $"{ModuleId}:::_Main"),
+                        "_Main",
+                        [
+                            new BasicBlock(
+                                BB0,
+                                [],
+                                new MethodCall(
+                                    new LoweredFunctionReference(
+                                        DefId.Box, [Int32T, new LoweredPointer(BoxedValue(Int32T))]),
+                                    [new IntConstant(1, 4)],
+                                    new Local("_local1"),
+                                    BB1)),
+                            new BasicBlock(
+                                BB1,
+                                [],
+                                new MethodCall(
+                                    new LoweredFunctionReference(
+                                        DefId.Unbox, [new LoweredPointer(BoxedValue(Int32T)), Int32T]),
+                                    [new Copy(new Local("_local1"))],
+                                    new Local("_local0"),
+                                    BB2
+                                )
+                            ),
+                            new BasicBlock(BB2, [], new Return()),
+                        ],
+                        Unit,
+                        locals: [
+                            new MethodLocal(
+                                "_local0",
+                                "a",
+                                Int32T),
+                            new MethodLocal(
+                                "_local1",
+                                null,
+                                new LoweredPointer(BoxedValue(Int32T))),
                         ])
                 ])
             },
