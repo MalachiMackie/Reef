@@ -71,6 +71,7 @@ public record IntConstant(long Value, byte ByteSize) : IOperand;
 public record UIntConstant(ulong Value, byte ByteSize) : IOperand;
 
 public record SizeOf(ILoweredTypeReference Type) : IOperand;
+public record TypeIdOf(ILoweredTypeReference Type) : IOperand;
 
 public record BoolConstant(bool Value) : IOperand;
 

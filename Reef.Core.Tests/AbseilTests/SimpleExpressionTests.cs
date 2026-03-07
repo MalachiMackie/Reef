@@ -9,6 +9,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
 {
 
     [Fact]
+    [TestMe]
     public void SingleTest()
     {
         var source = "var a: boxed i32 = box(1)";
@@ -22,7 +23,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                         [],
                         new MethodCall(
                             new LoweredFunctionReference(
-                                DefId.Box, [Int32T, new LoweredPointer(Int32T)]),
+                                DefId.Box, [Int32T, new LoweredPointer(BoxedValue(Int32T))]),
                             [new IntConstant(1, 4)],
                             new Local("_local0"),
                             BB1)),
@@ -34,13 +35,15 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                     new MethodLocal(
                         "_local0",
                         "a",
-                        new LoweredPointer(Int32T))
+                        new LoweredPointer(BoxedValue(Int32T)))
                 ])
         ]);
 
         var program = CreateProgram(ModuleId, source);
         var (loweredProgram, _) = Lower(program);
 
+        TestOutput.WriteLine(source);
+        TestOutput.WriteLine("=====================");
         PrintPrograms(expectedProgram, loweredProgram);
 
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
@@ -110,7 +113,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                                 [],
                                 new MethodCall(
                                     new LoweredFunctionReference(
-                                        DefId.Box, [Int32T, new LoweredPointer(Int32T)]),
+                                        DefId.Box, [Int32T, new LoweredPointer(BoxedValue(Int32T))]),
                                     [new IntConstant(1, 4)],
                                     new Local("_local0"),
                                     BB1)),
@@ -121,7 +124,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                             new MethodLocal(
                             "_local0",
                             "a",
-                            new LoweredPointer(Int32T))
+                            new LoweredPointer(BoxedValue(Int32T)))
                         ])
                 ])
             },

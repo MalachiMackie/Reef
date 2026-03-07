@@ -138,13 +138,13 @@ public partial class TypeChecker
             expressionsDiverge |= expression.Diverges;
         }
 
-        if (!expressionsDiverge && !Equals(fnSignature.ReturnType, InstantiatedClass.Unit))
+        if (!expressionsDiverge)
         {
-            // todo: figure out source range
-            AddError(TypeCheckerError.MismatchedTypes(
-                new SourceRange(fnSignature.NameToken.SourceSpan, fnSignature.NameToken.SourceSpan),
+            ExpectType(
+                InstantiatedClass.Unit,
                 fnSignature.ReturnType,
-                InstantiatedClass.Unit));
+                new SourceRange(fnSignature.NameToken.SourceSpan, fnSignature.NameToken.SourceSpan)
+            );
         }
 
         foreach (var localFn in fnSignature.LocalFunctions)
@@ -316,7 +316,7 @@ public partial class TypeChecker
         public List<IVariable> AccessedOuterVariables { get; } = [];
 
         // Diagnostics
-        public static FunctionSignature GetMemoryUsage { get; } = new FunctionSignature(
+        public static FunctionSignature GetMemoryUsage => new(
             DefId.GetMemoryUsageBytes,
             Token.Identifier("get_memory_usage_bytes", SourceSpan.Default),
             [],
@@ -332,36 +332,178 @@ public partial class TypeChecker
             ReturnType = InstantiatedClass.UInt64
         };
 
-        public static FunctionSignature TriggerGC { get; } = new FunctionSignature(
-                    DefId.TriggerGC,
-                    Token.Identifier("trigger_gc", SourceSpan.Default),
-                    [],
-                    [],
-                    IsStatic: true,
-                    IsMutable: false,
-                    Expressions: [],
-                    Extern: true,
-                    IsMutableReturn: true,
-                    IsPublic: true)
+        public static FunctionSignature TriggerGC => new(
+            DefId.TriggerGC,
+            Token.Identifier("trigger_gc", SourceSpan.Default),
+            [],
+            [],
+            IsStatic: true,
+            IsMutable: false,
+            Expressions: [],
+            Extern: true,
+            IsMutableReturn: true,
+            IsPublic: true)
         {
             OwnerType = null,
             ReturnType = InstantiatedClass.Unit
         };
 
         // Core
-        public static FunctionSignature PrintString { get; }
-        public static FunctionSignature PrintI8 { get; } = CreatePrintInt(InstantiatedClass.Int8, DefId.PrintI8);
-        public static FunctionSignature PrintI16 { get; } = CreatePrintInt(InstantiatedClass.Int16, DefId.PrintI16);
-        public static FunctionSignature PrintI32 { get; } = CreatePrintInt(InstantiatedClass.Int32, DefId.PrintI32);
-        public static FunctionSignature PrintI64 { get; } = CreatePrintInt(InstantiatedClass.Int64, DefId.PrintI64);
-        public static FunctionSignature PrintU8 { get; } = CreatePrintInt(InstantiatedClass.UInt8, DefId.PrintU8);
-        public static FunctionSignature PrintU16 { get; } = CreatePrintInt(InstantiatedClass.UInt16, DefId.PrintU16);
-        public static FunctionSignature PrintU32 { get; } = CreatePrintInt(InstantiatedClass.UInt32, DefId.PrintU32);
-        public static FunctionSignature PrintU64 { get; } = CreatePrintInt(InstantiatedClass.UInt64, DefId.PrintU64);
+        public static FunctionSignature PrintString => CreatePrintString();
+        public static FunctionSignature PrintI8 => CreatePrintInt(InstantiatedClass.Int8, DefId.PrintI8);
+        public static FunctionSignature PrintI16 => CreatePrintInt(InstantiatedClass.Int16, DefId.PrintI16);
+        public static FunctionSignature PrintI32 => CreatePrintInt(InstantiatedClass.Int32, DefId.PrintI32);
+        public static FunctionSignature PrintI64 => CreatePrintInt(InstantiatedClass.Int64, DefId.PrintI64);
+        public static FunctionSignature PrintU8 => CreatePrintInt(InstantiatedClass.UInt8, DefId.PrintU8);
+        public static FunctionSignature PrintU16 => CreatePrintInt(InstantiatedClass.UInt16, DefId.PrintU16);
+        public static FunctionSignature PrintU32 => CreatePrintInt(InstantiatedClass.UInt32, DefId.PrintU32);
+        public static FunctionSignature PrintU64 => CreatePrintInt(InstantiatedClass.UInt64, DefId.PrintU64);
 
-        public static FunctionSignature Allocate { get; }
-        public static FunctionSignature Box { get; }
-        public static FunctionSignature Unbox { get; }
+        public static FunctionSignature Allocate => CreateAllocate();
+        public static FunctionSignature Box => CreateBox();
+        public static FunctionSignature Unbox => CreateUnbox();
+
+        private static FunctionSignature CreateAllocate()
+        {
+            var allocateParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+            var signature = new FunctionSignature(
+                DefId.Allocate,
+                Token.Identifier("allocate", SourceSpan.Default),
+                [],
+                allocateParameters,
+                IsStatic: true,
+                IsMutable: false,
+                [],
+                Extern: true,
+                IsMutableReturn: true,
+                IsPublic: true)
+            {
+                OwnerType = null,
+                ReturnType = InstantiatedClass.RawPointer
+            };
+
+            allocateParameters["byteSize"] = new FunctionSignatureParameter(
+                signature,
+                Token.Identifier("byteSize", SourceSpan.Default),
+                InstantiatedClass.UInt64,
+                Mutable: false,
+                ParameterIndex: 0);
+
+            return signature;
+        }
+
+        private static FunctionSignature CreateBox()
+        {
+            var boxParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+            var boxTypeParameters = new List<GenericPlaceholder>();
+            var signature = new FunctionSignature(
+                DefId.Box,
+                Token.Identifier("box", SourceSpan.Default),
+                boxTypeParameters,
+                boxParameters,
+                IsStatic: true,
+                IsMutable: false,
+                Expressions: [],
+                Extern: true,
+                IsMutableReturn: true,
+                IsPublic: true)
+            {
+                OwnerType = null,
+                ReturnType = null!
+            };
+
+            /*
+                * pub fn box<TParam, TResult>(param: TParam): TResult
+                *  where TParam: unboxed TResult,
+                *        TResult: boxed TParam
+                * {}
+                */
+
+            var boxTParamConstraints = new List<ITypeConstraint>();
+            boxTypeParameters.Add(new GenericPlaceholder { GenericName = "TParam", OwnerType = signature, Constraints = boxTParamConstraints });
+            boxTypeParameters.Add(new GenericPlaceholder { GenericName = "TReturn", OwnerType = signature, Constraints = [new BoxedTypeConstraint(boxTypeParameters[0])] });
+            boxTParamConstraints.Add(new UnboxedTypeConstraint(boxTypeParameters[1]));
+            signature.ReturnType = boxTypeParameters[1];
+            boxParameters["value"] = new FunctionSignatureParameter(
+                signature,
+                Token.Identifier("value", SourceSpan.Default),
+                boxTypeParameters[0],
+                false,
+                0);
+
+            return signature;
+        }
+
+        private static FunctionSignature CreateUnbox()
+        {
+            var unboxParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+            var unboxTypeParameters = new List<GenericPlaceholder>();
+            var signature = new FunctionSignature(
+                DefId.Unbox,
+                Token.Identifier("unbox", SourceSpan.Default),
+                unboxTypeParameters,
+                unboxParameters,
+                IsStatic: true,
+                IsMutable: false,
+                Expressions: [],
+                Extern: true,
+                IsMutableReturn: true,
+                IsPublic: true)
+            {
+                OwnerType = null,
+                ReturnType = null!
+            };
+
+            /*
+                * pub fn unbox<TParam, TResult>(param: TParam): TResult
+                *  where TParam: boxed TResult,
+                *        TResult: unboxed TParam
+                * {}
+                */
+
+            var unboxTParamConstraints = new List<ITypeConstraint>();
+            unboxTypeParameters.Add(new GenericPlaceholder { GenericName = "TParam", OwnerType = signature, Constraints = unboxTParamConstraints });
+            unboxTypeParameters.Add(new GenericPlaceholder { GenericName = "TReturn", OwnerType = signature, Constraints = [new UnboxedTypeConstraint(unboxTypeParameters[0])] });
+            unboxTParamConstraints.Add(new BoxedTypeConstraint(unboxTypeParameters[1]));
+            signature.ReturnType = unboxTypeParameters[1];
+            unboxParameters["value"] = new FunctionSignatureParameter(
+                signature,
+                Token.Identifier("value", SourceSpan.Default),
+                unboxTypeParameters[0],
+                false,
+                0);
+
+            return signature;
+        }
+
+        private static FunctionSignature CreatePrintString()
+        {
+            var printStringParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+            var signature = new FunctionSignature(
+                DefId.PrintString,
+                Token.Identifier("print_string", SourceSpan.Default),
+                [],
+                printStringParameters,
+                IsStatic: true,
+                IsMutable: false,
+                Expressions: [],
+                Extern: true,
+                IsMutableReturn: true,
+                IsPublic: true)
+            {
+                OwnerType = null,
+                ReturnType = InstantiatedClass.Unit
+            };
+
+            printStringParameters["str"] = new FunctionSignatureParameter(
+                signature,
+                Token.Identifier("str", SourceSpan.Default),
+                InstantiatedClass.String,
+                false,
+                0);
+
+            return signature;
+        }
 
         private static FunctionSignature CreatePrintInt(InstantiatedClass type, DefId id)
         {
@@ -390,131 +532,6 @@ public partial class TypeChecker
                 0);
 
             return signature;
-        }
-
-        static FunctionSignature()
-        {
-            var allocateParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
-            Allocate = new FunctionSignature(
-                DefId.Allocate,
-                Token.Identifier("allocate", SourceSpan.Default),
-                [],
-                allocateParameters,
-                IsStatic: true,
-                IsMutable: false,
-                [],
-                Extern: true,
-                IsMutableReturn: true,
-                IsPublic: true)
-            {
-                OwnerType = null,
-                ReturnType = InstantiatedClass.RawPointer
-            };
-
-            allocateParameters["byteSize"] = new FunctionSignatureParameter(
-                Allocate,
-                Token.Identifier("byteSize", SourceSpan.Default),
-                InstantiatedClass.UInt64,
-                Mutable: false,
-                ParameterIndex: 0);
-
-            var printStringParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
-            PrintString = new FunctionSignature(
-                DefId.PrintString,
-                Token.Identifier("print_string", SourceSpan.Default),
-                [],
-                printStringParameters,
-                IsStatic: true,
-                IsMutable: false,
-                Expressions: [],
-                Extern: true,
-                IsMutableReturn: true,
-                IsPublic: true)
-            {
-                OwnerType = null,
-                ReturnType = InstantiatedClass.Unit
-            };
-
-            printStringParameters["str"] = new FunctionSignatureParameter(
-                PrintString,
-                Token.Identifier("str", SourceSpan.Default),
-                InstantiatedClass.String,
-                false,
-                0);
-
-            var boxParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
-            var boxTypeParameters = new List<GenericPlaceholder>();
-            Box = new FunctionSignature(
-                DefId.Box,
-                Token.Identifier("box", SourceSpan.Default),
-                boxTypeParameters,
-                boxParameters,
-                IsStatic: true,
-                IsMutable: false,
-                Expressions: [],
-                Extern: true,
-                IsMutableReturn: true,
-                IsPublic: true)
-            {
-                OwnerType = null,
-                ReturnType = null!
-            };
-
-            /*
-             * pub fn box<TParam, TResult>(param: TParam): TResult
-             *  where TParam: unboxed TResult,
-             *        TResult: boxed TParam
-             * {}
-             */
-
-            var boxTParamConstraints = new List<ITypeConstraint>();
-            boxTypeParameters.Add(new GenericPlaceholder { GenericName = "TParam", OwnerType = Box, Constraints = boxTParamConstraints });
-            boxTypeParameters.Add(new GenericPlaceholder { GenericName = "TReturn", OwnerType = Box, Constraints = [new BoxedTypeConstraint(boxTypeParameters[0])] });
-            boxTParamConstraints.Add(new UnboxedTypeConstraint(boxTypeParameters[1]));
-            Box.ReturnType = boxTypeParameters[1];
-            boxParameters["value"] = new FunctionSignatureParameter(
-                Box,
-                Token.Identifier("value", SourceSpan.Default),
-                boxTypeParameters[0],
-                false,
-                0);
-
-            var unboxParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
-            var unboxTypeParameters = new List<GenericPlaceholder>();
-            Unbox = new FunctionSignature(
-                DefId.Unbox,
-                Token.Identifier("unbox", SourceSpan.Default),
-                unboxTypeParameters,
-                unboxParameters,
-                IsStatic: true,
-                IsMutable: false,
-                Expressions: [],
-                Extern: true,
-                IsMutableReturn: true,
-                IsPublic: true)
-            {
-                OwnerType = null,
-                ReturnType = null!
-            };
-
-            /*
-             * pub fn unbox<TParam, TResult>(param: TParam): TResult
-             *  where TParam: boxed TResult,
-             *        TResult: unboxed TParam
-             * {}
-             */
-
-            var unboxTParamConstraints = new List<ITypeConstraint>();
-            unboxTypeParameters.Add(new GenericPlaceholder { GenericName = "TParam", OwnerType = Unbox, Constraints = unboxTParamConstraints });
-            unboxTypeParameters.Add(new GenericPlaceholder { GenericName = "TReturn", OwnerType = Unbox, Constraints = [new UnboxedTypeConstraint(unboxTypeParameters[0])] });
-            unboxTParamConstraints.Add(new BoxedTypeConstraint(unboxTypeParameters[1]));
-            Unbox.ReturnType = unboxTypeParameters[1];
-            unboxParameters["value"] = new FunctionSignatureParameter(
-                Unbox,
-                Token.Identifier("value", SourceSpan.Default),
-                unboxTypeParameters[0],
-                false,
-                0);
         }
     }
 

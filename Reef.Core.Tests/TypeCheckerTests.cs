@@ -65,25 +65,17 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         var sourceFiles = new Dictionary<string, (string, IReadOnlyList<TypeCheckerError> expectedErrors)>()
         {
             {
-                "main.rf",
-                ("""
-                use :::otherModule:::SomeFn;
-
-                pub class MyClass{};
-
-                var a = SomeFn();
-                """, [])
-            },
-            {
-                "otherModule.rf",
-                ("""
-                use :::main:::MyClass;
-
-                pub fn SomeFn(): MyClass
-                {
-                    return new MyClass{};
-                }
-                """, [])
+                "main.rf", ("""
+                            var a: i64;
+                            fn SomeFn() {
+                                var b = a;
+                            }
+                            SomeFn();
+                            a = 1;
+                            """, [
+                            TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("SomeFn"),
+                            [Identifier("a")])
+                            ])
             }
         };
 

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
@@ -213,13 +214,26 @@ public partial class TypeChecker
 
     public class InstantiatedUnion : ITypeReference, IInstantiatedGeneric
     {
-        public InstantiatedUnion CloneWithTypeArguments(IReadOnlyList<GenericTypeReference> typeArguments)
+        public InstantiatedUnion CloneWithTypeArguments(IReadOnlyList<ITypeReference> typeArguments)
         {
-            return new InstantiatedUnion(
+            Debug.Assert(typeArguments.Count == Signature.TypeParameters.Count);
+            var instantiatedTypeArguments = new List<GenericTypeReference>(typeArguments.Count);
+            var instantiatedUnion = new InstantiatedUnion(
                 Signature,
-                typeArguments,
+                instantiatedTypeArguments,
                 Variants,
                 Boxed);
+
+            instantiatedTypeArguments.AddRange(Signature.TypeParameters.Zip(typeArguments)
+                .Select(x => x.First.Instantiate(
+                    instantiatedUnion,
+                    x.Second switch
+                    {
+                        GenericTypeReference { ResolvedType: var resolvedType } => resolvedType,
+                        _ => x.Second
+                    })));
+
+            return instantiatedUnion;
         }
 
         private InstantiatedUnion(
@@ -297,9 +311,10 @@ public partial class TypeChecker
                 {
                     GenericTypeReference genericTypeReference => typeArgumentReferences.First(z => z.GenericName == genericTypeReference.GenericName),
                     GenericPlaceholder placeholder => typeArgumentReferences.First(z => z.GenericName == placeholder.GenericName),
-                    InstantiatedUnion union => union.CloneWithTypeArguments([.. union.TypeArguments.Select(HandleType).Cast<GenericTypeReference>()]),
-                    InstantiatedClass klass => klass.CloneWithTypeArguments([.. klass.TypeArguments.Select(HandleType).Cast<GenericTypeReference>()]),
-                    _ => type
+                    InstantiatedUnion union => union.CloneWithTypeArguments([.. union.TypeArguments.Select(HandleType)]),
+                    InstantiatedClass klass => klass.CloneWithTypeArguments([.. klass.TypeArguments.Select(HandleType)]),
+                    ArrayType arrayType => new ArrayType(HandleType(arrayType.ElementType), arrayType.Boxed, arrayType.Length),
+                    _ => throw new InvalidOperationException(type.GetType().ToString())
                 };
             }
         }

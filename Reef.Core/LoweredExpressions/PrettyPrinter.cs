@@ -485,6 +485,13 @@ public class PrettyPrinter(LoweredModule module)
                     _stringBuilder.Append(')');
                     break;
                 }
+            case TypeIdOf(var typeOfType):
+                {
+                    _stringBuilder.Append("typeId(");
+                    PrettyPrintTypeReference(typeOfType);
+                    _stringBuilder.Append(')');
+                    break;
+                }
             default:
                 throw new ArgumentOutOfRangeException(operand.ToString());
         }

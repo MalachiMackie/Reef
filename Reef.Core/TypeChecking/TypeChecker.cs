@@ -166,7 +166,7 @@ public partial class TypeChecker
                     FunctionSignature.PrintU64,
                 ],
                 [..UnionSignature.BuiltInTypes],
-                [..ClassSignature.BuiltInTypes])
+                [..ClassSignature.BuiltInTypes.Value])
         }
     };
 

@@ -42,14 +42,14 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                         BB0,
                                         [],
                                         AllocateMethodCall(
-                                            ConcreteTypeReference("MyClass", ModuleId),
+                                            BoxedValue(ConcreteTypeReference("MyClass", ModuleId)),
                                             Local0,
                                             BB1)),
                                     new BasicBlock(BB1, [
-                                        new Assign(
+                                        ..CreateBoxedObject(
                                             new Deref(Local0),
-                                            new CreateObject(new LoweredConcreteTypeReference(
-                                                "MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
+                                            new LoweredConcreteTypeReference(
+                                                "MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))
                                     ], new GoTo(BB2)),
                                     new BasicBlock(BB2, [], new Return())
                                 ],
@@ -58,7 +58,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                     new MethodLocal(
                                         "_local0",
                                         "a",
-                                        new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
+                                        new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
                                 ])
                         ])
             },
@@ -76,10 +76,10 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                             [
                                 new BasicBlock(BB0, [
-                                    new Assign(
+                                    ..CreateBoxedObject(
                                         Local0,
-                                        new CreateObject(new LoweredConcreteTypeReference(
-                                            "MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
+                                        new LoweredConcreteTypeReference(
+                                            "MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))
                                 ], new GoTo(BB1)),
                                 new BasicBlock(BB1, [], new Return())
                             ],
@@ -109,19 +109,18 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                         BB0,
                                         [],
                                         AllocateMethodCall(
-                                            ConcreteTypeReference("MyClass", ModuleId),
+                                            BoxedValue(ConcreteTypeReference("MyClass", ModuleId)),
                                             Local0,
                                             BB1)),
                                     new BasicBlock(
                                         BB1,
                                         [
-                                            new Assign(
+                                            ..CreateBoxedObject(
                                                 new Deref(Local0),
-                                                new CreateObject(
-                                                    new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
+                                                    new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])),
                                             new Assign(
                                                 new Field(
-                                                    new Deref(Local0),
+                                                    new Field(new Deref(Local0), "Value", "_classVariant"),
                                                     "MyField",
                                                     "_classVariant"),
                                                 new Use(new StringConstant("hi")))
@@ -134,7 +133,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                     new MethodLocal(
                                         "_local0",
                                         "a",
-                                        new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
+                                        new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
                                 ])
                         ])
             },
@@ -153,18 +152,17 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                     BB0,
                                     [],
                                     AllocateMethodCall(
-                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                         Local0,
                                         BB1)),
                                 new BasicBlock(
                                     BB1,
                                     [
-                                        new Assign(
+                                        ..CreateBoxedObject(
                                             new Deref(Local0),
-                                            new CreateObject(
-                                                new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                                new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                         new Assign(
-                                            new Field(new Deref(Local0), "_variantIdentifier", "A"),
+                                            new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "A"),
                                             new Use(new UIntConstant(0, 2)))
                                     ],
                                     new GoTo(BB2)),
@@ -177,7 +175,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                             locals: [new MethodLocal(
                                 "_local0",
                                 "a",
-                                new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))])
+                                new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))])
                     ])
             },
             {
@@ -201,24 +199,24 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                     BB0,
                                     [],
                                     AllocateMethodCall(
-                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                         Local0,
                                         BB1)),
                                 new BasicBlock(
                                     BB1,
                                     [
-                                        new Assign(
+                                        ..CreateBoxedObject(
                                             new Deref(Local0),
-                                            new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                            new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                         new Assign(
                                             new Field(
-                                                new Deref(Local0),
+                                                new Field(new Deref(Local0), "Value", "_classVariant"),
                                                 "_variantIdentifier",
                                                 "B"),
                                             new Use(new UIntConstant(1, 2))),
                                         new Assign(
                                             new Field(
-                                                new Deref(Local0),
+                                                new Field(new Deref(Local0), "Value", "_classVariant"),
                                                 "a",
                                                 "B"),
                                             new Use(new StringConstant("hi")))
@@ -231,7 +229,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                 new MethodLocal(
                                     "_local0",
                                     "a",
-                                    new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))
+                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))
                             ])
                     ])
             }

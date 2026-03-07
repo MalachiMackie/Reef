@@ -1,4 +1,5 @@
-﻿using Reef.Core.LoweredExpressions;
+﻿using System.Diagnostics;
+using Reef.Core.LoweredExpressions;
 using Reef.Core.TypeChecking;
 
 namespace Reef.Core.Tests;
@@ -81,6 +82,64 @@ public static class LoweredProgramHelpers
     public static readonly BasicBlockId BB11 = new("bb11");
     public static readonly BasicBlockId BB12 = new("bb12");
 
+    public static IEnumerable<IStatement> CreateBoxedObject(
+        IPlace destination,
+        LoweredConcreteTypeReference type)
+    {
+        Debug.Assert(destination is Deref, destination.GetType().ToString());
+
+        return [
+            new Assign(
+                destination,
+                new CreateObject(BoxedValue(type))
+            ),
+            new Assign(
+                new Field(destination, "ObjectHeader", "_classVariant"),
+                new CreateObject(ObjectHeader)),
+            new Assign(
+                new Field(new Field(destination, "ObjectHeader", "_classVariant"), "TypeId", "_classVariant"),
+                new Use(new TypeIdOf(type))),
+            new Assign(
+                new Field(destination, "Value", "_classVariant"),
+                new CreateObject(type))
+        ];
+    }
+
+    public static IEnumerable<IStatement> CreateBoxedArray(
+        IPlace destination,
+        ILoweredTypeReference elementType,
+        uint length)
+    {
+        Debug.Assert(destination is Deref);
+        var arrayType = new LoweredArray(elementType, length);
+
+        return [
+            new Assign(
+                destination,
+                new CreateObject(BoxedValue(arrayType))
+            ),
+            new Assign(
+                new Field(destination, "ObjectHeader", "_classVariant"),
+                new CreateObject(ObjectHeader)),
+            new Assign(
+                new Field(new Field(destination, "ObjectHeader", "_classVariant"), "TypeId", "_classVariant"),
+                new Use(new TypeIdOf(arrayType))),
+            new Assign(
+                new Field(destination, "Value", "_classVariant"),
+                new CreateArray(arrayType))
+        ];
+    }
+
+    public static LoweredConcreteTypeReference BoxedValue(ILoweredTypeReference value)
+    {
+        return new LoweredConcreteTypeReference(
+            "BoxedValue",
+            DefId.BoxedValue,
+            [value]
+        );
+    }
+
+    public static LoweredConcreteTypeReference ObjectHeader { get; } = new LoweredConcreteTypeReference("ObjectHeader", DefId.ObjectHeader, []);
 
     public static LoweredConcreteTypeReference ConcreteTypeReference(string name, ModuleId moduleId, IReadOnlyList<ILoweredTypeReference>? typeArguments = null)
     {
@@ -120,38 +179,38 @@ public static class LoweredProgramHelpers
 
     public static LoweredConcreteTypeReference BooleanT { get; }
         = new(
-            TypeChecker.ClassSignature.Boolean.Name,
-            TypeChecker.ClassSignature.Boolean.Id,
+            TypeChecker.ClassSignature.Boolean.Value.Name,
+            TypeChecker.ClassSignature.Boolean.Value.Id,
             []);
 
     public static LoweredConcreteTypeReference Unit { get; }
         = new(
-            TypeChecker.ClassSignature.Unit.Name,
-            TypeChecker.ClassSignature.Unit.Id,
+            TypeChecker.ClassSignature.Unit.Value.Name,
+            TypeChecker.ClassSignature.Unit.Value.Id,
             []);
 
     public static LoweredConcreteTypeReference StringT { get; }
         = new(
-            TypeChecker.ClassSignature.String.Name,
-            TypeChecker.ClassSignature.String.Id,
+            TypeChecker.ClassSignature.String.Value.Name,
+            TypeChecker.ClassSignature.String.Value.Id,
             []);
 
     public static LoweredConcreteTypeReference Int32T { get; }
         = new(
-            TypeChecker.ClassSignature.Int32.Name,
-            TypeChecker.ClassSignature.Int32.Id,
+            TypeChecker.ClassSignature.Int32.Value.Name,
+            TypeChecker.ClassSignature.Int32.Value.Id,
             []);
 
     public static LoweredConcreteTypeReference Int64T { get; }
         = new(
-            TypeChecker.ClassSignature.Int64.Name,
-            TypeChecker.ClassSignature.Int64.Id,
+            TypeChecker.ClassSignature.Int64.Value.Name,
+            TypeChecker.ClassSignature.Int64.Value.Id,
             []);
 
     public static LoweredConcreteTypeReference UInt16T { get; }
         = new(
-            TypeChecker.ClassSignature.UInt16.Name,
-            TypeChecker.ClassSignature.UInt16.Id,
+            TypeChecker.ClassSignature.UInt16.Value.Name,
+            TypeChecker.ClassSignature.UInt16.Value.Id,
             []);
 
     public static LoweredConcreteTypeReference Tuple(params IReadOnlyList<ILoweredTypeReference> types)

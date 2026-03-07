@@ -83,10 +83,10 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                         parameters: [
                             (
                                 "this",
-                                new LoweredPointer(new LoweredConcreteTypeReference(
+                                new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
                                     "MyUnion",
                                     new DefId(ModuleId, $"{ModuleId}:::MyUnion"),
-                                    [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}:::MyUnion"), "T")]))
+                                    [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}:::MyUnion"), "T")])))
                             )],
                         typeParameters: [(new DefId(ModuleId, $"{ModuleId}:::MyUnion"), "T")])
                 ])
@@ -110,28 +110,28 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 BB0,
                                 [],
                                 AllocateMethodCall(
-                                    ConcreteTypeReference("MyUnion", ModuleId),
+                                    BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                     ReturnValue,
                                     BB1)),
                             new BasicBlock(BB1, [
-                                new Assign(
+                                ..CreateBoxedObject(
                                     new Deref(ReturnValue),
-                                    new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                    new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                 new Assign(
-                                    new Field(new Deref(ReturnValue), "_variantIdentifier", "A"),
+                                    new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "_variantIdentifier", "A"),
                                     new Use(new UIntConstant(0, 2))),
                                 new Assign(
-                                    new Field(new Deref(ReturnValue), "Item0", "A"),
+                                    new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "Item0", "A"),
                                     new Use(new Copy(Param0))),
                                 new Assign(
-                                    new Field(new Deref(ReturnValue), "Item1", "A"),
+                                    new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "Item1", "A"),
                                     new Use(new Copy(Param1))),
                             ])
                             {
                                 Terminator = new Return()
                             }
                         ],
-                        new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
+                        new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                         parameters: [("Item0", StringT), ("Item1", Int64T)])
                 ])
             },
@@ -155,28 +155,28 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 BB0,
                                 [],
                                 AllocateMethodCall(
-                                    ConcreteTypeReference(
+                                    BoxedValue(ConcreteTypeReference(
                                         "MyUnion",
                                         ModuleId,
-                                        [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}:::MyUnion"), "T")]),
+                                        [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}:::MyUnion"), "T")])),
                                     ReturnValue,
                                     BB1)),
                             new BasicBlock(BB1, [
-                                new Assign(
+                                ..CreateBoxedObject(
                                     new Deref(ReturnValue),
-                                    new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}:::MyUnion"), "T")]))),
+                                    new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}:::MyUnion"), "T")])),
                                 new Assign(
-                                    new Field(new Deref(ReturnValue), "_variantIdentifier", "A"),
+                                    new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "_variantIdentifier", "A"),
                                     new Use(new UIntConstant(0, 2))),
                                 new Assign(
-                                    new Field(new Deref(ReturnValue), "Item0", "A"),
+                                    new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "Item0", "A"),
                                     new Use(new Copy(Param0)))
                             ])
                             {
                                 Terminator = new Return()
                             }
                         ],
-                        new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}:::MyUnion"), "T")])),
+                        new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}:::MyUnion"), "T")]))),
                         typeParameters: [(new DefId(ModuleId, $"{ModuleId}:::MyUnion"), "T")],
                         parameters: [("Item0", new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}:::MyUnion"), "T"))])
                 ])
@@ -204,7 +204,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__MyFn"), "MyUnion__MyFn",
                                 [new BasicBlock(BB0, []) {Terminator = new Return()}],
                                 Unit,
-                                parameters: [("this", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))])
+                                parameters: [("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))])
                         ], types: [
                     DataType(ModuleId, "MyUnion")
                 ])
@@ -223,27 +223,27 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     BB0,
                                     [],
                                     AllocateMethodCall(
-                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                         ReturnValue,
                                         BB1)),
                                 new BasicBlock(
                                     BB1,
                                     [
-                                        new Assign(
+                                        ..CreateBoxedObject(
                                             new Deref(ReturnValue),
-                                            new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                            new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                         new Assign(
-                                            new Field(new Deref(ReturnValue), "_variantIdentifier", "A"),
+                                            new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "_variantIdentifier", "A"),
                                             new Use(new UIntConstant(0, 2))),
                                         new Assign(
-                                            new Field(new Deref(ReturnValue), "Item0", "A"),
+                                            new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "Item0", "A"),
                                             new Use(new Copy(Param0)))
                                     ])
                                 {
                                     Terminator = new Return()
                                 }
                             ],
-                            new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
+                            new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                             parameters: [("Item0", StringT)]),
                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__B"), "MyUnion__Create__B",
                             [
@@ -251,27 +251,27 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     BB0,
                                     [],
                                     AllocateMethodCall(
-                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                         ReturnValue,
                                         BB1)),
                                 new BasicBlock(
                                     BB1,
                                     [
-                                        new Assign(
+                                        ..CreateBoxedObject(
                                             new Deref(ReturnValue),
-                                            new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                            new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                         new Assign(
-                                            new Field(new Deref(ReturnValue), "_variantIdentifier", "B"),
+                                            new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "_variantIdentifier", "B"),
                                             new Use(new UIntConstant(1, 2))),
                                         new Assign(
-                                            new Field(new Deref(ReturnValue), "Item0", "B"),
+                                            new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "Item0", "B"),
                                             new Use(new Copy(Param0)))
                                     ])
                                 {
                                     Terminator = new Return()
                                 }
                             ],
-                            new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
+                            new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
                             parameters: [("Item0", StringT)]),
                     ],
                     types: [

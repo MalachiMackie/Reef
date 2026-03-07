@@ -9,9 +9,13 @@ public record DefId(ModuleId ModuleId, string FullName)
     public static DefId GetMemoryUsageBytes { get; } = new(DiagnosticsModuleId, "get_memory_usage_bytes");
     public static DefId TriggerGC { get; } = new(DiagnosticsModuleId, "trigger_gc");
 
+    public static DefId TypeId { get; } = new(ReflectionModuleId, "TypeId");
     public static DefId TypeInfo { get; } = new(ReflectionModuleId, "TypeInfo");
     public static DefId VariantInfo { get; } = new(ReflectionModuleId, "VariantInfo");
     public static DefId FieldInfo { get; } = new(ReflectionModuleId, "FieldInfo");
+
+    public static DefId BoxedValue { get; } = new(CoreLibModuleId, "BoxedValue");
+    public static DefId ObjectHeader { get; } = new(CoreLibModuleId, "ObjectHeader");
 
     public static DefId Unbox { get; } = new(CoreLibModuleId, "unbox");
     public static DefId Box { get; } = new(CoreLibModuleId, "box");
@@ -41,6 +45,7 @@ public record DefId(ModuleId ModuleId, string FullName)
     public static DefId UInt8 { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::u8");
 
     public static DefId RawPointer { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::rawPointer");
+    public static DefId MethodPointer { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::methodPointer");
 
     public static DefId Boolean { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::bool");
 

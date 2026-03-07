@@ -58,7 +58,7 @@ public interface IConstructor
                         ?? throw new InvalidOperationException("Expected class");
                     return @class.Fields.Select(x =>
                     {
-                        // todo: need to figure out if we can access this field 
+                        // todo: need to figure out if we can access this field
                         // var isVisible = true;
                         return (x.Type, new PrivateUninhabitedField(false));
                     });
@@ -90,12 +90,12 @@ public interface IConstructor
             _ => throw new InvalidOperationException("Unexpected type")
         };
 
-        if (klass.MatchesSignature(TypeChecker.ClassSignature.Boolean))
+        if (klass.MatchesSignature(TypeChecker.ClassSignature.Boolean.Value))
         {
             return new BooleanConstructorSet();
         }
 
-        if (klass.MatchesSignature(TypeChecker.ClassSignature.Never))
+        if (klass.MatchesSignature(TypeChecker.ClassSignature.Never.Value))
         {
             return new NoConstructorsConstructorSet();
         }

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
@@ -10,10 +11,77 @@ public partial class TypeChecker
     {
         public static string TupleFieldName(int index) => $"Item{index}";
 
-        public static ClassSignature Unit { get; } = new()
-        { Id = DefId.Unit, TypeParameters = [], Name = "Unit", Fields = [], Functions = [], Boxed = false, IsPublic = true };
+        public static Lazy<ClassSignature> Unit { get; } = new(() => new ClassSignature()
+        { Id = DefId.Unit, TypeParameters = [], Name = "Unit", Fields = [], Functions = [], Boxed = false, IsPublic = true });
 
-        public static ClassSignature FieldInfo { get; } = new()
+        public static Lazy<ClassSignature> BoxedValue { get; } = new(CreateBoxedValue);
+        public static Lazy<ClassSignature> ObjectHeader { get; } = new(() => new ClassSignature()
+        {
+            Id = DefId.ObjectHeader,
+            Boxed = false,
+            Fields = [
+                new TypeField
+                {
+                    Name = "TypeId",
+                    IsMutable = false,
+                    IsPublic = true,
+                    IsStatic = false,
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.TypeId
+                },
+                // todo: VTable
+            ],
+            Functions = [],
+            IsPublic = true,
+            Name = "ObjectHeader",
+            TypeParameters = []
+        });
+
+        private static ClassSignature CreateBoxedValue()
+        {
+            var typeParameters = new List<GenericPlaceholder>();
+            var fields = new List<TypeField>();
+            var signature = new ClassSignature
+            {
+                Id = DefId.BoxedValue,
+                Boxed = false,
+                TypeParameters = typeParameters,
+                Fields = fields,
+                Functions = [],
+                IsPublic = true,
+                Name = "BoxedValue"
+            };
+
+            typeParameters.Add(new GenericPlaceholder
+            {
+                GenericName = "TValue",
+                Constraints = [],
+                OwnerType = signature
+            });
+
+            fields.Add(new TypeField
+            {
+                IsMutable = false,
+                IsPublic = true,
+                IsStatic = false,
+                Name = "ObjectHeader",
+                StaticInitializer = null,
+                Type = InstantiatedClass.ObjectHeader
+            });
+            fields.Add(new TypeField
+            {
+                IsMutable = false,
+                IsPublic = true,
+                IsStatic = false,
+                Name = "Value",
+                StaticInitializer = null,
+                Type = typeParameters[0]
+            });
+
+            return signature;
+        }
+
+        public static Lazy<ClassSignature> FieldInfo { get; } = new(() => new ClassSignature()
         {
             Id = DefId.FieldInfo,
             TypeParameters = [],
@@ -31,17 +99,17 @@ public partial class TypeChecker
                     IsPublic = true,
                     IsMutable = false,
                     IsStatic = false,
-                    Name = "Type",
+                    Name = "TypeId",
                     StaticInitializer = null,
-                    Type = InstantiatedClass.TypeInfo
+                    Type = InstantiatedClass.TypeId
                 },
             ],
             Functions = [],
             Boxed = true,
             IsPublic = true
-        };
+        });
 
-        public static ClassSignature VariantInfo { get; } = new()
+        public static Lazy<ClassSignature> VariantInfo { get; } = new(() => new ClassSignature()
         {
             Id = DefId.VariantInfo,
             TypeParameters = [],
@@ -67,9 +135,9 @@ public partial class TypeChecker
             Functions = [],
             Boxed = true,
             IsPublic = true
-        };
+        });
 
-        public static ClassSignature TypeInfo { get; } = new()
+        public static Lazy<ClassSignature> TypeInfo { get; } = new(() => new ClassSignature()
         {
             Id = DefId.TypeInfo,
             TypeParameters = [],
@@ -87,6 +155,14 @@ public partial class TypeChecker
                     IsPublic = true,
                     IsMutable = false,
                     IsStatic = false,
+                    Name = "TypeId",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.TypeId
+                },
+                new TypeField {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
                     Name = "StaticFields",
                     StaticInitializer = null,
                     Type = new ArrayType(InstantiatedClass.FieldInfo, boxed: false, length: 10)
@@ -98,14 +174,34 @@ public partial class TypeChecker
                     Name = "Variants",
                     StaticInitializer = null,
                     Type = new ArrayType(InstantiatedClass.VariantInfo, boxed: false, length: 10)
+                },
+                new TypeField {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "VariantIdentifierGetter",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.Create(
+                        Function(1),
+                        [InstantiatedClass.RawPointer, InstantiatedClass.UInt16],
+                        boxed: false
+                    )
+                },
+                new TypeField {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "TypeArguments",
+                    StaticInitializer = null,
+                    Type = new ArrayType(InstantiatedClass.TypeId, boxed: false, length: 10)
                 }
             ],
             Functions = [],
-            Boxed = true,
+            Boxed = false,
             IsPublic = true
-        };
+        });
 
-        public static ClassSignature String { get; } = new()
+        public static Lazy<ClassSignature> String { get; } = new(() => new ClassSignature()
         {
             Id = DefId.String,
             TypeParameters = [],
@@ -133,48 +229,71 @@ public partial class TypeChecker
             Functions = [],
             Boxed = false,
             IsPublic = true
-        };
+        });
 
-        public static ClassSignature Int64 => new()
-        { Id = DefId.Int64, TypeParameters = [], Name = "i64", Fields = [], Functions = [], Boxed = false, IsPublic = true };
-        public static ClassSignature Int32 => new()
-        { Id = DefId.Int32, TypeParameters = [], Name = "i32", Fields = [], Functions = [], Boxed = false, IsPublic = true };
-        public static ClassSignature Int16 => new()
-        { Id = DefId.Int16, TypeParameters = [], Name = "i16", Fields = [], Functions = [], Boxed = false, IsPublic = true };
-        public static ClassSignature Int8 => new()
-        { Id = DefId.Int8, TypeParameters = [], Name = "i8", Fields = [], Functions = [], Boxed = false, IsPublic = true };
-        public static ClassSignature UInt64 => new()
-        { Id = DefId.UInt64, TypeParameters = [], Name = "u64", Fields = [], Functions = [], Boxed = false, IsPublic = true };
-        public static ClassSignature UInt32 => new()
-        { Id = DefId.UInt32, TypeParameters = [], Name = "u32", Fields = [], Functions = [], Boxed = false, IsPublic = true };
-        public static ClassSignature UInt16 => new()
-        { Id = DefId.UInt16, TypeParameters = [], Name = "u16", Fields = [], Functions = [], Boxed = false, IsPublic = true };
-        public static ClassSignature UInt8 => new()
-        { Id = DefId.UInt8, TypeParameters = [], Name = "u8", Fields = [], Functions = [], Boxed = false, IsPublic = true };
+        public static Lazy<ClassSignature> TypeId { get; } = new(() => new ClassSignature()
+        {
+            Id = DefId.TypeId,
+            TypeParameters = [],
+            Name = "typeId",
+            Fields = [
+                new TypeField
+                {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "Value",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.Int8
+                },
+            ],
+            Functions = [],
+            Boxed = false,
+            IsPublic = true
+        });
 
-        public static ClassSignature RawPointer => new()
-        { Id = DefId.RawPointer, TypeParameters = [], Name = "rawPointer", Fields = [], Functions = [], Boxed = false, IsPublic = true };
+        public static Lazy<ClassSignature> Int64 { get; } = new(() => new ClassSignature()
+        { Id = DefId.Int64, TypeParameters = [], Name = "i64", Fields = [], Functions = [], Boxed = false, IsPublic = true });
+        public static Lazy<ClassSignature> Int32 { get; } = new(() => new ClassSignature()
+        { Id = DefId.Int32, TypeParameters = [], Name = "i32", Fields = [], Functions = [], Boxed = false, IsPublic = true });
+        public static Lazy<ClassSignature> Int16 { get; } = new(() => new ClassSignature()
+        { Id = DefId.Int16, TypeParameters = [], Name = "i16", Fields = [], Functions = [], Boxed = false, IsPublic = true });
+        public static Lazy<ClassSignature> Int8 { get; } = new(() => new ClassSignature()
+        { Id = DefId.Int8, TypeParameters = [], Name = "i8", Fields = [], Functions = [], Boxed = false, IsPublic = true });
+        public static Lazy<ClassSignature> UInt64 { get; } = new(() => new ClassSignature()
+        { Id = DefId.UInt64, TypeParameters = [], Name = "u64", Fields = [], Functions = [], Boxed = false, IsPublic = true });
+        public static Lazy<ClassSignature> UInt32 { get; } = new(() => new ClassSignature()
+        { Id = DefId.UInt32, TypeParameters = [], Name = "u32", Fields = [], Functions = [], Boxed = false, IsPublic = true });
+        public static Lazy<ClassSignature> UInt16 { get; } = new(() => new ClassSignature()
+        { Id = DefId.UInt16, TypeParameters = [], Name = "u16", Fields = [], Functions = [], Boxed = false, IsPublic = true });
+        public static Lazy<ClassSignature> UInt8 { get; } = new(() => new ClassSignature()
+        { Id = DefId.UInt8, TypeParameters = [], Name = "u8", Fields = [], Functions = [], Boxed = false, IsPublic = true });
 
-        public static ClassSignature Boolean => new()
-        { Id = DefId.Boolean, TypeParameters = [], Name = "bool", Fields = [], Functions = [], Boxed = false, IsPublic = true };
+        public static Lazy<ClassSignature> RawPointer { get; } = new(() => new ClassSignature()
+        { Id = DefId.RawPointer, TypeParameters = [], Name = "rawPointer", Fields = [], Functions = [], Boxed = false, IsPublic = true });
+        public static Lazy<ClassSignature> MethodPointer { get; } = new(() => new ClassSignature()
+        { Id = DefId.MethodPointer, TypeParameters = [], Name = "methodPointer", Fields = [], Functions = [], Boxed = false, IsPublic = true });
 
-        public static ClassSignature Never => new()
-        { Id = DefId.Never, TypeParameters = [], Name = "!", Fields = [], Functions = [], Boxed = false, IsPublic = true };
+        public static Lazy<ClassSignature> Boolean { get; } = new(() => new ClassSignature()
+        { Id = DefId.Boolean, TypeParameters = [], Name = "bool", Fields = [], Functions = [], Boxed = false, IsPublic = true });
 
-        public static IEnumerable<ClassSignature> BuiltInTypes { get; } = [
-            Unit,
-            String,
-            Int64,
-            Int32,
-            Int16,
-            Int8,
-            UInt64,
-            UInt32,
-            UInt16,
-            UInt8,
-            Never,
-            Boolean
-        ];
+        public static Lazy<ClassSignature> Never { get; } = new(() => new ClassSignature()
+        { Id = DefId.Never, TypeParameters = [], Name = "!", Fields = [], Functions = [], Boxed = false, IsPublic = true });
+
+        public static Lazy<IEnumerable<ClassSignature>> BuiltInTypes { get; } = new(() => [
+            Unit.Value,
+            String.Value,
+            Int64.Value,
+            Int32.Value,
+            Int16.Value,
+            Int8.Value,
+            UInt64.Value,
+            UInt32.Value,
+            UInt16.Value,
+            UInt8.Value,
+            Never.Value,
+            Boolean.Value
+        ]);
 
         public required bool Boxed { get; init; }
         public required IReadOnlyList<GenericPlaceholder> TypeParameters { get; init; }
@@ -208,9 +327,26 @@ public partial class TypeChecker
                 Id = DefId.FunctionObject(parameterCount),
                 Name = functionName,
                 TypeParameters = typeParameters,
-                // there are really two fields here. The function's closure or `this` argument, and the function pointer itself.
-                // but these are not represented in the type system, they only happen when lowering
-                Fields = [null!, null!],
+                Fields = [
+                    new TypeField
+                    {
+                        Name = "FunctionReference",
+                        IsMutable = false,
+                        IsPublic = false,
+                        IsStatic = false,
+                        StaticInitializer = null,
+                        Type = InstantiatedClass.MethodPointer
+                    },
+                    new TypeField
+                    {
+                        Name = "FunctionParameter",
+                        IsMutable = false,
+                        IsPublic = false,
+                        IsStatic = false,
+                        StaticInitializer = null,
+                        Type = InstantiatedClass.RawPointer
+                    },
+                ],
                 Functions = functions,
                 Boxed = true
             };
@@ -448,13 +584,27 @@ public partial class TypeChecker
 
     public class InstantiatedClass : ITypeReference, IInstantiatedGeneric
     {
-        public InstantiatedClass CloneWithTypeArguments(IReadOnlyList<GenericTypeReference> typeArguments)
+        public InstantiatedClass CloneWithTypeArguments(IReadOnlyList<ITypeReference> typeArguments)
         {
-            return new InstantiatedClass(
+            Debug.Assert(typeArguments.Count == Signature.TypeParameters.Count);
+            var instantiatedTypeArguments = new List<GenericTypeReference>(typeArguments.Count);
+            var instantiatedClass = new InstantiatedClass(
                 Signature,
-                typeArguments,
+                instantiatedTypeArguments,
                 Fields,
                 Boxed);
+
+            instantiatedTypeArguments.AddRange(Signature.TypeParameters.Zip(typeArguments)
+                .Select(x => x.First.Instantiate(
+                    instantiatedClass,
+                    x.Second switch
+                    {
+                        GenericTypeReference { ResolvedType: var resolvedType } => resolvedType,
+                        _ => x.Second
+                    })));
+
+            return instantiatedClass;
+
         }
 
         private InstantiatedClass(
@@ -484,40 +634,55 @@ public partial class TypeChecker
 
             ITypeReference HandleType(ITypeReference type)
             {
-                return type switch
+                try
                 {
-                    GenericTypeReference genericTypeReference => typeArgumentReferences.First(y =>
-                        y.GenericName == genericTypeReference.GenericName),
-                    GenericPlaceholder placeholder =>
-                        typeArgumentReferences.First(y => y.GenericName == placeholder.GenericName),
-                    InstantiatedUnion union => union.CloneWithTypeArguments([
-                        ..union.TypeArguments.Select(HandleType).Cast<GenericTypeReference>()
-                    ]),
-                    InstantiatedClass klass => klass.CloneWithTypeArguments([.. klass.TypeArguments.Select(HandleType).Cast<GenericTypeReference>()]),
-                    _ => type
-                };
+
+                    return type switch
+                    {
+                        GenericTypeReference { ResolvedType: null } genericTypeReference => typeArgumentReferences.First(y =>
+                            y.GenericName == genericTypeReference.GenericName),
+                        GenericTypeReference { ResolvedType: { } resolvedType } => resolvedType,
+                        GenericPlaceholder placeholder =>
+                            typeArgumentReferences.First(y => y.GenericName == placeholder.GenericName),
+                        InstantiatedUnion union => union.CloneWithTypeArguments([
+                            ..union.TypeArguments.Select(HandleType)
+                        ]),
+                        InstantiatedClass klass => klass.CloneWithTypeArguments([.. klass.TypeArguments.Select(HandleType)]),
+                        ArrayType arrayType => new ArrayType(HandleType(arrayType.ElementType), arrayType.Boxed, arrayType.Length),
+                        _ => throw new InvalidOperationException(type.GetType().ToString())
+                    };
+                }
+                catch (Exception e)
+                {
+                    _ = e;
+                    throw;
+                }
             }
         }
 
-        public static InstantiatedClass String => new(ClassSignature.String, [], [], boxed: ClassSignature.String.Boxed);
-        public static InstantiatedClass Boolean => new(ClassSignature.Boolean, [], [], boxed: ClassSignature.Boolean.Boxed);
+        public static InstantiatedClass String => new(ClassSignature.String.Value, [], [], boxed: ClassSignature.String.Value.Boxed);
+        public static InstantiatedClass TypeId => new(ClassSignature.TypeId.Value, [], [], boxed: ClassSignature.TypeId.Value.Boxed);
+        public static InstantiatedClass Boolean => new(ClassSignature.Boolean.Value, [], [], boxed: ClassSignature.Boolean.Value.Boxed);
 
-        public static InstantiatedClass Int64 => new(ClassSignature.Int64, [], [], boxed: ClassSignature.Int64.Boxed);
-        public static InstantiatedClass Int32 => new(ClassSignature.Int32, [], [], boxed: ClassSignature.Int32.Boxed);
-        public static InstantiatedClass Int16 => new(ClassSignature.Int16, [], [], boxed: ClassSignature.Int16.Boxed);
-        public static InstantiatedClass Int8 => new(ClassSignature.Int8, [], [], boxed: ClassSignature.Int8.Boxed);
-        public static InstantiatedClass UInt64 => new(ClassSignature.UInt64, [], [], boxed: ClassSignature.UInt64.Boxed);
-        public static InstantiatedClass UInt32 => new(ClassSignature.UInt32, [], [], boxed: ClassSignature.UInt32.Boxed);
-        public static InstantiatedClass UInt16 => new(ClassSignature.UInt16, [], [], boxed: ClassSignature.UInt16.Boxed);
-        public static InstantiatedClass UInt8 => new(ClassSignature.UInt8, [], [], boxed: ClassSignature.UInt8.Boxed);
-        public static InstantiatedClass RawPointer => new(ClassSignature.RawPointer, [], [], boxed: ClassSignature.RawPointer.Boxed);
-        public static InstantiatedClass TypeInfo => Create(ClassSignature.TypeInfo, [], ClassSignature.TypeInfo.Boxed);
-        public static InstantiatedClass VariantInfo => Create(ClassSignature.VariantInfo, [], ClassSignature.VariantInfo.Boxed);
-        public static InstantiatedClass FieldInfo => Create(ClassSignature.FieldInfo, [], ClassSignature.FieldInfo.Boxed);
+        public static InstantiatedClass Int64 => new(ClassSignature.Int64.Value, [], [], boxed: ClassSignature.Int64.Value.Boxed);
+        public static InstantiatedClass Int32 => new(ClassSignature.Int32.Value, [], [], boxed: ClassSignature.Int32.Value.Boxed);
+        public static InstantiatedClass Int16 => new(ClassSignature.Int16.Value, [], [], boxed: ClassSignature.Int16.Value.Boxed);
+        public static InstantiatedClass Int8 => new(ClassSignature.Int8.Value, [], [], boxed: ClassSignature.Int8.Value.Boxed);
+        public static InstantiatedClass UInt64 => new(ClassSignature.UInt64.Value, [], [], boxed: ClassSignature.UInt64.Value.Boxed);
+        public static InstantiatedClass UInt32 => new(ClassSignature.UInt32.Value, [], [], boxed: ClassSignature.UInt32.Value.Boxed);
+        public static InstantiatedClass UInt16 => new(ClassSignature.UInt16.Value, [], [], boxed: ClassSignature.UInt16.Value.Boxed);
+        public static InstantiatedClass UInt8 => new(ClassSignature.UInt8.Value, [], [], boxed: ClassSignature.UInt8.Value.Boxed);
+        public static InstantiatedClass RawPointer => new(ClassSignature.RawPointer.Value, [], [], boxed: ClassSignature.RawPointer.Value.Boxed);
+        public static InstantiatedClass MethodPointer => new(ClassSignature.MethodPointer.Value, [], [], boxed: ClassSignature.MethodPointer.Value.Boxed);
+        public static InstantiatedClass TypeInfo => Create(ClassSignature.TypeInfo.Value, [], ClassSignature.TypeInfo.Value.Boxed);
+        public static InstantiatedClass VariantInfo => Create(ClassSignature.VariantInfo.Value, [], ClassSignature.VariantInfo.Value.Boxed);
+        public static InstantiatedClass FieldInfo => Create(ClassSignature.FieldInfo.Value, [], ClassSignature.FieldInfo.Value.Boxed);
+        public static InstantiatedClass ObjectHeader => Create(ClassSignature.ObjectHeader.Value, [], ClassSignature.ObjectHeader.Value.Boxed);
+        public static InstantiatedClass BoxedValue(ITypeReference valueType) => Create(ClassSignature.BoxedValue.Value, [valueType], ClassSignature.BoxedValue.Value.Boxed);
 
         // todo: need some sort of inferred int type
 
-        public static IReadOnlyList<InstantiatedClass> IntTypes { get; } = [
+        public static IReadOnlyList<InstantiatedClass> IntTypes => [
             Int64,
             Int32,
             Int16,
@@ -528,9 +693,9 @@ public partial class TypeChecker
             UInt8,
         ];
 
-        public static InstantiatedClass Unit { get; } = new(ClassSignature.Unit, [], [], boxed: ClassSignature.Unit.Boxed);
+        public static InstantiatedClass Unit => new(ClassSignature.Unit.Value, [], [], boxed: ClassSignature.Unit.Value.Boxed);
 
-        public static InstantiatedClass Never { get; } = new(ClassSignature.Never, [], [], boxed: ClassSignature.Never.Boxed);
+        public static InstantiatedClass Never => new(ClassSignature.Never.Value, [], [], boxed: ClassSignature.Never.Value.Boxed);
 
         public bool Boxed { get; }
 
@@ -561,7 +726,7 @@ public partial class TypeChecker
 
         public bool MatchesSignature(ClassSignature currentTypeSignature)
         {
-            return Signature == currentTypeSignature;
+            return Signature.Id == currentTypeSignature.Id;
         }
     }
 

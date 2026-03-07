@@ -43,8 +43,8 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                         Variant("_classVariant",
                         [
                             Field("_Main__Locals",
-                                new LoweredPointer(new LoweredConcreteTypeReference("_Main__Locals",
-                                    new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), [])))
+                                new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("_Main__Locals",
+                                    new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), []))))
                         ])
                     ])
             ],
@@ -56,23 +56,23 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             BB0,
                             [],
                             AllocateMethodCall(
-                                ConcreteTypeReference("_Main__Locals", ModuleId),
+                                BoxedValue(ConcreteTypeReference("_Main__Locals", ModuleId)),
                                 LocalsObject,
                                 BB1)),
                         new BasicBlock(
                             BB1,
                             [
-                                new Assign(
+                                ..CreateBoxedObject(
                                     new Deref(LocalsObject),
-                                    new CreateObject(new LoweredConcreteTypeReference("_Main__Locals",
-                                        new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), []))),
+                                    new LoweredConcreteTypeReference("_Main__Locals",
+                                        new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), [])),
                                 new Assign(
-                                    new Field(new Deref(LocalsObject), "a", "_classVariant"),
+                                    new Field(new Field(new Deref(LocalsObject), "Value", "_classVariant"), "a", "_classVariant"),
                                     new Use(new StringConstant(""))),
                                 new Assign(
                                     Local1,
                                     new Use(new Copy(
-                                        new Field(new Deref(LocalsObject), "a", "_classVariant"))))
+                                        new Field(new Field(new Deref(LocalsObject), "Value", "_classVariant"), "a", "_classVariant"))))
                             ],
                             new GoTo(BB2)),
                         new BasicBlock(BB2, [], new Return())
@@ -81,8 +81,8 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                     locals:
                     [
                         new MethodLocal("_localsObject", null,
-                            new LoweredPointer(new LoweredConcreteTypeReference("_Main__Locals",
-                                new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), []))),
+                            new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("_Main__Locals",
+                                new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), [])))),
                         new MethodLocal("_local1", "c", StringT),
                     ]),
                 Method(new DefId(ModuleId, $"{ModuleId}:::InnerFn"), "InnerFn",
@@ -94,10 +94,10 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                     Local0,
                                     new Use(new Copy(
                                         new Field(
-                                            new Deref(new Field(
-                                                new Deref(Param0),
+                                            new Field(new Deref(new Field(
+                                                new Field(new Deref(Param0), "Value", "_classVariant"),
                                                 "_Main__Locals",
-                                                "_classVariant")),
+                                                "_classVariant")), "Value", "_classVariant"),
                                             "a",
                                             "_classVariant"))))
                             ],
@@ -108,8 +108,8 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                     parameters:
                     [
                         ("closure",
-                            new LoweredPointer(new LoweredConcreteTypeReference("InnerFn__Closure",
-                                new DefId(ModuleId, $"{ModuleId}:::InnerFn__Closure"), [])))
+                            new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("InnerFn__Closure",
+                                new DefId(ModuleId, $"{ModuleId}:::InnerFn__Closure"), []))))
                     ],
                     locals:
                     [
@@ -150,7 +150,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              ]),
                          DataType(ModuleId, "MyFn__InnerFn__Closure",
                              variants: [
-                                 Variant("_classVariant", [Field("MyFn__Locals", new LoweredPointer(new LoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyFn__Locals"), [])))])
+                                 Variant("_classVariant", [Field("MyFn__Locals", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyFn__Locals"), []))))])
                              ])
                      ],
                      methods: [
@@ -160,18 +160,18 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyFn__Locals", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyFn__Locals", ModuleId)),
                                          LocalsObject,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(LocalsObject),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyFn__Locals"), []))),
+                                             new LoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyFn__Locals"), [])),
                                          new Assign(
                                              new Field(
-                                                 new Deref(LocalsObject),
+                                                 new Field(new Deref(LocalsObject), "Value", "_classVariant"),
                                                  "a",
                                                  "_classVariant"),
                                              new Use(new StringConstant("")))
@@ -181,7 +181,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_localsObject", null, new LoweredPointer(new LoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyFn__Locals"), [])))
+                                 new MethodLocal("_localsObject", null, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyFn__Locals"), []))))
                              ]),
                          Method(new DefId(ModuleId, $"{ModuleId}:::MyFn__InnerFn"), "MyFn__InnerFn",
                              [
@@ -192,10 +192,10 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                              Local0,
                                              new Use(new Copy(
                                                  new Field(
-                                                     new Deref(new Field(
-                                                         new Deref(Param0),
+                                                     new Field(new Deref(new Field(
+                                                         new Field(new Deref(Param0), "Value", "_classVariant"),
                                                          "MyFn__Locals",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                      "a",
                                                      "_classVariant"))))
                                      ],
@@ -204,7 +204,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              ],
                              Unit,
                              parameters: [
-                                 ("closure", new LoweredPointer(new LoweredConcreteTypeReference("MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyFn__InnerFn__Closure"), [])))
+                                 ("closure", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyFn__InnerFn__Closure"), []))))
                              ],
                              locals: [
                                  new MethodLocal("_local0", "b", StringT)
@@ -228,7 +228,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              ]),
                          DataType(ModuleId, "InnerFn__Closure",
                              variants: [
-                                 Variant("_classVariant", [Field("_Main__Locals", new LoweredPointer(new LoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), [])))])
+                                 Variant("_classVariant", [Field("_Main__Locals", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), []))))])
                              ])
                      ],
                      methods: [
@@ -238,29 +238,29 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("_Main__Locals", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("_Main__Locals", ModuleId)),
                                          LocalsObject,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(LocalsObject),
-                                             new CreateObject(new LoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), []))),
+                                             new LoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), [])),
                                          new Assign(
-                                             new Field(new Deref(LocalsObject), "a", "_classVariant"),
+                                             new Field(new Field(new Deref(LocalsObject), "Value", "_classVariant"), "a", "_classVariant"),
                                              new Use(new StringConstant(""))),
                                          new Assign(
                                              Local1,
                                              new Use(new Copy(
-                                                 new Field(new Deref(LocalsObject), "a", "_classVariant"))))
+                                                 new Field(new Field(new Deref(LocalsObject), "Value", "_classVariant"), "a", "_classVariant"))))
                                      ],
                                      new GoTo(BB2)),
                                  new BasicBlock(BB2, [], new Return())
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_localsObject", null, new LoweredPointer(new LoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), []))),
+                                 new MethodLocal("_localsObject", null, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), [])))),
                                  new MethodLocal("_local1", "c", StringT),
                              ]),
                          Method(new DefId(ModuleId, $"{ModuleId}:::InnerFn"), "InnerFn",
@@ -272,10 +272,10 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                              Local0,
                                              new Use(new Copy(
                                                  new Field(
-                                                     new Deref(new Field(
-                                                         new Deref(Param0),
+                                                     new Field(new Deref(new Field(
+                                                         new Field(new Deref(Param0), "Value", "_classVariant"),
                                                          "_Main__Locals",
-                                                         "_classVariant")),
+                                                         "_classVariant")), "Value", "_classVariant"),
                                                      "a",
                                                      "_classVariant"))))
                                      ],
@@ -284,7 +284,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              ],
                              Unit,
                              parameters: [
-                                 ("closure", new LoweredPointer(new LoweredConcreteTypeReference("InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::InnerFn__Closure"), [])))
+                                 ("closure", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::InnerFn__Closure"), []))))
                              ],
                              locals: [
                                  new MethodLocal("_local0", "b", StringT)
@@ -313,7 +313,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              variants: [
                                  Variant(
                                      "_classVariant",
-                                     [Field("MyFn__Locals", new LoweredPointer(new LoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyFn__Locals"), [])))])
+                                     [Field("MyFn__Locals", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyFn__Locals"), []))))])
                              ])
                      ],
                      methods: [
@@ -326,10 +326,10 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                              Local0,
                                              new Use(new Copy(
                                                  new Field(
-                                                     new Deref(new Field(
-                                                         new Deref(Param0),
+                                                     new Field(new Deref(new Field(
+                                                         new Field(new Deref(Param0), "Value", "_classVariant"),
                                                          "MyFn__Locals",
-                                                         "_classVariant")),
+                                                         "_classVariant")), "Value", "_classVariant"),
                                                      "a",
                                                      "_classVariant"))))
                                      ],
@@ -338,36 +338,36 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              ],
                              Unit,
                              locals: [new MethodLocal("_local0", "c", StringT)],
-                             parameters: [("closure", new LoweredPointer(new LoweredConcreteTypeReference("MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyFn__InnerFn__Closure"), [])))]),
+                             parameters: [("closure", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyFn__InnerFn__Closure"), []))))]),
                          Method(new DefId(ModuleId, $"{ModuleId}:::MyFn"), "MyFn",
                              [
                                  new BasicBlock(
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyFn__Locals", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyFn__Locals", ModuleId)),
                                          LocalsObject,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(LocalsObject),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyFn__Locals"), []))),
+                                             new LoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyFn__Locals"), [])),
                                          new Assign(
-                                             new Field(new Deref(LocalsObject), "a", "_classVariant"),
+                                             new Field(new Field(new Deref(LocalsObject), "Value", "_classVariant"), "a", "_classVariant"),
                                              new Use(new Copy(Param0))),
                                          new Assign(
                                              Local1,
                                              new Use(new Copy(
-                                                 new Field(new Deref(LocalsObject), "a", "_classVariant"))))
+                                                 new Field(new Field(new Deref(LocalsObject), "Value", "_classVariant"), "a", "_classVariant"))))
                                      ],
                                      new GoTo(BB2)),
                                  new BasicBlock(BB2, [], new Return())
                              ],
                              returnType: Unit,
                              locals: [
-                                 new MethodLocal("_localsObject", null, new LoweredPointer(new LoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyFn__Locals"), []))),
+                                 new MethodLocal("_localsObject", null, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyFn__Locals"), [])))),
                                  new MethodLocal("_local1", "b", StringT)
                              ],
                              parameters: [("a", StringT)])
@@ -401,7 +401,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                          DataType(ModuleId,
                              "MyClass__MyFn__InnerFn__Closure",
                              variants: [
-                                 Variant("_classVariant", [Field("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))])
+                                 Variant("_classVariant", [Field("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))])
                              ])
                      ],
                      methods: [
@@ -414,10 +414,10 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                              Local0,
                                              new Use(new Copy(
                                                  new Field(
-                                                     new Deref(new Field(
-                                                         new Deref(Param0),
+                                                     new Field(new Deref(new Field(
+                                                         new Field(new Deref(Param0), "Value", "_classVariant"),
                                                          "this",
-                                                         "_classVariant")),
+                                                         "_classVariant")), "Value", "_classVariant"),
                                                      "MyField",
                                                      "_classVariant"))))
                                      ],
@@ -426,7 +426,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              ],
                              Unit,
                              locals: [new MethodLocal("_local0", "b", StringT)],
-                             parameters: [("closure", new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"), [])))]),
+                             parameters: [("closure", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"), []))))]),
                          Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"), "MyClass__MyFn",
                              [
                                  new BasicBlock(
@@ -435,14 +435,14 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                          new Assign(
                                              Local0,
                                              new Use(new Copy(
-                                                 new Field(new Deref(Param0), "MyField", "_classVariant"))))
+                                                 new Field(new Field(new Deref(Param0), "Value", "_classVariant"), "MyField", "_classVariant"))))
                                      ],
                                      new GoTo(BB1)),
                                  new BasicBlock(BB1, [], new Return())
                              ],
                              Unit,
                              locals: [new MethodLocal("_local0", "a", StringT)],
-                             parameters: [("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))])
+                             parameters: [("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))])
                      ])
              },
              {
@@ -504,7 +504,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                  ],
                                  Unit,
                                  locals: [],
-                                 parameters: [("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))])
+                                 parameters: [("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))])
                      ])
              },
              {
@@ -528,7 +528,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              "InnerFn__Closure",
                              variants: [
                                  Variant("_classVariant",
-                                     [Field("_Main__Locals", new LoweredPointer(new LoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), [])))])
+                                     [Field("_Main__Locals", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), []))))])
                              ])
                      ],
                      methods: [
@@ -539,10 +539,10 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                      [
                                          new Assign(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Param0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Param0), "Value", "_classVariant"),
                                                      "_Main__Locals",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "a",
                                                  "_classVariant"),
                                              new Use(new StringConstant("bye")))
@@ -552,7 +552,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              ],
                              Unit,
                              parameters: [
-                                 ("closure", new LoweredPointer(new LoweredConcreteTypeReference("InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::InnerFn__Closure"), [])))
+                                 ("closure", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::InnerFn__Closure"), []))))
                              ]),
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
@@ -560,20 +560,20 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("_Main__Locals", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("_Main__Locals", ModuleId)),
                                          LocalsObject,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(LocalsObject),
-                                             new CreateObject(new LoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), []))),
+                                             new LoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), [])),
                                          new Assign(
-                                             new Field(new Deref(LocalsObject), "a", "_classVariant"),
+                                             new Field(new Field(new Deref(LocalsObject), "Value", "_classVariant"), "a", "_classVariant"),
                                              new Use(new StringConstant(""))),
                                          new Assign(
-                                             new Field(new Deref(LocalsObject), "a", "_classVariant"),
+                                             new Field(new Field(new Deref(LocalsObject), "Value", "_classVariant"), "a", "_classVariant"),
                                              new Use(new StringConstant("hi"))),
                                      ],
                                      new GoTo(BB2)),
@@ -582,7 +582,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              Unit,
                              locals: [
                                  new MethodLocal("_localsObject", null,
-                                     new LoweredPointer(new LoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), [])))
+                                     new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("_Main__Locals", new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"), []))))
                              ])
                      ])
              },
@@ -611,7 +611,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              variants: [
                                  Variant(
                                      "_classVariant",
-                                     [Field("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))])
+                                     [Field("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))])
                              ])
                      ],
                      methods: [
@@ -624,7 +624,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                              Local0,
                                              new Use(new Copy(
                                                  new Field(
-                                                     new Deref(Param0),
+                                                     new Field(new Deref(Param0), "Value", "_classVariant"),
                                                      "this",
                                                      "_classVariant"))))
                                      ],
@@ -633,10 +633,10 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              ],
                              Unit,
                              parameters: [
-                                 ("closure", new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"), [])))
+                                 ("closure", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"), []))))
                              ],
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
+                                 new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
                              ]),
                          Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"), "MyClass__MyFn",
                              [
@@ -644,18 +644,17 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", ModuleId)),
                                          Local1,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
+                                         ..CreateBoxedObject(
+                                            new Deref(Local1),
+                                            new LoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"), [])),
                                          new Assign(
-                                             new Deref(Local1),
-                                             new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"), []))),
-                                         new Assign(
-                                             new Field(new Deref(Local1), "this", "_classVariant"),
+                                             new Field(new Field(new Deref(Local1), "Value", "_classVariant"), "this", "_classVariant"),
                                              new Use(new Copy(Param0)))
                                      ],
                                      new MethodCall(
@@ -671,9 +670,9 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                  new MethodLocal(
                                      "_local1",
                                      null,
-                                     new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"), []))),
+                                     new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"), [])))),
                              ],
-                             parameters: [("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))])
+                             parameters: [("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))])
                      ])
              },
              {
@@ -707,7 +706,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              variants: [
                                  Variant(
                                      "_classVariant",
-                                     fields: [Field("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))])
+                                     fields: [Field("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))])
                              ])
                      ],
                      methods: [
@@ -718,10 +717,10 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                      [
                                          new Assign(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Param0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Param0), "Value", "_classVariant"),
                                                      "this",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "MyField",
                                                  "_classVariant"),
                                              new Use(new StringConstant("bye")))
@@ -732,7 +731,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              ],
                              Unit,
                              parameters: [
-                                 ("closure", new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"), [])))
+                                 ("closure", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"), []))))
                              ]),
                          Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"), "MyClass__MyFn",
                              [
@@ -740,7 +739,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                      BB0,
                                      [
                                          new Assign(
-                                             new Field(new Deref(Param0), "MyField", "_classVariant"),
+                                             new Field(new Field(new Deref(Param0), "Value", "_classVariant"), "MyField", "_classVariant"),
                                              new Use(new StringConstant("hi")))
                                      ],
                                      new GoTo(BB1)),
@@ -748,7 +747,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              ],
                              Unit,
                              parameters: [
-                                 ("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
+                                 ("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
                              ])
                      ])
              },
@@ -799,8 +798,8 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                  Variant(
                                      "_classVariant",
                                      [
-                                         Field("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
-                                         Field("MyClass__MyFn__Locals", new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), [])))
+                                         Field("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
+                                         Field("MyClass__MyFn__Locals", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), []))))
                                      ])
                              ])
                      ],
@@ -814,30 +813,30 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                              Local0,
                                              new Use(new Copy(
                                                  new Field(
-                                                     new Deref(new Field(
-                                                         new Deref(Param0),
+                                                     new Field(new Deref(new Field(
+                                                         new Field(new Deref(Param0), "Value", "_classVariant"),
                                                          "MyClass__MyFn__Locals",
-                                                         "_classVariant")),
+                                                         "_classVariant")), "Value", "_classVariant"),
                                                      "a",
                                                      "_classVariant")))),
                                          new Assign(
                                              Local1,
                                              new Use(new Copy(
                                                  new Field(
-                                                     new Deref(new Field(
-                                                         new Deref(Param0),
+                                                     new Field(new Deref(new Field(
+                                                         new Field(new Deref(Param0), "Value", "_classVariant"),
                                                          "MyClass__MyFn__Locals",
-                                                         "_classVariant")),
+                                                         "_classVariant")), "Value", "_classVariant"),
                                                      "param",
                                                      "_classVariant")))),
                                          new Assign(
                                              Local2,
                                              new Use(new Copy(
                                                  new Field(
-                                                     new Deref(new Field(
-                                                         new Deref(Param0),
+                                                     new Field(new Deref(new Field(
+                                                         new Field(new Deref(Param0), "Value", "_classVariant"),
                                                          "this",
-                                                         "_classVariant")),
+                                                         "_classVariant")), "Value", "_classVariant"),
                                                      "MyField",
                                                      "_classVariant"))))
                                      ],
@@ -851,7 +850,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                  new MethodLocal("_local2", "_myField", StringT)
                              ],
                              parameters: [
-                                 ("closure", new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"), []))),
+                                 ("closure", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"), [])))),
                                  ("b", Int64T)
                              ]),
                          Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"), "MyClass__MyFn",
@@ -860,45 +859,43 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyClass__MyFn__Locals", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyClass__MyFn__Locals", ModuleId)),
                                          LocalsObject,
                                          BB1)),
                                  new BasicBlock(BB1,
                                      [
+                                         ..CreateBoxedObject(
+                                            new Deref(LocalsObject),
+                                            new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), [])),
                                          new Assign(
-                                             new Deref(LocalsObject),
-                                             new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), []))),
-                                         new Assign(
-                                             new Field(new Deref(LocalsObject), "param", "_classVariant"),
+                                             new Field(new Field(new Deref(LocalsObject), "Value", "_classVariant"), "param", "_classVariant"),
                                              new Use(new Copy(Param1))),
                                          new Assign(
                                              new Field(
-                                                 new Deref(LocalsObject),
+                                                 new Field(new Deref(LocalsObject), "Value", "_classVariant"),
                                                  "a",
                                                  "_classVariant"),
                                              new Use(new StringConstant("")))
                                      ],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", ModuleId)),
                                          Local2,
                                          BB2)),
                                  new BasicBlock(
                                      BB2,
                                      [
-                                         new Assign(
-                                             new Deref(Local2),
-                                             new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"), []))),
+                                         ..CreateBoxedObject(
+                                            new Deref(Local2),
+                                            new LoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"), [])),
                                          new Assign(
                                              new Field(
-                                                 new Deref(Local2),
+                                                 new Field(new Deref(Local2), "Value", "_classVariant"),
                                                  "MyClass__MyFn__Locals",
                                                  "_classVariant"),
                                              new Use(new Copy(LocalsObject))),
                                          new Assign(
                                              new Field(
-                                                 new Deref(Local2),
+                                                 new Field(new Deref(Local2), "Value", "_classVariant"),
                                                  "this",
                                                  "_classVariant"),
                                              new Use(new Copy(Param0)))
@@ -916,12 +913,12 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_localsObject", null, new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), []))),
+                                 new MethodLocal("_localsObject", null, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), [])))),
                                  new MethodLocal("_local1", null, Unit),
-                                 new MethodLocal("_local2", null, new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"), []))),
+                                 new MethodLocal("_local2", null, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"), [])))),
                              ],
                              parameters: [
-                                 ("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
+                                 ("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
                                  ("param", StringT)
                              ])
                      ])
@@ -975,8 +972,8 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                  Variant(
                                      "_classVariant",
                                      [
-                                         Field("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
-                                         Field("MyClass__MyFn__Locals", new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), [])))
+                                         Field("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
+                                         Field("MyClass__MyFn__Locals", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), []))))
                                      ])
                              ]),
                          DataType(ModuleId, "MyClass__MyFn__MiddleFn__InnerFn__Closure",
@@ -984,9 +981,9 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                  Variant(
                                      "_classVariant",
                                      [
-                                         Field("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
-                                         Field("MyClass__MyFn__Locals", new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), []))),
-                                         Field("MyClass__MyFn__MiddleFn__Locals", new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__Locals"), [])))
+                                         Field("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
+                                         Field("MyClass__MyFn__Locals", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), [])))),
+                                         Field("MyClass__MyFn__MiddleFn__Locals", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__Locals"), []))))
                                      ])
                              ])
                      ],
@@ -1000,40 +997,40 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                              Local0,
                                              new Use(new Copy(
                                                  new Field(
-                                                     new Deref(new Field(
-                                                         new Deref(Param0),
+                                                     new Field(new Deref(new Field(
+                                                         new Field(new Deref(Param0), "Value", "_classVariant"),
                                                          "MyClass__MyFn__Locals",
-                                                         "_classVariant")),
+                                                         "_classVariant")), "Value", "_classVariant"),
                                                      "a",
                                                      "_classVariant")))),
                                          new Assign(
                                              Local1,
                                              new Use(new Copy(
                                                  new Field(
-                                                     new Deref(new Field(
-                                                         new Deref(Param0),
+                                                     new Field(new Deref(new Field(
+                                                         new Field(new Deref(Param0), "Value", "_classVariant"),
                                                          "MyClass__MyFn__MiddleFn__Locals",
-                                                         "_classVariant")),
+                                                         "_classVariant")), "Value", "_classVariant"),
                                                      "b",
                                                      "_classVariant")))),
                                          new Assign(
                                              Local2,
                                              new Use(new Copy(
                                                  new Field(
-                                                     new Deref(new Field(
-                                                         new Deref(Param0),
+                                                     new Field(new Deref(new Field(
+                                                         new Field(new Deref(Param0), "Value", "_classVariant"),
                                                          "MyClass__MyFn__Locals",
-                                                         "_classVariant")),
+                                                         "_classVariant")), "Value", "_classVariant"),
                                                      "param",
                                                      "_classVariant")))),
                                          new Assign(
                                              Local3,
                                              new Use(new Copy(
                                                  new Field(
-                                                     new Deref(new Field(
-                                                         new Deref(Param0),
+                                                     new Field(new Deref(new Field(
+                                                         new Field(new Deref(Param0), "Value", "_classVariant"),
                                                          "this",
-                                                         "_classVariant")),
+                                                         "_classVariant")), "Value", "_classVariant"),
                                                      "MyField",
                                                      "_classVariant"))))
                                      ],
@@ -1048,7 +1045,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                  new MethodLocal("_local3", "_myField", StringT)
                              ],
                              parameters: [
-                                 ("closure", new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__InnerFn__Closure"), [])))
+                                 ("closure", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__InnerFn__Closure"), []))))
                              ]),
                          Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn"), "MyClass__MyFn__MiddleFn",
                              [
@@ -1056,42 +1053,41 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", ModuleId)),
                                          LocalsObject,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
-                                             new Deref(LocalsObject),
-                                             new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__Locals"), []))),
+                                         ..CreateBoxedObject(
+                                            new Deref(LocalsObject),
+                                            new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__Locals"), [])),
                                          new Assign(
                                              new Field(
-                                                 new Deref(LocalsObject),
+                                                 new Field(new Deref(LocalsObject), "Value", "_classVariant"),
                                                  "b",
                                                  "_classVariant"),
                                              new Use(new Copy(Param1)))
                                      ],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", ModuleId)),
                                          Local2,
                                          BB2)),
                                  new BasicBlock(
                                      BB2,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(Local2),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__InnerFn__Closure"), []))),
+                                             new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__InnerFn__Closure"), [])),
                                          new Assign(
-                                             new Field(new Deref(Local2), "MyClass__MyFn__Locals", "_classVariant"),
-                                             new Use(new Copy(new Field(new Deref(Param0), "MyClass__MyFn__Locals", "_classVariant")))),
+                                             new Field(new Field(new Deref(Local2), "Value", "_classVariant"), "MyClass__MyFn__Locals", "_classVariant"),
+                                             new Use(new Copy(new Field(new Field(new Deref(Param0), "Value", "_classVariant"), "MyClass__MyFn__Locals", "_classVariant")))),
                                          new Assign(
-                                             new Field(new Deref(Local2), "MyClass__MyFn__MiddleFn__Locals", "_classVariant"),
+                                             new Field(new Field(new Deref(Local2), "Value", "_classVariant"), "MyClass__MyFn__MiddleFn__Locals", "_classVariant"),
                                              new Use(new Copy(LocalsObject))),
                                          new Assign(
-                                             new Field(new Deref(Local2), "this", "_classVariant"),
-                                             new Use(new Copy(new Field(new Deref(Param0), "this", "_classVariant")))),
+                                             new Field(new Field(new Deref(Local2), "Value", "_classVariant"), "this", "_classVariant"),
+                                             new Use(new Copy(new Field(new Field(new Deref(Param0), "Value", "_classVariant"), "this", "_classVariant")))),
                                      ],
                                      new MethodCall(
                                          new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__InnerFn"), []),
@@ -1103,12 +1099,12 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              Unit,
                              locals: [
                                  new MethodLocal("_localsObject", null,
-                                     new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__Locals"), []))),
+                                     new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__Locals"), [])))),
                                  new MethodLocal("_local1", null, Unit),
-                                 new MethodLocal("_local2", null, new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__InnerFn__Closure"), [])))
+                                 new MethodLocal("_local2", null, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__InnerFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__InnerFn__Closure"), []))))
                              ],
                              parameters: [
-                                 ("closure", new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__Closure"), []))),
+                                 ("closure", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__Closure"), [])))),
                                  ("b", Int64T)
                              ]),
                          Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"), "MyClass__MyFn",
@@ -1117,38 +1113,37 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyClass__MyFn__Locals", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyClass__MyFn__Locals", ModuleId)),
                                          LocalsObject,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(LocalsObject),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), []))),
+                                             new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), [])),
                                          new Assign(
-                                             new Field(new Deref(LocalsObject), "param", "_classVariant"),
+                                             new Field(new Field(new Deref(LocalsObject), "Value", "_classVariant"), "param", "_classVariant"),
                                              new Use(new Copy(Param1))),
                                          new Assign(
-                                             new Field(new Deref(LocalsObject), "a", "_classVariant"),
+                                             new Field(new Field(new Deref(LocalsObject), "Value", "_classVariant"), "a", "_classVariant"),
                                              new Use(new StringConstant("")))
                                      ],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", ModuleId)),
                                          Local2,
                                          BB2)),
                                  new BasicBlock(
                                      BB2,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(Local2),
-                                             new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__Closure"), []))),
+                                                 new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__Closure"), [])),
                                          new Assign(
-                                             new Field(new Deref(Local2), "MyClass__MyFn__Locals", "_classVariant"),
+                                             new Field(new Field(new Deref(Local2), "Value", "_classVariant"), "MyClass__MyFn__Locals", "_classVariant"),
                                              new Use(new Copy(LocalsObject))),
                                          new Assign(
-                                             new Field(new Deref(Local2), "this", "_classVariant"),
+                                             new Field(new Field(new Deref(Local2), "Value", "_classVariant"), "this", "_classVariant"),
                                              new Use(new Copy(Param0)))
                                      ],
                                      new MethodCall(
@@ -1164,12 +1159,12 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_localsObject", null, new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), []))),
+                                 new MethodLocal("_localsObject", null, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), [])))),
                                  new MethodLocal("_local1", null, Unit),
-                                 new MethodLocal("_local2", null, new LoweredPointer(new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__Closure"), [])))
+                                 new MethodLocal("_local2", null, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__MiddleFn__Closure", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__MiddleFn__Closure"), []))))
                              ],
                              parameters: [
-                                 ("this", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
+                                 ("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
                                  ("param", StringT)
                              ])
                      ])

@@ -235,22 +235,21 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     BB0,
                                     [],
                                     AllocateMethodCall(
-                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                         Local0,
                                         BB1)),
                                 new BasicBlock(
                                     BB1,
                                     [
-                                        new Assign(
+                                        ..CreateBoxedObject(
                                             new Deref(Local0),
-                                            new CreateObject(
-                                                new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                            new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                         new Assign(
-                                            new Field(new Deref(Local0), "_variantIdentifier", "A"),
+                                            new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "A"),
                                             new Use(new UIntConstant(0, 2)))
                                     ],
                                     new SwitchInt(
-                                        new Copy(new Field(new Deref(Local0), "_variantIdentifier", "A")),
+                                        new Copy(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "A")),
                                         new Dictionary<int, BasicBlockId>
                                         {
                                             { 0, BB2 },
@@ -280,7 +279,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             ],
                             Unit,
                             locals: [
-                                new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                                 new MethodLocal("_local1", "b", Int32T)
                             ])
                     ])
@@ -311,22 +310,21 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                          Local0,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(Local0),
-                                             new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                          new Assign(
-                                             new Field(new Deref(Local0), "_variantIdentifier", "A"),
+                                             new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "A"),
                                              new Use(new UIntConstant(0, 2))),
                                      ],
                                      new SwitchInt(
-                                         new Copy(new Field(new Deref(Local0), "_variantIdentifier", "A")),
+                                         new Copy(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "A")),
                                          new Dictionary<int, BasicBlockId>
                                          {
                                              { 0, BB2 }
@@ -348,7 +346,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                                  new MethodLocal("_local1", "b", Int32T)
                              ])
                      ])
@@ -384,7 +382,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      "X",
                                      [
                                          Field("_variantIdentifier", UInt16T),
-                                         Field("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))
+                                         Field("Item0", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))))
                                      ]),
                                 Variant("Y", [Field("_variantIdentifier", UInt16T)]),
                              ]),
@@ -397,49 +395,47 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                          ReturnValue,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(ReturnValue),
-                                             new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                          new Assign(
-                                             new Field(new Deref(ReturnValue), "_variantIdentifier", "X"),
+                                             new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "_variantIdentifier", "X"),
                                              new Use(new UIntConstant(0, 2))),
                                          new Assign(
-                                             new Field(new Deref(ReturnValue), "Item0", "X"),
+                                             new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "Item0", "X"),
                                              new Use(new Copy(Param0)))
                                      ],
                                      new Return())
                              ],
-                             parameters: [("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))],
-                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                             parameters: [("Item0", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))))],
+                             returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                          Local0,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(Local0),
-                                             new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                          new Assign(
-                                             new Field(new Deref(Local0), "_variantIdentifier", "Y"),
+                                             new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "Y"),
                                              new Use(new UIntConstant(1, 2)))
                                      ],
                                      new SwitchInt(
-                                         new Copy(new Field(new Deref(Local0), "_variantIdentifier", "X")),
+                                         new Copy(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "X")),
                                          new Dictionary<int, BasicBlockId>
                                          {
                                              { 0, BB2 },
@@ -452,10 +448,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "Item0",
-                                                     "X")),
+                                                     "X")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -502,7 +498,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              Unit,
                              locals:
                              [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                                  new MethodLocal("_local1", "b", Int32T)
                              ])
                      ])
@@ -533,7 +529,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      "X",
                                      [
                                          Field("_variantIdentifier", UInt16T),
-                                         Field("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))),
+                                         Field("Item0", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))),
                                      ]),
                                 Variant("Y", [Field("_variantIdentifier", UInt16T)])
                              ])
@@ -545,47 +541,47 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                          ReturnValue,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(ReturnValue),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                             new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                          new Assign(
-                                             new Field(new Deref(ReturnValue), "_variantIdentifier", "X"),
+                                             new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "_variantIdentifier", "X"),
                                              new Use(new UIntConstant(0, 2))),
                                          new Assign(
-                                             new Field(new Deref(ReturnValue), "Item0", "X"),
+                                             new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "Item0", "X"),
                                              new Use(new Copy(Param0)))
                                      ],
                                      new Return())
                              ],
-                             parameters: [("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))],
-                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                             parameters: [("Item0", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))))],
+                             returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                         Local0,
                                         BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(Local0),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                             new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                          new Assign(
-                                             new Field(new Deref(Local0), "_variantIdentifier", "Y"),
+                                             new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "Y"),
                                              new Use(new UIntConstant(1, 2)))
                                      ],
                                      new SwitchInt(
-                                         new Copy(new Field(new Deref(Local0), "_variantIdentifier", "X")),
+                                         new Copy(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "X")),
                                          new Dictionary<int, BasicBlockId>
                                          {
                                              { 0, BB2 },
@@ -597,10 +593,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      [],
                                      new SwitchInt(
                                          new Copy(new Field(
-                                             new Deref(new Field(
-                                                 new Deref(Local0),
+                                             new Field(new Deref(new Field(
+                                                 new Field(new Deref(Local0), "Value", "_classVariant"),
                                                  "Item0",
-                                                 "X")),
+                                                 "X")), "Value", "_classVariant"),
                                              "_variantIdentifier",
                                              "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -636,7 +632,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                                  new MethodLocal("_local1", "b", Int32T)
                              ])
                      ])
@@ -670,7 +666,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      "X",
                                      [
                                          Field("_variantIdentifier", UInt16T),
-                                         Field("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))
+                                         Field("Item0", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))))
                                      ]),
                                 Variant("Y", [Field("_variantIdentifier", UInt16T)]),
                                 Variant("Z", [Field("_variantIdentifier", UInt16T)]),
@@ -683,49 +679,47 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                         ReturnValue,
                                         BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(ReturnValue),
-                                             new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                          new Assign(
-                                             new Field(new Deref(ReturnValue), "_variantIdentifier", "X"),
+                                             new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "_variantIdentifier", "X"),
                                              new Use(new UIntConstant(0, 2))),
                                          new Assign(
-                                             new Field(new Deref(ReturnValue), "Item0", "X"),
+                                             new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "Item0", "X"),
                                              new Use(new Copy(Param0)))
                                      ],
                                      new Return())
                              ],
-                             parameters: [("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))],
-                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                             parameters: [("Item0", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))))],
+                             returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                          Local0,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(Local0),
-                                             new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                                 new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                          new Assign(
-                                             new Field(new Deref(Local0), "_variantIdentifier", "Y"),
+                                             new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "Y"),
                                              new Use(new UIntConstant(1, 2)))
                                      ],
                                      new SwitchInt(
-                                         new Copy(new Field(new Deref(Local0), "_variantIdentifier", "X")),
+                                         new Copy(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "X")),
                                          new Dictionary<int, BasicBlockId>
                                          {
                                              { 0, BB2 },
@@ -736,10 +730,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      [],
                                      new SwitchInt(
                                          new Copy(new Field(
-                                             new Deref(new Field(
-                                                 new Deref(Local0),
+                                             new Field(new Deref(new Field(
+                                                 new Field(new Deref(Local0), "Value", "_classVariant"),
                                                  "Item0",
-                                                 "X")),
+                                                 "X")), "Value", "_classVariant"),
                                              "_variantIdentifier",
                                              "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -777,7 +771,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                                  new MethodLocal("_local1", "b", Int32T)
                              ])
                      ])
@@ -809,8 +803,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      "X",
                                      [
                                          Field("_variantIdentifier", UInt16T),
-                                         Field("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))),
-                                         Field("Item1", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))),
+                                         Field("Item0", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))),
+                                         Field("Item1", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))),
                                      ]),
                                 Variant("Y", [Field("_variantIdentifier", UInt16T)])
                              ])
@@ -822,52 +816,52 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                          ReturnValue,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(ReturnValue),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                             new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                          new Assign(
-                                             new Field(new Deref(ReturnValue), "_variantIdentifier", "X"),
+                                             new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "_variantIdentifier", "X"),
                                              new Use(new UIntConstant(0, 2))),
                                          new Assign(
-                                             new Field(new Deref(ReturnValue), "Item0", "X"),
+                                             new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "Item0", "X"),
                                              new Use(new Copy(Param0))),
                                          new Assign(
-                                             new Field(new Deref(ReturnValue), "Item1", "X"),
+                                             new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "Item1", "X"),
                                              new Use(new Copy(Param1))),
                                      ],
                                      new Return())
                              ],
                              parameters: [
-                                 ("Item0", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))),
-                                 ("Item1", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))],
-                             returnType: new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                 ("Item0", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))),
+                                 ("Item1", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))))],
+                             returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                        ConcreteTypeReference("MyUnion", ModuleId),
+                                        BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                         Local0,
                                         BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(Local0),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                             new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                          new Assign(
-                                             new Field(new Deref(Local0), "_variantIdentifier", "Y"),
+                                             new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "Y"),
                                              new Use(new UIntConstant(1, 2)))
                                      ],
                                      new SwitchInt(
-                                         new Copy(new Field(new Deref(Local0), "_variantIdentifier", "X")),
+                                         new Copy(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "X")),
                                          new Dictionary<int, BasicBlockId>
                                          {
                                              { 0, BB3 },
@@ -882,8 +876,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      [],
                                      new SwitchInt(
                                          new Copy(new Field(
-                                             new Deref(new Field(
-                                                 new Deref(Local0), "Item0", "X")),
+                                             new Field(new Deref(new Field(
+                                                 new Field(new Deref(Local0), "Value", "_classVariant"), "Item0", "X")), "Value", "_classVariant"),
                                              "_variantIdentifier",
                                              "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -897,8 +891,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      [],
                                      new SwitchInt(
                                          new Copy(new Field(
-                                             new Deref(new Field(
-                                                 new Deref(Local0), "Item1", "X")),
+                                             new Field(new Deref(new Field(
+                                                 new Field(new Deref(Local0), "Value", "_classVariant"), "Item1", "X")), "Value", "_classVariant"),
                                              "_variantIdentifier",
                                              "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -920,8 +914,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      [],
                                      new SwitchInt(
                                          new Copy(new Field(
-                                             new Deref(new Field(
-                                                 new Deref(Local0), "Item1", "X")),
+                                             new Field(new Deref(new Field(
+                                                 new Field(new Deref(Local0), "Value", "_classVariant"), "Item1", "X")), "Value", "_classVariant"),
                                              "_variantIdentifier",
                                              "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -942,7 +936,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                                  new MethodLocal("_local1", "b", Int32T),
                              ])
                      ])
@@ -975,7 +969,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      "X",
                                      [
                                          Field("_variantIdentifier", UInt16T),
-                                         Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))
+                                         Field("MyField", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))))
                                      ]),
                                 Variant("Y", [Field("_variantIdentifier", UInt16T)]),
                              ]),
@@ -987,21 +981,21 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                          Local0,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(Local0),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                             new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                          new Assign(
-                                             new Field(new Deref(Local0), "_variantIdentifier", "Y"),
+                                             new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "Y"),
                                              new Use(new UIntConstant(1, 2)))
                                      ],
                                      new SwitchInt(
-                                         new Copy(new Field(new Deref(Local0), "_variantIdentifier", "X")),
+                                         new Copy(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "X")),
                                          new Dictionary<int, BasicBlockId>
                                          {
                                              {0, BB2},
@@ -1013,10 +1007,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "MyField",
-                                                     "X")),
+                                                     "X")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -1041,7 +1035,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                              new Use(
                                                  new Copy(
                                                      new Field(
-                                                         new Deref(Local0),
+                                                         new Field(new Deref(Local0), "Value", "_classVariant"),
                                                          "MyField",
                                                          "X")))),
                                          new Assign(
@@ -1070,11 +1064,11 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
-                                 new MethodLocal("_local1", "something", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
-                                 new MethodLocal("_local2", "myField", new LoweredPointer(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))),
-                                 new MethodLocal("_local3", "somethingElse", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
-                                 new MethodLocal("_local4", "myUnion", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                                 new MethodLocal("_local1", "something", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                                 new MethodLocal("_local2", "myField", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))),
+                                 new MethodLocal("_local3", "somethingElse", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                                 new MethodLocal("_local4", "myUnion", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                                  new MethodLocal("_local5", "b", Int32T),
                              ])
                      ])
@@ -1169,7 +1163,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ]),
                          DataType(ModuleId, "MyClass",
                              variants: [
-                                Variant("_classVariant", [Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))])
+                                Variant("_classVariant", [Field("MyField", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))])
                              ])
                      ],
                      methods: [
@@ -1179,33 +1173,32 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyClass", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyClass", ModuleId)),
                                          Local0,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(Local0),
-                                             new CreateObject(
-                                                 new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
+                                                 new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))
                                      ],
                                      AllocateMethodCall(
-                                        ConcreteTypeReference("MyUnion", ModuleId),
-                                        new Field(new Deref(Local0), "MyField", "_classVariant"),
+                                        BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
+                                        new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "MyField", "_classVariant"),
                                         BB2)),
                                  new BasicBlock(
                                      BB2,
                                      [
-                                         new Assign(
-                                             new Deref(new Field(new Deref(Local0), "MyField", "_classVariant")),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                         ..CreateBoxedObject(
+                                             new Deref(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "MyField", "_classVariant")),
+                                             new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                          new Assign(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "MyField",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "A"),
                                              new Use(new UIntConstant(0, 2))),
@@ -1213,10 +1206,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "MyField",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -1240,8 +1233,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
-                                 new MethodLocal("_local1", "something", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
+                                 new MethodLocal("_local1", "something", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
                                  new MethodLocal("_local2", "b", Int32T),
                              ])
                      ])
@@ -1267,7 +1260,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ]),
                          DataType(ModuleId, "MyClass",
                              variants: [
-                                Variant("_classVariant", [Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))])
+                                Variant("_classVariant", [Field("MyField", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))])
                              ])
                      ],
                      methods: [
@@ -1277,35 +1270,35 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyClass", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyClass", ModuleId)),
                                          Local0,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(Local0),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
+                                             new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))
                                      ],
                                      AllocateMethodCall(
-                                        ConcreteTypeReference("MyUnion", ModuleId),
-                                        new Field(new Deref(Local0), "MyField", "_classVariant"),
+                                        BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
+                                        new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "MyField", "_classVariant"),
                                         BB2)),
                                  new BasicBlock(
                                      BB2,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(new Field(
-                                                 new Deref(Local0),
+                                                 new Field(new Deref(Local0), "Value", "_classVariant"),
                                                  "MyField",
                                                  "_classVariant")),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                             new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                          new Assign(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "MyField",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "A"),
                                              new Use(new UIntConstant(0, 2)))
@@ -1313,10 +1306,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "MyField",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -1336,7 +1329,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
                                  new MethodLocal("_local1", "b", Int32T),
                              ])
                      ])
@@ -1371,8 +1364,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 Variant(
                                      "_classVariant",
                                      [
-                                         Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
-                                         Field("SecondField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                         Field("MyField", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                                         Field("SecondField", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                                      ])
                              ])
                      ],
@@ -1383,64 +1376,64 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyClass", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyClass", ModuleId)),
                                          Local0,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(Local0),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
+                                             new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))
                                      ],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                          new Field(
-                                             new Deref(Local0),
+                                             new Field(new Deref(Local0), "Value", "_classVariant"),
                                              "MyField",
                                              "_classVariant"),
                                          BB2)),
                                  new BasicBlock(
                                      BB2,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(new Field(
-                                                 new Deref(Local0),
+                                                 new Field(new Deref(Local0), "Value", "_classVariant"),
                                                  "MyField",
                                                  "_classVariant")),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                             new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                          new Assign(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "MyField",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "A"),
                                              new Use(new UIntConstant(0, 2)))
                                      ],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                          new Field(
-                                             new Deref(Local0),
+                                             new Field(new Deref(Local0), "Value", "_classVariant"),
                                              "SecondField",
                                              "_classVariant"),
                                          BB3)),
                                  new BasicBlock(
                                      BB3,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(new Field(
-                                                 new Deref(Local0),
+                                                 new Field(new Deref(Local0), "Value", "_classVariant"),
                                                  "SecondField",
                                                  "_classVariant")),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                             new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                          new Assign(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "SecondField",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "B"),
                                              new Use(new UIntConstant(1, 2)))
@@ -1448,10 +1441,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "MyField",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -1467,10 +1460,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "SecondField",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -1488,10 +1481,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "SecondField",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -1509,10 +1502,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "SecondField",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -1535,7 +1528,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
                                  new MethodLocal("_local1", "b", Int32T),
                              ])
                      ])
@@ -1571,8 +1564,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 Variant(
                                      "_classVariant",
                                      [
-                                         Field("MyField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
-                                         Field("SecondField", new LoweredPointer(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))
+                                         Field("MyField", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                                         Field("SecondField", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))
                                      ])
                              ])
                      ],
@@ -1583,64 +1576,64 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      BB0,
                                      [],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyClass", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyClass", ModuleId)),
                                          Local0,
                                          BB1)),
                                  new BasicBlock(
                                      BB1,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(Local0),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
+                                             new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))
                                      ],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                          new Field(
-                                             new Deref(Local0),
+                                             new Field(new Deref(Local0), "Value", "_classVariant"),
                                              "MyField",
                                              "_classVariant"),
                                          BB2)),
                                  new BasicBlock(
                                      BB2,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(new Field(
-                                                 new Deref(Local0),
+                                                 new Field(new Deref(Local0), "Value", "_classVariant"),
                                                  "MyField",
                                                  "_classVariant")),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                             new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                          new Assign(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "MyField",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "A"),
                                              new Use(new UIntConstant(0, 2)))
                                      ],
                                      AllocateMethodCall(
-                                         ConcreteTypeReference("MyUnion", ModuleId),
+                                         BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                          new Field(
-                                             new Deref(Local0),
+                                             new Field(new Deref(Local0), "Value", "_classVariant"),
                                              "SecondField",
                                              "_classVariant"),
                                          BB3)),
                                  new BasicBlock(
                                      BB3,
                                      [
-                                         new Assign(
+                                         ..CreateBoxedObject(
                                              new Deref(new Field(
-                                                 new Deref(Local0),
+                                                 new Field(new Deref(Local0), "Value", "_classVariant"),
                                                  "SecondField",
                                                  "_classVariant")),
-                                             new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                             new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                          new Assign(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "SecondField",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "B"),
                                              new Use(new UIntConstant(1, 2)))
@@ -1648,10 +1641,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "MyField",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -1667,10 +1660,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "SecondField",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -1692,10 +1685,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "SecondField",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -1713,10 +1706,10 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      new SwitchInt(
                                          new Copy(
                                              new Field(
-                                                 new Deref(new Field(
-                                                     new Deref(Local0),
+                                                 new Field(new Deref(new Field(
+                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
                                                      "SecondField",
-                                                     "_classVariant")),
+                                                     "_classVariant")), "Value", "_classVariant"),
                                                  "_variantIdentifier",
                                                  "A")),
                                          new Dictionary<int, BasicBlockId>
@@ -1737,7 +1730,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
                                  new MethodLocal("_local1", "b", Int32T),
                              ])
                      ])
