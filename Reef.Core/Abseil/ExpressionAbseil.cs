@@ -1390,7 +1390,7 @@ public partial class ProgramAbseil
         return LowerMatchesPattern(valueResult, e.Pattern.NotNull(), destination);
     }
 
-    private bool IsTypeReferenceBoxed(TypeChecker.ITypeReference typeReference)
+    private static bool IsTypeReferenceBoxed(TypeChecker.ITypeReference typeReference)
     {
         return typeReference switch
         {

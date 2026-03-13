@@ -137,69 +137,7 @@ public partial class TypeChecker
             IsPublic = true
         });
 
-        public static Lazy<ClassSignature> TypeInfo { get; } = new(() => new ClassSignature()
-        {
-            Id = DefId.TypeInfo,
-            TypeParameters = [],
-            Name = "TypeInfo",
-            Fields = [
-                new TypeField {
-                    IsPublic = true,
-                    IsMutable = false,
-                    IsStatic = false,
-                    Name = "Name",
-                    StaticInitializer = null,
-                    Type = InstantiatedClass.String
-                },
-                new TypeField {
-                    IsPublic = true,
-                    IsMutable = false,
-                    IsStatic = false,
-                    Name = "TypeId",
-                    StaticInitializer = null,
-                    Type = InstantiatedClass.TypeId
-                },
-                new TypeField {
-                    IsPublic = true,
-                    IsMutable = false,
-                    IsStatic = false,
-                    Name = "StaticFields",
-                    StaticInitializer = null,
-                    Type = new ArrayType(InstantiatedClass.FieldInfo, boxed: false, length: 10)
-                },
-                new TypeField {
-                    IsPublic = true,
-                    IsMutable = false,
-                    IsStatic = false,
-                    Name = "Variants",
-                    StaticInitializer = null,
-                    Type = new ArrayType(InstantiatedClass.VariantInfo, boxed: false, length: 10)
-                },
-                new TypeField {
-                    IsPublic = true,
-                    IsMutable = false,
-                    IsStatic = false,
-                    Name = "VariantIdentifierGetter",
-                    StaticInitializer = null,
-                    Type = InstantiatedClass.Create(
-                        Function(1),
-                        [InstantiatedClass.RawPointer, InstantiatedClass.UInt16],
-                        boxed: false
-                    )
-                },
-                new TypeField {
-                    IsPublic = true,
-                    IsMutable = false,
-                    IsStatic = false,
-                    Name = "TypeArguments",
-                    StaticInitializer = null,
-                    Type = new ArrayType(InstantiatedClass.TypeId, boxed: false, length: 10)
-                }
-            ],
-            Functions = [],
-            Boxed = false,
-            IsPublic = true
-        });
+
 
         public static Lazy<ClassSignature> String { get; } = new(() => new ClassSignature()
         {
@@ -674,7 +612,6 @@ public partial class TypeChecker
         public static InstantiatedClass UInt8 => new(ClassSignature.UInt8.Value, [], [], boxed: ClassSignature.UInt8.Value.Boxed);
         public static InstantiatedClass RawPointer => new(ClassSignature.RawPointer.Value, [], [], boxed: ClassSignature.RawPointer.Value.Boxed);
         public static InstantiatedClass MethodPointer => new(ClassSignature.MethodPointer.Value, [], [], boxed: ClassSignature.MethodPointer.Value.Boxed);
-        public static InstantiatedClass TypeInfo => Create(ClassSignature.TypeInfo.Value, [], ClassSignature.TypeInfo.Value.Boxed);
         public static InstantiatedClass VariantInfo => Create(ClassSignature.VariantInfo.Value, [], ClassSignature.VariantInfo.Value.Boxed);
         public static InstantiatedClass FieldInfo => Create(ClassSignature.FieldInfo.Value, [], ClassSignature.FieldInfo.Value.Boxed);
         public static InstantiatedClass ObjectHeader => Create(ClassSignature.ObjectHeader.Value, [], ClassSignature.ObjectHeader.Value.Boxed);
