@@ -37,31 +37,7 @@ public partial class ProgramAbseil
     private static readonly LoweredModule ReefCoreModule;
     static ProgramAbseil()
     {
-        var coreLibDataTypes = new List<DataType>
-        {
-            new(
-                DefId.BoxedValue,
-                TypeChecker.ClassSignature.BoxedValue.Value.Name,
-                [.. TypeChecker.ClassSignature.BoxedValue.Value.TypeParameters.Select(x => new LoweredGenericPlaceholder(DefId.BoxedValue, x.GenericName))],
-                [
-                    new DataTypeVariant(
-                        ClassVariantName,
-                        [.. TypeChecker.ClassSignature.BoxedValue.Value.Fields.Select(x => new DataTypeField(x.Name, GetTypeReference(x.Type)))])
-                ],
-                []
-            ),
-            new(
-                DefId.ObjectHeader,
-                TypeChecker.ClassSignature.ObjectHeader.Value.Name,
-                [],
-                [
-                    new DataTypeVariant(
-                        ClassVariantName,
-                        [.. TypeChecker.ClassSignature.ObjectHeader.Value.Fields.Select(x => new DataTypeField(x.Name, GetTypeReference(x.Type)))])
-                ],
-                []
-            ),
-        };
+        var coreLibDataTypes = new List<DataType>();
         var coreLibMethods = new List<IMethod>
         {
             ExternMethodFromSignature(TypeChecker.FunctionSignature.PrintString),
@@ -187,18 +163,27 @@ public partial class ProgramAbseil
                     []));
         }
 
-        var stringSignature = TypeChecker.InstantiatedClass.String.Signature;
-
-        coreLibDataTypes.Add(new DataType(
-            DefId.String,
-            stringSignature.Name,
-            [],
-            [
-                new DataTypeVariant(
-                    ClassVariantName,
-                    [..stringSignature.Fields.Select(x => new DataTypeField(x.Name, GetTypeReference(x.Type)))])
-            ],
-            []));
+        coreLibDataTypes.AddRange(
+            new[] {
+                TypeChecker.ClassSignature.String.Value,
+                TypeChecker.ClassSignature.Int8.Value,
+                TypeChecker.ClassSignature.Int16.Value,
+                TypeChecker.ClassSignature.Int32.Value,
+                TypeChecker.ClassSignature.Int64.Value,
+                TypeChecker.ClassSignature.UInt8.Value,
+                TypeChecker.ClassSignature.UInt16.Value,
+                TypeChecker.ClassSignature.UInt32.Value,
+                TypeChecker.ClassSignature.UInt64.Value,
+                TypeChecker.ClassSignature.BoxedValue.Value,
+                TypeChecker.ClassSignature.ObjectHeader.Value,
+            }.Select(x => new DataType(
+                x.Id,
+                x.Name,
+                [],
+                [new DataTypeVariant(ClassVariantName, [.. x.Fields.Select(x => new DataTypeField(x.Name, GetTypeReference(x.Type)))])],
+                []
+            ))
+        );
 
         ReefCoreModule = new LoweredModule
         {

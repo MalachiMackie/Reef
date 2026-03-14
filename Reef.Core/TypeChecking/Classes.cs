@@ -182,7 +182,7 @@ public partial class TypeChecker
                     IsStatic = false,
                     Name = "Value",
                     StaticInitializer = null,
-                    Type = InstantiatedClass.Int8
+                    Type = InstantiatedClass.Int32
                 },
             ],
             Functions = [],

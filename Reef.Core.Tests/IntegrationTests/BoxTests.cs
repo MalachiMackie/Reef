@@ -2,15 +2,32 @@
 
 public class BoxTests : IntegrationTestBase
 {
+
+    [Fact]
+    public async Task AccessDeepBoxedValue()
+    {
+        await SetupTest(
+            """
+            class SubClass{pub field B: string}
+            class MyClass{pub field A: SubClass}
+            var a = new MyClass{A = new SubClass{B = "hi"}};
+            print_string(a.A.B);
+            """);
+
+        var output = await Run();
+        output.ExitCode.Should().Be(0);
+        output.StandardOutput.Should().Be("hi");
+    }
+
     [Fact]
     public async Task CreateUnboxedClass()
     {
         await SetupTest(
             """
             class MyClass {pub field MyField: string, pub field SecondField: string}
-            
+
             var a = new unboxed MyClass{MyField = "hi", SecondField = "bye"};
-            
+
             print_string(a.MyField);
             print_string(a.SecondField);
             """);
@@ -25,19 +42,19 @@ public class BoxTests : IntegrationTestBase
     {
         await SetupTest(
             """
-            
+
             fn SomeFn(mut param: unboxed MyClass) {
                 param.MyField = "bye";
                 print_string("param.MyField == ");
                 print_string(param.MyField);
                 print_string(". ");
             }
-            
+
             class MyClass {pub mut field MyField: string}
-            
+
             var mut a = new unboxed MyClass{MyField = "hi"};
             SomeFn(a);
-            
+
             print_string("a.MyField == ");
             print_string(a.MyField);
             print_string(". ");
@@ -82,7 +99,7 @@ public class BoxTests : IntegrationTestBase
         await SetupTest(
             """
             var a: boxed i32 = box(1);
-            
+
             if (unbox(a) == 1) {
                 print_string("unbox(a) == 1");
             }
@@ -110,10 +127,10 @@ public class BoxTests : IntegrationTestBase
                     print_string("unbox(param) == 2. ");
                 }
             }
-            
+
             var mut a = box(1);
             SomeFn(a);
-            
+
             if (unbox(a) == 1) {
                 print_string("unbox(a) == 1");
             }

@@ -142,14 +142,6 @@ public partial class TypeChecker
                             Name = "Fields",
                             StaticInitializer = null,
                             Type = new ArrayType(InstantiatedClass.FieldInfo, boxed: true, length: 10)
-                        },
-                        new TypeField {
-                            IsPublic = true,
-                            IsMutable = false,
-                            IsStatic = false,
-                            Name = "TypeArguments",
-                            StaticInitializer = null,
-                            Type = new ArrayType(InstantiatedClass.TypeId, boxed: false, length: 10)
                         }
                     ]
                 },
@@ -201,14 +193,6 @@ public partial class TypeChecker
                                 boxed: false
                             )
                         },
-                        new TypeField {
-                            IsPublic = true,
-                            IsMutable = false,
-                            IsStatic = false,
-                            Name = "TypeArguments",
-                            StaticInitializer = null,
-                            Type = new ArrayType(InstantiatedClass.TypeId, boxed: false, length: 10)
-                        }
                     ]
                 },
                 new ClassUnionVariant {
@@ -459,7 +443,10 @@ public partial class TypeChecker
             {
                 return type switch
                 {
-                    GenericTypeReference genericTypeReference => typeArgumentReferences.First(z => z.GenericName == genericTypeReference.GenericName),
+
+                    GenericTypeReference { ResolvedType: null } genericTypeReference => typeArgumentReferences.First(y =>
+                        y.GenericName == genericTypeReference.GenericName),
+                    GenericTypeReference { ResolvedType: { } resolvedType } => resolvedType,
                     GenericPlaceholder placeholder => typeArgumentReferences.First(z => z.GenericName == placeholder.GenericName),
                     InstantiatedUnion union => union.CloneWithTypeArguments([.. union.TypeArguments.Select(HandleType)]),
                     InstantiatedClass klass => klass.CloneWithTypeArguments([.. klass.TypeArguments.Select(HandleType)]),
