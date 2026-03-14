@@ -70,6 +70,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
     private ulong GetTypeId(ILoweredTypeReference type)
     {
+        // todo: _currentTypeArguments I suspect is incorrect here
         var found = _typeIds.FirstOrDefault(x => AreTypeReferencesEqual(x.TypeReference, type, _currentTypeArguments));
         if (found == default)
         {
@@ -77,30 +78,11 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         }
 
         return found.TypeId;
-        // switch (type)
-        // {
-        //     case LoweredConcreteTypeReference concrete:
-        //         {
-        //             break;
-        //         }
-        //     case LoweredArray loweredArray:
-        //         {
-        //             break;
-        //         }
-        //     case LoweredPointer pointer:
-        //         {
-        //             break;
-        //         }
-        //     default:
-        //         throw new InvalidOperationException(type.GetType().ToString());
-        // }
+
     }
 
     private readonly List<(ILoweredTypeReference TypeReference, ulong TypeId)> _typeIds = [];
 
-    // private readonly Dictionary<DefId, List<ILoweredTypeReference>> DistinctInstantiatedTypes = [];
-    // private readonly List<(ILoweredTypeReference ElementType, uint Length)> DistinctInstantiatedArrayTypes = [];
-    // private readonly List<ILoweredTypeReference> DistinctPointerTypes = [];
     private ulong TypeInstantiated(ILoweredTypeReference typeReference)
     {
         switch (typeReference)
@@ -109,17 +91,11 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                 throw new InvalidOperationException();
             case LoweredPointer pointer:
                 {
-                    // TypeInstantiated(pointer.PointerTo);
-                    // if (!DistinctPointerTypes.Any(x => AreTypeReferencesEqual(x, pointer.PointerTo, _currentTypeArguments)))
-                    // {
-                    //     DistinctPointerTypes.Add(pointer.PointerTo);
-                    // }
                     throw new NotImplementedException();
                 }
             case LoweredConcreteTypeReference concrete:
                 {
-                    var typeArgumentIds = concrete.TypeArguments.Select(GetTypeId).ToArray();
-
+                    // todo: _currentTypeArguments I suspect is incorrect here
                     var foundType = _typeIds.FirstOrDefault(x => AreTypeReferencesEqual(x.TypeReference, concrete, _currentTypeArguments));
                     if (foundType != default)
                     {
@@ -131,28 +107,9 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     WriteTypeInfoBlob(concrete, index);
 
                     return (ulong)index;
-
-                    // if (!DistinctInstantiatedTypes.TryGetValue(concrete.DefinitionId, out var instantiations))
-                    // {
-                    //     instantiations = [];
-                    //     DistinctInstantiatedTypes.Add(concrete.DefinitionId, instantiations);
-                    // }
-
-                    // if (!instantiations.Any(x => AreTypeReferencesEqual(x, typeReference, _currentTypeArguments)))
-                    // {
-                    //     instantiations.Add(typeReference);
-                    // }
                 }
             case LoweredArray loweredArray:
                 {
-                    // TypeInstantiated(loweredArray.ElementType);
-                    // if (!DistinctInstantiatedArrayTypes.Any(x =>
-                    //     x.Length == loweredArray.Length
-                    //     && AreTypeReferencesEqual(x.ElementType, loweredArray.ElementType, _currentTypeArguments)))
-                    // {
-                    //     DistinctInstantiatedArrayTypes.Add((loweredArray.ElementType, loweredArray.Length));
-                    // }
-
                     throw new NotImplementedException();
                 }
             default:
