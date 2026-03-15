@@ -135,13 +135,31 @@ public interface ILoweredTypeReference;
 public record LoweredConcreteTypeReference(
     string Name,
     DefId DefinitionId,
-    IReadOnlyList<ILoweredTypeReference> TypeArguments) : ILoweredTypeReference;
+    IReadOnlyList<ILoweredTypeReference> TypeArguments) : ILoweredTypeReference
+{
+    public override string? ToString()
+    {
+        return $"{Name}::<{string.Join(", ", TypeArguments)}>";
+    }
+}
 
 public record LoweredGenericPlaceholder(DefId OwnerDefinitionId, string PlaceholderName) : ILoweredTypeReference;
 
-public record LoweredArray(ILoweredTypeReference ElementType, uint Length) : ILoweredTypeReference;
+public record LoweredArray(ILoweredTypeReference ElementType, uint Length) : ILoweredTypeReference
+{
+    public override string? ToString()
+    {
+        return $"[{ElementType}; {Length}]";
+    }
+}
 
-public record LoweredPointer(ILoweredTypeReference PointerTo) : ILoweredTypeReference;
+public record LoweredPointer(ILoweredTypeReference PointerTo) : ILoweredTypeReference
+{
+    public override string? ToString()
+    {
+        return $"*{PointerTo}";
+    }
+}
 public record RawPointer : ILoweredTypeReference;
 
 public record DataType(

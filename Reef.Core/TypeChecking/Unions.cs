@@ -133,7 +133,13 @@ public partial class TypeChecker
                             IsStatic = false,
                             Name = "StaticFields",
                             StaticInitializer = null,
-                            Type = new ArrayType(InstantiatedClass.FieldInfo, boxed: false, length: 10)
+                            Type = new ArrayType(
+                                InstantiatedClass.Create(
+                                    ClassSignature.FieldInfo.Value,
+                                    [],
+                                    boxed: false),
+                                boxed: false,
+                                length: 10)
                         },
                         new TypeField {
                             IsPublic = true,
@@ -141,7 +147,13 @@ public partial class TypeChecker
                             IsStatic = false,
                             Name = "Fields",
                             StaticInitializer = null,
-                            Type = new ArrayType(InstantiatedClass.FieldInfo, boxed: true, length: 10)
+                            Type = new ArrayType(
+                                InstantiatedClass.Create(
+                                    ClassSignature.FieldInfo.Value,
+                                    [],
+                                    boxed: false),
+                                boxed: false,
+                                length: 10)
                         }
                     ]
                 },
@@ -171,7 +183,13 @@ public partial class TypeChecker
                             IsStatic = false,
                             Name = "StaticFields",
                             StaticInitializer = null,
-                            Type = new ArrayType(InstantiatedClass.FieldInfo, boxed: false, length: 10)
+                            Type = new ArrayType(
+                                InstantiatedClass.Create(
+                                    ClassSignature.FieldInfo.Value,
+                                    [],
+                                    boxed: false),
+                                boxed: false,
+                                length: 10)
                         },
                         new TypeField {
                             IsPublic = true,
@@ -179,7 +197,13 @@ public partial class TypeChecker
                             IsStatic = false,
                             Name = "Variants",
                             StaticInitializer = null,
-                            Type = new ArrayType(InstantiatedClass.VariantInfo, boxed: false, length: 10)
+                            Type = new ArrayType(
+                                InstantiatedClass.Create(
+                                    ClassSignature.VariantInfo.Value,
+                                    [],
+                                    boxed: false),
+                                boxed: false,
+                                length: 10)
                         },
                         new TypeField {
                             IsPublic = true,

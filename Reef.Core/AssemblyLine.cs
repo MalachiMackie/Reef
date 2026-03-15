@@ -68,13 +68,23 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         return assemblyLine.ProcessInner();
     }
 
-    private ulong GetTypeId(ILoweredTypeReference type)
+    private ulong GetTypeId(ILoweredTypeReference type, bool currentlyWritingTypeInfo)
     {
         // todo: _currentTypeArguments I suspect is incorrect here
         var found = _typeIds.FirstOrDefault(x => AreTypeReferencesEqual(x.TypeReference, type, _currentTypeArguments));
         if (found == default)
         {
-            return TypeInstantiated(type);
+            var typeId = (ulong)_typeIds.Count;
+            _typeIds.Add((type, typeId));
+            if (currentlyWritingTypeInfo)
+            {
+                _typesToWriteBlobInfo.Enqueue((type, typeId));
+            }
+            else
+            {
+                WriteTypeInfoBlob(type, typeId);
+            }
+            return typeId;
         }
 
         return found.TypeId;
@@ -82,57 +92,32 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
     }
 
     private readonly List<(ILoweredTypeReference TypeReference, ulong TypeId)> _typeIds = [];
+    private readonly Queue<(ILoweredTypeReference TypeReference, ulong TypeId)> _typesToWriteBlobInfo = [];
 
-    private ulong TypeInstantiated(ILoweredTypeReference typeReference)
+    private void WriteTypeInfoBlob(ILoweredTypeReference type, ulong typeId)
     {
-        switch (typeReference)
-        {
-            case RawPointer:
-                throw new InvalidOperationException();
-            case LoweredPointer pointer:
-                {
-                    throw new NotImplementedException();
-                }
-            case LoweredConcreteTypeReference concrete:
-                {
-                    // todo: _currentTypeArguments I suspect is incorrect here
-                    var foundType = _typeIds.FirstOrDefault(x => AreTypeReferencesEqual(x.TypeReference, concrete, _currentTypeArguments));
-                    if (foundType != default)
-                    {
-                        return foundType.TypeId;
-                    }
+        var typeInfoDataType = _dataTypes[DefId.TypeInfo];
+        var typeInfoTypeReference = new LoweredConcreteTypeReference(
+                        TypeChecker.InstantiatedUnion.TypeInfo.Signature.Name,
+                        TypeChecker.InstantiatedUnion.TypeInfo.Signature.Id,
+                        []);
+        var typeInfoSize = GetTypeSize(typeInfoTypeReference, []);
 
-                    var index = _typeIds.Count;
+        Debug.Assert(!TypeChecker.InstantiatedUnion.TypeInfo.Boxed);
 
-                    WriteTypeInfoBlob(concrete, index);
+        var bytesWritten = 0u;
 
-                    return (ulong)index;
-                }
-            case LoweredArray loweredArray:
-                {
-                    throw new NotImplementedException();
-                }
-            default:
-                throw new NotImplementedException(typeReference.GetType().ToString());
-        }
-    }
+        _typeInfoDataSubSegment.AppendLine($"    ; TypeInfo: {type}");
 
-    private void WriteTypeInfoBlob(ILoweredTypeReference type, int typeId)
-    {
         switch (type)
         {
             case LoweredConcreteTypeReference concrete:
                 {
                     var dataType = _dataTypes[concrete.DefinitionId];
 
-                    var typeInfoDataType = _dataTypes[DefId.TypeInfo];
                     var fieldInfoDataType = _dataTypes[DefId.FieldInfo];
                     var variantInfoDataType = _dataTypes[DefId.VariantInfo];
 
-                    var typeInfoTypeReference = new LoweredConcreteTypeReference(
-                                    TypeChecker.InstantiatedUnion.TypeInfo.Signature.Name,
-                                    TypeChecker.InstantiatedUnion.TypeInfo.Signature.Id,
-                                    []);
                     var fieldInfoTypeReference = new LoweredConcreteTypeReference(
                                     TypeChecker.InstantiatedClass.FieldInfo.Signature.Name,
                                     TypeChecker.InstantiatedClass.FieldInfo.Signature.Id,
@@ -142,8 +127,6 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                                     TypeChecker.InstantiatedClass.VariantInfo.Signature.Id,
                                     []);
 
-                    Debug.Assert(!TypeChecker.InstantiatedUnion.TypeInfo.Boxed);
-                    var typeInfoSize = GetTypeSize(typeInfoTypeReference, []);
                     var fieldInfoSize = GetTypeSize(fieldInfoTypeReference, []);
                     var variantInfoSize = GetTypeSize(variantInfoTypeReference, []);
                     if (typeInfoSize.Size % typeInfoSize.Alignment != 0
@@ -196,32 +179,39 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         // variantIdentifier
                         _typeInfoDataSubSegment.AppendLine("    ; TypeInfo.VariantIdentifier");
                         _typeInfoDataSubSegment.AppendLine($"    dw {classVariantIndex:X}");
+                        bytesWritten += 2;
 
                         // name
                         _typeInfoDataSubSegment.AppendLine("    ; TypeInfo.Name.Length");
                         _typeInfoDataSubSegment.AppendLine($"    dq {dataType.Name.Length:X}");
+                        bytesWritten += 8;
                         _typeInfoDataSubSegment.AppendLine("    ; TypeInfo.Name.Ref");
                         _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(dataType.Name)}");
+                        bytesWritten += 8;
 
                         // typeId
                         _typeInfoDataSubSegment.AppendLine("    ; TypeInfo.Id.Value");
                         _typeInfoDataSubSegment.AppendLine($"    dd {typeId:X}");
+                        bytesWritten += 4;
 
                         // static fields
                         var classStaticFieldIndex = 0;
                         foreach (var staticField in dataType.StaticFields)
                         {
-                            var staticFieldTypeId = GetTypeId(staticField.Type);
+                            var staticFieldTypeId = GetTypeId(staticField.Type, currentlyWritingTypeInfo: true);
 
                             // name
                             _typeInfoDataSubSegment.AppendLine($"    ; StaticFields[{classStaticFieldIndex}].Name.Length");
                             _typeInfoDataSubSegment.AppendLine($"    dq {staticField.Name.Length:X}");
+                            bytesWritten += 8;
                             _typeInfoDataSubSegment.AppendLine($"    ; StaticFields[{classStaticFieldIndex}].Name.Ref");
                             _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(staticField.Name)}");
+                            bytesWritten += 8;
 
                             // typeId
                             _typeInfoDataSubSegment.AppendLine($"    ; StaticFields[{classStaticFieldIndex}].TypeId.ModuleId.Length");
                             _typeInfoDataSubSegment.AppendLine($"    dd {staticFieldTypeId:X}");
+                            bytesWritten += 4;
 
                             classStaticFieldIndex++;
                         }
@@ -229,22 +219,25 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         {
                             _typeInfoDataSubSegment.AppendLine($"    ; StaticFields[{classStaticFieldIndex}]");
                             _typeInfoDataSubSegment.AppendLine($"    times {fieldInfoSize.Size} db 0");
+                            bytesWritten += fieldInfoSize.Size;
                         }
 
                         // fields
                         var fieldIndex = 0;
                         foreach (var field in dataType.Variants[0].Fields)
                         {
-
                             // name
                             _typeInfoDataSubSegment.AppendLine($"    ; Fields[{fieldIndex}].Name.Length");
                             _typeInfoDataSubSegment.AppendLine($"    dq {field.Name.Length:X}");
+                            bytesWritten += 8;
                             _typeInfoDataSubSegment.AppendLine($"    ; Fields[{fieldIndex}].Name.Ref");
                             _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(field.Name)}");
+                            bytesWritten += 8;
 
                             // typeId
                             _typeInfoDataSubSegment.AppendLine($"    ; Fields[{fieldIndex}].TypeId.Value");
-                            _typeInfoDataSubSegment.AppendLine($"    dq {GetTypeId(field.Type):X}");
+                            _typeInfoDataSubSegment.AppendLine($"    dq {GetTypeId(field.Type, currentlyWritingTypeInfo: true):X}");
+                            bytesWritten += 8;
 
                             fieldIndex++;
                         }
@@ -252,6 +245,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         {
                             _typeInfoDataSubSegment.AppendLine($"    ; Fields[{fieldIndex}]");
                             _typeInfoDataSubSegment.AppendLine($"    times {fieldInfoSize.Size} db 0");
+                            bytesWritten += fieldInfoSize.Size;
                         }
                     }
                     else
@@ -277,32 +271,39 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         // variantIdentifier
                         _typeInfoDataSubSegment.AppendLine("    ; TypeInfo.VariantIdentifier");
                         _typeInfoDataSubSegment.AppendLine($"    dw {unionVariantIndex:X}");
+                        bytesWritten += 2;
 
                         // name
                         _typeInfoDataSubSegment.AppendLine("    ; TypeInfo.Name.Length");
                         _typeInfoDataSubSegment.AppendLine($"    dq {dataType.Name.Length:X}");
+                        bytesWritten += 8;
                         _typeInfoDataSubSegment.AppendLine("    ; TypeInfo.Name.Ref");
                         _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(dataType.Name)}");
+                        bytesWritten += 8;
 
                         // typeId
                         _typeInfoDataSubSegment.AppendLine("    ; TypeInfo.Id.Value");
                         _typeInfoDataSubSegment.AppendLine($"    dd {typeId:X}");
+                        bytesWritten += 4;
 
                         // static fields
                         var classStaticFieldIndex = 0;
                         foreach (var staticField in dataType.StaticFields)
                         {
-                            var staticFieldTypeId = GetTypeId(staticField.Type);
+                            var staticFieldTypeId = GetTypeId(staticField.Type, currentlyWritingTypeInfo: true);
 
                             // name
                             _typeInfoDataSubSegment.AppendLine($"    ; StaticFields[{classStaticFieldIndex}].Name.Length");
                             _typeInfoDataSubSegment.AppendLine($"    dq {staticField.Name.Length:X}");
+                            bytesWritten += 8;
                             _typeInfoDataSubSegment.AppendLine($"    ; StaticFields[{classStaticFieldIndex}].Name.Ref");
                             _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(staticField.Name)}");
+                            bytesWritten += 8;
 
                             // typeId
                             _typeInfoDataSubSegment.AppendLine($"    ; StaticFields[{classStaticFieldIndex}].TypeId.ModuleId.Length");
                             _typeInfoDataSubSegment.AppendLine($"    dd {staticFieldTypeId:X}");
+                            bytesWritten += 4;
 
                             classStaticFieldIndex++;
                         }
@@ -310,6 +311,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         {
                             _typeInfoDataSubSegment.AppendLine($"    ; StaticFields[{classStaticFieldIndex}]");
                             _typeInfoDataSubSegment.AppendLine($"    times {fieldInfoSize.Size} db 0");
+                            bytesWritten += fieldInfoSize.Size;
                         }
 
                         var currentVariantIndex = 0;
@@ -318,8 +320,10 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                             // name
                             _typeInfoDataSubSegment.AppendLine($"    ; Variants[{currentVariantIndex}].Name.Length");
                             _typeInfoDataSubSegment.AppendLine($"    dq {variant.Name.Length:X}");
+                            bytesWritten += 8;
                             _typeInfoDataSubSegment.AppendLine($"    ; Variants[{currentVariantIndex}].Name.Ref");
                             _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(variant.Name)}");
+                            bytesWritten += 8;
 
                             // fields
                             var fieldIndex = 0;
@@ -328,12 +332,15 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                                 // name
                                 _typeInfoDataSubSegment.AppendLine($"    ; Variants[{currentVariantIndex}].Fields[{fieldIndex}].Name.Length");
                                 _typeInfoDataSubSegment.AppendLine($"    dq {field.Name.Length:X}");
+                                bytesWritten += 8;
                                 _typeInfoDataSubSegment.AppendLine($"    ; Variants[{currentVariantIndex}].Fields[{fieldIndex}].Name.Ref");
                                 _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(field.Name)}");
+                                bytesWritten += 8;
 
                                 // typeId
                                 _typeInfoDataSubSegment.AppendLine($"    ; Variants[{currentVariantIndex}].Fields[{fieldIndex}].TypeId.Value");
-                                _typeInfoDataSubSegment.AppendLine($"    dq {GetTypeId(field.Type):X}");
+                                _typeInfoDataSubSegment.AppendLine($"    dq {GetTypeId(field.Type, currentlyWritingTypeInfo: true):X}");
+                                bytesWritten += 8;
 
                                 fieldIndex++;
                             }
@@ -341,6 +348,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                             {
                                 _typeInfoDataSubSegment.AppendLine($"    ; Variants[{currentVariantIndex}].Fields[{fieldIndex}]");
                                 _typeInfoDataSubSegment.AppendLine($"    times {fieldInfoSize.Size} db 0");
+                                bytesWritten += fieldInfoSize.Size;
                             }
                             currentVariantIndex++;
                         }
@@ -348,137 +356,41 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         {
                             _typeInfoDataSubSegment.AppendLine($"    ; Variants[{currentVariantIndex}]");
                             _typeInfoDataSubSegment.AppendLine($"    times {variantInfoSize.Size} db 0");
+                            bytesWritten += variantInfoSize.Size;
                         }
 
                         // variant identifier getter
                         _typeInfoDataSubSegment.AppendLine($"    ; VariantIdentifierGetter.FunctionReference");
                         _typeInfoDataSubSegment.AppendLine("    dq __variant_identifier_field_getter");
+                        bytesWritten += 8;
 
                         _typeInfoDataSubSegment.AppendLine($"    ; VariantIdentifierGetter.FunctionParameter");
                         _typeInfoDataSubSegment.AppendLine("    dq 0");
+                        bytesWritten += 8;
                     }
 
-                    // var (fieldInfoNameIndex, fieldInfoField) = fieldInfoVariant.Fields.Index().First(x => x.Item.Name == "Name");
-                    // var (fieldInfoTypeIdIndex, fieldInfoTypeIdField) = fieldInfoVariant.Fields.Index().First(x => x.Item.Name == "TypeId");
-
-                    // Debug.Assert(fieldInfoNameIndex == 0);
-                    // Debug.Assert(fieldInfoTypeIdIndex == 1);
-
-                    // // name
-                    // _typeInfoDataSubSegment.AppendLine("    ; TypeInfo.Name.Length");
-                    // _typeInfoDataSubSegment.AppendLine($"    dq {dataType.Name.Length:X}");
-                    // _typeInfoDataSubSegment.AppendLine("    ; TypeInfo.Name.Ref");
-                    // _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(dataType.Name)}");
-
-                    // // typeId
-                    // _typeInfoDataSubSegment.AppendLine("    ; TypeInfo.Id.ModuleId.Length");
-                    // _typeInfoDataSubSegment.AppendLine($"    dq {dataType.Id.ModuleId.Value.Length:X}");
-                    // _typeInfoDataSubSegment.AppendLine("    ; TypeInfo.Id.ModuleId.Ref");
-                    // _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(dataType.Id.ModuleId.Value)}");
-
-                    // _typeInfoDataSubSegment.AppendLine("    ; TypeInfo.Id.FullName.Length");
-                    // _typeInfoDataSubSegment.AppendLine($"    dq {dataType.Id.FullName.Length:X}");
-                    // _typeInfoDataSubSegment.AppendLine("    ; TypeInfo.Id.FullName.Ref");
-                    // _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(dataType.Id.FullName)}");
-
-                    // // static fields
-                    // var staticFieldIndex = 0;
-                    // foreach (var staticField in dataType.StaticFields)
-                    // {
-                    //     if (staticField.Type is not LoweredConcreteTypeReference staticFieldType)
-                    //     {
-                    //         throw new NotImplementedException();
-                    //     }
-
-                    //     // name
-                    //     _typeInfoDataSubSegment.AppendLine($"    ; StaticFields[{staticFieldIndex}].Name.Length");
-                    //     _typeInfoDataSubSegment.AppendLine($"    dq {staticField.Name.Length:X}");
-                    //     _typeInfoDataSubSegment.AppendLine($"    ; StaticFields[{staticFieldIndex}].Name.Ref");
-                    //     _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(staticField.Name)}");
-
-                    //     // typeId
-                    //     _typeInfoDataSubSegment.AppendLine($"    ; StaticFields[{staticFieldIndex}].TypeId.ModuleId.Length");
-                    //     _typeInfoDataSubSegment.AppendLine($"    dq {staticFieldType.DefinitionId.ModuleId.Value.Length:X}");
-                    //     _typeInfoDataSubSegment.AppendLine($"    ; StaticFields[{staticFieldIndex}].TypeId.ModuleId.Ref");
-                    //     _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(staticFieldType.DefinitionId.ModuleId.Value)}");
-
-                    //     _typeInfoDataSubSegment.AppendLine($"    ; StaticFields[{staticFieldIndex}].TypeId.FullName.Length");
-                    //     _typeInfoDataSubSegment.AppendLine($"    dq {staticFieldType.DefinitionId.FullName.Length:X}");
-                    //     _typeInfoDataSubSegment.AppendLine($"    ; StaticFields[{staticFieldIndex}].TypeId.FullName.Ref");
-                    //     _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(staticFieldType.DefinitionId.FullName)}");
-
-                    //     staticFieldIndex++;
-                    // }
-                    // for (; staticFieldIndex < 10; staticFieldIndex++)
-                    // {
-                    //     _typeInfoDataSubSegment.AppendLine($"    ; StaticFields[{staticFieldIndex}]");
-                    //     _typeInfoDataSubSegment.AppendLine($"    times {fieldInfoSize.Size} db 0");
-                    // }
-
-                    // var variantIndex = 0;
-                    // foreach (var variant in dataType.Variants)
-                    // {
-                    //     // name
-                    //     _typeInfoDataSubSegment.AppendLine($"    ; Variants[{variantIndex}].Name.Length");
-                    //     _typeInfoDataSubSegment.AppendLine($"    dq {variant.Name.Length:X}");
-                    //     _typeInfoDataSubSegment.AppendLine($"    ; Variants[{variantIndex}].Name.Ref");
-                    //     _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(variant.Name)}");
-
-                    //     var fieldIndex = 0;
-                    //     foreach (var field in variant.Fields)
-                    //     {
-                    //         if (field.Type is not LoweredConcreteTypeReference fieldType)
-                    //         {
-                    //             throw new NotImplementedException(field.Type.GetType().ToString());
-                    //         }
-
-                    //         var fieldTypeId = field.Type switch
-                    //         {
-                    //             LoweredConcreteTypeReference x => x.DefinitionId,
-                    //             // LoweredPointer x => DefId.Pointer
-                    //             _ => throw new NotImplementedException(),
-                    //         };
-
-                    //         // name
-                    //         _typeInfoDataSubSegment.AppendLine($"    ; Variants[{variantIndex}].Fields[{fieldIndex}].Name.Length");
-                    //         _typeInfoDataSubSegment.AppendLine($"    dq {field.Name.Length:X}");
-                    //         _typeInfoDataSubSegment.AppendLine($"    ; Variants[{variantIndex}].Fields[{fieldIndex}].Name.Ref");
-                    //         _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(field.Name)}");
-
-                    //         // typeId
-                    //         _typeInfoDataSubSegment.AppendLine($"    ; Variants[{variantIndex}].Fields[{fieldIndex}].TypeId.ModuleId.Length");
-                    //         _typeInfoDataSubSegment.AppendLine($"    dq {fieldTypeId.ModuleId.Value.Length:X}");
-                    //         _typeInfoDataSubSegment.AppendLine($"    ; Variants[{variantIndex}].Fields[{fieldIndex}].TypeId.ModuleId.Ref");
-                    //         _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(fieldTypeId.ModuleId.Value)}");
-
-                    //         _typeInfoDataSubSegment.AppendLine($"    ; Variants[{variantIndex}].Fields[{fieldIndex}].TypeId.FullName.Length");
-                    //         _typeInfoDataSubSegment.AppendLine($"    dq {fieldTypeId.FullName.Length:X}");
-                    //         _typeInfoDataSubSegment.AppendLine($"    ; Variants[{variantIndex}].Fields[{fieldIndex}].TypeId.FullName.Ref");
-                    //         _typeInfoDataSubSegment.AppendLine($"    dq {GetStringConstantLabel(fieldTypeId.FullName)}");
-
-                    //         fieldIndex++;
-                    //     }
-                    //     for (; fieldIndex < 10; fieldIndex++)
-                    //     {
-                    //         _typeInfoDataSubSegment.AppendLine($"    ; Variants[{variantIndex}][{fieldIndex}]");
-                    //         _typeInfoDataSubSegment.AppendLine($"    times {fieldInfoSize.Size} db 0");
-                    //     }
-
-                    //     variantIndex++;
-                    // }
-                    // for (; variantIndex < 10; variantIndex++)
-                    // {
-                    //     _typeInfoDataSubSegment.AppendLine($"    ; Variants[{variantIndex}]");
-                    //     _typeInfoDataSubSegment.AppendLine($"    times {variantInfoSize.Size} db 0");
-                    // }
-
-
-
+                    break;
+                }
+            case LoweredPointer pointer:
+                {
+                    _typeInfoDataSubSegment.AppendLine("    ; PointerTo.Value");
+                    _typeInfoDataSubSegment.AppendLine($"    dd {GetTypeId(pointer.PointerTo, currentlyWritingTypeInfo: true):X}");
+                    bytesWritten += 4;
                     break;
                 }
             default:
                 throw new NotImplementedException(type.GetType().ToString());
         }
+
+        Debug.Assert(bytesWritten <= typeInfoSize.Size);
+        if (bytesWritten < typeInfoSize.Size)
+        {
+            var bytesToWrite = typeInfoSize.Size - bytesWritten;
+            _typeInfoDataSubSegment.AppendLine($"    times {bytesToWrite} db 0");
+            bytesWritten += bytesToWrite;
+        }
+
+        Debug.Assert(bytesWritten == typeInfoSize.Size);
     }
 
     private string ProcessInner()
@@ -555,6 +467,11 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             ProcessMethod(method, typeArguments);
 
             _codeSegment.AppendLine();
+        }
+
+        while (_typesToWriteBlobInfo.TryDequeue(out var typeInfoToWrite))
+        {
+            WriteTypeInfoBlob(typeInfoToWrite.TypeReference, typeInfoToWrite.TypeId);
         }
 
         // WriteTypeInfoBlob();
@@ -884,7 +801,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         {
             returnType = _currentTypeArguments[placeholderName];
         }
-        TypeInstantiated(returnType);
+        _ = GetTypeId(returnType, currentlyWritingTypeInfo: false);
 
         var returnSize = GetTypeSize(returnType, _currentTypeArguments);
 
@@ -920,7 +837,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             {
                 parameterType = _currentTypeArguments[parameterPlaceholderName];
             }
-            TypeInstantiated(parameterType);
+            _ = GetTypeId(parameterType, currentlyWritingTypeInfo: false);
             var parameterSize = GetTypeSize(parameterType, _currentTypeArguments);
             var size = Math.Min(parameterSize.Size, PointerSize);
 
@@ -980,7 +897,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             {
                 localType = _currentTypeArguments[localPlaceholderName];
             }
-            TypeInstantiated(localType);
+            _ = GetTypeId(localType, currentlyWritingTypeInfo: false);
             var typeSize = GetTypeSize(localType, _currentTypeArguments);
 
             // make sure stack offset is aligned to the size of the type
@@ -1963,7 +1880,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                 }
             case TypeIdOf(var type):
                 {
-                    var typeId = GetTypeId(type);
+                    var typeId = GetTypeId(type, currentlyWritingTypeInfo: false);
                     MoveIntoPlace(destination, $"0x{typeId:X}", PointerSize);
                     break;
                 }

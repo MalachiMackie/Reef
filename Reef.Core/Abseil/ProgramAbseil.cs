@@ -165,6 +165,7 @@ public partial class ProgramAbseil
 
         coreLibDataTypes.AddRange(
             new[] {
+                TypeChecker.ClassSignature.Unit.Value,
                 TypeChecker.ClassSignature.String.Value,
                 TypeChecker.ClassSignature.Int8.Value,
                 TypeChecker.ClassSignature.Int16.Value,
