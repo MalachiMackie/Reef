@@ -129,7 +129,12 @@ public partial class TypeChecker
                     IsStatic = false,
                     Name = "Fields",
                     StaticInitializer = null,
-                    Type = new ArrayType(InstantiatedClass.FieldInfo, boxed: true, length: 10)
+                    Type = new ArrayType(
+                        InstantiatedClass.Create(
+                            ClassSignature.FieldInfo.Value,
+                            [],
+                            boxed: false
+                        ), boxed: false, length: 10)
                 },
             ],
             Functions = [],

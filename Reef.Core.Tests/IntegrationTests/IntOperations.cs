@@ -1,4 +1,6 @@
-﻿namespace Reef.Core.Tests.IntegrationTests;
+﻿using Reef.Core.Tests.IntegrationTests.Helpers;
+
+namespace Reef.Core.Tests.IntegrationTests;
 
 public class IntOperations : IntegrationTestBase
 {

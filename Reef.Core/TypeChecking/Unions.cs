@@ -255,7 +255,7 @@ public partial class TypeChecker
                 }
             ],
             Functions = [],
-            Boxed = false,
+            Boxed = true,
             IsPublic = true
         });
 

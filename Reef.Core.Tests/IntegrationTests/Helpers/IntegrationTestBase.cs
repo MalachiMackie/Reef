@@ -2,7 +2,7 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 
-namespace Reef.Core.Tests.IntegrationTests;
+namespace Reef.Core.Tests.IntegrationTests.Helpers;
 
 public class IntegrationTestBase
 {
@@ -84,7 +84,7 @@ public class IntegrationTestBase
     {
         var callerFileName = Path.GetFileNameWithoutExtension(callerFilePath);
         var callerFolder = Path.GetDirectoryName(callerFilePath);
-        return Path.Join(callerFolder, $"{callerFileName}_TestRuns", testName, testCaseName);
+        return Path.Join(callerFolder, "TestRuns", callerFileName, testName, testCaseName);
     }
 
     private static void DeleteDirectory(string directory)

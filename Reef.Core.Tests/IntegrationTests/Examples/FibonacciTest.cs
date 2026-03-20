@@ -1,4 +1,6 @@
-﻿namespace Reef.Core.Tests.IntegrationTests.Examples;
+﻿using Reef.Core.Tests.IntegrationTests.Helpers;
+
+namespace Reef.Core.Tests.IntegrationTests.Examples;
 
 public class FibonacciTest : IntegrationTestBase
 {
@@ -9,14 +11,14 @@ public class FibonacciTest : IntegrationTestBase
             """
             var mut a = 0;
             var mut b = 1;
-            
+
             print_i32(a);
             print_string(", ");
             print_i32(b);
-            
-            while (b < 1000) { 
+
+            while (b < 1000) {
                 print_string(", ");
-                
+
                 var c = b;
                 b = a + c;
                 a = c;

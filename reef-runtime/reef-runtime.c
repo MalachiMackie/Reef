@@ -8,14 +8,98 @@
 typedef double max_align_t;
 #endif
 
+typedef uint8_t *VariantInfoHandle;
+typedef uint8_t *FieldInfoHandle;
+
+typedef struct {
+    uint8_t variantIdentifier;
+} TypeInfo;
+typedef TypeInfo *TypeInfoHandle;
+
+extern TypeInfo typeInfoArray[];
+
+extern uint64_t typeInfoCount;
+extern uint64_t typeInfoSize;
+extern uint64_t fieldInfoSize;
+extern uint64_t variantInfoSize;
+
 typedef struct {
 	size_t length;
 	const char *start;
 } string;
 
+TypeInfoHandle get_type_info(uint64_t index)
+{
+    assert(index < typeInfoCount);
+    TypeInfoHandle handle = typeInfoArray;
+
+
+    return (TypeInfoHandle)(((char*)handle) + (typeInfoSize * index));
+}
+
+uint32_t *get_pointer_pointer_to_type_id(TypeInfoHandle handle)
+{
+    return (uint32_t *)((char*)handle + 4);
+}
+
+string *get_class_name(TypeInfoHandle handle)
+{
+    return (string *)((char*)handle + 8);
+}
+
+string *get_union_name(TypeInfoHandle handle)
+{
+    return (string *)((char*)handle + 8);
+}
+
+uint32_t *get_class_type_id(TypeInfoHandle handle)
+{
+    return (uint32_t *)((char*)handle + 24);
+}
+
+uint32_t *get_union_type_id(TypeInfoHandle handle)
+{
+    return (uint32_t *)((char*)handle + 24);
+}
+
+uint16_t get_variant_identifier(TypeInfoHandle handle)
+{
+    uint16_t *variantIdentifier = (uint16_t*)handle;
+
+    return *variantIdentifier;
+}
+
 void print_string(string str)
 {
 	fputs(str.start, stdout);
+}
+
+string get_type_info_name(TypeInfoHandle handle)
+{
+    switch (get_variant_identifier(handle))
+    {
+        case 0: // class
+            return *get_class_name(handle);
+        case 1: // union
+            return *get_union_name(handle);
+        case 2: // pointer
+        {
+            uint32_t *pointer_to_type_id = get_pointer_pointer_to_type_id(handle);
+            TypeInfoHandle pointer_to_handle = get_type_info(*pointer_to_type_id);
+            string value;
+            value.length = 6;
+            value.start = "*thing";
+            return value;
+        }
+        case 3: // array
+        {
+            string value;
+            value.length = 10;
+            value.start = "[thing; 1]";
+        }
+        default:
+            assert(0);
+    }
 }
 
 #define DEFINE_PRINT_INT(func_name, int_type)                            \
@@ -51,6 +135,45 @@ DEFINE_PRINT_INT(print_u8, uint8_t)
 DEFINE_PRINT_INT(print_u16, uint16_t)
 DEFINE_PRINT_INT(print_u32, uint32_t)
 DEFINE_PRINT_INT(print_u64, uint64_t)
+
+void print_type_info(TypeInfoHandle handle)
+{
+    switch (get_variant_identifier(handle))
+    {
+        case 0: // class
+        {
+            print_string(get_type_info_name(handle));
+            fputs(":\n    type: class\n", stdout);
+            fputs("    id: ", stdout);
+            print_u32(*get_class_type_id(handle));
+            fputs("\n", stdout);
+            break;
+        }
+        case 1: // union
+        {
+            print_string(get_type_info_name(handle));
+            fputs(":\n    type: union\n", stdout);
+            fputs("    id: ", stdout);
+            print_u32(*get_union_type_id(handle));
+            fputs("\n", stdout);
+            break;
+        }
+        case 2: // pointer
+        {
+            uint32_t *pointer_to_type_id = get_pointer_pointer_to_type_id(handle);
+            TypeInfoHandle pointer_to_handle = get_type_info(*pointer_to_type_id);
+            print_string(get_type_info_name(handle));
+            fputs(":\n    type: pointer\n", stdout);
+            break;
+        }
+        case 3: // array
+        {
+            print_string(get_type_info_name(handle));
+            fputs(":\n    type: array\n", stdout);
+            break;
+        }
+    }
+}
 
 size_t memory_used_bytes = 0;
 
@@ -98,6 +221,10 @@ void init_runtime() {
     heap.allocations = allocations;
 
     heaps[0] = heap;
+    for (uint64_t i = 0; i < typeInfoCount; i++)
+    {
+        // print_type_info(get_type_info(i));
+    }
 }
 
 void* allocate(size_t size) {

@@ -37,4 +37,4 @@ Desktop.ini
 
 **/reef-implementation/build/
 **/Examples/build/
-**/IntegrationTests/**/*_TestRuns/
+**/IntegrationTests/**/TestRuns/**

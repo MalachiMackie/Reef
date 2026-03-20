@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 
-namespace Reef.Core.Tests.IntegrationTests;
+namespace Reef.Core.Tests.IntegrationTests.Helpers;
 
 public class TestLogger(ITestOutputHelper testOutputHelper) : ILogger
 {

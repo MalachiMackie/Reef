@@ -175,12 +175,14 @@ public partial class ProgramAbseil
                 TypeChecker.ClassSignature.UInt16.Value,
                 TypeChecker.ClassSignature.UInt32.Value,
                 TypeChecker.ClassSignature.UInt64.Value,
+                TypeChecker.ClassSignature.Boolean.Value,
+                TypeChecker.ClassSignature.RawPointer.Value,
                 TypeChecker.ClassSignature.BoxedValue.Value,
                 TypeChecker.ClassSignature.ObjectHeader.Value,
             }.Select(x => new DataType(
                 x.Id,
                 x.Name,
-                [],
+                [.. x.TypeParameters.Select(GetGenericPlaceholder)],
                 [new DataTypeVariant(ClassVariantName, [.. x.Fields.Select(x => new DataTypeField(x.Name, GetTypeReference(x.Type)))])],
                 []
             ))

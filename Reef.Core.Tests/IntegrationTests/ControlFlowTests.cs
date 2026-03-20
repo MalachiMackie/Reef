@@ -1,4 +1,6 @@
-﻿namespace Reef.Core.Tests.IntegrationTests;
+﻿using Reef.Core.Tests.IntegrationTests.Helpers;
+
+namespace Reef.Core.Tests.IntegrationTests;
 
 public class ControlFlowTests : IntegrationTestBase
 {
@@ -106,9 +108,9 @@ public class ControlFlowTests : IntegrationTestBase
                 if (a == 1) {
                     continue;
                 }
-                
+
                 print_string("hi. ");
-                
+
                 if (a == 5) {
                     break;
                 }
@@ -119,5 +121,28 @@ public class ControlFlowTests : IntegrationTestBase
 
         Assert.Equal(0, output.ExitCode);
         Assert.Equal("hi. hi. hi. hi. ", output.StandardOutput);
+    }
+
+    [Theory]
+    [InlineData("A", "1")]
+    [InlineData("B", "2")]
+    public async Task MatchOnUnion(string variant, string expectedNumber)
+    {
+        await SetupTest(
+            $$"""
+            union MyUnion {A, B}
+            var a = MyUnion::{{variant}};
+            var b = match(a) {
+                MyUnion::A => 1,
+                MyUnion::B => 2,
+            };
+            print_u8(b);
+            """
+        );
+
+        var output = await Run();
+
+        Assert.Equal(0, output.ExitCode);
+        Assert.Equal(expectedNumber, output.StandardOutput);
     }
 }
