@@ -96,6 +96,12 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
     private void WriteTypeInfoBlob(ILoweredTypeReference type, ulong typeId)
     {
+        if (type is LoweredGenericPlaceholder outerGenericPlaceholder)
+        {
+            WriteTypeInfoBlob(_currentTypeArguments[outerGenericPlaceholder.PlaceholderName], typeId);
+            return;
+        }
+
         var typeInfoDataType = _dataTypes[DefId.TypeInfo];
         var typeInfoTypeReference = new LoweredConcreteTypeReference(
                         TypeChecker.InstantiatedUnion.TypeInfo.Signature.Name,
@@ -457,6 +463,29 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     _typeInfoDataSubSegment.AppendLine($"        dd 0x{GetTypeId(pointer.PointerTo, currentlyWritingTypeInfo: true):X}");
                     bytesWritten += 4;
                     _typeInfoDataSubSegment.AppendLine($"        ; BytesWritten: {bytesWritten}");
+                    break;
+                }
+            case LoweredArray array:
+                {
+                    var arrayVariantFieldOffsets = typeInfoSize.VariantFieldOffsets["Array"];
+                    var (arrayVariantIndex, typeInfoVariant) = typeInfoDataType.Variants.Index().First(x => x.Item.Name == "Array");
+
+                    // variantIdentifier
+                    _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.VariantIdentifier");
+                    _typeInfoDataSubSegment.AppendLine($"        dw 0x{arrayVariantIndex:X}");
+                    bytesWritten += 2;
+                    _typeInfoDataSubSegment.AppendLine($"        ; BytesWritten: {bytesWritten}");
+
+                    var elementType = array.ElementType;
+                    PadAlignment(arrayVariantFieldOffsets["ElementType"].Alignment);
+                    _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.ElementType.Value");
+                    _typeInfoDataSubSegment.AppendLine($"        dd 0x{GetTypeId(elementType, currentlyWritingTypeInfo: true):X}");
+                    bytesWritten += 4;
+
+                    PadAlignment(arrayVariantFieldOffsets["Length"].Alignment);
+                    _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.Length");
+                    _typeInfoDataSubSegment.AppendLine($"        dq 0x{array.Length:X}");
+                    bytesWritten += 8;
                     break;
                 }
             default:

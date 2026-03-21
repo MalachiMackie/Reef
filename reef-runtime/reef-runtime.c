@@ -96,6 +96,7 @@ string get_type_info_name(TypeInfoHandle handle)
             string value;
             value.length = 10;
             value.start = "[thing; 1]";
+            return value;
         }
         default:
             assert(0);

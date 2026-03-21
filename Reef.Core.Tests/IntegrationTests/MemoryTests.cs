@@ -61,7 +61,7 @@ public class MemoryTests : IntegrationTestBase
             class SubClass{pub field B: u64}
             class MyClass{pub field A: SubClass}
 
-            var a = new unboxed MyClass{A = new SubClass{B = 6}}
+            var a = new unboxed MyClass{A = new SubClass{B = 6}};
 
             trigger_gc();
             var memoryUsed = get_memory_used_bytes();
