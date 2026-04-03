@@ -239,7 +239,7 @@ public partial class TypeChecker
         //         || GetModuleTypes(apparentModuleId).ContainsKey(segment.Identifier.StringValue));
 
         var found = false;
-        if (_modules.ContainsKey(apparentModuleId))
+        if (_modules.ContainsKey(apparentModuleId) || apparentModuleId == DefId.DiagnosticsModuleId)
         {
             if (GetModuleFunctions(apparentModuleId).TryGetValue(segment.Identifier.StringValue, out var fn))
             {
@@ -261,7 +261,7 @@ public partial class TypeChecker
 
         var nextModuleId = new ModuleId(apparentModuleId.Value == "" ? segment.Identifier.StringValue : $"{apparentModuleId.Value}:::{segment.Identifier.StringValue}");
 
-        found |= _modules.Keys.Any(x => x.Value.StartsWith(nextModuleId.Value));
+        found |= _modules.Keys.Append(DefId.DiagnosticsModuleId).Any(x => x.Value.StartsWith(nextModuleId.Value));
 
         if (!found)
         {

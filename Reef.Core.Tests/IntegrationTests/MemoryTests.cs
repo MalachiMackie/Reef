@@ -41,7 +41,7 @@ public class MemoryTests : IntegrationTestBase
             var a = new MyClass {A = new SubClass{B = 7}};
 
             trigger_gc();
-            var memoryUsed = get_memory_used_bytes();
+            var memoryUsed = get_memory_usage_bytes();
             print_u64(memoryUsed);
             """
         );
@@ -64,7 +64,7 @@ public class MemoryTests : IntegrationTestBase
             var a = new unboxed MyClass{A = new SubClass{B = 6}};
 
             trigger_gc();
-            var memoryUsed = get_memory_used_bytes();
+            var memoryUsed = get_memory_usage_bytes();
             print_u64(memoryUsed);
             """
         );
@@ -86,7 +86,7 @@ public class MemoryTests : IntegrationTestBase
             var a = [unboxed; new MyClass{A = 3}];
 
             trigger_gc();
-            var memoryUsed = get_memory_used_bytes();
+            var memoryUsed = get_memory_usage_bytes();
             print_u64(memoryUsed);
             """
         );
@@ -108,7 +108,7 @@ public class MemoryTests : IntegrationTestBase
             var a = [new MyClass{A = 3}];
 
             trigger_gc();
-            var memoryUsed = get_memory_used_bytes();
+            var memoryUsed = get_memory_usage_bytes();
             print_u64(memoryUsed);
             """
         );
