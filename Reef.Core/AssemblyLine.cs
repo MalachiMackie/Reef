@@ -2472,23 +2472,15 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
         while (concreteOwner is null)
         {
-            try
+            ownerType = ownerType switch
             {
-
-                ownerType = ownerType switch
-                {
-                    LoweredConcreteTypeReference => ownerType,
-                    LoweredFunctionReference => throw new InvalidOperationException("FunctionReference has no fields"),
-                    LoweredGenericPlaceholder(_, var placeholderName) => _currentTypeArguments[placeholderName],
-                    LoweredPointer(var pointerTo) => pointerTo,
-                    RawPointer => throw new InvalidOperationException("Raw Pointer has no fields"),
-                    _ => throw new ArgumentOutOfRangeException(nameof(ownerType))
-                };
-            }
-            catch
-            {
-                throw;
-            }
+                LoweredConcreteTypeReference => ownerType,
+                LoweredFunctionReference => throw new InvalidOperationException("FunctionReference has no fields"),
+                LoweredGenericPlaceholder(_, var placeholderName) => _currentTypeArguments[placeholderName],
+                LoweredPointer(var pointerTo) => pointerTo,
+                RawPointer => throw new InvalidOperationException("Raw Pointer has no fields"),
+                _ => throw new ArgumentOutOfRangeException(nameof(ownerType))
+            };
 
             concreteOwner = ownerType as LoweredConcreteTypeReference;
         }

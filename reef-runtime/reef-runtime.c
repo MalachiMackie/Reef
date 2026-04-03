@@ -137,6 +137,22 @@ DEFINE_PRINT_INT(print_u16, uint16_t)
 DEFINE_PRINT_INT(print_u32, uint32_t)
 DEFINE_PRINT_INT(print_u64, uint64_t)
 
+void print_size_t_hex(size_t value)
+{
+    int started = 0;
+
+    for (int i = (int)(sizeof(size_t) * 2) - 1; i >= 0; --i)
+    {
+        unsigned digit = (value >> (i * 4)) & 0xF;
+
+        if (digit != 0 || started || i == 0)
+        {
+            started = 1;
+            putchar(digit < 10 ? '0' + digit : 'A' + (digit - 10));
+        }
+    }
+}
+
 void print_type_info(TypeInfoHandle handle)
 {
     switch (get_variant_identifier(handle))
@@ -229,26 +245,27 @@ void init_runtime() {
 }
 
 void* allocate(size_t size) {
-    size_t unaligned_new_top = (size_t)heaps[0].top + size;
+    size_t old_top = (size_t)heaps[0].top;
+    size_t unaligned_new_top = old_top + size;
     size_t new_top = unaligned_new_top + (unaligned_new_top % alignof(max_align_t));
+
 
     // todo: if no more space in heap, allocate a new one
     assert(new_top < (size_t)heaps[0].base_addr + heaps[0].size);
     heaps[0].top = (void*)new_top;
     AllocationsList* allocations = &heaps[0].allocations;
 
-
     // todo: if no more allocations, allocate a new one
     assert(allocations->count < allocations->size);
 
     Allocation allocation;
-    allocation.ptr = (void*)new_top;
+    allocation.ptr = (void*)old_top;
     allocation.size = size;
-    allocation.allocation_space = (uint8_t)(new_top - unaligned_new_top);
+    allocation.allocation_space = (uint8_t)(old_top - new_top);
 
     allocations->allocations[allocations->count++] = allocation;
 
-    return (void*)new_top;
+    return (void*)old_top;
 }
 
 void trigger_gc() {

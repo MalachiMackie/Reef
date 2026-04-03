@@ -106,6 +106,23 @@ public class ArrayTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AnotherArrayTest()
+    {
+        await SetupTest(
+            """
+            var a = [["hi"]];
+            var b = [["bye"]];
+            print_string(a[0][0]);
+            print_string(b[0][0]);
+            """
+        );
+
+        var result = await Run();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be("hibye");
+    }
+
+    [Fact]
     public async Task DeepUnboxedArrays()
     {
         await SetupTest("""
