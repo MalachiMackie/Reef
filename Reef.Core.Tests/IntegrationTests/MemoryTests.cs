@@ -48,7 +48,7 @@ public class MemoryTests : IntegrationTestBase
 
         var result = await Run();
         result.ExitCode.Should().Be(0);
-        result.StandardOutput.Should().Be("24"); // 8 + two 8 byte object headers
+        result.StandardOutput.Should().Be("32");
     }
 
     [Fact]
@@ -115,6 +115,6 @@ public class MemoryTests : IntegrationTestBase
 
         var result = await Run();
         result.ExitCode.Should().Be(0);
-        result.StandardOutput.Should().Be("24"); // 8 + class object header + array object header
+        result.StandardOutput.Should().Be("32");
     }
 }

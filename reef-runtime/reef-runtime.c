@@ -249,6 +249,7 @@ void* allocate(size_t size) {
     size_t unaligned_new_top = old_top + size;
     size_t new_top = unaligned_new_top + (unaligned_new_top % alignof(max_align_t));
 
+    memory_used_bytes += new_top - old_top;
 
     // todo: if no more space in heap, allocate a new one
     assert(new_top < (size_t)heaps[0].base_addr + heaps[0].size);
