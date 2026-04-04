@@ -332,6 +332,40 @@ public partial class TypeChecker
             ReturnType = InstantiatedClass.UInt64
         };
 
+        public static FunctionSignature PrintAllMethods => new(
+            DefId.PrintAllMethods,
+            Token.Identifier("print_all_methods", SourceSpan.Default),
+            [],
+            [],
+            IsStatic: true,
+            IsMutable: false,
+            Expressions: [],
+            Extern: true,
+            IsMutableReturn: true,
+            IsPublic: true
+        )
+        {
+            OwnerType = null,
+            ReturnType = InstantiatedClass.Unit
+        };
+
+        public static FunctionSignature PrintAllTypes => new(
+            DefId.PrintAllTypes,
+            Token.Identifier("print_all_types", SourceSpan.Default),
+            [],
+            [],
+            IsStatic: true,
+            IsMutable: false,
+            Expressions: [],
+            Extern: true,
+            IsMutableReturn: true,
+            IsPublic: true
+        )
+        {
+            OwnerType = null,
+            ReturnType = InstantiatedClass.Unit
+        };
+
         public static FunctionSignature TriggerGC => new(
             DefId.TriggerGC,
             Token.Identifier("trigger_gc", SourceSpan.Default),
@@ -347,6 +381,13 @@ public partial class TypeChecker
             OwnerType = null,
             ReturnType = InstantiatedClass.Unit
         };
+
+        public static IReadOnlyList<FunctionSignature> DiagnosticFunctions => [
+            TriggerGC,
+            PrintAllTypes,
+            PrintAllMethods,
+            GetMemoryUsage
+        ];
 
         // Core
         public static FunctionSignature PrintString => CreatePrintString();

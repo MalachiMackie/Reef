@@ -211,6 +211,8 @@ public partial class ProgramAbseil
 
     private static LoweredExternMethod ExternMethodFromSignature(TypeChecker.FunctionSignature signature)
     {
+        Debug.Assert(signature.Extern);
+
         return new LoweredExternMethod(
             signature.Id,
             signature.Name,
@@ -325,21 +327,13 @@ public partial class ProgramAbseil
             {
                 Id = DefId.DiagnosticsModuleId,
                 DataTypes = [],
-                Methods = [
-                    ExternMethodFromSignature(TypeChecker.FunctionSignature.GetMemoryUsage),
-                    ExternMethodFromSignature(TypeChecker.FunctionSignature.TriggerGC),
-                ]
+                Methods = [..TypeChecker.FunctionSignature.DiagnosticFunctions.Select(ExternMethodFromSignature)]
             },
             new LoweredModule
             {
                 Id = DefId.ReflectionModuleId,
                 DataTypes = [
-                    .. new []
-                    {
-                        TypeChecker.ClassSignature.TypeId.Value,
-                        TypeChecker.ClassSignature.FieldInfo.Value,
-                        TypeChecker.ClassSignature.VariantInfo.Value,
-                    }.Select(x =>
+                    .. TypeChecker.ClassSignature.ReflectionClasses.Value.Select(x =>
                         new DataType(
                             x.Id,
                             x.Name,

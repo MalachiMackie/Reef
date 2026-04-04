@@ -37,6 +37,34 @@ public partial class TypeChecker
             TypeParameters = []
         });
 
+        public static Lazy<ClassSignature> MethodInfo { get; } = new(() => new ClassSignature()
+        {
+            Id = DefId.MethodInfo,
+            Boxed = false,
+            Fields = [
+                new TypeField {
+                    Name = "Id",
+                    IsMutable = false,
+                    IsPublic = true,
+                    IsStatic = false,
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.MethodId
+                },
+                new TypeField {
+                    Name = "Name",
+                    IsMutable = false,
+                    IsPublic = true,
+                    IsStatic = false,
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.String
+                },
+            ],
+            Functions = [],
+            IsPublic = true,
+            Name = "MethodInfo",
+            TypeParameters = []
+        });
+
         private static ClassSignature CreateBoxedValue()
         {
             var typeParameters = new List<GenericPlaceholder>();
@@ -131,7 +159,7 @@ public partial class TypeChecker
                     StaticInitializer = null,
                     Type = new ArrayType(
                         InstantiatedClass.Create(
-                            ClassSignature.FieldInfo.Value,
+                            FieldInfo.Value,
                             [],
                             boxed: false
                         ), boxed: false, length: 10)
@@ -142,6 +170,56 @@ public partial class TypeChecker
             IsPublic = true
         });
 
+        public static Lazy<ClassSignature> MethodId { get; } = new(() => new ClassSignature()
+        {
+            Id = DefId.MethodId,
+            TypeParameters = [],
+            Name = "methodId",
+            Fields = [
+                new TypeField
+                {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "Value",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.Int32
+                },
+            ],
+            Functions = [],
+            Boxed = false,
+            IsPublic = true
+        });
+
+        public static Lazy<ClassSignature> TypeId { get; } = new(() => new ClassSignature()
+        {
+            Id = DefId.TypeId,
+            TypeParameters = [],
+            Name = "typeId",
+            Fields = [
+                new TypeField
+                {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "Value",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.Int32
+                },
+            ],
+            Functions = [],
+            Boxed = false,
+            IsPublic = true
+        });
+
+        public static Lazy<IReadOnlyList<ClassSignature>> ReflectionClasses { get; } = new(() =>
+            [
+                VariantInfo.Value,
+                FieldInfo.Value,
+                MethodInfo.Value,
+                TypeId.Value,
+                MethodId.Value,
+            ]);
 
 
         public static Lazy<ClassSignature> String { get; } = new(() => new ClassSignature()
@@ -174,26 +252,7 @@ public partial class TypeChecker
             IsPublic = true
         });
 
-        public static Lazy<ClassSignature> TypeId { get; } = new(() => new ClassSignature()
-        {
-            Id = DefId.TypeId,
-            TypeParameters = [],
-            Name = "typeId",
-            Fields = [
-                new TypeField
-                {
-                    IsPublic = true,
-                    IsMutable = false,
-                    IsStatic = false,
-                    Name = "Value",
-                    StaticInitializer = null,
-                    Type = InstantiatedClass.Int32
-                },
-            ],
-            Functions = [],
-            Boxed = false,
-            IsPublic = true
-        });
+
 
         public static Lazy<ClassSignature> Int64 { get; } = new(() => new ClassSignature()
         { Id = DefId.Int64, TypeParameters = [], Name = "i64", Fields = [], Functions = [], Boxed = false, IsPublic = true });
@@ -605,6 +664,7 @@ public partial class TypeChecker
 
         public static InstantiatedClass String => new(ClassSignature.String.Value, [], [], boxed: ClassSignature.String.Value.Boxed);
         public static InstantiatedClass TypeId => new(ClassSignature.TypeId.Value, [], [], boxed: ClassSignature.TypeId.Value.Boxed);
+        public static InstantiatedClass MethodId => new(ClassSignature.MethodId.Value, [], [], boxed: ClassSignature.MethodId.Value.Boxed);
         public static InstantiatedClass Boolean => new(ClassSignature.Boolean.Value, [], [], boxed: ClassSignature.Boolean.Value.Boxed);
 
         public static InstantiatedClass Int64 => new(ClassSignature.Int64.Value, [], [], boxed: ClassSignature.Int64.Value.Boxed);

@@ -15,9 +15,16 @@ typedef struct {
     uint8_t variantIdentifier;
 } TypeInfo;
 typedef TypeInfo *TypeInfoHandle;
-
 extern TypeInfo typeInfoArray[];
 
+typedef struct {
+    uint8_t _something;
+} MethodInfo;
+typedef MethodInfo *MethodInfoHandle;
+extern MethodInfo methodInfoArray[];
+
+extern uint64_t methodInfoCount;
+extern uint64_t methodInfoSize;
 extern uint64_t typeInfoCount;
 extern uint64_t typeInfoSize;
 extern uint64_t fieldInfoSize;
@@ -27,6 +34,25 @@ typedef struct {
 	size_t length;
 	const char *start;
 } string;
+
+string get_method_name(MethodInfoHandle handle)
+{
+    uint64_t length = *(uint64_t*)handle;
+    char *data = ((char*)handle + 8);
+    string value;
+    value.length = length;
+    value.start = data;
+
+    return value;
+}
+
+MethodInfoHandle get_method_info(uint64_t index)
+{
+    assert(index < methodInfoCount);
+    MethodInfoHandle handle = methodInfoArray;
+
+    return (MethodInfoHandle)(((char*)handle) + (methodInfoSize * index));
+}
 
 TypeInfoHandle get_type_info(uint64_t index)
 {
@@ -153,6 +179,12 @@ void print_size_t_hex(size_t value)
     }
 }
 
+void print_method_info(MethodInfoHandle handle)
+{
+    print_string(get_method_name(handle));
+    fputs("\n", stdout);
+}
+
 void print_type_info(TypeInfoHandle handle)
 {
     switch (get_variant_identifier(handle))
@@ -238,10 +270,7 @@ void init_runtime() {
     heap.allocations = allocations;
 
     heaps[0] = heap;
-    for (uint64_t i = 0; i < typeInfoCount; i++)
-    {
-        // print_type_info(get_type_info(i));
-    }
+
 }
 
 void* allocate(size_t size) {
@@ -267,6 +296,22 @@ void* allocate(size_t size) {
     allocations->allocations[allocations->count++] = allocation;
 
     return (void*)old_top;
+}
+
+void print_all_types()
+{
+    for (uint64_t i = 0; i < typeInfoCount; i++)
+    {
+        print_type_info(get_type_info(i));
+    }
+}
+
+void print_all_methods()
+{
+    for (uint64_t i = 0; i < methodInfoCount; i++)
+    {
+        print_method_info(get_method_info(i));
+    }
 }
 
 void trigger_gc() {

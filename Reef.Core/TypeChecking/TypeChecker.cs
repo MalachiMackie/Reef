@@ -144,9 +144,9 @@ public partial class TypeChecker
         {
             DefId.DiagnosticsModuleId,
             (
-                [FunctionSignature.GetMemoryUsage, FunctionSignature.TriggerGC],
-                [],
-                []
+                Functions: [..FunctionSignature.DiagnosticFunctions],
+                Unions: [],
+                Classes: []
             )
         },
         {

@@ -25,7 +25,33 @@ public class MemoryTests : IntegrationTestBase
 
         var result = await Run();
         result.ExitCode.Should().Be(0);
-        result.StandardOutput.Should().Be("56");
+        result.StandardOutput.Should().Be("64");
+    }
+
+    [Fact]
+    [TestMe]
+    public async Task PrintMethods()
+    {
+        await SetupTest(
+            """
+            use :::Reef:::Core:::Diagnostics:::*;
+
+            pub fn Something()
+            {}
+
+            Something();
+            print_all_methods();
+            """
+        );
+
+        var result = await Run();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be(
+            """
+            Something
+            _Main
+            """
+        );
     }
 
     [Fact]

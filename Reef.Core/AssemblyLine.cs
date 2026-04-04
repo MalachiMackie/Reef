@@ -22,6 +22,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
     private readonly StringBuilder _dataSegment = new("segment .data\n");
     private readonly StringBuilder _stringDataSubSegment = new();
     private readonly StringBuilder _typeInfoDataSubSegment = new();
+    private readonly StringBuilder _methodInfoDataSubSegment = new();
 
     private readonly StringBuilder _codeSegment = new("""
                                                       segment .text
@@ -90,6 +91,9 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         return found.TypeId;
 
     }
+
+    private readonly List<(LoweredFunctionReference FunctionReference, ulong MethodId)> _methodIds = [];
+    private readonly Queue<(LoweredFunctionReference FunctionReference, ulong MethodId)> _methodsToWriteBlobInfo = [];
 
     private readonly List<(ILoweredTypeReference TypeReference, ulong TypeId)> _typeIds = [];
     private readonly Queue<(ILoweredTypeReference TypeReference, ulong TypeId)> _typesToWriteBlobInfo = [];
@@ -615,6 +619,9 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         var fieldInfoSize = GetTypeSize(
             new LoweredConcreteTypeReference("FieldInfo", DefId.FieldInfo, []),
             []);
+        var methodInfoSize = GetTypeSize(
+            new LoweredConcreteTypeReference("MethodInfo", DefId.MethodInfo, []),
+            []);
 
         return $"""
                 {AsmHeader}
@@ -623,17 +630,25 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                 global variantInfoSize
                 global typeInfoCount
                 global typeInfoArray
+                global methodInfoArray
+                global methodInfoCount
+                global methodInfoSize
+                {_codeSegment}
                 {_dataSegment}
                 {_stringDataSubSegment}
                     ALIGN 8, db 0
                     typeInfoSize dq 0x{typeInfoSize.Size:X}
                     fieldInfoSize dq 0x{fieldInfoSize.Size:X}
                     variantInfoSize dq 0x{variantInfoSize.Size:X}
+                    methodInfoSize dq 0x{methodInfoSize.Size:X}
+                    methodInfoCount dq 0x{_methodIds.Count:X}
                     typeInfoCount dq 0x{_typeIds.Count:X}
                     ALIGN 16, db 0
                     typeInfoArray:
                 {_typeInfoDataSubSegment}
-                {_codeSegment}
+                    ALIGN 16, db 0
+                    methodInfoArray:
+                {_methodInfoDataSubSegment}
                 """;
     }
 

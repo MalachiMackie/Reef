@@ -8,8 +8,12 @@ public record DefId(ModuleId ModuleId, string FullName)
 
     public static DefId GetMemoryUsageBytes { get; } = new(DiagnosticsModuleId, "get_memory_usage_bytes");
     public static DefId TriggerGC { get; } = new(DiagnosticsModuleId, "trigger_gc");
+    public static DefId PrintAllTypes { get; } = new(DiagnosticsModuleId, "print_all_types");
+    public static DefId PrintAllMethods { get; } = new(DiagnosticsModuleId, "print_all_methods");
 
     public static DefId TypeId { get; } = new(ReflectionModuleId, "TypeId");
+    public static DefId MethodId { get; } = new(ReflectionModuleId, "MethodId");
+    public static DefId MethodInfo { get; } = new(ReflectionModuleId, "MethodInfo");
     public static DefId TypeInfo { get; } = new(ReflectionModuleId, "TypeInfo");
     public static DefId VariantInfo { get; } = new(ReflectionModuleId, "VariantInfo");
     public static DefId FieldInfo { get; } = new(ReflectionModuleId, "FieldInfo");
