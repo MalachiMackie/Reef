@@ -8,6 +8,17 @@
 typedef double max_align_t;
 #endif
 
+
+void print_i8(int8_t num);
+void print_i16(int16_t num);
+void print_i32(int32_t num);
+void print_i64(int64_t num);
+
+void print_u8(uint8_t num);
+void print_u16(uint16_t num);
+void print_u32(uint32_t num);
+void print_u64(uint64_t num);
+
 typedef uint8_t *VariantInfoHandle;
 typedef uint8_t *FieldInfoHandle;
 
@@ -37,11 +48,7 @@ typedef struct {
 
 string get_method_name(MethodInfoHandle handle)
 {
-    uint64_t length = *(uint64_t*)handle;
-    char *data = ((char*)handle + 8);
-    string value;
-    value.length = length;
-    value.start = data;
+    string value = *(string*)(((char*)handle) + 8);
 
     return value;
 }

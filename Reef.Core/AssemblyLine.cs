@@ -93,10 +93,56 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
     }
 
     private readonly List<(LoweredFunctionReference FunctionReference, ulong MethodId)> _methodIds = [];
-    private readonly Queue<(LoweredFunctionReference FunctionReference, ulong MethodId)> _methodsToWriteBlobInfo = [];
 
     private readonly List<(ILoweredTypeReference TypeReference, ulong TypeId)> _typeIds = [];
     private readonly Queue<(ILoweredTypeReference TypeReference, ulong TypeId)> _typesToWriteBlobInfo = [];
+
+    private void WriteMethodInfoBlob(LoweredMethod method, ulong methodId)
+    {
+        var methodInfoReference = new LoweredConcreteTypeReference(
+            TypeChecker.ClassSignature.MethodInfo.Value.Name,
+            TypeChecker.ClassSignature.MethodInfo.Value.Id,
+            []
+        );
+
+        var methodInfoSize = GetTypeSize(methodInfoReference, []);
+        var bytesWritten = 0u;
+
+        _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo: {method.Name}");
+        _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo.Id");
+        _methodInfoDataSubSegment.AppendLine($"        dd 0x{methodId:X}");
+        bytesWritten += 4;
+
+        _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo.Name");
+        PadAlignment(methodInfoSize.VariantFieldOffsets["_classVariant"]["Name"].Alignment);
+        _methodInfoDataSubSegment.AppendLine($"        dq 0x{method.Name.Length:X}");
+        bytesWritten += 8;
+        _methodInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(method.Name)}");
+        bytesWritten += 8;
+
+        Debug.Assert(bytesWritten == methodInfoSize.Size);
+
+        void PadAlignment(uint alignment)
+        {
+            _methodInfoDataSubSegment.AppendLine($"        ALIGN {alignment}, db 0");
+            if (bytesWritten == 0)
+            {
+                // nothing will have been aligned, so nothing to increment
+                _methodInfoDataSubSegment.AppendLine($"        ; BytesWritten: {bytesWritten}");
+                return;
+            }
+            if (bytesWritten < alignment)
+            {
+                bytesWritten = alignment;
+            }
+            else
+            {
+                bytesWritten += bytesWritten % alignment;
+            }
+
+            _methodInfoDataSubSegment.AppendLine($"        ; BytesWritten: {bytesWritten}");
+        }
+    }
 
     private void WriteTypeInfoBlob(ILoweredTypeReference type, ulong typeId)
     {
@@ -600,6 +646,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         while (_methodProcessingQueue.TryDequeue(out var item))
         {
             var (method, typeArguments) = item;
+
             ProcessMethod(method, typeArguments);
 
             _codeSegment.AppendLine();
@@ -641,7 +688,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     fieldInfoSize dq 0x{fieldInfoSize.Size:X}
                     variantInfoSize dq 0x{variantInfoSize.Size:X}
                     methodInfoSize dq 0x{methodInfoSize.Size:X}
-                    methodInfoCount dq 0x{_methodIds.Count:X}
+                    methodInfoCount dq 0x{_methodCount:X}
                     typeInfoCount dq 0x{_typeIds.Count:X}
                     ALIGN 16, db 0
                     typeInfoArray:
@@ -958,6 +1005,8 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
         _codeSegment.AppendLine("    push    rbp");
         _codeSegment.AppendLine("    mov     rbp, rsp");
+
+        WriteMethodInfoBlob(method, _methodCount);
 
         Debug.Assert(method.TypeParameters.Count == typeArguments.Count);
         _currentTypeArguments = typeArguments.Zip(method.TypeParameters).ToDictionary(x => x.Second.PlaceholderName, x => x.First);

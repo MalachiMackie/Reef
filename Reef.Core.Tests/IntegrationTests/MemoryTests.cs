@@ -48,8 +48,10 @@ public class MemoryTests : IntegrationTestBase
         result.ExitCode.Should().Be(0);
         result.StandardOutput.Should().Be(
             """
-            Something
+            __variant_identifier_field_getter
             _Main
+            Something
+
             """
         );
     }
