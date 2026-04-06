@@ -474,7 +474,8 @@ public partial class TypeChecker
                     GenericPlaceholder placeholder => typeArgumentReferences.First(z => z.GenericName == placeholder.GenericName),
                     InstantiatedUnion union => union.CloneWithTypeArguments([.. union.TypeArguments.Select(HandleType)]),
                     InstantiatedClass klass => klass.CloneWithTypeArguments([.. klass.TypeArguments.Select(HandleType)]),
-                    ArrayType arrayType => new ArrayType(HandleType(arrayType.ElementType), arrayType.Boxed, arrayType.Length),
+                    ArrayType {Length: not null} arrayType => new ArrayType(HandleType(arrayType.ElementType), arrayType.Boxed, arrayType.Length.Value),
+                    ArrayType {IsDynamic: true} arrayType => new ArrayType(HandleType(arrayType.ElementType)),
                     _ => throw new InvalidOperationException(type.GetType().ToString())
                 };
             }

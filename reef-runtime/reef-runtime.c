@@ -186,9 +186,18 @@ void print_size_t_hex(size_t value)
     }
 }
 
+uint32_t get_method_id(MethodInfoHandle handle)
+{
+    uint32_t id = *(uint32_t*)((char*)handle);
+    return id;
+}
+
 void print_method_info(MethodInfoHandle handle)
 {
     print_string(get_method_name(handle));
+    fputs(":\n    id: ", stdout);
+    uint32_t id = get_method_id(handle);
+    print_u32(id);
     fputs("\n", stdout);
 }
 

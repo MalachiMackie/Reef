@@ -83,22 +83,6 @@ public partial class ProgramAbseil
             _ => throw new InvalidOperationException()
         };
 
-        _basicBlockStatements.Add(
-            new Assign(new Local(boundsCheckResultLocalName),
-                new BinaryOperation(
-                    index.ToOperand(),
-                    new UIntConstant(arrayType.Length, 8),
-                    BinaryOperationKind.LessThan)));
-
-        var nextBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
-
-        _basicBlocks[^1].Terminator = new Assert(
-            new Copy(new Local(boundsCheckResultLocalName)),
-            nextBasicBlockId);
-
-        _basicBlockStatements = [];
-        _basicBlocks.Add(new BasicBlock(nextBasicBlockId, _basicBlockStatements));
-
         var collectionResult = LowerExpression(indexExpression.Collection, destination: null);
         IPlace collectionPlace;
         if (collectionResult is PlaceResult(var place))
@@ -122,6 +106,24 @@ public partial class ProgramAbseil
         {
             collectionPlace = new Field(new Deref(collectionPlace), "Value", ClassVariantName);
         }
+
+        _basicBlockStatements.Add(
+            new Assign(new Local(boundsCheckResultLocalName),
+                new BinaryOperation(
+                    index.ToOperand(),
+                    arrayType.Length is not null
+                        ? new UIntConstant(arrayType.Length.Value, 8)
+                        : (IOperand)new Use(new Copy(new Field(collectionPlace, "Length", ClassVariantName))),
+                    BinaryOperationKind.LessThan)));
+
+        var nextBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
+
+        _basicBlocks[^1].Terminator = new Assert(
+            new Copy(new Local(boundsCheckResultLocalName)),
+            nextBasicBlockId);
+
+        _basicBlockStatements = [];
+        _basicBlocks.Add(new BasicBlock(nextBasicBlockId, _basicBlockStatements));
 
         var indexPlace = new Index(collectionPlace, index.ToOperand());
 
@@ -155,9 +157,19 @@ public partial class ProgramAbseil
 
         var valueResult = LowerExpression(fillCollectionExpression.Element, destination: null);
 
+        if (arrayType.Length is null)
+        {
+            throw new UnreachableException("Fill collection expression will always have a compile time constant");
+        }
+
+        _basicBlockStatements.Add(new Assign(
+            new Field(newDestination, "Length", ClassVariantName),
+            new Use(new UIntConstant(arrayType.Length.Value, 8))
+        ));
+
         _basicBlockStatements.Add(new Assign(
             newDestination,
-            new Fill(valueResult.ToOperand(), arrayType.Length)));
+            new FillArray(valueResult.ToOperand(), arrayType.Length.Value)));
 
         return new PlaceResult(destination);
     }
@@ -174,6 +186,16 @@ public partial class ProgramAbseil
         }
 
         var (arrayType, newDestination) = CreateArray(type, destination);
+
+        if (arrayType.Length is null)
+        {
+            throw new UnreachableException("Fill collection expression will always have a compile time constant");
+        }
+
+        _basicBlockStatements.Add(new Assign(
+            new Field(newDestination, "Length", ClassVariantName),
+            new Use(new UIntConstant(arrayType.Length.Value, 8))
+        ));
 
         Debug.Assert(arrayType.Length == collectionExpression.Elements.Count);
 

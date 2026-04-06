@@ -437,7 +437,7 @@ public class PrettyPrinter(LoweredModule module)
                     PrettyPrintTypeReference(createArray.Array);
                     break;
                 }
-            case Fill fill:
+            case FillArray fill:
                 {
                     _stringBuilder.Append("[");
                     PrettyPrintOperand(fill.Value);

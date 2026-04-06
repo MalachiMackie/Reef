@@ -29,7 +29,6 @@ public class MemoryTests : IntegrationTestBase
     }
 
     [Fact]
-    [TestMe]
     public async Task PrintMethods()
     {
         await SetupTest(

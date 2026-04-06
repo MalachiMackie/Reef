@@ -883,15 +883,26 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                                         fieldSize = GetTypeSize(typeArgument, typeArguments);
                                         break;
                                     }
-                                case LoweredArray loweredArray:
+                                case LoweredArray { Length: not null } loweredArray:
                                     {
                                         var elementSize = GetTypeSize(loweredArray.ElementType, typeArguments);
                                         var paddingNeededPerElement = elementSize.Size % elementSize.Alignment;
                                         fieldSize = new TypeSizeInfo(
-                                            (elementSize.Size + paddingNeededPerElement) * loweredArray.Length,
+                                            (elementSize.Size + paddingNeededPerElement) * loweredArray.Length.Value,
                                             elementSize.Alignment,
                                             []);
                                         break;
+                                    }
+                                case LoweredArray { Length: null } loweredArray:
+                                    {
+                                        throw new NotImplementedException();
+                                        // var elementSize = GetTypeSize(loweredArray.ElementType, typeArguments);
+                                        // var paddingNeededPerElement = elementSize.Size % elementSize.Alignment;
+                                        // fieldSize = new TypeSizeInfo(
+                                        //     (elementSize.Size + paddingNeededPerElement) * loweredArray.Length.Value,
+                                        //     elementSize.Alignment,
+                                        //     []);
+                                        // break;
                                     }
                                 case LoweredPointer loweredPointer:
                                     {
@@ -937,7 +948,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     _typeSizes.Add(KeyValuePair.Create(typeReference, innerTypeSize));
                     return innerTypeSize;
                 }
-            case LoweredArray array:
+            case LoweredArray { Length: not null } array:
                 {
                     var elementSize = GetTypeSize(array.ElementType, typeArguments);
                     if (elementSize.Size % elementSize.Alignment != 0)
@@ -946,13 +957,17 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     }
 
                     var arrayTypeSize = new TypeSizeInfo(
-                        elementSize.Size * array.Length,
-                        array.Length == 0 ? 1 : elementSize.Alignment,
-                        new Dictionary<string, Dictionary<string, FieldSize>>());
+                        elementSize.Size * array.Length.Value + 8, // + 8 for length
+                        Math.Max(8, elementSize.Alignment),
+                        []);
 
                     _typeSizes.Add(KeyValuePair.Create(typeReference, arrayTypeSize));
 
                     return arrayTypeSize;
+                }
+            case LoweredArray { Length: null }:
+                {
+                    throw new UnreachableException();
                 }
             default:
                 throw new NotImplementedException(typeReference.GetType().ToString());
@@ -1258,6 +1273,17 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             case Field field:
                 {
                     var ownerType = GetPlaceType(field.FieldOwner);
+
+                    if (ownerType is LoweredArray)
+                    {
+                        Debug.Assert(field.FieldName == "Length");
+                        return new LoweredConcreteTypeReference(
+                            TypeChecker.ClassSignature.UInt64.Value.Name,
+                            TypeChecker.ClassSignature.UInt64.Value.Id,
+                            []
+                        );
+                    }
+
                     var concreteOwner = ownerType as LoweredConcreteTypeReference;
 
                     while (concreteOwner is null)
@@ -1269,7 +1295,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                             LoweredGenericPlaceholder(_, var placeholderName) => _currentTypeArguments[placeholderName],
                             LoweredPointer(var pointerTo) => pointerTo,
                             RawPointer => throw new InvalidOperationException("Raw Pointer has no fields"),
-                            _ => throw new ArgumentOutOfRangeException(nameof(ownerType))
+                            _ => throw new ArgumentOutOfRangeException(nameof(ownerType), ownerType.GetType().Name)
                         };
 
                         concreteOwner = ownerType as LoweredConcreteTypeReference;
@@ -1524,7 +1550,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     MoveOperandToDestination(use.Operand, place);
                     break;
                 }
-            case Fill fill:
+            case FillArray fill:
                 {
                     // todo: this is naive, do something smarter
                     var elementType = GetOperandType(fill.Value);
@@ -1535,7 +1561,12 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     {
                         MoveOperandToDestination(
                             fill.Value,
-                            new MemoryOffset(new PointerTo(addressRegister), null, (i * (int)elementSize.Size) + remainingOffset));
+                            new MemoryOffset(
+                                new PointerTo(addressRegister),
+                                null,
+                                (i * (int)elementSize.Size) + remainingOffset + 8 // + 8 to skip past array length
+                            )
+                        );
                     }
 
                     if (freeRegister)
@@ -2519,7 +2550,11 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
         var elementSize = GetTypeSize(arrayType.ElementType, _currentTypeArguments);
 
-        return new MemoryOffset(arrayPlace, GetOffsetInRegister, null);
+        return new MemoryOffset(
+            arrayPlace,
+            GetOffsetInRegister,
+            // offset by 8 to skip the length
+            offset: 8);
 
         void GetOffsetInRegister(Register indexRegister)
         {
@@ -2532,6 +2567,22 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
     {
         var ownerPlace = PlaceToAsmPlace(field.FieldOwner);
         var ownerType = GetPlaceType(field.FieldOwner);
+
+        if (!ownerPlace.IsMemoryPlace)
+        {
+            throw new NotImplementedException();
+        }
+
+        if (ownerType is LoweredArray loweredArray)
+        {
+            if (field.FieldName != "Length")
+            {
+                throw new UnreachableException("Length is the only supported array field");
+            }
+
+            return ownerPlace;
+        }
+
         var concreteOwner = ownerType as LoweredConcreteTypeReference;
 
         while (concreteOwner is null)
@@ -2551,11 +2602,6 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
         var typeSize = GetTypeSize(ownerType, _currentTypeArguments);
         var fieldSize = typeSize.VariantFieldOffsets[field.VariantName][field.FieldName];
-
-        if (!ownerPlace.IsMemoryPlace)
-        {
-            throw new NotImplementedException();
-        }
 
         return new MemoryOffset(ownerPlace, null, (int)fieldSize.Offset);
     }

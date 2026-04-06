@@ -977,7 +977,8 @@ public partial class TypeChecker
                                     GenericTypeReference genericTypeReference => throw new NotImplementedException(),
                                     InstantiatedClass instantiatedClass => InstantiatedClass.Create(instantiatedClass.Signature, instantiatedClass.TypeArguments, boxed: false),
                                     InstantiatedUnion instantiatedUnion => InstantiatedUnion.Create(instantiatedUnion.Signature, instantiatedUnion.TypeArguments, boxed: false),
-                                    ArrayType array => new ArrayType(array.ElementType.ResolvedType, boxed: false, array.Length),
+                                    ArrayType { Length: not null } array => new ArrayType(array.ElementType.ResolvedType, boxed: false, array.Length.Value),
+                                    ArrayType { IsDynamic: true } array => DynamicArrayCase(),
                                     UnknownInferredType unknownInferredType => throw new NotImplementedException(),
                                     UnknownType unknownType => throw new NotImplementedException(),
                                     UnspecifiedSizedIntType { ResolvedIntType: null } => new UnspecifiedSizedIntType { Boxed = false },
@@ -992,6 +993,15 @@ public partial class TypeChecker
                                 result &= ExpectType(referencedTypeArgument, unboxedTypeReference, actualSourceRange, reportError: false, checkConstraints: false);
 
                                 return result;
+
+                                ITypeReference DynamicArrayCase()
+                                {
+                                    if (reportError)
+                                    {
+                                        AddError(TypeCheckerError.BoxedOnlyTypeCannotBeUnboxed(typeReference, actualSourceRange));
+                                    }
+                                    return UnknownType.Instance;
+                                }
                             }
                         case ArrayType:
                             throw new NotImplementedException();
@@ -1038,7 +1048,8 @@ public partial class TypeChecker
                                     GenericTypeReference genericTypeReference => throw new NotImplementedException(),
                                     InstantiatedClass instantiatedClass => InstantiatedClass.Create(instantiatedClass.Signature, instantiatedClass.TypeArguments, boxed: true),
                                     InstantiatedUnion instantiatedUnion => InstantiatedUnion.Create(instantiatedUnion.Signature, instantiatedUnion.TypeArguments, boxed: true),
-                                    ArrayType arrayType => new ArrayType(arrayType.ElementType.ResolvedType, boxed: true, arrayType.Length),
+                                    ArrayType { Length: not null } arrayType => new ArrayType(arrayType.ElementType.ResolvedType, boxed: true, arrayType.Length.Value),
+                                    ArrayType { IsDynamic: true } => throw new UnreachableException(),
                                     UnknownInferredType unknownInferredType => throw new NotImplementedException(),
                                     UnknownType unknownType => throw new NotImplementedException(),
                                     UnspecifiedSizedIntType { ResolvedIntType: null } => new UnspecifiedSizedIntType { Boxed = true },
@@ -1398,11 +1409,17 @@ public partial class TypeChecker
                             actualArray.Boxed));
                     }
 
-                    if (actualArray.Length != expectedArray.Length)
+                    if (expectedArray.Length is not null && actualArray.Length is null)
+                    {
+                        throw new NotImplementedException();
+                    }
+                    if (actualArray.Length is not null
+                        && expectedArray.Length is not null
+                        && actualArray.Length != expectedArray.Length)
                     {
                         result = false;
                         AddError(TypeCheckerError.ArrayLengthMismatch(
-                            expectedArray.Length, actualArray.Length, actualSourceRange));
+                            expectedArray.Length.Value, actualArray.Length.Value, actualSourceRange));
                     }
 
                     break;

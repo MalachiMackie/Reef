@@ -126,7 +126,11 @@ public static class LoweredProgramHelpers
                 new Use(new TypeIdOf(arrayType))),
             new Assign(
                 new Field(destination, "Value", "_classVariant"),
-                new CreateArray(arrayType))
+                new CreateArray(arrayType)),
+            new Assign(
+                new Field(new Field(destination, "Value", "_classVariant"), "Length", "_classVariant"),
+                new Use(new UIntConstant(length, 8))
+            ),
         ];
     }
 

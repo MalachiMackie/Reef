@@ -23,7 +23,7 @@ public record SwitchInt(
     Dictionary<int, BasicBlockId> Cases,
     BasicBlockId Otherwise) : ITerminator;
 
-public record Fill(IOperand Value, uint Count) : IRValue;
+public record FillArray(IOperand Value, uint Count) : IRValue;
 
 public record MethodCall(LoweredFunctionReference Function, IReadOnlyList<IOperand> Arguments, IPlace PlaceDestination, BasicBlockId GoToAfter) : ITerminator;
 
@@ -145,7 +145,7 @@ public record LoweredConcreteTypeReference(
 
 public record LoweredGenericPlaceholder(DefId OwnerDefinitionId, string PlaceholderName) : ILoweredTypeReference;
 
-public record LoweredArray(ILoweredTypeReference ElementType, uint Length) : ILoweredTypeReference
+public record LoweredArray(ILoweredTypeReference ElementType, uint? Length) : ILoweredTypeReference
 {
     public override string? ToString()
     {

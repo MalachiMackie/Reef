@@ -123,6 +123,28 @@ public class ArrayTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task GetArrayLength()
+    {
+        await SetupTest(
+            """
+            var a = ["", ""];
+            var b = [unboxed; ""];
+            var c: unboxed [string; 0] = [unboxed;];
+            var d: [string; 0] = [];
+
+            print_u64(a.Length);
+            print_u64(b.Length);
+            print_u64(c.Length);
+            print_u64(d.Length);
+            """
+        );
+
+        var result = await Run();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be("2100");
+    }
+
+    [Fact]
     public async Task DeepUnboxedArrays()
     {
         await SetupTest("""
@@ -142,8 +164,8 @@ public class ArrayTests : IntegrationTestBase
 
                         print_i32(a[0][0][0].MyProp);
                         print_i32(a[0][0][1].MyProp);
-                        print_i32(a[0][1][0].MyProp);
-                        print_i32(a[0][1][1].MyProp);
+                        print_i32(a[1][0][0].MyProp);
+                        print_i32(a[1][0][1].MyProp);
                         """);
 
         var result = await Run();

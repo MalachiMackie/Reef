@@ -31,6 +31,17 @@ public partial class TypeChecker
             case InstantiatedClass classType:
                 return TypeCheckClassMemberAccess(classType, memberAccessExpression, stringToken, typeArgumentsIdentifiers,
                     ownerExpression);
+            case ArrayType:
+                {
+                    if (memberAccessExpression.MemberAccess.MemberName is not (null or { StringValue: "Length" }))
+                    {
+                        AddError(TypeCheckerError.UnknownField(memberAccessExpression.MemberAccess.MemberName, "array"));
+                    }
+
+                    memberAccessExpression.MemberAccess.MemberType = MemberType.Field;
+                    memberAccessExpression.MemberAccess.OwnerType = ownerType;
+                    return InstantiatedClass.UInt64;
+                }
             case InstantiatedUnion instantiatedUnion:
                 return TypeCheckUnionMemberAccess(instantiatedUnion, memberAccessExpression, stringToken, typeArgumentsIdentifiers,
                     ownerExpression);

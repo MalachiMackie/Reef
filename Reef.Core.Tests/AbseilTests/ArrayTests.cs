@@ -47,7 +47,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                         ..CreateBoxedArray(
                                             new Deref(new Local("_local0")),
                                             StringT,
-                                            0)
+                                            0),
                                     ],
                                     new GoTo(BB2)),
                                 new BasicBlock(
@@ -130,6 +130,10 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             Local0,
                                             new CreateArray(new LoweredArray(Int32T, 3))),
                                         new Assign(
+                                            new Field(Local0, "Length", "_classVariant"),
+                                            new Use(new UIntConstant(3, 8))
+                                        ),
+                                        new Assign(
                                             new Index(Local0, new UIntConstant(0, 8)),
                                             new Use(new IntConstant(1, 4))),
                                         new Assign(
@@ -185,7 +189,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     [
                                         ..CreateBoxedArray(
                                             new Deref(Local0),
-                                            new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId))), 2)
+                                            new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId))), 2),
                                     ],
                                     AllocateMethodCall(
                                         BoxedValue(ConcreteTypeReference("MyClass", ModuleId)),
@@ -253,7 +257,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             3),
                                         new Assign(
                                             new Field(new Deref(Local0), "Value", "_classVariant"),
-                                            new Fill(new IntConstant(4, 4), 3))
+                                            new FillArray(new IntConstant(4, 4), 3))
                                     ],
                                     new GoTo(BB2)),
                                 new BasicBlock(
@@ -290,8 +294,12 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             Local0,
                                             new CreateArray(new LoweredArray(Int32T, 3))),
                                         new Assign(
+                                            new Field(Local0, "Length", "_classVariant"),
+                                            new Use(new UIntConstant(3, 8))
+                                        ),
+                                        new Assign(
                                             Local0,
-                                            new Fill(new IntConstant(4, 4), 3))
+                                            new FillArray(new IntConstant(4, 4), 3))
                                     ],
                                     new GoTo(BB1)),
                                 new BasicBlock(
@@ -337,7 +345,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             4),
                                         new Assign(
                                             new Field(new Deref(Local0), "Value", "_classVariant"),
-                                            new Fill(new IntConstant(1, 4), 4)),
+                                            new FillArray(new IntConstant(1, 4), 4)),
                                         new Assign(
                                             Local2,
                                             new BinaryOperation(
@@ -398,8 +406,12 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             new CreateArray(
                                                 new LoweredArray(Int32T, 4))),
                                         new Assign(
+                                            new Field(Local0, "Length", "_classVariant"),
+                                            new Use(new UIntConstant(4, 8))
+                                        ),
+                                        new Assign(
                                             Local0,
-                                            new Fill(new IntConstant(1, 4), 4)),
+                                            new FillArray(new IntConstant(1, 4), 4)),
                                         new Assign(
                                             Local2,
                                             new BinaryOperation(

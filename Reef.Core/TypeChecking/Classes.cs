@@ -575,9 +575,28 @@ public partial class TypeChecker
             Length = length;
         }
 
+        public ArrayType(ITypeReference? elementType)
+        {
+            ElementType = ArrayTypeSignature.Instance.ElementGenericPlaceholder.Instantiate(this, elementType);
+            // dynamic array has to be boxed
+            Boxed = true;
+            Fields = [
+                new TypeField
+                {
+                    IsMutable = false,
+                    IsPublic = true,
+                    IsStatic = false,
+                    Name = "length",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.UInt64
+                }
+            ];
+        }
+
         public IReadOnlyList<GenericTypeReference> TypeArguments => [ElementType];
         public GenericTypeReference ElementType { get; }
-        public uint Length { get; }
+        public uint? Length { get; }
+        public bool IsDynamic => Length is null;
 
         public bool Boxed { get; }
 
@@ -650,7 +669,8 @@ public partial class TypeChecker
                             ..union.TypeArguments.Select(HandleType)
                         ]),
                         InstantiatedClass klass => klass.CloneWithTypeArguments([.. klass.TypeArguments.Select(HandleType)]),
-                        ArrayType arrayType => new ArrayType(HandleType(arrayType.ElementType), arrayType.Boxed, arrayType.Length),
+                        ArrayType { Length: not null } arrayType => new ArrayType(HandleType(arrayType.ElementType), arrayType.Boxed, arrayType.Length.Value),
+                        ArrayType { Length: null } arrayType => new ArrayType(HandleType(arrayType.ElementType)),
                         _ => throw new InvalidOperationException(type.GetType().ToString())
                     };
                 }
