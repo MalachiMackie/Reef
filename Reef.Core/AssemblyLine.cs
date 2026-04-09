@@ -23,9 +23,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
     private readonly StringBuilder _stringDataSubSegment = new();
     private readonly StringBuilder _typeInfoDataSubSegment = new();
     private readonly StringBuilder _methodInfoDataSubSegment = new();
-    private readonly StringBuilder _methodInfoParametersSubSegment = new();
-    private readonly StringBuilder _methodInfoLocalsSubSegment = new();
-
+    private readonly Dictionary<string, StringBuilder> _dynamicArrayDataSubSegments = [];
 
     private readonly StringBuilder _codeSegment = new("""
                                                       segment .text
@@ -132,48 +130,48 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
         _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo.Parameters");
         PadAlignment(methodInfoOffsets["Parameters"].Alignment);
-        _methodInfoDataSubSegment.AppendLine($"        dq method_info_{methodId}_parameters");
+        var parametersArrayLabel = $"method_info_{methodId}_parameters";
+        _methodInfoDataSubSegment.AppendLine($"        dq {parametersArrayLabel}");
         bytesWritten += 8;
 
-        _methodInfoParametersSubSegment.AppendLine($"        ALIGN 8, db 0");
-        _methodInfoParametersSubSegment.AppendLine($"        method_info_{methodId}_parameters:");
+        var parametersSubSegment = new StringBuilder();
+        _dynamicArrayDataSubSegments.Add(parametersArrayLabel, parametersSubSegment);
+        parametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.TypeId:");
+        parametersSubSegment.AppendLine($"        dd 0x{GetTypeId(parametersArrayType)}");
 
-        _methodInfoParametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.TypeId:");
-        _methodInfoParametersSubSegment.AppendLine($"        dd 0x{GetTypeId(parametersArrayType)}");
+        parametersSubSegment.AppendLine($"        ALIGN 8, db 0");
+        parametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.Value.Length:");
+        parametersSubSegment.AppendLine($"        dq 0x{method.ParameterLocals.Count:X}");
 
-        _methodInfoParametersSubSegment.AppendLine($"        ALIGN 8, db 0");
-        _methodInfoParametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.Value.Length:");
-        _methodInfoParametersSubSegment.AppendLine($"        dq 0x{method.ParameterLocals.Count:X}");
-
-        _methodInfoParametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.Value.Items:");
+        parametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.Value.Items:");
         foreach (var local in method.ParameterLocals)
         {
             var localTypeId = GetTypeId(local.Type);
-            _methodInfoParametersSubSegment.AppendLine($"        dd 0x{localTypeId:X}");
+            parametersSubSegment.AppendLine($"        dd 0x{localTypeId:X}");
         }
 
         _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo.Locals");
         PadAlignment(methodInfoOffsets["Locals"].Alignment);
-        _methodInfoDataSubSegment.AppendLine($"        dq method_info_{methodId}_locals");
+
+        var localsArrayLabel = $"method_info_{methodId}_locals";
+        _methodInfoDataSubSegment.AppendLine($"        dq {localsArrayLabel}");
         bytesWritten += 8;
 
-        _methodInfoLocalsSubSegment.AppendLine($"        ALIGN 8, db 0");
-        _methodInfoLocalsSubSegment.AppendLine($"        method_info_{methodId}_locals:");
+        var localsSubSegment = new StringBuilder();
+        _dynamicArrayDataSubSegments.Add(localsArrayLabel, localsSubSegment);
+        localsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.TypeId:");
+        localsSubSegment.AppendLine($"        dd 0x{GetTypeId(localsArrayType)}");
 
-        _methodInfoLocalsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.TypeId:");
-        _methodInfoLocalsSubSegment.AppendLine($"        dd 0x{GetTypeId(localsArrayType)}");
+        localsSubSegment.AppendLine($"        ALIGN 8, db 0");
+        localsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.Value.Length:");
+        localsSubSegment.AppendLine($"        dq {method.Locals.Count}");
 
-        _methodInfoLocalsSubSegment.AppendLine($"        ALIGN 8, db 0");
-        _methodInfoLocalsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.Value.Length:");
-        _methodInfoLocalsSubSegment.AppendLine($"        dq {method.Locals.Count}");
-
-        _methodInfoLocalsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.Value.Items:");
+        localsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.Value.Items:");
         foreach (var local in method.Locals)
         {
             var localTypeId = GetTypeId(local.Type);
-            _methodInfoLocalsSubSegment.AppendLine($"        dd 0x{localTypeId:X}");
+            localsSubSegment.AppendLine($"        dd 0x{localTypeId:X}");
         }
-
 
         Debug.Assert(bytesWritten == methodInfoSize.Size);
 
@@ -725,6 +723,16 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             new LoweredConcreteTypeReference("MethodInfo", DefId.MethodInfo, []),
             []);
 
+        var dynamicArrays = new StringBuilder();
+        foreach (var (label, subSegment) in _dynamicArrayDataSubSegments)
+        {
+            dynamicArrays
+                .AppendLine("        ALIGN 16, db 0")
+                .AppendLine($"    {label}:")
+                .Append(subSegment)
+                .AppendLine();
+        }
+
         return $"""
                 {AsmHeader}
                 global typeInfoSize
@@ -751,8 +759,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     ALIGN 16, db 0
                     methodInfoArray:
                 {_methodInfoDataSubSegment}
-                {_methodInfoLocalsSubSegment}
-                {_methodInfoParametersSubSegment}
+                {dynamicArrays}
                 """;
     }
 
