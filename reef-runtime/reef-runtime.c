@@ -8,6 +8,13 @@
 typedef double max_align_t;
 #endif
 
+#ifdef __GNUC__
+#define PACK( __Declaration__ ) __Declaration__ __attribute__((__packed__))
+#endif
+
+#ifdef _MSC_VER
+#define PACK( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop))
+#endif
 
 void print_i8(int8_t num);
 void print_i16(int16_t num);
@@ -19,19 +26,103 @@ void print_u16(uint16_t num);
 void print_u32(uint32_t num);
 void print_u64(uint64_t num);
 
-typedef uint8_t *VariantInfoHandle;
-typedef uint8_t *FieldInfoHandle;
-
 typedef struct {
-    uint8_t variantIdentifier;
-} TypeInfo;
-typedef TypeInfo *TypeInfoHandle;
+	size_t length;
+	const char *start;
+} string;
+
+typedef uint32_t TypeId;
+
+typedef PACK(struct {
+    string name;
+    TypeId typeId;
+    uint32_t _padding;
+}) FieldInfo;
+
+typedef PACK(struct {
+    uint64_t length;
+    FieldInfo items[10];
+}) FieldInfoArray;
+
+typedef PACK(struct {
+    string name;
+    FieldInfoArray fields;
+}) VariantInfo;
+
+typedef PACK(struct {
+    uint64_t length;
+    VariantInfo items[10];
+}) VariantInfoArray;
+
+typedef PACK(struct {
+    string name;
+    TypeId typeId;
+    uint32_t _padding;
+    FieldInfoArray staticFields;
+    FieldInfoArray fields;
+}) TypeInfoClassVariant;
+
+typedef PACK(struct {
+    string name;
+    TypeId typeId;
+    uint32_t _padding;
+    FieldInfoArray staticFields;
+    VariantInfoArray variants;
+    struct {
+        void* functionReference;
+        void* functionParameter;
+    } variantIdentifierGetter;
+}) TypeInfoUnionVariant;
+
+typedef PACK(struct {
+    TypeId pointerToTypeId;
+    uint32_t _padding;
+}) TypeInfoPointerVariant;
+
+typedef PACK(struct {
+    TypeId elementTypeId;
+    uint32_t _padding;
+    uint64_t length;
+}) TypeInfoArrayVariant;
+
+typedef PACK(struct {
+    uint16_t variantIdentifier;
+    uint16_t __padding;
+    uint32_t _padding;
+    union {
+        TypeInfoClassVariant classInfo;
+        TypeInfoUnionVariant unionInfo;
+        TypeInfoPointerVariant pointerInfo;
+        TypeInfoArrayVariant arrayInfo;
+    };
+}) TypeInfo;
+
 extern TypeInfo typeInfoArray[];
 
-typedef struct {
-    uint8_t _something;
-} MethodInfo;
-typedef MethodInfo *MethodInfoHandle;
+typedef PACK(struct {
+    uint64_t length;
+    TypeId typeIds[];
+}) TypeIdArray;
+
+typedef PACK(struct {
+    TypeId typeId;
+    uint32_t _padding;
+    TypeIdArray parameters;
+}) ParametersBoxedValue;
+
+typedef PACK(struct {
+    TypeId typeId;
+    uint32_t _padding;
+    TypeIdArray locals;
+}) LocalsBoxedValue;
+
+typedef PACK(struct {
+    uint32_t methodId;
+    uint32_t _padding;
+    string name;
+    ParametersBoxedValue *parameters;
+    LocalsBoxedValue *locals;
+}) MethodInfo;
 extern MethodInfo methodInfoArray[];
 
 extern uint64_t methodInfoCount;
@@ -41,65 +132,17 @@ extern uint64_t typeInfoSize;
 extern uint64_t fieldInfoSize;
 extern uint64_t variantInfoSize;
 
-typedef struct {
-	size_t length;
-	const char *start;
-} string;
-
-string get_method_name(MethodInfoHandle handle)
-{
-    string value = *(string*)(((char*)handle) + 8);
-
-    return value;
-}
-
-MethodInfoHandle get_method_info(uint64_t index)
+MethodInfo *get_method_info(uint64_t index)
 {
     assert(index < methodInfoCount);
-    MethodInfoHandle handle = methodInfoArray;
-
-    return (MethodInfoHandle)(((char*)handle) + (methodInfoSize * index));
+    return &methodInfoArray[index];
 }
 
-TypeInfoHandle get_type_info(uint64_t index)
+TypeInfo *get_type_info(uint64_t index)
 {
     assert(index < typeInfoCount);
-    TypeInfoHandle handle = typeInfoArray;
 
-
-    return (TypeInfoHandle)(((char*)handle) + (typeInfoSize * index));
-}
-
-uint32_t *get_pointer_pointer_to_type_id(TypeInfoHandle handle)
-{
-    return (uint32_t *)((char*)handle + 4);
-}
-
-string *get_class_name(TypeInfoHandle handle)
-{
-    return (string *)((char*)handle + 8);
-}
-
-string *get_union_name(TypeInfoHandle handle)
-{
-    return (string *)((char*)handle + 8);
-}
-
-uint32_t *get_class_type_id(TypeInfoHandle handle)
-{
-    return (uint32_t *)((char*)handle + 24);
-}
-
-uint32_t *get_union_type_id(TypeInfoHandle handle)
-{
-    return (uint32_t *)((char*)handle + 24);
-}
-
-uint16_t get_variant_identifier(TypeInfoHandle handle)
-{
-    uint16_t *variantIdentifier = (uint16_t*)handle;
-
-    return *variantIdentifier;
+    return &typeInfoArray[index];
 }
 
 void print_string(string str)
@@ -107,25 +150,27 @@ void print_string(string str)
 	fputs(str.start, stdout);
 }
 
-string get_type_info_name(TypeInfoHandle handle)
+string get_type_info_name(TypeInfo *handle)
 {
-    switch (get_variant_identifier(handle))
+    switch (handle->variantIdentifier)
     {
         case 0: // class
-            return *get_class_name(handle);
+            return handle->classInfo.name;
         case 1: // union
-            return *get_union_name(handle);
+            return handle->unionInfo.name;
         case 2: // pointer
         {
-            uint32_t *pointer_to_type_id = get_pointer_pointer_to_type_id(handle);
-            TypeInfoHandle pointer_to_handle = get_type_info(*pointer_to_type_id);
+            TypeInfo* pointer_to_handle = get_type_info(handle->pointerInfo.pointerToTypeId);
             string value;
+
+            // todo: actually get name
             value.length = 6;
             value.start = "*thing";
             return value;
         }
         case 3: // array
         {
+            // todo: actually get name
             string value;
             value.length = 10;
             value.start = "[thing; 1]";
@@ -142,7 +187,7 @@ void func_name(int_type num)                                             \
     /* Handle negative numbers safely */                                 \
     if (num < 0)                                                         \
     {                                                                    \
-        putchar('-');                                                    \
+        fputc('-', stdout);                                              \
                                                                          \
         /* Convert to positive without overflow */                       \
         int_type n = -(num + 1);                                         \
@@ -157,7 +202,7 @@ void func_name(int_type num)                                             \
         func_name(a);                                                    \
     }                                                                    \
                                                                          \
-    putchar('0' + (int)num);                                             \
+    fputc('0' + (int)num, stdout);                                       \
 }
 
 DEFINE_PRINT_INT(print_i8, int8_t)
@@ -186,47 +231,63 @@ void print_size_t_hex(size_t value)
     }
 }
 
-uint32_t get_method_id(MethodInfoHandle handle)
+void print_method_info(MethodInfo* handle)
 {
-    uint32_t id = *(uint32_t*)((char*)handle);
-    return id;
-}
-
-void print_method_info(MethodInfoHandle handle)
-{
-    print_string(get_method_name(handle));
+    print_string(handle->name);
     fputs(":\n    id: ", stdout);
-    uint32_t id = get_method_id(handle);
-    print_u32(id);
+    print_u32(handle->methodId);
+
+    fputs("\n    parameters: \n            length: ", stdout);
+    TypeIdArray* parameters = &handle->parameters->parameters;
+    print_u64(parameters->length);
     fputs("\n", stdout);
+    for (size_t i = 0; i < parameters->length; i++)
+    {
+        fputs("            [", stdout);
+        print_u64(i);
+        fputs("]: ", stdout);
+        print_u32(parameters->typeIds[i]);
+        fputs("\n", stdout);
+    }
+
+    fputs("\n    locals: \n            length: ", stdout);
+    TypeIdArray* locals = &handle->locals->locals;
+    print_u64(locals->length);
+    fputs("\n", stdout);
+    for (size_t i = 0; i < locals->length; i++)
+    {
+        fputs("            [", stdout);
+        print_u64(i);
+        fputs("]: ", stdout);
+        print_u32(locals->typeIds[i]);
+        fputs("\n", stdout);
+    }
 }
 
-void print_type_info(TypeInfoHandle handle)
+void print_type_info(TypeInfo *handle)
 {
-    switch (get_variant_identifier(handle))
+    switch (handle->variantIdentifier)
     {
         case 0: // class
         {
-            print_string(get_type_info_name(handle));
+            print_string(handle->classInfo.name);
             fputs(":\n    type: class\n", stdout);
             fputs("    id: ", stdout);
-            print_u32(*get_class_type_id(handle));
+            print_u32(handle->classInfo.typeId);
             fputs("\n", stdout);
             break;
         }
         case 1: // union
         {
-            print_string(get_type_info_name(handle));
+            print_string(handle->unionInfo.name);
             fputs(":\n    type: union\n", stdout);
             fputs("    id: ", stdout);
-            print_u32(*get_union_type_id(handle));
+            print_u32(handle->unionInfo.typeId);
             fputs("\n", stdout);
             break;
         }
         case 2: // pointer
         {
-            uint32_t *pointer_to_type_id = get_pointer_pointer_to_type_id(handle);
-            TypeInfoHandle pointer_to_handle = get_type_info(*pointer_to_type_id);
             print_string(get_type_info_name(handle));
             fputs(":\n    type: pointer\n", stdout);
             break;
@@ -267,6 +328,9 @@ Heap* heaps;
 size_t heaps_count;
 
 void init_runtime() {
+    assert(typeInfoSize == sizeof(TypeInfo));
+    assert(methodInfoSize == sizeof(MethodInfo));
+
     heaps_count = 1;
     heaps = malloc(heaps_count * sizeof(Heap));
     assert(heaps);

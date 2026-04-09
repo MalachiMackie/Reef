@@ -23,6 +23,9 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
     private readonly StringBuilder _stringDataSubSegment = new();
     private readonly StringBuilder _typeInfoDataSubSegment = new();
     private readonly StringBuilder _methodInfoDataSubSegment = new();
+    private readonly StringBuilder _methodInfoParametersSubSegment = new();
+    private readonly StringBuilder _methodInfoLocalsSubSegment = new();
+
 
     private readonly StringBuilder _codeSegment = new("""
                                                       segment .text
@@ -69,7 +72,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         return assemblyLine.ProcessInner();
     }
 
-    private ulong GetTypeId(ILoweredTypeReference type, bool currentlyWritingTypeInfo)
+    private ulong GetTypeId(ILoweredTypeReference type)
     {
         // todo: _currentTypeArguments I suspect is incorrect here
         var found = _typeIds.FirstOrDefault(x => AreTypeReferencesEqual(x.TypeReference, type, _currentTypeArguments));
@@ -77,14 +80,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         {
             var typeId = (ulong)_typeIds.Count;
             _typeIds.Add((type, typeId));
-            if (currentlyWritingTypeInfo)
-            {
-                _typesToWriteBlobInfo.Enqueue((type, typeId));
-            }
-            else
-            {
-                WriteTypeInfoBlob(type, typeId);
-            }
+            _typesToWriteBlobInfo.Enqueue((type, typeId));
             return typeId;
         }
 
@@ -105,7 +101,21 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             []
         );
 
+        var methodInfoDataType = _dataTypes[DefId.MethodInfo];
+        var parametersField = methodInfoDataType.Variants[0].Fields.First(x => x.Name == "Parameters");
+        var localsField = methodInfoDataType.Variants[0].Fields.First(x => x.Name == "Locals");
+
+        if (parametersField.Type is not LoweredPointer(LoweredConcreteTypeReference { Name: "BoxedValue", TypeArguments: [LoweredArray parametersArrayType] }))
+        {
+            throw new UnreachableException();
+        }
+        if (localsField.Type is not LoweredPointer(LoweredConcreteTypeReference { Name: "BoxedValue", TypeArguments: [LoweredArray localsArrayType] }))
+        {
+            throw new UnreachableException();
+        }
+
         var methodInfoSize = GetTypeSize(methodInfoReference, []);
+        var methodInfoOffsets = methodInfoSize.VariantFieldOffsets["_classVariant"];
         var bytesWritten = 0u;
 
         _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo: {method.Name}");
@@ -114,11 +124,56 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         bytesWritten += 4;
 
         _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo.Name");
-        PadAlignment(methodInfoSize.VariantFieldOffsets["_classVariant"]["Name"].Alignment);
+        PadAlignment(methodInfoOffsets["Name"].Alignment);
         _methodInfoDataSubSegment.AppendLine($"        dq 0x{method.Name.Length:X}");
         bytesWritten += 8;
         _methodInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(method.Name)}");
         bytesWritten += 8;
+
+        _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo.Parameters");
+        PadAlignment(methodInfoOffsets["Parameters"].Alignment);
+        _methodInfoDataSubSegment.AppendLine($"        dq method_info_{methodId}_parameters");
+        bytesWritten += 8;
+
+        _methodInfoParametersSubSegment.AppendLine($"        ALIGN 8, db 0");
+        _methodInfoParametersSubSegment.AppendLine($"        method_info_{methodId}_parameters:");
+
+        _methodInfoParametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.TypeId:");
+        _methodInfoParametersSubSegment.AppendLine($"        dd 0x{GetTypeId(parametersArrayType)}");
+
+        _methodInfoParametersSubSegment.AppendLine($"        ALIGN 8, db 0");
+        _methodInfoParametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.Value.Length:");
+        _methodInfoParametersSubSegment.AppendLine($"        dq 0x{method.ParameterLocals.Count:X}");
+
+        _methodInfoParametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.Value.Items:");
+        foreach (var local in method.ParameterLocals)
+        {
+            var localTypeId = GetTypeId(local.Type);
+            _methodInfoParametersSubSegment.AppendLine($"        dd 0x{localTypeId:X}");
+        }
+
+        _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo.Locals");
+        PadAlignment(methodInfoOffsets["Locals"].Alignment);
+        _methodInfoDataSubSegment.AppendLine($"        dq method_info_{methodId}_locals");
+        bytesWritten += 8;
+
+        _methodInfoLocalsSubSegment.AppendLine($"        ALIGN 8, db 0");
+        _methodInfoLocalsSubSegment.AppendLine($"        method_info_{methodId}_locals:");
+
+        _methodInfoLocalsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.TypeId:");
+        _methodInfoLocalsSubSegment.AppendLine($"        dd 0x{GetTypeId(localsArrayType)}");
+
+        _methodInfoLocalsSubSegment.AppendLine($"        ALIGN 8, db 0");
+        _methodInfoLocalsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.Value.Length:");
+        _methodInfoLocalsSubSegment.AppendLine($"        dq {method.Locals.Count}");
+
+        _methodInfoLocalsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.Value.Items:");
+        foreach (var local in method.Locals)
+        {
+            var localTypeId = GetTypeId(local.Type);
+            _methodInfoLocalsSubSegment.AppendLine($"        dd 0x{localTypeId:X}");
+        }
+
 
         Debug.Assert(bytesWritten == methodInfoSize.Size);
 
@@ -250,7 +305,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                                     .First(x => x.Item.PlaceholderName == genericPlaceholder.PlaceholderName).Index;
                                 fieldType = concrete.TypeArguments[typeArgumentIndex];
                             }
-                            var staticFieldTypeId = GetTypeId(fieldType, currentlyWritingTypeInfo: true);
+                            var staticFieldTypeId = GetTypeId(fieldType);
 
                             // name
                             _typeInfoDataSubSegment.AppendLine($"        ; StaticFields[{classStaticFieldIndex}].Name.Length");
@@ -307,7 +362,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                                 fieldType = concrete.TypeArguments[typeArgumentIndex];
                             }
                             _typeInfoDataSubSegment.AppendLine($"        ; Fields[{fieldIndex}].TypeId.Value");
-                            _typeInfoDataSubSegment.AppendLine($"        dq 0x{GetTypeId(fieldType, currentlyWritingTypeInfo: true):X}");
+                            _typeInfoDataSubSegment.AppendLine($"        dq 0x{GetTypeId(fieldType):X}");
                             bytesWritten += 8;
                             _typeInfoDataSubSegment.AppendLine($"        ; BytesWritten: {bytesWritten}");
 
@@ -379,7 +434,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                                     .First(x => x.Item.PlaceholderName == genericPlaceholder.PlaceholderName).Index;
                                 fieldType = concrete.TypeArguments[typeArgumentIndex];
                             }
-                            var staticFieldTypeId = GetTypeId(fieldType, currentlyWritingTypeInfo: true);
+                            var staticFieldTypeId = GetTypeId(fieldType);
                             PadAlignment(fieldInfoSize.Alignment);
 
                             // name
@@ -456,7 +511,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
                                 PadAlignment(fieldFieldOffsets["TypeId"].Alignment);
                                 _typeInfoDataSubSegment.AppendLine($"        ; Variants[{currentVariantIndex}].Fields[{fieldIndex}].TypeId.Value");
-                                _typeInfoDataSubSegment.AppendLine($"        dq 0x{GetTypeId(fieldType, currentlyWritingTypeInfo: true):X}");
+                                _typeInfoDataSubSegment.AppendLine($"        dq 0x{GetTypeId(fieldType):X}");
                                 bytesWritten += 8;
                                 _typeInfoDataSubSegment.AppendLine($"        ; BytesWritten: {bytesWritten}");
 
@@ -510,7 +565,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     // pointerTo
                     PadAlignment(pointerToVariantFieldOffsets["PointerTo"].Alignment);
                     _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.PointerTo.Value");
-                    _typeInfoDataSubSegment.AppendLine($"        dd 0x{GetTypeId(pointer.PointerTo, currentlyWritingTypeInfo: true):X}");
+                    _typeInfoDataSubSegment.AppendLine($"        dd 0x{GetTypeId(pointer.PointerTo):X}");
                     bytesWritten += 4;
                     _typeInfoDataSubSegment.AppendLine($"        ; BytesWritten: {bytesWritten}");
                     break;
@@ -529,7 +584,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     var elementType = array.ElementType;
                     PadAlignment(arrayVariantFieldOffsets["ElementType"].Alignment);
                     _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.ElementType.Value");
-                    _typeInfoDataSubSegment.AppendLine($"        dd 0x{GetTypeId(elementType, currentlyWritingTypeInfo: true):X}");
+                    _typeInfoDataSubSegment.AppendLine($"        dd 0x{GetTypeId(elementType):X}");
                     bytesWritten += 4;
 
                     PadAlignment(arrayVariantFieldOffsets["Length"].Alignment);
@@ -696,6 +751,8 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     ALIGN 16, db 0
                     methodInfoArray:
                 {_methodInfoDataSubSegment}
+                {_methodInfoLocalsSubSegment}
+                {_methodInfoParametersSubSegment}
                 """;
     }
 
@@ -867,56 +924,14 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
                         foreach (var field in variant.Fields)
                         {
-                            TypeSizeInfo fieldSize;
-                            switch (field.Type)
+                            var fieldType = field.Type;
+                            if (fieldType is LoweredGenericPlaceholder genericPlaceholder)
                             {
-                                case LoweredConcreteTypeReference concreteFieldType:
-                                    {
-                                        fieldSize = GetTypeSize(concreteFieldType, typeArguments);
-                                        break;
-                                    }
-                                case LoweredGenericPlaceholder genericPlaceholder:
-                                    {
-                                        var index = dataType.TypeParameters.Index()
-                                            .First(x => x.Item.PlaceholderName == genericPlaceholder.PlaceholderName).Index;
-                                        var typeArgument = concreteTypeReference.TypeArguments[index];
-                                        fieldSize = GetTypeSize(typeArgument, typeArguments);
-                                        break;
-                                    }
-                                case LoweredArray { Length: not null } loweredArray:
-                                    {
-                                        var elementSize = GetTypeSize(loweredArray.ElementType, typeArguments);
-                                        var paddingNeededPerElement = elementSize.Size % elementSize.Alignment;
-                                        fieldSize = new TypeSizeInfo(
-                                            (elementSize.Size + paddingNeededPerElement) * loweredArray.Length.Value,
-                                            elementSize.Alignment,
-                                            []);
-                                        break;
-                                    }
-                                case LoweredArray { Length: null } loweredArray:
-                                    {
-                                        throw new NotImplementedException();
-                                        // var elementSize = GetTypeSize(loweredArray.ElementType, typeArguments);
-                                        // var paddingNeededPerElement = elementSize.Size % elementSize.Alignment;
-                                        // fieldSize = new TypeSizeInfo(
-                                        //     (elementSize.Size + paddingNeededPerElement) * loweredArray.Length.Value,
-                                        //     elementSize.Alignment,
-                                        //     []);
-                                        // break;
-                                    }
-                                case LoweredPointer loweredPointer:
-                                    {
-                                        fieldSize = GetTypeSize(loweredPointer, typeArguments);
-                                        break;
-                                    }
-                                case RawPointer rawPointer:
-                                    {
-                                        fieldSize = GetTypeSize(rawPointer, typeArguments);
-                                        break;
-                                    }
-                                default:
-                                    throw new NotImplementedException(field.Type.GetType().ToString());
+                                var index = dataType.TypeParameters.Index()
+                                    .First(x => x.Item.PlaceholderName == genericPlaceholder.PlaceholderName).Index;
+                                fieldType = concreteTypeReference.TypeArguments[index];
                             }
+                            var fieldSize = GetTypeSize(fieldType, typeArguments);
 
                             AlignInt(ref variantSize, fieldSize.Alignment);
 
@@ -926,6 +941,8 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                             variantSize += fieldSize.Size;
                             variantAlignment = Math.Max(variantAlignment, fieldSize.Alignment);
                         }
+
+                        AlignInt(ref variantSize, variantAlignment);
 
                         size = Math.Max(size, variantSize);
                         alignment = Math.Max(alignment, variantAlignment);
@@ -1035,7 +1052,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         {
             returnType = _currentTypeArguments[placeholderName];
         }
-        _ = GetTypeId(returnType, currentlyWritingTypeInfo: false);
+        _ = GetTypeId(returnType);
 
         var returnSize = GetTypeSize(returnType, _currentTypeArguments);
 
@@ -1071,7 +1088,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             {
                 parameterType = _currentTypeArguments[parameterPlaceholderName];
             }
-            _ = GetTypeId(parameterType, currentlyWritingTypeInfo: false);
+            _ = GetTypeId(parameterType);
             var parameterSize = GetTypeSize(parameterType, _currentTypeArguments);
             var size = Math.Min(parameterSize.Size, PointerSize);
 
@@ -1131,7 +1148,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             {
                 localType = _currentTypeArguments[localPlaceholderName];
             }
-            _ = GetTypeId(localType, currentlyWritingTypeInfo: false);
+            _ = GetTypeId(localType);
             var typeSize = GetTypeSize(localType, _currentTypeArguments);
 
             // make sure stack offset is aligned to the size of the type
@@ -2140,7 +2157,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                 }
             case TypeIdOf(var type):
                 {
-                    var typeId = GetTypeId(type, currentlyWritingTypeInfo: false);
+                    var typeId = GetTypeId(type);
                     MoveIntoPlace(destination, $"0x{typeId:X}", PointerSize);
                     break;
                 }

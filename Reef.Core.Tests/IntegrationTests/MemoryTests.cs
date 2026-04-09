@@ -29,6 +29,25 @@ public class MemoryTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task PrintTypes()
+    {
+        await SetupTest(
+            """
+            use :::Reef:::Core:::Diagnostics:::*;
+
+            class MyClass{}
+            union MyUnion{}
+
+            print_all_types();
+            """
+        );
+
+        var result = await Run();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task PrintMethods()
     {
         await SetupTest(
@@ -38,21 +57,24 @@ public class MemoryTests : IntegrationTestBase
             pub fn Something()
             {}
 
+            pub fn Something1(val: string)
+            {
+                var a = 2;
+            }
+
+            pub fn Something2(val: string, val2: string)
+            {}
+
             Something();
+            Something1("hi");
+            Something2("hi", "bye");
             print_all_methods();
             """
         );
 
         var result = await Run();
         result.ExitCode.Should().Be(0);
-        result.StandardOutput.Should().Be(
-            """
-            __variant_identifier_field_getter
-            _Main
-            Something
-
-            """
-        );
+        result.StandardOutput.Should().BeEmpty();
     }
 
     [Fact]

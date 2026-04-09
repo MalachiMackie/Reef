@@ -58,6 +58,22 @@ public partial class TypeChecker
                     StaticInitializer = null,
                     Type = InstantiatedClass.String
                 },
+                new TypeField {
+                    Name = "Parameters",
+                    IsMutable = false,
+                    IsPublic = true,
+                    IsStatic = false,
+                    StaticInitializer = null,
+                    Type = new ArrayType(InstantiatedClass.TypeId)
+                },
+                new TypeField {
+                    Name = "Locals",
+                    IsMutable = false,
+                    IsPublic = true,
+                    IsStatic = false,
+                    StaticInitializer = null,
+                    Type = new ArrayType(InstantiatedClass.TypeId)
+                },
             ],
             Functions = [],
             IsPublic = true,
