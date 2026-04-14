@@ -37,6 +37,36 @@ public partial class TypeChecker
             TypeParameters = []
         });
 
+        public static Lazy<ClassSignature> MethodLocal { get; } = new(() => new ClassSignature()
+        {
+            Id = DefId.MethodLocal,
+            Boxed = false,
+            Fields = [
+                new TypeField
+                {
+                    Name = "TypeId",
+                    IsMutable = false,
+                    IsPublic = true,
+                    IsStatic = false,
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.TypeId
+                },
+                new TypeField
+                {
+                    Name = "StackFrameOffset",
+                    IsMutable = false,
+                    IsPublic = true,
+                    IsStatic = false,
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.UInt16
+                },
+            ],
+            Functions = [],
+            IsPublic = true,
+            Name = "MethodLocal",
+            TypeParameters = []
+        });
+
         public static Lazy<ClassSignature> MethodInfo { get; } = new(() => new ClassSignature()
         {
             Id = DefId.MethodInfo,
@@ -72,7 +102,7 @@ public partial class TypeChecker
                     IsPublic = true,
                     IsStatic = false,
                     StaticInitializer = null,
-                    Type = new ArrayType(InstantiatedClass.TypeId)
+                    Type = new ArrayType(InstantiatedClass.MethodLocal)
                 },
             ],
             Functions = [],
@@ -270,6 +300,7 @@ public partial class TypeChecker
                 FieldInfo.Value,
                 StaticFieldInfo.Value,
                 MethodInfo.Value,
+                MethodLocal.Value,
                 TypeId.Value,
                 MethodId.Value,
             ]);
@@ -754,6 +785,7 @@ public partial class TypeChecker
         public static InstantiatedClass FieldInfo => Create(ClassSignature.FieldInfo.Value, [], ClassSignature.FieldInfo.Value.Boxed);
         public static InstantiatedClass StaticFieldInfo => Create(ClassSignature.StaticFieldInfo.Value, [], ClassSignature.StaticFieldInfo.Value.Boxed);
         public static InstantiatedClass ObjectHeader => Create(ClassSignature.ObjectHeader.Value, [], ClassSignature.ObjectHeader.Value.Boxed);
+        public static InstantiatedClass MethodLocal => Create(ClassSignature.MethodLocal.Value, [], ClassSignature.MethodLocal.Value.Boxed);
         public static InstantiatedClass BoxedValue(ITypeReference valueType) => Create(ClassSignature.BoxedValue.Value, [valueType], ClassSignature.BoxedValue.Value.Boxed);
 
         // todo: need some sort of inferred int type

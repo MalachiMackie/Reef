@@ -179,6 +179,16 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             var localTypeId = GetTypeId(local.Type);
             localsSubSegment.AppendLine($"        dd 0x{localTypeId:X}");
             localsBytesWritten += 4;
+            var localInfo = _locals[methodId][local.CompilerGivenName];
+
+            if (localInfo.Place is not MemoryOffset { Memory: PointerTo { PointerPlace: Register register }, Offset: int localOffset } || register != Register.BasePointer)
+            {
+                throw new NotImplementedException(localInfo.Place.GetType().ToString());
+            }
+
+            localsSubSegment.AppendLine($"        dw 0x{localOffset:X}");
+            localsBytesWritten += 2;
+            PadAlignment(ref localsBytesWritten, localsSubSegment, 4);
         }
 
         Debug.Assert(bytesWritten == methodInfoSize.Size, $"BytesWritten: {bytesWritten}, methodInfoSize: {methodInfoSize.Size}");
@@ -844,7 +854,8 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         _codeSegment.AppendLine();
     }
 
-    private Dictionary<string, LocalInfo> _locals = null!;
+    private readonly Dictionary<ulong, Dictionary<string, LocalInfo>> _locals = [];
+    private uint _currentMethodId;
 
     private sealed record LocalInfo(IAsmPlace Place, ILoweredTypeReference Type);
 
@@ -1150,13 +1161,14 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         _codeSegment.AppendLine("    push    rbp");
         _codeSegment.AppendLine("    mov     rbp, rsp");
 
-        WriteMethodInfoBlob(method, _methodCount);
+        var methodId = _methodCount;
+        _currentMethodId = methodId;
 
         Debug.Assert(method.TypeParameters.Count == typeArguments.Count);
         _currentTypeArguments = typeArguments.Zip(method.TypeParameters).ToDictionary(x => x.Second.PlaceholderName, x => x.First);
         _currentMethod = method;
         _methodCount++;
-        _locals = [];
+        _locals[methodId] = [];
         var parameterStackOffset = PointerSize * 2; // start with offset by PointerSize * 2 because return address and rbp are on the top of the stack
 
         var returnType = method.ReturnValue.Type;
@@ -1225,7 +1237,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                 parameterPlace = new PointerTo(parameterPlace);
             }
 
-            _locals[parameterLocal.CompilerGivenName] = new LocalInfo(
+            _locals[methodId][parameterLocal.CompilerGivenName] = new LocalInfo(
                 parameterPlace,
                 parameterType);
 
@@ -1245,8 +1257,8 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         IEnumerable<MethodLocal> locals = method.Locals;
         if (returnSize.Size > MaxParameterSize)
         {
-            _locals[method.ReturnValue.CompilerGivenName] = new LocalInfo(
-                new PointerTo(_locals[ReturnValueAddressLocal].Place),
+            _locals[methodId][method.ReturnValue.CompilerGivenName] = new LocalInfo(
+                new PointerTo(_locals[methodId][ReturnValueAddressLocal].Place),
                 returnType);
         }
         else
@@ -1275,7 +1287,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             localStackOffset += typeSize.Size.Value;
 
             var localPlace = new MemoryOffset(new PointerTo(Register.BasePointer), null, -(int)localStackOffset);
-            _locals[local.CompilerGivenName] = new LocalInfo(localPlace, localType);
+            _locals[methodId][local.CompilerGivenName] = new LocalInfo(localPlace, localType);
 
             _codeSegment.AppendLine(
                 $"; {local.CompilerGivenName} ({typeSize.Size} byte{(typeSize.Size > 1 ? "s" : "")}" +
@@ -1301,6 +1313,8 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         }
 
         _codeSegment.AppendLine();
+
+        WriteMethodInfoBlob(method, methodId);
     }
 
     private static string FormatOffset(int offset) => offset switch
@@ -1449,7 +1463,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     return type;
                 }
             case Local local:
-                return _locals[local.LocalName].Type;
+                return _locals[_currentMethodId][local.LocalName].Type;
             case StaticField staticField:
                 throw new NotImplementedException();
             case Deref deref:
@@ -1776,7 +1790,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         // copy the pointer to the return value into the "a" register
                         MoveIntoPlace(
                             Register.A,
-                            _locals[ReturnValueAddressLocal].Place,
+                            _locals[_currentMethodId][ReturnValueAddressLocal].Place,
                             PointerSize);
                     }
                     else
@@ -2657,7 +2671,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         return place switch
         {
             Field field => FieldToAsmPlace(field),
-            Local local => _locals[local.LocalName].Place,
+            Local local => _locals[_currentMethodId][local.LocalName].Place,
             StaticField staticField => throw new NotImplementedException(),
             Deref deref => DerefToAsmPlace(deref),
             Index index => IndexToAsmPlace(index),

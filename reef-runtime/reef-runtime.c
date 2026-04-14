@@ -150,8 +150,19 @@ typedef PACK(struct {
 
 typedef PACK(struct {
     TypeId typeId;
+    int16_t stackOffset;
+    uint16_t _padding;
+}) MethodLocal;
+
+typedef PACK(struct {
+    uint64_t length;
+    MethodLocal locals[];
+}) MethodLocalArray;
+
+typedef PACK(struct {
+    TypeId typeId;
     uint32_t _padding;
-    TypeIdArray locals;
+    MethodLocalArray locals;
 }) LocalsBoxedValue;
 
 typedef PACK(struct {
@@ -287,17 +298,21 @@ void print_method_info(MethodInfo* handle)
         print_u32(parameters->typeIds[i]);
         fputs("\n", stdout); }
     fputs("\n    locals: \n            length: ", stdout);
-    TypeIdArray* locals = &handle->locals->locals;
+    MethodLocalArray* locals = &handle->locals->locals;
     print_u64(locals->length);
     fputs("\n", stdout);
     for (size_t i = 0; i < locals->length; i++)
     {
-        fputs("            [", stdout);
-        print_u64(i);
-        fputs("]: ", stdout);
-        print_u32(locals->typeIds[i]);
-        fputs("\n", stdout);
+        if (i > 0)
+        {
+            fputs("\n", stdout);
+        }
+        fputs("            - typeId: ", stdout);
+        print_u32(locals->locals[i].typeId);
+        fputs("\n              offset: ", stdout);
+        print_i16(locals->locals[i].stackOffset);
     }
+    fputs("\n", stdout);
 }
 
 void print_type_info(TypeInfo *handle)
