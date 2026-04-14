@@ -175,6 +175,14 @@ public partial class TypeChecker
                     StaticInitializer = null,
                     Type = InstantiatedClass.TypeId
                 },
+                new TypeField {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "Offset",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.UInt16
+                },
             ],
             Functions = [],
             Boxed = true,

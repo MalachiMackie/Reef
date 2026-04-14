@@ -221,6 +221,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             case LoweredConcreteTypeReference concrete:
                 {
                     var dataType = _dataTypes[concrete.DefinitionId];
+                    var typeSizeInfo = GetTypeSize(type, []);
 
                     var fieldInfoDataType = _dataTypes[DefId.FieldInfo];
                     var staticFieldInfoDataType = _dataTypes[DefId.StaticFieldInfo];
@@ -392,6 +393,11 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                             fieldsSubSegment.AppendLine($"        ; [{fieldIndex}].TypeId");
                             fieldsSubSegment.AppendLine($"        dd 0x{GetTypeId(fieldType):X}");
                             fieldsBytesWritten += 4;
+
+                            fieldsSubSegment.AppendLine($"        ; [{fieldIndex}].Offset");
+                            fieldsSubSegment.AppendLine($"        dd 0x{typeSizeInfo.VariantSizeInfo["_classVariant"].FieldOffsets[field.Name].Offset:X}");
+                            fieldsBytesWritten += 4;
+
                             PadAlignment(ref fieldsBytesWritten, fieldsSubSegment, 8);
                         }
 
@@ -400,8 +406,8 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     else
                     {
                         // union
-                        var variantSizeInfo = typeInfoSize.VariantSizeInfo["Union"];
-                        var unionVariantFieldOffsets = variantSizeInfo.FieldOffsets;
+                        var UnionVariantSizeInfo = typeInfoSize.VariantSizeInfo["Union"];
+                        var unionVariantFieldOffsets = UnionVariantSizeInfo.FieldOffsets;
                         var (unionVariantIndex, typeInfoVariant) = typeInfoDataType.Variants.Index().First(x => x.Item.Name == "Union");
                         Debug.Assert(typeInfoVariant.Fields.Count == 6);
 
@@ -515,6 +521,8 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
                         foreach (var (variantIndex, variant) in dataType.Variants.Index())
                         {
+                            var variantSizeInfo = typeSizeInfo.VariantSizeInfo[variant.Name];
+
                             // name
                             variantsSubSegment.AppendLine($"        ; Name.Length");
                             variantsSubSegment.AppendLine($"        dq 0x{variant.Name.Length:X}");
@@ -569,6 +577,11 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                                 fieldsSubSegment.AppendLine($"        ; TypeId");
                                 fieldsSubSegment.AppendLine($"        dd 0x{GetTypeId(fieldType):X}");
                                 fieldsBytesWritten += 4;
+
+                                fieldsSubSegment.AppendLine($"        ; Offset");
+                                fieldsSubSegment.AppendLine($"        dd 0x{variantSizeInfo.FieldOffsets[field.Name].Offset:X}");
+                                fieldsBytesWritten += 4;
+
                                 PadAlignment(ref fieldsBytesWritten, fieldsSubSegment, 8);
                             }
                         }
@@ -583,7 +596,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         _typeInfoDataSubSegment.AppendLine("        dq 0");
                         bytesWritten += 8;
 
-                        Debug.Assert(bytesWritten == variantSizeInfo.Size, $"bytesWritten: {bytesWritten}, variantSize: {variantSizeInfo.Size}");
+                        Debug.Assert(bytesWritten == UnionVariantSizeInfo.Size, $"bytesWritten: {bytesWritten}, variantSize: {UnionVariantSizeInfo.Size}");
                     }
 
                     break;
@@ -648,7 +661,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         Debug.Assert(bytesWritten <= typeInfoSize.Size, $"BytesWritten: {bytesWritten}, size: {typeInfoSize.Size}, type: {type}");
         if (bytesWritten < typeInfoSize.Size)
         {
-            var bytesToWrite = typeInfoSize.Size - bytesWritten;
+            var bytesToWrite = typeInfoSize.Size.Value - bytesWritten;
             _typeInfoDataSubSegment.AppendLine($"        times {bytesToWrite} db 0");
             bytesWritten += bytesToWrite;
         }
@@ -854,13 +867,13 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
     private readonly List<KeyValuePair<ILoweredTypeReference, TypeSizeInfo>> _typeSizes = [];
 
-    private sealed record VariantSizeInfo(uint Size, Dictionary<string, FieldSize> FieldOffsets);
+    private sealed record VariantSizeInfo(uint? Size, Dictionary<string, FieldSize> FieldOffsets);
     private sealed record TypeSizeInfo(
-        uint Size,
+        uint? Size,
         uint Alignment,
         Dictionary<string, VariantSizeInfo> VariantSizeInfo);
 
-    private sealed record FieldSize(uint Offset, uint Size, uint Alignment);
+    private sealed record FieldSize(uint Offset, uint? Size, uint Alignment);
 
     private static bool AreTypeReferencesEqual(ILoweredTypeReference left, ILoweredTypeReference right, Dictionary<string, ILoweredTypeReference> typeArguments)
     {
@@ -905,7 +918,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             return foundTypeReference.Value;
         }
 
-        var size = 0u;
+        uint? size = 0u;
         var alignment = 1u;
         var dataTypeVariantSizeInfo = new Dictionary<string, VariantSizeInfo>();
 
@@ -956,7 +969,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
                     foreach (var variant in dataType.Variants)
                     {
-                        var variantSize = 0u;
+                        uint? variantSize = 0u;
                         var variantAlignment = 1u;
                         var variantFieldOffsets = new Dictionary<string, FieldSize>();
 
@@ -973,16 +986,32 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
                             AlignInt(ref variantSize, fieldSize.Alignment);
 
-                            variantFieldOffsets[field.Name] =
-                                new FieldSize(variantSize, fieldSize.Size, fieldSize.Alignment);
+                            Debug.Assert(variantSize.HasValue);
 
-                            variantSize += fieldSize.Size;
+                            variantFieldOffsets[field.Name] =
+                                new FieldSize(variantSize.Value, fieldSize.Size, fieldSize.Alignment);
+
+                            if (fieldSize.Size is null)
+                            {
+                                variantSize = null;
+                            }
+                            else
+                            {
+                                variantSize += fieldSize.Size;
+                            }
                             variantAlignment = Math.Max(variantAlignment, fieldSize.Alignment);
                         }
 
                         AlignInt(ref variantSize, variantAlignment);
 
-                        size = Math.Max(size, variantSize);
+                        if (variantSize is null)
+                        {
+                            size = null;
+                        }
+                        else if (size is not null)
+                        {
+                            size = Math.Max(size.Value, variantSize.Value);
+                        }
                         alignment = Math.Max(alignment, variantAlignment);
 
                         dataTypeVariantSizeInfo[variant.Name] = new VariantSizeInfo(variantSize, variantFieldOffsets);
@@ -1020,9 +1049,34 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
                     return arrayTypeSize;
                 }
-            case LoweredArray { Length: null }:
+            case LoweredArray { Length: null } array:
                 {
-                    throw new UnreachableException();
+                    var elementSize = GetTypeSize(array.ElementType, typeArguments);
+                    if (elementSize.Size % elementSize.Alignment != 0)
+                    {
+                        throw new NotImplementedException();
+                    }
+
+                    var arrayTypeSize = new TypeSizeInfo(
+                        null,
+                        Math.Max(8, elementSize.Alignment),
+                        new Dictionary<string, VariantSizeInfo>
+                        {
+                            {
+                                "_classVariant",
+                                new VariantSizeInfo(
+                                    null,
+                                    new Dictionary<string, FieldSize>{
+                                        { "Length", new FieldSize(0, 8, 8) },
+                                        { "Items", new FieldSize(8, null, 1) },
+                                    })
+                            }
+                        }
+                    );
+
+                    _typeSizes.Add(KeyValuePair.Create(typeReference, arrayTypeSize));
+
+                    return arrayTypeSize;
                 }
             default:
                 throw new NotImplementedException(typeReference.GetType().ToString());
@@ -1033,6 +1087,26 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         _typeSizes.Add(KeyValuePair.Create(typeReference, typeSize));
 
         return typeSize;
+    }
+
+    private static byte AlignInt(ref uint? value, uint alignBy)
+    {
+        if (value is null)
+        {
+            return 0;
+        }
+
+        if (alignBy == 0)
+            return 0;
+
+        var mod = value % alignBy;
+        if (mod == 0)
+            return 0;
+
+        var increment = alignBy - mod;
+
+        value += increment;
+        return (byte)increment;
     }
 
     private static byte AlignInt(ref uint value, uint alignBy)
@@ -1128,7 +1202,8 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             }
             _ = GetTypeId(parameterType);
             var parameterSize = GetTypeSize(parameterType, _currentTypeArguments);
-            var size = Math.Min(parameterSize.Size, PointerSize);
+            Debug.Assert(parameterSize.Size.HasValue);
+            var size = Math.Min(parameterSize.Size.Value, PointerSize);
 
             AlignInt(ref parameterStackOffset, parameterSize.Alignment);
 
@@ -1192,10 +1267,12 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             // make sure stack offset is aligned to the size of the type
             AlignInt(ref localStackOffset, typeSize.Alignment);
 
+            Debug.Assert(typeSize.Size.HasValue);
+
             // increment the stack offset before we associate the position with the local so that
             // it points to the lowest memory address (top of the stack) as structures grow towards
             // higher memory addresses
-            localStackOffset += typeSize.Size;
+            localStackOffset += typeSize.Size.Value;
 
             var localPlace = new MemoryOffset(new PointerTo(Register.BasePointer), null, -(int)localStackOffset);
             _locals[local.CompilerGivenName] = new LocalInfo(localPlace, localType);
@@ -1394,7 +1471,9 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
     private void ProcessBinaryOperation(IAsmPlace destination, IOperand left, IOperand right, BinaryOperationKind kind)
     {
         var operandType = GetOperandType(left);
-        var size = GetTypeSize(operandType, _currentTypeArguments).Size;
+        var typeSize = GetTypeSize(operandType, _currentTypeArguments).Size;
+        Debug.Assert(typeSize.HasValue);
+        var size = typeSize.Value;
 
         Register leftOperandRegister;
         Register rightOperandRegister;
@@ -1581,7 +1660,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             case CreateObject createObject:
                 {
                     var size = GetTypeSize(createObject.Type, _currentTypeArguments);
-                    FillMemory(place, "0x0", size.Size);
+                    FillMemory(place, "0x0", size.Size!.Value);
 
                     break;
                 }
@@ -1590,7 +1669,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     var size = GetTypeSize(createArray.Array, _currentTypeArguments);
                     if (size.Size > 0)
                     {
-                        FillMemory(place, "0x0", size.Size);
+                        FillMemory(place, "0x0", size.Size.Value);
                     }
 
                     break;
@@ -1619,7 +1698,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                             new MemoryOffset(
                                 new PointerTo(addressRegister),
                                 null,
-                                (i * (int)elementSize.Size) + remainingOffset + 8 // + 8 to skip past array length
+                                (i * (int)elementSize.Size!.Value) + remainingOffset + 8 // + 8 to skip past array length
                             )
                         );
                     }
@@ -1649,9 +1728,9 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     MoveOperandToDestination(operand, operandRegister);
 
                     // btc instruction must be performed on 16 bit registers or greater
-                    var registerSize = operandRegister.ToAsm(Math.Max(operandSize.Size, 2));
+                    var registerSize = operandRegister.ToAsm(Math.Max(operandSize.Size!.Value, 2));
                     _codeSegment.AppendLine($"    btc     {registerSize}, 0");
-                    MoveIntoPlace(place, operandRegister, operandSize.Size);
+                    MoveIntoPlace(place, operandRegister, operandSize.Size!.Value);
                     FreeRegister(operandRegister);
                     break;
                 }
@@ -1660,8 +1739,8 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     var operandRegister = AllocateRegister();
                     MoveOperandToDestination(operand, operandRegister);
 
-                    _codeSegment.AppendLine($"    neg     {operandRegister.ToAsm(operandSize.Size)}");
-                    MoveIntoPlace(place, operandRegister, operandSize.Size);
+                    _codeSegment.AppendLine($"    neg     {operandRegister.ToAsm(operandSize.Size!.Value)}");
+                    MoveIntoPlace(place, operandRegister, operandSize.Size!.Value);
 
                     FreeRegister(operandRegister);
                     break;
@@ -1705,7 +1784,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         MoveIntoPlace(
                             Register.A,
                             returnValuePlace,
-                            returnSize.Size);
+                            returnSize.Size!.Value);
                     }
 
                     _codeSegment.AppendLine("    leave");
@@ -1721,7 +1800,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     var operandSize = GetTypeSize(operandType, _currentTypeArguments);
                     foreach (var (intCase, jumpTo) in switchInt.Cases)
                     {
-                        _codeSegment.AppendLine($"    cmp     {register.ToAsm(operandSize.Size)}, {intCase}");
+                        _codeSegment.AppendLine($"    cmp     {register.ToAsm(operandSize.Size!.Value)}, {intCase}");
                         _codeSegment.AppendLine($"    je      {GetBasicBlockLabel(jumpTo)}");
                     }
 
@@ -1868,7 +1947,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             if (size.Size > MaxParameterSize)
             {
                 AlignInt(ref largeParametersSpace, size.Alignment);
-                largeParametersSpace += size.Size;
+                largeParametersSpace += size.Size!.Value;
                 parameterPointers[i] = -(int)largeParametersSpace;
                 _codeSegment.AppendLine($"; Parameter {i} ({size} bytes) at offset {-largeParametersSpace}");
                 MoveOperandToDestination(argument.NotNull(), new MemoryOffset(new PointerTo(Register.StackPointer), null, -(int)largeParametersSpace));
@@ -1940,7 +2019,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         MoveIntoPlace(
             destination,
             returnSource,
-            returnSize.Size);
+            returnSize.Size!.Value);
 
         FreeRegister(Register.A);
 
@@ -2148,7 +2227,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                 {
                     var operandType = GetOperandType(operand);
                     var size = GetTypeSize(operandType, _currentTypeArguments);
-                    MoveIntoPlace(destination, PlaceToAsmPlace(copy.Place), size.Size);
+                    MoveIntoPlace(destination, PlaceToAsmPlace(copy.Place), size.Size!.Value);
                     break;
                 }
             case FunctionPointerConstant functionPointerConstant:

@@ -36,7 +36,8 @@ typedef uint32_t TypeId;
 typedef PACK(struct {
     string name;
     TypeId typeId;
-    uint32_t _padding;
+    uint16_t offset;
+    uint16_t _padding;
 }) FieldInfo;
 
 typedef PACK(struct {
@@ -308,8 +309,24 @@ void print_type_info(TypeInfo *handle)
             print_string(handle->classInfo.name);
             fputs(":\n    type: class\n    id: ", stdout);
             print_u32(handle->classInfo.typeId);
-            fputs("\n    fields_count: ", stdout);
-            print_u64(handle->classInfo.fields->items.length);
+            uint64_t fields_count = handle->classInfo.fields->items.length;
+            fputs("\n    fields:\n        length: ", stdout);
+            print_u64(fields_count);
+            fputs("\n        items:", stdout);
+            for (uint64_t i = 0; i < fields_count; i++)
+            {
+                if (i > 0)
+                {
+                    fputs("\n", stdout);
+                }
+                FieldInfo field = handle->classInfo.fields->items.items[i];
+                fputs("\n            - name: ", stdout);
+                print_string(field.name);
+                fputs("\n              type_id: ", stdout);
+                print_u32(field.typeId);
+                fputs("\n              offset: ", stdout);
+                print_u16(field.offset);
+            }
             fputs("\n", stdout);
             break;
         }
