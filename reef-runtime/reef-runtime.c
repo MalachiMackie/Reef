@@ -67,17 +67,23 @@ typedef PACK(struct {
 }) VariantInfoArrayBoxedValue;
 
 typedef PACK(struct {
+    uint16_t variantIdentifier;
+    uint16_t _padding;
+    uint32_t __padding;
     string name;
     TypeId typeId;
-    uint32_t _padding;
+    uint32_t ___padding;
     FieldInfoArrayBoxedValue *staticFields;
     FieldInfoArrayBoxedValue *fields;
 }) TypeInfoClassVariant;
 
 typedef PACK(struct {
+    uint16_t variantIdentifier;
+    uint16_t _padding;
+    uint32_t __padding;
     string name;
     TypeId typeId;
-    uint32_t _padding;
+    uint32_t ___padding;
     FieldInfoArrayBoxedValue *staticFields;
     VariantInfoArrayBoxedValue *variants;
     struct {
@@ -87,22 +93,23 @@ typedef PACK(struct {
 }) TypeInfoUnionVariant;
 
 typedef PACK(struct {
+    uint16_t variantIdentifier;
+    uint16_t _padding;
     TypeId pointerToTypeId;
-    uint32_t _padding;
+    uint32_t __padding;
 }) TypeInfoPointerVariant;
 
 typedef PACK(struct {
+    uint16_t variantIdentifier;
+    uint16_t _padding;
     TypeId elementTypeId;
-    uint32_t _padding;
     uint64_t length;
     uint8_t isDynamic;
 }) TypeInfoArrayVariant;
 
 typedef PACK(struct {
-    uint16_t variantIdentifier;
-    uint16_t __padding;
-    uint32_t _padding;
     union {
+        uint16_t variantIdentifier;
         TypeInfoClassVariant classInfo;
         TypeInfoUnionVariant unionInfo;
         TypeInfoPointerVariant pointerInfo;
@@ -309,13 +316,13 @@ void print_type_info(TypeInfo *handle)
         {
             print_string(get_type_info_name(handle));
             fputs(":\n    type: array\n    is_dynamic: ", stdout);
-            if (handle->arrayInfo.isDynamic)
+            if (handle->arrayInfo.isDynamic == 0)
             {
-                fputs("true", stdout);
+                fputs("false", stdout);
             }
             else
             {
-                fputs("false", stdout);
+                fputs("true", stdout);
             }
             fputs("\n", stdout);
             break;
