@@ -137,9 +137,7 @@ public partial class TypeChecker
                                 InstantiatedClass.Create(
                                     ClassSignature.FieldInfo.Value,
                                     [],
-                                    boxed: false),
-                                boxed: false,
-                                length: 10)
+                                    boxed: false))
                         },
                         new TypeField {
                             IsPublic = true,
@@ -151,9 +149,7 @@ public partial class TypeChecker
                                 InstantiatedClass.Create(
                                     ClassSignature.FieldInfo.Value,
                                     [],
-                                    boxed: false),
-                                boxed: false,
-                                length: 10)
+                                    boxed: false))
                         }
                     ]
                 },
@@ -187,9 +183,7 @@ public partial class TypeChecker
                                 InstantiatedClass.Create(
                                     ClassSignature.FieldInfo.Value,
                                     [],
-                                    boxed: false),
-                                boxed: false,
-                                length: 10)
+                                    boxed: false))
                         },
                         new TypeField {
                             IsPublic = true,
@@ -201,9 +195,7 @@ public partial class TypeChecker
                                 InstantiatedClass.Create(
                                     ClassSignature.VariantInfo.Value,
                                     [],
-                                    boxed: false),
-                                boxed: false,
-                                length: 10)
+                                    boxed: false))
                         },
                         new TypeField {
                             IsPublic = true,
@@ -250,7 +242,15 @@ public partial class TypeChecker
                             Name = "Length",
                             StaticInitializer = null,
                             Type = InstantiatedClass.UInt64
-                        }
+                        },
+                        new TypeField {
+                            IsPublic = true,
+                            IsMutable = false,
+                            IsStatic = false,
+                            Name = "IsDynamic",
+                            StaticInitializer = null,
+                            Type = InstantiatedClass.Boolean
+                        },
                     ]
                 }
             ],
@@ -258,7 +258,6 @@ public partial class TypeChecker
             Boxed = true,
             IsPublic = true
         });
-
 
         public static UnionSignature Result { get; }
         public required DefId Id { get; init; }
@@ -474,8 +473,8 @@ public partial class TypeChecker
                     GenericPlaceholder placeholder => typeArgumentReferences.First(z => z.GenericName == placeholder.GenericName),
                     InstantiatedUnion union => union.CloneWithTypeArguments([.. union.TypeArguments.Select(HandleType)]),
                     InstantiatedClass klass => klass.CloneWithTypeArguments([.. klass.TypeArguments.Select(HandleType)]),
-                    ArrayType {Length: not null} arrayType => new ArrayType(HandleType(arrayType.ElementType), arrayType.Boxed, arrayType.Length.Value),
-                    ArrayType {IsDynamic: true} arrayType => new ArrayType(HandleType(arrayType.ElementType)),
+                    ArrayType { Length: not null } arrayType => new ArrayType(HandleType(arrayType.ElementType), arrayType.Boxed, arrayType.Length.Value),
+                    ArrayType { IsDynamic: true } arrayType => new ArrayType(HandleType(arrayType.ElementType)),
                     _ => throw new InvalidOperationException(type.GetType().ToString())
                 };
             }

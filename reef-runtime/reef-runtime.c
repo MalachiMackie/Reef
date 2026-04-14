@@ -41,33 +41,45 @@ typedef PACK(struct {
 
 typedef PACK(struct {
     uint64_t length;
-    FieldInfo items[10];
+    FieldInfo items[];
 }) FieldInfoArray;
 
 typedef PACK(struct {
+    TypeId typeId;
+    uint32_t _padding;
+    FieldInfoArray items;
+}) FieldInfoArrayBoxedValue;
+
+typedef PACK(struct {
     string name;
-    FieldInfoArray fields;
+    FieldInfoArrayBoxedValue *fields;
 }) VariantInfo;
 
 typedef PACK(struct {
     uint64_t length;
-    VariantInfo items[10];
+    VariantInfo items[];
 }) VariantInfoArray;
+
+typedef PACK(struct {
+    TypeId typeId;
+    uint32_t _padding;
+    VariantInfoArray items;
+}) VariantInfoArrayBoxedValue;
 
 typedef PACK(struct {
     string name;
     TypeId typeId;
     uint32_t _padding;
-    FieldInfoArray staticFields;
-    FieldInfoArray fields;
+    FieldInfoArrayBoxedValue *staticFields;
+    FieldInfoArrayBoxedValue *fields;
 }) TypeInfoClassVariant;
 
 typedef PACK(struct {
     string name;
     TypeId typeId;
     uint32_t _padding;
-    FieldInfoArray staticFields;
-    VariantInfoArray variants;
+    FieldInfoArrayBoxedValue *staticFields;
+    VariantInfoArrayBoxedValue *variants;
     struct {
         void* functionReference;
         void* functionParameter;
@@ -83,6 +95,7 @@ typedef PACK(struct {
     TypeId elementTypeId;
     uint32_t _padding;
     uint64_t length;
+    uint8_t isDynamic;
 }) TypeInfoArrayVariant;
 
 typedef PACK(struct {
@@ -247,9 +260,7 @@ void print_method_info(MethodInfo* handle)
         print_u64(i);
         fputs("]: ", stdout);
         print_u32(parameters->typeIds[i]);
-        fputs("\n", stdout);
-    }
-
+        fputs("\n", stdout); }
     fputs("\n    locals: \n            length: ", stdout);
     TypeIdArray* locals = &handle->locals->locals;
     print_u64(locals->length);
@@ -271,18 +282,20 @@ void print_type_info(TypeInfo *handle)
         case 0: // class
         {
             print_string(handle->classInfo.name);
-            fputs(":\n    type: class\n", stdout);
-            fputs("    id: ", stdout);
+            fputs(":\n    type: class\n    id: ", stdout);
             print_u32(handle->classInfo.typeId);
+            fputs("\n    fields_count: ", stdout);
+            print_u64(handle->classInfo.fields->items.length);
             fputs("\n", stdout);
             break;
         }
         case 1: // union
         {
             print_string(handle->unionInfo.name);
-            fputs(":\n    type: union\n", stdout);
-            fputs("    id: ", stdout);
+            fputs(":\n    type: union\n    id: ", stdout);
             print_u32(handle->unionInfo.typeId);
+            fputs("\n    variants_count: ", stdout);
+            print_u64(handle->unionInfo.variants->items.length);
             fputs("\n", stdout);
             break;
         }
@@ -295,7 +308,16 @@ void print_type_info(TypeInfo *handle)
         case 3: // array
         {
             print_string(get_type_info_name(handle));
-            fputs(":\n    type: array\n", stdout);
+            fputs(":\n    type: array\n    is_dynamic: ", stdout);
+            if (handle->arrayInfo.isDynamic)
+            {
+                fputs("true", stdout);
+            }
+            else
+            {
+                fputs("false", stdout);
+            }
+            fputs("\n", stdout);
             break;
         }
     }

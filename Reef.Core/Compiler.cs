@@ -126,16 +126,19 @@ public class Compiler
             nasmProcess.Kill(true);
         });
 
-        var nasmOutput = await nasmProcess.StandardOutput.ReadToEndAsync(ct);
+
         var nasmError = await nasmProcess.StandardError.ReadToEndAsync(ct);
 
-        if (nasmOutput.Length > 0)
-            logger.LogInformation("{NasmOutput}", nasmOutput);
         if (nasmError.Length > 0)
             logger.LogError("NasmError: {Error}", nasmError);
 
-        await nasmProcess.WaitForExitAsync(ct);
 
+        var nasmOutput = await nasmProcess.StandardOutput.ReadToEndAsync(ct);
+
+        if (nasmOutput.Length > 0)
+            logger.LogInformation("{NasmOutput}", nasmOutput);
+
+        await nasmProcess.WaitForExitAsync(ct);
 
         // var msvcVersion = "14.40.33807";
         var msvcVersion = "14.41.34120";

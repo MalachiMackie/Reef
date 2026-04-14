@@ -178,7 +178,7 @@ public partial class TypeChecker
                             FieldInfo.Value,
                             [],
                             boxed: false
-                        ), boxed: false, length: 10)
+                        ))
                 },
             ],
             Functions = [],

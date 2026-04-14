@@ -35,8 +35,11 @@ public class MemoryTests : IntegrationTestBase
             """
             use :::Reef:::Core:::Diagnostics:::*;
 
-            class MyClass{}
-            union MyUnion{}
+            class MyClass{pub field A: string}
+            union MyUnion{A, B}
+
+            var a = new MyClass{A = ""};
+            var b = MyUnion::B;
 
             print_all_types();
             """
