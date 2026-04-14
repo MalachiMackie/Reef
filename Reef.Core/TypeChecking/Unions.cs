@@ -135,7 +135,7 @@ public partial class TypeChecker
                             StaticInitializer = null,
                             Type = new ArrayType(
                                 InstantiatedClass.Create(
-                                    ClassSignature.FieldInfo.Value,
+                                    ClassSignature.StaticFieldInfo.Value,
                                     [],
                                     boxed: false))
                         },
@@ -181,7 +181,7 @@ public partial class TypeChecker
                             StaticInitializer = null,
                             Type = new ArrayType(
                                 InstantiatedClass.Create(
-                                    ClassSignature.FieldInfo.Value,
+                                    ClassSignature.StaticFieldInfo.Value,
                                     [],
                                     boxed: false))
                         },

@@ -125,6 +125,34 @@ public partial class TypeChecker
             return signature;
         }
 
+        public static Lazy<ClassSignature> StaticFieldInfo { get; } = new(() => new ClassSignature()
+        {
+            Id = DefId.StaticFieldInfo,
+            TypeParameters = [],
+            Name = "StaticFieldInfo",
+            Fields = [
+                new TypeField {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "Name",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.String
+                },
+                new TypeField {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "TypeId",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.TypeId
+                },
+            ],
+            Functions = [],
+            Boxed = true,
+            IsPublic = true
+        });
+
         public static Lazy<ClassSignature> FieldInfo { get; } = new(() => new ClassSignature()
         {
             Id = DefId.FieldInfo,
@@ -232,6 +260,7 @@ public partial class TypeChecker
             [
                 VariantInfo.Value,
                 FieldInfo.Value,
+                StaticFieldInfo.Value,
                 MethodInfo.Value,
                 TypeId.Value,
                 MethodId.Value,
@@ -715,6 +744,7 @@ public partial class TypeChecker
         public static InstantiatedClass MethodPointer => new(ClassSignature.MethodPointer.Value, [], [], boxed: ClassSignature.MethodPointer.Value.Boxed);
         public static InstantiatedClass VariantInfo => Create(ClassSignature.VariantInfo.Value, [], ClassSignature.VariantInfo.Value.Boxed);
         public static InstantiatedClass FieldInfo => Create(ClassSignature.FieldInfo.Value, [], ClassSignature.FieldInfo.Value.Boxed);
+        public static InstantiatedClass StaticFieldInfo => Create(ClassSignature.StaticFieldInfo.Value, [], ClassSignature.StaticFieldInfo.Value.Boxed);
         public static InstantiatedClass ObjectHeader => Create(ClassSignature.ObjectHeader.Value, [], ClassSignature.ObjectHeader.Value.Boxed);
         public static InstantiatedClass BoxedValue(ITypeReference valueType) => Create(ClassSignature.BoxedValue.Value, [valueType], ClassSignature.BoxedValue.Value.Boxed);
 

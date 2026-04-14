@@ -40,15 +40,32 @@ typedef PACK(struct {
 }) FieldInfo;
 
 typedef PACK(struct {
+    string name;
+    TypeId typeId;
+    uint32_t _padding;
+}) StaticFieldInfo;
+
+typedef PACK(struct {
     uint64_t length;
     FieldInfo items[];
 }) FieldInfoArray;
+
+typedef PACK(struct {
+    uint64_t length;
+    StaticFieldInfo items[];
+}) StaticFieldInfoArray;
 
 typedef PACK(struct {
     TypeId typeId;
     uint32_t _padding;
     FieldInfoArray items;
 }) FieldInfoArrayBoxedValue;
+
+typedef PACK(struct {
+    TypeId typeId;
+    uint32_t _padding;
+    StaticFieldInfoArray items;
+}) StaticFieldInfoArrayBoxedValue;
 
 typedef PACK(struct {
     string name;
@@ -73,7 +90,7 @@ typedef PACK(struct {
     string name;
     TypeId typeId;
     uint32_t ___padding;
-    FieldInfoArrayBoxedValue *staticFields;
+    StaticFieldInfoArrayBoxedValue *staticFields;
     FieldInfoArrayBoxedValue *fields;
 }) TypeInfoClassVariant;
 
@@ -84,7 +101,7 @@ typedef PACK(struct {
     string name;
     TypeId typeId;
     uint32_t ___padding;
-    FieldInfoArrayBoxedValue *staticFields;
+    StaticFieldInfoArrayBoxedValue *staticFields;
     VariantInfoArrayBoxedValue *variants;
     struct {
         void* functionReference;

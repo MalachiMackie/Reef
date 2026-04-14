@@ -223,8 +223,13 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     var dataType = _dataTypes[concrete.DefinitionId];
 
                     var fieldInfoDataType = _dataTypes[DefId.FieldInfo];
+                    var staticFieldInfoDataType = _dataTypes[DefId.StaticFieldInfo];
                     var variantInfoDataType = _dataTypes[DefId.VariantInfo];
 
+                    var staticFieldInfoTypeReference = new LoweredConcreteTypeReference(
+                                    TypeChecker.InstantiatedClass.StaticFieldInfo.Signature.Name,
+                                    TypeChecker.InstantiatedClass.StaticFieldInfo.Signature.Id,
+                                    []);
                     var fieldInfoTypeReference = new LoweredConcreteTypeReference(
                                     TypeChecker.InstantiatedClass.FieldInfo.Signature.Name,
                                     TypeChecker.InstantiatedClass.FieldInfo.Signature.Id,
@@ -236,13 +241,17 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
                     var fieldInfoSize = GetTypeSize(fieldInfoTypeReference, []);
                     var fieldFieldOffsets = fieldInfoSize.VariantSizeInfo["_classVariant"].FieldOffsets;
+                    var staticFieldInfoSize = GetTypeSize(staticFieldInfoTypeReference, []);
+                    var staticFieldFieldOffsets = staticFieldInfoSize.VariantSizeInfo["_classVariant"].FieldOffsets;
                     var variantInfoSize = GetTypeSize(variantInfoTypeReference, []);
                     var variantFieldOffsets = variantInfoSize.VariantSizeInfo["_classVariant"].FieldOffsets;
 
+                    Debug.Assert(staticFieldInfoDataType.Variants.Count == 1);
                     Debug.Assert(fieldInfoDataType.Variants.Count == 1);
                     Debug.Assert(variantInfoDataType.Variants.Count == 1);
 
                     var fieldInfoVariant = fieldInfoDataType.Variants[0];
+                    var staticFieldInfoVariant = staticFieldInfoDataType.Variants[0];
                     var variantInfoVariant = variantInfoDataType.Variants[0];
 
                     if (dataType.Variants.Count == 1 && dataType.Variants[0].Name == "_classVariant")
@@ -734,6 +743,9 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             []);
         var variantInfoSize = GetTypeSize(
             new LoweredConcreteTypeReference("VariantInfo", DefId.VariantInfo, []),
+            []);
+        var staticFieldInfoSize = GetTypeSize(
+            new LoweredConcreteTypeReference("StaticFieldInfo", DefId.StaticFieldInfo, []),
             []);
         var fieldInfoSize = GetTypeSize(
             new LoweredConcreteTypeReference("FieldInfo", DefId.FieldInfo, []),
