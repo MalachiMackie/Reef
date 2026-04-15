@@ -72,6 +72,11 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
     private ulong GetTypeId(ILoweredTypeReference type)
     {
+        if (type is LoweredGenericPlaceholder)
+        {
+            throw new InvalidOperationException();
+        }
+
         // todo: _currentTypeArguments I suspect is incorrect here
         var found = _typeIds.FirstOrDefault(x => AreTypeReferencesEqual(x.TypeReference, type, _currentTypeArguments));
         if (found == default)
@@ -91,7 +96,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
     private readonly List<(ILoweredTypeReference TypeReference, ulong TypeId)> _typeIds = [];
     private readonly Queue<(ILoweredTypeReference TypeReference, ulong TypeId)> _typesToWriteBlobInfo = [];
 
-    private void WriteMethodInfoBlob(LoweredMethod method, ulong methodId)
+    private void WriteMethodInfoBlob(LoweredMethod method, IReadOnlyList<ILoweredTypeReference> typeArguments, ulong methodId)
     {
         var methodInfoReference = new LoweredConcreteTypeReference(
             TypeChecker.ClassSignature.MethodInfo.Value.Name,
@@ -150,7 +155,13 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         parametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.Value.Items:");
         foreach (var local in method.ParameterLocals)
         {
-            var localTypeId = GetTypeId(local.Type);
+            var localType = local.Type;
+            if (localType is LoweredGenericPlaceholder placeholder)
+            {
+                localType = _currentTypeArguments[placeholder.PlaceholderName];
+            }
+
+            var localTypeId = GetTypeId(localType);
             parametersSubSegment.AppendLine($"        dd 0x{localTypeId:x}");
             parametersBytesWritten += 4;
 
@@ -225,6 +236,13 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             localsBytesWritten += 2;
             PadAlignment(ref localsBytesWritten, localsSubSegment, 4);
         }
+
+        _methodInfoDataSubSegment.AppendLine("        ; MethodInfo.AddressFrom");
+        _methodInfoDataSubSegment.AppendLine($"        dq {GetMethodLabel(method, typeArguments)}");
+        bytesWritten += 8;
+        _methodInfoDataSubSegment.AppendLine("        ; MethodInfo.AddressTo");
+        _methodInfoDataSubSegment.AppendLine($"        dq {GetMethodLabelEnd(method, typeArguments)}");
+        bytesWritten += 8;
 
         Debug.Assert(bytesWritten == methodInfoSize.Size, $"BytesWritten: {bytesWritten}, methodInfoSize: {methodInfoSize.Size}");
     }
@@ -894,6 +912,12 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
     private sealed record LocalInfo(IAsmPlace Place, ILoweredTypeReference Type);
 
+    private static string GetMethodLabelEnd(IMethod method, IReadOnlyList<ILoweredTypeReference> typeArguments)
+    {
+        var label = GetMethodLabel(method, typeArguments);
+        return $"{label}__end";
+    }
+
     private static string GetMethodLabel(IMethod method, IReadOnlyList<ILoweredTypeReference> typeArguments)
     {
         var label = typeArguments.Count == 0
@@ -1349,7 +1373,9 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
         _codeSegment.AppendLine();
 
-        WriteMethodInfoBlob(method, methodId);
+        _codeSegment.AppendLine($"{GetMethodLabelEnd(method, typeArguments)}:");
+
+        WriteMethodInfoBlob(method, typeArguments, methodId);
     }
 
     private static string FormatOffset(int offset) => offset switch

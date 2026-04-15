@@ -68,9 +68,14 @@ public class MemoryTests : IntegrationTestBase
             pub fn Something2(val: i32, val2: string)
             {}
 
+            pub fn Something3<T>(val: T)
+            {}
+
             Something();
             Something1("hi");
             Something2(1, "bye");
+            Something3(1);
+            Something3("bye");
             print_all_methods();
             """
         );

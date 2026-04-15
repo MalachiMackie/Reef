@@ -204,9 +204,11 @@ typedef PACK(struct {
     string name;
     MethodParameterArrayBoxedValue *parameters;
     LocalsBoxedValue *locals;
+    uint64_t addressFrom;
+    uint64_t addressTo;
 }) MethodInfo;
-extern MethodInfo methodInfoArray[];
 
+extern MethodInfo methodInfoArray[];
 extern uint64_t methodInfoCount;
 extern uint64_t methodInfoSize;
 extern uint64_t typeInfoCount;
@@ -319,6 +321,12 @@ void print_method_info(MethodInfo* handle)
     fputs(":\n    id: ", stdout);
     print_u32(handle->methodId);
 
+    fputs("\n    address_from: 0x", stdout);
+    print_size_t_hex(handle->addressFrom);
+
+    fputs("\n    address_to: 0x", stdout);
+    print_size_t_hex(handle->addressTo);
+
     fputs("\n    parameters: \n            length: ", stdout);
     MethodParameterArray* parameters = &handle->parameters->items;
     print_u64(parameters->length);
@@ -334,7 +342,7 @@ void print_method_info(MethodInfo* handle)
         print_string(parameter.name);
         fputs("\n              typeId: ", stdout);
         print_u32(parameter.typeId);
-        fputs("\n              place:\n              - variant: ", stdout);
+        fputs("\n              place:\n                variant: ", stdout);
         switch (parameter.place.variantIdentifier)
         {
             case 0:

@@ -143,6 +143,22 @@ public partial class TypeChecker
                     StaticInitializer = null,
                     Type = new ArrayType(InstantiatedClass.MethodLocal)
                 },
+                new TypeField {
+                    Name = "AddressFrom",
+                    IsMutable = false,
+                    IsPublic = true,
+                    IsStatic = false,
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.UInt64
+                },
+                new TypeField {
+                    Name = "AddressTo",
+                    IsMutable = false,
+                    IsPublic = true,
+                    IsStatic = false,
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.UInt64
+                },
             ],
             Functions = [],
             IsPublic = true,
