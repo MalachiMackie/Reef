@@ -345,9 +345,7 @@ public partial class ProgramAbseil
                             ],
                             []
                         )),
-                    ..new [] {
-                        TypeChecker.UnionSignature.TypeInfo.Value
-                    }.Select(LowerUnion)
+                    ..TypeChecker.UnionSignature.ReflectionUnions.Value.Select(LowerUnion)
                 ],
                 Methods = []
             }

@@ -65,12 +65,12 @@ public class MemoryTests : IntegrationTestBase
                 var a = 2;
             }
 
-            pub fn Something2(val: string, val2: string)
+            pub fn Something2(val: i32, val2: string)
             {}
 
             Something();
             Something1("hi");
-            Something2("hi", "bye");
+            Something2(1, "bye");
             print_all_methods();
             """
         );

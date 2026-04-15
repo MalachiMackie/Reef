@@ -102,6 +102,44 @@ public partial class TypeChecker
             BuiltInTypes = [Result];
         }
 
+        public static Lazy<UnionSignature> VariablePlace { get; } = new(() => new UnionSignature()
+        {
+            Id = DefId.VariablePlace,
+            TypeParameters = [],
+            Name = "VariablePlace",
+            Variants = [
+                new ClassUnionVariant {
+                    Name = "StackBaseOffset",
+                    Fields = [
+                        new TypeField {
+                            IsPublic = true,
+                            IsMutable = false,
+                            IsStatic = false,
+                            Name = "Offset",
+                            StaticInitializer = null,
+                            Type = InstantiatedClass.UInt16
+                        },
+                    ]
+                },
+                new ClassUnionVariant {
+                    Name = "PointerTo",
+                    Fields = [
+                        new TypeField {
+                            IsPublic = true,
+                            IsMutable = false,
+                            IsStatic = false,
+                            Name = "PointerLocationOffset",
+                            StaticInitializer = null,
+                            Type = InstantiatedClass.UInt16
+                        },
+                    ]
+                }
+            ],
+            Functions = [],
+            Boxed = false,
+            IsPublic = true
+        });
+
         public static Lazy<UnionSignature> TypeInfo { get; } = new(() => new UnionSignature()
         {
             Id = DefId.TypeInfo,
@@ -258,6 +296,12 @@ public partial class TypeChecker
             Boxed = true,
             IsPublic = true
         });
+
+        public static Lazy<IReadOnlyList<UnionSignature>> ReflectionUnions { get; } = new(() =>
+            [
+                TypeInfo.Value,
+                VariablePlace.Value
+            ]);
 
         public static UnionSignature Result { get; }
         public required DefId Id { get; init; }
@@ -481,6 +525,7 @@ public partial class TypeChecker
         }
 
         public static InstantiatedUnion TypeInfo => Create(UnionSignature.TypeInfo.Value, [], UnionSignature.TypeInfo.Value.Boxed);
+        public static InstantiatedUnion VariablePlace => Create(UnionSignature.VariablePlace.Value, [], UnionSignature.VariablePlace.Value.Boxed);
 
         public UnionSignature Signature { get; }
 

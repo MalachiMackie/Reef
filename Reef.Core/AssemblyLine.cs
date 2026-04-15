@@ -100,6 +100,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         );
 
         var methodInfoDataType = _dataTypes[DefId.MethodInfo];
+        var variablePlaceDataType = _dataTypes[DefId.VariablePlace];
         var parametersField = methodInfoDataType.Variants[0].Fields.First(x => x.Name == "Parameters");
         var localsField = methodInfoDataType.Variants[0].Fields.First(x => x.Name == "Locals");
 
@@ -150,8 +151,42 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         foreach (var local in method.ParameterLocals)
         {
             var localTypeId = GetTypeId(local.Type);
-            parametersSubSegment.AppendLine($"        dd 0x{localTypeId:X}");
+            parametersSubSegment.AppendLine($"        dd 0x{localTypeId:x}");
             parametersBytesWritten += 4;
+
+            var localInfo = _locals[methodId][local.CompilerGivenName];
+
+            if (localInfo.Place is MemoryOffset { Memory: PointerTo { PointerPlace: Register register }, Offset: int localOffset })
+            {
+                Debug.Assert(register == Register.BasePointer);
+
+                var (variantIndex, variant) = variablePlaceDataType.Variants.Index().First(x => x.Item.Name == "StackBaseOffset");
+
+                parametersSubSegment.AppendLine($"        dw 0x{(ushort)variantIndex:x}");
+                parametersBytesWritten += 2;
+                parametersSubSegment.AppendLine($"        dw 0x{(short)localOffset:x}");
+                parametersBytesWritten += 2;
+            }
+            else if (localInfo.Place is PointerTo(MemoryOffset { Memory: PointerTo { PointerPlace: Register register2 }, Offset: int localOffset2 }))
+            {
+                Debug.Assert(register2 == Register.BasePointer);
+
+                var (variantIndex, variant) = variablePlaceDataType.Variants.Index().First(x => x.Item.Name == "PointerTo");
+
+                parametersSubSegment.AppendLine($"        dw 0x{(ushort)variantIndex:x}");
+                parametersBytesWritten += 2;
+                parametersSubSegment.AppendLine($"        dw 0x{(short)localOffset2:x}");
+                parametersBytesWritten += 2;
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+
+            parametersSubSegment.AppendLine($"        dq 0x{local.CompilerGivenName.Length:X}");
+            parametersBytesWritten += 8;
+            parametersSubSegment.AppendLine($"        dq {GetStringConstantLabel(local.CompilerGivenName)}");
+            parametersBytesWritten += 8;
         }
 
         _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo.Locals");
@@ -177,7 +212,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         foreach (var local in method.Locals)
         {
             var localTypeId = GetTypeId(local.Type);
-            localsSubSegment.AppendLine($"        dd 0x{localTypeId:X}");
+            localsSubSegment.AppendLine($"        dd 0x{localTypeId:x}");
             localsBytesWritten += 4;
             var localInfo = _locals[methodId][local.CompilerGivenName];
 
@@ -186,7 +221,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                 throw new NotImplementedException(localInfo.Place.GetType().ToString());
             }
 
-            localsSubSegment.AppendLine($"        dw 0x{localOffset:X}");
+            localsSubSegment.AppendLine($"        dw 0x{(short)localOffset:x}");
             localsBytesWritten += 2;
             PadAlignment(ref localsBytesWritten, localsSubSegment, 4);
         }

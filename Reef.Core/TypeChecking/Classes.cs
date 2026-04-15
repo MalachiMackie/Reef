@@ -37,6 +37,45 @@ public partial class TypeChecker
             TypeParameters = []
         });
 
+        public static Lazy<ClassSignature> MethodParameter { get; } = new(() => new ClassSignature()
+        {
+            Id = DefId.MethodParameter,
+            Boxed = false,
+            Fields = [
+                new TypeField
+                {
+                    Name = "TypeId",
+                    IsMutable = false,
+                    IsPublic = true,
+                    IsStatic = false,
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.TypeId
+                },
+                new TypeField
+                {
+                    Name = "Place",
+                    IsMutable = false,
+                    IsPublic = true,
+                    IsStatic = false,
+                    StaticInitializer = null,
+                    Type = InstantiatedUnion.VariablePlace
+                },
+                new TypeField
+                {
+                    Name = "Name",
+                    IsMutable = false,
+                    IsPublic = true,
+                    IsStatic = false,
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.String
+                },
+            ],
+            Functions = [],
+            IsPublic = true,
+            Name = "MethodParameter",
+            TypeParameters = []
+        });
+
         public static Lazy<ClassSignature> MethodLocal { get; } = new(() => new ClassSignature()
         {
             Id = DefId.MethodLocal,
@@ -301,6 +340,7 @@ public partial class TypeChecker
                 StaticFieldInfo.Value,
                 MethodInfo.Value,
                 MethodLocal.Value,
+                MethodParameter.Value,
                 TypeId.Value,
                 MethodId.Value,
             ]);

@@ -19,6 +19,8 @@ public record DefId(ModuleId ModuleId, string FullName)
     public static DefId StaticFieldInfo { get; } = new(ReflectionModuleId, "StaticFieldInfo");
     public static DefId FieldInfo { get; } = new(ReflectionModuleId, "FieldInfo");
     public static DefId MethodLocal { get; } = new(ReflectionModuleId, "MethodLocal");
+    public static DefId MethodParameter { get; } = new(ReflectionModuleId, "MethodParameter");
+    public static DefId VariablePlace { get; } = new(ReflectionModuleId, "VariablePlace");
 
     public static DefId BoxedValue { get; } = new(CoreLibModuleId, "BoxedValue");
     public static DefId ObjectHeader { get; } = new(CoreLibModuleId, "ObjectHeader");

@@ -34,6 +34,45 @@ typedef struct {
 typedef uint32_t TypeId;
 
 typedef PACK(struct {
+    TypeId typeId;
+}) ObjectHeader;
+
+typedef PACK(struct {
+    uint16_t variantIdentifier;
+    int16_t offset;
+}) VariablePlaceOffsetVariant;
+
+typedef PACK(struct {
+    uint16_t variantIdentifier;
+    int16_t offset;
+}) VariablePlacePointerVariant;
+
+typedef PACK(struct {
+    union {
+        uint16_t variantIdentifier;
+        VariablePlaceOffsetVariant offsetInfo;
+        VariablePlacePointerVariant pointerInfo;
+    };
+}) VariablePlace;
+
+typedef PACK(struct {
+    TypeId typeId;
+    VariablePlace place;
+    string name;
+}) MethodParameter;
+
+typedef PACK(struct {
+    uint64_t length;
+    MethodParameter items[];
+}) MethodParameterArray;
+
+typedef PACK(struct {
+    ObjectHeader objectHeader;
+    uint32_t _padding;
+    MethodParameterArray items;
+}) MethodParameterArrayBoxedValue;
+
+typedef PACK(struct {
     string name;
     TypeId typeId;
     uint16_t offset;
@@ -63,7 +102,7 @@ typedef PACK(struct {
 }) FieldInfoArrayBoxedValue;
 
 typedef PACK(struct {
-    TypeId typeId;
+    ObjectHeader objectHeader;
     uint32_t _padding;
     StaticFieldInfoArray items;
 }) StaticFieldInfoArrayBoxedValue;
@@ -79,7 +118,7 @@ typedef PACK(struct {
 }) VariantInfoArray;
 
 typedef PACK(struct {
-    TypeId typeId;
+    ObjectHeader objectHeader;
     uint32_t _padding;
     VariantInfoArray items;
 }) VariantInfoArrayBoxedValue;
@@ -144,12 +183,6 @@ typedef PACK(struct {
 
 typedef PACK(struct {
     TypeId typeId;
-    uint32_t _padding;
-    TypeIdArray parameters;
-}) ParametersBoxedValue;
-
-typedef PACK(struct {
-    TypeId typeId;
     int16_t stackOffset;
     uint16_t _padding;
 }) MethodLocal;
@@ -160,7 +193,7 @@ typedef PACK(struct {
 }) MethodLocalArray;
 
 typedef PACK(struct {
-    TypeId typeId;
+    ObjectHeader objectHeader;
     uint32_t _padding;
     MethodLocalArray locals;
 }) LocalsBoxedValue;
@@ -169,7 +202,7 @@ typedef PACK(struct {
     uint32_t methodId;
     uint32_t _padding;
     string name;
-    ParametersBoxedValue *parameters;
+    MethodParameterArrayBoxedValue *parameters;
     LocalsBoxedValue *locals;
 }) MethodInfo;
 extern MethodInfo methodInfoArray[];
@@ -287,16 +320,38 @@ void print_method_info(MethodInfo* handle)
     print_u32(handle->methodId);
 
     fputs("\n    parameters: \n            length: ", stdout);
-    TypeIdArray* parameters = &handle->parameters->parameters;
+    MethodParameterArray* parameters = &handle->parameters->items;
     print_u64(parameters->length);
     fputs("\n", stdout);
     for (size_t i = 0; i < parameters->length; i++)
     {
-        fputs("            [", stdout);
-        print_u64(i);
-        fputs("]: ", stdout);
-        print_u32(parameters->typeIds[i]);
-        fputs("\n", stdout); }
+        if (i > 0)
+        {
+            fputs("\n", stdout);
+        }
+        MethodParameter parameter = parameters->items[i];
+        fputs("            - name: ", stdout);
+        print_string(parameter.name);
+        fputs("\n              typeId: ", stdout);
+        print_u32(parameter.typeId);
+        fputs("\n              place:\n              - variant: ", stdout);
+        switch (parameter.place.variantIdentifier)
+        {
+            case 0:
+                fputs("Offset", stdout);
+                fputs("\n                offset: ", stdout);
+                print_u16(parameter.place.offsetInfo.offset);
+                break;
+            case 1:
+                fputs("Pointer", stdout);
+                fputs("\n                pointerPlace: ", stdout);
+                print_u16(parameter.place.pointerInfo.offset);
+                break;
+            default:
+                assert(0);
+                break;
+        }
+    }
     fputs("\n    locals: \n            length: ", stdout);
     MethodLocalArray* locals = &handle->locals->locals;
     print_u64(locals->length);
