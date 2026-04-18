@@ -518,6 +518,9 @@ void print_all_methods()
     }
 }
 
+void print_stack_trace()
+{}
+
 void trigger_gc() {
 
 }

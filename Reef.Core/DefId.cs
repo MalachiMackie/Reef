@@ -8,6 +8,7 @@ public record DefId(ModuleId ModuleId, string FullName)
 
     public static DefId GetMemoryUsageBytes { get; } = new(DiagnosticsModuleId, $"{DiagnosticsModuleId}:::get_memory_usage_bytes");
     public static DefId TriggerGC { get; } = new(DiagnosticsModuleId, $"{DiagnosticsModuleId}:::trigger_gc");
+    public static DefId PrintStackTrace { get; } = new(DiagnosticsModuleId, $"{DiagnosticsModuleId}:::print_stack_trace");
     public static DefId PrintAllTypes { get; } = new(DiagnosticsModuleId, $"{DiagnosticsModuleId}:::print_all_types");
     public static DefId PrintAllMethods { get; } = new(DiagnosticsModuleId, $"{DiagnosticsModuleId}:::print_all_methods");
 

@@ -29,6 +29,52 @@ public class MemoryTests : IntegrationTestBase
     }
 
     [Fact]
+    [TestMe]
+    public async Task PrintStackTrace()
+    {
+        await SetupTest(
+            """
+            use :::Reef:::Core:::Diagnostics:::print_stack_trace;
+
+            fn SomeFn()
+            {
+                RecursiveFnEntry();
+            }
+
+            fn RecursiveFnEntry()
+            {
+                RecursiveFn(3);
+            }
+
+            fn RecursiveFn(level: u8)
+            {
+                if (level == 0)
+                {
+                    print_stack_trace();
+                    return;
+                }
+                RecursiveFn(level - 1);
+            }
+
+            SomeFn();
+            """);
+
+        var result = await Run();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be(
+            """
+            main:::RecursiveFn
+            main:::RecursiveFn
+            main:::RecursiveFn
+            main:::RecursiveFnEntry
+            main:::SomeFn
+            main:::_Main
+            """
+        );
+    }
+
+    [Fact(Skip = "Only for testing")]
+    // [Fact, TestMe]
     public async Task PrintTypes()
     {
         await SetupTest(
@@ -50,7 +96,8 @@ public class MemoryTests : IntegrationTestBase
         result.StandardOutput.Should().BeEmpty();
     }
 
-    [Fact]
+    [Fact(Skip = "Only for testing")]
+    // [Fact, TestMe]
     public async Task PrintMethods()
     {
         await SetupTest(

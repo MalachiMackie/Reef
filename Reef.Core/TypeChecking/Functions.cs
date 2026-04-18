@@ -349,6 +349,23 @@ public partial class TypeChecker
             ReturnType = InstantiatedClass.Unit
         };
 
+        public static FunctionSignature PrintStackTrace => new(
+            DefId.PrintStackTrace,
+            Token.Identifier("print_stack_trace", SourceSpan.Default),
+            [],
+            [],
+            IsStatic: true,
+            IsMutable: false,
+            Expressions: [],
+            ExternName: "print_stack_trace",
+            IsMutableReturn: true,
+            IsPublic: true
+        )
+        {
+            OwnerType = null,
+            ReturnType = InstantiatedClass.Unit
+        };
+
         public static FunctionSignature PrintAllTypes => new(
             DefId.PrintAllTypes,
             Token.Identifier("print_all_types", SourceSpan.Default),
@@ -384,6 +401,7 @@ public partial class TypeChecker
 
         public static IReadOnlyList<FunctionSignature> DiagnosticFunctions => [
             TriggerGC,
+            PrintStackTrace,
             PrintAllTypes,
             PrintAllMethods,
             GetMemoryUsage
