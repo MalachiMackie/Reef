@@ -535,19 +535,36 @@ MethodInfo* try_get_reef_method_by_instruction_address(uint64_t address)
     return NULL;
 }
 
-void print_stack_trace()
+typedef void(*traverse_stack_fn)(uint16_t depth, uint64_t instructionAddress, MethodInfo* method, void* data);
+
+void traverse_stack(traverse_stack_fn fn, void* data)
 {
     uint64_t* nextRbp = get_rbp();
     uint64_t returnAddress = *(nextRbp + 1);
     MethodInfo* reefMethod = try_get_reef_method_by_instruction_address(returnAddress);
+    uint16_t depth = 0;
     while (reefMethod != NULL)
     {
-        print_string(reefMethod->fullyQualifiedName);
-        fputs("\n", stdout);
+        fn(depth, returnAddress, reefMethod, data);
         nextRbp = (uint64_t*)*nextRbp;
         returnAddress = *(nextRbp + 1);
         reefMethod = try_get_reef_method_by_instruction_address(returnAddress);
+        depth++;
     }
+}
+
+void print_method(uint16_t depth, uint64_t instructionAddress, MethodInfo* method, void* data)
+{
+    if (depth > 0)
+    {
+        fputs("\n", stdout);
+    }
+    print_string(method->fullyQualifiedName);
+}
+
+void print_stack_trace()
+{
+    traverse_stack(&print_method, NULL);
 }
 
 void trigger_gc() {
