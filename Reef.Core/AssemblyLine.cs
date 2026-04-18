@@ -833,6 +833,14 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             ],
             Locals: []), []);
 
+        _codeSegment.AppendLine(
+            """
+            get_rbp:
+                mov     rax, rbp
+                ret
+            """
+        );
+
         var mainMethod = mainModule[0].Methods.OfType<LoweredMethod>().Single(x => x.Name == "_Main");
 
         foreach (var externMethod in modules.SelectMany(x => x.Methods)
@@ -905,6 +913,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                 global methodInfoArray
                 global methodInfoCount
                 global methodInfoSize
+                global get_rbp
                 {_codeSegment}
                 {_dataSegment}
                 {_stringDataSubSegment}

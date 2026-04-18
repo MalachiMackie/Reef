@@ -1,4 +1,5 @@
 ﻿#include <assert.h>
+#include <corecrt_search.h>
 #include <stdalign.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -518,8 +519,36 @@ void print_all_methods()
     }
 }
 
+extern void* get_rbp();
+
+MethodInfo* try_get_reef_method_by_instruction_address(uint64_t address)
+{
+    for (uint32_t i = 0; i < methodInfoCount; i++)
+    {
+        MethodInfo* method = &methodInfoArray[i];
+        if (address > method->addressFrom && address < method->addressTo)
+        {
+            return method;
+        }
+    }
+
+    return NULL;
+}
+
 void print_stack_trace()
-{}
+{
+    uint64_t* nextRbp = get_rbp();
+    uint64_t returnAddress = *(nextRbp + 1);
+    MethodInfo* reefMethod = try_get_reef_method_by_instruction_address(returnAddress);
+    while (reefMethod != NULL)
+    {
+        print_string(reefMethod->fullyQualifiedName);
+        fputs("\n", stdout);
+        nextRbp = (uint64_t*)*nextRbp;
+        returnAddress = *(nextRbp + 1);
+        reefMethod = try_get_reef_method_by_instruction_address(returnAddress);
+    }
+}
 
 void trigger_gc() {
 

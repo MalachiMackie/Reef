@@ -69,6 +69,7 @@ public class MemoryTests : IntegrationTestBase
             main:::RecursiveFnEntry
             main:::SomeFn
             main:::_Main
+
             """
         );
     }
