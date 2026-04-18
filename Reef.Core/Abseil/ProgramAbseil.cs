@@ -211,11 +211,11 @@ public partial class ProgramAbseil
 
     private static LoweredExternMethod ExternMethodFromSignature(TypeChecker.FunctionSignature signature)
     {
-        Debug.Assert(signature.Extern);
+        Debug.Assert(signature.ExternName is not null);
 
         return new LoweredExternMethod(
             signature.Id,
-            signature.Name,
+            signature.ExternName,
             [.. signature.TypeParameters.Select(x => new LoweredGenericPlaceholder(signature.Id, x.GenericName))],
             ReturnValue: new MethodLocal(ReturnValueLocalName, null, GetTypeReference(signature.ReturnType)),
             ParameterLocals: [..signature.Parameters.Select((x, i) => new MethodLocal(
@@ -382,7 +382,7 @@ public partial class ProgramAbseil
                 IsStatic: true,
                 IsMutable: false,
                 _mainModule.Expressions,
-                Extern: false,
+                ExternName: null,
                 false,
                 IsPublic: true)
         {
@@ -1003,7 +1003,7 @@ public partial class ProgramAbseil
             ?? _importedModules.SelectMany(x => x.Methods)
                 .First(x => x.Id == functionId);
 
-        IReadOnlyList<ILoweredTypeReference> resultingTypeArguments = [.. typeArguments, .. ownerTypeArguments];
+        IReadOnlyList<ILoweredTypeReference> resultingTypeArguments = [..ownerTypeArguments, .. typeArguments];
 
         Debug.Assert(resultingTypeArguments.Count == loweredMethod.TypeParameters.Count);
 

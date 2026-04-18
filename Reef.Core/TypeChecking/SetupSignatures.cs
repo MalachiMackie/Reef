@@ -181,7 +181,7 @@ public partial class TypeChecker
                             IsStatic: true,
                             IsMutable: false,
                             Expressions: [],
-                            Extern: true,
+                            ExternName: $"{unionSignature.Id.FullName}__Create__{variant.Name.StringValue}",
                             IsMutableReturn: true,
                             IsPublic: true)
                         {

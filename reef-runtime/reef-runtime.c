@@ -127,6 +127,7 @@ typedef PACK(struct {
     uint16_t variantIdentifier;
     uint16_t _padding;
     uint32_t __padding;
+    string fullyQualifiedName;
     string name;
     TypeId typeId;
     uint32_t ___padding;
@@ -138,6 +139,7 @@ typedef PACK(struct {
     uint16_t variantIdentifier;
     uint16_t _padding;
     uint32_t __padding;
+    string fullyQualifiedName;
     string name;
     TypeId typeId;
     uint32_t ___padding;
@@ -152,13 +154,17 @@ typedef PACK(struct {
 typedef PACK(struct {
     uint16_t variantIdentifier;
     uint16_t _padding;
-    TypeId pointerToTypeId;
     uint32_t __padding;
+    string fullyQualifiedName;
+    TypeId pointerToTypeId;
+    uint32_t ___padding;
 }) TypeInfoPointerVariant;
 
 typedef PACK(struct {
     uint16_t variantIdentifier;
     uint16_t _padding;
+    uint32_t __padding;
+    string fullyQualifiedName;
     TypeId elementTypeId;
     uint64_t length;
     uint8_t isDynamic;
@@ -201,6 +207,7 @@ typedef PACK(struct {
 typedef PACK(struct {
     uint32_t methodId;
     uint32_t _padding;
+    string fullyQualifiedName;
     string name;
     MethodParameterArrayBoxedValue *parameters;
     LocalsBoxedValue *locals;
@@ -232,37 +239,6 @@ TypeInfo *get_type_info(uint64_t index)
 void print_string(string str)
 {
 	fputs(str.start, stdout);
-}
-
-string get_type_info_name(TypeInfo *handle)
-{
-    switch (handle->variantIdentifier)
-    {
-        case 0: // class
-            return handle->classInfo.name;
-        case 1: // union
-            return handle->unionInfo.name;
-        case 2: // pointer
-        {
-            TypeInfo* pointer_to_handle = get_type_info(handle->pointerInfo.pointerToTypeId);
-            string value;
-
-            // todo: actually get name
-            value.length = 6;
-            value.start = "*thing";
-            return value;
-        }
-        case 3: // array
-        {
-            // todo: actually get name
-            string value;
-            value.length = 10;
-            value.start = "[thing; 1]";
-            return value;
-        }
-        default:
-            assert(0);
-    }
 }
 
 #define DEFINE_PRINT_INT(func_name, int_type)                            \
@@ -317,9 +293,12 @@ void print_size_t_hex(size_t value)
 
 void print_method_info(MethodInfo* handle)
 {
-    print_string(handle->name);
+    print_string(handle->fullyQualifiedName);
     fputs(":\n    id: ", stdout);
     print_u32(handle->methodId);
+
+    fputs("\n    display_name: ", stdout);
+    print_string(handle->name);
 
     fputs("\n    address_from: 0x", stdout);
     print_size_t_hex(handle->addressFrom);
@@ -384,9 +363,11 @@ void print_type_info(TypeInfo *handle)
     {
         case 0: // class
         {
-            print_string(handle->classInfo.name);
+            print_string(handle->classInfo.fullyQualifiedName);
             fputs(":\n    type: class\n    id: ", stdout);
             print_u32(handle->classInfo.typeId);
+            fputs("\n    displayName: ", stdout);
+            print_string(handle->classInfo.name);
             uint64_t fields_count = handle->classInfo.fields->items.length;
             fputs("\n    fields:\n        length: ", stdout);
             print_u64(fields_count);
@@ -410,9 +391,11 @@ void print_type_info(TypeInfo *handle)
         }
         case 1: // union
         {
-            print_string(handle->unionInfo.name);
+            print_string(handle->unionInfo.fullyQualifiedName);
             fputs(":\n    type: union\n    id: ", stdout);
             print_u32(handle->unionInfo.typeId);
+            fputs("\n    displayName: ", stdout);
+            print_string(handle->classInfo.name);
             fputs("\n    variants_count: ", stdout);
             print_u64(handle->unionInfo.variants->items.length);
             fputs("\n", stdout);
@@ -420,13 +403,13 @@ void print_type_info(TypeInfo *handle)
         }
         case 2: // pointer
         {
-            print_string(get_type_info_name(handle));
+            print_string(handle->pointerInfo.fullyQualifiedName);
             fputs(":\n    type: pointer\n", stdout);
             break;
         }
         case 3: // array
         {
-            print_string(get_type_info_name(handle));
+            print_string(handle->arrayInfo.fullyQualifiedName);
             fputs(":\n    type: array\n    is_dynamic: ", stdout);
             if (handle->arrayInfo.isDynamic == 0)
             {

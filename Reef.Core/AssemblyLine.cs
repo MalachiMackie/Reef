@@ -72,9 +72,14 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
     private ulong GetTypeId(ILoweredTypeReference type)
     {
-        if (type is LoweredGenericPlaceholder)
+        if (type is LoweredGenericPlaceholder generic)
         {
-            throw new InvalidOperationException();
+            if (generic.OwnerDefinitionId != _currentMethod?.Id
+                || !_currentTypeArguments.TryGetValue(generic.PlaceholderName, out var typeArgument))
+            {
+                throw new InvalidOperationException();
+            }
+            type = typeArgument;
         }
 
         // todo: _currentTypeArguments I suspect is incorrect here
@@ -127,10 +132,21 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         _methodInfoDataSubSegment.AppendLine($"        dd 0x{methodId:X}");
         bytesWritten += 4;
 
+        _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo.FullyQualifiedName");
+        PadAlignment(ref bytesWritten, _methodInfoDataSubSegment, methodInfoOffsets["FullyQualifiedName"].Alignment);
+        var methodFullyQualifiedName = $"{method.Id.FullName}{(typeArguments.Count == 0 ? "" : $"::<{string.Join(", ", typeArguments.Select(x => x.FullyQualifiedName))}>")}";
+
+        _methodInfoDataSubSegment.AppendLine($"        dq 0x{methodFullyQualifiedName.Length:X}");
+        bytesWritten += 8;
+
+        _methodInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(methodFullyQualifiedName)}");
+        bytesWritten += 8;
+
         _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo.Name");
         PadAlignment(ref bytesWritten, _methodInfoDataSubSegment, methodInfoOffsets["Name"].Alignment);
         _methodInfoDataSubSegment.AppendLine($"        dq 0x{method.Name.Length:X}");
         bytesWritten += 8;
+
         _methodInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(method.Name)}");
         bytesWritten += 8;
 
@@ -325,23 +341,34 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
                         // class
                         var (classVariantIndex, typeInfoVariant) = typeInfoDataType.Variants.Index().First(x => x.Item.Name == "Class");
-                        Debug.Assert(typeInfoVariant.Fields.Count == 5);
+                        Debug.Assert(typeInfoVariant.Fields.Count == 6);
                         var (variantIdentifierIndex, variantIdenitfierName) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "_variantIdentifier");
+                        var (fullyQualifiedNameIndex, fullyQualifiedNameField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "FullyQualifiedName");
                         var (nameIndex, nameField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "Name");
                         var (typeIdIndex, typeIdField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "TypeId");
                         var (staticFieldsIndex, staticFieldsField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "StaticFields");
                         var (fieldsIndex, fieldsField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "Fields");
                         Debug.Assert(variantIdentifierIndex == 0);
-                        Debug.Assert(nameIndex == 1);
-                        Debug.Assert(typeIdIndex == 2);
-                        Debug.Assert(staticFieldsIndex == 3);
-                        Debug.Assert(fieldsIndex == 4);
+                        Debug.Assert(fullyQualifiedNameIndex == 1);
+                        Debug.Assert(nameIndex == 2);
+                        Debug.Assert(typeIdIndex == 3);
+                        Debug.Assert(staticFieldsIndex == 4);
+                        Debug.Assert(fieldsIndex == 5);
 
                         // variantIdentifier
                         Debug.Assert(classVariantFieldOffsets["_variantIdentifier"].Offset == 0);
                         _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.VariantIdentifier");
                         _typeInfoDataSubSegment.AppendLine($"        dw 0x{classVariantIndex:X}");
                         bytesWritten += 2;
+
+                        // fullyQualifiedName
+                        PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, classVariantFieldOffsets["FullyQualifiedName"].Alignment);
+                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName.Length");
+                        _typeInfoDataSubSegment.AppendLine($"        dq 0x{type.FullyQualifiedName.Length:X}");
+                        bytesWritten += 8;
+                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName.Ref");
+                        _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(type.FullyQualifiedName)}");
+                        bytesWritten += 8;
 
                         // name
                         PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, classVariantFieldOffsets["Name"].Alignment);
@@ -472,20 +499,22 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         var UnionVariantSizeInfo = typeInfoSize.VariantSizeInfo["Union"];
                         var unionVariantFieldOffsets = UnionVariantSizeInfo.FieldOffsets;
                         var (unionVariantIndex, typeInfoVariant) = typeInfoDataType.Variants.Index().First(x => x.Item.Name == "Union");
-                        Debug.Assert(typeInfoVariant.Fields.Count == 6);
+                        Debug.Assert(typeInfoVariant.Fields.Count == 7);
 
                         var (variantIdentifierIndex, variantIdenitfierName) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "_variantIdentifier");
+                        var (fullyQualifiedNameIndex, fullyQualifiedNameField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "FullyQualifiedName");
                         var (nameIndex, nameField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "Name");
                         var (typeIdIndex, typeIdField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "TypeId");
                         var (staticFieldsIndex, staticFieldsField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "StaticFields");
                         var (variantsIndex, variantsField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "Variants");
                         var (variantIdentifierGetterIndex, variantIdentifierGetterField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "VariantIdentifierGetter");
                         Debug.Assert(variantIdentifierIndex == 0);
-                        Debug.Assert(nameIndex == 1);
-                        Debug.Assert(typeIdIndex == 2);
-                        Debug.Assert(staticFieldsIndex == 3);
-                        Debug.Assert(variantsIndex == 4);
-                        Debug.Assert(variantIdentifierGetterIndex == 5);
+                        Debug.Assert(fullyQualifiedNameIndex == 1);
+                        Debug.Assert(nameIndex == 2);
+                        Debug.Assert(typeIdIndex == 3);
+                        Debug.Assert(staticFieldsIndex == 4);
+                        Debug.Assert(variantsIndex == 5);
+                        Debug.Assert(variantIdentifierGetterIndex == 6);
 
                         var variantInfoFieldsField = variantInfoVariant.Fields.First(x => x.Name == "Fields");
 
@@ -493,6 +522,15 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.VariantIdentifier");
                         _typeInfoDataSubSegment.AppendLine($"        dw 0x{unionVariantIndex:X}");
                         bytesWritten += 2;
+
+                        // fullyQualifiedName
+                        PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, unionVariantFieldOffsets["FullyQualifiedName"].Alignment);
+                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName.Length");
+                        _typeInfoDataSubSegment.AppendLine($"        dq 0x{type.FullyQualifiedName.Length:X}");
+                        bytesWritten += 8;
+                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName.Ref");
+                        _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(type.FullyQualifiedName)}");
+                        bytesWritten += 8;
 
                         // name
                         PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, unionVariantFieldOffsets["Name"].Alignment);
@@ -675,6 +713,15 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     _typeInfoDataSubSegment.AppendLine($"        dw 0x{pointerToVariantIndex:X}");
                     bytesWritten += 2;
 
+                    // fullyQualifiedName
+                    PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, pointerToVariantFieldOffsets["FullyQualifiedName"].Alignment);
+                    _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName.Length");
+                    _typeInfoDataSubSegment.AppendLine($"        dq 0x{type.FullyQualifiedName.Length:X}");
+                    bytesWritten += 8;
+                    _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName.Ref");
+                    _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(type.FullyQualifiedName)}");
+                    bytesWritten += 8;
+
                     // pointerTo
                     PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, pointerToVariantFieldOffsets["PointerTo"].Alignment);
                     _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.PointerTo.Value");
@@ -696,6 +743,15 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     _typeInfoDataSubSegment.AppendLine($"        dw 0x{arrayVariantIndex:X}");
                     bytesWritten += 2;
 
+                    // fullyQualifiedName
+                    PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, arrayVariantFieldOffsets["FullyQualifiedName"].Alignment);
+                    _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName.Length");
+                    _typeInfoDataSubSegment.AppendLine($"        dq 0x{type.FullyQualifiedName.Length:X}");
+                    bytesWritten += 8;
+                    _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName.Ref");
+                    _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(type.FullyQualifiedName)}");
+                    bytesWritten += 8;
+
                     var elementType = array.ElementType;
                     PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, arrayVariantFieldOffsets["ElementType"].Alignment);
                     _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.ElementType.Value");
@@ -711,7 +767,6 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                     _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.IsDynamic");
                     _typeInfoDataSubSegment.AppendLine($"        db 0x{(array.Length is null ? 1 : 0):X}");
                     bytesWritten += 1;
-                    PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, 8);
 
                     Debug.Assert(bytesWritten == variantSizeInfo.Size, $"bytesWritten: {bytesWritten}, variantSize: {variantSizeInfo.Size}");
 
@@ -920,6 +975,12 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
     private static string GetMethodLabel(IMethod method, IReadOnlyList<ILoweredTypeReference> typeArguments)
     {
+        if (method is LoweredExternMethod)
+        {
+            Debug.Assert(typeArguments.Count == 0);
+            return method.Name;
+        }
+
         var label = typeArguments.Count == 0
             ? method.Id.FullName
             : $"{method.Id.FullName}_{string.Join("_", typeArguments.Select(x => x switch
@@ -1072,8 +1133,6 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                             variantAlignment = Math.Max(variantAlignment, fieldSize.Alignment);
                         }
 
-                        AlignInt(ref variantSize, variantAlignment);
-
                         if (variantSize is null)
                         {
                             size = null;
@@ -1151,6 +1210,8 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             default:
                 throw new NotImplementedException(typeReference.GetType().ToString());
         }
+
+        AlignInt(ref size, alignment);
 
         var typeSize = new TypeSizeInfo(size, alignment, dataTypeVariantSizeInfo);
 

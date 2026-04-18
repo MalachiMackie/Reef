@@ -23,95 +23,56 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
     public void SingleTest()
     {
         const string source = """
-                        class SubClass {pub field B: string}
-                        class MyClass {pub field A: SubClass}
-                        var a = new MyClass{A = new SubClass{B = "hi"}};
-                        var b = a.A.B;
-                        """;
+                         class MyClass<T>
+                         {
+                             static fn SomeFn<T1>(){}
+
+                             static fn OtherFn()
+                             {
+                                 SomeFn::<string>();
+                             }
+                         }
+                         """;
         var expectedProgram = LoweredProgram(ModuleId,
-            types:
-            [
-                DataType(ModuleId, "SubClass",
-                                    variants:
-                                    [
-                                        Variant("_classVariant", [Field("B", StringT)])
-                                    ]),
-                                DataType(ModuleId, "MyClass",
-                                    variants:
-                                    [
-                                        Variant("_classVariant", [Field("A", new LoweredPointer(BoxedValue(ConcreteTypeReference("SubClass", ModuleId))))])
-                                    ]),
+            types: [
+                DataType(ModuleId, "MyClass", ["T"], [Variant("_classVariant")])
             ],
-            methods:
-            [
-                Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
-                                    [
-                                        new BasicBlock(
-                                            new BasicBlockId("bb0"),
-                                            [],
-                                            new MethodCall(
-                                                new LoweredFunctionReference(
-                                                    DefId.Allocate, []),
-                                                [new SizeOf(BoxedValue(ConcreteTypeReference("MyClass", ModuleId)))],
-                                                new Local("_local0"),
-                                                new BasicBlockId("bb1"))),
-                                        new BasicBlock(new BasicBlockId("bb1"), [
-                                            ..CreateBoxedObject(
-                                                new Deref(new Local("_local0")),
-                                                ConcreteTypeReference("MyClass", ModuleId)),
-                                        ], AllocateMethodCall(
-                                            BoxedValue(ConcreteTypeReference("SubClass", ModuleId)),
-                                            new Field(new Field(new Deref(new Local("_local0")), "Value", "_classVariant"), "A", "_classVariant"),
-                                            BB2)),
-                                        new BasicBlock(
-                                            BB2,
-                                            [
-                                                ..CreateBoxedObject(
-                                                    new Deref(new Field(
-                                                        new Field(new Deref(new Local("_local0")), "Value", "_classVariant"),
-                                                        "A",
-                                                        "_classVariant")),
-                                                    ConcreteTypeReference("SubClass", ModuleId)),
-                                                new Assign(
-                                                    new Field(
-                                                        new Field(
-                                                            new Deref(new Field(
-                                                                new Field(new Deref(new Local("_local0")), "Value", "_classVariant"),
-                                                                "A",
-                                                                "_classVariant")),
-                                                            "Value",
-                                                            "_classVariant"),
-                                                        "B",
-                                                        "_classVariant"
-                                                    ),
-                                                    new Use(new StringConstant("hi"))),
-                                                new Assign(
-                                                    new Local("_local1"),
-                                                    new Use(new Copy(
-                                                        new Field(
-                                                            new Field(
-                                                                new Deref(new Field(
-                                                                    new Field(new Deref(new Local("_local0")), "Value", "_classVariant"),
-                                                                    "A",
-                                                                    "_classVariant")),
-                                                                "Value",
-                                                                "_classVariant"),
-                                                            "B",
-                                                            "_classVariant"
-                                                        )
-                                                    )))
-                                            ],
-                                            new GoTo(BB3)),
-                                        new BasicBlock(BB3, [], new Return())
-                                    ],
-                                    Unit,
-                                    locals:
-                                    [
-                                        new MethodLocal("_local0", "a",
-                                            new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass",
-                                                new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
-                                        new MethodLocal("_local1", "b", StringT),
-                                    ])
+            methods: [
+                Method(
+                                     new DefId(ModuleId, $"{ModuleId}:::MyClass__SomeFn"),
+                                     "MyClass__SomeFn",
+                                     [
+                                         new BasicBlock(new BasicBlockId("bb0"), [], new Return())
+                                     ],
+                                     Unit,
+                                     typeParameters: [
+                                         (new DefId(ModuleId, $"{ModuleId}:::MyClass"), "T"),
+                                         (new DefId(ModuleId, $"{ModuleId}:::MyClass__SomeFn"), "T1")
+                                     ]),
+                                 Method(
+                                     new DefId(ModuleId, $"{ModuleId}:::MyClass__OtherFn"),
+                                     "MyClass__OtherFn",
+                                     [
+                                         new BasicBlock(
+                                             new BasicBlockId("bb0"),
+                                             [],
+                                             new MethodCall(
+                                                 new LoweredFunctionReference(
+                                                     new DefId(ModuleId, $"{ModuleId}:::MyClass__SomeFn"),
+                                                     [
+                                                         new LoweredGenericPlaceholder(
+                                                             new DefId(ModuleId, $"{ModuleId}:::MyClass"),
+                                                             "T"),
+                                                         StringT
+                                                     ]),
+                                                 [],
+                                                 new Local("_local0"),
+                                                 new BasicBlockId("bb1"))),
+                                         new BasicBlock(new BasicBlockId("bb1"), [], new Return())
+                                     ],
+                                     Unit,
+                                     locals: [new MethodLocal("_local0", null, Unit)],
+                                     typeParameters: [(new DefId(ModuleId, $"{ModuleId}:::MyClass"), "T")])
             ]);
         var program = CreateProgram(ModuleId, source);
         var (loweredProgram, _) = Lower(program);

@@ -128,39 +128,60 @@ public record MethodLocal(string CompilerGivenName, string? UserGivenName, ILowe
 
 public record LoweredFunctionReference(
     DefId DefinitionId,
-    IReadOnlyList<ILoweredTypeReference> TypeArguments) : ILoweredTypeReference;
+    IReadOnlyList<ILoweredTypeReference> TypeArguments) : ILoweredTypeReference
+{
+    public override string? ToString() => FullyQualifiedName;
 
-public interface ILoweredTypeReference;
+    public string FullyQualifiedName => $"{DefinitionId.FullName}{(TypeArguments.Count == 0 ? "" : $"::<{string.Join(", ", TypeArguments.Select(x => x.FullyQualifiedName))}>")}";
+}
+
+public interface ILoweredTypeReference
+{
+    string FullyQualifiedName { get; }
+}
 
 public record LoweredConcreteTypeReference(
     string Name,
     DefId DefinitionId,
     IReadOnlyList<ILoweredTypeReference> TypeArguments) : ILoweredTypeReference
 {
-    public override string? ToString()
-    {
-        return $"{Name}::<{string.Join(", ", TypeArguments)}>";
-    }
+    public override string? ToString() => FullyQualifiedName;
+
+    public string FullyQualifiedName => $"{DefinitionId.FullName}{(TypeArguments.Count == 0 ? "" : $"::<{string.Join(", ", TypeArguments.Select(x => x.FullyQualifiedName))}>")}";
 }
 
-public record LoweredGenericPlaceholder(DefId OwnerDefinitionId, string PlaceholderName) : ILoweredTypeReference;
+public record LoweredGenericPlaceholder(DefId OwnerDefinitionId, string PlaceholderName) : ILoweredTypeReference
+{
+    public override string? ToString() => FullyQualifiedName;
+
+    public string FullyQualifiedName => $"{OwnerDefinitionId.FullName}:::{PlaceholderName}";
+}
 
 public record LoweredArray(ILoweredTypeReference ElementType, uint? Length) : ILoweredTypeReference
 {
     public override string? ToString()
     {
-        return $"[{ElementType}; {Length}]";
+        return FullyQualifiedName;
     }
+
+    public string FullyQualifiedName => $"[{ElementType.FullyQualifiedName}; {Length?.ToString() ?? "dynamic"}]";
 }
 
 public record LoweredPointer(ILoweredTypeReference PointerTo) : ILoweredTypeReference
 {
     public override string? ToString()
     {
-        return $"*{PointerTo}";
+        return FullyQualifiedName;
     }
+
+    public string FullyQualifiedName => $"*{PointerTo.FullyQualifiedName}";
 }
-public record RawPointer : ILoweredTypeReference;
+public record RawPointer : ILoweredTypeReference
+{
+    public override string? ToString() => FullyQualifiedName;
+
+    public string FullyQualifiedName => "rawPointer";
+}
 
 public record DataType(
     DefId Id,

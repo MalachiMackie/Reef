@@ -48,7 +48,7 @@ public partial class TypeChecker
                     IsStatic: true,
                     IsMutable: false,
                     Expressions: [],
-                    true,
+                    ExternName: DefId.Result.FullName + "__Create_Ok",
                     IsMutableReturn: true,
                     IsPublic: true)
             {
@@ -63,7 +63,7 @@ public partial class TypeChecker
                 IsStatic: true,
                 IsMutable: false,
                 Expressions: [],
-                true,
+                ExternName: DefId.Result.FullName + "__Create_Error",
                 IsMutableReturn: true,
                 IsPublic: true)
             {
@@ -153,6 +153,14 @@ public partial class TypeChecker
                             IsPublic = true,
                             IsMutable = false,
                             IsStatic = false,
+                            Name = "FullyQualifiedName",
+                            StaticInitializer = null,
+                            Type = InstantiatedClass.String
+                        },
+                        new TypeField {
+                            IsPublic = true,
+                            IsMutable = false,
+                            IsStatic = false,
                             Name = "Name",
                             StaticInitializer = null,
                             Type = InstantiatedClass.String
@@ -195,6 +203,14 @@ public partial class TypeChecker
                 {
                     Name = "Union",
                     Fields = [
+                        new TypeField {
+                            IsPublic = true,
+                            IsMutable = false,
+                            IsStatic = false,
+                            Name = "FullyQualifiedName",
+                            StaticInitializer = null,
+                            Type = InstantiatedClass.String
+                        },
                         new TypeField {
                             IsPublic = true,
                             IsMutable = false,
@@ -256,6 +272,14 @@ public partial class TypeChecker
                             IsPublic = true,
                             IsMutable = false,
                             IsStatic = false,
+                            Name = "FullyQualifiedName",
+                            StaticInitializer = null,
+                            Type = InstantiatedClass.String
+                        },
+                        new TypeField {
+                            IsPublic = true,
+                            IsMutable = false,
+                            IsStatic = false,
                             Name = "PointerTo",
                             StaticInitializer = null,
                             Type = InstantiatedClass.TypeId
@@ -265,6 +289,14 @@ public partial class TypeChecker
                 new ClassUnionVariant {
                     Name = "Array",
                     Fields = [
+                        new TypeField {
+                            IsPublic = true,
+                            IsMutable = false,
+                            IsStatic = false,
+                            Name = "FullyQualifiedName",
+                            StaticInitializer = null,
+                            Type = InstantiatedClass.String
+                        },
                         new TypeField {
                             IsPublic = true,
                             IsMutable = false,

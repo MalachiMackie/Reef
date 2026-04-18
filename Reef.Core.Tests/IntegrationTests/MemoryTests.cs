@@ -170,8 +170,16 @@ public class MemoryTests : IntegrationTestBase
             """
         );
 
+        // ObjectHeader: 4 bytes
+        // Padding: 4 bytes
+        // ArrayLength: 8 bytes
+        // MyClassPointer: 8 bytes
+        //
+        // ObjectHeader: 8 bytes
+        // MyClassObject: 8 bytes
+
         var result = await Run();
         result.ExitCode.Should().Be(0);
-        result.StandardOutput.Should().Be("32");
+        result.StandardOutput.Should().Be("40");
     }
 }

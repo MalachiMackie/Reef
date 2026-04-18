@@ -120,6 +120,14 @@ public partial class TypeChecker
                     Type = InstantiatedClass.MethodId
                 },
                 new TypeField {
+                    Name = "FullyQualifiedName",
+                    IsMutable = false,
+                    IsPublic = true,
+                    IsStatic = false,
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.String
+                },
+                new TypeField {
                     Name = "Name",
                     IsMutable = false,
                     IsPublic = true,
@@ -503,7 +511,7 @@ public partial class TypeChecker
                 IsStatic: false,
                 IsMutable: false,
                 Expressions: [],
-                true,
+                ExternName: DefId.FunctionObject_Call(parameterCount).FullName,
                 IsMutableReturn: false, // todo: I don't know what to do with this, how can a function object specify mutable return?
                 IsPublic: true)
             {

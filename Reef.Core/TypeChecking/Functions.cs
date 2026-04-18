@@ -20,7 +20,7 @@ public partial class TypeChecker
             fn.StaticModifier is not null,
             fn.MutabilityModifier is not null,
             fn.Block.Expressions,
-            false,
+            ExternName: null,
             fn.ReturnMutabilityModifier is { Type: TokenType.Mut },
             fn.AccessModifier is { Token.Type: TokenType.Pub })
         {
@@ -100,7 +100,7 @@ public partial class TypeChecker
 
     private void TypeCheckFunctionBody(FunctionSignature fnSignature)
     {
-        if (fnSignature.Extern)
+        if (fnSignature.ExternName is not null)
         {
             return;
         }
@@ -299,7 +299,7 @@ public partial class TypeChecker
         bool IsStatic,
         bool IsMutable,
         IReadOnlyList<IExpression> Expressions,
-        bool Extern,
+        string? ExternName,
         bool IsMutableReturn,
         bool IsPublic) : ITypeSignature
     {
@@ -324,7 +324,7 @@ public partial class TypeChecker
             IsStatic: true,
             IsMutable: false,
             Expressions: [],
-            Extern: true,
+            ExternName: "get_memory_usage_bytes",
             IsMutableReturn: true,
             IsPublic: true)
         {
@@ -340,7 +340,7 @@ public partial class TypeChecker
             IsStatic: true,
             IsMutable: false,
             Expressions: [],
-            Extern: true,
+            ExternName: "print_all_methods",
             IsMutableReturn: true,
             IsPublic: true
         )
@@ -357,7 +357,7 @@ public partial class TypeChecker
             IsStatic: true,
             IsMutable: false,
             Expressions: [],
-            Extern: true,
+            ExternName: "print_all_types",
             IsMutableReturn: true,
             IsPublic: true
         )
@@ -374,7 +374,7 @@ public partial class TypeChecker
             IsStatic: true,
             IsMutable: false,
             Expressions: [],
-            Extern: true,
+            ExternName: "trigger_gc",
             IsMutableReturn: true,
             IsPublic: true)
         {
@@ -391,14 +391,14 @@ public partial class TypeChecker
 
         // Core
         public static FunctionSignature PrintString => CreatePrintString();
-        public static FunctionSignature PrintI8 => CreatePrintInt(InstantiatedClass.Int8, DefId.PrintI8);
-        public static FunctionSignature PrintI16 => CreatePrintInt(InstantiatedClass.Int16, DefId.PrintI16);
-        public static FunctionSignature PrintI32 => CreatePrintInt(InstantiatedClass.Int32, DefId.PrintI32);
-        public static FunctionSignature PrintI64 => CreatePrintInt(InstantiatedClass.Int64, DefId.PrintI64);
-        public static FunctionSignature PrintU8 => CreatePrintInt(InstantiatedClass.UInt8, DefId.PrintU8);
-        public static FunctionSignature PrintU16 => CreatePrintInt(InstantiatedClass.UInt16, DefId.PrintU16);
-        public static FunctionSignature PrintU32 => CreatePrintInt(InstantiatedClass.UInt32, DefId.PrintU32);
-        public static FunctionSignature PrintU64 => CreatePrintInt(InstantiatedClass.UInt64, DefId.PrintU64);
+        public static FunctionSignature PrintI8 => CreatePrintInt(InstantiatedClass.Int8, DefId.PrintI8, "print_i8");
+        public static FunctionSignature PrintI16 => CreatePrintInt(InstantiatedClass.Int16, DefId.PrintI16, "print_i16");
+        public static FunctionSignature PrintI32 => CreatePrintInt(InstantiatedClass.Int32, DefId.PrintI32, "print_i32");
+        public static FunctionSignature PrintI64 => CreatePrintInt(InstantiatedClass.Int64, DefId.PrintI64, "print_i64");
+        public static FunctionSignature PrintU8 => CreatePrintInt(InstantiatedClass.UInt8, DefId.PrintU8, "print_u8");
+        public static FunctionSignature PrintU16 => CreatePrintInt(InstantiatedClass.UInt16, DefId.PrintU16, "print_u16");
+        public static FunctionSignature PrintU32 => CreatePrintInt(InstantiatedClass.UInt32, DefId.PrintU32, "print_u32");
+        public static FunctionSignature PrintU64 => CreatePrintInt(InstantiatedClass.UInt64, DefId.PrintU64, "print_u64");
 
         public static FunctionSignature Allocate => CreateAllocate();
         public static FunctionSignature Box => CreateBox();
@@ -415,7 +415,7 @@ public partial class TypeChecker
                 IsStatic: true,
                 IsMutable: false,
                 [],
-                Extern: true,
+                ExternName: "allocate",
                 IsMutableReturn: true,
                 IsPublic: true)
             {
@@ -445,7 +445,7 @@ public partial class TypeChecker
                 IsStatic: true,
                 IsMutable: false,
                 Expressions: [],
-                Extern: true,
+                ExternName: "box",
                 IsMutableReturn: true,
                 IsPublic: true)
             {
@@ -487,7 +487,7 @@ public partial class TypeChecker
                 IsStatic: true,
                 IsMutable: false,
                 Expressions: [],
-                Extern: true,
+                ExternName: "unbox",
                 IsMutableReturn: true,
                 IsPublic: true)
             {
@@ -528,7 +528,7 @@ public partial class TypeChecker
                 IsStatic: true,
                 IsMutable: false,
                 Expressions: [],
-                Extern: true,
+                ExternName: "print_string",
                 IsMutableReturn: true,
                 IsPublic: true)
             {
@@ -546,7 +546,7 @@ public partial class TypeChecker
             return signature;
         }
 
-        private static FunctionSignature CreatePrintInt(InstantiatedClass type, DefId id)
+        private static FunctionSignature CreatePrintInt(InstantiatedClass type, DefId id, string externName)
         {
             var parameters = new OrderedDictionary<string, FunctionSignatureParameter>();
             var signature = new FunctionSignature(
@@ -557,7 +557,7 @@ public partial class TypeChecker
                 IsStatic: true,
                 IsMutable: false,
                 Expressions: [],
-                Extern: true,
+                ExternName: externName,
                 true,
                 IsPublic: true)
             {

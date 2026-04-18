@@ -1933,7 +1933,7 @@ public partial class ProgramAbseil
         }
 
         functionReference = GetFunctionReference(instantiatedFunction.FunctionId,
-            [.. instantiatedFunction.TypeArguments.Select<TypeChecker.GenericTypeReference, ILoweredTypeReference>(GetTypeReference)],
+            [.. instantiatedFunction.TypeArguments.Select(GetTypeReference)],
             ownerTypeArguments);
 
         arguments.AddRange(originalArguments);

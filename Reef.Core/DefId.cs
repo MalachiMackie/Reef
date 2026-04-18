@@ -6,37 +6,37 @@ public record DefId(ModuleId ModuleId, string FullName)
     public static ModuleId DiagnosticsModuleId { get; } = new("Reef:::Core:::Diagnostics");
     public static ModuleId ReflectionModuleId { get; } = new("Reef:::Core:::Reflection");
 
-    public static DefId GetMemoryUsageBytes { get; } = new(DiagnosticsModuleId, "get_memory_usage_bytes");
-    public static DefId TriggerGC { get; } = new(DiagnosticsModuleId, "trigger_gc");
-    public static DefId PrintAllTypes { get; } = new(DiagnosticsModuleId, "print_all_types");
-    public static DefId PrintAllMethods { get; } = new(DiagnosticsModuleId, "print_all_methods");
+    public static DefId GetMemoryUsageBytes { get; } = new(DiagnosticsModuleId, $"{DiagnosticsModuleId}:::get_memory_usage_bytes");
+    public static DefId TriggerGC { get; } = new(DiagnosticsModuleId, $"{DiagnosticsModuleId}:::trigger_gc");
+    public static DefId PrintAllTypes { get; } = new(DiagnosticsModuleId, $"{DiagnosticsModuleId}:::print_all_types");
+    public static DefId PrintAllMethods { get; } = new(DiagnosticsModuleId, $"{DiagnosticsModuleId}:::print_all_methods");
 
-    public static DefId TypeId { get; } = new(ReflectionModuleId, "TypeId");
-    public static DefId MethodId { get; } = new(ReflectionModuleId, "MethodId");
-    public static DefId MethodInfo { get; } = new(ReflectionModuleId, "MethodInfo");
-    public static DefId TypeInfo { get; } = new(ReflectionModuleId, "TypeInfo");
-    public static DefId VariantInfo { get; } = new(ReflectionModuleId, "VariantInfo");
-    public static DefId StaticFieldInfo { get; } = new(ReflectionModuleId, "StaticFieldInfo");
-    public static DefId FieldInfo { get; } = new(ReflectionModuleId, "FieldInfo");
-    public static DefId MethodLocal { get; } = new(ReflectionModuleId, "MethodLocal");
-    public static DefId MethodParameter { get; } = new(ReflectionModuleId, "MethodParameter");
-    public static DefId VariablePlace { get; } = new(ReflectionModuleId, "VariablePlace");
+    public static DefId TypeId { get; } = new(ReflectionModuleId, $"{ReflectionModuleId}:::TypeId");
+    public static DefId MethodId { get; } = new(ReflectionModuleId, $"{ReflectionModuleId}:::MethodId");
+    public static DefId MethodInfo { get; } = new(ReflectionModuleId, $"{ReflectionModuleId}:::MethodInfo");
+    public static DefId TypeInfo { get; } = new(ReflectionModuleId, $"{ReflectionModuleId}:::TypeInfo");
+    public static DefId VariantInfo { get; } = new(ReflectionModuleId, $"{ReflectionModuleId}:::VariantInfo");
+    public static DefId StaticFieldInfo { get; } = new(ReflectionModuleId, $"{ReflectionModuleId}:::StaticFieldInfo");
+    public static DefId FieldInfo { get; } = new(ReflectionModuleId, $"{ReflectionModuleId}:::FieldInfo");
+    public static DefId MethodLocal { get; } = new(ReflectionModuleId, $"{ReflectionModuleId}:::MethodLocal");
+    public static DefId MethodParameter { get; } = new(ReflectionModuleId, $"{ReflectionModuleId}:::MethodParameter");
+    public static DefId VariablePlace { get; } = new(ReflectionModuleId, $"{ReflectionModuleId}:::VariablePlace");
 
-    public static DefId BoxedValue { get; } = new(CoreLibModuleId, "BoxedValue");
-    public static DefId ObjectHeader { get; } = new(CoreLibModuleId, "ObjectHeader");
+    public static DefId BoxedValue { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::BoxedValue");
+    public static DefId ObjectHeader { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::ObjectHeader");
 
-    public static DefId Unbox { get; } = new(CoreLibModuleId, "unbox");
-    public static DefId Box { get; } = new(CoreLibModuleId, "box");
-    public static DefId PrintString { get; } = new(CoreLibModuleId, "print_string");
-    public static DefId PrintI8 { get; } = new(CoreLibModuleId, "print_i8");
-    public static DefId PrintI16 { get; } = new(CoreLibModuleId, "print_i16");
-    public static DefId PrintI32 { get; } = new(CoreLibModuleId, "print_i32");
-    public static DefId PrintI64 { get; } = new(CoreLibModuleId, "print_i64");
-    public static DefId PrintU8 { get; } = new(CoreLibModuleId, "print_u8");
-    public static DefId PrintU16 { get; } = new(CoreLibModuleId, "print_u16");
-    public static DefId PrintU32 { get; } = new(CoreLibModuleId, "print_u32");
-    public static DefId PrintU64 { get; } = new(CoreLibModuleId, "print_u64");
-    public static DefId Allocate { get; } = new(CoreLibModuleId, "allocate");
+    public static DefId Unbox { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::unbox");
+    public static DefId Box { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::box");
+    public static DefId PrintString { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::print_string");
+    public static DefId PrintI8 { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::print_i8");
+    public static DefId PrintI16 { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::print_i16");
+    public static DefId PrintI32 { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::print_i32");
+    public static DefId PrintI64 { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::print_i64");
+    public static DefId PrintU8 { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::print_u8");
+    public static DefId PrintU16 { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::print_u16");
+    public static DefId PrintU32 { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::print_u32");
+    public static DefId PrintU64 { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::print_u64");
+    public static DefId Allocate { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::allocate");
 
     public static DefId Unit { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::Unit");
 
