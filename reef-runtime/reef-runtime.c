@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <intrin.h>
+
+#pragma intrinsic(_ReturnAddress)
 
 #ifdef _MSC_VER
 typedef double max_align_t;
@@ -535,17 +538,19 @@ MethodInfo* try_get_reef_method_by_instruction_address(uint64_t address)
     return NULL;
 }
 
-typedef void(*traverse_stack_fn)(uint16_t depth, uint64_t instructionAddress, MethodInfo* method, void* data);
+typedef void(*traverse_stack_fn)(uint16_t depth, uint64_t stackBaseAddress, uint64_t instructionAddress, MethodInfo* method, void* data);
 
-void traverse_stack(traverse_stack_fn fn, void* data)
+void traverse_stack(traverse_stack_fn fn, uint64_t rbp, uint64_t firstReturnAddress, void* data)
 {
-    uint64_t* nextRbp = get_rbp();
-    uint64_t returnAddress = *(nextRbp + 1);
+    uint64_t* nextRbp = (uint64_t*)rbp;
+
+    uint64_t returnAddress = firstReturnAddress;
     MethodInfo* reefMethod = try_get_reef_method_by_instruction_address(returnAddress);
+
     uint16_t depth = 0;
     while (reefMethod != NULL)
     {
-        fn(depth, returnAddress, reefMethod, data);
+        fn(depth, (uint64_t)nextRbp, returnAddress, reefMethod, data);
         nextRbp = (uint64_t*)*nextRbp;
         returnAddress = *(nextRbp + 1);
         reefMethod = try_get_reef_method_by_instruction_address(returnAddress);
@@ -553,7 +558,7 @@ void traverse_stack(traverse_stack_fn fn, void* data)
     }
 }
 
-void print_method(uint16_t depth, uint64_t instructionAddress, MethodInfo* method, void* data)
+void print_method(uint16_t depth, uint64_t stackBaseAddress, uint64_t instructionAddress, MethodInfo* method, void* data)
 {
     if (depth > 0)
     {
@@ -564,11 +569,44 @@ void print_method(uint16_t depth, uint64_t instructionAddress, MethodInfo* metho
 
 void print_stack_trace()
 {
-    traverse_stack(&print_method, NULL);
+    uint64_t rbp = (uint64_t)get_rbp();
+    uint64_t returnAddress = (uint64_t)_ReturnAddress();
+    traverse_stack(&print_method, rbp, returnAddress, NULL);
 }
 
-void trigger_gc() {
+void check_method_references(uint16_t depth, uint64_t stackBaseAddress, uint64_t instructionAddress, MethodInfo* method, void* data)
+{
+    for (uint64_t i = 0; i < method->locals->locals.length; i++)
+    {
+        MethodLocal *local = &method->locals->locals.locals[i];
+        TypeInfo* type = &typeInfoArray[local->typeId];
+        fputs("local_", stdout);
+        print_u64(i);
+        fputs(": ", stdout);
+        switch (type->variantIdentifier)
+        {
+            case 0: // class
+                print_string(type->classInfo.fullyQualifiedName);
+                break;
+            case 1: // union
+                print_string(type->unionInfo.fullyQualifiedName);
+                break;
+            case 2: // pointer
+                print_string(type->pointerInfo.fullyQualifiedName);
+                break;
+            case 3: // array
+                print_string(type->arrayInfo.fullyQualifiedName);
+                break;
+        }
+        fputs("\n", stdout);
+    }
+}
 
+void trigger_gc()
+{
+    uint64_t rbp = (uint64_t)get_rbp();
+    uint64_t returnAddress = (uint64_t)_ReturnAddress();
+    traverse_stack(&check_method_references, rbp, returnAddress, NULL);
 }
 
 size_t get_memory_usage_bytes() {

@@ -20,12 +20,32 @@ public class MemoryTests : IntegrationTestBase
             :::Reef:::Core:::Diagnostics:::trigger_gc();
 
             var memoryUsed = :::Reef:::Core:::Diagnostics:::get_memory_usage_bytes();
+            print_string("MemoryUsed: ");
             print_u64(memoryUsed);
             """);
 
         var result = await Run();
         result.ExitCode.Should().Be(0);
-        result.StandardOutput.Should().Be("64");
+        result.StandardOutput.Should().Be("MemoryUsed: 64");
+    }
+
+    [Fact]
+    public async Task PrintStackTrace_MainOnly()
+    {
+        await SetupTest(
+            """
+            use :::Reef:::Core:::Diagnostics:::print_stack_trace;
+
+            print_stack_trace();
+            """);
+
+        var result = await Run();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be(
+            """
+            main:::_Main
+            """
+        );
     }
 
     [Fact]
