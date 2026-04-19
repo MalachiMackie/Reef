@@ -561,7 +561,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         var unionVariantFieldOffsets = UnionVariantSizeInfo.FieldOffsets;
                         var (unionVariantIndex, typeInfoVariant) = typeInfoDataType.Variants.Index().First(x => x.Item.Name == "Union");
 
-                        Debug.Assert(typeInfoVariant.Fields.Count == 8);
+                        Debug.Assert(typeInfoVariant.Fields.Count == 9);
                         var (variantIdentifierIndex, variantIdenitfierName) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "_variantIdentifier");
                         var (fullyQualifiedNameIndex, fullyQualifiedNameField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "FullyQualifiedName");
                         var (nameIndex, nameField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "Name");
