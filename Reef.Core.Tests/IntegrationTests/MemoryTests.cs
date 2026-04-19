@@ -9,24 +9,47 @@ public class MemoryTests : IntegrationTestBase
     {
         await SetupTest(
             """
+            use :::Reef:::Core:::Diagnostics:::{get_memory_usage_bytes, trigger_gc};
+
             class MyClass{pub field A: u64, pub field B: u64, pub field C: u64, pub field D: u64, pub field E: u64, pub field F: u64, pub field G: u64}
             fn create_my_class(num: u64): mut MyClass {
                 return new MyClass{A = num, B = num + 1, C = num + 2, D = num + 3, E = num + 4, F = num + 5, G = num + 6};
             }
 
+            fn print_memory_used() {
+                var memoryUsed = get_memory_usage_bytes();
+                print_string("MemoryUsed: ");
+                print_u64(memoryUsed);
+                print_string("\n");
+            }
+
             var mut latest = create_my_class(0);
+            print_memory_used();
             latest = create_my_class(1);
+            print_memory_used();
 
-            :::Reef:::Core:::Diagnostics:::trigger_gc();
+            var mut i = 0;
+            while (i < 100000)
+            {
+                latest = create_my_class(i);
+                trigger_gc();
+                i = i + 1;
+            }
 
-            var memoryUsed = :::Reef:::Core:::Diagnostics:::get_memory_usage_bytes();
-            print_string("MemoryUsed: ");
-            print_u64(memoryUsed);
+
+            trigger_gc();
+            print_memory_used();
             """);
 
         var result = await Run();
         result.ExitCode.Should().Be(0);
-        result.StandardOutput.Should().Be("MemoryUsed: 64");
+        result.StandardOutput.Should().Be(
+            """
+            MemoryUsed: 64
+            MemoryUsed: 128
+            MemoryUsed: 64
+
+            """);
     }
 
     [Fact]
@@ -49,7 +72,6 @@ public class MemoryTests : IntegrationTestBase
     }
 
     [Fact]
-    [TestMe]
     public async Task PrintStackTrace()
     {
         await SetupTest(
@@ -106,6 +128,7 @@ public class MemoryTests : IntegrationTestBase
 
             var a = new MyClass{A = ""};
             var b = MyUnion::B;
+            var c = [unboxed; ""];
 
             print_all_types();
             """
@@ -150,6 +173,70 @@ public class MemoryTests : IntegrationTestBase
         var result = await Run();
         result.ExitCode.Should().Be(0);
         result.StandardOutput.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task BoxedUnion()
+    {
+        await SetupTest(
+            """
+            use :::Reef:::Core:::Diagnostics:::*;
+            class MyClass {pub field value: u64}
+            union MyUnion {
+                A(MyClass),
+                B,
+            }
+
+            var mut a = MyUnion::A(new MyClass{value = 2});
+            a = MyUnion::B;
+
+            trigger_gc();
+
+            var memoryUsed = get_memory_usage_bytes();
+            print_u64(memoryUsed);
+            """
+        );
+
+        var result = await Run();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be("24");
+    }
+
+    [Fact]
+    public async Task CircularBoxedValue()
+    {
+        await SetupTest(
+            """
+            use :::Reef:::Core:::Diagnostics:::*;
+            union Option<T> {
+                None,
+                Some(T)
+            }
+
+            class MyClass {
+                pub mut field value: unboxed Option<MyClass>,
+
+                pub static fn create(): mut MyClass {
+                    var mut a = new MyClass{value = unboxed Option::None};
+                    var mut b = new MyClass{value = unboxed Option::Some(a)};
+                    a.value = unboxed Option::Some(b);
+                    return a;
+                }
+            }
+
+            var mut value = MyClass::create();
+            value = MyClass::create();
+
+            trigger_gc();
+
+            var memoryUsed = get_memory_usage_bytes();
+            print_u64(memoryUsed);
+            """
+        );
+
+        var result = await Run();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be("32");
     }
 
     [Fact]

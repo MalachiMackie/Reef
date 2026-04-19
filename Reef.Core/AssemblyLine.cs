@@ -276,6 +276,43 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         return;
     }
 
+    private bool TypeContainsPointer(ILoweredTypeReference type)
+    {
+        switch (type)
+        {
+            case LoweredPointer:
+                return true;
+            case LoweredConcreteTypeReference concrete:
+                {
+                    var dataType = _dataTypes[concrete.DefinitionId];
+                    foreach (var variant in dataType.Variants)
+                    {
+                        foreach (var field in variant.Fields)
+                        {
+                            var fieldType = field.Type;
+                            if (fieldType is LoweredGenericPlaceholder placeholder)
+                            {
+                                Debug.Assert(placeholder.OwnerDefinitionId == concrete.DefinitionId);
+                                var index = dataType.TypeParameters.Index().First(x => x.Item.PlaceholderName == placeholder.PlaceholderName).Index;
+                                fieldType = concrete.TypeArguments[index];
+                            }
+                            if (TypeContainsPointer(fieldType))
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }
+            case LoweredArray loweredArray:
+                {
+                    return TypeContainsPointer(loweredArray.ElementType);
+                }
+            default:
+                throw new UnreachableException(type.GetType().ToString());
+        }
+    }
+
     private void WriteTypeInfoBlob(ILoweredTypeReference type, ulong typeId)
     {
         if (type is LoweredGenericPlaceholder outerGenericPlaceholder)
@@ -341,19 +378,23 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
                         // class
                         var (classVariantIndex, typeInfoVariant) = typeInfoDataType.Variants.Index().First(x => x.Item.Name == "Class");
-                        Debug.Assert(typeInfoVariant.Fields.Count == 6);
+                        Debug.Assert(typeInfoVariant.Fields.Count == 8);
                         var (variantIdentifierIndex, variantIdenitfierName) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "_variantIdentifier");
                         var (fullyQualifiedNameIndex, fullyQualifiedNameField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "FullyQualifiedName");
                         var (nameIndex, nameField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "Name");
+                        var (sizeIndex, sizeField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "Size");
                         var (typeIdIndex, typeIdField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "TypeId");
                         var (staticFieldsIndex, staticFieldsField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "StaticFields");
                         var (fieldsIndex, fieldsField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "Fields");
+                        var (containsPointerIndex, containsPointerField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "ContainsPointer");
                         Debug.Assert(variantIdentifierIndex == 0);
                         Debug.Assert(fullyQualifiedNameIndex == 1);
                         Debug.Assert(nameIndex == 2);
-                        Debug.Assert(typeIdIndex == 3);
-                        Debug.Assert(staticFieldsIndex == 4);
-                        Debug.Assert(fieldsIndex == 5);
+                        Debug.Assert(sizeIndex == 3);
+                        Debug.Assert(typeIdIndex == 4);
+                        Debug.Assert(staticFieldsIndex == 5);
+                        Debug.Assert(fieldsIndex == 6);
+                        Debug.Assert(containsPointerIndex == 7);
 
                         // variantIdentifier
                         Debug.Assert(classVariantFieldOffsets["_variantIdentifier"].Offset == 0);
@@ -377,6 +418,12 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         bytesWritten += 8;
                         _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.Name.Ref");
                         _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(dataType.Name)}");
+                        bytesWritten += 8;
+
+                        // size
+                        PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, classVariantFieldOffsets["Size"].Alignment);
+                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.Size");
+                        _typeInfoDataSubSegment.AppendLine($"        dq 0x{GetTypeSize(type, _currentTypeArguments).Size:X}");
                         bytesWritten += 8;
 
                         // typeId
@@ -459,6 +506,8 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         fieldsSubSegment.AppendLine($"        dq 0x{dataType.Variants[0].Fields.Count:X}");
                         fieldsBytesWritten += 8;
 
+                        var containsPointer = false;
+
                         foreach (var (fieldIndex, field) in dataType.Variants[0].Fields.Index())
                         {
                             // name
@@ -480,6 +529,12 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                                 fieldType = concrete.TypeArguments[typeArgumentIndex];
                             }
 
+                            if (!containsPointer)
+                            {
+                                containsPointer = fieldType is LoweredPointer
+                                    || TypeContainsPointer(fieldType);
+                            }
+
                             fieldsSubSegment.AppendLine($"        ; [{fieldIndex}].TypeId");
                             fieldsSubSegment.AppendLine($"        dd 0x{GetTypeId(fieldType):X}");
                             fieldsBytesWritten += 4;
@@ -491,6 +546,12 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                             PadAlignment(ref fieldsBytesWritten, fieldsSubSegment, 8);
                         }
 
+                        // containsPointer
+                        PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, classVariantFieldOffsets["ContainsPointer"].Alignment);
+                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.ContainsPointer");
+                        _typeInfoDataSubSegment.AppendLine($"        db 0x{(containsPointer ? 1 : 0)}");
+                        bytesWritten += 1;
+
                         Debug.Assert(bytesWritten == variantSizeInfo.Size, $"bytesWritten: {bytesWritten}, variantSize: {variantSizeInfo.Size}");
                     }
                     else
@@ -499,22 +560,26 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         var UnionVariantSizeInfo = typeInfoSize.VariantSizeInfo["Union"];
                         var unionVariantFieldOffsets = UnionVariantSizeInfo.FieldOffsets;
                         var (unionVariantIndex, typeInfoVariant) = typeInfoDataType.Variants.Index().First(x => x.Item.Name == "Union");
-                        Debug.Assert(typeInfoVariant.Fields.Count == 7);
 
+                        Debug.Assert(typeInfoVariant.Fields.Count == 8);
                         var (variantIdentifierIndex, variantIdenitfierName) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "_variantIdentifier");
                         var (fullyQualifiedNameIndex, fullyQualifiedNameField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "FullyQualifiedName");
                         var (nameIndex, nameField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "Name");
+                        var (sizeIndex, sizeField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "Size");
                         var (typeIdIndex, typeIdField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "TypeId");
                         var (staticFieldsIndex, staticFieldsField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "StaticFields");
                         var (variantsIndex, variantsField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "Variants");
                         var (variantIdentifierGetterIndex, variantIdentifierGetterField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "VariantIdentifierGetter");
+                        var (containsPointerIndex, containsPointerField) = typeInfoVariant.Fields.Index().First(x => x.Item.Name == "ContainsPointer");
                         Debug.Assert(variantIdentifierIndex == 0);
                         Debug.Assert(fullyQualifiedNameIndex == 1);
                         Debug.Assert(nameIndex == 2);
-                        Debug.Assert(typeIdIndex == 3);
-                        Debug.Assert(staticFieldsIndex == 4);
-                        Debug.Assert(variantsIndex == 5);
-                        Debug.Assert(variantIdentifierGetterIndex == 6);
+                        Debug.Assert(sizeIndex == 3);
+                        Debug.Assert(typeIdIndex == 4);
+                        Debug.Assert(staticFieldsIndex == 5);
+                        Debug.Assert(variantsIndex == 6);
+                        Debug.Assert(variantIdentifierGetterIndex == 7);
+                        Debug.Assert(containsPointerIndex == 8);
 
                         var variantInfoFieldsField = variantInfoVariant.Fields.First(x => x.Name == "Fields");
 
@@ -539,6 +604,12 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         bytesWritten += 8;
                         _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.Name.Ref");
                         _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(dataType.Name)}");
+                        bytesWritten += 8;
+
+                        // size
+                        PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, unionVariantFieldOffsets["Size"].Alignment);
+                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.Size");
+                        _typeInfoDataSubSegment.AppendLine($"        dq 0x{GetTypeSize(type, _currentTypeArguments).Size:X}");
                         bytesWritten += 8;
 
                         // typeId
@@ -620,6 +691,8 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         variantsSubSegment.AppendLine($"        dq 0x{dataType.Variants.Count:X}");
                         variantsBytesWritten += 8;
 
+                        var unionContainsPointer = false;
+
                         foreach (var (variantIndex, variant) in dataType.Variants.Index())
                         {
                             var variantSizeInfo = typeSizeInfo.VariantSizeInfo[variant.Name];
@@ -653,9 +726,13 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                             fieldsSubSegment.AppendLine($"        dq 0x{variant.Fields.Count:X}");
                             fieldsBytesWritten += 8;
 
+                            var variantContainsPointer = false;
+
                             // fields
                             foreach (var (fieldIndex, field) in variant.Fields.Index())
                             {
+
+
                                 // name
                                 fieldsSubSegment.AppendLine($"        ; Name.Length");
                                 fieldsSubSegment.AppendLine($"        dq 0x{field.Name.Length:X}");
@@ -675,6 +752,14 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                                     fieldType = concrete.TypeArguments[typeArgumentIndex];
                                 }
 
+                                if (!variantContainsPointer)
+                                {
+                                    variantContainsPointer = fieldType is LoweredPointer
+                                        || TypeContainsPointer(fieldType);
+
+                                    unionContainsPointer |= variantContainsPointer;
+                                }
+
                                 fieldsSubSegment.AppendLine($"        ; TypeId");
                                 fieldsSubSegment.AppendLine($"        dd 0x{GetTypeId(fieldType):X}");
                                 fieldsBytesWritten += 4;
@@ -685,6 +770,12 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
                                 PadAlignment(ref fieldsBytesWritten, fieldsSubSegment, 8);
                             }
+
+                            variantsSubSegment.AppendLine($"        ; ContainsPointer");
+                            variantsSubSegment.AppendLine($"        db 0x{(variantContainsPointer ? 1 : 0)}");
+                            variantsBytesWritten += 1;
+
+                            PadAlignment(ref variantsBytesWritten, variantsSubSegment, 8);
                         }
 
                         // variant identifier getter
@@ -696,6 +787,12 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                         _typeInfoDataSubSegment.AppendLine($"        ; VariantIdentifierGetter.FunctionParameter");
                         _typeInfoDataSubSegment.AppendLine("        dq 0");
                         bytesWritten += 8;
+
+                        // containsPointer
+                        PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, unionVariantFieldOffsets["ContainsPointer"].Alignment);
+                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.ContainsPointer");
+                        _typeInfoDataSubSegment.AppendLine($"        db 0x{(unionContainsPointer ? 1 : 0)}");
+                        bytesWritten += 1;
 
                         Debug.Assert(bytesWritten == UnionVariantSizeInfo.Size, $"bytesWritten: {bytesWritten}, variantSize: {UnionVariantSizeInfo.Size}");
                     }

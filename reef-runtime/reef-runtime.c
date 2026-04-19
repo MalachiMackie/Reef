@@ -4,7 +4,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <intrin.h>
+
+#define STB_DS_IMPLEMENTATION
+#include "stb_ds.h"
+
+#define HT_IMPLEMENTATION
+#include "ht.h"
 
 #pragma intrinsic(_ReturnAddress)
 
@@ -114,6 +121,8 @@ typedef PACK(struct {
 typedef PACK(struct {
     string name;
     FieldInfoArrayBoxedValue *fields;
+    bool containsPointer;
+    char _padding[7];
 }) VariantInfo;
 
 typedef PACK(struct {
@@ -129,49 +138,53 @@ typedef PACK(struct {
 
 typedef PACK(struct {
     uint16_t variantIdentifier;
-    uint16_t _padding;
-    uint32_t __padding;
+    char _padding[6];
     string fullyQualifiedName;
     string name;
+    uint64_t size;
     TypeId typeId;
-    uint32_t ___padding;
+    char __padding[4];
     StaticFieldInfoArrayBoxedValue *staticFields;
     FieldInfoArrayBoxedValue *fields;
+    bool containsPointer;
+    char ___padding[7];
 }) TypeInfoClassVariant;
 
 typedef PACK(struct {
     uint16_t variantIdentifier;
-    uint16_t _padding;
-    uint32_t __padding;
+    char _padding[6];
     string fullyQualifiedName;
     string name;
+    uint64_t size;
     TypeId typeId;
-    uint32_t ___padding;
+    char __padding[4];
     StaticFieldInfoArrayBoxedValue *staticFields;
     VariantInfoArrayBoxedValue *variants;
     struct {
         void* functionReference;
         void* functionParameter;
     } variantIdentifierGetter;
+    bool containsPointer;
+    char ___padding[7];
 }) TypeInfoUnionVariant;
 
 typedef PACK(struct {
     uint16_t variantIdentifier;
-    uint16_t _padding;
-    uint32_t __padding;
+    char _padding[6];
     string fullyQualifiedName;
     TypeId pointerToTypeId;
-    uint32_t ___padding;
+    char __padding[4];
 }) TypeInfoPointerVariant;
 
 typedef PACK(struct {
     uint16_t variantIdentifier;
-    uint16_t _padding;
-    uint32_t __padding;
+    char _padding[6];
     string fullyQualifiedName;
     TypeId elementTypeId;
+    char __padding[4];
     uint64_t length;
-    uint8_t isDynamic;
+    bool isDynamic;
+    char ___padding[7];
 }) TypeInfoArrayVariant;
 
 typedef PACK(struct {
@@ -373,6 +386,8 @@ void print_type_info(TypeInfo *handle)
             fputs("\n    displayName: ", stdout);
             print_string(handle->classInfo.name);
             uint64_t fields_count = handle->classInfo.fields->items.length;
+            fputs("\n    containsPointer: ", stdout);
+            fputs(handle->classInfo.containsPointer ? "true" : "false", stdout);
             fputs("\n    fields:\n        length: ", stdout);
             print_u64(fields_count);
             fputs("\n        items:", stdout);
@@ -399,7 +414,9 @@ void print_type_info(TypeInfo *handle)
             fputs(":\n    type: union\n    id: ", stdout);
             print_u32(handle->unionInfo.typeId);
             fputs("\n    displayName: ", stdout);
-            print_string(handle->classInfo.name);
+            print_string(handle->unionInfo.name);
+            fputs("\n    containsPointer: ", stdout);
+            fputs(handle->unionInfo.containsPointer ? "true" : "false", stdout);
             fputs("\n    variants_count: ", stdout);
             print_u64(handle->unionInfo.variants->items.length);
             fputs("\n", stdout);
@@ -415,7 +432,7 @@ void print_type_info(TypeInfo *handle)
         {
             print_string(handle->arrayInfo.fullyQualifiedName);
             fputs(":\n    type: array\n    is_dynamic: ", stdout);
-            if (handle->arrayInfo.isDynamic == 0)
+            if (!handle->arrayInfo.isDynamic)
             {
                 fputs("false", stdout);
             }
@@ -434,76 +451,122 @@ size_t memory_used_bytes = 0;
 size_t heap_size_bytes = 1024 * 10; // 10MB
 
 typedef struct {
-    void* ptr;
-    size_t size;
-    uint8_t allocation_space;
+    // start of the actual allocation, may not be aligned to alignof(max_align_t). Will be at most alignof(max_align_t) smaller than ptr
+    uint64_t start;
+
+    // the address of the data. Returned to reef code. guaranteed to be aligned to alignof(max_align_t)
+    uint64_t ptr;
+
+    // Size of the allocation from start. Includes any alignment bytes from start but before ptr
+    uint64_t size;
 } Allocation;
 
-typedef struct {
-    Allocation* allocations;
-    size_t count;
-    size_t size;
-} AllocationsList;
+typedef Ht(uint64_t, Allocation) AllocationHashTable;
 
 typedef struct {
-    void* base_addr;
-    void* top;
-    size_t size;
-    AllocationsList allocations;
+    uint64_t ptr;
+    uint64_t size;
+} HeapGap;
+
+typedef struct {
+    uint64_t base_addr;
+    uint64_t size;
+    AllocationHashTable allocations;
+    HeapGap *gaps;
 } Heap;
 
 Heap* heaps;
-size_t heaps_count;
 
 void init_runtime() {
     assert(typeInfoSize == sizeof(TypeInfo));
     assert(methodInfoSize == sizeof(MethodInfo));
 
-    heaps_count = 1;
-    heaps = malloc(heaps_count * sizeof(Heap));
-    assert(heaps);
-
-    AllocationsList allocations;
-
-    allocations.size = 10;
-    allocations.count = 0;
-    allocations.allocations = malloc(allocations.size * sizeof(Allocation));
-    assert(allocations.allocations);
-
-    Heap heap;
-    heap.size = heap_size_bytes;
-    heap.base_addr = malloc(heap.size);
-    heap.top = heap.base_addr;
-    assert(heap.base_addr);
-    heap.allocations = allocations;
-
-    heaps[0] = heap;
-
+    // Heap heap;
+    // heap.size = heap_size_bytes;
+    // heap.base_addr = (uint64_t)malloc(heap.size);
+    // AllocationHashTable allocations = {0};
+    // heap.allocations = allocations;
+    // heap.gaps = NULL;
+    // assert(heap.base_addr);
+    // arrput(heaps, heap);
 }
 
-void* allocate(size_t size) {
-    size_t old_top = (size_t)heaps[0].top;
-    size_t unaligned_new_top = old_top + size;
-    size_t new_top = unaligned_new_top + (unaligned_new_top % alignof(max_align_t));
+void* allocate_inside_heap(Heap *heap, uint64_t size) {
+    for (uint64_t j = 0; j < arrlenu(heap->gaps); j++)
+    {
+        HeapGap *gap = &heap->gaps[j];
+        if (size > gap->size)
+        {
+            // gap too small
+            continue;
+        }
+        uint64_t gapAlignmentBytes = gap->ptr % alignof(max_align_t);
+        if (gapAlignmentBytes > 0)
+        {
+            gapAlignmentBytes = alignof(max_align_t) - gapAlignmentBytes;
+        }
 
-    memory_used_bytes += new_top - old_top;
+        Allocation allocation = {
+            .start = gap->ptr,
+            .ptr = gap->ptr + gapAlignmentBytes,
+            .size = size + gapAlignmentBytes
+        };
+        memory_used_bytes += size;
+        *ht_put(&heap->allocations, allocation.ptr) = allocation;
 
-    // todo: if no more space in heap, allocate a new one
-    assert(new_top < (size_t)heaps[0].base_addr + heaps[0].size);
-    heaps[0].top = (void*)new_top;
-    AllocationsList* allocations = &heaps[0].allocations;
+        if (size + gapAlignmentBytes == gap->size)
+        {
+            // allocation takes up the whole gap, remove it
+            arrdel(heap->gaps, j);
 
-    // todo: if no more allocations, allocate a new one
-    assert(allocations->count < allocations->size);
+            return (void*)allocation.ptr;
+        }
 
-    Allocation allocation;
-    allocation.ptr = (void*)old_top;
-    allocation.size = size;
-    allocation.allocation_space = (uint8_t)(old_top - new_top);
+        // allocation is smaller than the gap, so shrink it
+        gap->ptr += size + gapAlignmentBytes;
+        gap->size -= size + gapAlignmentBytes;
+        return (void*)allocation.ptr;
+    }
 
-    allocations->allocations[allocations->count++] = allocation;
+    return NULL;
+}
 
-    return (void*)old_top;
+void* allocate(uint64_t size) {
+    void* ptr = NULL;
+    for (uint64_t i = 0; i < arrlenu(heaps); i++)
+    {
+        ptr = allocate_inside_heap(&heaps[i], size);
+        if (ptr)
+        {
+            return ptr;
+        }
+    }
+
+    // if we got here, then there was no space in any of the heaps. So need to allocate a new one
+
+    // todo: try compacting heaps before allocating a new one
+
+    uint64_t heap_size = size <= heap_size_bytes ? heap_size_bytes : size;
+
+    Heap newHeap = {
+        .base_addr = (uint64_t)malloc(heap_size),
+        .allocations = {0},
+        .gaps = NULL,
+        .size = heap_size_bytes
+    };
+    assert(newHeap.base_addr);
+
+    HeapGap initialGap = {
+        .ptr = newHeap.base_addr,
+        .size = newHeap.size
+    };
+    arrput(newHeap.gaps, initialGap);
+    arrput(heaps, newHeap);
+
+    ptr = allocate_inside_heap(&heaps[arrlenu(heaps) - 1], size);
+    assert(ptr);
+
+    return ptr;
 }
 
 void print_all_types()
@@ -574,39 +637,242 @@ void print_stack_trace()
     traverse_stack(&print_method, rbp, returnAddress, NULL);
 }
 
-void check_method_references(uint16_t depth, uint64_t stackBaseAddress, uint64_t instructionAddress, MethodInfo* method, void* data)
+bool type_info_has_pointer(TypeInfo *type)
+{
+    switch (type->variantIdentifier)
+    {
+        case 0: // class
+            return type->classInfo.containsPointer;
+        case 1: // union
+            return type->unionInfo.containsPointer;
+        case 2: // pointer
+            return true;
+        case 3: // array
+            TypeInfo* elementType = &typeInfoArray[type->arrayInfo.elementTypeId];
+            return type_info_has_pointer(elementType);
+    }
+}
+
+uint64_t get_type_size(TypeInfo *type)
+{
+    switch (type->variantIdentifier)
+    {
+        case 0: // class
+            return type->classInfo.size;
+        case 1: // union
+            return type->unionInfo.size;
+        case 2: // pointer
+            return 8;
+        case 3: // array
+            TypeInfo* elementType = &typeInfoArray[type->arrayInfo.elementTypeId];
+            return 8 + get_type_size(elementType);
+            // return type_info_has_pointer(elementType);
+    }
+    assert(false);
+}
+
+typedef Ht(uint64_t, bool) AlivePointerHashTable;
+
+void check_type_references(TypeInfo *type, uint64_t valueAddress, AlivePointerHashTable *alive_pointers)
+{
+    switch (type->variantIdentifier)
+    {
+        case 0: // class
+            if (!type->classInfo.containsPointer)
+            {
+                return;
+            }
+            FieldInfoArray* fieldInfoArray = &type->classInfo.fields->items;
+            for (uint64_t i = 0; i < fieldInfoArray->length; i++)
+            {
+                FieldInfo *fieldInfo = &fieldInfoArray->items[i];
+                TypeInfo *fieldTypeInfo = &typeInfoArray[fieldInfo->typeId];
+                uint64_t fieldAddress = (uint64_t)((char*)valueAddress + fieldInfo->offset);
+
+                check_type_references(fieldTypeInfo, fieldAddress, alive_pointers);
+            }
+            break;
+        case 1: // union
+            if (!type->unionInfo.containsPointer)
+            {
+                return;
+            }
+
+            VariantInfoArray *variantInfoArray = &type->unionInfo.variants->items;
+            for (uint64_t i = 0; i < variantInfoArray->length; i++)
+            {
+                VariantInfo *variant = &variantInfoArray->items[i];
+                if (!variant->containsPointer)
+                {
+                    continue;
+                }
+
+                FieldInfoArray *fieldInfoArray = &variant->fields->items;
+                for (uint64_t j = 0; j < fieldInfoArray->length; j++)
+                {
+                    FieldInfo *fieldInfo = &fieldInfoArray->items[j];
+
+                    TypeInfo *fieldTypeInfo = &typeInfoArray[fieldInfo->typeId];
+                    uint64_t fieldAddress = (uint64_t)((char*)valueAddress + fieldInfo->offset);
+
+                    check_type_references(fieldTypeInfo, fieldAddress, alive_pointers);
+                }
+            }
+
+            break;
+        case 2: // pointer
+            uint64_t ptrValue = *(uint64_t*)valueAddress;
+
+            // we've already found this pointer. It must be a circular reference, so break the cycle here
+            if (ht_find(alive_pointers, ptrValue))
+            {
+                return;
+            }
+
+            *ht_put(alive_pointers, ptrValue) = true;
+
+            TypeInfo* pointerToType = &typeInfoArray[type->pointerInfo.pointerToTypeId];
+
+            check_type_references(pointerToType, ptrValue, alive_pointers);
+            break;
+        case 3: // array
+            TypeInfo* elementType = &typeInfoArray[type->arrayInfo.elementTypeId];
+            uint64_t elementSize = get_type_size(elementType);
+
+            if (!type_info_has_pointer(elementType))
+            {
+                return;
+            }
+
+            char* firstElement = (char*)((uint64_t *)valueAddress + 1);
+            uint64_t *length = (uint64_t*)valueAddress;
+
+            for (uint64_t i = 0; i < *length; i++)
+            {
+                uint64_t elementAddress = (uint64_t)(firstElement + elementSize * i);
+                check_type_references(elementType, elementAddress, alive_pointers);
+            }
+
+            break;
+    }
+}
+
+void check_method_references(
+    uint16_t depth,
+    uint64_t stackBaseAddress,
+    uint64_t instructionAddress,
+    MethodInfo* method,
+    void* data)
 {
     for (uint64_t i = 0; i < method->locals->locals.length; i++)
     {
         MethodLocal *local = &method->locals->locals.locals[i];
+        void* localAddress = (((char*)stackBaseAddress) + local->stackOffset);
         TypeInfo* type = &typeInfoArray[local->typeId];
-        fputs("local_", stdout);
-        print_u64(i);
-        fputs(": ", stdout);
-        switch (type->variantIdentifier)
-        {
-            case 0: // class
-                print_string(type->classInfo.fullyQualifiedName);
-                break;
-            case 1: // union
-                print_string(type->unionInfo.fullyQualifiedName);
-                break;
-            case 2: // pointer
-                print_string(type->pointerInfo.fullyQualifiedName);
-                break;
-            case 3: // array
-                print_string(type->arrayInfo.fullyQualifiedName);
-                break;
-        }
-        fputs("\n", stdout);
+
+        check_type_references(type, (uint64_t)localAddress, data);
     }
 }
+
+typedef struct {
+    Allocation *allocation;
+    Heap *heap;
+} DeadAllocation;
+
+AlivePointerHashTable alive_pointers = {0};
+DeadAllocation* dead_allocations = NULL;
 
 void trigger_gc()
 {
     uint64_t rbp = (uint64_t)get_rbp();
     uint64_t returnAddress = (uint64_t)_ReturnAddress();
-    traverse_stack(&check_method_references, rbp, returnAddress, NULL);
+    traverse_stack(&check_method_references, rbp, returnAddress, &alive_pointers);
+
+    for (uint64_t i = 0; i < arrlenu(heaps); i++)
+    {
+        Heap *heap = &heaps[i];
+        ht_foreach(value, &heap->allocations) {
+            uint64_t address = ht_key(&heap->allocations, value);
+
+            if (ht_find(&alive_pointers, address))
+            {
+                // allocation is still alive
+                continue;
+            }
+
+            DeadAllocation dead_allocation = {
+                .allocation = value,
+                .heap = heap
+            };
+
+            arrput(dead_allocations, dead_allocation);
+        }
+
+        for (uint64_t i = 0; i < arrlenu(dead_allocations); i++)
+        {
+            DeadAllocation dead_allocation = dead_allocations[i];
+            memory_used_bytes -= dead_allocation.allocation->size;
+            Heap *heap = dead_allocation.heap;
+
+            if (heap->allocations.count == 1)
+            {
+                // this is the only allocation within the heap, clear it out and continue on. Fast path
+                ht_reset(&heap->allocations);
+                arrsetlen(heap->gaps, 0);
+                HeapGap newGap = {
+                    .ptr = heap->base_addr,
+                    .size = heap->size
+                };
+                arrput(heap->gaps, newGap);
+                continue;
+            }
+
+            uint64_t start = dead_allocation.allocation->start;
+
+            bool gap_updated = false;
+            for (uint64_t j = 0; j < arrlenu(heap->gaps); j++)
+            {
+                HeapGap *gap = &heap->gaps[j];
+
+                if (start < gap->ptr)
+                {
+                    if (start + dead_allocation.allocation->size == gap->ptr)
+                    {
+                        // allocation is before this gap and is on the boundry, so just expand the gap
+                        gap->ptr = start;
+                        gap->size += dead_allocation.allocation->size;
+                    }
+                    else
+                    {
+                        // allocation is before this gap but is not on the boundry, so insert before it
+                        HeapGap newGap = {
+                            .ptr = start,
+                            .size = dead_allocation.allocation->size
+                        };
+                        arrins(heap->gaps, j, newGap);
+                    }
+                    gap_updated = true;
+                    break;
+                }
+            }
+
+            if (!gap_updated)
+            {
+                // the allocation is after the last gap
+                HeapGap newGap = {
+                    .ptr = start,
+                    .size = dead_allocation.allocation->size
+                };
+                arrput(heap->gaps, newGap);
+            }
+
+            ht_delete(&heap->allocations, dead_allocation.allocation);
+        }
+    }
+
+    // don't free, just reset so we can reuse again
+    ht_reset(&alive_pointers);
+    arrsetlen(dead_allocations, 0);
 }
 
 size_t get_memory_usage_bytes() {

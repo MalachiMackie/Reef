@@ -309,6 +309,14 @@ public partial class TypeChecker
                             boxed: false
                         ))
                 },
+                new TypeField {
+                    IsPublic = true,
+                    IsMutable = false,
+                    IsStatic = false,
+                    Name = "ContainsPointer",
+                    StaticInitializer = null,
+                    Type = InstantiatedClass.Boolean
+                },
             ],
             Functions = [],
             Boxed = true,

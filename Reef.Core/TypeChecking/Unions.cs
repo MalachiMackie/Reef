@@ -169,6 +169,14 @@ public partial class TypeChecker
                             IsPublic = true,
                             IsMutable = false,
                             IsStatic = false,
+                            Name = "Size",
+                            StaticInitializer = null,
+                            Type = InstantiatedClass.UInt64
+                        },
+                        new TypeField {
+                            IsPublic = true,
+                            IsMutable = false,
+                            IsStatic = false,
                             Name = "TypeId",
                             StaticInitializer = null,
                             Type = InstantiatedClass.TypeId
@@ -196,6 +204,14 @@ public partial class TypeChecker
                                     ClassSignature.FieldInfo.Value,
                                     [],
                                     boxed: false))
+                        },
+                        new TypeField {
+                            IsPublic = true,
+                            IsMutable = false,
+                            IsStatic = false,
+                            Name = "ContainsPointer",
+                            StaticInitializer = null,
+                            Type = InstantiatedClass.Boolean
                         }
                     ]
                 },
@@ -218,6 +234,14 @@ public partial class TypeChecker
                             Name = "Name",
                             StaticInitializer = null,
                             Type = InstantiatedClass.String
+                        },
+                        new TypeField {
+                            IsPublic = true,
+                            IsMutable = false,
+                            IsStatic = false,
+                            Name = "Size",
+                            StaticInitializer = null,
+                            Type = InstantiatedClass.UInt64
                         },
                         new TypeField {
                             IsPublic = true,
@@ -263,6 +287,14 @@ public partial class TypeChecker
                                 boxed: false
                             )
                         },
+                        new TypeField {
+                            IsPublic = true,
+                            IsMutable = false,
+                            IsStatic = false,
+                            Name = "ContainsPointer",
+                            StaticInitializer = null,
+                            Type = InstantiatedClass.Boolean
+                        }
                     ]
                 },
                 new ClassUnionVariant {
