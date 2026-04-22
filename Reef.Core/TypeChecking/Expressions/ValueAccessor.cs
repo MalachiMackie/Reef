@@ -17,9 +17,10 @@ public partial class TypeChecker
             { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True or TokenType.False } => InstantiatedClass
                 .Boolean,
             // todo: bring union variants into scope
-            { AccessType: ValueAccessType.Variable, Token: StringToken { Type: TokenType.Identifier, StringValue: "ok" } } => TypeCheckResultVariantKeyword("Ok"),
+            { AccessType: ValueAccessType.Variable, Token: StringToken { Type: TokenType.Identifier, StringValue: "ok" } } =>
+                TypeCheckResultVariantKeyword("Ok", boxed: _typeCheckingScopes.Peek().ExpectedReturnType is InstantiatedUnion union && union.Boxed),
             { AccessType: ValueAccessType.Variable, Token: StringToken { Type: TokenType.Identifier, StringValue: "error" } } =>
-                TypeCheckResultVariantKeyword("Error"),
+                TypeCheckResultVariantKeyword("Error", boxed: _typeCheckingScopes.Peek().ExpectedReturnType is InstantiatedUnion union && union.Boxed),
             { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Todo } => InstantiatedClass.Never,
             {
                 AccessType: ValueAccessType.Variable,
@@ -30,19 +31,24 @@ public partial class TypeChecker
 
         return type;
 
-        ITypeReference TypeCheckResultVariantKeyword(string variantName)
+        ITypeReference TypeCheckResultVariantKeyword(string variantName, bool boxed)
         {
-            var instantiatedUnion = InstantiateResult(valueAccessorExpression.SourceRange, boxingSpecifier: null);
+            var instantiatedUnion = InstantiateResult(valueAccessorExpression.SourceRange, boxed ? Token.Boxed(SourceSpan.Default) : Token.Unboxed(SourceSpan.Default));
 
             var okVariant = instantiatedUnion.Variants.FirstOrDefault(x => x.Name == variantName)
                             ?? throw new UnreachableException($"{variantName} is a built in variant of Result");
 
-            if (okVariant is not TupleUnionVariant { CreateFunction: var tupleVariantFunctionSignature })
+            if (okVariant is not TupleUnionVariant { BoxedCreateFunction: var createFunction, UnboxedCreateFunction: var unboxedCreateFunction })
             {
                 throw new UnreachableException($"{variantName} is a tuple variant");
             }
 
-            var tupleVariantFunction = InstantiateFunction(tupleVariantFunctionSignature, instantiatedUnion, [], SourceRange.Default, GenericPlaceholders);
+            var tupleVariantFunction = InstantiateFunction(
+                instantiatedUnion.Boxed ? createFunction : unboxedCreateFunction,
+                instantiatedUnion,
+                [],
+                SourceRange.Default,
+                GenericPlaceholders);
             valueAccessorExpression.FunctionInstantiation = tupleVariantFunction;
 
             return new FunctionObject(

@@ -168,7 +168,7 @@ public partial class TypeChecker
     private InstantiatedFunction GetUnionTupleVariantFunction(TupleUnionVariant tupleVariant,
         InstantiatedUnion instantiatedUnion)
     {
-        return InstantiateFunction(tupleVariant.CreateFunction, instantiatedUnion, typeArguments: [], SourceRange.Default, inScopeTypeParameters: []);
+        return InstantiateFunction(instantiatedUnion.Boxed ? tupleVariant.BoxedCreateFunction : tupleVariant.UnboxedCreateFunction, instantiatedUnion, typeArguments: [], SourceRange.Default, inScopeTypeParameters: []);
     }
 
     public interface IFunction

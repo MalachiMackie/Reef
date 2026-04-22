@@ -1929,6 +1929,11 @@ public partial class ProgramAbseil
                 {
                     ownerTypeArguments = ownerReferenceTypeArguments;
                 }
+                else if (ownerTypeReference is LoweredPointer(LoweredConcreteTypeReference { DefinitionId: var defId, TypeArguments: [LoweredConcreteTypeReference concrete] })
+                     && defId == DefId.BoxedValue)
+                {
+                    ownerTypeArguments = concrete.TypeArguments;
+                }
             }
         }
 
@@ -2154,6 +2159,10 @@ public partial class ProgramAbseil
 
         var type = GetTypeReference(operand.ResolvedType.NotNull());
         var resultValuePlace = ExpressionResultIntoPlace(value, type);
+        if (type is LoweredPointer)
+        {
+            resultValuePlace = new Field(new Deref(resultValuePlace), "Value", ClassVariantName);
+        }
 
         var errBasicBlockId = new BasicBlockId("err");
         var okBasicBlockId = new BasicBlockId("ok");
@@ -2169,15 +2178,16 @@ public partial class ProgramAbseil
                 errBasicBlockId);
 
         var currentMethod = _currentFunction.NotNull().LoweredMethod;
+
+        var returnTypeIsBoxed = currentMethod.ReturnValue.Type is LoweredPointer;
+
         var returnType = GetConcreteTypeReference(currentMethod.ReturnValue.Type);
 
         Debug.Assert(returnType.DefinitionId == DefId.Result);
 
-
-
         errBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
         _basicBlocks[^1].Terminator = new MethodCall(
-            GetFunctionReference(DefId.Result_Create_Error, [], returnType.TypeArguments),
+            GetFunctionReference(returnTypeIsBoxed ? DefId.Result_Create_Error : DefId.Result_Unboxed_Create_Error, [], returnType.TypeArguments),
             [new Copy(new Field(resultValuePlace, TupleElementName(0), "Error"))],
             new Local(ReturnValueLocalName),
             new BasicBlockId(TempReturnBasicBlockId));

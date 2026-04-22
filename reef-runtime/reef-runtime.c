@@ -150,6 +150,8 @@ typedef PACK(struct {
     char ___padding[7];
 }) TypeInfoClassVariant;
 
+typedef uint16_t (*get_variant_identifier_fn)(void* data);
+
 typedef PACK(struct {
     uint16_t variantIdentifier;
     char _padding[6];
@@ -161,7 +163,7 @@ typedef PACK(struct {
     StaticFieldInfoArrayBoxedValue *staticFields;
     VariantInfoArrayBoxedValue *variants;
     struct {
-        void* functionReference;
+        get_variant_identifier_fn functionReference;
         void* functionParameter;
     } variantIdentifierGetter;
     bool containsPointer;
@@ -698,25 +700,24 @@ void check_type_references(TypeInfo *type, uint64_t valueAddress, AlivePointerHa
                 return;
             }
 
+            uint16_t variantIdentifier = type->unionInfo.variantIdentifierGetter.functionReference((void*)valueAddress);
+
             VariantInfoArray *variantInfoArray = &type->unionInfo.variants->items;
-            for (uint64_t i = 0; i < variantInfoArray->length; i++)
+            VariantInfo *variant = &variantInfoArray->items[variantIdentifier];
+            if (!variant->containsPointer)
             {
-                VariantInfo *variant = &variantInfoArray->items[i];
-                if (!variant->containsPointer)
-                {
-                    continue;
-                }
+                return;
+            }
 
-                FieldInfoArray *fieldInfoArray = &variant->fields->items;
-                for (uint64_t j = 0; j < fieldInfoArray->length; j++)
-                {
-                    FieldInfo *fieldInfo = &fieldInfoArray->items[j];
+            FieldInfoArray *unionFinfoArray = &variant->fields->items;
+            for (uint64_t j = 0; j < unionFinfoArray->length; j++)
+            {
+                FieldInfo *fieldInfo = &unionFinfoArray->items[j];
 
-                    TypeInfo *fieldTypeInfo = &typeInfoArray[fieldInfo->typeId];
-                    uint64_t fieldAddress = (uint64_t)((char*)valueAddress + fieldInfo->offset);
+                TypeInfo *fieldTypeInfo = &typeInfoArray[fieldInfo->typeId];
+                uint64_t fieldAddress = (uint64_t)((char*)valueAddress + fieldInfo->offset);
 
-                    check_type_references(fieldTypeInfo, fieldAddress, alive_pointers);
-                }
+                check_type_references(fieldTypeInfo, fieldAddress, alive_pointers);
             }
 
             break;

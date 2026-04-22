@@ -166,11 +166,17 @@ public partial class TypeChecker
                         }
 
                         var createFunctionParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+                        var unboxedCreateFunctionParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
 
                         var createFunctionReturnType = InstantiatedUnion.Create(
                             unionSignature,
                             [],
-                            boxed: unionSignature.Boxed);
+                            boxed: true);
+
+                        var unboxedCreateFunctionReturnType = InstantiatedUnion.Create(
+                            unionSignature,
+                            [],
+                            boxed: false);
 
                         var createFunction = new FunctionSignature(
                             new DefId(unionSignature.Id.ModuleId, unionSignature.Id.FullName + $"__Create__{variant.Name.StringValue}"),
@@ -189,6 +195,23 @@ public partial class TypeChecker
                             ReturnType = createFunctionReturnType
                         };
 
+                        var unboxedCreateFunction = new FunctionSignature(
+                                                    new DefId(unionSignature.Id.ModuleId, unionSignature.Id.FullName + $"__unboxed__Create__{variant.Name.StringValue}"),
+                                                    Token.Identifier($"{unionSignature.Name}__unboxed__Create__{variant.Name.StringValue}",
+                                                        SourceSpan.Default),
+                                                    TypeParameters: [],
+                                                    createFunctionParameters,
+                                                    IsStatic: true,
+                                                    IsMutable: false,
+                                                    Expressions: [],
+                                                    ExternName: $"{unionSignature.Id.FullName}__unboxed__Create__{variant.Name.StringValue}",
+                                                    IsMutableReturn: true,
+                                                    IsPublic: true)
+                        {
+                            OwnerType = unionSignature,
+                            ReturnType = unboxedCreateFunctionReturnType
+                        };
+
                         var tupleMemberTypes = new List<ITypeReference>(tupleVariant.TupleMembers.Count);
 
                         foreach (var (i, member) in tupleVariant.TupleMembers.Index())
@@ -205,13 +228,23 @@ public partial class TypeChecker
                                     type,
                                     Mutable: false,
                                     ParameterIndex: (uint)i));
+
+                            unboxedCreateFunctionParameters.Add(
+                                parameterName,
+                                new FunctionSignatureParameter(
+                                    unboxedCreateFunction,
+                                    Token.Identifier(parameterName, SourceSpan.Default),
+                                    type,
+                                    Mutable: false,
+                                    ParameterIndex: (uint)i));
                         }
 
                         return new TupleUnionVariant
                         {
                             Name = variant.Name.StringValue,
                             TupleMembers = tupleMemberTypes,
-                            CreateFunction = createFunction
+                            BoxedCreateFunction = createFunction,
+                            UnboxedCreateFunction = unboxedCreateFunction,
                         };
                     }
 

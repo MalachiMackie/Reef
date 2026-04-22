@@ -38,13 +38,15 @@ public partial class TypeChecker
                 Constraints = [],
             };
 
-            var okCreateParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
-            var errorCreateParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
-            var okCreateFunction = new FunctionSignature(
-                    new DefId(DefId.Result.ModuleId, DefId.Result.FullName + "__Create__Ok"),
+            var boxedOkCreateParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+            var boxedErrorCreateParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+            var unboxedOkCreateParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+            var unboxedErrorCreateParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+            var boxedOkCreateFunction = new FunctionSignature(
+                    DefId.Result_Create_Ok,
                     Token.Identifier("result__Create__Ok", SourceSpan.Default),
                     [],
-                    okCreateParameters,
+                    boxedOkCreateParameters,
                     IsStatic: true,
                     IsMutable: false,
                     Expressions: [],
@@ -52,14 +54,14 @@ public partial class TypeChecker
                     IsMutableReturn: true,
                     IsPublic: true)
             {
-                ReturnType = InstantiatedUnion.Create(resultSignature, typeParameters, resultSignature.Boxed),
+                ReturnType = InstantiatedUnion.Create(resultSignature, typeParameters, boxed: true),
                 OwnerType = resultSignature
             };
-            var errorCreateFunction = new FunctionSignature(
-                new DefId(DefId.Result.ModuleId, DefId.Result.FullName + "__Create__Error"),
+            var boxedErrorCreateFunction = new FunctionSignature(
+                DefId.Result_Create_Error,
                 Token.Identifier("result__Create__Error", SourceSpan.Default),
                 [],
-                errorCreateParameters,
+                boxedErrorCreateParameters,
                 IsStatic: true,
                 IsMutable: false,
                 Expressions: [],
@@ -67,19 +69,64 @@ public partial class TypeChecker
                 IsMutableReturn: true,
                 IsPublic: true)
             {
-                ReturnType = InstantiatedUnion.Create(resultSignature, typeParameters, resultSignature.Boxed),
+                ReturnType = InstantiatedUnion.Create(resultSignature, typeParameters, boxed: true),
                 OwnerType = resultSignature
             };
 
-            okCreateParameters["Item0"] = new FunctionSignatureParameter(
-                okCreateFunction,
+            var unboxedOkCreateFunction = new FunctionSignature(
+                                DefId.Result_Unboxed_Create_Ok,
+                                Token.Identifier("result__unboxed__Create__Ok", SourceSpan.Default),
+                                [],
+                                unboxedOkCreateParameters,
+                                IsStatic: true,
+                                IsMutable: false,
+                                Expressions: [],
+                                ExternName: DefId.Result.FullName + "__unboxed__Create_Ok",
+                                IsMutableReturn: true,
+                                IsPublic: true)
+            {
+                ReturnType = InstantiatedUnion.Create(resultSignature, typeParameters, boxed: false),
+                OwnerType = resultSignature
+            };
+            var unboxedErrorCreateFunction = new FunctionSignature(
+                DefId.Result_Unboxed_Create_Error,
+                Token.Identifier("result__unboxed__Create__Error", SourceSpan.Default),
+                [],
+                unboxedErrorCreateParameters,
+                IsStatic: true,
+                IsMutable: false,
+                Expressions: [],
+                ExternName: DefId.Result.FullName + "__unboxed__Create_Error",
+                IsMutableReturn: true,
+                IsPublic: true)
+            {
+                ReturnType = InstantiatedUnion.Create(resultSignature, typeParameters, boxed: false),
+                OwnerType = resultSignature
+            };
+
+            boxedOkCreateParameters["Item0"] = new FunctionSignatureParameter(
+                boxedOkCreateFunction,
                 Token.Identifier("Item0", SourceSpan.Default),
                 typeParameters[0],
                 Mutable: false,
                 ParameterIndex: 0);
 
-            errorCreateParameters["Item0"] = new FunctionSignatureParameter(
-                errorCreateFunction,
+            boxedErrorCreateParameters["Item0"] = new FunctionSignatureParameter(
+                boxedErrorCreateFunction,
+                Token.Identifier("Item0", SourceSpan.Default),
+                typeParameters[1],
+                Mutable: false,
+                ParameterIndex: 0);
+
+            unboxedOkCreateParameters["Item0"] = new FunctionSignatureParameter(
+                unboxedOkCreateFunction,
+                Token.Identifier("Item0", SourceSpan.Default),
+                typeParameters[0],
+                Mutable: false,
+                ParameterIndex: 0);
+
+            unboxedErrorCreateParameters["Item0"] = new FunctionSignatureParameter(
+                unboxedErrorCreateFunction,
                 Token.Identifier("Item0", SourceSpan.Default),
                 typeParameters[1],
                 Mutable: false,
@@ -89,13 +136,15 @@ public partial class TypeChecker
             {
                 Name = "Ok",
                 TupleMembers = [typeParameters[0]],
-                CreateFunction = okCreateFunction
+                BoxedCreateFunction = boxedOkCreateFunction,
+                UnboxedCreateFunction = unboxedOkCreateFunction
             };
             variants[1] = new TupleUnionVariant
             {
                 Name = "Error",
                 TupleMembers = [typeParameters[1]],
-                CreateFunction = errorCreateFunction
+                BoxedCreateFunction = boxedErrorCreateFunction,
+                UnboxedCreateFunction = unboxedErrorCreateFunction,
             };
 
             Result = resultSignature;
@@ -388,7 +437,8 @@ public partial class TypeChecker
     {
         public required IReadOnlyList<ITypeReference> TupleMembers { get; init; }
         public required string Name { get; init; }
-        public required FunctionSignature CreateFunction { get; init; }
+        public required FunctionSignature BoxedCreateFunction { get; init; }
+        public required FunctionSignature UnboxedCreateFunction { get; init; }
     }
 
     public class ClassUnionVariant : IUnionVariant
@@ -518,10 +568,11 @@ public partial class TypeChecker
             var variants = new List<IUnionVariant>();
             var typeArgumentReferences = new List<GenericTypeReference>();
 
-            var instantiatedUnion = new InstantiatedUnion(signature, typeArgumentReferences, variants, boxed);
+            var boxedInstantiatedUnion = new InstantiatedUnion(signature, typeArgumentReferences, variants, boxed: true);
+            var unboxedInstantiatedUnion = new InstantiatedUnion(signature, typeArgumentReferences, variants, boxed: false);
 
             typeArgumentReferences.AddRange(signature.TypeParameters.Select((x, i) =>
-                x.Instantiate(instantiatedUnion, typeArguments.ElementAtOrDefault(i))));
+                x.Instantiate(boxed ? boxedInstantiatedUnion : unboxedInstantiatedUnion, typeArguments.ElementAtOrDefault(i))));
 
             variants.AddRange(
             [
@@ -532,13 +583,22 @@ public partial class TypeChecker
                     case TupleUnionVariant tuple:
                     {
                         var createFunctionParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
-                        foreach (var parameter in tuple.CreateFunction.Parameters)
+                        var unboxedCreateFunctionParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+                        foreach (var parameter in tuple.BoxedCreateFunction.Parameters)
                         {
                             createFunctionParameters[parameter.Key] = parameter.Value with
                             {
                                 Type = HandleType(parameter.Value.Type)
                             };
                         }
+                        foreach (var parameter in tuple.UnboxedCreateFunction.Parameters)
+                        {
+                            unboxedCreateFunctionParameters[parameter.Key] = parameter.Value with
+                            {
+                                Type = HandleType(parameter.Value.Type)
+                            };
+                        }
+
                         return new TupleUnionVariant
                         {
                             Name = tuple.Name,
@@ -546,11 +606,16 @@ public partial class TypeChecker
                             [
                                 ..tuple.TupleMembers.Select(HandleType)
                             ],
-                            CreateFunction = tuple.CreateFunction with
+                            BoxedCreateFunction = tuple.BoxedCreateFunction with
                             {
-                                ReturnType = instantiatedUnion, // the create function for a tuple variant within this instantiated union returns this type, so directly use instantiated union
+                                ReturnType = boxedInstantiatedUnion, // the create function for a tuple variant within this instantiated union returns this type, so directly use instantiated union
                                 Parameters = createFunctionParameters,
-                            }
+                            },
+                            UnboxedCreateFunction = tuple.UnboxedCreateFunction with
+                            {
+                                ReturnType = unboxedInstantiatedUnion, // the create function for a tuple variant within this instantiated union returns this type, so directly use instantiated union
+                                Parameters = unboxedCreateFunctionParameters,
+                            },
                         };
                     }
                     case ClassUnionVariant classVariant:
@@ -568,7 +633,7 @@ public partial class TypeChecker
                 })
             ]);
 
-            return instantiatedUnion;
+            return boxed ? boxedInstantiatedUnion : unboxedInstantiatedUnion;
 
             ITypeReference HandleType(ITypeReference type)
             {

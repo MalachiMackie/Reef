@@ -154,13 +154,23 @@ public partial class ProgramAbseil
         {
             coreLibMethods.Add(
                 new LoweredMethod(
-                    variant.CreateFunction.Id,
-                    variant.CreateFunction.Name,
+                    variant.BoxedCreateFunction.Id,
+                    variant.BoxedCreateFunction.Name,
                     resultDataType.TypeParameters,
                     [],
-                    new MethodLocal(ReturnValueLocalName, null, GetTypeReference(variant.CreateFunction.ReturnType)),
-                    [.. variant.CreateFunction.Parameters.Values.Select((x, i) => new MethodLocal(ParameterLocalName((uint)i), x.Name.StringValue, GetTypeReference(x.Type)))],
+                    new MethodLocal(ReturnValueLocalName, null, GetTypeReference(variant.BoxedCreateFunction.ReturnType)),
+                    [.. variant.BoxedCreateFunction.Parameters.Values.Select((x, i) => new MethodLocal(ParameterLocalName((uint)i), x.Name.StringValue, GetTypeReference(x.Type)))],
                     []));
+
+            coreLibMethods.Add(
+                            new LoweredMethod(
+                                variant.UnboxedCreateFunction.Id,
+                                variant.UnboxedCreateFunction.Name,
+                                resultDataType.TypeParameters,
+                                [],
+                                new MethodLocal(ReturnValueLocalName, null, GetTypeReference(variant.BoxedCreateFunction.ReturnType)),
+                                [.. variant.UnboxedCreateFunction.Parameters.Values.Select((x, i) => new MethodLocal(ParameterLocalName((uint)i), x.Name.StringValue, GetTypeReference(x.Type)))],
+                                []));
         }
 
         coreLibDataTypes.AddRange(
@@ -609,16 +619,12 @@ public partial class ProgramAbseil
                     .Select((IOperand operand, string fieldName) (_, i) => (new Copy(new Local($"_param{i}")), TupleElementName((uint)i)))
             ];
 
-            LoweredMethod method;
-
-            if (union.Boxed)
-            {
-                method = new LoweredMethod(
-                    u.CreateFunction.Id,
-                    u.CreateFunction.Name,
-                    typeParameters,
-                    [
-                        new BasicBlock(
+            var boxedMethod = new LoweredMethod(
+                u.BoxedCreateFunction.Id,
+                u.BoxedCreateFunction.Name,
+                typeParameters,
+                [
+                    new BasicBlock(
                             new BasicBlockId("bb0"),
                             [],
                             new MethodCall(
@@ -649,22 +655,20 @@ public partial class ProgramAbseil
                         {
                             Terminator = new Return()
                         },
-                    ],
-                    new MethodLocal(ReturnValueLocalName, null, new LoweredPointer(BoxedValueType(unionTypeReference))),
-                    [
-                        ..memberTypes.Select((x, i) =>
+                ],
+                new MethodLocal(ReturnValueLocalName, null, new LoweredPointer(BoxedValueType(unionTypeReference))),
+                [
+                    ..memberTypes.Select((x, i) =>
                             new MethodLocal(ParameterLocalName((uint)i), TupleElementName((uint)i), x))
-                    ],
-                    []);
-            }
-            else
-            {
-                method = new LoweredMethod(
-                    u.CreateFunction.Id,
-                    u.CreateFunction.Name,
-                    typeParameters,
-                    [
-                        new BasicBlock(new BasicBlockId("bb0"), [
+                ],
+                []);
+
+            var unboxedMethod = new LoweredMethod(
+                u.UnboxedCreateFunction.Id,
+                u.UnboxedCreateFunction.Name,
+                typeParameters,
+                [
+                    new BasicBlock(new BasicBlockId("bb0"), [
                             new Assign(new Local(ReturnValueLocalName),
                                 new CreateObject(unionTypeReference)),
                             ..createMethodFieldInitializations.Select(x => new Assign(
@@ -674,18 +678,21 @@ public partial class ProgramAbseil
                         {
                             Terminator = new Return()
                         },
-                    ],
-                    new MethodLocal(ReturnValueLocalName, null, unionTypeReference),
-                    [
-                        ..memberTypes.Select((x, i) =>
+                ],
+                new MethodLocal(ReturnValueLocalName, null, unionTypeReference),
+                [
+                    ..memberTypes.Select((x, i) =>
                             new MethodLocal(ParameterLocalName((uint)i), TupleElementName((uint)i), x))
-                    ],
-                    []);
-            }
+                ],
+                []);
 
             // add the tuple variant as a method
             _methods.Add(
-                    method,
+                    boxedMethod,
+                    // pass null as the signature because it's never used as the current function
+                    (null!, [], [], [], unionTypeReference, false));
+            _methods.Add(
+                    unboxedMethod,
                     // pass null as the signature because it's never used as the current function
                     (null!, [], [], [], unionTypeReference, false));
         }
@@ -1003,7 +1010,7 @@ public partial class ProgramAbseil
             ?? _importedModules.SelectMany(x => x.Methods)
                 .First(x => x.Id == functionId);
 
-        IReadOnlyList<ILoweredTypeReference> resultingTypeArguments = [..ownerTypeArguments, .. typeArguments];
+        IReadOnlyList<ILoweredTypeReference> resultingTypeArguments = [.. ownerTypeArguments, .. typeArguments];
 
         Debug.Assert(resultingTypeArguments.Count == loweredMethod.TypeParameters.Count);
 

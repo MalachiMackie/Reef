@@ -317,6 +317,11 @@ public partial class TypeChecker
                         return false;
                     }
 
+                    if (ownerType is InstantiatedUnion)
+                    {
+                        return true;
+                    }
+
                     if (ownerType is not InstantiatedClass { Fields: var fields })
                     {
                         if (report)

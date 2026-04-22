@@ -415,6 +415,25 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              parameters: [("Item0", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))))],
                              returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__unboxed__Create__X"), "MyUnion__unboxed__Create__X",
+                                                      [
+                                                          new BasicBlock(
+                                                              BB0,
+                                                              [
+                                                                  new Assign(
+                                                                      ReturnValue,
+                                                                          new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                                                  new Assign(
+                                                                      new Field(ReturnValue, "_variantIdentifier", "X"),
+                                                                      new Use(new UIntConstant(0, 2))),
+                                                                  new Assign(
+                                                                      new Field(ReturnValue, "Item0", "X"),
+                                                                      new Use(new Copy(Param0)))
+                                                              ],
+                                                              new Return())
+                                                      ],
+                                                      parameters: [("Item0", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))))],
+                                                      returnType: new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
@@ -561,6 +580,25 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              parameters: [("Item0", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))))],
                              returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__unboxed__Create__X"), "MyUnion__unboxed__Create__X",
+                                                      [
+                                                          new BasicBlock(
+                                                              BB0,
+                                                              [
+                                                                  new Assign(
+                                                                      ReturnValue,
+                                                                      new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                                                  new Assign(
+                                                                      new Field(ReturnValue, "_variantIdentifier", "X"),
+                                                                      new Use(new UIntConstant(0, 2))),
+                                                                  new Assign(
+                                                                      new Field(ReturnValue, "Item0", "X"),
+                                                                      new Use(new Copy(Param0)))
+                                                              ],
+                                                              new Return())
+                                                      ],
+                                                      parameters: [("Item0", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))))],
+                                                      returnType: new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
@@ -699,6 +737,25 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              parameters: [("Item0", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))))],
                              returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__unboxed__Create__X"), "MyUnion__unboxed__Create__X",
+                                                      [
+                                                          new BasicBlock(
+                                                              BB0,
+                                                              [
+                                                                  new Assign(
+                                                                      ReturnValue,
+                                                                          new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                                                  new Assign(
+                                                                      new Field(ReturnValue, "_variantIdentifier", "X"),
+                                                                      new Use(new UIntConstant(0, 2))),
+                                                                  new Assign(
+                                                                      new Field(ReturnValue, "Item0", "X"),
+                                                                      new Use(new Copy(Param0)))
+                                                              ],
+                                                              new Return())
+                                                      ],
+                                                      parameters: [("Item0", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))))],
+                                                      returnType: new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
@@ -841,6 +898,30 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                  ("Item0", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))),
                                  ("Item1", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))))],
                              returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__unboxed__Create__X"), "MyUnion__unboxed__Create__X",
+                                                      [
+                                                          new BasicBlock(
+                                                              BB0,
+                                                              [
+                                                                  new Assign(
+                                                                      ReturnValue,
+                                                                      new CreateObject(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
+                                                                  new Assign(
+                                                                      new Field(ReturnValue, "_variantIdentifier", "X"),
+                                                                      new Use(new UIntConstant(0, 2))),
+                                                                  new Assign(
+                                                                      new Field(ReturnValue, "Item0", "X"),
+                                                                      new Use(new Copy(Param0))),
+                                                                  new Assign(
+                                                                      new Field(ReturnValue, "Item1", "X"),
+                                                                      new Use(new Copy(Param1))),
+                                                              ],
+                                                              new Return())
+                                                      ],
+                                                      parameters: [
+                                                          ("Item0", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), [])))),
+                                                          ("Item1", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("OtherUnion", new DefId(ModuleId, $"{ModuleId}:::OtherUnion"), []))))],
+                                                      returnType: new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(

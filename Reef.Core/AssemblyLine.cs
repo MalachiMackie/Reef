@@ -74,8 +74,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
     {
         if (type is LoweredGenericPlaceholder generic)
         {
-            if (generic.OwnerDefinitionId != _currentMethod?.Id
-                || !_currentTypeArguments.TryGetValue(generic.PlaceholderName, out var typeArgument))
+            if (!_currentTypeArguments.TryGetValue(generic.PlaceholderName, out var typeArgument))
             {
                 throw new InvalidOperationException();
             }
@@ -83,7 +82,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         }
 
         // todo: _currentTypeArguments I suspect is incorrect here
-        var found = _typeIds.FirstOrDefault(x => AreTypeReferencesEqual(x.TypeReference, type, _currentTypeArguments));
+        var found = _typeIds.FirstOrDefault(x => AreTypeReferencesEqual(x.TypeReference, type));
         if (found == default)
         {
             var typeId = (ulong)_typeIds.Count;
@@ -307,6 +306,11 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             case LoweredArray loweredArray:
                 {
                     return TypeContainsPointer(loweredArray.ElementType);
+                }
+            case LoweredGenericPlaceholder genericPlaceholder:
+                {
+                    return _currentTypeArguments.TryGetValue(genericPlaceholder.PlaceholderName, out var typeArgument)
+                        && TypeContainsPointer(typeArgument);
                 }
             default:
                 throw new UnreachableException(type.GetType().ToString());
@@ -1112,7 +1116,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
     private sealed record FieldSize(uint Offset, uint? Size, uint Alignment);
 
-    private static bool AreTypeReferencesEqual(ILoweredTypeReference left, ILoweredTypeReference right, Dictionary<string, ILoweredTypeReference> typeArguments)
+    private static bool AreTypeReferencesEqual(ILoweredTypeReference left, ILoweredTypeReference right)
     {
         switch (left, right)
         {
@@ -1120,21 +1124,27 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
                 {
                     return leftConcrete.DefinitionId == rightConcrete.DefinitionId
                            && leftConcrete.TypeArguments.Count == rightConcrete.TypeArguments.Count
-                           && leftConcrete.TypeArguments.Zip(rightConcrete.TypeArguments).All(x => AreTypeReferencesEqual(x.First, x.Second, typeArguments));
+                           && leftConcrete.TypeArguments.Zip(rightConcrete.TypeArguments).All(x => AreTypeReferencesEqual(x.First, x.Second));
                 }
             case (LoweredGenericPlaceholder leftGeneric, LoweredGenericPlaceholder rightGeneric):
                 {
-                    var leftConcrete = typeArguments[leftGeneric.PlaceholderName];
-                    var rightConcrete = typeArguments[rightGeneric.PlaceholderName];
-                    return AreTypeReferencesEqual(leftConcrete, rightConcrete, typeArguments);
+                    if (leftGeneric.OwnerDefinitionId != rightGeneric.OwnerDefinitionId)
+                    {
+                        return false;
+                    }
+                    if (leftGeneric.PlaceholderName != rightGeneric.PlaceholderName)
+                    {
+                        return false;
+                    }
+                    return true;
                 }
             case (LoweredPointer leftPointer, LoweredPointer rightPointer):
                 {
-                    return AreTypeReferencesEqual(leftPointer.PointerTo, rightPointer.PointerTo, typeArguments);
+                    return AreTypeReferencesEqual(leftPointer.PointerTo, rightPointer.PointerTo);
                 }
             case (LoweredArray leftArray, LoweredArray rightArray):
                 {
-                    return AreTypeReferencesEqual(leftArray.ElementType, rightArray.ElementType, typeArguments)
+                    return AreTypeReferencesEqual(leftArray.ElementType, rightArray.ElementType)
                            && leftArray.Length == rightArray.Length;
                 }
         }
@@ -1149,7 +1159,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
     private TypeSizeInfo GetTypeSize(ILoweredTypeReference typeReference, Dictionary<string, ILoweredTypeReference> typeArguments)
     {
-        var foundTypeReference = _typeSizes.FirstOrDefault(x => AreTypeReferencesEqual(x.Key, typeReference, typeArguments));
+        var foundTypeReference = _typeSizes.FirstOrDefault(x => AreTypeReferencesEqual(x.Key, typeReference));
         if (foundTypeReference.Key is not null)
         {
             return foundTypeReference.Value;

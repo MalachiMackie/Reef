@@ -77,6 +77,37 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                              ],
                              parameters: [("Item0", StringT)],
                              returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                    Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__unboxed__Create__A"), "MyUnion__unboxed__Create__A",
+                                             [
+                                                 new BasicBlock(
+                                                     BB0,
+                                                     [
+                                                         new Assign(
+                                                             ReturnValue,
+                                                             new CreateObject(
+                                                            new LoweredConcreteTypeReference(
+                                                                "MyUnion",
+                                                                new DefId(ModuleId, $"{ModuleId}:::MyUnion"),
+                                                                []))),
+                                                         new Assign(
+                                                             new Field(
+                                                                 ReturnValue,
+                                                                 "_variantIdentifier",
+                                                                 "A"),
+                                                             new Use(new UIntConstant(0, 2))),
+                                                         new Assign(
+                                                             new Field(
+                                                                 ReturnValue,
+                                                                 "Item0",
+                                                                 "A"),
+                                                             new Use(
+                                                                 new Copy(
+                                                                     Param0)))
+                                                     ],
+                                                     new Return())
+                                             ],
+                                             parameters: [("Item0", StringT)],
+                                             returnType: new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
@@ -141,97 +172,128 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  var b = a("");
                  """,
                  LoweredProgram(ModuleId,
-                     types: [
-                         DataType(ModuleId, "MyUnion",
-                             variants: [
-                                 Variant(
-                                     "A",
-                                     [
-                                         Field("_variantIdentifier", UInt16T),
-                                         Field("Item0", StringT)
-                                     ])
-                             ])
-                     ],
-                     methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), "MyUnion__Create__A",
-                             [
-                                 new BasicBlock(
-                                     BB0,
-                                     [],
-                                     AllocateMethodCall(
-                                         BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
-                                         ReturnValue,
-                                         BB1)),
-                                 new BasicBlock(
-                                     BB1,
-                                     [
-                                         ..CreateBoxedObject(
-                                             new Deref(ReturnValue),
-                                                 new LoweredConcreteTypeReference(
-                                                     "MyUnion",
-                                                     new DefId(ModuleId, $"{ModuleId}:::MyUnion"),
-                                                     [])),
-                                         new Assign(
-                                             new Field(
-                                                 new Field(new Deref(ReturnValue), "Value", "_classVariant"),
-                                                 "_variantIdentifier",
-                                                 "A"),
-                                             new Use(new UIntConstant(0, 2))),
-                                         new Assign(
-                                             new Field(
-                                                 new Field(new Deref(ReturnValue), "Value", "_classVariant"),
-                                                 "Item0",
-                                                 "A"),
-                                             new Use(
-                                                 new Copy(
-                                                     Param0)))
-                                     ],
-                                     new Return())
+                             types: [
+                                 DataType(ModuleId, "MyUnion",
+                                              variants: [
+                                                  Variant(
+                                                      "A",
+                                                      [
+                                                          Field("_variantIdentifier", UInt16T),
+                                                          Field("Item0", StringT)
+                                                      ])
+                                              ])
                              ],
-                             parameters: [("Item0", StringT)],
-                             returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
-                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
-                             [
-                                 new BasicBlock(
-                                     BB0,
-                                     [],
-                                     AllocateMethodCall(
-                                         BoxedValue(FunctionObject([StringT], new LoweredPointer(BoxedValue(ConcreteTypeReference("MyUnion", ModuleId))))),
-                                         Local0,
-                                         BB1)),
-                                 new BasicBlock(
-                                     BB1,
-                                     [
-                                         ..CreateBoxedObject(
-                                             new Deref(Local0),
-                                                 FunctionObject([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))),
-                                         new Assign(
-                                             new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionReference", "_classVariant"),
-                                             new Use(new FunctionPointerConstant(new LoweredFunctionReference(
-                                                 new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), []))))
-                                     ],
-                                     new MethodCall(
-                                         FunctionObjectCall([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
-                                         [new Copy(Local0), new StringConstant("")],
-                                         Local1,
-                                         BB2)),
-                                 new BasicBlock(BB2, [], new Return())
-                             ],
-                             Unit,
-                             locals: [
-                                 new MethodLocal(
-                                     "_local0",
-                                     "a",
-                                     new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
-                                         "Function`2",
-                                         DefId.FunctionObject(1),
-                                         [StringT, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))])))),
-                                 new MethodLocal(
-                                     "_local1",
-                                     "b",
-                                     new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                             methods: [
+                                 Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), "MyUnion__Create__A",
+                                              [
+                                                  new BasicBlock(
+                                                      BB0,
+                                                      [],
+                                                      AllocateMethodCall(
+                                                          BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
+                                                          ReturnValue,
+                                                          BB1)),
+                                                  new BasicBlock(
+                                                      BB1,
+                                                      [
+                                                          ..CreateBoxedObject(
+                                                              new Deref(ReturnValue),
+                                                                  new LoweredConcreteTypeReference(
+                                                                      "MyUnion",
+                                                                      new DefId(ModuleId, $"{ModuleId}:::MyUnion"),
+                                                                      [])),
+                                                          new Assign(
+                                                              new Field(
+                                                                  new Field(new Deref(ReturnValue), "Value", "_classVariant"),
+                                                                  "_variantIdentifier",
+                                                                  "A"),
+                                                              new Use(new UIntConstant(0, 2))),
+                                                          new Assign(
+                                                              new Field(
+                                                                  new Field(new Deref(ReturnValue), "Value", "_classVariant"),
+                                                                  "Item0",
+                                                                  "A"),
+                                                              new Use(
+                                                                  new Copy(
+                                                                      Param0)))
+                                                      ],
+                                                      new Return())
+                                              ],
+                                              parameters: [("Item0", StringT)],
+                                              returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                                     Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__unboxed__Create__A"), "MyUnion__unboxed__Create__A",
+                                                              [
+                                                                  new BasicBlock(
+                                                                      BB0,
+                                                                      [
+                                                                          new Assign(
+                                                                              ReturnValue,
+                                                                              new CreateObject(
+                                                                             new LoweredConcreteTypeReference(
+                                                                                 "MyUnion",
+                                                                                 new DefId(ModuleId, $"{ModuleId}:::MyUnion"),
+                                                                                 []))),
+                                                                          new Assign(
+                                                                              new Field(
+                                                                                  ReturnValue,
+                                                                                  "_variantIdentifier",
+                                                                                  "A"),
+                                                                              new Use(new UIntConstant(0, 2))),
+                                                                          new Assign(
+                                                                              new Field(
+                                                                                  ReturnValue,
+                                                                                  "Item0",
+                                                                                  "A"),
+                                                                              new Use(
+                                                                                  new Copy(
+                                                                                      Param0)))
+                                                                      ],
+                                                                      new Return())
+                                                              ],
+                                                              parameters: [("Item0", StringT)],
+                                                              returnType: new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
+                                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
+                                              [
+                                                  new BasicBlock(
+                                                      BB0,
+                                                      [],
+                                                      AllocateMethodCall(
+                                                          BoxedValue(FunctionObject([StringT], new LoweredPointer(BoxedValue(ConcreteTypeReference("MyUnion", ModuleId))))),
+                                                          Local0,
+                                                          BB1)),
+                                                  new BasicBlock(
+                                                      BB1,
+                                                      [
+                                                          ..CreateBoxedObject(
+                                                              new Deref(Local0),
+                                                                  FunctionObject([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))),
+                                                          new Assign(
+                                                              new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionReference", "_classVariant"),
+                                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
+                                                                  new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), []))))
+                                                      ],
+                                                      new MethodCall(
+                                                          FunctionObjectCall([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                                                          [new Copy(Local0), new StringConstant("")],
+                                                          Local1,
+                                                          BB2)),
+                                                  new BasicBlock(BB2, [], new Return())
+                                              ],
+                                              Unit,
+                                              locals: [
+                                                  new MethodLocal(
+                                                      "_local0",
+                                                      "a",
+                                                      new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
+                                                          "Function`2",
+                                                          DefId.FunctionObject(1),
+                                                          [StringT, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))])))),
+                                                  new MethodLocal(
+                                                      "_local1",
+                                                      "b",
+                                                      new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                                              ])
                              ])
-                     ])
              },
              {
                  "assign global function to function object",

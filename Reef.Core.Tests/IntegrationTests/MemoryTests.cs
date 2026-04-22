@@ -187,8 +187,15 @@ public class MemoryTests : IntegrationTestBase
                 B,
             }
 
-            var mut a = MyUnion::A(new MyClass{value = 2});
-            a = MyUnion::B;
+            fn create_union_with_class(): mut MyUnion
+            {
+                var classValue = new MyClass {value = 2};
+                var mut a = MyUnion::A(classValue);
+                return a;
+            }
+
+            var mut b = create_union_with_class();
+            b = MyUnion::B;
 
             trigger_gc();
 
@@ -214,11 +221,11 @@ public class MemoryTests : IntegrationTestBase
             }
 
             class MyClass {
-                pub mut field value: unboxed Option<MyClass>,
+                pub mut field value: unboxed Option::<MyClass>,
 
                 pub static fn create(): mut MyClass {
-                    var mut a = new MyClass{value = unboxed Option::None};
-                    var mut b = new MyClass{value = unboxed Option::Some(a)};
+                    var mut a = new MyClass{value = unboxed Option::None}; // 24 bytes
+                    var mut b = new MyClass{value = unboxed Option::Some(a)}; // 24 bytes
                     a.value = unboxed Option::Some(b);
                     return a;
                 }
@@ -236,7 +243,7 @@ public class MemoryTests : IntegrationTestBase
 
         var result = await Run();
         result.ExitCode.Should().Be(0);
-        result.StandardOutput.Should().Be("32");
+        result.StandardOutput.Should().Be("48");
     }
 
     [Fact]

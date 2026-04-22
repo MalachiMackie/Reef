@@ -20,7 +20,7 @@ public partial class TypeChecker
         }
 
         var typeArguments = (staticMemberAccess.TypeArguments ?? [])
-            .Select<ITypeIdentifier, (ITypeReference, SourceRange SourceRange)>(x => (GetTypeReference(x), x.SourceRange))
+            .Select(x => (GetTypeReference(x), x.SourceRange))
             .ToArray();
 
         switch (type)

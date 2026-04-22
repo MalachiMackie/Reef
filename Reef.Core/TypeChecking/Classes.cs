@@ -813,14 +813,13 @@ public partial class TypeChecker
             {
                 try
                 {
-
                     return type switch
                     {
-                        GenericTypeReference { ResolvedType: null } genericTypeReference => typeArgumentReferences.First(y =>
-                            y.GenericName == genericTypeReference.GenericName),
+                        GenericTypeReference { ResolvedType: null } genericTypeReference => typeArgumentReferences.FirstOrDefault(y =>
+                            y.GenericName == genericTypeReference.GenericName) ?? genericTypeReference,
                         GenericTypeReference { ResolvedType: { } resolvedType } => resolvedType,
                         GenericPlaceholder placeholder =>
-                            typeArgumentReferences.First(y => y.GenericName == placeholder.GenericName),
+                            (ITypeReference?)typeArgumentReferences.FirstOrDefault(y => y.GenericName == placeholder.GenericName) ?? placeholder,
                         InstantiatedUnion union => union.CloneWithTypeArguments([
                             ..union.TypeArguments.Select(HandleType)
                         ]),

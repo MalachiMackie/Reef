@@ -63,7 +63,9 @@ public record DefId(ModuleId ModuleId, string FullName)
     public static DefId Result { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::result");
 
     public static DefId Result_Create_Error { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::result__Create__Error");
+    public static DefId Result_Unboxed_Create_Error { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::result__unboxed__Create__Error");
     public static DefId Result_Create_Ok { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::result__Create__Ok");
+    public static DefId Result_Unboxed_Create_Ok { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::result__unboxed__Create__Ok");
 
     public static readonly IReadOnlyList<DefId> SignedInts = [Int8, Int16, Int32, Int64];
     public static readonly IReadOnlyList<DefId> UnsignedInts = [UInt8, UInt16, UInt32, UInt64];
