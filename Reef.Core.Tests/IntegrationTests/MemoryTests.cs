@@ -12,6 +12,7 @@ public class MemoryTests : IntegrationTestBase
             use :::Reef:::Core:::Diagnostics:::{get_memory_usage_bytes, trigger_gc};
 
             class MyClass{pub field A: u64, pub field B: u64, pub field C: u64, pub field D: u64, pub field E: u64, pub field F: u64, pub field G: u64}
+
             fn create_my_class(num: u64): mut MyClass {
                 return new MyClass{A = num, B = num + 1, C = num + 2, D = num + 3, E = num + 4, F = num + 5, G = num + 6};
             }
@@ -39,6 +40,8 @@ public class MemoryTests : IntegrationTestBase
 
             trigger_gc();
             print_memory_used();
+            print_string("Value: ");
+            print_u64(latest.A);
             """);
 
         var result = await Run();
@@ -48,7 +51,7 @@ public class MemoryTests : IntegrationTestBase
             MemoryUsed: 64
             MemoryUsed: 128
             MemoryUsed: 64
-
+            Value: 99999
             """);
     }
 
