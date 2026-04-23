@@ -11,7 +11,7 @@ public static class ParseErrorTestCases
             (
                 "fn some_fn(a) {}",
                 Program("ParseErrorTestCases",
-                    functions: [Function("some_fn", parameters: [FunctionParameter("a")])]),
+                    functions: [Function("some_fn", parameters: [FunctionParameter("a")], block: Block().Block)]),
                 [ParserError.ExpectedToken(Token.RightParenthesis(SourceSpan.Default), TokenType.Colon)]
             ),
             (
@@ -425,12 +425,12 @@ public static class ParseErrorTestCases
             ),
             (
                 "mut static fn MyFn() {}",
-                Program("ParseErrorTestCases", [], [Function("MyFn", isStatic: true, isMutable: true)], [], []),
+                Program("ParseErrorTestCases", [], [Function("MyFn", isStatic: true, isMutable: true, block: Block().Block)], [], []),
                 []
             ),
             (
                 "mut mut static static pub pub fn MyFn() {}",
-                Program("ParseErrorTestCases", [], [Function("MyFn", isStatic: true, isPublic: true, isMutable: true)], [], []),
+                Program("ParseErrorTestCases", [], [Function("MyFn", isStatic: true, isPublic: true, isMutable: true, block: Block().Block)], [], []),
                 [
                     ParserError.DuplicateModifier(Token.Mut(SourceSpan.Default)),
                     ParserError.DuplicateModifier(Token.Static(SourceSpan.Default)),
@@ -867,7 +867,6 @@ public static class ParseErrorTestCases
                 Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a")])], [], []),
                 [
                     ParserError.ExpectedType(Token.RightParenthesis(SourceSpan.Default)),
-                    ParserError.ExpectedToken(null, TokenType.Colon, TokenType.LeftBrace)
                 ]
             ),
             (
@@ -887,20 +886,6 @@ public static class ParseErrorTestCases
                 ]
             ),
             (
-                "fn MyFn(a: int)",
-                Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
-                [
-                    ParserError.ExpectedToken(null, TokenType.LeftBrace, TokenType.Colon)
-                ]
-            ),
-            (
-                "fn MyFn(a: int);",
-                Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
-                [
-                    ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.LeftBrace, TokenType.Colon)
-                ]
-            ),
-            (
                 "fn MyFn(a: int):",
                 Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
                 [
@@ -916,14 +901,14 @@ public static class ParseErrorTestCases
             ),
             (
                 "fn MyFn(a: int): int {",
-                Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())], returnType: IntType())], [], []),
+                Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())], returnType: IntType(), block: Block().Block)], [], []),
                 [
                     ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static, TokenType.Use),
                 ]
             ),
             (
                 "fn MyFn(a: int): int {*",
-                Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())], returnType: IntType())], [], []),
+                Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())], returnType: IntType(), block: Block().Block)], [], []),
                 [
                     ParserError.ExpectedExpression(Token.Star(SourceSpan.Default)),
                     ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static, TokenType.Use),
@@ -931,14 +916,14 @@ public static class ParseErrorTestCases
             ),
             (
                 "fn MyFn(a: int) {",
-                Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
+                Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())], block: Block().Block)], [], []),
                 [
                     ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static, TokenType.Use)
                 ]
             ),
             (
                 "fn MyFn(a: int) {*",
-                Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
+                Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())], block: Block().Block)], [], []),
                 [
                     ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static, TokenType.Use),
                     ParserError.ExpectedExpression(Token.Star(SourceSpan.Default)),
@@ -946,12 +931,12 @@ public static class ParseErrorTestCases
             ),
             (
                 "fn MyFn(a: int) {}",
-                Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
+                Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())], block: Block().Block)], [], []),
                 []
             ),
             (
                 "fn MyFn<>(a: int) {}",
-                Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())])], [], []),
+                Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())], block: Block().Block)], [], []),
                 []
             ),
             (

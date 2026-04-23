@@ -107,6 +107,11 @@ public class TypeTwoTypeChecker(bool throwOnError)
 
     private void CheckFunction(LangFunction function)
     {
+        if (function.Block is null)
+        {
+            return;
+        }
+
         if (function.Signature is null)
         {
             throw new InvalidOperationException("Function signature was not created");

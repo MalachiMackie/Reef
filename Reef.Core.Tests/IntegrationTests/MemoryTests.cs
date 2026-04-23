@@ -118,10 +118,12 @@ public class MemoryTests : IntegrationTestBase
         );
     }
 
-    [Fact(Skip = "Only for testing")]
-    // [Fact, TestMe]
+    [Fact]
     public async Task PrintTypes()
     {
+        var method = typeof(MemoryTests).GetMethods().First(x => x.Name == nameof(PrintTypes) && x.GetParameters().Length == 0);
+        Assert.SkipUnless(method.CustomAttributes.Any(x => x.AttributeType == typeof(TestMeAttribute)), "Only for testing");
+
         await SetupTest(
             """
             use :::Reef:::Core:::Diagnostics:::*;
@@ -142,10 +144,12 @@ public class MemoryTests : IntegrationTestBase
         result.StandardOutput.Should().BeEmpty();
     }
 
-    [Fact(Skip = "Only for testing")]
-    // [Fact, TestMe]
+    [Fact]
     public async Task PrintMethods()
     {
+        var method = typeof(MemoryTests).GetMethods().First(x => x.Name == nameof(PrintMethods) && x.GetParameters().Length == 0);
+        Assert.SkipUnless(method.CustomAttributes.Any(x => x.AttributeType == typeof(TestMeAttribute)), "Only for testing");
+
         await SetupTest(
             """
             use :::Reef:::Core:::Diagnostics:::*;

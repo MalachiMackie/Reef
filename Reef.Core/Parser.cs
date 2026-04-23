@@ -296,11 +296,19 @@ public sealed class Parser : IDisposable
                 break;
             }
 
-            var (accessModifier, mutabilityModifier, staticModifier) = GetModifiers();
+            var (accessModifier, mutabilityModifier, staticModifier, externModifier) = GetModifiers();
 
             if (!_hasNext)
             {
-                var expectedTokensWithoutModifiers = expectedTokens.Except(new[] { accessModifier?.Token.Type, staticModifier?.Token.Type }.OfType<TokenType>());
+                var expectedTokensWithoutModifiers = expectedTokens.Except(
+                    new[]
+                    {
+                        accessModifier?.Token.Type,
+                        staticModifier?.Token.Type,
+                        mutabilityModifier?.Modifier.Type,
+                        externModifier?.Token.Type
+                    }.OfType<TokenType>());
+
                 _errors.Add(allowedScopeTypes.Contains(Scope.ScopeType.Expression) && accessModifier is null && staticModifier is null
                     ? ParserError.ExpectedTokenOrExpression(null, [.. expectedTokensWithoutModifiers])
                     : ParserError.ExpectedToken(null, [.. expectedTokensWithoutModifiers]));
@@ -315,6 +323,8 @@ public sealed class Parser : IDisposable
                     _errors.Add(ParserError.UnexpectedModifier(staticModifier.Token));
                 if (accessModifier is not null)
                     _errors.Add(ParserError.UnexpectedModifier(accessModifier.Token));
+                if (externModifier is not null)
+                    _errors.Add(ParserError.UnexpectedModifier(externModifier.Token));
 
                 if (GetModuleImport() is { } moduleImport)
                 {
@@ -326,7 +336,7 @@ public sealed class Parser : IDisposable
 
             if (allowedScopeTypes.Contains(Scope.ScopeType.Function) && Current.Type == TokenType.Fn)
             {
-                var functionDeclaration = GetFunctionDeclaration(accessModifier, staticModifier, mutabilityModifier);
+                var functionDeclaration = GetFunctionDeclaration(accessModifier, staticModifier, mutabilityModifier, externModifier);
                 if (functionDeclaration is not null)
                     functions.Add(functionDeclaration);
                 continue;
@@ -338,6 +348,8 @@ public sealed class Parser : IDisposable
                     _errors.Add(ParserError.UnexpectedModifier(mutabilityModifier.Modifier, TokenType.Pub));
                 if (staticModifier is not null)
                     _errors.Add(ParserError.UnexpectedModifier(staticModifier.Token, TokenType.Pub));
+                if (externModifier is not null)
+                    _errors.Add(ParserError.UnexpectedModifier(externModifier.Token, TokenType.Pub));
 
                 var (union, @class) = GetTypeDefinition(accessModifier);
                 if (@class is not null)
@@ -581,16 +593,17 @@ public sealed class Parser : IDisposable
         UnionVariant
     }
 
-    private (AccessModifier? AccessModifier, MutabilityModifier? MutabilityModifier, StaticModifier? StaticModifier)
+    private (AccessModifier? AccessModifier, MutabilityModifier? MutabilityModifier, StaticModifier? StaticModifier, ExternModifier? ExternModifier)
         GetModifiers()
     {
         AccessModifier? accessModifier = null;
         MutabilityModifier? mutabilityModifier = null;
         StaticModifier? staticModifier = null;
+        ExternModifier? externModifier = null;
 
-        HashSet<TokenType> expectedTokens = [TokenType.Mut, TokenType.Static, TokenType.Pub];
+        HashSet<TokenType> expectedTokens = [TokenType.Mut, TokenType.Static, TokenType.Pub, TokenType.Extern];
 
-        while (_hasNext && Current.Type is TokenType.Pub or TokenType.Static or TokenType.Mut)
+        while (_hasNext && Current.Type is TokenType.Pub or TokenType.Static or TokenType.Mut or TokenType.Extern)
         {
             if (!expectedTokens.Remove(Current.Type))
             {
@@ -598,11 +611,12 @@ public sealed class Parser : IDisposable
             }
             else
             {
-                (accessModifier, staticModifier, mutabilityModifier) = Current.Type switch
+                (accessModifier, staticModifier, mutabilityModifier, externModifier) = Current.Type switch
                 {
-                    TokenType.Pub => (new AccessModifier(Current), staticModifier, mutabilityModifier),
-                    TokenType.Static => (accessModifier, new StaticModifier(Current), mutabilityModifier),
-                    TokenType.Mut => (accessModifier, staticModifier, new MutabilityModifier(Current)),
+                    TokenType.Pub => (new AccessModifier(Current), staticModifier, mutabilityModifier, externModifier),
+                    TokenType.Static => (accessModifier, new StaticModifier(Current), mutabilityModifier, externModifier),
+                    TokenType.Mut => (accessModifier, staticModifier, new MutabilityModifier(Current), externModifier),
+                    TokenType.Extern => (accessModifier, staticModifier, mutabilityModifier, new ExternModifier(Current)),
                     _ => throw new UnreachableException()
                 };
             }
@@ -610,7 +624,7 @@ public sealed class Parser : IDisposable
             MoveNext();
         }
 
-        return (accessModifier, mutabilityModifier, staticModifier);
+        return (accessModifier, mutabilityModifier, staticModifier, externModifier);
     }
 
     private (LangFunction? Function, ClassField? Field, IProgramUnionVariant? Variant) GetMember(
@@ -630,16 +644,19 @@ public sealed class Parser : IDisposable
         if (allowedScopeTypes.Contains(MemberType.UnionVariant))
             expectedTokens.Add(TokenType.Identifier);
 
-        var (accessModifier, mutabilityModifier, staticModifier) = GetModifiers();
+        var (accessModifier, mutabilityModifier, staticModifier, externModifier) = GetModifiers();
 
         if (Current.Type == TokenType.Fn)
         {
-            var function = GetFunctionDeclaration(accessModifier, staticModifier, mutabilityModifier);
+            var function = GetFunctionDeclaration(accessModifier, staticModifier, mutabilityModifier, externModifier);
             return (function, null, null);
         }
 
         if (Current.Type == TokenType.Field)
         {
+            if (externModifier is not null)
+                _errors.Add(ParserError.UnexpectedModifier(externModifier.Token));
+
             var field = GetField(accessModifier, staticModifier, mutabilityModifier);
 
             return (null, field, null);
@@ -653,6 +670,8 @@ public sealed class Parser : IDisposable
                 _errors.Add(ParserError.UnexpectedModifier(staticModifier.Token));
             if (accessModifier is not null)
                 _errors.Add(ParserError.UnexpectedModifier(accessModifier.Token));
+            if (externModifier is not null)
+                _errors.Add(ParserError.UnexpectedModifier(externModifier.Token));
 
             return (null, null, GetUnionVariant(name));
         }
@@ -975,7 +994,11 @@ public sealed class Parser : IDisposable
         return new ProgramClass(accessModifier, name, typeParameters, scope.Functions, scope.Fields);
     }
 
-    private LangFunction? GetFunctionDeclaration(AccessModifier? accessModifier, StaticModifier? staticModifier, MutabilityModifier? mutabilityModifier)
+    private LangFunction? GetFunctionDeclaration(
+        AccessModifier? accessModifier,
+        StaticModifier? staticModifier,
+        MutabilityModifier? mutabilityModifier,
+        ExternModifier? externModifier)
     {
         if (!ExpectNextIdentifier(out var nameToken))
         {
@@ -995,7 +1018,8 @@ public sealed class Parser : IDisposable
                 [],
                 null,
                 null,
-                new Block([], [], []));
+                null,
+                externModifier);
         }
 
         IReadOnlyList<StringToken>? typeParameters = null;
@@ -1011,7 +1035,7 @@ public sealed class Parser : IDisposable
                     _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftParenthesis));
                 }
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, [], null,
-                    null, new Block([], [], []));
+                    null, null, externModifier);
             }
         }
 
@@ -1020,7 +1044,7 @@ public sealed class Parser : IDisposable
             _errors.Add(ParserError.ExpectedToken(Current, typeParameters is null ? [TokenType.LeftParenthesis, TokenType.LeftAngleBracket] : [TokenType.LeftParenthesis]));
             MoveNext();
             return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters ?? [], [], null,
-                null, new Block([], [], []));
+                null, null, externModifier);
         }
         typeParameters ??= [];
 
@@ -1065,13 +1089,8 @@ public sealed class Parser : IDisposable
 
         if (!_hasNext)
         {
-            if (parameterListLastToken?.Type is TokenType.RightParenthesis)
-            {
-                _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace, TokenType.Colon));
-            }
-
             return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
-                null, new Block([], [], []));
+                null, null, externModifier);
         }
 
         Token? returnMutModifier = null;
@@ -1082,7 +1101,7 @@ public sealed class Parser : IDisposable
                 _errors.Add(ParserError.ExpectedTypeOrToken(null, TokenType.Mut));
 
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
-                    null, new Block([], [], []));
+                    null, null, externModifier);
             }
 
             if (Current.Type == TokenType.Mut)
@@ -1092,7 +1111,7 @@ public sealed class Parser : IDisposable
                 {
                     _errors.Add(ParserError.ExpectedType(null));
                     return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
-                        returnMutModifier, new Block([], [], []));
+                        returnMutModifier, null, externModifier);
                 }
             }
 
@@ -1100,29 +1119,26 @@ public sealed class Parser : IDisposable
             {
                 MoveNext();
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
-                    returnMutModifier, new Block([], [], []));
+                    returnMutModifier, null, externModifier);
             }
 
             if (!_hasNext)
             {
-                _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace));
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
-                    returnMutModifier, new Block([], [], []));
+                    returnMutModifier, null, externModifier);
             }
         }
 
         if (Current.Type != TokenType.LeftBrace)
         {
-            _errors.Add(ParserError.ExpectedToken(Current, returnType is null ? [TokenType.Colon, TokenType.LeftBrace] : [TokenType.LeftBrace]));
-            MoveNext();
             return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
-                returnMutModifier, new Block([], [], []));
+                returnMutModifier, null, externModifier);
         }
 
         var scope = GetScope(TokenType.RightBrace, [Scope.ScopeType.Expression, Scope.ScopeType.Function, Scope.ScopeType.ModuleImport]);
 
         return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
-            returnMutModifier, new Block(scope.Expressions, scope.Functions, scope.ModuleImports));
+            returnMutModifier, new Block(scope.Expressions, scope.Functions, scope.ModuleImports), externModifier);
     }
 
     private ITypeIdentifier? GetTypeIdentifier(Token? boxingSpecifier = null)

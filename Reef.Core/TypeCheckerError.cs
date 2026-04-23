@@ -409,6 +409,24 @@ public record TypeCheckerError
             $"Non main module {moduleId.Value} cannot have top level statements");
     }
 
+    public static TypeCheckerError ExternFunctionDefinesBody(StringToken stringToken)
+    {
+        return new(
+            TypeCheckerErrorType.ExternFunctionDefinesBody,
+            new SourceRange(stringToken.SourceSpan, stringToken.SourceSpan),
+            $"Extern function {stringToken.StringValue} cannot define a function body"
+        );
+    }
+
+    public static TypeCheckerError NonExternFunctionDoesNotDefineBody(StringToken stringToken)
+    {
+        return new(
+            TypeCheckerErrorType.NonExternFunctionDoesNotDefineBody,
+            new SourceRange(stringToken.SourceSpan, stringToken.SourceSpan),
+            $"Function {stringToken.StringValue} does not define a function body"
+        );
+    }
+
 }
 
 public enum TypeCheckerErrorType
@@ -471,5 +489,7 @@ public enum TypeCheckerErrorType
     FunctionObjectReturnTypeMutabilityMismatch,
     ImportedItemNotPublic,
     TopLevelStatementsInNonMainModule,
+    ExternFunctionDefinesBody,
+    NonExternFunctionDoesNotDefineBody
 
 }

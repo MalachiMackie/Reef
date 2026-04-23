@@ -276,6 +276,7 @@ public class Tokenizer
             TokenType.Use when source is "use" => Token.Use(new SourceSpan(position, (ushort)source.Length)),
             TokenType.While when source is "while" => Token.While(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Unboxed when source is "unboxed" => Token.Unboxed(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Extern when source is "extern" => Token.Extern(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Boxed when source is "boxed" => Token.Boxed(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Break when source is "break" => Token.Break(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Continue when source is "continue" => Token.Continue(new SourceSpan(position, (ushort)source.Length)),
@@ -426,6 +427,7 @@ public class Tokenizer
                 break;
             case 'e':
                 tokens[i++] = TokenType.Else;
+                tokens[i++] = TokenType.Extern;
                 tokens[i++] = TokenType.Identifier;
                 break;
             case 's':
@@ -530,6 +532,7 @@ public class Tokenizer
             TokenType.RightParenthesis => Matches(source, ")"),
             TokenType.Todo => Matches(source, "todo!"),
             TokenType.Use => Matches(source, "use"),
+            TokenType.Extern => Matches(source, "extern"),
             TokenType.Underscore => Matches(source, "_"),
             TokenType.Bang => Matches(source, "!"),
             TokenType.Semicolon => Matches(source, ";"),
@@ -621,7 +624,7 @@ public class Tokenizer
             var withoutBackslashes = untilQuote.TrimEnd('\\');
             var trailingBackslashesCount = untilQuote.Length - withoutBackslashes.Length;
 
-            // there are an odd number of trailing backslashes, so the last one escapes the quote mark we found 
+            // there are an odd number of trailing backslashes, so the last one escapes the quote mark we found
             return trailingBackslashesCount % 2 == 1;
         }
 

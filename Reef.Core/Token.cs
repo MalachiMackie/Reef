@@ -108,6 +108,7 @@ public record Token
 
     public static Token Union(SourceSpan sourceSpan) => new() { Type = TokenType.Union, SourceSpan = sourceSpan };
     public static Token Unboxed(SourceSpan sourceSpan) => new() { Type = TokenType.Unboxed, SourceSpan = sourceSpan };
+    public static Token Extern(SourceSpan sourceSpan) => new() { Type = TokenType.Extern, SourceSpan = sourceSpan };
     public static Token Boxed(SourceSpan sourceSpan) => new() { Type = TokenType.Boxed, SourceSpan = sourceSpan };
 
     public static Token Static(SourceSpan sourceSpan)

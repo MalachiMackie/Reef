@@ -3005,6 +3005,36 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
             {
+                "Extern function defines body",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            pub extern fn some_fn(){}
+                            """,
+                            [TypeCheckerError.ExternFunctionDefinesBody(Token.Identifier("some_fn", SourceSpan.Default))]
+                        )
+                    }
+                }
+            },
+            {
+                "Non Extern function does not define body",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            pub fn some_fn()
+                            """,
+                            [TypeCheckerError.NonExternFunctionDoesNotDefineBody(Token.Identifier("some_fn", SourceSpan.Default))]
+                        )
+                    }
+                }
+            },
+            {
                 "Top level statements in non main module",
                 new()
                 {

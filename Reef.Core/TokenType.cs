@@ -59,5 +59,6 @@ public enum TokenType
     Boxed,
     RightSquareBracket,
     LeftSquareBracket,
-    Use
+    Use,
+    Extern
 }

@@ -5,20 +5,20 @@ public class TokenizerTests
     private const string MediumSource = """
                                         pub fn DoSomething(a: int): result<int, string> {
                                             var b = 2;
-                                            
+
                                             if (a > b) {
                                                 return ok(a);
                                             }
                                             else if (a == b) {
                                                 return ok(b);
                                             }
-                                            
+
                                             return error("something wrong");
                                         }
 
                                         pub fn SomethingElse(a: int): result<int, string> {
                                             b = DoSomething(a)?;
-                                            
+
                                             return b;
                                         }
 
@@ -161,6 +161,7 @@ public class TokenizerTests
             [":::", new[] { Token.TripleColon(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             ["pub", new[] { Token.Pub(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             ["unboxed", new[] { Token.Unboxed(new SourceSpan(new SourcePosition(0, 0, 0), 7)) }],
+            ["extern", new[] { Token.Extern(new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],
             ["boxed", new[] { Token.Boxed(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["union", new[] { Token.Union(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["static", new[] { Token.Static(new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],

@@ -162,6 +162,11 @@ public record NamedTypeIdentifier(
     }
 }
 
+public record ExternModifier(Token Token)
+{
+    public override string ToString() => Token.ToString();
+}
+
 public record LangFunction(
     AccessModifier? AccessModifier,
     StaticModifier? StaticModifier,
@@ -171,7 +176,8 @@ public record LangFunction(
     IReadOnlyList<FunctionParameter> Parameters,
     ITypeIdentifier? ReturnType,
     Token? ReturnMutabilityModifier,
-    Block Block)
+    Block? Block,
+    ExternModifier? ExternModifier)
 {
     public TypeChecker.FunctionSignature? Signature { get; set; }
 
@@ -181,6 +187,16 @@ public record LangFunction(
         if (AccessModifier is not null)
         {
             sb.Append($"{AccessModifier} ");
+        }
+
+        if (StaticModifier is not null)
+        {
+            sb.Append($"{StaticModifier} ");
+        }
+
+        if (ExternModifier is not null)
+        {
+            sb.Append($"{ExternModifier} ");
         }
 
         sb.Append($"fn {Name}");
@@ -196,10 +212,18 @@ public record LangFunction(
         sb.Append(')');
         if (ReturnType is not null)
         {
-            sb.Append($": {ReturnType}");
+            sb.Append(": ");
+            if (ReturnMutabilityModifier is not null)
+            {
+                sb.Append(ReturnMutabilityModifier);
+            }
+            sb.Append(ReturnType);
         }
 
-        sb.Append($"{Block}");
+        if (Block is not null)
+        {
+            sb.Append($"{Block}");
+        }
 
         return sb.ToString();
     }

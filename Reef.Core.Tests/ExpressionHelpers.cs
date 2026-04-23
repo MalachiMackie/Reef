@@ -247,7 +247,9 @@ public static class ExpressionHelpers
         IReadOnlyList<FunctionParameter>? parameters = null,
         IReadOnlyList<string>? typeParameters = null,
         ITypeIdentifier? returnType = null,
-        bool isMutableReturn = false)
+        bool isMutableReturn = false,
+        bool isExtern = false,
+        Block? block = null)
     {
         return new LangFunction(isPublic
                 ? new AccessModifier(Token.Pub(SourceSpan.Default))
@@ -263,7 +265,11 @@ public static class ExpressionHelpers
             parameters ?? [],
             returnType,
             isMutableReturn ? Token.Mut(SourceSpan.Default) : null,
-            new Block([], [], []));
+            block,
+            isExtern
+                ? new ExternModifier(Token.Extern(SourceSpan.Default))
+                : null
+            );
     }
 
     public static FunctionParameter FunctionParameter(string name, ITypeIdentifier? type = null, bool isMutable = false)

@@ -6,7 +6,7 @@ public static class FailTestCases
     {
         IEnumerable<string> strings =
         [
-            // missing variable declaration value 
+            // missing variable declaration value
             "var a = ",
             // missing variable declaration name
             "var",
@@ -53,7 +53,6 @@ public static class FailTestCases
             "fn MyFn<,>(){}",
             "fn MyFn<A B>(){}",
             "fn MyFunction() {",
-            "fn MyFunction()",
             "fn a MyFunction() {}",
             "fn MyFunction",
             "fn MyFunction(",

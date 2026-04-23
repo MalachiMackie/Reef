@@ -8,6 +8,15 @@ public partial class TypeChecker
 {
     private FunctionSignature TypeCheckFunctionSignature(DefId defId, LangFunction fn, ITypeSignature? ownerType)
     {
+        if (fn.ExternModifier is { Token.Type: TokenType.Extern } && fn.Block is not null)
+        {
+            AddError(TypeCheckerError.ExternFunctionDefinesBody(fn.Name));
+        }
+        else if (fn.ExternModifier is null && fn.Block is null)
+        {
+            AddError(TypeCheckerError.NonExternFunctionDoesNotDefineBody(fn.Name));
+        }
+
         var parameters = new OrderedDictionary<string, FunctionSignatureParameter>();
 
         var name = fn.Name.StringValue;
@@ -19,8 +28,8 @@ public partial class TypeChecker
             parameters,
             fn.StaticModifier is not null,
             fn.MutabilityModifier is not null,
-            fn.Block.Expressions,
-            ExternName: null,
+            fn.Block?.Expressions ?? [],
+            ExternName: fn.ExternModifier is { Token.Type: TokenType.Extern } ? fn.Name.StringValue : null,
             fn.ReturnMutabilityModifier is { Type: TokenType.Mut },
             fn.AccessModifier is { Token.Type: TokenType.Pub })
         {
@@ -89,10 +98,13 @@ public partial class TypeChecker
             }
         }
 
-        fnSignature.LocalFunctions.AddRange(fn.Block.Functions.Select(x => TypeCheckFunctionSignature(
-            new DefId(defId.ModuleId, defId.FullName + $"__{x.Name}"),
-            x,
-            ownerType: null)));
+        if (fn.Block is not null)
+        {
+            fnSignature.LocalFunctions.AddRange(fn.Block.Functions.Select(x => TypeCheckFunctionSignature(
+                new DefId(defId.ModuleId, defId.FullName + $"__{x.Name}"),
+                x,
+                ownerType: null)));
+        }
 
         // todo: function overloading
         return fnSignature;
