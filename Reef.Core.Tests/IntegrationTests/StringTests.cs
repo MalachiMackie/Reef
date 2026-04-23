@@ -99,4 +99,28 @@ public class StringTests : IntegrationTestBase
         result.ExitCode.Should().Be(0);
         result.StandardOutput.Should().Be($"foo{Environment.NewLine}{Environment.NewLine}bar");
     }
+
+    [Fact]
+    public async Task StringSlices()
+    {
+        await SetupTest(
+            """
+            var original: string = "hello world";
+            var trimmedSlice: StringSlice = original.slice(1, 9);
+            print_string_slice(trimmedSlide);
+            print_string("\n");
+            var trimmed = trimmedSlice.toString();
+            print_string(trimmed);
+            """
+        );
+
+        var result = await Run();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be(
+            """
+            ello worl
+            ello worl
+            """
+        );
+    }
 }
