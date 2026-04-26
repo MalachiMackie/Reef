@@ -5,6 +5,7 @@ using static Reef.Core.TypeChecking.TypeChecker;
 
 namespace Reef.Core.Tests;
 
+[TestMe]
 public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 {
     private readonly MockFileSystem _fileSystem = new();
@@ -66,15 +67,11 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         {
             {
                 "main.rf", ("""
-                            var a: i64;
-                            fn SomeFn() {
-                                var b = a;
-                            }
-                            SomeFn();
-                            a = 1;
+                            class MyClass {}
+                            unboxed MyClass
                             """, [
-                            TypeCheckerError.AccessingClosureWhichReferencesUninitializedVariables(Identifier("SomeFn"),
-                            [Identifier("a")])
+                            TypeCheckerError.TypeIsNotExpression(SourceRange.Default,
+                            NamedTypeIdentifier("MyClass", boxedSpecifier: Token.Unboxed(SourceSpan.Default)))
                             ])
             }
         };
@@ -84,7 +81,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             _fileSystem.AddFile(path, new MockFileData(contents));
         }
 
-        var (typeCheckResults, moduleIdToFileName) = await new ReefCompiler(_fileSystem).TypeCheck();
+        var (typeCheckResults, moduleIdToFileName) = await new ReefCompiler(_fileSystem).TypeCheck(false);
         foreach (var (moduleId, typeCheckResult) in typeCheckResults)
         {
             typeCheckResult.ParserErrors.Should().BeEmpty();
@@ -2566,6 +2563,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             new() { { "main.rf", "class MyClass {} var a: MyClass = new MyClass {};" } },
+            new() { { "main.rf", "unboxed class MyClass {} var a: unboxed MyClass = new MyClass {};" } },
+            new() { { "main.rf", "boxed class MyClass {} var a: boxed MyClass = new MyClass {};" } },
             new()
             {
                 {

@@ -60,9 +60,22 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
 
         var source =
-        "use something:::A";
-        var expectedProgram = Program("ParseTestCases", moduleImports: [ModuleImport(["something", "A"])]);
-        IEnumerable<ParserError> expectedErrors = [ParserError.ExpectedToken(null, TokenType.TripleColon, TokenType.Semicolon)];
+        """
+                        unboxed int::something
+                        """;
+        var expectedProgram = Program("ParseTestCases",
+            [new StaticMemberAccessExpression(
+                                new StaticMemberAccess(
+                                    new NamedTypeIdentifier(
+                                        Identifier("int"),
+                                        [],
+                                        Token.Unboxed(SourceSpan.Default),
+                                        [],
+                                        false,
+                                        SourceRange.Default),
+                                    Identifier("something"),
+                                    null))]);
+        IEnumerable<ParserError> expectedErrors = [];
 
         var result = Parser.Parse(new ModuleId("ParseTestCases"), Tokenizer.Tokenize(source)).NotNull();
 

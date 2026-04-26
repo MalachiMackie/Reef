@@ -245,6 +245,11 @@ public record AccessModifier(Token Token)
     }
 }
 
+public record BoxingModifier(Token Token)
+{
+    public override string ToString() => Token.ToString();
+}
+
 public record FunctionParameter(ITypeIdentifier? Type, MutabilityModifier? MutabilityModifier, StringToken Identifier)
 {
     public override string ToString()

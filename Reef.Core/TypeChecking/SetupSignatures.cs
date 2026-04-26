@@ -33,7 +33,13 @@ public partial class TypeChecker
                     TypeParameters = typeParameters,
                     Functions = functions,
                     Variants = variants,
-                    Boxed = true,
+                    Boxed = union.BoxingModifier switch
+                    {
+                        null => true,
+                        { Token.Type: TokenType.Boxed } => true,
+                        { Token.Type: TokenType.Unboxed } => false,
+                        { Token.Type: var type } => throw new InvalidOperationException(type.ToString())
+                    },
                     IsPublic = union.AccessModifier is { Token.Type: TokenType.Pub }
                 };
 
@@ -76,7 +82,13 @@ public partial class TypeChecker
                     TypeParameters = typeParameters,
                     Functions = functions,
                     Fields = fields,
-                    Boxed = true,
+                    Boxed = klass.BoxingModifier switch
+                    {
+                        null => true,
+                        { Token.Type: TokenType.Boxed } => true,
+                        { Token.Type: TokenType.Unboxed } => false,
+                        { Token.Type: var type } => throw new InvalidOperationException(type.ToString())
+                    },
                     IsPublic = klass.AccessModifier is { Token.Type: TokenType.Pub }
                 };
 

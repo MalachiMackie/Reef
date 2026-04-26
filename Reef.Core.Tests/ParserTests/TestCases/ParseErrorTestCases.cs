@@ -151,14 +151,14 @@ public static class ParseErrorTestCases
                 Program("ParseErrorTestCases", [
                     VariableDeclaration("a", type: IntType())
                 ]),
-                [ParserError.ExpectedTypeName(null)]
+                [ParserError.ExpectedTokenOrExpression(null, TokenType.Pub, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Boxed, TokenType.Extern)]
             ),
             (
                 "var a: int boxed",
                 Program("ParseErrorTestCases", [
                     VariableDeclaration("a", type: IntType())
                 ]),
-                [ParserError.ExpectedTypeName(null)]
+                [ParserError.ExpectedTokenOrExpression(null, TokenType.Pub, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Unboxed, TokenType.Extern)]
             ),
             (
                 "var a: int = ;",
@@ -291,14 +291,14 @@ public static class ParseErrorTestCases
                     Block()
                 ]),
                 [
-                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static, TokenType.Use)
+                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static, TokenType.Use, TokenType.Extern)
                 ]
             ),
             (
                 ",",
                 Program("ParseErrorTestCases"),
                 [
-                    ParserError.ExpectedTokenOrExpression(Token.Comma(SourceSpan.Default), TokenType.Pub, TokenType.Static, TokenType.Fn, TokenType.Class, TokenType.Union, TokenType.Use)
+                    ParserError.ExpectedTokenOrExpression(Token.Comma(SourceSpan.Default), TokenType.Pub, TokenType.Static, TokenType.Fn, TokenType.Class, TokenType.Union, TokenType.Use, TokenType.Extern, TokenType.Unboxed, TokenType.Boxed)
                 ]
             ),
             (
@@ -308,7 +308,7 @@ public static class ParseErrorTestCases
                     VariableAccessor("b")
                 ]),
                 [
-                    ParserError.ExpectedTokenOrExpression(Token.Comma(SourceSpan.Default), TokenType.Pub, TokenType.Static, TokenType.Fn, TokenType.Class, TokenType.Union, TokenType.Use)
+                    ParserError.ExpectedTokenOrExpression(Token.Comma(SourceSpan.Default), TokenType.Pub, TokenType.Static, TokenType.Fn, TokenType.Class, TokenType.Union, TokenType.Use, TokenType.Extern, TokenType.Boxed, TokenType.Unboxed)
                 ]
             ),
             (
@@ -341,7 +341,7 @@ public static class ParseErrorTestCases
                     new ProgramClass(null, Identifier("MyClass"), [], [], [
                         ClassField("MyField", StringType()),
                         ClassField("OtherField", StringType())
-                    ])
+                    ], null)
                 ], []),
                 [
                     ParserError.ExpectedToken(Token.Field(SourceSpan.Default), TokenType.Comma, TokenType.RightBrace)
@@ -353,7 +353,7 @@ public static class ParseErrorTestCases
                     new ProgramClass(null, Identifier("MyClass"), [], [], [
                         ClassField("MyField", StringType()),
                         ClassField("OtherField", StringType())
-                    ])
+                    ], null)
                 ], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma, TokenType.Pub, TokenType.Static, TokenType.Mut, TokenType.Field, TokenType.Fn),
@@ -374,7 +374,7 @@ public static class ParseErrorTestCases
                     VariableDeclaration("a", Literal(2))
                 ]),
                 [
-                    ParserError.ExpectedToken(null, TokenType.Fn, TokenType.Static, TokenType.Class, TokenType.Union, TokenType.Use),
+                    ParserError.ExpectedToken(null, TokenType.Fn, TokenType.Static, TokenType.Class, TokenType.Union, TokenType.Unboxed, TokenType.Boxed, TokenType.Extern),
                 ]
             ),
             (
@@ -903,7 +903,7 @@ public static class ParseErrorTestCases
                 "fn MyFn(a: int): int {",
                 Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())], returnType: IntType(), block: Block().Block)], [], []),
                 [
-                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static, TokenType.Use),
+                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static, TokenType.Use, TokenType.Extern),
                 ]
             ),
             (
@@ -911,21 +911,21 @@ public static class ParseErrorTestCases
                 Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())], returnType: IntType(), block: Block().Block)], [], []),
                 [
                     ParserError.ExpectedExpression(Token.Star(SourceSpan.Default)),
-                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static, TokenType.Use),
+                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static, TokenType.Use, TokenType.Extern),
                 ]
             ),
             (
                 "fn MyFn(a: int) {",
                 Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())], block: Block().Block)], [], []),
                 [
-                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static, TokenType.Use)
+                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static, TokenType.Use, TokenType.Extern)
                 ]
             ),
             (
                 "fn MyFn(a: int) {*",
                 Program("ParseErrorTestCases", [], [Function("MyFn", parameters: [FunctionParameter("a", IntType())], block: Block().Block)], [], []),
                 [
-                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static, TokenType.Use),
+                    ParserError.ExpectedTokenOrExpression(null, TokenType.RightBrace, TokenType.Pub, TokenType.Fn, TokenType.Static, TokenType.Use, TokenType.Extern),
                     ParserError.ExpectedExpression(Token.Star(SourceSpan.Default)),
                 ]
             ),
@@ -969,7 +969,7 @@ public static class ParseErrorTestCases
                 "::<",
                 Program("ParseErrorTestCases"),
                 [
-                    ParserError.ExpectedTokenOrExpression(Token.Turbofish(SourceSpan.Default), TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Use)
+                    ParserError.ExpectedTokenOrExpression(Token.Turbofish(SourceSpan.Default), TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Use, TokenType.Unboxed, TokenType.Boxed, TokenType.Extern)
                 ]
             ),
             (
@@ -978,13 +978,13 @@ public static class ParseErrorTestCases
                 [
                     ParserError.ExpectedTokenOrExpression(
                         Token.Turbofish(SourceSpan.Default),
-                        TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Use)
+                        TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Use, TokenType.Unboxed, TokenType.Boxed, TokenType.Extern)
                 ]
             ),
             (
                 "1::<",
                 Program("ParseErrorTestCases", [Literal(1)]),
-                [ParserError.ExpectedTokenOrExpression(Token.Turbofish(SourceSpan.Default), TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Use)]
+                [ParserError.ExpectedTokenOrExpression(Token.Turbofish(SourceSpan.Default), TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Use, TokenType.Boxed, TokenType.Unboxed, TokenType.Extern)]
             ),
             (
                 "var a = SomeFn::<string>;",
@@ -1835,7 +1835,7 @@ public static class ParseErrorTestCases
                     IfExpression(VariableAccessor("b"), Block())
                 ]),
                 [
-                    ParserError.ExpectedTokenOrExpression(Token.Else(SourceSpan.Default), TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Use)
+                    ParserError.ExpectedTokenOrExpression(Token.Else(SourceSpan.Default), TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Use, TokenType.Unboxed, TokenType.Boxed, TokenType.Extern)
                 ]
             ),
             (
@@ -2065,12 +2065,12 @@ public static class ParseErrorTestCases
             (
                 "unboxed",
                 Program("ParseErrorTestCases", []),
-                [ParserError.ExpectedTypeName(null)]
+                [ParserError.ExpectedTokenOrExpression(null, TokenType.Pub, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Boxed, TokenType.Extern)]
             ),
             (
                 "boxed",
                 Program("ParseErrorTestCases", []),
-                [ParserError.ExpectedTypeName(null)]
+                [ParserError.ExpectedTokenOrExpression(null, TokenType.Pub, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Unboxed, TokenType.Extern)]
             )
         ];
 

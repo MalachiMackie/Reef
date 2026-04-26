@@ -9,7 +9,8 @@ public record ProgramClass(
     StringToken Name,
     IReadOnlyList<StringToken> TypeParameters,
     IReadOnlyCollection<LangFunction> Functions,
-    IReadOnlyCollection<ClassField> Fields)
+    IReadOnlyCollection<ClassField> Fields,
+    BoxingModifier? BoxingModifier)
 {
     public TypeChecker.ClassSignature? Signature { get; set; }
 
@@ -19,6 +20,11 @@ public record ProgramClass(
         if (AccessModifier is not null)
         {
             sb.Append($"{AccessModifier} ");
+        }
+
+        if (BoxingModifier is not null)
+        {
+            sb.Append($"{BoxingModifier} ");
         }
 
         sb.Append($"class {Name}");

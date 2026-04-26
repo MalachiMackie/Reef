@@ -368,7 +368,7 @@ public static class ParseTestCases
                                     Fields =
                                     []
                                 }
-                            ])
+                            ], null)
                     ])
             ),
             (
@@ -430,7 +430,7 @@ public static class ParseTestCases
                                             null)
                                     ]
                                 }
-                            ])
+                            ], null)
                     ])
             ),
             ("class MyClass {field myFieldWithoutComma: string}",
@@ -444,7 +444,7 @@ public static class ParseTestCases
                             Identifier("myFieldWithoutComma"),
                             NamedTypeIdentifier("string"),
                             null)
-                    ])
+                    ], null)
                 ])),
             (
                 """
@@ -458,7 +458,7 @@ public static class ParseTestCases
                             Identifier("MyUnion"),
                             [],
                             [],
-                            [])
+                            [], null)
                     ])
             ),
             (
@@ -470,7 +470,35 @@ public static class ParseTestCases
                             Identifier("MyUnion"),
                             [],
                             [],
-                            [])
+                            [], null)
+                    ])
+            ),
+            (
+                "pub boxed union MyUnion {}",
+                Program("ParseTestCases",
+                    unions: [
+                        new ProgramUnion(
+                            new AccessModifier(Token.Pub(SourceSpan.Default)),
+                            Identifier("MyUnion"),
+                            [],
+                            [],
+                            [],
+                            new BoxingModifier(Token.Boxed(SourceSpan.Default))
+                        )
+                    ])
+            ),
+            (
+                "pub unboxed union MyUnion {}",
+                Program("ParseTestCases",
+                    unions: [
+                        new ProgramUnion(
+                            new AccessModifier(Token.Pub(SourceSpan.Default)),
+                            Identifier("MyUnion"),
+                            [],
+                            [],
+                            [],
+                            new BoxingModifier(Token.Unboxed(SourceSpan.Default))
+                        )
                     ])
             ),
             (
@@ -483,7 +511,7 @@ public static class ParseTestCases
                             [Identifier("T1"), Identifier("T2")],
                             [],
                             []
-                        )
+                            , null)
                     ])
             ),
             (
@@ -499,7 +527,7 @@ public static class ParseTestCases
                                     [], [], null, null, new Block([], [], []), null)
                             ],
                             []
-                        )
+                            , null)
                     ])
             ),
             (
@@ -515,7 +543,7 @@ public static class ParseTestCases
                             Identifier("MyUnion"),
                             [],
                             [],
-                            [new UnitUnionVariant(Identifier("A"))])
+                            [new UnitUnionVariant(Identifier("A"))], null)
                     ])
             ),
             (
@@ -531,7 +559,7 @@ public static class ParseTestCases
                             Identifier("MyUnion"),
                             [],
                             [],
-                            [new UnitUnionVariant(Identifier("A"))])
+                            [new UnitUnionVariant(Identifier("A"))], null)
                     ])
             ),
             (
@@ -561,7 +589,7 @@ public static class ParseTestCases
                                                 NamedTypeIdentifier("string")
                                             ])
                                     ])
-                            ])
+                            ], null)
                     ])
             ),
             (
@@ -590,7 +618,7 @@ public static class ParseTestCases
                                             NamedTypeIdentifier("string"), null)
                                     ]
                                 }
-                            ])
+                            ], null)
                     ])
             ),
             (
@@ -710,7 +738,7 @@ public static class ParseTestCases
                     null,
                     Identifier("MyClass"),
                     [Identifier("T")],
-                    [], [])
+                    [], [], null)
             ])),
             ("fn MyFn<T,>(){}", Program("ParseTestCases", functions: [
                 new LangFunction(
@@ -1063,7 +1091,7 @@ public static class ParseTestCases
                     Identifier("MyClass"),
                     [],
                     [],
-                    [])
+                    [], null)
             ])),
             ("class MyClass<T> {}", Program("ParseTestCases", classes: [
                 new ProgramClass(
@@ -1071,7 +1099,7 @@ public static class ParseTestCases
                     Identifier("MyClass"),
                     [Identifier("T")],
                     [],
-                    [])
+                    [], null)
             ])),
             ("class MyClass<T, T2, T3> {}", Program("ParseTestCases", classes: [
                 new ProgramClass(
@@ -1082,15 +1110,35 @@ public static class ParseTestCases
                         Identifier("T3")
                     ],
                     [],
-                    [])
+                    [], null)
             ])),
+            ("pub unboxed class MyClass {}", Program("ParseTestCases", classes: [
+                                        new ProgramClass(
+                                            new AccessModifier(Token.Pub(SourceSpan.Default)),
+                                            Identifier("MyClass"),
+                                            [],
+                                            [],
+                                            [],
+                                            new BoxingModifier(Token.Unboxed(SourceSpan.Default))
+                                        )
+                                    ])),
+            ("pub boxed class MyClass {}", Program("ParseTestCases", classes: [
+                            new ProgramClass(
+                                new AccessModifier(Token.Pub(SourceSpan.Default)),
+                                Identifier("MyClass"),
+                                [],
+                                [],
+                                [],
+                                new BoxingModifier(Token.Boxed(SourceSpan.Default))
+                            )
+                        ])),
             ("pub class MyClass {}", Program("ParseTestCases", classes: [
                 new ProgramClass(
                     new AccessModifier(Token.Pub(SourceSpan.Default)),
                     Identifier("MyClass"),
                     [],
                     [],
-                    [])
+                    [], null)
             ])),
             ("class MyClass {pub mut field MyField: string,}", Program("ParseTestCases", classes: [
                 new ProgramClass(
@@ -1105,7 +1153,7 @@ public static class ParseTestCases
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Identifier("MyField"),
                             NamedTypeIdentifier("string"), null)
-                    ])
+                    ], null)
             ])),
             ("class MyClass {pub static mut field MyField: string,}", Program("ParseTestCases", classes: [
                 new ProgramClass(
@@ -1120,7 +1168,7 @@ public static class ParseTestCases
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Identifier("MyField"),
                             NamedTypeIdentifier("string"), null)
-                    ])
+                    ], null)
             ])),
             ("class MyClass {mut field MyField: string,}", Program("ParseTestCases", classes: [
                 new ProgramClass(
@@ -1135,7 +1183,7 @@ public static class ParseTestCases
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Identifier("MyField"),
                             NamedTypeIdentifier("string"), null)
-                    ])
+                    ], null)
             ])),
             ("class MyClass {field MyField: string,}", Program("ParseTestCases", classes: [
                 new ProgramClass(
@@ -1150,7 +1198,7 @@ public static class ParseTestCases
                             null,
                             Identifier("MyField"),
                             NamedTypeIdentifier("string"), null)
-                    ])
+                    ], null)
             ])),
             ("class MyClass {pub field MyField: string,}", Program("ParseTestCases", classes: [
                 new ProgramClass(
@@ -1165,7 +1213,7 @@ public static class ParseTestCases
                             null,
                             Identifier("MyField"),
                             NamedTypeIdentifier("string"), null)
-                    ])
+                    ], null)
             ])),
             ("class MyClass {pub mut field MyField: string, pub fn MyFn() {},}", Program("ParseTestCases", classes: [
                 new ProgramClass(
@@ -1183,7 +1231,7 @@ public static class ParseTestCases
                             new MutabilityModifier(Token.Mut(SourceSpan.Default)),
                             Identifier("MyField"),
                             NamedTypeIdentifier("string"), null)
-                    ])
+                    ], null)
             ])),
             ("class MyClass {field MyField: string, fn MyFn() {}}", Program("ParseTestCases", classes: [
                 new ProgramClass(
@@ -1201,7 +1249,7 @@ public static class ParseTestCases
                             null,
                             Identifier("MyField"),
                             NamedTypeIdentifier("string"), null)
-                    ])
+                    ], null)
             ])),
             ("pub fn DoSomething(a: int): result::<int, string> {}", Program("ParseTestCases",
                 functions: [
@@ -1242,7 +1290,7 @@ public static class ParseTestCases
                                     NamedTypeIdentifier("int"),
                                     Literal(3))
                             ]
-                        )
+                            , null)
                     ])
             ),
             (
@@ -1613,7 +1661,7 @@ public static class ParseTestCases
                                 Identifier("FieldD"),
                                 NamedTypeIdentifier("string"),
                                 null)
-                        ]),
+                        ], null),
                     new ProgramClass(
                         new AccessModifier(Token.Pub(SourceSpan.Default)),
                         Identifier("GenericClass"),
@@ -1631,7 +1679,7 @@ public static class ParseTestCases
                                 new Block([], [], []), null)
                         ],
                         []
-                    ),
+                        , null),
                     new ProgramClass(
                         new AccessModifier(Token.Pub(SourceSpan.Default)),
                         Identifier("Class2"),
@@ -1645,7 +1693,7 @@ public static class ParseTestCases
                                 NamedTypeIdentifier("string"),
                                 null)
                         ]
-                    )
+                        , null)
                 ]))
         }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedProgram
 });

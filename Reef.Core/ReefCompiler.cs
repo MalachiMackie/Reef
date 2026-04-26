@@ -6,7 +6,7 @@ namespace Reef.Core;
 
 public class ReefCompiler(IFileSystem fileSystem, string? workingDirectory = null)
 {
-    public async Task<(Dictionary<ModuleId, TypeCheckResult>, Dictionary<ModuleId, string>)> TypeCheck()
+    public async Task<(Dictionary<ModuleId, TypeCheckResult>, Dictionary<ModuleId, string>)> TypeCheck(bool throwOnError = false)
     {
         var currentDirectory = workingDirectory ?? fileSystem.Directory.GetCurrentDirectory();
 
@@ -26,7 +26,7 @@ public class ReefCompiler(IFileSystem fileSystem, string? workingDirectory = nul
             }
         }
 
-        var typeCheckErrors = TypeChecker.TypeCheck(modules);
+        var typeCheckErrors = TypeChecker.TypeCheck(modules, throwOnError);
 
         return (parsedModules
             .ToDictionary(x => x.Item1.ParsedModule.ModuleId, x => new TypeCheckResult(

@@ -209,14 +209,19 @@ public static class ExpressionHelpers
             modulePathIsGlobal));
     }
 
-    public static ProgramClass Class(string name, bool isPublic = false, IReadOnlyList<ClassField>? fields = null, IReadOnlyList<string>? typeParameters = null)
+    public static ProgramClass Class(
+        string name,
+        bool isPublic = false,
+        IReadOnlyList<ClassField>? fields = null,
+        IReadOnlyList<string>? typeParameters = null)
     {
         return new ProgramClass(
             isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
             Token.Identifier(name, SourceSpan.Default),
             [.. typeParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
             [],
-            fields ?? []);
+            fields ?? [],
+            null);
     }
 
     public static ProgramUnion Union(string name, bool isPublic = false, IReadOnlyList<IProgramUnionVariant>? variants = null, IReadOnlyList<string>? typeParameters = null)
@@ -226,7 +231,8 @@ public static class ExpressionHelpers
             Token.Identifier(name, SourceSpan.Default),
             [.. typeParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
             [],
-            variants ?? []);
+            variants ?? [],
+            null);
     }
 
     public static TypeChecker.FunctionObject FunctionObject(
