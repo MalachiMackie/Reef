@@ -19,7 +19,11 @@ public partial class TypeChecker
             var unions = new List<UnionInfo>();
             moduleInfos.Add(new ModuleInfo(moduleId, classes, unions));
 
-            _moduleSignatures[moduleId] = ([], [], []);
+            // niche use case for when we're type checking Reef:::Core or other built in modules
+            if (!_moduleSignatures.ContainsKey(moduleId))
+            {
+                _moduleSignatures[moduleId] = ([], [], []);
+            }
 
             foreach (var union in module.Unions)
             {

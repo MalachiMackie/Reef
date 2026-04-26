@@ -10,7 +10,7 @@ namespace Reef.Core;
 public record AssemblyDefId(DefId Id, IReadOnlyList<AssemblyDefId> TypeArguments);
 
 #pragma warning disable CS9113 // Parameter is unread.
-public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<DefId> usefulMethodIds, ILogger logger)
+public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulMethodIds, ILogger logger)
 #pragma warning restore CS9113 // Parameter is unread.
 {
     private const string AsmHeader = """
@@ -50,7 +50,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
     private LoweredMethod? _currentMethod;
     private Dictionary<string, ILoweredTypeReference> _currentTypeArguments = [];
-    private readonly Dictionary<DefId, DataType> _dataTypes = modules.SelectMany(x => x.DataTypes).ToDictionary(
+    private readonly Dictionary<DefId, DataType> _dataTypes = program.DataTypes.ToDictionary(
         x => x.Id);
 
     private readonly HashSet<string> _queuedMethodLabels = [];
@@ -64,9 +64,9 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         }
     }
 
-    public static string Process(IReadOnlyList<LoweredModule> modules, HashSet<DefId> usefulMethodIds, ILogger logger)
+    public static string Process(LoweredProgram program, HashSet<DefId> usefulMethodIds, ILogger logger)
     {
-        var assemblyLine = new AssemblyLine(modules, usefulMethodIds, logger);
+        var assemblyLine = new AssemblyLine(program, usefulMethodIds, logger);
         return assemblyLine.ProcessInner();
     }
 
@@ -890,13 +890,6 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
     private string ProcessInner()
     {
-        var mainModule = modules.Where(x => x.Methods.Any(y => y.Name == "_Main")).ToArray();
-
-        if (mainModule.Length != 1)
-        {
-            throw new InvalidOperationException("Expected a single module with a main method");
-        }
-
         TryEnqueueMethodForProcessing(new LoweredMethod(
             new DefId(DefId.CoreLibModuleId, "__variant_identifier_field_getter"),
             "__variant_identifier_field_getter",
@@ -942,9 +935,9 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
             """
         );
 
-        var mainMethod = mainModule[0].Methods.OfType<LoweredMethod>().Single(x => x.Name == "_Main");
+        var mainMethod = program.Methods.OfType<LoweredMethod>().Single(x => x.Name == "_Main");
 
-        foreach (var externMethod in modules.SelectMany(x => x.Methods)
+        foreach (var externMethod in program.Methods
                      .OfType<LoweredExternMethod>()
                      .Where(x => usefulMethodIds.Contains(x.Id)))
         {
@@ -954,14 +947,11 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
         CreateMain(mainMethod);
 
         // enqueue all non-generic methods. Generic methods get enqueued lazily based on what they're type arguments they're invoked with
-        foreach (var module in modules)
+        foreach (var method in program.Methods.OfType<LoweredMethod>().Where(x =>
+                        usefulMethodIds.Contains(x.Id)
+                        && x.TypeParameters.Count == 0))
         {
-            foreach (var method in module.Methods.OfType<LoweredMethod>().Where(x =>
-                         usefulMethodIds.Contains(x.Id)
-                         && x.TypeParameters.Count == 0))
-            {
-                TryEnqueueMethodForProcessing(method, []);
-            }
+            TryEnqueueMethodForProcessing(method, []);
         }
 
         while (_methodProcessingQueue.TryDequeue(out var item))
@@ -1037,8 +1027,7 @@ public partial class AssemblyLine(IReadOnlyList<LoweredModule> modules, HashSet<
 
     private IMethod? GetMethod(DefId defId)
     {
-        return modules.SelectMany(x => x.Methods)
-            .FirstOrDefault(x => x.Id == defId);
+        return program.Methods.FirstOrDefault(x => x.Id == defId);
     }
 
     private void CreateMain(LoweredMethod mainMethod)

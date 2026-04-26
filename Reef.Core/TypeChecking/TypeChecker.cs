@@ -70,7 +70,7 @@ public partial class TypeChecker
         var matchedTypes = new List<ITypeSignature>();
         var imports = _typeCheckingScopes.SelectMany(x => x.ModuleImports).ToArray();
 
-        foreach (var moduleId in _modules.Keys.Append(DefId.CoreLibModuleId))
+        foreach (var moduleId in _modules.Keys)
         {
             var canMatchModule = (modulePathStr, modulePathIsGlobal) switch
             {
@@ -121,11 +121,59 @@ public partial class TypeChecker
         return moduleSignatures.Functions.ToDictionary(x => x.Name);
     }
 
-    private TypeChecker(Dictionary<ModuleId, LangModule> modules, bool throwOnError = false)
+    private TypeChecker(
+        Dictionary<ModuleId, LangModule> modules,
+        IEnumerable<LangModule> importedModules,
+        bool throwOnError = false)
     {
         if (modules.Count == 0)
         {
             throw new InvalidOperationException("At least one module is required");
+        }
+
+        _moduleSignatures = new()
+        {
+            {
+                DefId.DiagnosticsModuleId,
+                (
+                    Functions: [..FunctionSignature.DiagnosticFunctions],
+                    Unions: [],
+                    Classes: []
+                )
+            },
+            {
+                DefId.CoreLibModuleId,
+                (
+                    [
+                        FunctionSignature.Box,
+                        FunctionSignature.Unbox,
+                        // FunctionSignature.PrintString,
+                        FunctionSignature.PrintI8,
+                        FunctionSignature.PrintI16,
+                        FunctionSignature.PrintI32,
+                        FunctionSignature.PrintI64,
+                        FunctionSignature.PrintU8,
+                        FunctionSignature.PrintU16,
+                        FunctionSignature.PrintU32,
+                        FunctionSignature.PrintU64,
+                    ],
+                    [..UnionSignature.BuiltInTypes],
+                    [..ClassSignature.BuiltInTypes.Value])
+            }
+        };
+
+        foreach (var module in importedModules)
+        {
+            Debug.Assert(module.TypeChecked);
+            if (!_moduleSignatures.TryGetValue(module.ModuleId, out var lists))
+            {
+                lists = ([], [], []);
+                _moduleSignatures.Add(module.ModuleId, lists);
+            }
+
+            lists.Functions.AddRange(module.Functions.Select(x => x.Signature.NotNull()));
+            lists.Classes.AddRange(module.Classes.Select(x => x.Signature.NotNull()));
+            lists.Unions.AddRange(module.Unions.Select(x => x.Signature.NotNull()));
         }
 
         _modules = modules;
@@ -139,36 +187,7 @@ public partial class TypeChecker
     private ITypeReference ExpectedReturnType => _typeCheckingScopes.Peek().ExpectedReturnType;
     private DefId? CurrentDefId => _typeCheckingScopes.Peek().CurrentDefId;
     private ModuleId CurrentModuleId => _typeCheckingScopes.Peek().ModuleId ?? throw new InvalidOperationException("No current module id");
-    private readonly Dictionary<ModuleId, (List<FunctionSignature> Functions, List<UnionSignature> Unions, List<ClassSignature> Classes)> _moduleSignatures = new()
-    {
-        {
-            DefId.DiagnosticsModuleId,
-            (
-                Functions: [..FunctionSignature.DiagnosticFunctions],
-                Unions: [],
-                Classes: []
-            )
-        },
-        {
-            DefId.CoreLibModuleId,
-            (
-                [
-                    FunctionSignature.Box,
-                    FunctionSignature.Unbox,
-                    FunctionSignature.PrintString,
-                    FunctionSignature.PrintI8,
-                    FunctionSignature.PrintI16,
-                    FunctionSignature.PrintI32,
-                    FunctionSignature.PrintI64,
-                    FunctionSignature.PrintU8,
-                    FunctionSignature.PrintU16,
-                    FunctionSignature.PrintU32,
-                    FunctionSignature.PrintU64,
-                ],
-                [..UnionSignature.BuiltInTypes],
-                [..ClassSignature.BuiltInTypes.Value])
-        }
-    };
+    private readonly Dictionary<ModuleId, (List<FunctionSignature> Functions, List<UnionSignature> Unions, List<ClassSignature> Classes)> _moduleSignatures;
 
     private bool AddScopedFunction(FunctionSignature functionSignature)
     {
@@ -234,10 +253,6 @@ public partial class TypeChecker
 
     private void TypeCheckModulePathSegment(ModulePathSegment segment, ModuleId apparentModuleId)
     {
-        // var succeed = _modules.ContainsKey(apparentModuleId)
-        //     && (GetModuleFunctions(apparentModuleId).ContainsKey(segment.Identifier.StringValue)
-        //         || GetModuleTypes(apparentModuleId).ContainsKey(segment.Identifier.StringValue));
-
         var found = false;
         if (_modules.ContainsKey(apparentModuleId) || apparentModuleId == DefId.DiagnosticsModuleId)
         {
@@ -274,9 +289,12 @@ public partial class TypeChecker
         }
     }
 
-    public static Dictionary<ModuleId, IReadOnlyList<TypeCheckerError>> TypeCheck(IEnumerable<LangModule> modules, bool throwOnError = false)
+    public static Dictionary<ModuleId, IReadOnlyList<TypeCheckerError>> TypeCheck(
+        IEnumerable<LangModule> modules,
+        IEnumerable<LangModule> importedModules,
+        bool throwOnError = false)
     {
-        var typeChecker = new TypeChecker(modules.ToDictionary(x => x.ModuleId), throwOnError);
+        var typeChecker = new TypeChecker(modules.ToDictionary(x => x.ModuleId), importedModules, throwOnError);
         typeChecker.TypeCheckInner();
 
         return typeChecker._errors.ToDictionary(x => x.Key, x => (IReadOnlyList<TypeCheckerError>)x.Value);
@@ -453,6 +471,8 @@ public partial class TypeChecker
             {
                 moduleErrors.AddRange(TypeTwoTypeChecker.TypeTwoTypeCheck(module, _throwOnError));
             }
+
+            module.TypeChecked = true;
         }
     }
 

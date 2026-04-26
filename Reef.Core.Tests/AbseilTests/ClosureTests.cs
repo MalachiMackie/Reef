@@ -8,11 +8,11 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
 {
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void ClosureAbseilTest(string description, string source, LoweredModule expectedProgram)
+    public async Task ClosureAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
         description.Should().NotBeEmpty();
-        var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = Lower(program);
+        var program = await CreateProgram(ModuleId, source);
+        var loweredProgram = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -20,7 +20,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
     }
 
     [Fact]
-    public void SingleTest()
+    public async Task SingleTest()
     {
         var source = """
                  var a = "";
@@ -117,8 +117,8 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                     ])
             ]);
 
-        var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = Lower(program);
+        var program = await CreateProgram(ModuleId, source);
+        var loweredProgram = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -127,7 +127,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
 
     private static readonly ModuleId ModuleId = new("main");
 
-    public static TheoryData<string, string, LoweredModule> TestCases()
+    public static TheoryData<string, string, LoweredProgram> TestCases()
     {
         return new()
         {

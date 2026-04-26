@@ -8,11 +8,11 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
 {
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void ClassAbseilTest(string description, string source, LoweredModule expectedProgram)
+    public async Task ClassAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
         description.Should().NotBeEmpty();
-        var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = Lower(program);
+        var program = await CreateProgram(ModuleId, source);
+        var loweredProgram = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -20,7 +20,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
     }
 
     [Fact]
-    public void SingleTest()
+    public async Task SingleTest()
     {
         const string source = """
                          class MyClass<T>
@@ -74,8 +74,8 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      locals: [new MethodLocal("_local0", null, Unit)],
                                      typeParameters: [(new DefId(ModuleId, $"{ModuleId}:::MyClass"), "T")])
             ]);
-        var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = Lower(program);
+        var program = await CreateProgram(ModuleId, source);
+        var loweredProgram = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -84,7 +84,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
 
     private static readonly ModuleId ModuleId = new("main");
 
-    public static TheoryData<string, string, LoweredModule> TestCases()
+    public static TheoryData<string, string, LoweredProgram> TestCases()
     {
         return new()
         {

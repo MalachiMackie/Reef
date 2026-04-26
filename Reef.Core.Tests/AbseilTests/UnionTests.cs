@@ -8,11 +8,11 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
 {
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void UnionAbseilTest(string description, string source, LoweredModule expectedProgram)
+    public async Task UnionAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
         description.Should().NotBeEmpty();
-        var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = Lower(program);
+        var program = await CreateProgram(ModuleId, source);
+        var loweredProgram = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -22,7 +22,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
     private static readonly ModuleId ModuleId = new("main");
 
     [Fact]
-    public void SingleTest()
+    public async Task SingleTest()
     {
         const string source =
                 "union MyUnion{}";
@@ -30,12 +30,12 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             DataType(ModuleId, "MyUnion")
         ]);
 
-        var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = Lower(program);
+        var program = await CreateProgram(ModuleId, source);
+        var loweredProgram = Lower(program);
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }
 
-    public static TheoryData<string, string, LoweredModule> TestCases()
+    public static TheoryData<string, string, LoweredProgram> TestCases()
     {
         return new()
         {

@@ -1853,12 +1853,8 @@ public partial class ProgramAbseil
 
             var methodType = GetConcreteTypeReference(GetTypeReference(e.MethodCall.Method.ResolvedType.NotNull()));
 
-            var fn = _importedModules.SelectMany(x =>
-                x.Methods.Where(y => y.Name == $"Function`{e.MethodCall.ArgumentList.Count + 1}__Call"))
-                .First();
-
             functionReference = GetFunctionReference(
-                    fn.Id,
+                    DefId.FunctionObject_Call(e.MethodCall.ArgumentList.Count),
                     [],
                     methodType.TypeArguments);
 

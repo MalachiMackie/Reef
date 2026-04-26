@@ -8,11 +8,11 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
 {
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void FunctionObjectAbseilTest(string description, string source, LoweredModule expectedProgram)
+    public async Task FunctionObjectAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
         description.Should().NotBeEmpty();
-        var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = Lower(program);
+        var program = await CreateProgram(ModuleId, source);
+        var loweredProgram = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -20,7 +20,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
     }
 
     [Fact]
-    public void Single()
+    public async Task Single()
     {
         var source = """
                  union MyUnion{A(string)}
@@ -150,8 +150,8 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                      new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                              ])
             ]);
-        var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = Lower(program);
+        var program = await CreateProgram(ModuleId, source);
+        var loweredProgram = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -160,7 +160,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
 
     private static readonly ModuleId ModuleId = new("main");
 
-    public static TheoryData<string, string, LoweredModule> TestCases()
+    public static TheoryData<string, string, LoweredProgram> TestCases()
     {
         return new()
         {

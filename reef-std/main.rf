@@ -1,0 +1,30 @@
+// pub extern fn unbox<TParam: boxed TReturn, TReturn unboxed TParam>(value: TParam): mut TReturn;
+// pub extern fn box<TParam: unboxed TReturn, TReturn: boxed TParam>(value: TParam): mut TReturn;
+
+// pub extern fn allocate(byte_size: u64): mut pointer;
+
+/*
+pub extern class rawPointer{}
+pub extern class u64{}
+pub extern class u32{}
+pub extern class u16{}
+pub extern class u8{}
+pub extern class i64{}
+pub extern class i32{}
+pub extern class i16{}
+pub extern class i8{}
+*/
+
+/*
+pub class string {pub field Length: u64, field StartChar: rawPointer}
+*/
+
+pub extern fn print_string(str: string)
+// pub extern fn print_i8(num: i8);
+// pub extern fn print_u8(num: u8);
+// pub extern fn print_i16(num: i16);
+// pub extern fn print_u16(num: u16);
+// pub extern fn print_i32(num: i32);
+// pub extern fn print_u32(num: u32);
+// pub extern fn print_i64(num: i64);
+// pub extern fn print_u64(num: u64);

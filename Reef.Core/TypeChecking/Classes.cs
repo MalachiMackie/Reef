@@ -106,73 +106,73 @@ public partial class TypeChecker
             TypeParameters = []
         });
 
-        public static Lazy<ClassSignature> MethodInfo { get; } = new(() => new ClassSignature()
-        {
-            Id = DefId.MethodInfo,
-            Boxed = false,
-            Fields = [
-                new TypeField {
-                    Name = "Id",
-                    IsMutable = false,
-                    IsPublic = true,
-                    IsStatic = false,
-                    StaticInitializer = null,
-                    Type = InstantiatedClass.MethodId
-                },
-                new TypeField {
-                    Name = "FullyQualifiedName",
-                    IsMutable = false,
-                    IsPublic = true,
-                    IsStatic = false,
-                    StaticInitializer = null,
-                    Type = InstantiatedClass.String
-                },
-                new TypeField {
-                    Name = "Name",
-                    IsMutable = false,
-                    IsPublic = true,
-                    IsStatic = false,
-                    StaticInitializer = null,
-                    Type = InstantiatedClass.String
-                },
-                new TypeField {
-                    Name = "Parameters",
-                    IsMutable = false,
-                    IsPublic = true,
-                    IsStatic = false,
-                    StaticInitializer = null,
-                    Type = new ArrayType(InstantiatedClass.TypeId)
-                },
-                new TypeField {
-                    Name = "Locals",
-                    IsMutable = false,
-                    IsPublic = true,
-                    IsStatic = false,
-                    StaticInitializer = null,
-                    Type = new ArrayType(InstantiatedClass.MethodLocal)
-                },
-                new TypeField {
-                    Name = "AddressFrom",
-                    IsMutable = false,
-                    IsPublic = true,
-                    IsStatic = false,
-                    StaticInitializer = null,
-                    Type = InstantiatedClass.UInt64
-                },
-                new TypeField {
-                    Name = "AddressTo",
-                    IsMutable = false,
-                    IsPublic = true,
-                    IsStatic = false,
-                    StaticInitializer = null,
-                    Type = InstantiatedClass.UInt64
-                },
-            ],
-            Functions = [],
-            IsPublic = true,
-            Name = "MethodInfo",
-            TypeParameters = []
-        });
+        // public static Lazy<ClassSignature> MethodInfo { get; } = new(() => new ClassSignature()
+        // {
+        //     Id = DefId.MethodInfo,
+        //     Boxed = false,
+        //     Fields = [
+        //         new TypeField {
+        //             Name = "Id",
+        //             IsMutable = false,
+        //             IsPublic = true,
+        //             IsStatic = false,
+        //             StaticInitializer = null,
+        //             Type = InstantiatedClass.MethodId
+        //         },
+        //         new TypeField {
+        //             Name = "FullyQualifiedName",
+        //             IsMutable = false,
+        //             IsPublic = true,
+        //             IsStatic = false,
+        //             StaticInitializer = null,
+        //             Type = InstantiatedClass.String
+        //         },
+        //         new TypeField {
+        //             Name = "Name",
+        //             IsMutable = false,
+        //             IsPublic = true,
+        //             IsStatic = false,
+        //             StaticInitializer = null,
+        //             Type = InstantiatedClass.String
+        //         },
+        //         new TypeField {
+        //             Name = "Parameters",
+        //             IsMutable = false,
+        //             IsPublic = true,
+        //             IsStatic = false,
+        //             StaticInitializer = null,
+        //             Type = new ArrayType(InstantiatedClass.TypeId)
+        //         },
+        //         new TypeField {
+        //             Name = "Locals",
+        //             IsMutable = false,
+        //             IsPublic = true,
+        //             IsStatic = false,
+        //             StaticInitializer = null,
+        //             Type = new ArrayType(InstantiatedClass.MethodLocal)
+        //         },
+        //         new TypeField {
+        //             Name = "AddressFrom",
+        //             IsMutable = false,
+        //             IsPublic = true,
+        //             IsStatic = false,
+        //             StaticInitializer = null,
+        //             Type = InstantiatedClass.UInt64
+        //         },
+        //         new TypeField {
+        //             Name = "AddressTo",
+        //             IsMutable = false,
+        //             IsPublic = true,
+        //             IsStatic = false,
+        //             StaticInitializer = null,
+        //             Type = InstantiatedClass.UInt64
+        //         },
+        //     ],
+        //     Functions = [],
+        //     IsPublic = true,
+        //     Name = "MethodInfo",
+        //     TypeParameters = []
+        // });
 
         private static ClassSignature CreateBoxedValue()
         {

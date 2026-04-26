@@ -8,11 +8,11 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
 {
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void MatchAbseilTest(string description, string source, LoweredModule expectedProgram)
+    public async Task MatchAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
         description.Should().NotBeEmpty();
-        var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = Lower(program);
+        var program = await CreateProgram(ModuleId, source);
+        var loweredProgram = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram, false, false);
 
@@ -20,7 +20,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
     }
 
     [Fact]
-    public void Single()
+    public async Task Single()
     {
         var source = """
                   union MyUnion{A, B, C}
@@ -192,8 +192,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                   new MethodLocal("_local1", "b", Int32T),
                               ])
             ]);
-        var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = Lower(program);
+        var program = await CreateProgram(ModuleId, source);
+        var loweredProgram = Lower(program);
 
         PrintPrograms(expectedProgram, loweredProgram, false, false);
 
@@ -204,7 +204,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
 
     private static readonly ModuleId ModuleId = new("main");
 
-    public static TheoryData<string, string, LoweredModule> TestCases()
+    public static TheoryData<string, string, LoweredProgram> TestCases()
     {
         return new()
         {

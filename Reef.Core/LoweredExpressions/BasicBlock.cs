@@ -203,10 +203,8 @@ public record StaticDataTypeField(
     MethodLocal ReturnValueLocal);
 
 
-public class LoweredModule
+public class LoweredProgram
 {
-    public required ModuleId Id { get; init; }
-
     public required IReadOnlyList<DataType> DataTypes { get; init; }
     public required IReadOnlyList<IMethod> Methods { get; init; }
 }

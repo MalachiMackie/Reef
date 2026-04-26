@@ -22,7 +22,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             _fileSystem.AddFile(path, new MockFileData(contents));
         }
 
-        var (typeCheckResult, _) = await new ReefCompiler(_fileSystem).TypeCheck();
+        var (typeCheckResult, _, _, _) = await new ReefCompiler(_fileSystem, new ModuleId("main")).TypeCheck();
 
         foreach (var (moduleId, innerTypeCheckResult) in typeCheckResult)
         {
@@ -50,7 +50,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
         sourceFiles.SelectMany(x => x.Value.expectedErrors).Should().NotBeEmpty();
 
-        var (typeCheckResults, moduleIdToFileName) = await new ReefCompiler(_fileSystem).TypeCheck();
+        var (typeCheckResults, moduleIdToFileName, _, _) = await new ReefCompiler(_fileSystem, new ModuleId("main")).TypeCheck();
         foreach (var (moduleId, typeCheckResult) in typeCheckResults)
         {
             typeCheckResult.ParserErrors.Should().BeEmpty();
@@ -81,7 +81,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             _fileSystem.AddFile(path, new MockFileData(contents));
         }
 
-        var (typeCheckResults, moduleIdToFileName) = await new ReefCompiler(_fileSystem).TypeCheck(false);
+        var (typeCheckResults, moduleIdToFileName, _, _) = await new ReefCompiler(_fileSystem, new ModuleId("main")).TypeCheck();
         foreach (var (moduleId, typeCheckResult) in typeCheckResults)
         {
             typeCheckResult.ParserErrors.Should().BeEmpty();

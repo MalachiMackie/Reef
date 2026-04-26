@@ -12,6 +12,8 @@ public record LangModule(
     IReadOnlyCollection<ProgramUnion> Unions,
     IReadOnlyList<ModuleImport> TopLevelImports)
 {
+    public bool TypeChecked { get; set; }
+
     public override string ToString()
     {
         var sb = new StringBuilder();

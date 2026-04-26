@@ -1,0 +1,1 @@
+pub extern fn get_memory_usage_bytes(): mut u64;

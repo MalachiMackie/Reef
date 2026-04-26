@@ -420,7 +420,7 @@ public partial class TypeChecker
         ];
 
         // Core
-        public static FunctionSignature PrintString => CreatePrintString();
+        // public static FunctionSignature PrintString => CreatePrintString();
         public static FunctionSignature PrintI8 => CreatePrintInt(InstantiatedClass.Int8, DefId.PrintI8, "print_i8");
         public static FunctionSignature PrintI16 => CreatePrintInt(InstantiatedClass.Int16, DefId.PrintI16, "print_i16");
         public static FunctionSignature PrintI32 => CreatePrintInt(InstantiatedClass.Int32, DefId.PrintI32, "print_i32");
@@ -547,34 +547,34 @@ public partial class TypeChecker
             return signature;
         }
 
-        private static FunctionSignature CreatePrintString()
-        {
-            var printStringParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
-            var signature = new FunctionSignature(
-                DefId.PrintString,
-                Token.Identifier("print_string", SourceSpan.Default),
-                [],
-                printStringParameters,
-                IsStatic: true,
-                IsMutable: false,
-                Expressions: [],
-                ExternName: "print_string",
-                IsMutableReturn: true,
-                IsPublic: true)
-            {
-                OwnerType = null,
-                ReturnType = InstantiatedClass.Unit
-            };
+        // private static FunctionSignature CreatePrintString()
+        // {
+        //     var printStringParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+        //     var signature = new FunctionSignature(
+        //         DefId.PrintString,
+        //         Token.Identifier("print_string", SourceSpan.Default),
+        //         [],
+        //         printStringParameters,
+        //         IsStatic: true,
+        //         IsMutable: false,
+        //         Expressions: [],
+        //         ExternName: "print_string",
+        //         IsMutableReturn: true,
+        //         IsPublic: true)
+        //     {
+        //         OwnerType = null,
+        //         ReturnType = InstantiatedClass.Unit
+        //     };
 
-            printStringParameters["str"] = new FunctionSignatureParameter(
-                signature,
-                Token.Identifier("str", SourceSpan.Default),
-                InstantiatedClass.String,
-                false,
-                0);
+        //     printStringParameters["str"] = new FunctionSignatureParameter(
+        //         signature,
+        //         Token.Identifier("str", SourceSpan.Default),
+        //         InstantiatedClass.String,
+        //         false,
+        //         0);
 
-            return signature;
-        }
+        //     return signature;
+        // }
 
         private static FunctionSignature CreatePrintInt(InstantiatedClass type, DefId id, string externName)
         {
