@@ -141,7 +141,6 @@ public interface ILoweredTypeReference
 }
 
 public record LoweredConcreteTypeReference(
-    string Name,
     DefId DefinitionId,
     IReadOnlyList<ILoweredTypeReference> TypeArguments) : ILoweredTypeReference
 {

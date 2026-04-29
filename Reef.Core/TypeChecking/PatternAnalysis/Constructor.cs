@@ -90,12 +90,12 @@ public interface IConstructor
             _ => throw new InvalidOperationException("Unexpected type")
         };
 
-        if (klass.MatchesSignature(TypeChecker.ClassSignature.Boolean.Value))
+        if (klass.Signature.Id == DefId.Boolean)
         {
             return new BooleanConstructorSet();
         }
 
-        if (klass.MatchesSignature(TypeChecker.ClassSignature.Never.Value))
+        if (klass.Signature.Id == DefId.Never)
         {
             return new NoConstructorsConstructorSet();
         }

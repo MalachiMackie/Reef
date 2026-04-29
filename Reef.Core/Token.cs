@@ -95,6 +95,7 @@ public record Token
             TokenType.RightSquareBracket => "]",
             TokenType.Use => "use",
             TokenType.TripleColon => ":::",
+            TokenType.Extern => "extern",
             _ => throw new UnreachableException(Type.ToString())
         };
     }

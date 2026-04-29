@@ -12,16 +12,14 @@ public partial class TypeChecker
         var type = valueAccessorExpression.ValueAccessor switch
         {
             { AccessType: ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral } } => new UnspecifiedSizedIntType { Boxed = false },
-            { AccessType: ValueAccessType.Literal, Token: StringToken { Type: TokenType.StringLiteral } } =>
-                InstantiatedClass.String,
-            { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True or TokenType.False } => InstantiatedClass
-                .Boolean,
+            { AccessType: ValueAccessType.Literal, Token: StringToken { Type: TokenType.StringLiteral } } => String(),
+            { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True or TokenType.False } => Boolean(),
             // todo: bring union variants into scope
             { AccessType: ValueAccessType.Variable, Token: StringToken { Type: TokenType.Identifier, StringValue: "ok" } } =>
                 TypeCheckResultVariantKeyword("Ok", boxed: _typeCheckingScopes.Peek().ExpectedReturnType is InstantiatedUnion union && union.Boxed),
             { AccessType: ValueAccessType.Variable, Token: StringToken { Type: TokenType.Identifier, StringValue: "error" } } =>
                 TypeCheckResultVariantKeyword("Error", boxed: _typeCheckingScopes.Peek().ExpectedReturnType is InstantiatedUnion union && union.Boxed),
-            { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Todo } => InstantiatedClass.Never,
+            { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Todo } => Never(),
             {
                 AccessType: ValueAccessType.Variable,
                 Token: StringToken { Type: TokenType.Identifier } variableNameToken
@@ -33,7 +31,8 @@ public partial class TypeChecker
 
         ITypeReference TypeCheckResultVariantKeyword(string variantName, bool boxed)
         {
-            var instantiatedUnion = InstantiateResult(valueAccessorExpression.SourceRange, boxed ? Token.Boxed(SourceSpan.Default) : Token.Unboxed(SourceSpan.Default));
+            var signature = GetUnionSignature(DefId.Result);
+            var instantiatedUnion = InstantiateUnion(signature, [], boxed ? Token.Boxed(SourceSpan.Default) : Token.Unboxed(SourceSpan.Default), SourceRange.Default);
 
             var okVariant = instantiatedUnion.Variants.FirstOrDefault(x => x.Name == variantName)
                             ?? throw new UnreachableException($"{variantName} is a built in variant of Result");
@@ -54,7 +53,8 @@ public partial class TypeChecker
             return new FunctionObject(
                 tupleVariantFunction.Parameters,
                 tupleVariantFunction.ReturnType,
-                tupleVariantFunction.MutableReturn);
+                tupleVariantFunction.MutableReturn,
+                true);
         }
     }
 
@@ -84,7 +84,8 @@ public partial class TypeChecker
             return new FunctionObject(
                 parameters: instantiatedFunction.Parameters,
                 returnType: instantiatedFunction.ReturnType,
-                instantiatedFunction.MutableReturn);
+                instantiatedFunction.MutableReturn,
+                true);
         }
 
         if (CurrentTypeSignature is UnionSignature union)
@@ -109,7 +110,8 @@ public partial class TypeChecker
                 return new FunctionObject(
                     instantiatedFunction.Parameters,
                     instantiatedFunction.ReturnType,
-                    instantiatedFunction.MutableReturn);
+                    instantiatedFunction.MutableReturn,
+                    true);
             }
         }
         else if (CurrentTypeSignature is ClassSignature @class)
@@ -134,7 +136,8 @@ public partial class TypeChecker
                 return new FunctionObject(
                     instantiatedFunction.Parameters,
                     instantiatedFunction.ReturnType,
-                    instantiatedFunction.MutableReturn);
+                    instantiatedFunction.MutableReturn,
+                    true);
             }
         }
 

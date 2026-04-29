@@ -121,7 +121,7 @@ public partial class TypeChecker
             AddError(TypeCheckerError.ContinueUsedOutsideOfLoop(continueExpression));
         }
 
-        return InstantiatedClass.Never;
+        return Never();
     }
 
     private InstantiatedClass TypeCheckBreakExpression(BreakExpression breakExpression)
@@ -131,7 +131,7 @@ public partial class TypeChecker
             AddError(TypeCheckerError.BreakUsedOutsideOfLoop(breakExpression));
         }
 
-        return InstantiatedClass.Never;
+        return Never();
     }
 
     private InstantiatedClass TypeCheckWhileExpression(WhileExpression whileExpression)
@@ -140,7 +140,7 @@ public partial class TypeChecker
         {
             TypeCheckExpression(whileExpression.Check);
             whileExpression.Check.ValueUseful = true;
-            ExpectExpressionType(InstantiatedClass.Boolean, whileExpression.Check);
+            ExpectExpressionType(Boolean(), whileExpression.Check);
         }
 
         _loopDepth++;
@@ -149,12 +149,12 @@ public partial class TypeChecker
         {
             TypeCheckExpression(whileExpression.Body);
 
-            ExpectExpressionType(InstantiatedClass.Unit, whileExpression.Body);
+            ExpectExpressionType(Unit(), whileExpression.Body);
         }
 
         _loopDepth--;
 
-        return InstantiatedClass.Unit;
+        return Unit();
     }
 
     private bool ExpectMutableExpression(IExpression expression, bool report = true)

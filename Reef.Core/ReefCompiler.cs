@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.IO.Abstractions;
+using Microsoft.Extensions.Logging;
 using Reef.Core.TypeChecking;
 
 namespace Reef.Core;
@@ -7,6 +8,7 @@ namespace Reef.Core;
 public class ReefCompiler(
     IFileSystem fileSystem,
     ModuleId mainModuleId,
+    ILogger logger,
     string? workingDirectory = null,
     string? standardLibraryDirectory = null)
 {
@@ -16,7 +18,7 @@ public class ReefCompiler(
             Dictionary<ModuleId, string> ModuleToFileName,
             ModuleId MainModuleId,
             IReadOnlyList<LangModule> ImportedModules
-        )> TypeCheck()
+        )> TypeCheck(bool throwOnError = false)
     {
         var currentDirectory = workingDirectory ?? fileSystem.Directory.GetCurrentDirectory();
 
@@ -41,13 +43,22 @@ public class ReefCompiler(
         var standardLibraryModules = new List<LangModule>();
         await foreach (var module in parsedStandardLibraryModules)
         {
-            Debug.Assert(module.Errors.Count == 0);
+            if (module.Errors.Count > 0)
+            {
+                logger.LogInformation("Parser error in module {ModuleId}", module.ParsedModule.ModuleId);
+                foreach (var error in module.Errors)
+                {
+                    logger.LogInformation("{LineNumber}: {ErrorType}, {ExpectedTokens} - {ReceivedToken}", error.ReceivedToken?.SourceSpan.Position.LineNumber, error.Type, string.Join(", ", error.ExpectedTokenTypes ?? []), error.ReceivedToken);
+                }
+
+                throw new InvalidOperationException($"Parser error in module {module.ParsedModule.ModuleId}");
+            }
             standardLibraryModules.Add(module.ParsedModule);
         }
 
         TypeChecker.TypeCheck(standardLibraryModules, [], throwOnError: true);
 
-        var typeCheckErrors = TypeChecker.TypeCheck(modules, standardLibraryModules);
+        var typeCheckErrors = TypeChecker.TypeCheck(modules, standardLibraryModules, throwOnError);
 
         return (
             parsedModules
@@ -151,7 +162,7 @@ public class ReefCompiler(
             segments = [.. segments[..^1]];
         }
 
-        return new ModuleId(string.Join(":::", [.. segments[..^1], withoutExtension]));
+        return new ModuleId($"{mainModuleId.Value}:::{string.Join(":::", [.. segments[..^1], withoutExtension])}");
     }
 
     private static string GetProjectRelativeFileName(string projectDir, string fileName)

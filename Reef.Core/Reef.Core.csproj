@@ -18,6 +18,8 @@
 
     <ItemGroup>
         <EmbeddedResource Include="..\reef-std\main.rf" LogicalName="reef-std\main.rf" />
+        <EmbeddedResource Include="..\reef-std\Diagnostics.rf" LogicalName="reef-std\Diagnostics.rf" />
+        <EmbeddedResource Include="..\reef-std\Reflection.rf" LogicalName="reef-std\Reflection.rf" />
 
         <None Include="..\reef-runtime\cmake-build-debug-visual-studio\reef-runtime.pdb">
             <Link>reef-runtime.pdb</Link>

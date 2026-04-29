@@ -2,6 +2,7 @@ using System.IO.Abstractions.TestingHelpers;
 using System.Text;
 using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
+using Reef.Core.Tests.IntegrationTests.Helpers;
 
 namespace Reef.Core.Tests.AbseilTests;
 
@@ -19,14 +20,14 @@ public class TestBase
         return ProgramAbseil.Lower(new() { { module.ModuleId, module } }, module.ModuleId);
     }
 
-    protected static async Task<LangModule> CreateProgram(ModuleId moduleId, string source)
+    protected async Task<LangModule> CreateProgram(ModuleId moduleId, string source)
     {
         var fs = new MockFileSystem();
         fs.AddFilesFromEmbeddedNamespace("", typeof(TestBase).Assembly, "reef-std");
 
         fs.AddFile("main.rf", new MockFileData(Encoding.UTF8.GetBytes(source)));
 
-        var (results, _, _, _) = await new ReefCompiler(fs, moduleId).TypeCheck();
+        var (results, _, _, _) = await new ReefCompiler(fs, moduleId, new TestLogger(TestOutput)).TypeCheck();
 
         var moduleResult = results[moduleId];
 

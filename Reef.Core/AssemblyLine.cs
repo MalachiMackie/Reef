@@ -103,8 +103,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
     private void WriteMethodInfoBlob(LoweredMethod method, IReadOnlyList<ILoweredTypeReference> typeArguments, ulong methodId)
     {
         var methodInfoReference = new LoweredConcreteTypeReference(
-            TypeChecker.ClassSignature.MethodInfo.Value.Name,
-            TypeChecker.ClassSignature.MethodInfo.Value.Id,
+            DefId.MethodInfo,
             []
         );
 
@@ -113,11 +112,11 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         var parametersField = methodInfoDataType.Variants[0].Fields.First(x => x.Name == "Parameters");
         var localsField = methodInfoDataType.Variants[0].Fields.First(x => x.Name == "Locals");
 
-        if (parametersField.Type is not LoweredPointer(LoweredConcreteTypeReference { Name: "BoxedValue", TypeArguments: [LoweredArray parametersArrayType] }))
+        if (parametersField.Type is not LoweredPointer(LoweredConcreteTypeReference { DefinitionId: var defId, TypeArguments: [LoweredArray parametersArrayType] }) || defId != DefId.BoxedValue)
         {
             throw new UnreachableException();
         }
-        if (localsField.Type is not LoweredPointer(LoweredConcreteTypeReference { Name: "BoxedValue", TypeArguments: [LoweredArray localsArrayType] }))
+        if (localsField.Type is not LoweredPointer(LoweredConcreteTypeReference { DefinitionId: var defId2, TypeArguments: [LoweredArray localsArrayType] }) || defId2 != DefId.BoxedValue)
         {
             throw new UnreachableException();
         }
@@ -327,8 +326,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         var typeInfoDataType = _dataTypes[DefId.TypeInfo];
         var typeInfoTypeReference = new LoweredConcreteTypeReference(
-                        TypeChecker.InstantiatedUnion.TypeInfo.Signature.Name,
-                        TypeChecker.InstantiatedUnion.TypeInfo.Signature.Id,
+                        DefId.TypeInfo,
                         []);
         var typeInfoSize = GetTypeSize(typeInfoTypeReference, []);
 
@@ -348,16 +346,13 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     var variantInfoDataType = _dataTypes[DefId.VariantInfo];
 
                     var staticFieldInfoTypeReference = new LoweredConcreteTypeReference(
-                                    TypeChecker.InstantiatedClass.StaticFieldInfo.Signature.Name,
-                                    TypeChecker.InstantiatedClass.StaticFieldInfo.Signature.Id,
+                                    DefId.StaticFieldInfo,
                                     []);
                     var fieldInfoTypeReference = new LoweredConcreteTypeReference(
-                                    TypeChecker.InstantiatedClass.FieldInfo.Signature.Name,
-                                    TypeChecker.InstantiatedClass.FieldInfo.Signature.Id,
+                                    DefId.FieldInfo,
                                     []);
                     var variantInfoTypeReference = new LoweredConcreteTypeReference(
-                                    TypeChecker.InstantiatedClass.VariantInfo.Signature.Name,
-                                    TypeChecker.InstantiatedClass.VariantInfo.Signature.Id,
+                                    DefId.VariantInfo,
                                     []);
 
                     var fieldInfoSize = GetTypeSize(fieldInfoTypeReference, []);
@@ -447,7 +442,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         bytesWritten += 8;
 
                         staticFieldsSubSegment.AppendLine($"        ; ObjectHeader.TypeId");
-                        if (staticFieldsField.Type is not LoweredPointer(LoweredConcreteTypeReference { Name: "BoxedValue", TypeArguments: [var staticFieldsType] }))
+                        if (staticFieldsField.Type is not LoweredPointer(LoweredConcreteTypeReference { DefinitionId: var defId, TypeArguments: [var staticFieldsType] }) || defId != DefId.BoxedValue)
                         {
                             throw new UnreachableException(staticFieldsField.Type.ToString());
                         }
@@ -497,7 +492,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         bytesWritten += 8;
 
                         fieldsSubSegment.AppendLine($"        ; ObjectHeader.TypeId");
-                        if (fieldsField.Type is not LoweredPointer(LoweredConcreteTypeReference { Name: "BoxedValue", TypeArguments: [var fieldsType] }))
+                        if (fieldsField.Type is not LoweredPointer(LoweredConcreteTypeReference { DefinitionId: var defId2, TypeArguments: [var fieldsType] }) || defId2 != DefId.BoxedValue)
                         {
                             throw new UnreachableException();
                         }
@@ -633,7 +628,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         bytesWritten += 8;
 
                         staticFieldsSubSegment.AppendLine($"        ; ObjectHeader.TypeId");
-                        if (staticFieldsField.Type is not LoweredPointer(LoweredConcreteTypeReference { Name: "BoxedValue", TypeArguments: [var staticFieldsType] }))
+                        if (staticFieldsField.Type is not LoweredPointer(LoweredConcreteTypeReference { DefinitionId: var defId, TypeArguments: [var staticFieldsType] }) || defId != DefId.BoxedValue)
                         {
                             throw new UnreachableException();
                         }
@@ -683,7 +678,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         bytesWritten += 8;
 
                         variantsSubSegment.AppendLine($"        ; ObjectHeader.TypeId");
-                        if (variantsField.Type is not LoweredPointer(LoweredConcreteTypeReference { Name: "BoxedValue", TypeArguments: [var variantsFieldType] }))
+                        if (variantsField.Type is not LoweredPointer(LoweredConcreteTypeReference { DefinitionId: var defId2, TypeArguments: [var variantsFieldType] }) || defId2 != DefId.BoxedValue)
                         {
                             throw new UnreachableException();
                         }
@@ -717,7 +712,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             variantsBytesWritten += 8;
 
                             fieldsSubSegment.AppendLine($"        ; ObjectHeader.TypeId");
-                            if (variantInfoFieldsField.Type is not LoweredPointer(LoweredConcreteTypeReference { Name: "BoxedValue", TypeArguments: [var variantInfoFieldsType] }))
+                            if (variantInfoFieldsField.Type is not LoweredPointer(LoweredConcreteTypeReference { DefinitionId: var defId3, TypeArguments: [var variantInfoFieldsType] }) || defId3 != DefId.BoxedValue)
                             {
                                 throw new UnreachableException();
                             }
@@ -909,8 +904,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 "_returnValue",
                 null,
                 new LoweredConcreteTypeReference(
-                    TypeChecker.ClassSignature.UInt16.Value.Name,
-                    TypeChecker.ClassSignature.UInt16.Value.Id,
+                    DefId.UInt16,
                     [])),
             ParameterLocals: [
                 new MethodLocal(
@@ -919,8 +913,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     // this relies on the fact that variantIdentifier field is always first
                     new LoweredPointer(
                         new LoweredConcreteTypeReference(
-                            TypeChecker.ClassSignature.UInt16.Value.Name,
-                            TypeChecker.ClassSignature.UInt16.Value.Id,
+                            DefId.UInt16,
                             [])
                     )
                 )
@@ -969,19 +962,19 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         }
 
         var typeInfoSize = GetTypeSize(
-            new LoweredConcreteTypeReference("TypeInfo", DefId.TypeInfo, []),
+            new LoweredConcreteTypeReference(DefId.TypeInfo, []),
             []);
         var variantInfoSize = GetTypeSize(
-            new LoweredConcreteTypeReference("VariantInfo", DefId.VariantInfo, []),
+            new LoweredConcreteTypeReference(DefId.VariantInfo, []),
             []);
         var staticFieldInfoSize = GetTypeSize(
-            new LoweredConcreteTypeReference("StaticFieldInfo", DefId.StaticFieldInfo, []),
+            new LoweredConcreteTypeReference(DefId.StaticFieldInfo, []),
             []);
         var fieldInfoSize = GetTypeSize(
-            new LoweredConcreteTypeReference("FieldInfo", DefId.FieldInfo, []),
+            new LoweredConcreteTypeReference(DefId.FieldInfo, []),
             []);
         var methodInfoSize = GetTypeSize(
-            new LoweredConcreteTypeReference("MethodInfo", DefId.MethodInfo, []),
+            new LoweredConcreteTypeReference(DefId.MethodInfo, []),
             []);
 
         var dynamicArrays = new StringBuilder();
@@ -1651,7 +1644,6 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     {
                         Debug.Assert(field.FieldName == "Length");
                         return new LoweredConcreteTypeReference(
-                            TypeChecker.ClassSignature.UInt64.Value.Name,
                             TypeChecker.ClassSignature.UInt64.Value.Id,
                             []
                         );
@@ -2067,7 +2059,6 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             case BoolConstant boolConstant:
                 {
                     return new LoweredConcreteTypeReference(
-                        TypeChecker.InstantiatedClass.Boolean.Signature.Name,
                         DefId.Boolean,
                         []);
                 }
@@ -2079,10 +2070,10 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 {
                     return intConstant.ByteSize switch
                     {
-                        1 => new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.Int8.Signature.Name, DefId.Int8, []),
-                        2 => new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.Int16.Signature.Name, DefId.Int16, []),
-                        4 => new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.Int32.Signature.Name, DefId.Int32, []),
-                        8 => new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.Int64.Signature.Name, DefId.Int64, []),
+                        1 => new LoweredConcreteTypeReference(DefId.Int8, []),
+                        2 => new LoweredConcreteTypeReference(DefId.Int16, []),
+                        4 => new LoweredConcreteTypeReference(DefId.Int32, []),
+                        8 => new LoweredConcreteTypeReference(DefId.Int64, []),
                         _ => throw new UnreachableException()
                     };
                 }
@@ -2090,19 +2081,19 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 {
                     return intConstant.ByteSize switch
                     {
-                        1 => new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.UInt8.Signature.Name, DefId.UInt8, []),
-                        2 => new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.UInt16.Signature.Name, DefId.UInt16, []),
-                        4 => new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.UInt32.Signature.Name, DefId.UInt32, []),
-                        8 => new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.UInt64.Signature.Name, DefId.UInt64, []),
+                        1 => new LoweredConcreteTypeReference(DefId.UInt8, []),
+                        2 => new LoweredConcreteTypeReference(DefId.UInt16, []),
+                        4 => new LoweredConcreteTypeReference(DefId.UInt32, []),
+                        8 => new LoweredConcreteTypeReference(DefId.UInt64, []),
                         _ => throw new UnreachableException()
                     };
                 }
             case SizeOf sizeOf:
-                return new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.UInt64.Signature.Name, DefId.UInt64, []);
+                return new LoweredConcreteTypeReference(DefId.UInt64, []);
             case StringConstant stringConstant:
-                return new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.String.Signature.Name, DefId.String, []);
+                return new LoweredConcreteTypeReference(DefId.String, []);
             case UnitConstant unitConstant:
-                return new LoweredConcreteTypeReference(TypeChecker.InstantiatedClass.Unit.Signature.Name, DefId.Unit, []);
+                return new LoweredConcreteTypeReference(DefId.Unit, []);
             default:
                 throw new ArgumentOutOfRangeException(nameof(operand));
         }

@@ -49,7 +49,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                         ..CreateBoxedObject(
                                             new Deref(Local0),
                                             new LoweredConcreteTypeReference(
-                                                "MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))
+                                                new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))
                                     ], new GoTo(BB2)),
                                     new BasicBlock(BB2, [], new Return())
                                 ],
@@ -58,7 +58,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                     new MethodLocal(
                                         "_local0",
                                         "a",
-                                        new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
+                                        new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
                                 ])
                         ])
             },
@@ -79,7 +79,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                     new Assign(
                                         Local0,
                                         new CreateObject(new LoweredConcreteTypeReference(
-                                            "MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
+                                            new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))
                                 ], new GoTo(BB1)),
                                 new BasicBlock(BB1, [], new Return())
                             ],
@@ -88,7 +88,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                 new MethodLocal(
                                     "_local0",
                                     "a",
-                                    new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))
+                                    new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))
                             ])
                     ])
             },
@@ -117,7 +117,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                         [
                                             ..CreateBoxedObject(
                                                 new Deref(Local0),
-                                                    new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])),
+                                                    new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])),
                                             new Assign(
                                                 new Field(
                                                     new Field(new Deref(Local0), "Value", "_classVariant"),
@@ -133,7 +133,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                     new MethodLocal(
                                         "_local0",
                                         "a",
-                                        new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
+                                        new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
                                 ])
                         ])
             },
@@ -160,7 +160,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                     [
                                         ..CreateBoxedObject(
                                             new Deref(Local0),
-                                                new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
+                                                new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                         new Assign(
                                             new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "A"),
                                             new Use(new UIntConstant(0, 2)))
@@ -175,7 +175,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                             locals: [new MethodLocal(
                                 "_local0",
                                 "a",
-                                new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))])
+                                new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))])
                     ])
             },
             {
@@ -207,7 +207,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                     [
                                         ..CreateBoxedObject(
                                             new Deref(Local0),
-                                            new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
+                                            new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                         new Assign(
                                             new Field(
                                                 new Field(new Deref(Local0), "Value", "_classVariant"),
@@ -229,7 +229,7 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                 new MethodLocal(
                                     "_local0",
                                     "a",
-                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))
+                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))
                             ])
                     ])
             }

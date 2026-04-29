@@ -27,7 +27,7 @@ public class Compiler
             Directory.CreateDirectory(buildDirectory);
         }
 
-        var innerCompiler = new ReefCompiler(new FileSystem(), new ModuleId("main"), workingDirectory);
+        var innerCompiler = new ReefCompiler(new FileSystem(), new ModuleId("main"), logger, workingDirectory);
 
         var (typeCheckResults, moduleIdToFileName, mainModuleId, importedModules) = await innerCompiler.TypeCheck();
 
@@ -77,7 +77,7 @@ public class Compiler
         }
 
         logger.LogInformation("Generating Assembly...");
-        
+
         var usefulMethodIds = new TreeShaker(loweredProgram).Shake();
 
         if (usefulMethodIds.Count == 0)

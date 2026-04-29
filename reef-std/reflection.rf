@@ -1,70 +1,87 @@
-pub unboxed class MethodInfo {
+pub unboxed union TypeInfo {
+    Class {
+        field FullyQualifiedName: string,
+        field Name: string,
+        field Size: u64,
+        field TypeId: TypeId,
+        field StaticFields: [StaticFieldInfo],
+        field Fields: [FieldInfo],
+        field ContainsPointer: bool,
+    },
+    Union {
+        field FullyQualifiedName: string,
+        field Name: string,
+        field Size: u64,
+        field TypeId: TypeId,
+        field StaticFields: [StaticFieldInfo],
+        field Variants: [VariantInfo],
+        field VariantIdentifierGetter: unboxed Fn(rawPointer): u16,
+        field ContainsPointer: bool,
+    },
+    Pointer {
+        field FullyQualifiedName: string,
+        field PointerTo: TypeId,
+    },
+    Array {
+        field FullyQualifiedName: string,
+        field ElementType: TypeId,
+        field Length: u64,
+        field IsDynamic: bool
+    },
 }
 
-public static Lazy<ClassSignature> MethodInfo { get; } = new(() => new ClassSignature()
-        {
-            Id = DefId.MethodInfo,
-            Boxed = false,
-            Fields = [
-                new TypeField {
-                    Name = "Id",
-                    IsMutable = false,
-                    IsPublic = true,
-                    IsStatic = false,
-                    StaticInitializer = null,
-                    Type = InstantiatedClass.MethodId
-                },
-                new TypeField {
-                    Name = "FullyQualifiedName",
-                    IsMutable = false,
-                    IsPublic = true,
-                    IsStatic = false,
-                    StaticInitializer = null,
-                    Type = InstantiatedClass.String
-                },
-                new TypeField {
-                    Name = "Name",
-                    IsMutable = false,
-                    IsPublic = true,
-                    IsStatic = false,
-                    StaticInitializer = null,
-                    Type = InstantiatedClass.String
-                },
-                new TypeField {
-                    Name = "Parameters",
-                    IsMutable = false,
-                    IsPublic = true,
-                    IsStatic = false,
-                    StaticInitializer = null,
-                    Type = new ArrayType(InstantiatedClass.TypeId)
-                },
-                new TypeField {
-                    Name = "Locals",
-                    IsMutable = false,
-                    IsPublic = true,
-                    IsStatic = false,
-                    StaticInitializer = null,
-                    Type = new ArrayType(InstantiatedClass.MethodLocal)
-                },
-                new TypeField {
-                    Name = "AddressFrom",
-                    IsMutable = false,
-                    IsPublic = true,
-                    IsStatic = false,
-                    StaticInitializer = null,
-                    Type = InstantiatedClass.UInt64
-                },
-                new TypeField {
-                    Name = "AddressTo",
-                    IsMutable = false,
-                    IsPublic = true,
-                    IsStatic = false,
-                    StaticInitializer = null,
-                    Type = InstantiatedClass.UInt64
-                },
-            ],
-            Functions = [],
-            IsPublic = true,
-            Name = "MethodInfo",
-            TypeParameters = []
-        }
+pub unboxed class BoxedValue<TValue> {
+    pub field ObjectHeader: ObjectHeader,
+    pub field Value: TValue,
+}
+
+pub unboxed class VariantInfo {
+    pub field Name: string,
+    pub field Fields: [FieldInfo],
+    pub field ContainsPointer: bool,
+}
+
+pub unboxed class FieldInfo {
+    pub field Name: string,
+    pub field TypeId: TypeId,
+    pub field Offset: u16,
+}
+
+pub unboxed class StaticFieldInfo {
+    pub field Name: string,
+    pub field TypeId: TypeId,
+}
+
+pub unboxed class TypeId {
+    pub field Value: u32,
+}
+
+pub unboxed class MethodId {
+    pub field Value: u32,
+}
+
+pub unboxed union VariablePlace {
+    StackBasedOffset(u16),
+    PointerTo { field PointerLocationOffset: u16 },
+}
+
+pub unboxed class MethodParameter {
+    pub field TypeId: TypeId,
+    pub field Place: VariablePlace,
+    pub field Name: string,
+}
+
+pub unboxed class MethodLocal {
+    pub field TypeId: TypeId,
+    pub field StackFrameOffset: u16,
+}
+
+pub unboxed class MethodInfo {
+    pub field Id: MethodId,
+    pub field FullyQualifiedName: string,
+    pub field Name: string,
+    pub field Parameters: [MethodParameter],
+    pub field Locals: [MethodLocal],
+    pub field AddressFrom: u64,
+    pub field AddressTo: u64,
+}

@@ -50,7 +50,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                                     new BasicBlockId("bb1"))),
                                             new BasicBlock(new BasicBlockId("bb1"), [], new Return())
                                         ],
-                                        returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("result", DefId.Result, [Int32T, Int64T])))),
+                                        returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( DefId.Result, [Int32T, Int64T])))),
                                     Method(new DefId(ModuleId, $"{ModuleId}:::OtherFn"), "OtherFn",
                                         [
                                             new BasicBlock(
@@ -102,9 +102,9 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                         ],
                                         locals: [
                                             new MethodLocal("_local0", "a", Int32T),
-                                            new MethodLocal("_local1", null, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("result", DefId.Result, [Int32T, Int64T])))),
+                                            new MethodLocal("_local1", null, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( DefId.Result, [Int32T, Int64T])))),
                                         ],
-                                        returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("result", DefId.Result, [Int64T, Int64T]))))
+                                        returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( DefId.Result, [Int64T, Int64T]))))
             ]);
 
         var program = await CreateProgram(ModuleId, source);
@@ -151,7 +151,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                          new BasicBlockId("bb1"))),
                                  new BasicBlock(new BasicBlockId("bb1"), [], new Return())
                              ],
-                             returnType: new LoweredConcreteTypeReference("result", DefId.Result, [Int32T, Int64T])),
+                             returnType: new LoweredConcreteTypeReference( DefId.Result, [Int32T, Int64T])),
                          Method(new DefId(ModuleId, $"{ModuleId}:::OtherFn"), "OtherFn",
                              [
                                  new BasicBlock(
@@ -203,9 +203,9 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                              ],
                              locals: [
                                  new MethodLocal("_local0", "a", Int32T),
-                                 new MethodLocal("_local1", null, new LoweredConcreteTypeReference("result", DefId.Result, [Int32T, Int64T])),
+                                 new MethodLocal("_local1", null, new LoweredConcreteTypeReference( DefId.Result, [Int32T, Int64T])),
                              ],
-                             returnType: new LoweredConcreteTypeReference("result", DefId.Result, [Int64T, Int64T]))
+                             returnType: new LoweredConcreteTypeReference( DefId.Result, [Int64T, Int64T]))
                      ])
              },
              {
@@ -238,7 +238,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                             new BasicBlockId("bb1"))),
                                     new BasicBlock(new BasicBlockId("bb1"), [], new Return())
                                 ],
-                                returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("result", DefId.Result, [Int32T, Int64T])))),
+                                returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( DefId.Result, [Int32T, Int64T])))),
                             Method(new DefId(ModuleId, $"{ModuleId}:::OtherFn"), "OtherFn",
                                 [
                                     new BasicBlock(
@@ -290,9 +290,9 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                 ],
                                 locals: [
                                     new MethodLocal("_local0", "a", Int32T),
-                                    new MethodLocal("_local1", null, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("result", DefId.Result, [Int32T, Int64T])))),
+                                    new MethodLocal("_local1", null, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( DefId.Result, [Int32T, Int64T])))),
                                 ],
-                                returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("result", DefId.Result, [Int64T, Int64T]))))
+                                returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( DefId.Result, [Int64T, Int64T]))))
                         ])
                 },
              {

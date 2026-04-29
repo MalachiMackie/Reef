@@ -26,12 +26,12 @@ public partial class TypeChecker
                     if (@operator.Right is not null)
                         TypeCheckExpression(@operator.Right);
 
-                    if (ExpectExpressionType(InstantiatedClass.IntTypes, @operator.Left))
+                    if (ExpectExpressionType(IntTypes(), @operator.Left))
                     {
                         ExpectExpressionType(@operator.Left.NotNull().ResolvedType.NotNull(), @operator.Right);
                     }
 
-                    return InstantiatedClass.Boolean;
+                    return Boolean();
                 }
             case BinaryOperatorType.Plus:
             case BinaryOperatorType.Minus:
@@ -43,13 +43,14 @@ public partial class TypeChecker
                     if (@operator.Right is not null)
                         TypeCheckExpression(@operator.Right);
 
-                    if (ExpectExpressionType(InstantiatedClass.IntTypes, @operator.Left))
+                    if (ExpectExpressionType(IntTypes(), @operator.Left))
                     {
                         ExpectExpressionType(@operator.Left.NotNull().ResolvedType.NotNull(), @operator.Right);
                         return @operator.Left.NotNull().ResolvedType.NotNull();
                     }
 
-                    return InstantiatedClass.Int32;
+                    // this is the failure case
+                    return Int32();
                 }
             case BinaryOperatorType.NegativeEqualityCheck:
             case BinaryOperatorType.EqualityCheck:
@@ -60,27 +61,27 @@ public partial class TypeChecker
                     if (@operator.Right is not null)
                         TypeCheckExpression(@operator.Right);
 
-                    if (ExpectExpressionType([.. InstantiatedClass.IntTypes, InstantiatedClass.Boolean], @operator.Left))
+                    if (ExpectExpressionType([.. IntTypes(), Boolean()], @operator.Left))
                     {
                         ExpectExpressionType(@operator.Left.NotNull().ResolvedType.NotNull(), @operator.Right);
                     }
 
-                    return InstantiatedClass.Boolean;
+                    return Boolean();
                 }
             case BinaryOperatorType.BooleanAnd:
             case BinaryOperatorType.BooleanOr:
                 {
                     if (@operator.Left is not null)
                     {
-                        ExpectType(TypeCheckExpression(@operator.Left), InstantiatedClass.Boolean,
+                        ExpectType(TypeCheckExpression(@operator.Left), Boolean(),
                             @operator.Left.SourceRange);
                     }
                     if (@operator.Right is not null)
                     {
-                        ExpectType(TypeCheckExpression(@operator.Right), InstantiatedClass.Boolean,
+                        ExpectType(TypeCheckExpression(@operator.Right), Boolean(),
                             @operator.Right.SourceRange);
                     }
-                    return InstantiatedClass.Boolean;
+                    return Boolean();
                 }
             case BinaryOperatorType.ValueAssignment:
                 {
@@ -152,7 +153,7 @@ public partial class TypeChecker
         }
 
         ExpectExpressionType(
-            [InstantiatedClass.Int8, InstantiatedClass.Int16, InstantiatedClass.Int32, InstantiatedClass.Int64],
+            [Int8(), Int16(), Int32(), Int64()],
             expression);
 
         return expression?.ResolvedType ?? new UnspecifiedSizedIntType()
@@ -169,9 +170,9 @@ public partial class TypeChecker
             TypeCheckExpression(expression);
         }
 
-        ExpectExpressionType(InstantiatedClass.Boolean, expression);
+        ExpectExpressionType(Boolean(), expression);
 
-        return InstantiatedClass.Boolean;
+        return Boolean();
     }
 
     private GenericTypeReference TypeCheckFallout(IExpression? expression)
@@ -183,7 +184,7 @@ public partial class TypeChecker
         }
 
         // todo: could implement with an interface? union Result : IFallout?
-        if (ExpectedReturnType is not InstantiatedUnion { Name: "result" } union)
+        if (ExpectedReturnType is not InstantiatedUnion { Signature.Id: var resultId } union || resultId != DefId.Result)
         {
             throw new InvalidOperationException("Fallout operator is only valid for Result return type");
         }
@@ -191,7 +192,7 @@ public partial class TypeChecker
         var expectedErrorType = union.TypeArguments.First(x => x.GenericName == "TError")
             .ResolvedType.NotNull();
 
-        // synthesize a return type with only the error generic populated so that we don't 
+        // synthesize a return type with only the error generic populated so that we don't
         // check the value generic. This is so the following successfully type checks:
         // fn SomeFn(): result::<string, int> {
         //     var someResult: result::<int, int> = todo!;
@@ -199,22 +200,24 @@ public partial class TypeChecker
         // }
         var synthesizedReturnType = InstantiateUnion(
             union.Signature,
+            [],
             boxingSpecifier: union.Boxed
                 ? Token.Boxed(SourceSpan.Default)
-                : Token.Unboxed(SourceSpan.Default));
+                : Token.Unboxed(SourceSpan.Default),
+            sourceRange: SourceRange.Default);
         synthesizedReturnType.TypeArguments.First(x => x.GenericName == "TError")
             .ResolvedType = expectedErrorType;
 
         ExpectExpressionType(synthesizedReturnType, expression);
 
         // if everything type checked correctly, this path should be taken
-        if (expression is { ResolvedType: InstantiatedUnion { Name: "result", TypeArguments: [{ GenericName: "TValue" } valueGeneric, ..] } })
+        if (expression is { ResolvedType: InstantiatedUnion { TypeArguments: [{ GenericName: "TValue" } valueGeneric, ..], Signature.Id: var id } } && id == DefId.Result)
         {
             return valueGeneric;
         }
 
         // if expression is null or it's type is incorrect, then return the value type from the return type
-        if (union.Name == UnionSignature.Result.Name)
+        if (union.Signature.Id == DefId.Result)
         {
             return union.TypeArguments.First(x => x.GenericName == "TValue");
         }
@@ -228,4 +231,3 @@ public partial class TypeChecker
     }
 
 }
-

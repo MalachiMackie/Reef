@@ -74,12 +74,18 @@ public record FnTypeIdentifier(
     IReadOnlyList<FnTypeIdentifierParameter> Parameters,
     ITypeIdentifier? ReturnType,
     Token? ReturnMutabilityModifier,
+    BoxingModifier? BoxingModifier,
     SourceRange SourceRange)
     : ITypeIdentifier
 {
     public override string ToString()
     {
-        var sb = new StringBuilder("Fn(");
+        var sb = new StringBuilder();
+        if (BoxingModifier is not null)
+        {
+            sb.Append($"{BoxingModifier} ");
+        }
+        sb.Append("Fn(");
         sb.AppendJoin(", ", Parameters);
         sb.Append(')');
         if (ReturnType is not null)
@@ -100,7 +106,7 @@ public record UnitTypeIdentifier(SourceRange SourceRange) : ITypeIdentifier;
 
 public record ArrayTypeIdentifier(
     ITypeIdentifier ElementTypeIdentifier,
-    IntToken LengthSpecifier,
+    IntToken? LengthSpecifier,
     Token? BoxingSpecifier,
     SourceRange SourceRange) : ITypeIdentifier
 {
@@ -115,8 +121,11 @@ public record ArrayTypeIdentifier(
 
         sb.Append('[');
         sb.Append(ElementTypeIdentifier);
-        sb.Append(';');
-        sb.Append(LengthSpecifier.IntValue);
+        if (LengthSpecifier is not null)
+        {
+            sb.Append(';');
+            sb.Append(LengthSpecifier.IntValue);
+        }
         sb.Append(']');
 
         return sb.ToString();

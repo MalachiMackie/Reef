@@ -137,7 +137,7 @@ public partial class TypeChecker
 
         foreach (var (moduleId, classes, unions) in moduleInfos)
         {
-            using var __ = PushScope(moduleId: moduleId);
+            using var __ = PushScope(moduleId: moduleId, moduleImports: _modules[moduleId].TopLevelImports);
 
             foreach (var (union, unionSignature, functions, variants) in unions)
             {

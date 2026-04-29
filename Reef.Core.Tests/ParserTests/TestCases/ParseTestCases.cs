@@ -164,6 +164,18 @@ public static class ParseTestCases
                     ])
             ),
             (
+                "var a: [string];",
+                Program("ParseTestCases",
+                    [
+                        VariableDeclaration(
+                            "a",
+                            type: ArrayTypeIdentifier(
+                                StringType(),
+                                null,
+                                null))
+                    ])
+            ),
+            (
                 "var a: unboxed [i32; 5];",
                 Program("ParseTestCases",
                     [

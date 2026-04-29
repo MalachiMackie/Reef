@@ -37,7 +37,7 @@ public record TypeCheckerError
         new(
             TypeCheckerErrorType.MismatchedTypeBoxing,
             range,
-            $"Expected {(expectedBoxed ? "" : "un")}boxed {expectedType}, but got {(actualBoxed ? "un" : "")}boxed {actualType}");
+            $"Expected {(expectedBoxed ? "" : "un")}boxed {expectedType}, but got {(actualBoxed ? "" : "un")}boxed {actualType}");
 
     public static TypeCheckerError TypeIsNotExpression(
         SourceRange range, ITypeIdentifier type)

@@ -93,7 +93,7 @@ public class PrettyPrinter(LoweredProgram module)
                 }
             case LoweredConcreteTypeReference concrete:
                 {
-                    _stringBuilder.Append(concrete.Name);
+                    _stringBuilder.Append(concrete.FullyQualifiedName);
                     if (concrete.TypeArguments.Count > 0)
                     {
                         _stringBuilder.Append("::<");

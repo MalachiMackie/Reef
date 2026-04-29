@@ -112,7 +112,7 @@ public partial class TypeChecker
         return new FunctionObject(
             parameters: function.Parameters,
             returnType: function.ReturnType,
-            function.MutableReturn);
+            function.MutableReturn, true);
     }
 
     private ITypeReference TypeCheckUnionMemberAccess(
@@ -159,6 +159,6 @@ public partial class TypeChecker
         return new FunctionObject(
             function.Parameters,
             function.ReturnType,
-            function.MutableReturn);
+            function.MutableReturn, true);
     }
 }

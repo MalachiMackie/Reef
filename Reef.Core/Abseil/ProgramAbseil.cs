@@ -279,7 +279,7 @@ public partial class ProgramAbseil
                 ),
                 new Assign(
                     new Field(new Deref(new Local(loweredMethod.ReturnValue.CompilerGivenName)), "ObjectHeader", ClassVariantName),
-                    new CreateObject((GetTypeReference(TypeChecker.InstantiatedClass.ObjectHeader) as LoweredConcreteTypeReference).NotNull())
+                    new CreateObject(new LoweredConcreteTypeReference(DefId.ObjectHeader, []))
                 ),
                 new Assign(
                     new Field(new Field(new Deref(new Local(loweredMethod.ReturnValue.CompilerGivenName)), "ObjectHeader", ClassVariantName), "TypeId", ClassVariantName),
@@ -392,6 +392,9 @@ public partial class ProgramAbseil
             }
         }
 
+        var unitSignature = _modules[DefId.Unit.ModuleId].Classes.Select(x => x.Signature.NotNull()).First(x => x.Id == DefId.Unit);
+        var unit = TypeChecker.InstantiatedClass.Create(unitSignature, [], boxed: false);
+
         var mainSignature = new TypeChecker.FunctionSignature(
                 DefId.Main(_mainModule.ModuleId),
                 Token.Identifier("_Main", SourceSpan.Default),
@@ -404,7 +407,7 @@ public partial class ProgramAbseil
                 false,
                 IsPublic: true)
         {
-            ReturnType = TypeChecker.InstantiatedClass.Unit,
+            ReturnType = unit,
             OwnerType = null,
             LocalVariables = _mainModule.TopLevelLocalVariables,
             LocalFunctions = _mainModule.TopLevelLocalFunctions
@@ -553,7 +556,6 @@ public partial class ProgramAbseil
     {
         var typeParameters = klass.TypeParameters.Select(GetGenericPlaceholder).ToArray();
         var classTypeReference = new LoweredConcreteTypeReference(
-                klass.Name,
                 klass.Id,
                 typeParameters);
 
@@ -603,7 +605,6 @@ public partial class ProgramAbseil
         var dataType = _types[union.Id];
         var typeParameters = union.TypeParameters.Select(GetGenericPlaceholder).ToArray();
         var unionTypeReference = new LoweredConcreteTypeReference(
-                                                    union.Name,
                                                     union.Id,
                                                     typeParameters);
 
@@ -650,7 +651,7 @@ public partial class ProgramAbseil
                                 new CreateObject(BoxedValueType(unionTypeReference))),
                             new Assign(
                                 new Field(new Deref(new Local(ReturnValueLocalName)), "ObjectHeader", ClassVariantName),
-                                new CreateObject((GetTypeReference(TypeChecker.InstantiatedClass.ObjectHeader) as LoweredConcreteTypeReference).NotNull())
+                                new CreateObject((new LoweredConcreteTypeReference(DefId.ObjectHeader, [])).NotNull())
                             ),
                             new Assign(
                                 new Field(new Field(new Deref(new Local(ReturnValueLocalName)), "ObjectHeader", ClassVariantName), "TypeId", ClassVariantName),
@@ -710,11 +711,10 @@ public partial class ProgramAbseil
         }
     }
 
-    private static DataType LowerUnion(TypeChecker.UnionSignature union)
+    private DataType LowerUnion(TypeChecker.UnionSignature union)
     {
         var typeParameters = union.TypeParameters.Select(GetGenericPlaceholder).ToArray();
         var unionTypeReference = new LoweredConcreteTypeReference(
-                                                    union.Name,
                                                     union.Id,
                                                     typeParameters);
 
@@ -724,7 +724,7 @@ public partial class ProgramAbseil
         {
             var variantIdentifierField = new DataTypeField(
                     VariantIdentifierFieldName,
-                    GetTypeReference(TypeChecker.InstantiatedClass.UInt16));
+                    GetBuiltInTypeReference(DefId.UInt16));
             var fields = new List<DataTypeField> { variantIdentifierField };
             switch (variant)
             {
@@ -817,7 +817,6 @@ public partial class ProgramAbseil
                                 .LocalsTypeId.NotNull(expectedReason: "the containing function containing the referenced local should have already been lowered");
                             var localType = _types[localTypeId];
                             var localTypeReference = new LoweredConcreteTypeReference(
-                                localType.Name,
                                 localTypeId,
                                 []);
 
@@ -836,7 +835,6 @@ public partial class ProgramAbseil
                                 .LocalsTypeId.NotNull();
                             var localType = _types[localTypeId];
                             var localTypeReference = new LoweredConcreteTypeReference(
-                                localType.Name,
                                 localTypeId,
                                 []);
 
@@ -852,7 +850,6 @@ public partial class ProgramAbseil
                         {
                             var signature = fieldVariable.ContainingSignature;
                             var typeReference = new LoweredConcreteTypeReference(
-                                    signature.Name,
                                     signature.Id,
                                     [..signature.TypeParameters
                                         .Select(GetTypeReference)]);
@@ -907,7 +904,6 @@ public partial class ProgramAbseil
         if (localsType is not null)
         {
             var localsTypeReference = new LoweredConcreteTypeReference(
-                            localsType.Name,
                             localsType.Id,
                             []);
 
@@ -938,7 +934,7 @@ public partial class ProgramAbseil
                     ),
                     new Assign(
                         new Field(new Deref(new Local(LocalsObjectLocalName)), "ObjectHeader", ClassVariantName),
-                        new CreateObject(GetConcreteTypeReference(GetTypeReference(TypeChecker.InstantiatedClass.ObjectHeader)))),
+                        new CreateObject(new LoweredConcreteTypeReference(DefId.ObjectHeader, []))),
                     new Assign(
                         new Field(
                             new Field(new Deref(new Local(LocalsObjectLocalName)), "ObjectHeader", ClassVariantName),
@@ -975,7 +971,6 @@ public partial class ProgramAbseil
         else if (closureType is not null)
         {
             parameters = parameters.Prepend((ClosureParameterName, new LoweredPointer(BoxedValueType(new LoweredConcreteTypeReference(
-                closureType.Name,
                 closureType.Id,
                 [])))));
         }
@@ -1042,7 +1037,15 @@ public partial class ProgramAbseil
 
     private static LoweredConcreteTypeReference BoxedValueType(ILoweredTypeReference valueType)
     {
-        return new LoweredConcreteTypeReference(TypeChecker.ClassSignature.BoxedValue.Value.Name, DefId.BoxedValue, [valueType]);
+        return new LoweredConcreteTypeReference(
+            DefId.BoxedValue, [valueType]);
+    }
+
+    private ILoweredTypeReference GetBuiltInTypeReference(DefId id)
+    {
+        var dataType = _types[id];
+        Debug.Assert(dataType.TypeParameters.Count == 0);
+        return new LoweredConcreteTypeReference(id, []);
     }
 
     private static ILoweredTypeReference GetTypeReference(TypeChecker.ITypeReference typeReference)
@@ -1050,11 +1053,9 @@ public partial class ProgramAbseil
         var loweredTypeReference = typeReference switch
         {
             TypeChecker.InstantiatedClass c => new LoweredConcreteTypeReference(
-                c.Signature.Name,
                 c.Signature.Id,
                 [.. c.TypeArguments.Select(GetTypeReference)]),
             TypeChecker.InstantiatedUnion u => new LoweredConcreteTypeReference(
-                u.Signature.Name,
                 u.Signature.Id,
                 [.. u.TypeArguments.Select(GetTypeReference)]),
             TypeChecker.GenericTypeReference { ResolvedType: { } resolvedType } => GetTypeReference(resolvedType),
@@ -1081,11 +1082,8 @@ public partial class ProgramAbseil
 
         static LoweredConcreteTypeReference FunctionObjectCase(TypeChecker.FunctionObject f)
         {
-            var id = DefId.FunctionObject(f.Parameters.Count);
-
             return new LoweredConcreteTypeReference(
-                id.FullName[(id.FullName.LastIndexOf(':') + 1)..],
-                id,
+                DefId.FunctionObject(f.Parameters.Count),
                 [..f.Parameters.Select(x => GetTypeReference(x.Type))
                     .Append(GetTypeReference(f.ReturnType))]);
         }

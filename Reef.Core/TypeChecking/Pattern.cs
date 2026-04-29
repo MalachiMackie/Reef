@@ -9,7 +9,9 @@ public partial class TypeChecker
         var patternVariables = new List<LocalVariable>();
         switch (pattern)
         {
-            case DiscardPattern:
+            case DiscardPattern discardPattern:
+                discardPattern.TypeReference = Never();
+
                 // discard pattern always type checks
                 break;
             case UnionVariantPattern variantPattern:
@@ -282,6 +284,7 @@ public partial class TypeChecker
                         false,
                         variableMutable);
                     variableDeclarationPattern.Variable = variable;
+                    variableDeclarationPattern.TypeReference = Never();
                     patternVariables.Add(variable);
                     if (!TryAddScopedVariable(variableName.StringValue, variable))
                     {
