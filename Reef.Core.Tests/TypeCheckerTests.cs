@@ -113,7 +113,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule;
+                    use otherModule;
 
                     otherModule:::subModule:::SomeFn();
                     var a = new otherModule:::subModule:::MyClass{};
@@ -132,7 +132,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::subModule;
+                    use otherModule:::subModule;
 
                     subModule:::subSubModule:::SomeFn();
                     var a = new subModule:::subSubModule:::MyClass{};
@@ -151,7 +151,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::subModule;
+                    use otherModule:::subModule;
 
                     subModule:::SomeFn();
                     var a = new subModule:::MyClass{};
@@ -170,7 +170,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::subModule;
+                    use otherModule:::subModule;
 
                     otherModule:::subModule:::SomeFn();
                     var a = new otherModule:::subModule:::MyClass{};
@@ -189,7 +189,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::{MyClass, MyUnion, SomeFn};
+                    use otherModule:::{MyClass, MyUnion, SomeFn};
 
                     var a = new MyClass{};
                     var b = MyUnion::A;
@@ -210,9 +210,9 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    var a = new :::otherModule:::MyClass{};
-                    var b = :::otherModule:::MyUnion::A;
-                    var c = :::otherModule:::SomeFn();
+                    var a = new otherModule:::MyClass{};
+                    var b = otherModule:::MyUnion::A;
+                    var c = otherModule:::SomeFn();
                     """
                 },
                 {
@@ -232,9 +232,9 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     class MyClass{}
                     fn SomeFn(){}
 
-                    var a = new :::otherModule:::MyClass{};
-                    var b = :::otherModule:::MyUnion::A;
-                    :::otherModule:::SomeFn();
+                    var a = new otherModule:::MyClass{};
+                    var b = otherModule:::MyUnion::A;
+                    :::main:::otherModule:::SomeFn();
                     var d = new MyClass{};
                     SomeFn();
 
@@ -254,7 +254,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::someModule:::subModule:::{MyClass, MyUnion, SomeFn};
+                    use someModule:::subModule:::{MyClass, MyUnion, SomeFn};
 
                     var a = new MyClass{};
                     var b = MyUnion::A;
@@ -275,7 +275,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::someModule:::{MyUnion, SomeFn, otherModule:::MyClass};
+                    use someModule:::{MyUnion, SomeFn, otherModule:::MyClass};
 
                     var a = new MyClass{};
                     var b = MyUnion::A;
@@ -301,7 +301,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::someModule:::otherModule:::SomeFn;
+                    use someModule:::otherModule:::SomeFn;
 
                     pub class MyClass{};
 
@@ -324,7 +324,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::*;
+                    use otherModule:::*;
 
                     var a = new MyClass{};
                     var b = MyUnion::A;
@@ -345,12 +345,12 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::{MyClass, MyUnion};
+                    use otherModule:::{MyClass, MyUnion};
 
                     var a = new MyClass{};
                     var b = MyUnion::A;
                     {
-                        use :::otherModule:::SomeFn;
+                        use otherModule:::SomeFn;
                         SomeFn();
                     }
                     """
@@ -369,7 +369,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::MyClass;
+                    use otherModule:::MyClass;
 
                     pub fn SomeFn(): MyClass {
                         return new MyClass{};
@@ -396,7 +396,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::someModule:::{subModule:::{SomeFn, subSubModule:::MyClass}};
+                    use someModule:::{subModule:::{SomeFn, subSubModule:::MyClass}};
 
                     var a = new MyClass{};
                     SomeFn();
@@ -424,7 +424,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::someModule:::SomeFn;
+                    use someModule:::SomeFn;
 
                     var a = SomeFn();
                     print_string(a.Something);
@@ -445,7 +445,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::SomeFn;
+                    use otherModule:::SomeFn;
 
                     pub class MyClass{};
 
@@ -3065,7 +3065,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                             """
                             var b = 2;
                             """,
-                            [TypeCheckerError.TopLevelStatementsInNonMainModule(SourceRange.Default, new ModuleId("other"))]
+                            [TypeCheckerError.TopLevelStatementsInNonMainModule(SourceRange.Default, new ModuleId("main:::other"))]
                         )
                     }
                 }
@@ -3131,10 +3131,10 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     {
                         "main.rf",
                         ("""
-                        use :::missing;
-                        use :::otherModule:::foo;
+                        use missing;
+                        use otherModule:::foo;
                         {
-                            use :::otherModule:::bar;
+                            use otherModule:::bar;
                         }
                         """,
                         [
@@ -3160,7 +3160,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     {
                         "main.rf",
                         ("""
-                        use :::otherModule:::{MyClass, MyUnion, SomeFn};
+                        use otherModule:::{MyClass, MyUnion, SomeFn};
                         """, [
                                             TypeCheckerError.ImportedItemNotPublic(Identifier("MyClass")),
                                             TypeCheckerError.ImportedItemNotPublic(Identifier("MyUnion")),
@@ -3184,7 +3184,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     {
                         "main.rf",
                         ("""
-                        use :::otherModule:::*;
+                        use otherModule:::*;
                         var a = new MyClass{};
                         var b = MyUnion::A;
                         SomeFn();
@@ -3210,7 +3210,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     {
                         "main.rf",
                         ("""
-                        use :::otherModule:::*;
+                        use otherModule:::*;
                         var a = new MyClass{};
                         var b = MyUnion::A;
                         SomeFn();
@@ -5114,8 +5114,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    a = ok(true);
                                    a = error("");
                                    """, [
-                                   MismatchedTypes(Result(UnspecifiedSizedIntType, GenericTypeReference("TError")),
-                                   Result(Boolean, GenericTypeReference("TError")))
+                                   MismatchedTypes(Result(UnspecifiedSizedIntType, null),
+                                   Result(Boolean, null))
                                    ])
                     }
                 }
@@ -7867,14 +7867,14 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     }
 
     private static ITypeReference Result(
-        ITypeReference value,
-        ITypeReference error,
+        ITypeReference? value,
+        ITypeReference? error,
         bool? boxed = null)
     {
         return new TestUnionReference(DefId.Result, [("TValue", value), ("TError", error)], boxed ?? true);
     }
 
-    private sealed record TestUnionReference(DefId Id, IReadOnlyList<(string name, ITypeReference argument)> TypeArguments, bool Boxed = true)
+    private sealed record TestUnionReference(DefId Id, IReadOnlyList<(string name, ITypeReference? argument)> TypeArguments, bool Boxed = true)
         : ITypeReference, IEquatable<ITypeReference>
     {
         public bool Equals(ITypeReference? other)
@@ -7890,7 +7890,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             }
 
             var sb = new StringBuilder($"{Id.FullName}::<");
-            sb.AppendJoin(",", TypeArguments.Select(x => $"{x.name}=[{x.argument}]"));
+            sb.AppendJoin(",", TypeArguments.Select(x => $"{x.name}=[{x.argument?.ToString() ?? "??"}]"));
             sb.Append('>');
             return sb.ToString();
         }

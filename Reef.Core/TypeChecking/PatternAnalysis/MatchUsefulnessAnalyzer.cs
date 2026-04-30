@@ -492,7 +492,8 @@ public static class MatchUsefulnessAnalyzer
         IReadOnlyList<MatchArm> matchArms,
         TypeChecker.ITypeReference scrutineeType,
         PlaceValidity scrutValidity,
-        uint complexityLimit)
+        uint complexityLimit,
+        TypeChecker.ITypeReference neverType)
     {
         var cx = new UsefulnessContext
         {
@@ -501,7 +502,7 @@ public static class MatchUsefulnessAnalyzer
             ComplexityLevel = 0
         };
 
-        var arms = matchArms.Select(y => new PatternMatchArm(LowerPattern(y.Pattern), HasGuard: false))
+        var arms = matchArms.Select(y => new PatternMatchArm(LowerPattern(y.Pattern, neverType), HasGuard: false))
             .ToArray();
 
         var matrix = Matrix.Create(arms, scrutineeType, scrutValidity);
@@ -617,13 +618,13 @@ public static class MatchUsefulnessAnalyzer
         return ret;
     }
 
-    public static DeconstructedPattern LowerPattern(IPattern pattern)
+    public static DeconstructedPattern LowerPattern(IPattern pattern, TypeChecker.ITypeReference neverType)
     {
         IConstructor constructor;
         uint arity;
         IReadOnlyList<IndexedPattern> fields;
         var type = pattern.TypeReference
-            ?? throw new InvalidOperationException("Expected pattern type");
+            ?? throw new InvalidOperationException($"Expected pattern type on pattern: {pattern.GetType()}");
 
         switch (pattern)
         {
@@ -653,7 +654,10 @@ public static class MatchUsefulnessAnalyzer
                                     Index = (uint)x.Index,
                                     // because the current pattern does not specify any fields,
                                     // we treat each field as if it's discarded
-                                    Pattern = LowerPattern(new DiscardPattern(SourceRange.Default))
+                                    Pattern = LowerPattern(new DiscardPattern(SourceRange.Default)
+                                    {
+                                        TypeReference = neverType
+                                    }, neverType)
                                 })
                                 .ToArray(),
                         TypeChecker.TupleUnionVariant tupleUnionVariant =>
@@ -662,7 +666,7 @@ public static class MatchUsefulnessAnalyzer
                                 .Select(x => new IndexedPattern()
                                 {
                                     Index = (uint)x.Index,
-                                    Pattern = LowerPattern(new DiscardPattern(SourceRange.Default))
+                                    Pattern = LowerPattern(new DiscardPattern(SourceRange.Default) { TypeReference = neverType }, neverType)
                                 })
                                 .ToArray(),
                         TypeChecker.UnitUnionVariant => [],
@@ -689,7 +693,7 @@ public static class MatchUsefulnessAnalyzer
                         .Select(x => new IndexedPattern
                         {
                             Index = (uint)x.Index,
-                            Pattern = LowerPattern(x.Item)
+                            Pattern = LowerPattern(x.Item, neverType)
                         })
                         .ToArray();
                     arity = (uint)fields.Count;
@@ -722,7 +726,7 @@ public static class MatchUsefulnessAnalyzer
                             // we treat each field as if it's discarded
                             Pattern = LowerPattern(
                                 fieldPatterns.FirstOrDefault(y => y.FieldName.StringValue == x.Item.Name)?.Pattern
-                                ?? new DiscardPattern(SourceRange.Default))
+                                ?? new DiscardPattern(SourceRange.Default) { TypeReference = neverType }, neverType)
                         })
                         .ToArray();
 
@@ -747,7 +751,7 @@ public static class MatchUsefulnessAnalyzer
                             Index = (uint)x.Index,
                             Pattern = LowerPattern(
                                 fieldPatterns.FirstOrDefault(y => y.FieldName.StringValue == x.Item.Name)?.Pattern
-                                    ?? new DiscardPattern(SourceRange.Default))
+                                    ?? new DiscardPattern(SourceRange.Default) { TypeReference = neverType }, neverType)
                         }).ToArray()
                         ?? throw new InvalidOperationException("Expected class");
                     arity = (uint)fields.Count;

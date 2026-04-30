@@ -283,12 +283,16 @@ public class TypeTwoTypeChecker(bool throwOnError, Dictionary<ModuleId, (List<Ty
             }
         }
 
+        var neverTypeSignature = _moduleSignatures[DefId.Never.ModuleId].Classes.First(x => x.Id == DefId.Never);
+        var neverType = TypeChecker.InstantiatedClass.Create(neverTypeSignature, [], boxed: false);
+
         var usefulnessReport = MatchUsefulnessAnalyzer.ComputeMatchUsefulness(
             matchExpression.Arms,
             matchExpression.Value.ResolvedType ?? throw new InvalidOperationException("expected resolved type"),
             PlaceValidity.ValidOnly,
             // random guess
-            complexityLimit: 15);
+            complexityLimit: 15,
+            neverType);
 
         foreach (var (arm, usefulness) in usefulnessReport.ArmUsefulness)
         {
