@@ -178,6 +178,15 @@ public record ExternModifier(Token Token)
     public override string ToString() => Token.ToString();
 }
 
+public interface IConstraint
+{
+    NamedTypeIdentifier ConstrainedType { get; }
+}
+
+public record BoxedConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier BoxedOfType) : IConstraint;
+public record UnboxedConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier UnboxedOfType) : IConstraint;
+
+
 public record LangFunction(
     AccessModifier? AccessModifier,
     StaticModifier? StaticModifier,
@@ -188,7 +197,8 @@ public record LangFunction(
     ITypeIdentifier? ReturnType,
     Token? ReturnMutabilityModifier,
     Block? Block,
-    ExternModifier? ExternModifier)
+    ExternModifier? ExternModifier,
+    IReadOnlyList<IConstraint> Constraints)
 {
     public TypeChecker.FunctionSignature? Signature { get; set; }
 
@@ -231,9 +241,29 @@ public record LangFunction(
             sb.Append(ReturnType);
         }
 
+        foreach (var constraint in Constraints)
+        {
+            sb.Append($" where {constraint.ConstrainedType}: ");
+            switch (constraint)
+            {
+                case BoxedConstraint boxed:
+                    {
+                        sb.Append($"boxed {boxed.BoxedOfType}");
+                        break;
+                    }
+                case UnboxedConstraint unboxed:
+                    {
+                        sb.Append($"unboxed {unboxed.UnboxedOfType}");
+                        break;
+                    }
+                default:
+                    throw new InvalidOperationException(constraint.GetType().ToString());
+            }
+        }
+
         if (Block is not null)
         {
-            sb.Append($"{Block}");
+            sb.Append($" {Block}");
         }
 
         return sb.ToString();

@@ -13,7 +13,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 {
     private readonly MockFileSystem _fileSystem = new();
 
-    private static readonly ModuleId ModuleId = new ModuleId("main");
+    private static readonly ModuleId ModuleId = new("main");
 
     [Theory]
     [MemberData(nameof(SuccessfulExpressionTestCases))]
@@ -113,6 +113,104 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         IEnumerable<Dictionary<string, string>> sources =
         [
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub fn someFn(a: otherModule:::MyClass){}
+                    """
+                },
+                {
+                    "otherModule.rf",
+                    """
+                    pub class MyClass{}
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub extern fn some_fn<T, T2>(param: T): T2 where T2: boxed T;
+
+                    var b: boxed i32 = some_fn(1);
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub extern fn some_fn<T>(): T where T : unboxed i32;
+
+                    var b = some_fn();
+                    var c = b + 2;
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub extern fn some_fn<T, T2>(param: T): T2 where T2: unboxed T;
+                    class MyClass{}
+
+                    var b: unboxed MyClass = some_fn(new MyClass{});
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub extern fn some_fn<T, T2>(param: T): T2 where T2: unboxed T;
+                    class MyClass{}
+
+                    var b: unboxed MyClass = some_fn(new unboxed MyClass{});
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub extern fn some_fn<T, T2>(param: T): T2 where T2: boxed T;
+                    class MyClass{}
+
+                    var b: MyClass = some_fn(new MyClass{});
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub extern fn some_fn<T, T2>(param: T): T2
+                        where T2: boxed T
+                        where T: unboxed T2;
+
+                    class MyClass{}
+
+                    var b: MyClass = some_fn(new unboxed MyClass{});
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub extern fn some_fn<T, T2>(): string where T: boxed T2;
+                    """
+                }
+            },
             new()
             {
                 {
@@ -3031,6 +3129,51 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
+            {
+                "non type parameters referenced in type constraint",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            pub extern fn some_fn<T>() where T: unboxed [string]
+                            """,
+                            [TypeCheckerError.BoxedOnlyTypeCannotBeUnboxed(new ArrayType(String), SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "non type parameters referenced in type constraint",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            pub extern fn some_fn<T>() where int: unboxed T;
+                            """,
+                            [TypeCheckerError.NonTypeParameterConstrained(NamedTypeIdentifier("int"))]
+                        )
+                    }
+                }
+            },
+            {
+                "Extern function defines body",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            pub extern fn some_fn<T>() where T: unboxed T2;
+                            """,
+                            [TypeCheckerError.SymbolNotFound(Token.Identifier("T2", SourceSpan.Default))]
+                        )
+                    }
+                }
+            },
             {
                 "Extern function defines body",
                 new()

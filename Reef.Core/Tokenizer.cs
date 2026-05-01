@@ -275,6 +275,7 @@ public class Tokenizer
             TokenType.Mut when source is "mut" => Token.Mut(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Use when source is "use" => Token.Use(new SourceSpan(position, (ushort)source.Length)),
             TokenType.While when source is "while" => Token.While(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Where when source is "where" => Token.Where(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Unboxed when source is "unboxed" => Token.Unboxed(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Extern when source is "extern" => Token.Extern(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Boxed when source is "boxed" => Token.Boxed(new SourceSpan(position, (ushort)source.Length)),
@@ -360,13 +361,11 @@ public class Tokenizer
         {
             case 'i':
                 tokens[i++] = TokenType.If;
-                tokens[i++] = TokenType.Identifier;
                 break;
             case 'm':
                 tokens[i++] = TokenType.Mut;
                 tokens[i++] = TokenType.Matches;
                 tokens[i++] = TokenType.Match;
-                tokens[i++] = TokenType.Identifier;
                 break;
             case '!':
                 tokens[i++] = TokenType.Bang;
@@ -389,13 +388,11 @@ public class Tokenizer
                 break;
             case 'p':
                 tokens[i++] = TokenType.Pub;
-                tokens[i++] = TokenType.Identifier;
                 break;
             case 'f':
                 tokens[i++] = TokenType.False;
                 tokens[i++] = TokenType.Fn;
                 tokens[i++] = TokenType.Field;
-                tokens[i++] = TokenType.Identifier;
                 break;
             case ':':
                 tokens[i++] = TokenType.Colon;
@@ -411,11 +408,9 @@ public class Tokenizer
                 break;
             case 'n':
                 tokens[i++] = TokenType.New;
-                tokens[i++] = TokenType.Identifier;
                 break;
             case 'v':
                 tokens[i++] = TokenType.Var;
-                tokens[i++] = TokenType.Identifier;
                 break;
             case '=':
                 tokens[i++] = TokenType.Equals;
@@ -428,36 +423,27 @@ public class Tokenizer
             case 'e':
                 tokens[i++] = TokenType.Else;
                 tokens[i++] = TokenType.Extern;
-                tokens[i++] = TokenType.Identifier;
                 break;
             case 's':
-                tokens[i++] = TokenType.Identifier;
                 tokens[i++] = TokenType.Static;
                 break;
             case 'r':
                 tokens[i++] = TokenType.Return;
-                tokens[i++] = TokenType.Identifier;
                 break;
             case 'b':
                 tokens[i++] = TokenType.Break;
                 tokens[i++] = TokenType.Boxed;
-                tokens[i++] = TokenType.Identifier;
-                break;
-            case 'o':
-                tokens[i++] = TokenType.Identifier;
                 break;
             case 'u':
                 tokens[i++] = TokenType.Union;
                 tokens[i++] = TokenType.Unboxed;
                 tokens[i++] = TokenType.Use;
-                tokens[i++] = TokenType.Identifier;
                 break;
             case '?':
                 tokens[i++] = TokenType.QuestionMark;
                 break;
             case 't':
                 tokens[i++] = TokenType.True;
-                tokens[i++] = TokenType.Identifier;
                 tokens[i++] = TokenType.Todo;
                 break;
             case '*':
@@ -477,11 +463,11 @@ public class Tokenizer
                 break;
             case 'w':
                 tokens[i++] = TokenType.While;
+                tokens[i++] = TokenType.Where;
                 break;
             case 'c':
                 tokens[i++] = TokenType.Continue;
                 tokens[i++] = TokenType.Class;
-                tokens[i++] = TokenType.Identifier;
                 break;
             case '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9':
                 tokens[i++] = TokenType.IntLiteral;
@@ -494,7 +480,6 @@ public class Tokenizer
                 break;
             case '_':
                 tokens[i++] = TokenType.Underscore;
-                tokens[i++] = TokenType.Identifier;
                 break;
             case '&':
                 tokens[i++] = TokenType.DoubleAmpersand;
@@ -508,15 +493,11 @@ public class Tokenizer
             case ']':
                 tokens[i++] = TokenType.RightSquareBracket;
                 break;
-            default:
-                {
-                    if (IsValidIdentifier([firstChar]))
-                    {
-                        tokens[i++] = TokenType.Identifier;
-                    }
+        }
 
-                    break;
-                }
+        if (!tokens.Contains(TokenType.Identifier) && IsValidIdentifier([firstChar]))
+        {
+            tokens[i++] = TokenType.Identifier;
         }
 
         return i;
@@ -533,6 +514,7 @@ public class Tokenizer
             TokenType.Todo => Matches(source, "todo!"),
             TokenType.Use => Matches(source, "use"),
             TokenType.Extern => Matches(source, "extern"),
+            TokenType.Where => Matches(source, "where"),
             TokenType.Underscore => Matches(source, "_"),
             TokenType.Bang => Matches(source, "!"),
             TokenType.Semicolon => Matches(source, ";"),

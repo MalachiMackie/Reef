@@ -57,6 +57,7 @@ public partial class TypeChecker
 
         var foundTypeParameters = new HashSet<string>();
         var genericPlaceholdersDictionary = GenericPlaceholders.ToDictionary(x => x.GenericName);
+        var typeParameterConstraints = new Dictionary<GenericPlaceholder, List<ITypeConstraint>>();
         foreach (var typeParameter in fn.TypeParameters)
         {
             if (!foundTypeParameters.Add(typeParameter.StringValue))
@@ -73,12 +74,15 @@ public partial class TypeChecker
             {
                 AddError(TypeCheckerError.TypeParameterConflictsWithType(typeParameter));
             }
-            typeParameters.Add(new GenericPlaceholder
+            var constraints = new List<ITypeConstraint>();
+            var placeholder = new GenericPlaceholder
             {
                 GenericName = typeParameter.StringValue,
                 OwnerType = fnSignature,
-                Constraints = []
-            });
+                Constraints = constraints
+            };
+            typeParameters.Add(placeholder);
+            typeParameterConstraints.Add(placeholder, constraints);
         }
 
         using var _ = PushScope(genericPlaceholders: fnSignature.TypeParameters, currentFunctionSignature: fnSignature);
@@ -98,6 +102,46 @@ public partial class TypeChecker
             }
         }
 
+        foreach (var constraint in fn.Constraints)
+        {
+            var typeParameter = typeParameters.FirstOrDefault(x => x.GenericName == constraint.ConstrainedType.Identifier.StringValue);
+            if (typeParameter is null)
+            {
+                AddError(TypeCheckerError.NonTypeParameterConstrained(constraint.ConstrainedType));
+            }
+            switch (constraint)
+            {
+                case BoxedConstraint boxed:
+                    {
+                        var boxedOf = GetTypeReference(boxed.BoxedOfType);
+                        if (typeParameter is not null)
+                        {
+                            typeParameterConstraints[typeParameter].Add(new BoxedTypeConstraint(boxedOf));
+                        }
+
+                        break;
+                    }
+                case UnboxedConstraint unboxed:
+                    {
+                        var unboxedOf = GetTypeReference(unboxed.UnboxedOfType);
+
+                        if (IsBoxedOnlyType(unboxedOf))
+                        {
+                            AddError(TypeCheckerError.BoxedOnlyTypeCannotBeUnboxed(unboxedOf, unboxed.UnboxedOfType.SourceRange));
+                        }
+
+                        if (typeParameter is not null)
+                        {
+                            typeParameterConstraints[typeParameter].Add(new UnboxedTypeConstraint(unboxedOf));
+                        }
+
+                        break;
+                    }
+                default:
+                    throw new InvalidOperationException(constraint.GetType().ToString());
+            }
+        }
+
         if (fn.Block is not null)
         {
             fnSignature.LocalFunctions.AddRange(fn.Block.Functions.Select(x => TypeCheckFunctionSignature(
@@ -108,6 +152,11 @@ public partial class TypeChecker
 
         // todo: function overloading
         return fnSignature;
+    }
+
+    private bool IsBoxedOnlyType(ITypeReference typeReference)
+    {
+        return typeReference is ArrayType { IsDynamic: true };
     }
 
     private void TypeCheckFunctionBody(FunctionSignature fnSignature)

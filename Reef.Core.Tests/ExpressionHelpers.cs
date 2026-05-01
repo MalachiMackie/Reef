@@ -256,7 +256,8 @@ public static class ExpressionHelpers
         ITypeIdentifier? returnType = null,
         bool isMutableReturn = false,
         bool isExtern = false,
-        Block? block = null)
+        Block? block = null,
+        IReadOnlyList<IConstraint>? constraints = null)
     {
         return new LangFunction(isPublic
                 ? new AccessModifier(Token.Pub(SourceSpan.Default))
@@ -275,8 +276,8 @@ public static class ExpressionHelpers
             block,
             isExtern
                 ? new ExternModifier(Token.Extern(SourceSpan.Default))
-                : null
-            );
+                : null,
+            constraints ?? []);
     }
 
     public static FunctionParameter FunctionParameter(string name, ITypeIdentifier? type = null, bool isMutable = false)

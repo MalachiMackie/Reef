@@ -1080,6 +1080,48 @@ public sealed class Parser : IDisposable
         return new ProgramClass(accessModifier, name, typeParameters, scope.Functions, scope.Fields, boxingModifier);
     }
 
+    private IConstraint? GetConstraint()
+    {
+        if (!ExpectNextNamedTypeIdentifier(out var constrainedType))
+        {
+            return null;
+        }
+
+        if (!ExpectCurrentToken(TokenType.Colon))
+        {
+            return null;
+        }
+
+        if (!MoveNext())
+        {
+            _errors.Add(ParserError.ExpectedConstraint(null));
+            return null;
+        }
+
+        if (Current.Type == TokenType.Boxed)
+        {
+            if (!ExpectNextTypeIdentifier(out var boxedOfType))
+            {
+                return null;
+            }
+
+            return new BoxedConstraint(constrainedType, boxedOfType);
+        }
+        if (Current.Type == TokenType.Unboxed)
+        {
+            if (!ExpectNextTypeIdentifier(out var unboxedOfType))
+            {
+                return null;
+            }
+
+            return new UnboxedConstraint(constrainedType, unboxedOfType);
+        }
+
+        _errors.Add(ParserError.ExpectedConstraint(Current));
+
+        return null;
+    }
+
     private LangFunction? GetFunctionDeclaration(
         AccessModifier? accessModifier,
         StaticModifier? staticModifier,
@@ -1105,7 +1147,8 @@ public sealed class Parser : IDisposable
                 null,
                 null,
                 null,
-                externModifier);
+                externModifier,
+                []);
         }
 
         IReadOnlyList<StringToken>? typeParameters = null;
@@ -1121,7 +1164,7 @@ public sealed class Parser : IDisposable
                     _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftParenthesis));
                 }
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, [], null,
-                    null, null, externModifier);
+                    null, null, externModifier, []);
             }
         }
 
@@ -1130,7 +1173,7 @@ public sealed class Parser : IDisposable
             _errors.Add(ParserError.ExpectedToken(Current, typeParameters is null ? [TokenType.LeftParenthesis, TokenType.LeftAngleBracket] : [TokenType.LeftParenthesis]));
             MoveNext();
             return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters ?? [], [], null,
-                null, null, externModifier);
+                null, null, externModifier, []);
         }
         typeParameters ??= [];
 
@@ -1176,7 +1219,7 @@ public sealed class Parser : IDisposable
         if (!_hasNext)
         {
             return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
-                null, null, externModifier);
+                null, null, externModifier, []);
         }
 
         Token? returnMutModifier = null;
@@ -1187,7 +1230,7 @@ public sealed class Parser : IDisposable
                 _errors.Add(ParserError.ExpectedTypeOrToken(null, TokenType.Mut));
 
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
-                    null, null, externModifier);
+                    null, null, externModifier, []);
             }
 
             if (Current.Type == TokenType.Mut)
@@ -1197,7 +1240,7 @@ public sealed class Parser : IDisposable
                 {
                     _errors.Add(ParserError.ExpectedType(null));
                     return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
-                        returnMutModifier, null, externModifier);
+                        returnMutModifier, null, externModifier, []);
                 }
             }
 
@@ -1205,26 +1248,36 @@ public sealed class Parser : IDisposable
             {
                 MoveNext();
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
-                    returnMutModifier, null, externModifier);
+                    returnMutModifier, null, externModifier, []);
             }
 
             if (!_hasNext)
             {
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
-                    returnMutModifier, null, externModifier);
+                    returnMutModifier, null, externModifier, []);
             }
         }
 
-        if (Current.Type != TokenType.LeftBrace)
+        var constraints = new List<IConstraint>();
+
+        while (_hasNext && Current.Type == TokenType.Where)
+        {
+            if (GetConstraint() is { } constraint)
+            {
+                constraints.Add(constraint);
+            }
+        }
+
+        if (!_hasNext || Current.Type != TokenType.LeftBrace)
         {
             return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
-                returnMutModifier, null, externModifier);
+                returnMutModifier, null, externModifier, constraints);
         }
 
         var scope = GetScope(TokenType.RightBrace, [Scope.ScopeType.Expression, Scope.ScopeType.Function, Scope.ScopeType.ModuleImport]);
 
         return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
-            returnMutModifier, new Block(scope.Expressions, scope.Functions, scope.ModuleImports), externModifier);
+            returnMutModifier, new Block(scope.Expressions, scope.Functions, scope.ModuleImports), externModifier, constraints);
     }
 
     private ITypeIdentifier? GetTypeIdentifier(Token? boxingSpecifier = null)

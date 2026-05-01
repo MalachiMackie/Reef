@@ -1095,7 +1095,7 @@ public partial class TypeChecker
                         case UnknownInferredType unknownInferredType:
                             throw new NotImplementedException();
                         case UnknownType unknownType:
-                            throw new NotImplementedException();
+                            return true;
                         case UnspecifiedSizedIntType unspecifiedSizedIntType:
                             throw new NotImplementedException();
                         default:
@@ -1132,7 +1132,7 @@ public partial class TypeChecker
                                     ArrayType { Length: not null } arrayType => new ArrayType(arrayType.ElementType.ResolvedType, boxed: true, arrayType.Length.Value),
                                     ArrayType { IsDynamic: true } => throw new UnreachableException(),
                                     UnknownInferredType unknownInferredType => throw new NotImplementedException(),
-                                    UnknownType unknownType => throw new NotImplementedException(),
+                                    UnknownType unknownType => unknownType,
                                     UnspecifiedSizedIntType { ResolvedIntType: null } => new UnspecifiedSizedIntType { Boxed = true },
                                     UnspecifiedSizedIntType { ResolvedIntType: var resolvedIntType } => new UnspecifiedSizedIntType
                                     {
@@ -1157,7 +1157,7 @@ public partial class TypeChecker
                         case UnknownInferredType unknownInferredType:
                             throw new NotImplementedException();
                         case UnknownType unknownType:
-                            throw new NotImplementedException();
+                            return true;
                         case UnspecifiedSizedIntType unspecifiedSizedIntType:
                             throw new NotImplementedException();
                         default:

@@ -9,6 +9,30 @@ public static class ParseErrorTestCases
         IEnumerable<(string, LangModule, IEnumerable<ParserError>)> data =
         [
             (
+                "fn some_fn() where{}",
+                Program("ParseErrorTestCases",
+                    functions: [Function("some_fn", parameters: [], block: Block().Block)]),
+                [ParserError.ExpectedType(Token.LeftBrace(SourceSpan.Default))]
+            ),
+            (
+                "fn some_fn() where T{}",
+                Program("ParseErrorTestCases",
+                    functions: [Function("some_fn", parameters: [], block: Block().Block)]),
+                [ParserError.ExpectedToken(Token.LeftBrace(SourceSpan.Default), TokenType.Colon)]
+            ),
+            (
+                "fn some_fn() where T: {}",
+                Program("ParseErrorTestCases",
+                    functions: [Function("some_fn", parameters: [], block: Block().Block)]),
+                [ParserError.ExpectedConstraint(Token.LeftBrace(SourceSpan.Default))]
+            ),
+            (
+                "fn some_fn() where T: boxed{}",
+                Program("ParseErrorTestCases",
+                    functions: [Function("some_fn", parameters: [], block: Block().Block)]),
+                [ParserError.ExpectedType(Token.LeftBrace(SourceSpan.Default))]
+            ),
+            (
                 "fn some_fn(a) {}",
                 Program("ParseErrorTestCases",
                     functions: [Function("some_fn", parameters: [FunctionParameter("a")], block: Block().Block)]),
