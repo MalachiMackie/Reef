@@ -164,6 +164,9 @@ pub unboxed class ObjectHeader {
     // todo: vtable
 }
 
+pub extern fn box<TValue, TReturn>(val: TValue): TReturn;
+pub extern fn unbox<TValue, TReturn>(val: TValue): TReturn;
+
 pub extern fn print_string(str: string)
 // pub extern fn print_i8(num: i8);
 // pub extern fn print_u8(num: u8);

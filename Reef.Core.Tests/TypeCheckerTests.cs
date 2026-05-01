@@ -69,14 +69,29 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     public async Task SingleTest()
     {
         var sourceFiles = new Dictionary<string, (string, IReadOnlyList<TypeCheckerError> expectedErrors)>()
-        {
             {
-                                "main.rf", ("""
-                                           var a: i32 = 1;
-                                           var b = -a;
-                                           """,
-                                           [])
-            }
+                            {
+                                "main.rf",
+                                ("""
+                                class MyClass{}
+                                fn SomeFn(){}
+
+                                var a = new otherModule:::MyClass{};
+                                var b = otherModule:::MyUnion::A;
+                                :::main:::otherModule:::SomeFn();
+                                var d = new MyClass{};
+                                SomeFn();
+
+                                """, [])
+                            },
+                            {
+                                "otherModule.rf",
+                                ("""
+                                pub class MyClass{}
+                                pub union MyUnion{A}
+                                pub fn SomeFn(){}
+                                """, [])
+                            }
         };
 
         foreach (var (path, (contents, _)) in sourceFiles)
@@ -7896,7 +7911,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         }
     }
 
-    public static bool AreTypeReferencesEqual(ITypeReference left, ITypeReference right)
+    public static bool AreTypeReferencesEqual(ITypeReference? left, ITypeReference? right)
     {
         switch (left, right)
         {
@@ -7955,9 +7970,11 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             case (InstantiatedUnion, InstantiatedClass):
             case (InstantiatedUnion, TestClassReference):
             case (InstantiatedUnion, TypeChecking.TypeChecker.GenericPlaceholder):
+            case (null, not null):
+            case (not null, null):
                 return false;
             default:
-                throw new InvalidOperationException($"{left.GetType()} --- {right.GetType()}");
+                throw new InvalidOperationException($"{left?.GetType()} --- {right?.GetType()}");
         }
     }
 

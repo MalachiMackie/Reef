@@ -72,14 +72,7 @@ public partial class TypeChecker
 
         foreach (var moduleId in _moduleSignatures.Keys)
         {
-            var canMatchModule = (modulePathStr, modulePathIsGlobal) switch
-            {
-                ({ Length: > 0 }, true) => moduleId.Value == modulePathStr,
-                ({ Length: > 0 }, false) => moduleId.Value == modulePathStr
-                                            || imports.Any(import => ModuleIdAndNameMatchesImport(moduleId, modulePath?.FirstOrDefault() ?? name, import)),
-                _ => moduleId == CurrentModuleId
-                    || imports.Any(import => ModuleIdAndNameMatchesImport(moduleId, name, import))
-            };
+            var canMatchModule = CanMatchModule(moduleId, name, modulePath, modulePathStr, modulePathIsGlobal, imports);
 
             if (canMatchModule
                 && GetModuleTypes(moduleId).TryGetValue(name, out var type)
@@ -202,6 +195,25 @@ public partial class TypeChecker
         return true;
     }
 
+    private bool CanMatchModule(
+        ModuleId moduleId,
+        string name,
+        IReadOnlyList<string>? modulePath,
+        string modulePathStr,
+        bool modulePathIsGlobal,
+        IReadOnlyList<ModuleImport> imports)
+    {
+        return (modulePathStr, modulePathIsGlobal) switch
+        {
+            ({ Length: > 0 }, true) => moduleId.Value == modulePathStr,
+            ({ Length: > 0 }, false) => moduleId.Value == modulePathStr
+                                        || moduleId.Value.StartsWith(string.Join(":::", CurrentModuleId.Value, modulePathStr))
+                                        || imports.Any(import => ModuleIdAndNameMatchesImport(moduleId, modulePath?.FirstOrDefault() ?? name, import)),
+            _ => moduleId == CurrentModuleId
+                || imports.Any(import => ModuleIdAndNameMatchesImport(moduleId, name, import))
+        };
+    }
+
     private FunctionSignature? GetFunctionSignature(string name, IReadOnlyList<string>? modulePath = null, bool modulePathIsGlobal = false)
     {
         var modulePathStr = string.Join(":::", modulePath ?? []);
@@ -222,19 +234,13 @@ public partial class TypeChecker
             matchedFunctions.Add(x);
         }
 
-        foreach (var moduleId in _modules.Keys.Concat([DefId.CoreLibModuleId, DefId.DiagnosticsModuleId]).Except([CurrentModuleId]))
+        foreach (var moduleId in _moduleSignatures.Keys.Except([CurrentModuleId]))
         {
-            var canMatchModule = (modulePathStr, modulePathIsGlobal) switch
-            {
-                ({ Length: > 0 }, true) => moduleId.Value == modulePathStr,
-                ({ Length: > 0 }, false) => moduleId.Value == modulePathStr
-                                            || imports.Any(import => ModuleIdAndNameMatchesImport(moduleId, modulePath?.FirstOrDefault() ?? name, import)),
-                _ => moduleId == DefId.CoreLibModuleId
-                    || moduleId == DefId.DiagnosticsModuleId
-                    || imports.Any(import => ModuleIdAndNameMatchesImport(moduleId, name, import))
-            };
+            var canMatchModule = CanMatchModule(moduleId, name, modulePath, modulePathStr, modulePathIsGlobal, imports);
 
-            if (canMatchModule && GetModuleFunctions(moduleId).TryGetValue(name, out var fn) && fn.IsPublic)
+            if (canMatchModule
+                && GetModuleFunctions(moduleId).TryGetValue(name, out var fn)
+                && fn.IsPublic)
             {
                 matchedFunctions.Add(fn);
             }
