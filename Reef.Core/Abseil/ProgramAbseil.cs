@@ -1043,8 +1043,6 @@ public partial class ProgramAbseil
 
     private ILoweredTypeReference GetBuiltInTypeReference(DefId id)
     {
-        var dataType = _types[id];
-        Debug.Assert(dataType.TypeParameters.Count == 0);
         return new LoweredConcreteTypeReference(id, []);
     }
 

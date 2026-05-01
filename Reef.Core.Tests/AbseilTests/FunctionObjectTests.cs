@@ -12,7 +12,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
     {
         description.Should().NotBeEmpty();
         var program = await CreateProgram(ModuleId, source);
-        var loweredProgram = Lower(program);
+        var loweredProgram = Lower(program, ModuleId);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -148,7 +148,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                              ])
             ]);
         var program = await CreateProgram(ModuleId, source);
-        var loweredProgram = Lower(program);
+        var loweredProgram = Lower(program, ModuleId);
 
         PrintPrograms(expectedProgram, loweredProgram);
 

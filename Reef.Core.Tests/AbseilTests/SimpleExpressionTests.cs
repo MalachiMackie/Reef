@@ -7,6 +7,7 @@ namespace Reef.Core.Tests.AbseilTests;
 public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutputHelper)
 {
     [Fact]
+    [TestMe]
     public async Task SingleTest()
     {
         var source = "fn SomeFn(a: boxed i32){var b = unbox(a);}";
@@ -38,7 +39,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
         ]);
 
         var program = await CreateProgram(ModuleId, source);
-        var loweredProgram = Lower(program);
+        var loweredProgram = Lower(program, ModuleId);
 
         TestOutput.WriteLine(source);
         TestOutput.WriteLine("=====================");
@@ -53,7 +54,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
     {
         description.Should().NotBeEmpty();
         var program = await CreateProgram(ModuleId, source);
-        var loweredProgram = Lower(program);
+        var loweredProgram = Lower(program, ModuleId);
 
         PrintPrograms(expectedProgram, loweredProgram);
 

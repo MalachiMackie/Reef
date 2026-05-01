@@ -8,7 +8,6 @@ using static Reef.Core.TypeChecking.TypeChecker;
 
 namespace Reef.Core.Tests;
 
-[TestMe]
 public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 {
     private readonly MockFileSystem _fileSystem = new();
@@ -69,29 +68,16 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     public async Task SingleTest()
     {
         var sourceFiles = new Dictionary<string, (string, IReadOnlyList<TypeCheckerError> expectedErrors)>()
+        {
             {
-                            {
-                                "main.rf",
-                                ("""
-                                class MyClass{}
-                                fn SomeFn(){}
+                "main.rf",
+                ("""
+                pub extern fn some_fn<T, T2>(param: T): T2 where T2: boxed T;
+                class MyClass{}
 
-                                var a = new otherModule:::MyClass{};
-                                var b = otherModule:::MyUnion::A;
-                                :::main:::otherModule:::SomeFn();
-                                var d = new MyClass{};
-                                SomeFn();
-
-                                """, [])
-                            },
-                            {
-                                "otherModule.rf",
-                                ("""
-                                pub class MyClass{}
-                                pub union MyUnion{A}
-                                pub fn SomeFn(){}
-                                """, [])
-                            }
+                var b: MyClass = some_fn(new MyClass{});
+                """, [])
+            }
         };
 
         foreach (var (path, (contents, _)) in sourceFiles)
@@ -146,8 +132,18 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     """
                     pub extern fn some_fn<T>(): T where T : unboxed i32;
 
-                    var b = some_fn();
-                    var c = b + 2;
+                    var b: i32 = some_fn();
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub extern fn some_fn<T>(): T where T : boxed i32;
+
+                    var b: boxed i32 = some_fn();
                     """
                 }
             },
@@ -3130,6 +3126,34 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
             {
+                "mismatched concrete boxing constraint",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+                        pub extern fn some_fn<T>(): T where T : unboxed i32;
+
+                        var b: boxed i32 = some_fn();
+                        """, [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32, false, Int32_Boxed, true)])
+                    }
+                }
+            },
+            {
+                "mismatched concrete boxing constraint",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+                        pub extern fn some_fn<T>(): T where T : boxed i32;
+
+                        var b: i32 = some_fn();
+                        """, [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32_Boxed, true, Int32, false)])
+                    }
+                }
+            },
+            {
                 "non type parameters referenced in type constraint",
                 new()
                 {
@@ -3633,8 +3657,10 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    class MyClass{}
                                    var a: unboxed MyClass = unbox(new unboxed MyClass{});
                                    """, [
-                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], true),
-                                   true, new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], false), false)
+                                        TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], true),
+                                                true, new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], false), false),
+                                        TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], false),
+                                                false, new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], true), true)
                                    ])
                     }
                 }
@@ -3664,8 +3690,10 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    var number: boxed i32 = todo!;
                                    var a: boxed i32 = box(number);
                                    """, [
-                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32,
-                                   false, Int32_Boxed, true)
+                                    TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32,
+                                        false, Int32_Boxed, true),
+                                    TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32,
+                                        true, Int32_Boxed, false),
                                    ])
                     }
                 }
