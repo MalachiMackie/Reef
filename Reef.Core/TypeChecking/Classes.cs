@@ -104,7 +104,7 @@ public partial class TypeChecker
     {
         if (types.Count == 0)
         {
-            throw new InvalidOperationException("Tuple must not be empty");
+            return Unit();
         }
         if (types.Count > 10)
         {

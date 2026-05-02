@@ -28,7 +28,7 @@ public partial class TypeChecker
             StaticMemberAccessExpression staticMemberAccessExpression => TypeCheckStaticMemberAccess(
                 staticMemberAccessExpression),
             UnaryOperatorExpression unaryOperatorExpression => TypeCheckUnaryOperator(
-                unaryOperatorExpression.UnaryOperator),
+                unaryOperatorExpression.UnaryOperator, unaryOperatorExpression),
             UnionClassVariantInitializerExpression unionClassVariantInitializerExpression =>
                 TypeCheckUnionClassVariantInitializer(
                     unionClassVariantInitializerExpression.UnionInitializer),

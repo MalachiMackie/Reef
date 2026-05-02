@@ -181,8 +181,8 @@ public partial class TypeChecker
                     "this",
                     new ThisVariable(fnSignature.OwnerType switch
                     {
-                        ClassSignature c => InstantiateClass(c, boxedSpecifier: null),
-                        UnionSignature u => InstantiateUnion(u, [], boxingSpecifier: null, sourceRange: SourceRange.Default),
+                        ClassSignature c => InstantiateClass(c, boxedSpecifier: Token.Boxed(SourceSpan.Default)),
+                        UnionSignature u => InstantiateUnion(u, [], boxingSpecifier: Token.Boxed(SourceSpan.Default), sourceRange: SourceRange.Default),
                         _ => throw new UnreachableException()
                     }));
         }
@@ -377,7 +377,7 @@ public partial class TypeChecker
         public List<FunctionSignature> LocalFunctions { get; init; } = [];
         public List<LocalVariable> LocalVariables { get; init; } = [];
         public List<IVariable> AccessedOuterVariables { get; } = [];
-        
+
     }
 
     public interface ITypeConstraint;

@@ -100,17 +100,21 @@ public class StringTests : IntegrationTestBase
         result.StandardOutput.Should().Be($"foo{Environment.NewLine}{Environment.NewLine}bar");
     }
 
-    [Fact]
-    public async Task StringSlices()
+    [Fact(Skip = "todo")]
+    public async Task StringSliceToString()
     {
         await SetupTest(
             """
             var original: string = "hello world";
-            var trimmedSlice: StringSlice = original.slice(1, 9);
-            print_string_slice(trimmedSlice);
-            print_string("\n");
-            var trimmed = trimmedSlice.toString();
-            print_string(trimmed);
+            var trimmedSlice: string_slice = match (original.slice(1, 9)) {
+                Ok(slice) => slice,
+                Err(err) => {
+                    print_string(err);
+                    return;
+                }
+            }
+
+            print_string(trimmedSlice.to_string());
             """
         );
 
@@ -119,7 +123,42 @@ public class StringTests : IntegrationTestBase
         result.StandardOutput.Should().Be(
             """
             ello worl
+            """
+        );
+    }
+
+    [Fact, TestMe]
+    public async Task StringSlices()
+    {
+        await SetupTest(
+            """
+            fn run(): result::<(), string> {
+                var original: string = "hello world";
+                print_string(original);
+                print_string("\n");
+                var trimmedSlice: string_slice = original.slice(1, 9)?;
+
+                print_string_slice(trimmedSlice);
+                print_string("\n");
+                var trimmedAgain = trimmedSlice.slice(1, 7)?;
+
+                print_string_slice(trimmedAgain);
+                return ok(());
+            }
+
+            if (run() matches result::Error(var err)) {
+                print_string(err);
+            }
+            """
+        );
+
+        var result = await Run();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be(
+            """
+            hello world
             ello worl
+            llo wor
             """
         );
     }

@@ -703,7 +703,7 @@ public partial class TypeChecker
         return UnknownType.Instance;
     }
 
-    private bool ExpectExpressionType(IReadOnlyList<ITypeReference> expected, IExpression? actual)
+    private bool ExpectExpressionType(IReadOnlyList<ITypeReference> expected, IExpression? actual, bool reportError = true)
     {
         if (actual is null)
         {
@@ -724,31 +724,31 @@ public partial class TypeChecker
                 or MethodReturnExpression or ObjectInitializerExpression or StaticMemberAccessExpression
                 or TupleExpression or UnaryOperatorExpression or UnionClassVariantInitializerExpression
                 or ValueAccessorExpression or VariableDeclarationExpression => ExpectType(actual.ResolvedType!,
-                    expected, actual.SourceRange),
+                    expected, actual.SourceRange, reportError),
             _ => throw new UnreachableException(actual.GetType().ToString())
         };
 
         bool ExpectIfExpressionType(IfExpressionExpression ifExpression)
         {
-            return ExpectType(ifExpression.ResolvedType!, expected, SourceRange.Default);
+            return ExpectType(ifExpression.ResolvedType!, expected, SourceRange.Default, reportError);
             // todo: tail expression
         }
 
         bool ExpectBlockExpressionType(BlockExpression blockExpression)
         {
-            return ExpectType(blockExpression.ResolvedType!, expected, SourceRange.Default);
+            return ExpectType(blockExpression.ResolvedType!, expected, SourceRange.Default, reportError);
             // todo: tail expression
         }
 
         bool ExpectMatchExpressionType(MatchExpression matchExpression)
         {
-            return ExpectType(matchExpression.ResolvedType!, expected, SourceRange.Default);
+            return ExpectType(matchExpression.ResolvedType!, expected, SourceRange.Default, reportError);
             // todo: tail expression
         }
 
     }
 
-    private void ExpectExpressionType(ITypeReference expected, IExpression? actual)
+    private void ExpectExpressionType(ITypeReference expected, IExpression? actual, bool reportError = true)
     {
         if (actual is null)
         {
@@ -781,7 +781,7 @@ public partial class TypeChecker
                 or IndexExpression
                 or CollectionExpression
                 or FillCollectionExpression => ExpectType(actual.ResolvedType!,
-                    expected, actual.SourceRange),
+                    expected, actual.SourceRange, reportError),
             _ => throw new UnreachableException(actual.GetType().ToString())
         };
 
@@ -789,19 +789,19 @@ public partial class TypeChecker
 
         bool ExpectIfExpressionType(IfExpressionExpression ifExpression)
         {
-            return ExpectType(ifExpression.ResolvedType!, expected, SourceRange.Default);
+            return ExpectType(ifExpression.ResolvedType!, expected, SourceRange.Default, reportError);
             // todo: tail expression
         }
 
         bool ExpectBlockExpressionType(BlockExpression blockExpression)
         {
-            return ExpectType(blockExpression.ResolvedType!, expected, SourceRange.Default);
+            return ExpectType(blockExpression.ResolvedType!, expected, SourceRange.Default, reportError);
             // todo: tail expression
         }
 
         bool ExpectMatchExpressionType(MatchExpression matchExpression)
         {
-            return ExpectType(matchExpression.ResolvedType!, expected, SourceRange.Default);
+            return ExpectType(matchExpression.ResolvedType!, expected, SourceRange.Default, reportError);
             // todo: tail expression
         }
     }
@@ -1496,12 +1496,15 @@ public partial class TypeChecker
                     if (actualArray.Boxed != expectedArray.Boxed)
                     {
                         result = false;
-                        AddError(TypeCheckerError.MismatchedTypeBoxing(
-                            actualSourceRange,
-                            expectedArray,
-                            expectedArray.Boxed,
-                            actualArray,
-                            actualArray.Boxed));
+                        if (reportError)
+                        {
+                            AddError(TypeCheckerError.MismatchedTypeBoxing(
+                                actualSourceRange,
+                                expectedArray,
+                                expectedArray.Boxed,
+                                actualArray,
+                                actualArray.Boxed));
+                        }
                     }
 
                     if (expectedArray.Length is not null && actualArray.Length is null)
@@ -1513,8 +1516,12 @@ public partial class TypeChecker
                         && actualArray.Length != expectedArray.Length)
                     {
                         result = false;
-                        AddError(TypeCheckerError.ArrayLengthMismatch(
-                            expectedArray.Length.Value, actualArray.Length.Value, actualSourceRange));
+                        if (reportError)
+                        {
+
+                            AddError(TypeCheckerError.ArrayLengthMismatch(
+                                expectedArray.Length.Value, actualArray.Length.Value, actualSourceRange));
+                        }
                     }
 
                     break;
@@ -1801,7 +1808,8 @@ public partial class TypeChecker
                     if (functionObject2.MutableReturn && !functionObject1.MutableReturn)
                     {
                         result = false;
-                        AddError(TypeCheckerError.FunctionObjectReturnTypeMutabilityMismatch(actualSourceRange));
+                        if (reportError)
+                            AddError(TypeCheckerError.FunctionObjectReturnTypeMutabilityMismatch(actualSourceRange));
                     }
 
                     break;
@@ -1838,8 +1846,11 @@ public partial class TypeChecker
                 }
             default:
                 {
-                    AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
-                    break;
+                    if (reportError)
+                    {
+                        AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expected, actual));
+                    }
+                    return false;
                 }
         }
 

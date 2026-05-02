@@ -824,6 +824,22 @@ public partial class ProgramAbseil
     }
 
     private LoweredFunctionReference GetFunctionReference(
+            TypeChecker.InstantiatedFunction fn)
+    {
+        var functionOwnerTypeArguments = fn.OwnerType switch
+        {
+            TypeChecker.InstantiatedClass classOwner => classOwner.TypeArguments,
+            TypeChecker.InstantiatedUnion unionOwner => unionOwner.TypeArguments,
+            _ => []
+        };
+
+        return GetFunctionReference(
+            fn.FunctionId,
+            [.. fn.TypeArguments.Select(GetTypeReference)],
+            [.. functionOwnerTypeArguments.Select(GetTypeReference)]);
+    }
+
+    private LoweredFunctionReference GetFunctionReference(
             DefId functionId,
             IReadOnlyList<ILoweredTypeReference> typeArguments,
             IReadOnlyList<ILoweredTypeReference> ownerTypeArguments)

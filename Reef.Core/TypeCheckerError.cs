@@ -435,6 +435,25 @@ public record TypeCheckerError
             $"Cannot constrain non type parameter {namedTypeIdentifier}"
         );
     }
+
+    public static TypeCheckerError UnsupportedFalloutReturnType(TypeChecker.ITypeReference typeReference, SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.UnsupportedFalloutReturnType,
+            sourceRange,
+            $"{typeReference} is not a supported fallout operator return type"
+        );
+    }
+
+    public static TypeCheckerError UnsupportedFalloutOperandType(TypeChecker.ITypeReference operandType, SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.UnsupportedFalloutReturnType,
+            sourceRange,
+            $"{operandType} is not a supported fallout operator operand type"
+        );
+    }
+
 }
 
 public enum TypeCheckerErrorType
@@ -499,5 +518,7 @@ public enum TypeCheckerErrorType
     TopLevelStatementsInNonMainModule,
     ExternFunctionDefinesBody,
     NonExternFunctionDoesNotDefineBody,
-    NonTypeParameterConstrained
+    NonTypeParameterConstrained,
+    UnsupportedFalloutReturnType
+
 }

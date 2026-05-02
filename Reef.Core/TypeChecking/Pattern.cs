@@ -229,6 +229,11 @@ public partial class TypeChecker
 
                     ExpectType(patternType, valueTypeReference, pattern.SourceRange);
 
+                    if (patternType is UnknownType)
+                    {
+                        break;
+                    }
+
                     if (patternType is not InstantiatedUnion unionType)
                     {
                         throw new InvalidOperationException($"{valueTypeReference} is not a union");

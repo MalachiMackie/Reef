@@ -37,10 +37,16 @@ void print_u16(uint16_t num);
 void print_u32(uint32_t num);
 void print_u64(uint64_t num);
 
-typedef struct {
-	size_t length;
+typedef PACK(struct {
+    const char *original_str_ptr;
+    uint64_t offset;
+    uint64_t length;
+}) string_slice;
+
+typedef PACK(struct {
+	uint64_t length;
 	const char *start;
-} string;
+}) string;
 
 typedef uint32_t TypeId;
 
@@ -255,9 +261,20 @@ TypeInfo *get_type_info(uint64_t index)
     return &typeInfoArray[index];
 }
 
+void print_string_slice(string_slice slice) {
+    for (uint64_t i = slice.offset; i < slice.offset + slice.length; i++) {
+        fputc(slice.original_str_ptr[i], stdout);
+    }
+}
+
 void print_string(string str)
 {
-	fputs(str.start, stdout);
+    // naive implementation that just loops through chars
+
+	for (uint64_t i = 0; i < str.length; i++)
+	{
+	    fputc(str.start[i], stdout);
+	}
 }
 
 #define DEFINE_PRINT_INT(func_name, int_type)                            \

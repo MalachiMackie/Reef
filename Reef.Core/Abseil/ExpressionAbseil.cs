@@ -1517,8 +1517,6 @@ public partial class ProgramAbseil
                         throw new InvalidOperationException($"Expected a function object, got a {e.ResolvedType?.GetType()}");
                     }
 
-                    var ownerTypeArguments = concreteType.TypeArguments;
-
                     var fn = e.StaticMemberAccess.InstantiatedFunction.NotNull();
 
                     var functionObjectType =
@@ -1528,18 +1526,17 @@ public partial class ProgramAbseil
                         functionObjectType,
                         ClassVariantName,
                         [
-                            new CreateObjectField("FunctionReference", new FunctionPointerConstant(
-                            GetFunctionReference(
-                                fn.FunctionId,
-                                [..fn.TypeArguments.Select(GetTypeReference)],
-                                ownerTypeArguments))),
+                            new CreateObjectField(
+                                "FunctionReference",
+                                new FunctionPointerConstant(
+                                    GetFunctionReference(fn)
+                                )),
                         ],
                         destination);
 
                 }
             case MemberType.Function:
                 {
-                    var ownerTypeArguments = GetConcreteTypeReference(GetTypeReference(e.OwnerType.NotNull())).TypeArguments;
                     var fn = e.StaticMemberAccess.InstantiatedFunction.NotNull();
 
                     var typeReference = GetTypeReference(e.ResolvedType.NotNull());
@@ -1547,10 +1544,14 @@ public partial class ProgramAbseil
                     return CreateObject(
                         typeReference,
                         ClassVariantName,
-                        [new CreateObjectField("FunctionReference", new FunctionPointerConstant(
-                        GetFunctionReference(fn.FunctionId,
-                            [..fn.TypeArguments.Select(GetTypeReference)],
-                            ownerTypeArguments)))],
+                        [
+                            new CreateObjectField(
+                                "FunctionReference",
+                                new FunctionPointerConstant(
+                                    GetFunctionReference(fn)
+                                )
+                            )
+                        ],
                         destination);
                 }
             case MemberType.Field:
@@ -1626,13 +1627,6 @@ public partial class ProgramAbseil
                 }
             case MemberType.Function:
                 {
-                    var concreteType = GetTypeReference(e.MemberAccess.OwnerType.NotNull()) switch
-                    {
-                        LoweredPointer(LoweredConcreteTypeReference pointerTo) => (pointerTo.TypeArguments[0] as LoweredConcreteTypeReference).NotNull(),
-                        LoweredConcreteTypeReference unboxedTypeReference => unboxedTypeReference,
-                        _ => throw new InvalidOperationException()
-                    };
-
                     var fn = e.MemberAccess.InstantiatedFunction.NotNull();
 
                     var functionObjectType =
@@ -1643,10 +1637,7 @@ public partial class ProgramAbseil
                         ClassVariantName,
                         [
                             new CreateObjectField("FunctionReference", new FunctionPointerConstant(
-                                GetFunctionReference(
-                                    fn.FunctionId,
-                                    [..fn.TypeArguments.Select(GetTypeReference)],
-                                    concreteType.TypeArguments))),
+                                GetFunctionReference(fn))),
                             new CreateObjectField("FunctionParameter", ownerResult.ToOperand())
                         ],
                         destination);
@@ -1871,14 +1862,37 @@ public partial class ProgramAbseil
             return new PlaceResult(destination);
         }
 
-        IReadOnlyList<ILoweredTypeReference> ownerTypeArguments = [];
         if (e.MethodCall.Method is MemberAccessExpression memberAccess)
         {
+            var ownerType = memberAccess.MemberAccess.Owner.ResolvedType.NotNull();
             var owner = LowerExpression(memberAccess.MemberAccess.Owner, null);
-            arguments.Add(owner.ToOperand());
-            ownerTypeArguments =
-                GetConcreteTypeReference(GetTypeReference(memberAccess.MemberAccess.Owner.ResolvedType.NotNull()))
-                    .TypeArguments;
+            if (!IsTypeReferenceBoxed(ownerType))
+            {
+                // this parameter is always boxed
+                var boxedObjectPlace = CreateObject(
+                    BoxedValueType(GetTypeReference(ownerType)),
+                    ClassVariantName,
+                    [],
+                    null
+                );
+
+                CreateObject(
+                    new LoweredConcreteTypeReference(DefId.ObjectHeader, []),
+                    ClassVariantName,
+                    [],
+                    new Field(boxedObjectPlace.Value, "ObjectHeader", ClassVariantName));
+
+                _basicBlockStatements.Add(new Assign(
+                    new Field(boxedObjectPlace.Value, "Value", ClassVariantName),
+                    new Use(owner.ToOperand())
+                ));
+
+                arguments.Add(new Copy(boxedObjectPlace.Value));
+            }
+            else
+            {
+                arguments.Add(owner.ToOperand());
+            }
         }
         else if (instantiatedFunction.ClosureTypeId is not null)
         {
@@ -1903,38 +1917,7 @@ public partial class ProgramAbseil
             arguments.Add(new Copy(new Local(ParameterLocalName(parameterIndex: 0))));
         }
 
-        if (e.MethodCall.Method is StaticMemberAccessExpression staticMemberAccess)
-        {
-            ownerTypeArguments = GetConcreteTypeReference(GetTypeReference(staticMemberAccess.OwnerType.NotNull())).TypeArguments;
-        }
-        else if (e.MethodCall.Method is ValueAccessorExpression valueAccessor)
-        {
-            if (_currentType is not null)
-            {
-                ownerTypeArguments = _currentType.TypeArguments;
-            }
-            else if (valueAccessor.FunctionInstantiation.NotNull()
-                    .OwnerType is { } ownerType)
-            {
-                var ownerTypeReference = GetTypeReference(ownerType);
-                if (ownerTypeReference is LoweredConcreteTypeReference
-                    {
-                        TypeArguments: var ownerReferenceTypeArguments
-                    })
-                {
-                    ownerTypeArguments = ownerReferenceTypeArguments;
-                }
-                else if (ownerTypeReference is LoweredPointer(LoweredConcreteTypeReference { DefinitionId: var defId, TypeArguments: [LoweredConcreteTypeReference concrete] })
-                     && defId == DefId.BoxedValue)
-                {
-                    ownerTypeArguments = concrete.TypeArguments;
-                }
-            }
-        }
-
-        functionReference = GetFunctionReference(instantiatedFunction.FunctionId,
-            [.. instantiatedFunction.TypeArguments.Select(GetTypeReference)],
-            ownerTypeArguments);
+        functionReference = GetFunctionReference(instantiatedFunction);
 
         arguments.AddRange(originalArguments);
 
@@ -2264,16 +2247,11 @@ public partial class ProgramAbseil
                 TypeChecker.FunctionObject typeReference,
                 IPlace? innerDestination)
         {
-            var ownerTypeArguments = _currentType?.TypeArguments ?? [];
-
             var functionObjectParameters = new List<CreateObjectField>
             {
                 new ("FunctionReference",
                     new FunctionPointerConstant(
-                        GetFunctionReference(
-                            innerFn.FunctionId,
-                            [..innerFn.TypeArguments.Select(GetTypeReference)],
-                            ownerTypeArguments)))
+                        GetFunctionReference(innerFn)))
             };
 
             if (innerFn.ClosureTypeId is not null)

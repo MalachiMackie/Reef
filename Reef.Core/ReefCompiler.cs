@@ -56,7 +56,21 @@ public class ReefCompiler(
             standardLibraryModules.Add(module.ParsedModule);
         }
 
-        TypeChecker.TypeCheck(standardLibraryModules, [], throwOnError: true);
+        var stdLibHadTypeCheckErrors = false;
+        foreach (var (moduleId, errors) in TypeChecker.TypeCheck(standardLibraryModules, []))
+        {
+            if (errors.Count == 0) continue;
+            logger.LogInformation("TypeChecker errors in {ModuleId}", moduleId);
+            foreach (var error in errors)
+            {
+                logger.LogInformation("{Position} - {Error}", error.Range.Start.Position, error.Message);
+            }
+            stdLibHadTypeCheckErrors = true;
+        }
+        if (stdLibHadTypeCheckErrors)
+        {
+            throw new InvalidOperationException("Standard Library had type checking errors D:");
+        }
 
         var typeCheckErrors = TypeChecker.TypeCheck(modules, standardLibraryModules, throwOnError);
 

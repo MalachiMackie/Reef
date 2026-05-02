@@ -133,11 +133,11 @@ public partial class TypeChecker
                 throw new UnreachableException(@operator.OperatorType.ToString());
         }
     }
-    private ITypeReference TypeCheckUnaryOperator(UnaryOperator unaryOperator)
+    private ITypeReference TypeCheckUnaryOperator(UnaryOperator unaryOperator, IExpression unaryExpression)
     {
         return unaryOperator.OperatorType switch
         {
-            UnaryOperatorType.FallOut => TypeCheckFallout(unaryOperator.Operand),
+            UnaryOperatorType.FallOut => TypeCheckFallout(unaryOperator.Operand, unaryExpression),
             UnaryOperatorType.Not => TypeCheckNot(unaryOperator.Operand),
             UnaryOperatorType.Negate => TypeCheckNegate(unaryOperator.Operand),
             _ => throw new UnreachableException($"{unaryOperator.OperatorType}")
@@ -175,59 +175,74 @@ public partial class TypeChecker
         return Boolean();
     }
 
-    private GenericTypeReference TypeCheckFallout(IExpression? expression)
+    private ITypeReference TypeCheckFallout(IExpression? operandExpression, IExpression falloutExpression)
     {
-        if (expression is not null)
+        if (operandExpression is not null)
         {
-            expression.ValueUseful = true;
-            TypeCheckExpression(expression);
+            operandExpression.ValueUseful = true;
+            TypeCheckExpression(operandExpression);
         }
+
+        InstantiatedUnion? returnTypeResultUnion = null;
 
         // todo: could implement with an interface? union Result : IFallout?
-        if (ExpectedReturnType is not InstantiatedUnion { Signature.Id: var resultId } union || resultId != DefId.Result)
+        if (ExpectedReturnType is InstantiatedUnion { Signature.Id: var resultId } union && resultId == DefId.Result)
         {
-            throw new InvalidOperationException("Fallout operator is only valid for Result return type");
+            returnTypeResultUnion = union;
+        }
+        else
+        {
+            AddError(TypeCheckerError.UnsupportedFalloutReturnType(ExpectedReturnType ?? Unit(), falloutExpression.SourceRange));
         }
 
-        var expectedErrorType = union.TypeArguments.First(x => x.GenericName == "TError")
-            .ResolvedType.NotNull();
-
-        // synthesize a return type with only the error generic populated so that we don't
-        // check the value generic. This is so the following successfully type checks:
-        // fn SomeFn(): result::<string, int> {
-        //     var someResult: result::<int, int> = todo!;
-        //     var a: int = someResult?;
-        // }
-        var synthesizedReturnType = InstantiateUnion(
-            union.Signature,
-            [],
-            boxingSpecifier: union.Boxed
-                ? Token.Boxed(SourceSpan.Default)
-                : Token.Unboxed(SourceSpan.Default),
-            sourceRange: SourceRange.Default);
-        synthesizedReturnType.TypeArguments.First(x => x.GenericName == "TError")
-            .ResolvedType = expectedErrorType;
-
-        ExpectExpressionType(synthesizedReturnType, expression);
-
-        // if everything type checked correctly, this path should be taken
-        if (expression is { ResolvedType: InstantiatedUnion { TypeArguments: [{ GenericName: "TValue" } valueGeneric, ..], Signature.Id: var id } } && id == DefId.Result)
+        ITypeReference? synthesizedReturnType = null;
+        if (returnTypeResultUnion is not null)
         {
+            var expectedErrorType = returnTypeResultUnion.TypeArguments.First(x => x.GenericName == "TError")
+                .ResolvedType.NotNull();
+
+            // synthesize a return type with only the error generic populated so that we don't
+            // check the value generic. This is so the following successfully type checks:
+            // fn SomeFn(): result::<string, int> {
+            //     var someResult: result::<int, int> = todo!;
+            //     var a: int = someResult?;
+            // }
+            var resultType = InstantiateUnion(
+                returnTypeResultUnion.Signature,
+                [],
+                boxingSpecifier: returnTypeResultUnion.Boxed
+                    ? Token.Boxed(SourceSpan.Default)
+                    : Token.Unboxed(SourceSpan.Default),
+                sourceRange: SourceRange.Default);
+            resultType.TypeArguments.First(x => x.GenericName == "TError")
+                .ResolvedType = expectedErrorType;
+            synthesizedReturnType = resultType;
+        }
+
+        if (operandExpression is { ResolvedType: InstantiatedUnion { TypeArguments: [{ GenericName: "TValue" } valueGeneric, ..], Signature.Id: var id } } && id == DefId.Result)
+        {
+            if (synthesizedReturnType is not null)
+            {
+                ExpectExpressionType(synthesizedReturnType, operandExpression);
+            }
             return valueGeneric;
+        }
+        else
+        {
+            if (operandExpression is { ResolvedType: { } resolvedType })
+            {
+                AddError(TypeCheckerError.UnsupportedFalloutOperandType(resolvedType, falloutExpression.SourceRange));
+                return resolvedType;
+            }
         }
 
         // if expression is null or it's type is incorrect, then return the value type from the return type
-        if (union.Signature.Id == DefId.Result)
+        if (returnTypeResultUnion is not null)
         {
-            return union.TypeArguments.First(x => x.GenericName == "TValue");
+            return returnTypeResultUnion.TypeArguments.First(x => x.GenericName == "TValue");
         }
 
-        if (union.Name == "Option")
-        {
-            throw new NotImplementedException("");
-        }
-
-        throw new UnreachableException();
+        return UnknownType.Instance;
     }
 
 }

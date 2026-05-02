@@ -64,9 +64,41 @@ pub unboxed class BoxedValue<TValue> {
     pub field Value: TValue,
 }
 
+pub unboxed class string_slice {
+    // todo: pub(module)
+    pub field original_str_ptr: rawPointer,
+    pub field offset: u64,
+    pub field length: u64,
+
+    pub fn slice(start: u64, new_length: u64): result::<string_slice, string> {
+        if (start + new_length > length) {
+            return error("string_slice slice out of bounds");
+        }
+
+        return ok(new string_slice {
+            original_str_ptr = original_str_ptr,
+            offset = offset + start,
+            length = new_length
+        });
+    }
+}
+
 pub unboxed class string {
+    // If these are renamed or reordered, serialization within AssemblyLine needs to be updated wherever we write strings
     pub field Length: u64,
-    pub field StartChar: rawPointer
+    pub field StartChar: rawPointer,
+
+    pub fn slice(start: u64, length: u64): result::<string_slice, string> {
+        if (start + length > Length) {
+            return error("String slice out of bounds");
+        }
+
+        return ok(new string_slice {
+            original_str_ptr = this.StartChar,
+            offset = start,
+            length = length
+        });
+    }
 }
 
 pub extern unboxed class methodPointer{}
@@ -157,10 +189,6 @@ pub unboxed class Tuple_9<T0, T1, T2, T3, T4, T5, T6, T7, T8> {
     pub field Item8: T8,
 }
 
-/*
-pub class string {pub field Length: u64, field StartChar: rawPointer}
-*/
-
 pub unboxed union result<TValue, TError> {
     Ok(TValue),
     Error(TError)
@@ -180,11 +208,12 @@ pub extern fn unbox<TParam, TReturn>(val: TParam): mut TReturn
     where TReturn: unboxed TParam;
 
 pub extern fn print_string(str: string)
-pub extern fn print_i8(num: i8);
-pub extern fn print_u8(num: u8);
-pub extern fn print_i16(num: i16);
-pub extern fn print_u16(num: u16);
-pub extern fn print_i32(num: i32);
-pub extern fn print_u32(num: u32);
-pub extern fn print_i64(num: i64);
-pub extern fn print_u64(num: u64);
+pub extern fn print_string_slice(str: string_slice)
+pub extern fn print_i8(num: i8)
+pub extern fn print_u8(num: u8)
+pub extern fn print_i16(num: i16)
+pub extern fn print_u16(num: u16)
+pub extern fn print_i32(num: i32)
+pub extern fn print_u32(num: u32)
+pub extern fn print_i64(num: i64)
+pub extern fn print_u64(num: u64)

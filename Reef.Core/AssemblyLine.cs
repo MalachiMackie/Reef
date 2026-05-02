@@ -1644,7 +1644,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     {
                         Debug.Assert(field.FieldName == "Length");
                         return new LoweredConcreteTypeReference(
-                            TypeChecker.ClassSignature.UInt64.Value.Id,
+                            DefId.UInt64,
                             []
                         );
                     }
@@ -2378,7 +2378,6 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         stringName = $"_str_{_strings.Count}";
         _strings[constant] = stringName;
-        // todo: no null terminated strings
         var str = constant.AsSpan();
         _stringDataSubSegment.Append($"    {stringName} db ");
 

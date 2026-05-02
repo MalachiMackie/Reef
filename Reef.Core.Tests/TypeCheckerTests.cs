@@ -70,14 +70,20 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         var sourceFiles = new Dictionary<string, (string, IReadOnlyList<TypeCheckerError> expectedErrors)>()
         {
             {
-                "main.rf",
-                ("""
-                pub extern fn some_fn<T, T2>(param: T): T2 where T2: boxed T;
-                class MyClass{}
-
-                var b: MyClass = some_fn(new MyClass{});
-                """, [])
-            }
+                                    "main.rf",
+                                    (
+                                        """
+                                        fn some_result(): result::<string, string> {
+                                            return ok("hi");
+                                        }
+                                        fn some_fn(): string {
+                                            var value = some_result()?;
+                                            print_string(value);
+                                            return "hi";
+                                        }
+                                        """,
+                                        [TypeCheckerError.UnsupportedFalloutReturnType(String, SourceRange.Default)])
+                                }
         };
 
         foreach (var (path, (contents, _)) in sourceFiles)
@@ -3125,6 +3131,44 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
+            {
+                "invalid fallout return type",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            fn some_result(): result::<string, string> {
+                                return ok("hi");
+                            }
+                            fn some_fn(): string {
+                                var value = some_result()?;
+                                print_string(value);
+                                return "hi";
+                            }
+                            """,
+                            [TypeCheckerError.UnsupportedFalloutReturnType(String, SourceRange.Default)])
+                    }
+                }
+            },
+            {
+                "invalid fallout operand type",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            fn some_result(): result::<string, string> {
+                                var a = ""?;
+                                return ok("hi");
+                            }
+                            """,
+                            [TypeCheckerError.UnsupportedFalloutOperandType(String, SourceRange.Default)])
+                    }
+                }
+            },
             {
                 "mismatched concrete boxing constraint",
                 new()
