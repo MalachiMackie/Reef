@@ -793,7 +793,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         _typeInfoDataSubSegment.AppendLine($"        db 0x{(unionContainsPointer ? 1 : 0)}");
                         bytesWritten += 1;
 
-                        Debug.Assert(bytesWritten == UnionVariantSizeInfo.Size, $"bytesWritten: {bytesWritten}, variantSize: {UnionVariantSizeInfo.Size}");
+                        Debug.Assert(bytesWritten == UnionVariantSizeInfo.Size, $"bytesWritten: {bytesWritten}, variantSize: {UnionVariantSizeInfo.Size}, type: {type}");
                     }
 
                     break;
@@ -1069,7 +1069,6 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
     {
         if (method is LoweredExternMethod)
         {
-            Debug.Assert(typeArguments.Count == 0);
             return method.Name;
         }
 
@@ -1163,7 +1162,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         break;
                     }
 
-                    if (concreteTypeReference.DefinitionId == DefId.RawPointer)
+                    if (concreteTypeReference.DefinitionId == DefId.RawPointer
+                        || concreteTypeReference.DefinitionId == DefId.MethodPointer)
                     {
                         size = PointerSize;
                         alignment = PointerSize;

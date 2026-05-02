@@ -30,11 +30,6 @@ pub unboxed union TypeInfo {
     },
 }
 
-pub unboxed class BoxedValue<TValue> {
-    pub field ObjectHeader: ObjectHeader,
-    pub field Value: TValue,
-}
-
 pub unboxed class VariantInfo {
     pub field Name: string,
     pub field Fields: [FieldInfo],
@@ -61,7 +56,7 @@ pub unboxed class MethodId {
 }
 
 pub unboxed union VariablePlace {
-    StackBasedOffset(u16),
+    StackBaseOffset(u16),
     PointerTo { field PointerLocationOffset: u16 },
 }
 

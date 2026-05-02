@@ -13,7 +13,7 @@ public class ModuleTests : IntegrationTestBase
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::{MyClass, SomeFn};
+                    use otherModule:::{MyClass, SomeFn};
 
                     var a = new MyClass{MyString = "hi. "};
                     print_string(a.MyString);
@@ -51,7 +51,7 @@ public class ModuleTests : IntegrationTestBase
                     }
 
                     SomeFn();
-                    :::otherModule:::SomeFn();
+                    otherModule:::SomeFn();
                     """
                 },
                 {

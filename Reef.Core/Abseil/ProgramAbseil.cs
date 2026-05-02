@@ -376,6 +376,34 @@ public partial class ProgramAbseil
     {
         foreach (var (moduleId, module) in _modules)
         {
+            if (moduleId == DefId.CoreLibModuleId)
+            {
+                var boxSignature = module.Functions.Select(x => x.Signature).First(x => x is not null && x.Id == DefId.Box).NotNull();
+                var unboxSignature = module.Functions.Select(x => x.Signature).First(x => x is not null && x.Id == DefId.Unbox).NotNull();
+                _methods.Add(
+                    CreateBoxMethod(boxSignature),
+                    (
+                        boxSignature,
+                        [],
+                        [],
+                        [],
+                        null,
+                        false
+                    )
+                );
+                _methods.Add(
+                    CreateUnboxMethod(unboxSignature),
+                    (
+                        unboxSignature,
+                        [],
+                        [],
+                        [],
+                        null,
+                        false
+                    )
+                );
+            }
+
             foreach (var union in module.Unions)
             {
                 var dataType = LowerUnion(union.Signature.NotNull());
@@ -417,7 +445,8 @@ public partial class ProgramAbseil
             local.ContainingFunction = mainSignature;
         }
 
-        var fnSignaturesToGenerate = _modules.Values.SelectMany(x => x.Functions.Select(x => x.Signature.NotNull()));
+        var fnSignaturesToGenerate = _modules.Values.SelectMany(x => x.Functions.Select(x => x.Signature.NotNull()))
+            .Where(x => x.Id != DefId.Box && x.Id != DefId.Unbox);
         if (mainSignature.Expressions.Count > 0)
         {
             fnSignaturesToGenerate = fnSignaturesToGenerate.Prepend(mainSignature);

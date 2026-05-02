@@ -1,8 +1,5 @@
 use :::Reef:::Core:::Reflection:::TypeId;
 
-// pub extern fn unbox<TParam: boxed TReturn, TReturn unboxed TParam>(value: TParam): mut TReturn;
-// pub extern fn box<TParam: unboxed TReturn, TReturn: boxed TParam>(value: TParam): mut TReturn;
-
 pub class Function_1<TReturn> {
     pub field FunctionReference: methodPointer,
     pub field FunctionParameter: rawPointer,
@@ -61,6 +58,11 @@ pub class Function_8<TParam1, TParam2, TParam3, TParam4, TParam5, TParam6, TPara
 }
 
 pub extern fn allocate(size_bytes: u64): mut rawPointer
+
+pub unboxed class BoxedValue<TValue> {
+    pub field ObjectHeader: ObjectHeader,
+    pub field Value: TValue,
+}
 
 pub unboxed class string {
     pub field Length: u64,
