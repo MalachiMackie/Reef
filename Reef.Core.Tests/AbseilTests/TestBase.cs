@@ -17,7 +17,13 @@ public class TestBase
 
     protected static LoweredProgram Lower(IReadOnlyList<LangModule> modules, ModuleId mainModuleId)
     {
-        return ProgramAbseil.Lower(modules.ToDictionary(x => x.ModuleId), mainModuleId);
+        var fullProgram = ProgramAbseil.Lower(modules.ToDictionary(x => x.ModuleId), mainModuleId);
+
+        return new LoweredProgram
+        {
+            DataTypes = [.. fullProgram.DataTypes.Where(x => x.Id.ModuleId == mainModuleId)],
+            Methods = [.. fullProgram.Methods.Where(x => x.Id.ModuleId == mainModuleId)]
+        };
     }
 
     protected async Task<IReadOnlyList<LangModule>> CreateProgram(ModuleId moduleId, string source)

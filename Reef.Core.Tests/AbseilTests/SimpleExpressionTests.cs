@@ -7,7 +7,6 @@ namespace Reef.Core.Tests.AbseilTests;
 public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutputHelper)
 {
     [Fact]
-    [TestMe]
     public async Task SingleTest()
     {
         var source = "fn SomeFn(a: boxed i32){var b = unbox(a);}";

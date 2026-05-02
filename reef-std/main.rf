@@ -3,21 +3,21 @@ use :::Reef:::Core:::Reflection:::TypeId;
 // pub extern fn unbox<TParam: boxed TReturn, TReturn unboxed TParam>(value: TParam): mut TReturn;
 // pub extern fn box<TParam: unboxed TReturn, TReturn: boxed TParam>(value: TParam): mut TReturn;
 
-pub class Function_0<TReturn> {
+pub class Function_1<TReturn> {
     pub field FunctionReference: methodPointer,
     pub field FunctionParameter: rawPointer,
 
     pub extern fn Call(): TReturn
 }
 
-pub class Function_1<TParam, TReturn> {
+pub class Function_2<TParam, TReturn> {
     pub field FunctionReference: methodPointer,
     pub field FunctionParameter: rawPointer,
 
     pub extern fn Call(param: TParam): TReturn
 }
 
-pub class Function_2<TParam1, TParam2, TReturn> {
+pub class Function_3<TParam1, TParam2, TReturn> {
     pub field FunctionReference: methodPointer,
     pub field FunctionParameter: rawPointer,
 
@@ -25,35 +25,35 @@ pub class Function_2<TParam1, TParam2, TReturn> {
 }
 
 
-pub class Function_3<TParam1, TParam2, TParam3, TReturn> {
+pub class Function_4<TParam1, TParam2, TParam3, TReturn> {
     pub field FunctionReference: methodPointer,
     pub field FunctionParameter: rawPointer,
 
     pub extern fn Call(param1: TParam1, param2: TParam2, param3: TParam3): TReturn
 }
 
-pub class Function_4<TParam1, TParam2, TParam3, TParam4, TReturn> {
+pub class Function_5<TParam1, TParam2, TParam3, TParam4, TReturn> {
     pub field FunctionReference: methodPointer,
     pub field FunctionParameter: rawPointer,
 
     pub extern fn Call(param1: TParam1, param2: TParam2, param3: TParam3, param4: TParam4): TReturn
 }
 
-pub class Function_5<TParam1, TParam2, TParam3, TParam4, TParam5, TReturn> {
+pub class Function_6<TParam1, TParam2, TParam3, TParam4, TParam5, TReturn> {
     pub field FunctionReference: methodPointer,
     pub field FunctionParameter: rawPointer,
 
     pub extern fn Call(param1: TParam1, param2: TParam2, param3: TParam3, param4: TParam4, param5: TParam5): TReturn
 }
 
-pub class Function_6<TParam1, TParam2, TParam3, TParam4, TParam5, TParam6, TReturn> {
+pub class Function_7<TParam1, TParam2, TParam3, TParam4, TParam5, TParam6, TReturn> {
     pub field FunctionReference: methodPointer,
     pub field FunctionParameter: rawPointer,
 
     pub extern fn Call(param1: TParam1, param2: TParam2, param3: TParam3, param4: TParam4, param5: TParam5, param6: TParam6): TReturn
 }
 
-pub class Function_7<TParam1, TParam2, TParam3, TParam4, TParam5, TParam6, TParam7, TReturn> {
+pub class Function_8<TParam1, TParam2, TParam3, TParam4, TParam5, TParam6, TParam7, TReturn> {
     pub field FunctionReference: methodPointer,
     pub field FunctionParameter: rawPointer,
 
