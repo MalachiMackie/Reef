@@ -2858,8 +2858,6 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         i += (int)chunkSize;
                     }
 
-                    // _codeSegment.AppendLine($"    mov     {sizeSpecifier} [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset)}], {constantValue}");
-
                     if (freeAddressRegister)
                     {
                         FreeRegister(addressRegister);

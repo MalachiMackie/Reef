@@ -66,9 +66,6 @@ public sealed class Parser : IDisposable
         _tokens = newTokens.GetEnumerator();
         _hasNext = _tokens.MoveNext();
         _lastToken = _tokens.Current;
-
-        // _prependTokens = newValues.GetEnumerator();
-        // _storedHasNext = _hasNext;
     }
 
     private static IEnumerable<T> Enumerate<T>(IEnumerator<T> values)

@@ -123,40 +123,6 @@ public partial class TypeChecker
             throw new InvalidOperationException("At least one module is required");
         }
 
-        // _moduleSignatures = new()
-        // {
-        //     {
-        //         DefId.DiagnosticsModuleId,
-        //         (
-        //             Functions: [..FunctionSignature.DiagnosticFunctions],
-        //             Unions: [],
-        //             Classes: []
-        //         )
-        //     },
-        //     {
-        //         DefId.CoreLibModuleId,
-        //         (
-        //             [
-        //                 FunctionSignature.Box,
-        //                 FunctionSignature.Unbox,
-        //                 // FunctionSignature.PrintString,
-        //                 FunctionSignature.PrintI8,
-        //                 FunctionSignature.PrintI16,
-        //                 FunctionSignature.PrintI32,
-        //                 FunctionSignature.PrintI64,
-        //                 FunctionSignature.PrintU8,
-        //                 FunctionSignature.PrintU16,
-        //                 FunctionSignature.PrintU32,
-        //                 FunctionSignature.PrintU64,
-        //             ],
-        //             [],
-        //             []
-        //             // [..UnionSignature.BuiltInTypes],
-        //             // [..ClassSignature.BuiltInTypes.Value]
-        //         )
-        //     }
-        // };
-
         _moduleSignatures = [];
         foreach (var module in importedModules)
         {
