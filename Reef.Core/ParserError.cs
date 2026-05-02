@@ -10,7 +10,7 @@ public record ParserError
 
     private ParserError(Token? receivedToken, IReadOnlyList<TokenType> expectedTokens, ParserErrorType type)
     {
-        ExpectedTokenTypes = expectedTokens.Order().ToArray();
+        ExpectedTokenTypes = [.. expectedTokens.Order()];
         ReceivedToken = receivedToken;
         Type = type;
     }
@@ -31,6 +31,7 @@ public record ParserError
             ParserErrorType.ExpectedToken when ExpectedTokenTypes is { Count: > 1 } =>
                 $"Expected one of [{string.Join(", ", ExpectedTokenTypes)}]",
             ParserErrorType.ExpectedToken => $"Expected {ExpectedTokenTypes.NotNull()[0]}",
+            ParserErrorType.ExpectedConstraint => $"Expected constraint",
             ParserErrorType.ExpectedExpression => "Expected expression",
             ParserErrorType.ExpectedType => "Expected type",
             ParserErrorType.ExpectedPattern => "Expected pattern",
@@ -51,6 +52,11 @@ public record ParserError
         };
 
         return expectedMessage + $", but received {ReceivedToken?.ToString() ?? "EOF"}";
+    }
+
+    public static ParserError ExpectedConstraint(Token? receivedToken)
+    {
+        return new ParserError(receivedToken, [], ParserErrorType.ExpectedConstraint);
     }
 
     public static ParserError ExpectedToken(Token? receivedToken, params IReadOnlyList<TokenType> expectedTokens)
@@ -115,8 +121,6 @@ public record ParserError
 
 public enum ParserErrorType
 {
-    // ReSharper disable InconsistentNaming
-
     ExpectedToken,
     ExpectedExpression,
     ExpectedType,
@@ -128,6 +132,6 @@ public enum ParserErrorType
     DuplicateModifier,
     UnexpectedModifier,
 
-    // ReSharper restore InconsistentNaming
-    ExpectedTypeName
+    ExpectedTypeName,
+    ExpectedConstraint,
 }

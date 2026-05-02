@@ -1,0 +1,82 @@
+pub unboxed union TypeInfo {
+    Class {
+        field FullyQualifiedName: string,
+        field Name: string,
+        field Size: u64,
+        field TypeId: TypeId,
+        field StaticFields: [StaticFieldInfo],
+        field Fields: [FieldInfo],
+        field ContainsPointer: bool,
+    },
+    Union {
+        field FullyQualifiedName: string,
+        field Name: string,
+        field Size: u64,
+        field TypeId: TypeId,
+        field StaticFields: [StaticFieldInfo],
+        field Variants: [VariantInfo],
+        field VariantIdentifierGetter: unboxed Fn(rawPointer): u16,
+        field ContainsPointer: bool,
+    },
+    Pointer {
+        field FullyQualifiedName: string,
+        field PointerTo: TypeId,
+    },
+    Array {
+        field FullyQualifiedName: string,
+        field ElementType: TypeId,
+        field Length: u64,
+        field IsDynamic: bool
+    },
+}
+
+pub unboxed class VariantInfo {
+    pub field Name: string,
+    pub field Fields: [FieldInfo],
+    pub field ContainsPointer: bool,
+}
+
+pub unboxed class FieldInfo {
+    pub field Name: string,
+    pub field TypeId: TypeId,
+    pub field Offset: u16,
+}
+
+pub unboxed class StaticFieldInfo {
+    pub field Name: string,
+    pub field TypeId: TypeId,
+}
+
+pub unboxed class TypeId {
+    pub field Value: u32,
+}
+
+pub unboxed class MethodId {
+    pub field Value: u32,
+}
+
+pub unboxed union VariablePlace {
+    StackBaseOffset(u16),
+    PointerTo { field PointerLocationOffset: u16 },
+}
+
+pub unboxed class MethodParameter {
+    pub field TypeId: TypeId,
+    pub field Place: VariablePlace,
+    pub field Name: string,
+}
+
+pub unboxed class MethodLocal {
+    pub field TypeId: TypeId,
+    pub field StackFrameOffset: u16,
+}
+
+pub unboxed class MethodInfo {
+    pub field Id: MethodId,
+    pub field FullyQualifiedName: string,
+    pub field Name: string,
+    pub field Parameters: [MethodParameter],
+    pub field Locals: [MethodLocal],
+    pub field AddressFrom: u64,
+    pub field AddressTo: u64,
+}

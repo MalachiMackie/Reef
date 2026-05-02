@@ -65,7 +65,7 @@ public partial class TypeChecker
 
                     staticMemberAccess.InstantiatedFunction = function;
 
-                    return new FunctionObject(function.Parameters, function.ReturnType, function.MutableReturn);
+                    return new FunctionObject(function.Parameters, function.ReturnType, function.MutableReturn, true);
 
                 }
             case InstantiatedUnion instantiatedUnion:
@@ -90,7 +90,8 @@ public partial class TypeChecker
                                     return new FunctionObject(
                                         tupleVariantFunction.Parameters,
                                         tupleVariantFunction.ReturnType,
-                                        isMutableReturn: true);
+                                        isMutableReturn: true,
+                                        true);
                                 }
                             case UnitUnionVariant:
                                 return type;
@@ -123,7 +124,8 @@ public partial class TypeChecker
                     return new FunctionObject(
                         function.Parameters,
                         function.ReturnType,
-                        function.MutableReturn);
+                        function.MutableReturn,
+                        true);
                 }
             case GenericTypeReference or GenericPlaceholder:
                 AddError(TypeCheckerError.StaticMemberAccessOnGenericReference(staticMemberAccessExpression));

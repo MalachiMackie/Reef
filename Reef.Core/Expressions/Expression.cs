@@ -663,7 +663,6 @@ public enum ValueAccessType
 
 public enum UnaryOperatorType
 {
-    // ?
     FallOut,
     Not,
     Negate

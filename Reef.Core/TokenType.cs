@@ -60,5 +60,6 @@ public enum TokenType
     RightSquareBracket,
     LeftSquareBracket,
     Use,
-    Extern
+    Extern,
+    Where,
 }

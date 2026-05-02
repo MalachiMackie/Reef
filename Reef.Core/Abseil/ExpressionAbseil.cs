@@ -71,7 +71,7 @@ public partial class ProgramAbseil
         IndexExpression indexExpression, IPlace? destination)
     {
         var boundsCheckResultLocalName = LocalName((uint)_locals.Count);
-        _locals.Add(new MethodLocal(boundsCheckResultLocalName, null, GetTypeReference(TypeChecker.InstantiatedClass.Boolean)));
+        _locals.Add(new MethodLocal(boundsCheckResultLocalName, null, GetBuiltInTypeReference(DefId.Boolean)));
 
         var index = LowerExpression(indexExpression.Index.NotNull(), destination: null);
 
@@ -229,7 +229,7 @@ public partial class ProgramAbseil
                 ),
                 new Assign(
                     new Field(new Deref(destination), "ObjectHeader", ClassVariantName),
-                    new CreateObject(GetConcreteTypeReference(GetTypeReference(TypeChecker.InstantiatedClass.ObjectHeader)))
+                    new CreateObject(new LoweredConcreteTypeReference(DefId.ObjectHeader, []))
                 ),
                 new Assign(
                     new Field(new Field(new Deref(destination), "ObjectHeader", ClassVariantName), "TypeId", ClassVariantName),
@@ -1004,7 +1004,7 @@ public partial class ProgramAbseil
             IPattern pattern,
             IPlace? destination)
     {
-        var boolType = GetTypeReference(TypeChecker.InstantiatedClass.Boolean);
+        var boolType = GetBuiltInTypeReference(DefId.Boolean);
         switch (pattern)
         {
             case DiscardPattern:
@@ -1416,7 +1416,7 @@ public partial class ProgramAbseil
     {
         return typeReference switch
         {
-            TypeChecker.FunctionObject => true,
+            TypeChecker.FunctionObject f => f.IsBoxed,
             TypeChecker.GenericPlaceholder => false,
             TypeChecker.GenericTypeReference => false,
             TypeChecker.InstantiatedClass instantiatedClass => instantiatedClass.Boxed,
@@ -1750,7 +1750,7 @@ public partial class ProgramAbseil
                 destination);
 
             CreateObject(
-                (GetTypeReference(TypeChecker.InstantiatedClass.ObjectHeader) as LoweredConcreteTypeReference).NotNull(),
+                new LoweredConcreteTypeReference(DefId.ObjectHeader, []),
                 ClassVariantName,
                 [],
                 new Field(destination, "ObjectHeader", ClassVariantName));
@@ -1853,12 +1853,8 @@ public partial class ProgramAbseil
 
             var methodType = GetConcreteTypeReference(GetTypeReference(e.MethodCall.Method.ResolvedType.NotNull()));
 
-            var fn = _importedModules.SelectMany(x =>
-                x.Methods.Where(y => y.Name == $"Function`{e.MethodCall.ArgumentList.Count + 1}__Call"))
-                .First();
-
             functionReference = GetFunctionReference(
-                    fn.Id,
+                    DefId.FunctionObject_Call(e.MethodCall.ArgumentList.Count),
                     [],
                     methodType.TypeArguments);
 
@@ -1893,7 +1889,6 @@ public partial class ProgramAbseil
                 localName,
                 null,
                 new LoweredPointer(BoxedValueType(new LoweredConcreteTypeReference(
-                    type.Name,
                     type.Id,
                     [])))));
             CreateClosureObject(instantiatedFunction, new Local(localName));
@@ -1958,7 +1953,6 @@ public partial class ProgramAbseil
 
         var closureType = _types[instantiatedFunction.ClosureTypeId];
         var closureTypeReference = new LoweredConcreteTypeReference(
-                closureType.Name,
                 closureType.Id,
                 []);
 
@@ -1990,7 +1984,6 @@ public partial class ProgramAbseil
                                 _currentFunction.Value.FunctionSignature.ClosureTypeId
                             ];
                             var currentClosureTypeReference = new LoweredConcreteTypeReference(
-                                    currentClosureType.Name,
                                     currentClosureType.Id,
                                     []);
 
@@ -2040,7 +2033,6 @@ public partial class ProgramAbseil
                         {
                             var currentClosureType = _types[_currentFunction.Value.FunctionSignature.ClosureTypeId];
                             var currentClosureTypeReference = new LoweredConcreteTypeReference(
-                                    currentClosureType.Name,
                                     currentClosureType.Id,
                                     []);
 
@@ -2093,7 +2085,6 @@ public partial class ProgramAbseil
                                 _currentFunction.Value.FunctionSignature.ClosureTypeId
                             ];
                             var currentClosureTypeReference = new LoweredConcreteTypeReference(
-                                    currentClosureType.Name,
                                     currentClosureType.Id,
                                     []);
 
@@ -2293,7 +2284,6 @@ public partial class ProgramAbseil
 
                 // todo - I think closure type might be able to be generic, so will need to pass in all type parameters here
                 _locals.Add(new MethodLocal(localName, null, new LoweredPointer(BoxedValueType(new LoweredConcreteTypeReference(
-                    dataType.Name,
                     dataType.Id,
                     [])))));
 
@@ -2336,7 +2326,6 @@ public partial class ProgramAbseil
                         {
                             var closureType = _types[_currentFunction.Value.FunctionSignature.ClosureTypeId];
                             var closureTypeReference = new LoweredConcreteTypeReference(
-                                        closureType.Name,
                                         closureType.Id,
                                         []);
                             Debug.Assert(_currentFunction.Value.LoweredMethod.ParameterLocals.Count > 0);
@@ -2376,7 +2365,7 @@ public partial class ProgramAbseil
                             var loweredMethod = _currentFunction.Value.LoweredMethod;
                             var fnSignature = _currentFunction.Value.FunctionSignature;
                             var closureType = _types[fnSignature.ClosureTypeId];
-                            var closureTypeReference = new LoweredConcreteTypeReference(closureType.Name, closureType.Id, []);
+                            var closureTypeReference = new LoweredConcreteTypeReference(closureType.Id, []);
 
                             // we're a closure, so reference the value through the "this" field
                             // of the closure type

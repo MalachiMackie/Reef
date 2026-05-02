@@ -65,7 +65,7 @@ public record VariableDeclarationPattern(
     SourceRange SourceRange,
     bool IsMut) : IPattern
 {
-    public TypeChecker.ITypeReference TypeReference => TypeChecker.InstantiatedClass.Never;
+    public TypeChecker.ITypeReference? TypeReference { get; set; }
 
     public TypeChecker.LocalVariable? Variable { get; set; }
 
@@ -74,7 +74,7 @@ public record VariableDeclarationPattern(
 
 public record DiscardPattern(SourceRange SourceRange) : IPattern
 {
-    public TypeChecker.ITypeReference TypeReference => TypeChecker.InstantiatedClass.Never;
+    public TypeChecker.ITypeReference? TypeReference { get; set; }
 
     public bool IsRedundant { get; set; }
 

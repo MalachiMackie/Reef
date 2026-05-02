@@ -18,15 +18,15 @@ public partial class TypeChecker
                 AddError(TypeCheckerError.NonMutableExpressionPassedToMutableReturn(methodReturnExpression.SourceRange));
             }
 
-            ExpectExpressionType(ExpectedReturnType, value);
+            ExpectExpressionType(ExpectedReturnType ?? Unit(), value);
         }
         else
         {
             // no inner expression to check the type of, but we know the type is unit
-            ExpectType(InstantiatedClass.Unit, ExpectedReturnType,
+            ExpectType(Unit(), ExpectedReturnType ?? Unit(),
                 methodReturnExpression.SourceRange);
         }
 
-        return InstantiatedClass.Never;
+        return Never();
     }
 }

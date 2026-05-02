@@ -60,30 +60,20 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
 
         var source =
-        """
-                        unboxed int::something
-                        """;
+            "fn some_fn() where T: boxed{}";
+
         var expectedProgram = Program("ParseTestCases",
-            [new StaticMemberAccessExpression(
-                                new StaticMemberAccess(
-                                    new NamedTypeIdentifier(
-                                        Identifier("int"),
-                                        [],
-                                        Token.Unboxed(SourceSpan.Default),
-                                        [],
-                                        false,
-                                        SourceRange.Default),
-                                    Identifier("something"),
-                                    null))]);
-        IEnumerable<ParserError> expectedErrors = [];
+            functions: [Function("some_fn", parameters: [], block: Block().Block)]);
+
+        IEnumerable<ParserError> expectedErrors = [ParserError.ExpectedType(Token.LeftBrace(SourceSpan.Default))];
 
         var result = Parser.Parse(new ModuleId("ParseTestCases"), Tokenizer.Tokenize(source)).NotNull();
 
         testOutputHelper.WriteLine("Expected {0}, found {1}", expectedProgram, result.ParsedModule);
 
-        result.ParsedModule.Should().BeEquivalentTo(expectedProgram, opts => opts
-            .Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
         result.Errors.Should().BeEquivalentTo(expectedErrors, opts => opts
+            .Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
+        result.ParsedModule.Should().BeEquivalentTo(expectedProgram, opts => opts
             .Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
     }
 

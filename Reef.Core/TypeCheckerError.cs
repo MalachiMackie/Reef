@@ -37,7 +37,7 @@ public record TypeCheckerError
         new(
             TypeCheckerErrorType.MismatchedTypeBoxing,
             range,
-            $"Expected {(expectedBoxed ? "" : "un")}boxed {expectedType}, but got {(actualBoxed ? "un" : "")}boxed {actualType}");
+            $"Expected {(expectedBoxed ? "" : "un")}boxed {expectedType}, but got {(actualBoxed ? "" : "un")}boxed {actualType}");
 
     public static TypeCheckerError TypeIsNotExpression(
         SourceRange range, ITypeIdentifier type)
@@ -427,6 +427,14 @@ public record TypeCheckerError
         );
     }
 
+    public static TypeCheckerError NonTypeParameterConstrained(NamedTypeIdentifier namedTypeIdentifier)
+    {
+        return new(
+            TypeCheckerErrorType.NonTypeParameterConstrained,
+            namedTypeIdentifier.SourceRange,
+            $"Cannot constrain non type parameter {namedTypeIdentifier}"
+        );
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -490,6 +498,6 @@ public enum TypeCheckerErrorType
     ImportedItemNotPublic,
     TopLevelStatementsInNonMainModule,
     ExternFunctionDefinesBody,
-    NonExternFunctionDoesNotDefineBody
-
+    NonExternFunctionDoesNotDefineBody,
+    NonTypeParameterConstrained
 }

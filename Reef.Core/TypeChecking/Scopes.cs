@@ -104,7 +104,7 @@ public partial class TypeChecker
     private record TypeCheckingScope(
         TypeCheckingScope? ParentScope,
         List<FunctionSignature> Functions,
-        ITypeReference ExpectedReturnType,
+        ITypeReference? ExpectedReturnType,
         ITypeSignature? CurrentTypeSignature,
         FunctionSignature? CurrentFunctionSignature,
         HashSet<GenericPlaceholder> GenericPlaceholders,

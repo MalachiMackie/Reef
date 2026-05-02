@@ -8,11 +8,11 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
 {
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void FunctionObjectAbseilTest(string description, string source, LoweredModule expectedProgram)
+    public async Task FunctionObjectAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
         description.Should().NotBeEmpty();
-        var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = Lower(program);
+        var program = await CreateProgram(ModuleId, source);
+        var loweredProgram = Lower(program, ModuleId);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -20,7 +20,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
     }
 
     [Fact]
-    public void Single()
+    public async Task Single()
     {
         var source = """
                  union MyUnion{A(string)}
@@ -55,7 +55,6 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          ..CreateBoxedObject(
                                              new Deref(ReturnValue),
                                                  new LoweredConcreteTypeReference(
-                                                     "MyUnion",
                                                      new DefId(ModuleId, $"{ModuleId}:::MyUnion"),
                                                      [])),
                                          new Assign(
@@ -76,7 +75,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                      new Return())
                              ],
                              parameters: [("Item0", StringT)],
-                             returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                             returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                     Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__unboxed__Create__A"), "MyUnion__unboxed__Create__A",
                                              [
                                                  new BasicBlock(
@@ -86,7 +85,6 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                              ReturnValue,
                                                              new CreateObject(
                                                             new LoweredConcreteTypeReference(
-                                                                "MyUnion",
                                                                 new DefId(ModuleId, $"{ModuleId}:::MyUnion"),
                                                                 []))),
                                                          new Assign(
@@ -107,7 +105,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                      new Return())
                                              ],
                                              parameters: [("Item0", StringT)],
-                                             returnType: new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
+                                             returnType: new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
@@ -122,14 +120,14 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                      [
                                          ..CreateBoxedObject(
                                              new Deref(Local0),
-                                                 FunctionObject([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))),
+                                                 FunctionObject([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))),
                                          new Assign(
                                              new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
                                                  new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), []))))
                                      ],
                                      new MethodCall(
-                                         FunctionObjectCall([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                                         FunctionObjectCall([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                                          [new Copy(Local0), new StringConstant("")],
                                          Local1,
                                          BB2)),
@@ -141,17 +139,16 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                      "_local0",
                                      "a",
                                      new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
-                                         "Function`2",
                                          DefId.FunctionObject(1),
-                                         [StringT, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))])))),
+                                         [StringT, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))])))),
                                  new MethodLocal(
                                      "_local1",
                                      "b",
-                                     new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                                     new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                              ])
             ]);
-        var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = Lower(program);
+        var program = await CreateProgram(ModuleId, source);
+        var loweredProgram = Lower(program, ModuleId);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -160,7 +157,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
 
     private static readonly ModuleId ModuleId = new("main");
 
-    public static TheoryData<string, string, LoweredModule> TestCases()
+    public static TheoryData<string, string, LoweredProgram> TestCases()
     {
         return new()
         {
@@ -199,7 +196,6 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                           ..CreateBoxedObject(
                                                               new Deref(ReturnValue),
                                                                   new LoweredConcreteTypeReference(
-                                                                      "MyUnion",
                                                                       new DefId(ModuleId, $"{ModuleId}:::MyUnion"),
                                                                       [])),
                                                           new Assign(
@@ -220,7 +216,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                       new Return())
                                               ],
                                               parameters: [("Item0", StringT)],
-                                              returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                                              returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                                      Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__unboxed__Create__A"), "MyUnion__unboxed__Create__A",
                                                               [
                                                                   new BasicBlock(
@@ -230,7 +226,6 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                                               ReturnValue,
                                                                               new CreateObject(
                                                                              new LoweredConcreteTypeReference(
-                                                                                 "MyUnion",
                                                                                  new DefId(ModuleId, $"{ModuleId}:::MyUnion"),
                                                                                  []))),
                                                                           new Assign(
@@ -251,7 +246,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                                       new Return())
                                                               ],
                                                               parameters: [("Item0", StringT)],
-                                                              returnType: new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
+                                                              returnType: new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
                                           Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                                               [
                                                   new BasicBlock(
@@ -266,14 +261,14 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                       [
                                                           ..CreateBoxedObject(
                                                               new Deref(Local0),
-                                                                  FunctionObject([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))),
+                                                                  FunctionObject([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))),
                                                           new Assign(
                                                               new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionReference", "_classVariant"),
                                                               new Use(new FunctionPointerConstant(new LoweredFunctionReference(
                                                                   new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), []))))
                                                       ],
                                                       new MethodCall(
-                                                          FunctionObjectCall([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                                                          FunctionObjectCall([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                                                           [new Copy(Local0), new StringConstant("")],
                                                           Local1,
                                                           BB2)),
@@ -285,13 +280,12 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                       "_local0",
                                                       "a",
                                                       new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
-                                                          "Function`2",
                                                           DefId.FunctionObject(1),
-                                                          [StringT, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))])))),
+                                                          [StringT, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))])))),
                                                   new MethodLocal(
                                                       "_local1",
                                                       "b",
-                                                      new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyUnion", new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                                                      new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
                                               ])
                              ])
              },
@@ -457,7 +451,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                          Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"), "MyClass__MyFn",
                              [new BasicBlock(BB0, [], new Return())],
                              Unit,
-                             parameters: [("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))]),
+                             parameters: [("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))]),
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
@@ -473,7 +467,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          ..CreateBoxedObject(
                                              new Deref(Local0),
                                              new LoweredConcreteTypeReference(
-                                                 "MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))
+                                                 new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))
                                      ],
                                      AllocateMethodCall(
                                          BoxedValue(FunctionObject([], Unit)),
@@ -501,7 +495,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                  new MethodLocal(
                                      "_local0",
                                      "a",
-                                     new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
+                                     new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
                                  new MethodLocal("_local1", "b", new LoweredPointer(BoxedValue(FunctionObject([], Unit))))
                              ])
                      ])
@@ -546,10 +540,10 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                  Variant(
                                      "_classVariant",
                                      [
-                                         Field("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
+                                         Field("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
                                          Field(
                                              "MyClass__MyFn__Locals",
-                                             new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), []))))
+                                             new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), []))))
                                      ])
                              ])
                      ],
@@ -601,7 +595,6 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                              ],
                              parameters: [
                                  ("closure", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
-                                     "MyClass__MyFn__InnerFn__Closure",
                                      new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"),
                                      []))))
                              ]),
@@ -620,7 +613,6 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          ..CreateBoxedObject(
                                              new Deref(LocalsObject),
                                                  new LoweredConcreteTypeReference(
-                                                     "MyClass__MyFn__Locals",
                                                      new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"),
                                                      [])),
                                          new Assign(
@@ -646,7 +638,6 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          ..CreateBoxedObject(
                                              new Deref(Local2),
                                                  new LoweredConcreteTypeReference(
-                                                     "MyClass__MyFn__InnerFn__Closure",
                                                      new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"),
                                                      [])),
                                          new Assign(
@@ -680,13 +671,13 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                              ],
                              Unit,
                              parameters: [
-                                 ("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
+                                 ("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
                                  ("param", StringT)],
                              locals: [
                                  new MethodLocal(
                                      "_localsObject",
                                      null,
-                                     new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass__MyFn__Locals", new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), [])))),
+                                     new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), [])))),
                                  new MethodLocal(
                                      "_local1",
                                      "b",
@@ -695,7 +686,6 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                      "_local2",
                                      null,
                                      new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
-                                         "MyClass__MyFn__InnerFn__Closure",
                                          new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"),
                                          []))))
                              ])

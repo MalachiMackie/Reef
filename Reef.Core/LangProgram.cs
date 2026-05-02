@@ -12,6 +12,8 @@ public record LangModule(
     IReadOnlyCollection<ProgramUnion> Unions,
     IReadOnlyList<ModuleImport> TopLevelImports)
 {
+    public bool TypeChecked { get; set; }
+
     public override string ToString()
     {
         var sb = new StringBuilder();
@@ -72,12 +74,18 @@ public record FnTypeIdentifier(
     IReadOnlyList<FnTypeIdentifierParameter> Parameters,
     ITypeIdentifier? ReturnType,
     Token? ReturnMutabilityModifier,
+    BoxingModifier? BoxingModifier,
     SourceRange SourceRange)
     : ITypeIdentifier
 {
     public override string ToString()
     {
-        var sb = new StringBuilder("Fn(");
+        var sb = new StringBuilder();
+        if (BoxingModifier is not null)
+        {
+            sb.Append($"{BoxingModifier} ");
+        }
+        sb.Append("Fn(");
         sb.AppendJoin(", ", Parameters);
         sb.Append(')');
         if (ReturnType is not null)
@@ -98,7 +106,7 @@ public record UnitTypeIdentifier(SourceRange SourceRange) : ITypeIdentifier;
 
 public record ArrayTypeIdentifier(
     ITypeIdentifier ElementTypeIdentifier,
-    IntToken LengthSpecifier,
+    IntToken? LengthSpecifier,
     Token? BoxingSpecifier,
     SourceRange SourceRange) : ITypeIdentifier
 {
@@ -113,8 +121,11 @@ public record ArrayTypeIdentifier(
 
         sb.Append('[');
         sb.Append(ElementTypeIdentifier);
-        sb.Append(';');
-        sb.Append(LengthSpecifier.IntValue);
+        if (LengthSpecifier is not null)
+        {
+            sb.Append(';');
+            sb.Append(LengthSpecifier.IntValue);
+        }
         sb.Append(']');
 
         return sb.ToString();
@@ -167,6 +178,15 @@ public record ExternModifier(Token Token)
     public override string ToString() => Token.ToString();
 }
 
+public interface IConstraint
+{
+    NamedTypeIdentifier ConstrainedType { get; }
+}
+
+public record BoxedConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier BoxedOfType) : IConstraint;
+public record UnboxedConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier UnboxedOfType) : IConstraint;
+
+
 public record LangFunction(
     AccessModifier? AccessModifier,
     StaticModifier? StaticModifier,
@@ -177,7 +197,8 @@ public record LangFunction(
     ITypeIdentifier? ReturnType,
     Token? ReturnMutabilityModifier,
     Block? Block,
-    ExternModifier? ExternModifier)
+    ExternModifier? ExternModifier,
+    IReadOnlyList<IConstraint> Constraints)
 {
     public TypeChecker.FunctionSignature? Signature { get; set; }
 
@@ -220,9 +241,29 @@ public record LangFunction(
             sb.Append(ReturnType);
         }
 
+        foreach (var constraint in Constraints)
+        {
+            sb.Append($" where {constraint.ConstrainedType}: ");
+            switch (constraint)
+            {
+                case BoxedConstraint boxed:
+                    {
+                        sb.Append($"boxed {boxed.BoxedOfType}");
+                        break;
+                    }
+                case UnboxedConstraint unboxed:
+                    {
+                        sb.Append($"unboxed {unboxed.UnboxedOfType}");
+                        break;
+                    }
+                default:
+                    throw new InvalidOperationException(constraint.GetType().ToString());
+            }
+        }
+
         if (Block is not null)
         {
-            sb.Append($"{Block}");
+            sb.Append($" {Block}");
         }
 
         return sb.ToString();

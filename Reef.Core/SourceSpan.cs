@@ -17,4 +17,6 @@ public class SourcePosition(uint start, ushort lineNumber, ushort linePosition)
     public ushort LineNumber = lineNumber;
     public ushort LinePosition = linePosition;
     public uint Start = start;
+
+    public override string ToString() => $"{LineNumber}:{LinePosition}";
 }

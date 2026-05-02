@@ -1,14 +1,18 @@
 ﻿using System.IO.Abstractions.TestingHelpers;
+using System.Text;
+using Reef.Core.Common;
 using Reef.Core.Expressions;
+using Reef.Core.Tests.IntegrationTests.Helpers;
 using static Reef.Core.Tests.ExpressionHelpers;
 using static Reef.Core.TypeChecking.TypeChecker;
 
 namespace Reef.Core.Tests;
 
-[TestMe]
 public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 {
     private readonly MockFileSystem _fileSystem = new();
+
+    private static readonly ModuleId ModuleId = new("main");
 
     [Theory]
     [MemberData(nameof(SuccessfulExpressionTestCases))]
@@ -22,7 +26,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             _fileSystem.AddFile(path, new MockFileData(contents));
         }
 
-        var (typeCheckResult, _) = await new ReefCompiler(_fileSystem).TypeCheck();
+        var (typeCheckResult, _, _, _) = await new ReefCompiler(_fileSystem, ModuleId, new TestLogger(testOutputHelper)).TypeCheck();
 
         foreach (var (moduleId, innerTypeCheckResult) in typeCheckResult)
         {
@@ -50,7 +54,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
         sourceFiles.SelectMany(x => x.Value.expectedErrors).Should().NotBeEmpty();
 
-        var (typeCheckResults, moduleIdToFileName) = await new ReefCompiler(_fileSystem).TypeCheck();
+        var (typeCheckResults, moduleIdToFileName, _, _) = await new ReefCompiler(_fileSystem, new ModuleId("main"), new TestLogger(testOutputHelper)).TypeCheck();
         foreach (var (moduleId, typeCheckResult) in typeCheckResults)
         {
             typeCheckResult.ParserErrors.Should().BeEmpty();
@@ -66,13 +70,13 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         var sourceFiles = new Dictionary<string, (string, IReadOnlyList<TypeCheckerError> expectedErrors)>()
         {
             {
-                "main.rf", ("""
-                            class MyClass {}
-                            unboxed MyClass
-                            """, [
-                            TypeCheckerError.TypeIsNotExpression(SourceRange.Default,
-                            NamedTypeIdentifier("MyClass", boxedSpecifier: Token.Unboxed(SourceSpan.Default)))
-                            ])
+                "main.rf",
+                ("""
+                pub extern fn some_fn<T, T2>(param: T): T2 where T2: boxed T;
+                class MyClass{}
+
+                var b: MyClass = some_fn(new MyClass{});
+                """, [])
             }
         };
 
@@ -81,7 +85,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             _fileSystem.AddFile(path, new MockFileData(contents));
         }
 
-        var (typeCheckResults, moduleIdToFileName) = await new ReefCompiler(_fileSystem).TypeCheck(false);
+        var (typeCheckResults, moduleIdToFileName, _, _) = await new ReefCompiler(_fileSystem, new ModuleId("main"), new TestLogger(testOutputHelper)).TypeCheck();
         foreach (var (moduleId, typeCheckResult) in typeCheckResults)
         {
             typeCheckResult.ParserErrors.Should().BeEmpty();
@@ -100,7 +104,125 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule;
+                    pub fn someFn(a: otherModule:::MyClass){}
+                    """
+                },
+                {
+                    "otherModule.rf",
+                    """
+                    pub class MyClass{}
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub extern fn some_fn<T, T2>(param: T): T2 where T2: boxed T;
+
+                    var b: boxed i32 = some_fn(1);
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub extern fn some_fn<T>(): T where T : unboxed i32;
+
+                    var b: i32 = some_fn();
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub extern fn some_fn<T>(): T where T : boxed i32;
+
+                    var b: boxed i32 = some_fn();
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub extern fn some_fn<T, T2>(param: T): T2 where T2: unboxed T;
+                    class MyClass{}
+
+                    var b: unboxed MyClass = some_fn(new MyClass{});
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub extern fn some_fn<T, T2>(param: T): T2 where T2: unboxed T;
+                    class MyClass{}
+
+                    var b: unboxed MyClass = some_fn(new unboxed MyClass{});
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub extern fn some_fn<T, T2>(param: T): T2 where T2: boxed T;
+                    class MyClass{}
+
+                    var b: MyClass = some_fn(new MyClass{});
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub extern fn some_fn<T, T2>(param: T): T2
+                        where T2: boxed T
+                        where T: unboxed T2;
+
+                    class MyClass{}
+
+                    var b: MyClass = some_fn(new unboxed MyClass{});
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    pub extern fn some_fn<T, T2>(): string where T: boxed T2;
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    var a: [string] = ["hi"];
+                    var b: [string; 1] = ["hi"];
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    use otherModule;
 
                     otherModule:::subModule:::SomeFn();
                     var a = new otherModule:::subModule:::MyClass{};
@@ -119,7 +241,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::subModule;
+                    use otherModule:::subModule;
 
                     subModule:::subSubModule:::SomeFn();
                     var a = new subModule:::subSubModule:::MyClass{};
@@ -138,7 +260,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::subModule;
+                    use otherModule:::subModule;
 
                     subModule:::SomeFn();
                     var a = new subModule:::MyClass{};
@@ -157,7 +279,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::subModule;
+                    use otherModule:::subModule;
 
                     otherModule:::subModule:::SomeFn();
                     var a = new otherModule:::subModule:::MyClass{};
@@ -176,7 +298,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::{MyClass, MyUnion, SomeFn};
+                    use otherModule:::{MyClass, MyUnion, SomeFn};
 
                     var a = new MyClass{};
                     var b = MyUnion::A;
@@ -197,9 +319,9 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    var a = new :::otherModule:::MyClass{};
-                    var b = :::otherModule:::MyUnion::A;
-                    var c = :::otherModule:::SomeFn();
+                    var a = new otherModule:::MyClass{};
+                    var b = otherModule:::MyUnion::A;
+                    var c = otherModule:::SomeFn();
                     """
                 },
                 {
@@ -219,9 +341,9 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     class MyClass{}
                     fn SomeFn(){}
 
-                    var a = new :::otherModule:::MyClass{};
-                    var b = :::otherModule:::MyUnion::A;
-                    :::otherModule:::SomeFn();
+                    var a = new otherModule:::MyClass{};
+                    var b = otherModule:::MyUnion::A;
+                    :::main:::otherModule:::SomeFn();
                     var d = new MyClass{};
                     SomeFn();
 
@@ -241,7 +363,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::someModule:::subModule:::{MyClass, MyUnion, SomeFn};
+                    use someModule:::subModule:::{MyClass, MyUnion, SomeFn};
 
                     var a = new MyClass{};
                     var b = MyUnion::A;
@@ -262,7 +384,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::someModule:::{MyUnion, SomeFn, otherModule:::MyClass};
+                    use someModule:::{MyUnion, SomeFn, otherModule:::MyClass};
 
                     var a = new MyClass{};
                     var b = MyUnion::A;
@@ -288,7 +410,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::someModule:::otherModule:::SomeFn;
+                    use someModule:::otherModule:::SomeFn;
 
                     pub class MyClass{};
 
@@ -311,7 +433,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::*;
+                    use otherModule:::*;
 
                     var a = new MyClass{};
                     var b = MyUnion::A;
@@ -332,12 +454,12 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::{MyClass, MyUnion};
+                    use otherModule:::{MyClass, MyUnion};
 
                     var a = new MyClass{};
                     var b = MyUnion::A;
                     {
-                        use :::otherModule:::SomeFn;
+                        use otherModule:::SomeFn;
                         SomeFn();
                     }
                     """
@@ -356,7 +478,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::MyClass;
+                    use otherModule:::MyClass;
 
                     pub fn SomeFn(): MyClass {
                         return new MyClass{};
@@ -383,7 +505,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::someModule:::{subModule:::{SomeFn, subSubModule:::MyClass}};
+                    use someModule:::{subModule:::{SomeFn, subSubModule:::MyClass}};
 
                     var a = new MyClass{};
                     SomeFn();
@@ -411,7 +533,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::someModule:::SomeFn;
+                    use someModule:::SomeFn;
 
                     var a = SomeFn();
                     print_string(a.Something);
@@ -432,7 +554,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
-                    use :::otherModule:::SomeFn;
+                    use otherModule:::SomeFn;
 
                     pub class MyClass{};
 
@@ -3004,6 +3126,79 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
             {
+                "mismatched concrete boxing constraint",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+                        pub extern fn some_fn<T>(): T where T : unboxed i32;
+
+                        var b: boxed i32 = some_fn();
+                        """, [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32, false, Int32_Boxed, true)])
+                    }
+                }
+            },
+            {
+                "mismatched concrete boxing constraint",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+                        pub extern fn some_fn<T>(): T where T : boxed i32;
+
+                        var b: i32 = some_fn();
+                        """, [TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32_Boxed, true, Int32, false)])
+                    }
+                }
+            },
+            {
+                "non type parameters referenced in type constraint",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            pub extern fn some_fn<T>() where T: unboxed [string]
+                            """,
+                            [TypeCheckerError.BoxedOnlyTypeCannotBeUnboxed(new ArrayType(String), SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "non type parameters referenced in type constraint",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            pub extern fn some_fn<T>() where int: unboxed T;
+                            """,
+                            [TypeCheckerError.NonTypeParameterConstrained(NamedTypeIdentifier("int"))]
+                        )
+                    }
+                }
+            },
+            {
+                "Extern function defines body",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            pub extern fn some_fn<T>() where T: unboxed T2;
+                            """,
+                            [TypeCheckerError.SymbolNotFound(Token.Identifier("T2", SourceSpan.Default))]
+                        )
+                    }
+                }
+            },
+            {
                 "Extern function defines body",
                 new()
                 {
@@ -3052,7 +3247,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                             """
                             var b = 2;
                             """,
-                            [TypeCheckerError.TopLevelStatementsInNonMainModule(SourceRange.Default, new ModuleId("other"))]
+                            [TypeCheckerError.TopLevelStatementsInNonMainModule(SourceRange.Default, new ModuleId("main:::other"))]
                         )
                     }
                 }
@@ -3118,10 +3313,10 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     {
                         "main.rf",
                         ("""
-                        use :::missing;
-                        use :::otherModule:::foo;
+                        use missing;
+                        use otherModule:::foo;
                         {
-                            use :::otherModule:::bar;
+                            use otherModule:::bar;
                         }
                         """,
                         [
@@ -3147,7 +3342,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     {
                         "main.rf",
                         ("""
-                        use :::otherModule:::{MyClass, MyUnion, SomeFn};
+                        use otherModule:::{MyClass, MyUnion, SomeFn};
                         """, [
                                             TypeCheckerError.ImportedItemNotPublic(Identifier("MyClass")),
                                             TypeCheckerError.ImportedItemNotPublic(Identifier("MyUnion")),
@@ -3171,7 +3366,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     {
                         "main.rf",
                         ("""
-                        use :::otherModule:::*;
+                        use otherModule:::*;
                         var a = new MyClass{};
                         var b = MyUnion::A;
                         SomeFn();
@@ -3197,7 +3392,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     {
                         "main.rf",
                         ("""
-                        use :::otherModule:::*;
+                        use otherModule:::*;
                         var a = new MyClass{};
                         var b = MyUnion::A;
                         SomeFn();
@@ -3409,9 +3604,9 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    """, [
                                    TypeCheckerError.MismatchedTypeBoxing(
                                    SourceRange.Default,
-                                   new TestClassReference("MyClass"),
+                                   new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), []),
                                    true,
-                                   new TestClassReference("MyClass", false),
+                                   new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], false),
                                    false)
                                    ])
                     }
@@ -3446,8 +3641,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    class MyClass{}
                                    var a: boxed MyClass = unbox(new MyClass{});
                                    """, [
-                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass", true),
-                                   true, new TestClassReference("MyClass", false), false)
+                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], true),
+                                   true, new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], false), false)
                                    ])
                     }
                 }
@@ -3462,8 +3657,10 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    class MyClass{}
                                    var a: unboxed MyClass = unbox(new unboxed MyClass{});
                                    """, [
-                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass", true),
-                                   true, new TestClassReference("MyClass", false), false)
+                                        TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], true),
+                                                true, new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], false), false),
+                                        TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], false),
+                                                false, new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], true), true)
                                    ])
                     }
                 }
@@ -3477,7 +3674,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                         "main.rf", ("""
                                    var a: unboxed i32 = box(1);
                                    """, [
-                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("i32", false),
+                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32,
                                    false, UnspecifiedSizedIntType, true)
                                    ])
                     }
@@ -3493,8 +3690,10 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    var number: boxed i32 = todo!;
                                    var a: boxed i32 = box(number);
                                    """, [
-                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("i32", false),
-                                   false, new TestClassReference("i32", true), true)
+                                    TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32,
+                                        false, Int32_Boxed, true),
+                                    TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, Int32,
+                                        true, Int32_Boxed, false),
                                    ])
                     }
                 }
@@ -4447,8 +4646,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    """, [
                                    TypeCheckerError.MismatchedTypes(
                                    SourceRange.Default,
-                                   FunctionObject(),
-                                   FunctionObject([(isMut: false, parameterType: Int64)]))
+                                   FunctionObject(Unit),
+                                   FunctionObject(Unit, [(isMut: false, parameterType: Int64)]))
                                    ])
                     }
                 }
@@ -4465,8 +4664,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    """, [
                                    TypeCheckerError.MismatchedTypes(
                                    SourceRange.Default,
-                                   FunctionObject([(isMut: false, parameterType: String)]),
-                                   FunctionObject([(isMut: false, parameterType: Int64)]))
+                                   FunctionObject(Unit, [(isMut: false, parameterType: String)]),
+                                   FunctionObject(Unit, [(isMut: false, parameterType: Int64)]))
                                    ])
                     }
                 }
@@ -4483,8 +4682,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    """, [
                                    TypeCheckerError.MismatchedTypes(
                                    SourceRange.Default,
-                                   FunctionObject([(isMut: false, parameterType: Int64)]),
-                                   FunctionObject())
+                                   FunctionObject(Unit, [(isMut: false, parameterType: Int64)]),
+                                   FunctionObject(Unit))
                                    ])
                     }
                 }
@@ -4501,8 +4700,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    """, [
                                    TypeCheckerError.MismatchedTypes(
                                    SourceRange.Default,
-                                   FunctionObject([(isMut: false, parameterType: Int64)]),
-                                   FunctionObject([(isMut: false, parameterType: Int64)], String))
+                                   FunctionObject(Unit, [(isMut: false, parameterType: Int64)]),
+                                   FunctionObject(String, [(isMut: false, parameterType: Int64)]))
                                    ])
                     }
                 }
@@ -4519,8 +4718,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    """, [
                                    TypeCheckerError.MismatchedTypes(
                                    SourceRange.Default,
-                                   FunctionObject([(isMut: false, parameterType: Int64)], String),
-                                   FunctionObject([(isMut: false, parameterType: Int64)], Unit))
+                                   FunctionObject(String, [(isMut: false, parameterType: Int64)]),
+                                   FunctionObject(Unit, [(isMut: false, parameterType: Int64)]))
                                    ])
                     }
                 }
@@ -4537,8 +4736,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    """, [
                                    TypeCheckerError.MismatchedTypes(
                                    SourceRange.Default,
-                                   FunctionObject([(isMut: false, parameterType: Int64)], String),
-                                   FunctionObject([(isMut: false, parameterType: Int64)], Int64))
+                                   FunctionObject(String, [(isMut: false, parameterType: Int64)]),
+                                   FunctionObject(Int64, [(isMut: false, parameterType: Int64)]))
                                    ])
                     }
                 }
@@ -4555,8 +4754,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    """, [
                                    TypeCheckerError.MismatchedTypes(
                                    SourceRange.Default,
-                                   FunctionObject([(isMut: false, parameterType: Int64)], Unit),
-                                   FunctionObject([(isMut: true, parameterType: Int64)], Unit))
+                                   FunctionObject(Unit, [(isMut: false, parameterType: Int64)]),
+                                   FunctionObject(Unit, [(isMut: true, parameterType: Int64)]))
                                    ])
                     }
                 }
@@ -4573,8 +4772,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    """, [
                                    TypeCheckerError.MismatchedTypes(
                                    SourceRange.Default,
-                                   FunctionObject([(isMut: true, parameterType: Int64)], Unit),
-                                   FunctionObject([(isMut: false, parameterType: Int64)], Unit))
+                                   FunctionObject(Unit, [(isMut: true, parameterType: Int64)]),
+                                   FunctionObject(Unit, [(isMut: false, parameterType: Int64)]))
                                    ])
                     }
                 }
@@ -4593,7 +4792,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    """, [
                                    TypeCheckerError.MismatchedTypes(
                                    SourceRange.Default,
-                                   FunctionObject(),
+                                   FunctionObject(Unit),
                                    FunctionObject(returnType: Int64))
                                    ])
                     }
@@ -5101,8 +5300,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    a = ok(true);
                                    a = error("");
                                    """, [
-                                   MismatchedTypes(Result(UnspecifiedSizedIntType, GenericTypeReference("TError")),
-                                   Result(Boolean, GenericTypeReference("TError")))
+                                   MismatchedTypes(Result(UnspecifiedSizedIntType, null),
+                                   Result(Boolean, null))
                                    ])
                     }
                 }
@@ -5768,7 +5967,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    class MyClass {pub field MyField: string, pub field OtherField: bool}
                                    var a = new MyClass { MyField = "", OtherField = true };
                                    var b: bool = a matches string;
-                                   """, [MismatchedTypes(new TestClassReference("MyClass"), String)])
+                                   """, [MismatchedTypes(new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), []), String)])
                     }
                 }
 
@@ -7643,8 +7842,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    var a: unboxed MyClass = todo!;
                                    var b: boxed MyClass = a;
                                    """, [
-                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass"), true,
-                                   new TestClassReference("MyClass"), false)
+                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), []), true,
+                                   new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), []), false)
                                    ])
                     }
                 }
@@ -7660,8 +7859,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    var a: MyClass = todo!;
                                    var b: unboxed MyClass = a;
                                    """, [
-                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass"), false,
-                                   new TestClassReference("MyClass"), true)
+                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), []), false,
+                                   new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), []), true)
                                    ])
                     }
                 }
@@ -7677,8 +7876,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    var a: unboxed MyClass = todo!;
                                    var b: MyClass = a;
                                    """, [
-                                   TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference("MyClass"), true,
-                                   new TestClassReference("MyClass"), false)
+                                       TypeCheckerError.MismatchedTypeBoxing(SourceRange.Default, new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), []), true,
+                                   new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), []), false)
                                    ])
                     }
                 }
@@ -7821,65 +8020,154 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         return TypeCheckerError.MismatchedTypes(SourceRange.Default, expected, actual);
     }
 
-    private static readonly IReadOnlyList<InstantiatedClass> IntTypes =
+    private static readonly ITypeReference Int64 = new TestClassReference(DefId.Int64, [], false);
+    private static readonly ITypeReference Int32 = new TestClassReference(DefId.Int32, [], false);
+    private static readonly ITypeReference Int32_Boxed = new TestClassReference(DefId.Int32, [], true);
+    private static readonly ITypeReference Int16 = new TestClassReference(DefId.Int16, [], false);
+    private static readonly ITypeReference Int8 = new TestClassReference(DefId.Int8, [], false);
+    private static readonly ITypeReference UInt64 = new TestClassReference(DefId.UInt64, [], false);
+    private static readonly ITypeReference UInt32 = new TestClassReference(DefId.UInt32, [], false);
+    private static readonly ITypeReference UInt16 = new TestClassReference(DefId.UInt16, [], false);
+    private static readonly ITypeReference UInt8 = new TestClassReference(DefId.UInt8, [], false);
+    private static readonly ITypeReference String = new TestClassReference(DefId.String, [], false);
+    private static readonly ITypeReference Boolean = new TestClassReference(DefId.Boolean, [], false);
+    private static readonly ITypeReference Unit = new TestClassReference(DefId.Unit, [], false);
+    private static readonly ITypeReference UnspecifiedSizedIntType = new UnspecifiedSizedIntType() { Boxed = false };
+
+    private static readonly IReadOnlyList<ITypeReference> IntTypes =
     [
-        InstantiatedClass.Int64,
-        InstantiatedClass.Int32,
-        InstantiatedClass.Int16,
-        InstantiatedClass.Int8,
-        InstantiatedClass.UInt64,
-        InstantiatedClass.UInt32,
-        InstantiatedClass.UInt16,
-        InstantiatedClass.UInt8
+        Int64,
+        Int32,
+        Int16,
+        Int8,
+        UInt64,
+        UInt32,
+        UInt16,
+        UInt8
     ];
 
-    private static readonly InstantiatedClass Int64 = InstantiatedClass.Int64;
-    private static readonly InstantiatedClass Int32 = InstantiatedClass.Int32;
-    private static readonly InstantiatedClass Int16 = InstantiatedClass.Int16;
-    private static readonly InstantiatedClass Int8 = InstantiatedClass.Int8;
-    private static readonly InstantiatedClass UInt64 = InstantiatedClass.UInt64;
-    private static readonly InstantiatedClass UInt32 = InstantiatedClass.UInt32;
-    private static readonly InstantiatedClass UInt16 = InstantiatedClass.UInt16;
-    private static readonly InstantiatedClass UInt8 = InstantiatedClass.UInt8;
 
-    private static readonly UnspecifiedSizedIntType UnspecifiedSizedIntType = new() { Boxed = false };
-    private static readonly InstantiatedClass String = InstantiatedClass.String;
-    private static readonly InstantiatedClass Boolean = InstantiatedClass.Boolean;
-    private static readonly InstantiatedClass Unit = InstantiatedClass.Unit;
-
-    private static InstantiatedClass TupleType(bool? boxed, params IReadOnlyList<ITypeReference> members)
+    private static ITypeReference TupleType(bool? boxed, params IReadOnlyList<ITypeReference> members)
     {
-        var signature = ClassSignature.Tuple((ushort)members.Count);
-        return InstantiatedClass.Create(
-            signature,
-            members,
-            boxed ?? signature.Boxed);
+        return new TestClassReference(DefId.Tuple(members.Count), [.. members.Select((x, i) => ($"T{i}", x))], boxed ?? false);
     }
 
-    private static InstantiatedUnion Result(
-        ITypeReference value,
-        ITypeReference error,
+    private static ITypeReference Result(
+        ITypeReference? value,
+        ITypeReference? error,
         bool? boxed = null)
     {
-        return InstantiatedUnion.Create(
-            UnionSignature.Result,
-            [value, error],
-            boxed ?? UnionSignature.Result.Boxed);
+        return new TestUnionReference(DefId.Result, [("TValue", value), ("TError", error)], boxed ?? true);
     }
 
-    private sealed record TestClassReference(string ClassName, bool Boxed = true)
+    private sealed record TestUnionReference(DefId Id, IReadOnlyList<(string name, ITypeReference? argument)> TypeArguments, bool Boxed = true)
         : ITypeReference, IEquatable<ITypeReference>
     {
         public bool Equals(ITypeReference? other)
         {
-            if (other is not InstantiatedClass @class) return false;
-
-            return @class.Signature.Name == ClassName && Boxed == @class.Boxed;
+            return other is not null && AreTypeReferencesEqual(this, other);
         }
 
         public override string ToString()
         {
-            return ClassName;
+            if (TypeArguments.Count == 0)
+            {
+                return Id.FullName;
+            }
+
+            var sb = new StringBuilder($"{Id.FullName}::<");
+            sb.AppendJoin(",", TypeArguments.Select(x => $"{x.name}=[{x.argument?.ToString() ?? "??"}]"));
+            sb.Append('>');
+            return sb.ToString();
+        }
+    }
+
+    public static bool AreTypeReferencesEqual(ITypeReference? left, ITypeReference? right)
+    {
+        switch (left, right)
+        {
+            case (InstantiatedClass leftClass, TestClassReference rightClass):
+                {
+                    return leftClass.Signature.Id == rightClass.Id
+                        && leftClass.TypeArguments.Count == rightClass.TypeArguments.Count
+                        && leftClass.TypeArguments.Zip(rightClass.TypeArguments).All(x => AreTypeReferencesEqual(x.First.ResolvedType.NotNull(), x.Second.argument));
+                }
+            case (TestClassReference leftClass, InstantiatedClass rightClass):
+                {
+                    return leftClass.Id == rightClass.Signature.Id
+                        && leftClass.TypeArguments.Count == rightClass.TypeArguments.Count
+                        && leftClass.TypeArguments.Zip(rightClass.TypeArguments).All(x => AreTypeReferencesEqual(x.First.argument, x.Second.ResolvedType.NotNull()));
+                }
+            case (TestClassReference leftClass, TestClassReference rightClass):
+                {
+                    return leftClass.Id == rightClass.Id
+                        && leftClass.TypeArguments.Count == rightClass.TypeArguments.Count
+                        && leftClass.TypeArguments.Zip(rightClass.TypeArguments).All(x => AreTypeReferencesEqual(x.First.argument, x.Second.argument));
+                }
+            case (InstantiatedUnion leftUnion, TestUnionReference rightUnion):
+                {
+                    return leftUnion.Signature.Id == rightUnion.Id
+                        && leftUnion.TypeArguments.Count == rightUnion.TypeArguments.Count
+                        && leftUnion.TypeArguments.Zip(rightUnion.TypeArguments).All(x => AreTypeReferencesEqual(x.First.ResolvedType.NotNull(), x.Second.argument));
+                }
+            case (TestUnionReference leftUnion, InstantiatedUnion rightUnion):
+                {
+                    return leftUnion.Id == rightUnion.Signature.Id
+                        && leftUnion.TypeArguments.Count == rightUnion.TypeArguments.Count
+                        && leftUnion.TypeArguments.Zip(rightUnion.TypeArguments).All(x => AreTypeReferencesEqual(x.First.argument, x.Second.ResolvedType.NotNull()));
+                }
+            case (TestUnionReference leftUnion, TestUnionReference rightUnion):
+                {
+                    return leftUnion.Id == rightUnion.Id
+                        && leftUnion.TypeArguments.Count == rightUnion.TypeArguments.Count
+                        && leftUnion.TypeArguments.Zip(rightUnion.TypeArguments).All(x => AreTypeReferencesEqual(x.First.argument, x.Second.argument));
+                }
+            case (GenericPlaceholder leftPlaceholder, GenericPlaceholder rightPlaceholder):
+                {
+                    return leftPlaceholder.OwnerType.Id == rightPlaceholder.OwnerType.Id
+                        && leftPlaceholder.GenericName == rightPlaceholder.GenericName;
+                }
+            case (GenericTypeReference leftReference, _):
+                {
+                    return AreTypeReferencesEqual(leftReference.ResolvedType.NotNull(), right);
+                }
+            case (_, GenericTypeReference rightReference):
+                {
+                    return AreTypeReferencesEqual(left, rightReference.ResolvedType.NotNull());
+                }
+            case (InstantiatedClass, InstantiatedUnion):
+            case (InstantiatedClass, TestUnionReference):
+            case (InstantiatedClass, TypeChecking.TypeChecker.GenericPlaceholder):
+            case (InstantiatedUnion, InstantiatedClass):
+            case (InstantiatedUnion, TestClassReference):
+            case (InstantiatedUnion, TypeChecking.TypeChecker.GenericPlaceholder):
+            case (null, not null):
+            case (not null, null):
+                return false;
+            default:
+                throw new InvalidOperationException($"{left?.GetType()} --- {right?.GetType()}");
+        }
+    }
+
+    private sealed record TestClassReference(DefId Id, IReadOnlyList<(string name, ITypeReference argument)> TypeArguments, bool Boxed = true)
+        : ITypeReference, IEquatable<ITypeReference>
+    {
+        public bool Equals(ITypeReference? other)
+        {
+            return other is not null && AreTypeReferencesEqual(this, other);
+        }
+
+        public override string ToString()
+        {
+            if (TypeArguments.Count == 0)
+            {
+                return Id.FullName;
+            }
+
+            var sb = new StringBuilder($"{Id.FullName}::<");
+            sb.AppendJoin(",", TypeArguments.Select(x => $"{x.name}=[{x.argument}]"));
+            sb.Append('>');
+            return sb.ToString();
         }
     }
 

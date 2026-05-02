@@ -141,7 +141,6 @@ public interface ILoweredTypeReference
 }
 
 public record LoweredConcreteTypeReference(
-    string Name,
     DefId DefinitionId,
     IReadOnlyList<ILoweredTypeReference> TypeArguments) : ILoweredTypeReference
 {
@@ -203,10 +202,8 @@ public record StaticDataTypeField(
     MethodLocal ReturnValueLocal);
 
 
-public class LoweredModule
+public class LoweredProgram
 {
-    public required ModuleId Id { get; init; }
-
     public required IReadOnlyList<DataType> DataTypes { get; init; }
     public required IReadOnlyList<IMethod> Methods { get; init; }
 }

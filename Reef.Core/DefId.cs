@@ -39,7 +39,7 @@ public record DefId(ModuleId ModuleId, string FullName)
     public static DefId PrintU64 { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::print_u64");
     public static DefId Allocate { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::allocate");
 
-    public static DefId Unit { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::Unit");
+    public static DefId Unit { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::unit");
 
     public static DefId String { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::string");
     public static DefId Array { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::array");
@@ -53,12 +53,23 @@ public record DefId(ModuleId ModuleId, string FullName)
     public static DefId UInt16 { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::u16");
     public static DefId UInt8 { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::u8");
 
+    public static IReadOnlyList<DefId> IntTypes { get; } = [
+        Int64,
+        Int32,
+        Int16,
+        Int8,
+        UInt64,
+        UInt32,
+        UInt16,
+        UInt8,
+    ];
+
     public static DefId RawPointer { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::rawPointer");
     public static DefId MethodPointer { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::methodPointer");
 
     public static DefId Boolean { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::bool");
 
-    public static DefId Never { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::!");
+    public static DefId Never { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::never");
 
     public static DefId Result { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::result");
 
@@ -72,9 +83,9 @@ public record DefId(ModuleId ModuleId, string FullName)
 
     public static DefId Main(ModuleId moduleId) => new(moduleId, moduleId.Value + ":::_Main");
 
-    public static DefId FunctionObject(int parameterCount) => new(CoreLibModuleId, CoreLibModuleId.Value + $":::Function`{parameterCount + 1}");
+    public static DefId FunctionObject(int parameterCount) => new(CoreLibModuleId, CoreLibModuleId.Value + $":::Function_{parameterCount + 1}");
 
-    public static DefId FunctionObject_Call(int parameterCount) => new(CoreLibModuleId, CoreLibModuleId.Value + $":::Function`{parameterCount + 1}__Call");
+    public static DefId FunctionObject_Call(int parameterCount) => new(CoreLibModuleId, CoreLibModuleId.Value + $":::Function_{parameterCount + 1}__Call");
 
-    public static DefId Tuple(int elementCount) => new(CoreLibModuleId, CoreLibModuleId.Value + $":::Tuple`{elementCount}");
+    public static DefId Tuple(int elementCount) => new(CoreLibModuleId, CoreLibModuleId.Value + $":::Tuple_{elementCount}");
 }

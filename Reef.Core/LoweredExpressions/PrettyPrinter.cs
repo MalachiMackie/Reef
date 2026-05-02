@@ -4,13 +4,13 @@ using System.Text;
 
 namespace Reef.Core.LoweredExpressions;
 
-public class PrettyPrinter(LoweredModule module)
+public class PrettyPrinter(LoweredProgram module)
 {
     private readonly StringBuilder _stringBuilder = new();
     private uint _indentationLevel;
 
     public static string PrettyPrintLoweredProgram(
-            LoweredModule module,
+            LoweredProgram module,
             bool parensAroundExpressions = true,
             bool printValueUseful = true)
     {
@@ -93,7 +93,7 @@ public class PrettyPrinter(LoweredModule module)
                 }
             case LoweredConcreteTypeReference concrete:
                 {
-                    _stringBuilder.Append(concrete.Name);
+                    _stringBuilder.Append(concrete.FullyQualifiedName);
                     if (concrete.TypeArguments.Count > 0)
                     {
                         _stringBuilder.Append("::<");

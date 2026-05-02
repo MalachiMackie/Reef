@@ -1,0 +1,5 @@
+pub extern fn get_memory_usage_bytes(): mut u64;
+pub extern fn print_stack_trace();
+pub extern fn trigger_gc();
+pub extern fn print_all_types();
+pub extern fn print_all_methods();

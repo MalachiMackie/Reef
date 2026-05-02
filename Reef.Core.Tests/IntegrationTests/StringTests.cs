@@ -107,7 +107,7 @@ public class StringTests : IntegrationTestBase
             """
             var original: string = "hello world";
             var trimmedSlice: StringSlice = original.slice(1, 9);
-            print_string_slice(trimmedSlide);
+            print_string_slice(trimmedSlice);
             print_string("\n");
             var trimmed = trimmedSlice.toString();
             print_string(trimmed);

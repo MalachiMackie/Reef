@@ -5,10 +5,11 @@ using Reef.Core.TypeChecking.PatternAnalysis;
 namespace Reef.Core.TypeChecking;
 
 // todo: this should probably be able to be a visitor
-public class TypeTwoTypeChecker(bool throwOnError)
+public class TypeTwoTypeChecker(bool throwOnError, Dictionary<ModuleId, (List<TypeChecker.FunctionSignature>, List<TypeChecker.UnionSignature>, List<TypeChecker.ClassSignature>)> moduleSignatures)
 {
     private readonly List<TypeCheckerError> _errors = [];
     private readonly Stack<Dictionary<TypeChecker.LocalVariable, bool>> _localVariablesInitialized = [];
+    private readonly Dictionary<ModuleId, (List<TypeChecker.FunctionSignature> Functions, List<TypeChecker.UnionSignature> Unions, List<TypeChecker.ClassSignature> Classes)> _moduleSignatures = moduleSignatures;
 
     private void AddError(TypeCheckerError error)
     {
@@ -33,9 +34,12 @@ public class TypeTwoTypeChecker(bool throwOnError)
         return false;
     }
 
-    public static IReadOnlyList<TypeCheckerError> TypeTwoTypeCheck(LangModule program, bool throwOnError = false)
+    public static IReadOnlyList<TypeCheckerError> TypeTwoTypeCheck(
+        Dictionary<ModuleId, (List<TypeChecker.FunctionSignature>, List<TypeChecker.UnionSignature>, List<TypeChecker.ClassSignature>)> moduleSignatures,
+        LangModule program,
+        bool throwOnError = false)
     {
-        var checker = new TypeTwoTypeChecker(throwOnError);
+        var checker = new TypeTwoTypeChecker(throwOnError, moduleSignatures);
         checker.InnerTypeTwoTypeCheck(program);
 
         return checker._errors;
@@ -279,12 +283,16 @@ public class TypeTwoTypeChecker(bool throwOnError)
             }
         }
 
+        var neverTypeSignature = _moduleSignatures[DefId.Never.ModuleId].Classes.First(x => x.Id == DefId.Never);
+        var neverType = TypeChecker.InstantiatedClass.Create(neverTypeSignature, [], boxed: false);
+
         var usefulnessReport = MatchUsefulnessAnalyzer.ComputeMatchUsefulness(
             matchExpression.Arms,
             matchExpression.Value.ResolvedType ?? throw new InvalidOperationException("expected resolved type"),
             PlaceValidity.ValidOnly,
             // random guess
-            complexityLimit: 15);
+            complexityLimit: 15,
+            neverType);
 
         foreach (var (arm, usefulness) in usefulnessReport.ArmUsefulness)
         {
@@ -559,7 +567,8 @@ public class TypeTwoTypeChecker(bool throwOnError)
                 }
             case TypeChecker.UnspecifiedSizedIntType unspecifiedIntType:
                 {
-                    unspecifiedIntType.ResolvedIntType ??= TypeChecker.InstantiatedClass.Int32;
+                    var signature = _moduleSignatures[DefId.Int32.ModuleId].Classes.First(x => x.Id == DefId.Int32);
+                    unspecifiedIntType.ResolvedIntType ??= TypeChecker.InstantiatedClass.Create(signature, [], boxed: unspecifiedIntType.Boxed);
                     break;
                 }
             case TypeChecker.UnknownInferredType unknownInferredType:

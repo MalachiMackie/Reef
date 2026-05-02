@@ -2,22 +2,15 @@
 
 namespace Reef.Core;
 
-public class TreeShaker(IReadOnlyList<LoweredModule> modules)
+public class TreeShaker(LoweredProgram program)
 {
     private readonly HashSet<DefId> _usefulMethodDefIds = [];
-    private readonly Dictionary<DefId, IMethod> _methods = modules.SelectMany(x => x.Methods)
+    private readonly Dictionary<DefId, IMethod> _methods = program.Methods
         .ToDictionary(x => x.Id);
 
     public HashSet<DefId> Shake()
     {
-        var mainModule = modules.Where(x => x.Methods.Any(y => y.Name == "_Main")).ToArray();
-
-        if (mainModule.Length != 1)
-        {
-            return [];
-        }
-
-        var mainMethod = mainModule[0].Methods.OfType<LoweredMethod>().Single(x => x.Name == "_Main");
+        var mainMethod = program.Methods.OfType<LoweredMethod>().Single(x => x.Name == "_Main");
 
         ShakeMethod(mainMethod);
 

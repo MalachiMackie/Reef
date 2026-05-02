@@ -1,0 +1,190 @@
+use :::Reef:::Core:::Reflection:::TypeId;
+
+pub class Function_1<TReturn> {
+    pub field FunctionReference: methodPointer,
+    pub field FunctionParameter: rawPointer,
+
+    pub extern fn Call(): TReturn
+}
+
+pub class Function_2<TParam, TReturn> {
+    pub field FunctionReference: methodPointer,
+    pub field FunctionParameter: rawPointer,
+
+    pub extern fn Call(param: TParam): TReturn
+}
+
+pub class Function_3<TParam1, TParam2, TReturn> {
+    pub field FunctionReference: methodPointer,
+    pub field FunctionParameter: rawPointer,
+
+    pub extern fn Call(param1: TParam1, param2: TParam2): TReturn
+}
+
+
+pub class Function_4<TParam1, TParam2, TParam3, TReturn> {
+    pub field FunctionReference: methodPointer,
+    pub field FunctionParameter: rawPointer,
+
+    pub extern fn Call(param1: TParam1, param2: TParam2, param3: TParam3): TReturn
+}
+
+pub class Function_5<TParam1, TParam2, TParam3, TParam4, TReturn> {
+    pub field FunctionReference: methodPointer,
+    pub field FunctionParameter: rawPointer,
+
+    pub extern fn Call(param1: TParam1, param2: TParam2, param3: TParam3, param4: TParam4): TReturn
+}
+
+pub class Function_6<TParam1, TParam2, TParam3, TParam4, TParam5, TReturn> {
+    pub field FunctionReference: methodPointer,
+    pub field FunctionParameter: rawPointer,
+
+    pub extern fn Call(param1: TParam1, param2: TParam2, param3: TParam3, param4: TParam4, param5: TParam5): TReturn
+}
+
+pub class Function_7<TParam1, TParam2, TParam3, TParam4, TParam5, TParam6, TReturn> {
+    pub field FunctionReference: methodPointer,
+    pub field FunctionParameter: rawPointer,
+
+    pub extern fn Call(param1: TParam1, param2: TParam2, param3: TParam3, param4: TParam4, param5: TParam5, param6: TParam6): TReturn
+}
+
+pub class Function_8<TParam1, TParam2, TParam3, TParam4, TParam5, TParam6, TParam7, TReturn> {
+    pub field FunctionReference: methodPointer,
+    pub field FunctionParameter: rawPointer,
+
+    pub extern fn Call(param1: TParam1, param2: TParam2, param3: TParam3, param4: TParam4, param5: TParam5, param6: TParam6, param7: TParam7): TReturn
+}
+
+pub extern fn allocate(size_bytes: u64): mut rawPointer
+
+pub unboxed class BoxedValue<TValue> {
+    pub field ObjectHeader: ObjectHeader,
+    pub field Value: TValue,
+}
+
+pub unboxed class string {
+    pub field Length: u64,
+    pub field StartChar: rawPointer
+}
+
+pub extern unboxed class methodPointer{}
+pub extern unboxed class rawPointer{}
+pub extern unboxed class unit{}
+pub extern unboxed class never{}
+
+pub extern unboxed class bool{}
+pub extern unboxed class u64{}
+pub extern unboxed class u32{}
+pub extern unboxed class u16{}
+pub extern unboxed class u8{}
+pub extern unboxed class i64{}
+pub extern unboxed class i32{}
+pub extern unboxed class i16{}
+pub extern unboxed class i8{}
+
+
+pub unboxed class Tuple_1<T0> {
+    pub field Item0: T0,
+}
+
+pub unboxed class Tuple_2<T0, T1> {
+    pub field Item0: T0,
+    pub field Item1: T1,
+}
+
+pub unboxed class Tuple_3<T0, T1, T2> {
+    pub field Item0: T0,
+    pub field Item1: T1,
+    pub field Item2: T2,
+}
+
+pub unboxed class Tuple_4<T0, T1, T2, T3> {
+    pub field Item0: T0,
+    pub field Item1: T1,
+    pub field Item2: T2,
+    pub field Item3: T3,
+}
+
+pub unboxed class Tuple_5<T0, T1, T2, T3, T4> {
+    pub field Item0: T0,
+    pub field Item1: T1,
+    pub field Item2: T2,
+    pub field Item3: T3,
+    pub field Item4: T4,
+}
+
+pub unboxed class Tuple_6<T0, T1, T2, T3, T4, T5> {
+    pub field Item0: T0,
+    pub field Item1: T1,
+    pub field Item2: T2,
+    pub field Item3: T3,
+    pub field Item4: T4,
+    pub field Item5: T5,
+}
+
+pub unboxed class Tuple_7<T0, T1, T2, T3, T4, T5, T6> {
+    pub field Item0: T0,
+    pub field Item1: T1,
+    pub field Item2: T2,
+    pub field Item3: T3,
+    pub field Item4: T4,
+    pub field Item5: T5,
+    pub field Item6: T6,
+}
+
+pub unboxed class Tuple_8<T0, T1, T2, T3, T4, T5, T6, T7> {
+    pub field Item0: T0,
+    pub field Item1: T1,
+    pub field Item2: T2,
+    pub field Item3: T3,
+    pub field Item4: T4,
+    pub field Item5: T5,
+    pub field Item6: T6,
+    pub field Item7: T7,
+}
+
+pub unboxed class Tuple_9<T0, T1, T2, T3, T4, T5, T6, T7, T8> {
+    pub field Item0: T0,
+    pub field Item1: T1,
+    pub field Item2: T2,
+    pub field Item3: T3,
+    pub field Item4: T4,
+    pub field Item5: T5,
+    pub field Item6: T6,
+    pub field Item7: T7,
+    pub field Item8: T8,
+}
+
+/*
+pub class string {pub field Length: u64, field StartChar: rawPointer}
+*/
+
+pub unboxed union result<TValue, TError> {
+    Ok(TValue),
+    Error(TError)
+}
+
+pub unboxed class ObjectHeader {
+    pub field TypeId: TypeId,
+    // todo: vtable
+}
+
+pub extern fn box<TParam, TReturn>(val: TParam): mut TReturn
+    where TParam: unboxed TReturn
+    where TReturn: boxed TParam;
+
+pub extern fn unbox<TParam, TReturn>(val: TParam): mut TReturn
+    where TParam: boxed TReturn
+    where TReturn: unboxed TParam;
+
+pub extern fn print_string(str: string)
+pub extern fn print_i8(num: i8);
+pub extern fn print_u8(num: u8);
+pub extern fn print_i16(num: i16);
+pub extern fn print_u16(num: u16);
+pub extern fn print_i32(num: i32);
+pub extern fn print_u32(num: u32);
+pub extern fn print_i64(num: i64);
+pub extern fn print_u64(num: u64);

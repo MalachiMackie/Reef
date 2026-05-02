@@ -11,7 +11,7 @@ public partial class TypeChecker
 
         if (matchesExpression.Pattern is null)
         {
-            return TypeChecking.TypeChecker.InstantiatedClass.Boolean;
+            return Boolean();
         }
 
         matchesExpression.DeclaredVariables =
@@ -22,6 +22,6 @@ public partial class TypeChecker
             ExpectAssignableExpression(matchesExpression.ValueExpression);
         }
 
-        return TypeChecking.TypeChecker.InstantiatedClass.Boolean;
+        return Boolean();
     }
 }

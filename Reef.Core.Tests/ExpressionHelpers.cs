@@ -236,12 +236,13 @@ public static class ExpressionHelpers
     }
 
     public static TypeChecker.FunctionObject FunctionObject(
-        IEnumerable<(bool isMut, TypeChecker.ITypeReference parameterType)>? parameters = null,
-        TypeChecker.ITypeReference? returnType = null)
+        TypeChecker.ITypeReference returnType,
+        IEnumerable<(bool isMut, TypeChecker.ITypeReference parameterType)>? parameters = null)
     {
         return new TypeChecker.FunctionObject(
             parameters: parameters?.Select(x => new TypeChecker.FunctionParameter(x.parameterType, x.isMut)).ToArray() ?? [],
-            returnType: returnType ?? TypeChecker.InstantiatedClass.Unit,
+            returnType: returnType,
+            false,
             false);
     }
 
@@ -255,7 +256,8 @@ public static class ExpressionHelpers
         ITypeIdentifier? returnType = null,
         bool isMutableReturn = false,
         bool isExtern = false,
-        Block? block = null)
+        Block? block = null,
+        IReadOnlyList<IConstraint>? constraints = null)
     {
         return new LangFunction(isPublic
                 ? new AccessModifier(Token.Pub(SourceSpan.Default))
@@ -274,8 +276,8 @@ public static class ExpressionHelpers
             block,
             isExtern
                 ? new ExternModifier(Token.Extern(SourceSpan.Default))
-                : null
-            );
+                : null,
+            constraints ?? []);
     }
 
     public static FunctionParameter FunctionParameter(string name, ITypeIdentifier? type = null, bool isMutable = false)
@@ -423,12 +425,12 @@ public static class ExpressionHelpers
 
     public static ArrayTypeIdentifier ArrayTypeIdentifier(
         ITypeIdentifier elementType,
-        uint arrayLength,
+        uint? arrayLength,
         Token? boxingSpecifier)
     {
         return new ArrayTypeIdentifier(
             elementType,
-            Token.IntLiteral((int)arrayLength, SourceSpan.Default),
+            arrayLength is null ? null : Token.IntLiteral((int)arrayLength, SourceSpan.Default),
             boxingSpecifier,
             SourceRange.Default);
     }
@@ -444,7 +446,7 @@ public static class ExpressionHelpers
         ITypeIdentifier? returnType = null,
         Token? returnMutabilityModifier = null)
     {
-        return new FnTypeIdentifier(parameters ?? [], returnType, returnMutabilityModifier, SourceRange.Default);
+        return new FnTypeIdentifier(parameters ?? [], returnType, returnMutabilityModifier, null, SourceRange.Default);
     }
 
     public static FnTypeIdentifierParameter FnTypeIdentifierParameter(ITypeIdentifier parameterType, bool isMut = false)

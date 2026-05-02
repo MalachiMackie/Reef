@@ -1,5 +1,8 @@
+using System.IO.Abstractions.TestingHelpers;
+using System.Text;
 using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
+using Reef.Core.Tests.IntegrationTests.Helpers;
 
 namespace Reef.Core.Tests.AbseilTests;
 
@@ -12,24 +15,35 @@ public class TestBase
         TestOutput = testOutputHelper;
     }
 
-    protected static (LoweredModule loweredModule, IReadOnlyList<LoweredModule> importedModules) Lower(LangModule module)
+    protected static LoweredProgram Lower(IReadOnlyList<LangModule> modules, ModuleId mainModuleId)
     {
-        return ProgramAbseil.Lower(new() { { module.ModuleId, module } }, module.ModuleId);
+        var fullProgram = ProgramAbseil.Lower(modules.ToDictionary(x => x.ModuleId), mainModuleId);
+
+        return new LoweredProgram
+        {
+            DataTypes = [.. fullProgram.DataTypes.Where(x => x.Id.ModuleId == mainModuleId)],
+            Methods = [.. fullProgram.Methods.Where(x => x.Id.ModuleId == mainModuleId)]
+        };
     }
 
-    protected static LangModule CreateProgram(ModuleId moduleId, string source)
+    protected async Task<IReadOnlyList<LangModule>> CreateProgram(ModuleId moduleId, string source)
     {
-        var tokens = Tokenizer.Tokenize(source);
-        var parseResult = Parser.Parse(moduleId, tokens);
-        parseResult.Errors.Should().BeEmpty();
-        var program = parseResult.ParsedModule;
-        var typeCheckErrors = TypeChecking.TypeChecker.TypeCheck([program]);
-        typeCheckErrors[moduleId].Should().BeEmpty();
+        var fs = new MockFileSystem();
+        fs.AddFilesFromEmbeddedNamespace("", typeof(TestBase).Assembly, "reef-std");
 
-        return program;
+        fs.AddFile("main.rf", new MockFileData(Encoding.UTF8.GetBytes(source)));
+
+        var (results, _, _, importedModules) = await new ReefCompiler(fs, moduleId, new TestLogger(TestOutput)).TypeCheck();
+
+        var moduleResult = results[moduleId];
+
+        moduleResult.ParserErrors.Should().BeEmpty();
+        moduleResult.TypeCheckerErrors.Should().BeEmpty();
+
+        return [.. results.Select(x => x.Value.Module).Concat(importedModules)];
     }
 
-    protected void PrintPrograms(LoweredModule expected, LoweredModule actual, bool parensAroundExpressions = true, bool printValueUseful = true)
+    protected void PrintPrograms(LoweredProgram expected, LoweredProgram actual, bool parensAroundExpressions = true, bool printValueUseful = true)
     {
         TestOutput.WriteLine("Expected Program:");
         TestOutput.WriteLine(PrettyPrinter.PrettyPrintLoweredProgram(expected, parensAroundExpressions, printValueUseful));

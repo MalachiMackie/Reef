@@ -8,11 +8,11 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
 {
     [Theory]
     [MemberData(nameof(TestCases))]
-    public void ClassAbseilTest(string description, string source, LoweredModule expectedProgram)
+    public async Task ClassAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
         description.Should().NotBeEmpty();
-        var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = Lower(program);
+        var program = await CreateProgram(ModuleId, source);
+        var loweredProgram = Lower(program, ModuleId);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -20,7 +20,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
     }
 
     [Fact]
-    public void SingleTest()
+    public async Task SingleTest()
     {
         const string source = """
                          class MyClass<T>
@@ -74,8 +74,8 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      locals: [new MethodLocal("_local0", null, Unit)],
                                      typeParameters: [(new DefId(ModuleId, $"{ModuleId}:::MyClass"), "T")])
             ]);
-        var program = CreateProgram(ModuleId, source);
-        var (loweredProgram, _) = Lower(program);
+        var program = await CreateProgram(ModuleId, source);
+        var loweredProgram = Lower(program, ModuleId);
 
         PrintPrograms(expectedProgram, loweredProgram);
 
@@ -84,7 +84,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
 
     private static readonly ModuleId ModuleId = new("main");
 
-    public static TheoryData<string, string, LoweredModule> TestCases()
+    public static TheoryData<string, string, LoweredProgram> TestCases()
     {
         return new()
         {
@@ -128,7 +128,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             parameters:
                             [
                                 ("this",
-                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass",
+                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
                                         new DefId(ModuleId, $"{ModuleId}:::MyClass"),
                                         [
                                             new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}:::MyClass"),
@@ -266,7 +266,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             locals:
                                             [
                                                 new MethodLocal("_local0", "a",
-                                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass",
+                                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
                                                         new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
                                                 new MethodLocal("_local1", "b", StringT),
                                             ])
@@ -318,7 +318,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             locals:
                             [
                                 new MethodLocal("_local0", "a",
-                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass",
+                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
                                         new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
                                 new MethodLocal("_local1", "b", StringT),
                             ])
@@ -358,7 +358,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     new Assign(
                                         new Local("_local0"),
                                         new Use(new Copy(new StaticField(
-                                            new LoweredConcreteTypeReference("MyClass",
+                                            new LoweredConcreteTypeReference(
                                                 new DefId(ModuleId, $"{ModuleId}:::MyClass"), []),
                                             "MyField"))))
                                 ], new GoTo(new BasicBlockId("bb1"))),
@@ -433,7 +433,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             parameters:
                             [
                                 ("this",
-                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass",
+                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
                                         new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
                             ]),
                         Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"), "MyClass__MyFn",
@@ -448,7 +448,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 new BasicBlock(new BasicBlockId("bb1"), [
                                     ..CreateBoxedObject(
                                         new Deref(new Local("_local0")),
-                                        new LoweredConcreteTypeReference("Function`1", DefId.FunctionObject(0),
+                                        new LoweredConcreteTypeReference( DefId.FunctionObject(0),
                                                 [Unit])),
                                     new Assign(
                                         new Field(new Field(new Deref(new Local("_local0")), "Value", "_classVariant"), "FunctionReference", "_classVariant"),
@@ -466,12 +466,12 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             locals:
                             [
                                 new MethodLocal("_local0", "a",
-                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit])))),
+                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( DefId.FunctionObject(0), [Unit])))),
                             ],
                             parameters:
                             [
                                 ("this",
-                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass",
+                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
                                         new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
                             ])
                     ])
@@ -508,7 +508,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 new BasicBlock(new BasicBlockId("bb1"), [
                                     ..CreateBoxedObject(
                                         new Deref(new Local("_local0")),
-                                        new LoweredConcreteTypeReference("Function`1", DefId.FunctionObject(0),
+                                        new LoweredConcreteTypeReference( DefId.FunctionObject(0),
                                                 [Unit])),
                                     new Assign(
                                         new Field(new Field(new Deref(new Local("_local0")), "Value", "_classVariant"), "FunctionReference", "_classVariant"),
@@ -525,12 +525,12 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             locals:
                             [
                                 new MethodLocal("_local0", "a",
-                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("Function`1", DefId.FunctionObject(0), [Unit]))))
+                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( DefId.FunctionObject(0), [Unit]))))
                             ],
                             parameters:
                             [
                                 ("this",
-                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass",
+                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
                                         new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
                             ])
                     ])
@@ -559,7 +559,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             parameters:
                             [
                                 ("this",
-                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass",
+                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
                                         new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
                             ]),
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"),
@@ -576,7 +576,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 new BasicBlock(new BasicBlockId("bb1"), [
                                     ..CreateBoxedObject(
                                         new Deref(new Local("_local0")),
-                                        new LoweredConcreteTypeReference("MyClass",
+                                        new LoweredConcreteTypeReference(
                                                 new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])),
                                 ], new MethodCall(
                                     new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"),
@@ -590,7 +590,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             locals:
                             [
                                 new MethodLocal("_local0", "a",
-                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass",
+                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
                                         new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
                                 new MethodLocal("_local1", null, Unit)
                             ])
@@ -674,7 +674,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             parameters:
                             [
                                 ("this",
-                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass",
+                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
                                         new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
                             ])
                     ])
@@ -719,7 +719,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     new Assign(
                                         new Local("_local0"),
                                         new Use(new Copy(new StaticField(
-                                            new LoweredConcreteTypeReference("MyClass",
+                                            new LoweredConcreteTypeReference(
                                                 new DefId(ModuleId, $"{ModuleId}:::MyClass"), []),
                                             "MyField"))))
                                 ], new GoTo(new BasicBlockId("bb1"))),
@@ -730,7 +730,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             parameters:
                             [
                                 ("this",
-                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass",
+                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
                                         new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
                             ])
                     ])
@@ -771,7 +771,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             parameters:
                             [
                                 ("this",
-                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass",
+                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
                                         new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
                             ]),
                         Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__OtherFn"),
@@ -783,7 +783,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                             parameters:
                             [
                                 ("this",
-                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass",
+                                    new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
                                         new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
                             ])
                     ])
@@ -822,7 +822,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      [
                                          ..CreateBoxedObject(
                                              new Deref(new Local("_local0")),
-                                             new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])),
+                                             new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])),
                                          new Assign(
                                              new Field(new Field(new Deref(new Local("_local0")), "Value", "_classVariant"), "MyField", "_classVariant"),
                                              new Use(new StringConstant(""))),
@@ -838,7 +838,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                  new MethodLocal(
                                      "_local0",
                                      "a",
-                                     new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
+                                     new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
                              ])
                      ])
              },
@@ -877,7 +877,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              parameters: [
-                                 ("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
+                                 ("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))
                              ])
                      ])
              },
@@ -919,7 +919,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              [
                                  new BasicBlock(new BasicBlockId("bb0"), [
                                      new Assign(new StaticField(
-                                         new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []),
+                                         new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), []),
                                          "MyField"),
                                          new Use(new StringConstant("hi")))
                                  ], new GoTo(new BasicBlockId("bb1"))),
@@ -959,7 +959,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              [
                                  new BasicBlock(new BasicBlockId("bb0"), [
                                      new Assign(new StaticField(
-                                         new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []),
+                                         new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), []),
                                          "MyField"),
                                          new Use(new StringConstant("hi")))
                                  ], new GoTo(new BasicBlockId("bb1"))),
@@ -995,7 +995,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              StringT,
                              parameters: [
-                                 ("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
+                                 ("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))),
                                  ("a", StringT)])
                      ])
              },
@@ -1054,8 +1054,8 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                  new BasicBlock(new BasicBlockId("bb1"), [], new Return()),
                              ],
                              Unit,
-                             parameters: [("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))],
-                             locals: [new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))])
+                             parameters: [("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))],
+                             locals: [new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))])
                      ])
              },
              {
@@ -1166,7 +1166,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              parameters: [
                                  (
                                      "this",
-                                     new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}:::MyClass"), "T")])))
+                                     new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}:::MyClass"), "T")])))
                                  )
                              ]),
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
@@ -1185,7 +1185,6 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                          ..CreateBoxedObject(
                                              new Deref(new Local("_local0")),
                                              new LoweredConcreteTypeReference(
-                                                     "MyClass",
                                                      new DefId(ModuleId, $"{ModuleId}:::MyClass"), [StringT])),
                                      ],
                                      new MethodCall(
@@ -1199,7 +1198,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              ],
                              Unit,
                              locals: [
-                                 new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference("MyClass", new DefId(ModuleId, $"{ModuleId}:::MyClass"), [StringT])))),
+                                 new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), [StringT])))),
                                  new MethodLocal("_local1", null, Unit)
                              ])
                      ])

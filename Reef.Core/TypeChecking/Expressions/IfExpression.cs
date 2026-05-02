@@ -21,7 +21,7 @@ public partial class TypeChecker
         ifExpression.CheckExpression.ValueUseful = true;
         TypeCheckExpression(ifExpression.CheckExpression);
 
-        ExpectExpressionType(TypeChecking.TypeChecker.InstantiatedClass.Boolean, ifExpression.CheckExpression);
+        ExpectExpressionType(Boolean(), ifExpression.CheckExpression);
 
         IReadOnlyList<TypeChecking.TypeChecker.LocalVariable> matchVariableDeclarations = [];
 
@@ -62,7 +62,7 @@ public partial class TypeChecker
             elseIf.CheckExpression.ValueUseful = true;
             TypeCheckExpression(elseIf.CheckExpression);
 
-            ExpectExpressionType(TypeChecking.TypeChecker.InstantiatedClass.Boolean, elseIf.CheckExpression);
+            ExpectExpressionType(Boolean(), elseIf.CheckExpression);
 
             matchVariableDeclarations = elseIf.CheckExpression is MatchesExpression
             {
@@ -121,6 +121,6 @@ public partial class TypeChecker
             return bodyResolvedType;
         }
 
-        return TypeChecking.TypeChecker.InstantiatedClass.Unit;
+        return Unit();
     }
 }

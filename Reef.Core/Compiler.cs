@@ -27,9 +27,9 @@ public class Compiler
             Directory.CreateDirectory(buildDirectory);
         }
 
-        var innerCompiler = new ReefCompiler(new FileSystem(), workingDirectory);
+        var innerCompiler = new ReefCompiler(new FileSystem(), new ModuleId("main"), logger, workingDirectory);
 
-        var (typeCheckResults, moduleIdToFileName) = await innerCompiler.TypeCheck();
+        var (typeCheckResults, moduleIdToFileName, mainModuleId, importedModules) = await innerCompiler.TypeCheck();
 
         var hadError = false;
         foreach (var (moduleId, typeCheckResult) in typeCheckResults)
@@ -62,31 +62,23 @@ public class Compiler
         var programName = "main";
 
         logger.LogInformation("Lowering...");
-        var (loweredProgram, importedModules) = ProgramAbseil.Lower(
-            typeCheckResults.ToDictionary(x => x.Key, x => x.Value.Module),
-            new ModuleId("main"));
+        var loweredProgram = ProgramAbseil.Lower(
+            typeCheckResults.Select(x => x.Value.Module).Concat(importedModules).ToDictionary(x => x.ModuleId),
+            mainModuleId
+        );
 
 
         if (outputIr)
         {
-            var stringBuilder = new StringBuilder();
-            foreach (var importedModule in importedModules.Prepend(loweredProgram))
-            {
-                var importedModuleIrStr = PrettyPrinter.PrettyPrintLoweredProgram(importedModule, false, false);
-                if (!string.IsNullOrWhiteSpace(importedModuleIrStr))
-                {
-                    stringBuilder.AppendLine($"Module: {importedModule.Id}");
-                    stringBuilder.AppendLine(importedModuleIrStr);
-                }
-            }
-
-            await File.WriteAllTextAsync(Path.Join(buildDirectory, $"{programName}.ir"), stringBuilder.ToString(), ct);
+            await File.WriteAllTextAsync(
+                Path.Join(buildDirectory, $"{programName}.ir"),
+                PrettyPrinter.PrettyPrintLoweredProgram(loweredProgram, false, false),
+                ct);
         }
 
         logger.LogInformation("Generating Assembly...");
-        IReadOnlyList<LoweredModule> allModules = [.. importedModules.Append(loweredProgram)];
 
-        var usefulMethodIds = new TreeShaker(allModules).Shake();
+        var usefulMethodIds = new TreeShaker(loweredProgram).Shake();
 
         if (usefulMethodIds.Count == 0)
         {
@@ -95,7 +87,7 @@ public class Compiler
         }
 
         var assembly =
-            AssemblyLine.Process(allModules, usefulMethodIds, logger);
+            AssemblyLine.Process(loweredProgram, usefulMethodIds, logger);
         var asmFile = $"{programName}.nasm";
         await File.WriteAllTextAsync(Path.Join(buildDirectory, asmFile), assembly, ct);
 
