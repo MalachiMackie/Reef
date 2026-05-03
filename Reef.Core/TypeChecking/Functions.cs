@@ -154,9 +154,10 @@ public partial class TypeChecker
         return fnSignature;
     }
 
-    private bool IsBoxedOnlyType(ITypeReference typeReference)
+    private static bool IsBoxedOnlyType(ITypeReference typeReference)
     {
-        return typeReference is ArrayType { IsDynamic: true };
+        return typeReference is ArrayType { IsDynamic: true }
+            || (typeReference is InstantiatedClass { Signature.Id: var id } && id == DefId.String);
     }
 
     private void TypeCheckFunctionBody(FunctionSignature fnSignature)

@@ -66,7 +66,7 @@ pub unboxed class BoxedValue<TValue> {
 
 pub unboxed class string_slice {
     // todo: pub(module)
-    pub field original_str_ptr: rawPointer,
+    pub field original_string: string,
     pub field offset: u64,
     pub field length: u64,
 
@@ -76,17 +76,17 @@ pub unboxed class string_slice {
         }
 
         return ok(new string_slice {
-            original_str_ptr = original_str_ptr,
+            original_string = original_string,
             offset = offset + start,
             length = new_length
         });
     }
 }
 
-pub unboxed class string {
+pub class string {
     // If these are renamed or reordered, serialization within AssemblyLine needs to be updated wherever we write strings
     pub field Length: u64,
-    pub field StartChar: rawPointer,
+    pub field StartChar: u8,
 
     pub fn slice(start: u64, length: u64): result::<string_slice, string> {
         if (start + length > Length) {
@@ -94,7 +94,7 @@ pub unboxed class string {
         }
 
         return ok(new string_slice {
-            original_str_ptr = this.StartChar,
+            original_string = this,
             offset = start,
             length = length
         });

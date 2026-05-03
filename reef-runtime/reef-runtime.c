@@ -37,22 +37,30 @@ void print_u16(uint16_t num);
 void print_u32(uint32_t num);
 void print_u64(uint64_t num);
 
-typedef PACK(struct {
-    const char *original_str_ptr;
-    uint64_t offset;
-    uint64_t length;
-}) string_slice;
-
-typedef PACK(struct {
-	uint64_t length;
-	const char *start;
-}) string;
-
 typedef uint32_t TypeId;
 
 typedef PACK(struct {
     TypeId typeId;
 }) ObjectHeader;
+
+
+
+typedef PACK(struct {
+	uint64_t length;
+	char chars[];
+}) string;
+
+typedef PACK(struct {
+    ObjectHeader objectHeader;
+    char padding[4];
+    string str;
+}) StringBoxedValue;
+
+typedef PACK(struct {
+    StringBoxedValue *original_string;
+    uint64_t offset;
+    uint64_t length;
+}) string_slice;
 
 typedef PACK(struct {
     uint16_t variantIdentifier;
@@ -75,7 +83,7 @@ typedef PACK(struct {
 typedef PACK(struct {
     TypeId typeId;
     VariablePlace place;
-    string name;
+    StringBoxedValue *name;
 }) MethodParameter;
 
 typedef PACK(struct {
@@ -90,14 +98,14 @@ typedef PACK(struct {
 }) MethodParameterArrayBoxedValue;
 
 typedef PACK(struct {
-    string name;
+    StringBoxedValue *name;
     TypeId typeId;
     uint16_t offset;
     uint16_t _padding;
 }) FieldInfo;
 
 typedef PACK(struct {
-    string name;
+    StringBoxedValue *name;
     TypeId typeId;
     uint32_t _padding;
 }) StaticFieldInfo;
@@ -125,7 +133,7 @@ typedef PACK(struct {
 }) StaticFieldInfoArrayBoxedValue;
 
 typedef PACK(struct {
-    string name;
+    StringBoxedValue *name;
     FieldInfoArrayBoxedValue *fields;
     bool containsPointer;
     char _padding[7];
@@ -145,8 +153,8 @@ typedef PACK(struct {
 typedef PACK(struct {
     uint16_t variantIdentifier;
     char _padding[6];
-    string fullyQualifiedName;
-    string name;
+    StringBoxedValue *fullyQualifiedName;
+    StringBoxedValue *name;
     uint64_t size;
     TypeId typeId;
     char __padding[4];
@@ -161,8 +169,8 @@ typedef uint16_t (*get_variant_identifier_fn)(void* data);
 typedef PACK(struct {
     uint16_t variantIdentifier;
     char _padding[6];
-    string fullyQualifiedName;
-    string name;
+    StringBoxedValue *fullyQualifiedName;
+    StringBoxedValue *name;
     uint64_t size;
     TypeId typeId;
     char __padding[4];
@@ -179,7 +187,7 @@ typedef PACK(struct {
 typedef PACK(struct {
     uint16_t variantIdentifier;
     char _padding[6];
-    string fullyQualifiedName;
+    StringBoxedValue *fullyQualifiedName;
     TypeId pointerToTypeId;
     char __padding[4];
 }) TypeInfoPointerVariant;
@@ -187,7 +195,7 @@ typedef PACK(struct {
 typedef PACK(struct {
     uint16_t variantIdentifier;
     char _padding[6];
-    string fullyQualifiedName;
+    StringBoxedValue *fullyQualifiedName;
     TypeId elementTypeId;
     char __padding[4];
     uint64_t length;
@@ -232,8 +240,8 @@ typedef PACK(struct {
 typedef PACK(struct {
     uint32_t methodId;
     uint32_t _padding;
-    string fullyQualifiedName;
-    string name;
+    StringBoxedValue *fullyQualifiedName;
+    StringBoxedValue *name;
     MethodParameterArrayBoxedValue *parameters;
     LocalsBoxedValue *locals;
     uint64_t addressFrom;
@@ -262,19 +270,22 @@ TypeInfo *get_type_info(uint64_t index)
 }
 
 void print_string_slice(string_slice slice) {
+    if (slice.original_string->str.length - slice.offset == slice.length)
+    {
+        // slice ends at the end of the original string, which is null terminated, so just print using fputs
+        fputs(slice.original_string->str.chars + slice.offset, stdout);
+        return;
+    }
+
     for (uint64_t i = slice.offset; i < slice.offset + slice.length; i++) {
-        fputc(slice.original_str_ptr[i], stdout);
+        fputc(slice.original_string->str.chars[i], stdout);
     }
 }
 
-void print_string(string str)
+void print_string(StringBoxedValue *str)
 {
-    // naive implementation that just loops through chars
-
-	for (uint64_t i = 0; i < str.length; i++)
-	{
-	    fputc(str.start[i], stdout);
-	}
+    // strings are always null terminated
+    fputs(str->str.chars, stdout);
 }
 
 #define DEFINE_PRINT_INT(func_name, int_type)                            \

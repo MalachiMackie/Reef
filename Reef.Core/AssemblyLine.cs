@@ -134,16 +134,11 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         PadAlignment(ref bytesWritten, _methodInfoDataSubSegment, methodInfoOffsets["FullyQualifiedName"].Alignment);
         var methodFullyQualifiedName = $"{method.Id.FullName}{(typeArguments.Count == 0 ? "" : $"::<{string.Join(", ", typeArguments.Select(x => x.FullyQualifiedName))}>")}";
 
-        _methodInfoDataSubSegment.AppendLine($"        dq 0x{methodFullyQualifiedName.Length:X}");
-        bytesWritten += 8;
-
         _methodInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(methodFullyQualifiedName)}");
         bytesWritten += 8;
 
         _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo.Name");
         PadAlignment(ref bytesWritten, _methodInfoDataSubSegment, methodInfoOffsets["Name"].Alignment);
-        _methodInfoDataSubSegment.AppendLine($"        dq 0x{method.Name.Length:X}");
-        bytesWritten += 8;
 
         _methodInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(method.Name)}");
         bytesWritten += 8;
@@ -158,8 +153,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         var parametersBytesWritten = 0u;
         _dynamicArrayDataSubSegments.Add(parametersArrayLabel, parametersSubSegment);
         parametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.TypeId:");
-        parametersSubSegment.AppendLine($"        dd 0x{GetTypeId(parametersArrayType)}");
-        parametersBytesWritten += 4;
+        parametersBytesWritten += WriteObjectHeaderBlob(parametersSubSegment, parametersArrayType);
 
         PadAlignment(ref parametersBytesWritten, parametersSubSegment, 8);
         parametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.Value.Length:");
@@ -208,8 +202,6 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 throw new NotImplementedException();
             }
 
-            parametersSubSegment.AppendLine($"        dq 0x{local.CompilerGivenName.Length:X}");
-            parametersBytesWritten += 8;
             parametersSubSegment.AppendLine($"        dq {GetStringConstantLabel(local.CompilerGivenName)}");
             parametersBytesWritten += 8;
         }
@@ -225,8 +217,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         var localsBytesWritten = 0u;
         _dynamicArrayDataSubSegments.Add(localsArrayLabel, localsSubSegment);
         localsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.TypeId:");
-        localsSubSegment.AppendLine($"        dd 0x{GetTypeId(localsArrayType)}");
-        localsBytesWritten += 4;
+        localsBytesWritten += WriteObjectHeaderBlob(localsSubSegment, localsArrayType);
 
         PadAlignment(ref localsBytesWritten, localsSubSegment, 8);
         localsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.Value.Length:");
@@ -245,6 +236,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             {
                 throw new NotImplementedException(localInfo.Place.GetType().ToString());
             }
+
+            PadAlignment(ref localsBytesWritten, localsSubSegment, 2);
 
             localsSubSegment.AppendLine($"        dw 0x{(short)localOffset:x}");
             localsBytesWritten += 2;
@@ -403,19 +396,13 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                         // fullyQualifiedName
                         PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, classVariantFieldOffsets["FullyQualifiedName"].Alignment);
-                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName.Length");
-                        _typeInfoDataSubSegment.AppendLine($"        dq 0x{type.FullyQualifiedName.Length:X}");
-                        bytesWritten += 8;
-                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName.Ref");
+                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName");
                         _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(type.FullyQualifiedName)}");
                         bytesWritten += 8;
 
                         // name
                         PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, classVariantFieldOffsets["Name"].Alignment);
-                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.Name.Length");
-                        _typeInfoDataSubSegment.AppendLine($"        dq 0x{dataType.Name.Length:X}");
-                        bytesWritten += 8;
-                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.Name.Ref");
+                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.Name");
                         _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(dataType.Name)}");
                         bytesWritten += 8;
 
@@ -447,7 +434,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             throw new UnreachableException(staticFieldsField.Type.ToString());
                         }
 
-                        staticFieldsSubSegment.AppendLine($"        dd {GetTypeId(staticFieldsType)}");
+                        staticFieldsBytesWritten += WriteObjectHeaderBlob(staticFieldsSubSegment, staticFieldsType);
                         PadAlignment(ref staticFieldsBytesWritten, staticFieldsSubSegment, 8);
 
                         staticFieldsSubSegment.AppendLine("        ; Length");
@@ -457,10 +444,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         foreach (var (staticFieldIndex, staticField) in dataType.StaticFields.Index())
                         {
                             // name
-                            staticFieldsSubSegment.AppendLine($"        ; [{staticFieldIndex}].Name.Length");
-                            staticFieldsSubSegment.AppendLine($"        dq 0x{staticField.Name.Length:X}");
-                            staticFieldsBytesWritten += 8;
-                            staticFieldsSubSegment.AppendLine($"        ; [{staticFieldIndex}].Name.Ref");
+                            staticFieldsSubSegment.AppendLine($"        ; [{staticFieldIndex}].Name");
                             staticFieldsSubSegment.AppendLine($"        dq {GetStringConstantLabel(staticField.Name)}");
                             staticFieldsBytesWritten += 8;
 
@@ -497,8 +481,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             throw new UnreachableException();
                         }
 
-                        fieldsSubSegment.AppendLine($"        dd {GetTypeId(fieldsType)}");
-                        fieldsBytesWritten += 4;
+                        fieldsBytesWritten += WriteObjectHeaderBlob(fieldsSubSegment, fieldsType);
                         PadAlignment(ref fieldsBytesWritten, fieldsSubSegment, 8);
 
                         fieldsSubSegment.AppendLine($"        ; Length");
@@ -510,10 +493,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         foreach (var (fieldIndex, field) in dataType.Variants[0].Fields.Index())
                         {
                             // name
-                            fieldsSubSegment.AppendLine($"        ; [{fieldIndex}].Name.Length");
-                            fieldsSubSegment.AppendLine($"        dq 0x{field.Name.Length:X}");
-                            fieldsBytesWritten += 8;
-                            fieldsSubSegment.AppendLine($"        ; [{fieldIndex}].Name.Ref");
+                            fieldsSubSegment.AppendLine($"        ; [{fieldIndex}].Name");
                             fieldsSubSegment.AppendLine($"        dq {GetStringConstantLabel(field.Name)}");
                             fieldsBytesWritten += 8;
 
@@ -589,19 +569,13 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                         // fullyQualifiedName
                         PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, unionVariantFieldOffsets["FullyQualifiedName"].Alignment);
-                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName.Length");
-                        _typeInfoDataSubSegment.AppendLine($"        dq 0x{type.FullyQualifiedName.Length:X}");
-                        bytesWritten += 8;
-                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName.Ref");
+                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName");
                         _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(type.FullyQualifiedName)}");
                         bytesWritten += 8;
 
                         // name
                         PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, unionVariantFieldOffsets["Name"].Alignment);
-                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.Name.Length");
-                        _typeInfoDataSubSegment.AppendLine($"        dq 0x{dataType.Name.Length:X}");
-                        bytesWritten += 8;
-                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.Name.Ref");
+                        _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.Name");
                         _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(dataType.Name)}");
                         bytesWritten += 8;
 
@@ -633,8 +607,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             throw new UnreachableException();
                         }
 
-                        staticFieldsSubSegment.AppendLine($"        dd {GetTypeId(staticFieldsType)}");
-                        staticFieldsBytesWritten += 4;
+                        staticFieldsBytesWritten += WriteObjectHeaderBlob(staticFieldsSubSegment, staticFieldsType);
                         PadAlignment(ref staticFieldsBytesWritten, staticFieldsSubSegment, 8);
 
                         staticFieldsSubSegment.AppendLine($"        ; Length");
@@ -644,10 +617,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         foreach (var (staticFieldIndex, staticField) in dataType.StaticFields.Index())
                         {
                             // name
-                            staticFieldsSubSegment.AppendLine($"        ; [{staticFieldIndex}].Name.Length");
-                            staticFieldsSubSegment.AppendLine($"        dq 0x{staticField.Name.Length:X}");
-                            staticFieldsBytesWritten += 8;
-                            staticFieldsSubSegment.AppendLine($"        ; [{staticFieldIndex}].Name.Ref");
+                            staticFieldsSubSegment.AppendLine($"        ; [{staticFieldIndex}].Name");
                             staticFieldsSubSegment.AppendLine($"        dq {GetStringConstantLabel(staticField.Name)}");
                             staticFieldsBytesWritten += 8;
 
@@ -682,8 +652,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         {
                             throw new UnreachableException();
                         }
-                        variantsSubSegment.AppendLine($"        dd {GetTypeId(variantsFieldType)}");
-                        variantsBytesWritten += 4;
+                        variantsBytesWritten += WriteObjectHeaderBlob(variantsSubSegment, variantsFieldType);
                         PadAlignment(ref variantsBytesWritten, variantsSubSegment, 8);
 
                         variantsSubSegment.AppendLine("        ; Length");
@@ -697,10 +666,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             var variantSizeInfo = typeSizeInfo.VariantSizeInfo[variant.Name];
 
                             // name
-                            variantsSubSegment.AppendLine($"        ; Name.Length");
-                            variantsSubSegment.AppendLine($"        dq 0x{variant.Name.Length:X}");
-                            variantsBytesWritten += 8;
-                            variantsSubSegment.AppendLine($"        ; Name.Ref");
+                            variantsSubSegment.AppendLine($"        ; Name");
                             variantsSubSegment.AppendLine($"        dq {GetStringConstantLabel(variant.Name)}");
                             variantsBytesWritten += 8;
 
@@ -717,8 +683,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                                 throw new UnreachableException();
                             }
 
-                            fieldsSubSegment.AppendLine($"        dd {GetTypeId(variantInfoFieldsType)}");
-                            fieldsBytesWritten += 4;
+                            fieldsBytesWritten += WriteObjectHeaderBlob(fieldsSubSegment, variantInfoFieldsType);
                             PadAlignment(ref fieldsBytesWritten, fieldsSubSegment, 8);
 
                             fieldsSubSegment.AppendLine($"        ; Length");
@@ -730,13 +695,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             // fields
                             foreach (var (fieldIndex, field) in variant.Fields.Index())
                             {
-
-
                                 // name
-                                fieldsSubSegment.AppendLine($"        ; Name.Length");
-                                fieldsSubSegment.AppendLine($"        dq 0x{field.Name.Length:X}");
-                                fieldsBytesWritten += 8;
-                                fieldsSubSegment.AppendLine($"        ; Name.Ref");
+                                fieldsSubSegment.AppendLine($"        ; Name");
                                 fieldsSubSegment.AppendLine($"        dq {GetStringConstantLabel(field.Name)}");
                                 fieldsBytesWritten += 8;
 
@@ -811,10 +771,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                     // fullyQualifiedName
                     PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, pointerToVariantFieldOffsets["FullyQualifiedName"].Alignment);
-                    _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName.Length");
-                    _typeInfoDataSubSegment.AppendLine($"        dq 0x{type.FullyQualifiedName.Length:X}");
-                    bytesWritten += 8;
-                    _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName.Ref");
+                    _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName");
                     _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(type.FullyQualifiedName)}");
                     bytesWritten += 8;
 
@@ -841,10 +798,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                     // fullyQualifiedName
                     PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, arrayVariantFieldOffsets["FullyQualifiedName"].Alignment);
-                    _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName.Length");
-                    _typeInfoDataSubSegment.AppendLine($"        dq 0x{type.FullyQualifiedName.Length:X}");
-                    bytesWritten += 8;
-                    _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName.Ref");
+                    _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName");
                     _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(type.FullyQualifiedName)}");
                     bytesWritten += 8;
 
@@ -2090,9 +2044,13 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 }
             case SizeOf sizeOf:
                 return new LoweredConcreteTypeReference(DefId.UInt64, []);
-            case StringConstant stringConstant:
-                return new LoweredConcreteTypeReference(DefId.String, []);
-            case UnitConstant unitConstant:
+            case StringConstant:
+                return new LoweredPointer(
+                    new LoweredConcreteTypeReference(DefId.String, [
+                        new LoweredConcreteTypeReference(DefId.String, [])
+                    ])
+                );
+            case UnitConstant:
                 return new LoweredConcreteTypeReference(DefId.Unit, []);
             default:
                 throw new ArgumentOutOfRangeException(nameof(operand));
@@ -2369,6 +2327,13 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         public bool IsMemoryPlace => true;
     }
 
+    private uint WriteObjectHeaderBlob(StringBuilder sb, ILoweredTypeReference typeReference)
+    {
+        sb.AppendLine($"        dd 0x{GetTypeId(typeReference):X}");
+        return 4;
+    }
+
+
     private string GetStringConstantLabel(string constant)
     {
         if (_strings.TryGetValue(constant, out var stringName))
@@ -2379,7 +2344,14 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         stringName = $"_str_{_strings.Count}";
         _strings[constant] = stringName;
         var str = constant.AsSpan();
-        _stringDataSubSegment.Append($"    {stringName} db ");
+        _stringDataSubSegment.AppendLine($"    {stringName}:");
+
+        var bytesWritten = WriteObjectHeaderBlob(_stringDataSubSegment, new LoweredConcreteTypeReference(DefId.String, []));
+
+        PadAlignment(ref bytesWritten, _stringDataSubSegment, 8);
+
+        _stringDataSubSegment.AppendLine($"        dq 0x{constant.Length:X}");
+        _stringDataSubSegment.Append("        db ");
 
         // https://www.ascii-code.com/characters/white-space-characters
         var whitespaceIndex = str.IndexOfAnyInRange((char)9, (char)13);
@@ -2472,17 +2444,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 {
                     var stringName = GetStringConstantLabel(stringConstant.Value);
 
-                    MoveOperandToDestination(
-                        new UIntConstant((ulong)stringConstant.Value.Length, (int)PointerSize),
-                        destination);
-
-                    if (!destination.IsMemoryPlace)
-                    {
-                        throw new InvalidOperationException("String cannot fit into a register");
-                    }
-                    var stringAddressDestination = new MemoryOffset(destination, null, (int)PointerSize);
-
-                    StorePlaceAddress(stringAddressDestination, $"[{stringName}]");
+                    StorePlaceAddress(destination, $"[{stringName}]");
                     break;
                 }
             case UIntConstant uIntConstant:

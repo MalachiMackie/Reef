@@ -188,10 +188,8 @@ public static class LoweredProgramHelpers
             DefId.Unit,
             []);
 
-    public static LoweredConcreteTypeReference StringT { get; }
-        = new(
-            DefId.String,
-            []);
+    public static LoweredPointer StringT { get; }
+        = new(BoxedValue(new LoweredConcreteTypeReference(DefId.String, [])));
 
     public static LoweredConcreteTypeReference Int32T { get; }
         = new(
