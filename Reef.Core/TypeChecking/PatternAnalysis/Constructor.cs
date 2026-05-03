@@ -70,6 +70,11 @@ public interface IConstructor
 
     public static IConstructorSet CtorsForType(TypeChecker.ITypeReference type)
     {
+        while (type is TypeChecker.GenericTypeReference generic)
+        {
+            type = generic.ResolvedType.NotNull();
+        }
+
         if (type is TypeChecker.InstantiatedUnion union)
         {
             if (union.Variants.Count == 0)
@@ -87,7 +92,7 @@ public interface IConstructor
         {
             TypeChecker.InstantiatedClass x => x,
             TypeChecker.UnspecifiedSizedIntType x => x.ResolvedIntType.NotNull(),
-            _ => throw new InvalidOperationException("Unexpected type")
+            _ => throw new InvalidOperationException($"Unexpected type: {type.GetType()}")
         };
 
         if (klass.Signature.Id == DefId.Boolean)

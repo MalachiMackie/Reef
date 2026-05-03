@@ -941,6 +941,12 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 .AppendLine();
         }
 
+        var boxedValueStringTypeId = GetTypeId(
+            new LoweredConcreteTypeReference(DefId.BoxedValue, [
+                new LoweredConcreteTypeReference(DefId.String, [])
+            ])
+        );
+
         return $"""
                 {AsmHeader}
                 global typeInfoSize
@@ -951,6 +957,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 global methodInfoArray
                 global methodInfoCount
                 global methodInfoSize
+                global boxedValueStringTypeId
                 global get_rbp
                 {_codeSegment}
                 {_dataSegment}
@@ -962,6 +969,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     methodInfoSize dq 0x{methodInfoSize.Size:X}
                     methodInfoCount dq 0x{_methodCount:X}
                     typeInfoCount dq 0x{_typeIds.Count:X}
+                    boxedValueStringTypeId dq 0x{boxedValueStringTypeId:X}
                     ALIGN 16, db 0
                     typeInfoArray:
                 {_typeInfoDataSubSegment}
@@ -2450,8 +2458,9 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             case UIntConstant uIntConstant:
                 MoveIntoPlace(destination, $"0x{uIntConstant.Value:X}", uIntConstant.ByteSize);
                 break;
-            case UnitConstant unitConstant:
-                throw new NotImplementedException();
+            case UnitConstant:
+                // noop
+                break;
             case AddressOf(var place):
                 {
                     var asmPlace = PlaceToAsmPlace(place);

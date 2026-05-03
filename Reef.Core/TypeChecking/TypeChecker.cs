@@ -496,6 +496,11 @@ public partial class TypeChecker
             TypeCheckExpression(expression);
         }
 
+        if (block.Expressions.Count > 0 && block.Expressions[^1].Diverges)
+        {
+            return Never();
+        }
+
         // todo: tail expressions
         return Unit();
     }
@@ -789,19 +794,19 @@ public partial class TypeChecker
 
         bool ExpectIfExpressionType(IfExpressionExpression ifExpression)
         {
-            return ExpectType(ifExpression.ResolvedType!, expected, SourceRange.Default, reportError);
+            return ExpectType(ifExpression.ResolvedType!, expected, ifExpression.SourceRange, reportError);
             // todo: tail expression
         }
 
         bool ExpectBlockExpressionType(BlockExpression blockExpression)
         {
-            return ExpectType(blockExpression.ResolvedType!, expected, SourceRange.Default, reportError);
+            return ExpectType(blockExpression.ResolvedType!, expected, blockExpression.SourceRange, reportError);
             // todo: tail expression
         }
 
         bool ExpectMatchExpressionType(MatchExpression matchExpression)
         {
-            return ExpectType(matchExpression.ResolvedType!, expected, SourceRange.Default, reportError);
+            return ExpectType(matchExpression.ResolvedType!, expected, matchExpression.SourceRange, reportError);
             // todo: tail expression
         }
     }

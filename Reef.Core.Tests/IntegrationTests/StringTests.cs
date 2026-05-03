@@ -100,20 +100,22 @@ public class StringTests : IntegrationTestBase
         result.StandardOutput.Should().Be($"foo{Environment.NewLine}{Environment.NewLine}bar");
     }
 
-    [Fact(Skip = "todo")]
+    [Fact]
     public async Task StringSliceToString()
     {
         await SetupTest(
             """
             var original: string = "hello world";
             var trimmedSlice: string_slice = match (original.slice(1, 9)) {
-                Ok(slice) => slice,
-                Err(err) => {
+                result::Ok(var slice) => slice,
+                result::Error(var err) => {
                     print_string(err);
                     return;
                 }
-            }
+            };
 
+            print_string_slice(trimmedSlice);
+            print_string("\n");
             print_string(trimmedSlice.to_string());
             """
         );
@@ -123,11 +125,12 @@ public class StringTests : IntegrationTestBase
         result.StandardOutput.Should().Be(
             """
             ello worl
+            ello worl
             """
         );
     }
 
-    [Fact, TestMe]
+    [Fact]
     public async Task StringSlices()
     {
         await SetupTest(

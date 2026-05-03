@@ -1,11 +1,13 @@
 ﻿#include <assert.h>
 #include <corecrt_search.h>
 #include <stdalign.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <intrin.h>
+#include <string.h>
 
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
@@ -42,8 +44,6 @@ typedef uint32_t TypeId;
 typedef PACK(struct {
     TypeId typeId;
 }) ObjectHeader;
-
-
 
 typedef PACK(struct {
 	uint64_t length;
@@ -255,6 +255,7 @@ extern uint64_t typeInfoCount;
 extern uint64_t typeInfoSize;
 extern uint64_t fieldInfoSize;
 extern uint64_t variantInfoSize;
+extern TypeId boxedValueStringTypeId;
 
 MethodInfo *get_method_info(uint64_t index)
 {
@@ -510,15 +511,6 @@ Heap* heaps;
 void init_runtime() {
     assert(typeInfoSize == sizeof(TypeInfo));
     assert(methodInfoSize == sizeof(MethodInfo));
-
-    // Heap heap;
-    // heap.size = heap_size_bytes;
-    // heap.base_addr = (uint64_t)malloc(heap.size);
-    // AllocationHashTable allocations = {0};
-    // heap.allocations = allocations;
-    // heap.gaps = NULL;
-    // assert(heap.base_addr);
-    // arrput(heaps, heap);
 }
 
 void* allocate_inside_heap(Heap *heap, uint64_t size) {
@@ -597,6 +589,36 @@ void* allocate(uint64_t size) {
     assert(ptr);
 
     return ptr;
+}
+
+StringBoxedValue *allocate_new_string(uint64_t length) {
+    assert(length > 0);
+
+    uint64_t size =
+        length
+        + 1 // extra byte for null terminated string that it outside of length
+        + sizeof(uint64_t) // length
+        + sizeof(ObjectHeader);
+
+    // for now this assumes 1 byte characters. Once we support unicode characters, this will need to change
+    StringBoxedValue *result = allocate(size);
+    result->objectHeader.typeId = boxedValueStringTypeId;
+    result->str.length = length;
+    result->str.chars[length] = 0; // ensure string is null terminated
+
+    return result;
+}
+
+void copy_string(StringBoxedValue *destination, StringBoxedValue *source, uint64_t sourceOffset)
+{
+    assert(source->str.length - sourceOffset >= destination->str.length);
+
+    memcpy_s(
+        destination->str.chars,
+        destination->str.length,
+        source->str.chars + sourceOffset,
+        destination->str.length
+    );
 }
 
 void print_all_types()

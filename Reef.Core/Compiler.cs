@@ -36,7 +36,7 @@ public class Compiler
         {
             foreach (var error in typeCheckResult.ParserErrors)
             {
-                logger.LogError("{fileName}({lineNumber}): Parser Error: {Error}", moduleIdToFileName[moduleId], error.ReceivedToken?.SourceSpan.Position.LineNumber, error.Format());
+                logger.LogError("{fileName}({Position}): Parser Error: {Error}", moduleIdToFileName[moduleId], error.ReceivedToken?.SourceSpan.Position, error.Format());
                 hadError = true;
             }
         }
@@ -46,9 +46,9 @@ public class Compiler
             foreach (var error in typeCheckResult.TypeCheckerErrors)
             {
                 logger.LogError(
-                    "{FileName}({LineNumber}): TypeCheckError: {Message}",
+                    "{FileName}({Position}): TypeCheckError: {Message}",
                     fileName,
-                    error.Range.Start.Position.LineNumber,
+                    error.Range.Start.Position,
                     error.Message);
                 hadError = true;
             }

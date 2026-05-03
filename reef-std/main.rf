@@ -58,6 +58,8 @@ pub class Function_8<TParam1, TParam2, TParam3, TParam4, TParam5, TParam6, TPara
 }
 
 pub extern fn allocate(size_bytes: u64): mut rawPointer
+pub extern fn allocate_new_string(length: u64): mut string
+pub extern fn copy_string(destination: string, source: string, source_offset: u64)
 
 pub unboxed class BoxedValue<TValue> {
     pub field ObjectHeader: ObjectHeader,
@@ -70,7 +72,7 @@ pub unboxed class string_slice {
     pub field offset: u64,
     pub field length: u64,
 
-    pub fn slice(start: u64, new_length: u64): result::<string_slice, string> {
+    pub fn slice(start: u64, new_length: u64): mut result::<string_slice, string> {
         if (start + new_length > length) {
             return error("string_slice slice out of bounds");
         }
@@ -80,6 +82,17 @@ pub unboxed class string_slice {
             offset = offset + start,
             length = new_length
         });
+    }
+
+    pub fn to_string(): mut string {
+        if (length == 0) {
+            return "";
+        }
+
+        var mut result = allocate_new_string(length);
+        copy_string(result, original_string, offset);
+
+        return result;
     }
 }
 

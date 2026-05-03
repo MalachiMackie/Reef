@@ -45,10 +45,10 @@ public class ReefCompiler(
         {
             if (module.Errors.Count > 0)
             {
-                logger.LogInformation("Parser error in module {ModuleId}", module.ParsedModule.ModuleId);
+                logger.LogError("Parser error in module {ModuleId}", module.ParsedModule.ModuleId);
                 foreach (var error in module.Errors)
                 {
-                    logger.LogInformation("{LineNumber}: {ErrorType}, {ExpectedTokens} - {ReceivedToken}", error.ReceivedToken?.SourceSpan.Position.LineNumber, error.Type, string.Join(", ", error.ExpectedTokenTypes ?? []), error.ReceivedToken);
+                    logger.LogError("{LineNumber}: {ErrorType}, {ExpectedTokens} - {ReceivedToken}", error.ReceivedToken?.SourceSpan.Position.LineNumber, error.Type, string.Join(", ", error.ExpectedTokenTypes ?? []), error.ReceivedToken);
                 }
 
                 throw new InvalidOperationException($"Parser error in module {module.ParsedModule.ModuleId}");
@@ -60,10 +60,10 @@ public class ReefCompiler(
         foreach (var (moduleId, errors) in TypeChecker.TypeCheck(standardLibraryModules, []))
         {
             if (errors.Count == 0) continue;
-            logger.LogInformation("TypeChecker errors in {ModuleId}", moduleId);
+            logger.LogError("TypeChecker errors in {ModuleId}", moduleId);
             foreach (var error in errors)
             {
-                logger.LogInformation("{Position} - {Error}", error.Range.Start.Position, error.Message);
+                logger.LogError("{Position} - {Error}", error.Range.Start.Position, error.Message);
             }
             stdLibHadTypeCheckErrors = true;
         }
