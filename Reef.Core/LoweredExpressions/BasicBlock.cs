@@ -25,7 +25,9 @@ public record SwitchInt(
 
 public record FillArray(IOperand Value, uint Count) : IRValue;
 
-public record MethodCall(LoweredFunctionReference Function, IReadOnlyList<IOperand> Arguments, IPlace PlaceDestination, BasicBlockId GoToAfter) : ITerminator;
+public interface IFunctionReference;
+
+public record MethodCall(IFunctionReference Function, IReadOnlyList<IOperand> Arguments, IPlace PlaceDestination, BasicBlockId GoToAfter) : ITerminator;
 
 public record Assert(IOperand Value, BasicBlockId GoTo) : ITerminator;
 
@@ -126,9 +128,11 @@ public record LoweredExternMethod(
 
 public record MethodLocal(string CompilerGivenName, string? UserGivenName, ILoweredTypeReference Type);
 
+public record MethodPointerFunctionReference(IOperand MethodPointer) : IFunctionReference;
+
 public record LoweredFunctionReference(
     DefId DefinitionId,
-    IReadOnlyList<ILoweredTypeReference> TypeArguments) : ILoweredTypeReference
+    IReadOnlyList<ILoweredTypeReference> TypeArguments) : ILoweredTypeReference, IFunctionReference
 {
     public override string? ToString() => FullyQualifiedName;
 

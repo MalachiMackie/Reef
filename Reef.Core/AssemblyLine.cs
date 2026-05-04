@@ -560,6 +560,9 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         Debug.Assert(variantIdentifierGetterIndex == 7);
                         Debug.Assert(containsPointerIndex == 8);
 
+                        var optionType = _dataTypes[DefId.Option];
+                        var optionNoneVariantIdentifier = optionType.Variants.Index().First(x => x.Item.Name == "None").Index;
+
                         var variantInfoFieldsField = variantInfoVariant.Fields.First(x => x.Name == "Fields");
 
                         // variantIdentifier
@@ -743,8 +746,12 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         _typeInfoDataSubSegment.AppendLine("        dq __variant_identifier_field_getter");
                         bytesWritten += 8;
 
-                        _typeInfoDataSubSegment.AppendLine($"        ; VariantIdentifierGetter.FunctionParameter");
-                        _typeInfoDataSubSegment.AppendLine("        dq 0");
+                        _typeInfoDataSubSegment.AppendLine($"        ; VariantIdentifierGetter.FunctionParameter.VariantIdentifier");
+                        _typeInfoDataSubSegment.AppendLine($"        dw 0x{optionNoneVariantIdentifier:X}");
+                        bytesWritten += 2;
+                        PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, 8);
+
+                        _typeInfoDataSubSegment.AppendLine("         dq 0");
                         bytesWritten += 8;
 
                         // containsPointer
@@ -2071,50 +2078,84 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         _codeSegment.AppendLine($"; MethodCall({arity})");
 
-        var calleeMethod = GetMethod(methodCall.Function.DefinitionId).NotNull();
+        // ILoweredTypeReference returnType;
+        Dictionary<string, ILoweredTypeReference> calleeTypeArgumentsDictionary;
+        string methodToCall;
+        var registersToFree = new List<Register>();
 
-        IReadOnlyList<ILoweredTypeReference> calleeTypeArguments =
-        [
-            ..methodCall.Function.TypeArguments.Select(ILoweredTypeReference (x) =>
-            {
-                switch (x)
-                {
-                    case LoweredConcreteTypeReference concreteArgument:
-                        return concreteArgument;
-                    case LoweredGenericPlaceholder genericReefTypeReference:
-                    {
-                        Debug.Assert(genericReefTypeReference.OwnerDefinitionId == _currentMethod.NotNull().Id);
-                        return _currentTypeArguments[genericReefTypeReference.PlaceholderName];
-                    }
-                    case LoweredPointer loweredPointer:
-                    {
-                        return loweredPointer;
-                    }
-                    default:
-                        throw new NotImplementedException(x.GetType().ToString());
-                }
-            })
-        ];
-
-        var calleeTypeArgumentsDictionary = calleeMethod.TypeParameters.Index()
-            .ToDictionary(x => x.Item.PlaceholderName, x => calleeTypeArguments[x.Index]);
-
-        if (calleeMethod is LoweredMethod loweredMethod)
+        switch (methodCall.Function)
         {
-            TryEnqueueMethodForProcessing(loweredMethod, calleeTypeArguments);
+            case LoweredFunctionReference functionReference:
+                {
+                    IReadOnlyList<ILoweredTypeReference> calleeTypeArguments =
+                        [
+                            ..functionReference.TypeArguments.Select(ILoweredTypeReference (x) =>
+                            {
+                                switch (x)
+                                {
+                                    case LoweredConcreteTypeReference concreteArgument:
+                                        return concreteArgument;
+                                    case LoweredGenericPlaceholder genericReefTypeReference:
+                                    {
+                                        Debug.Assert(genericReefTypeReference.OwnerDefinitionId == _currentMethod.NotNull().Id);
+                                        return _currentTypeArguments[genericReefTypeReference.PlaceholderName];
+                                    }
+                                    case LoweredPointer loweredPointer:
+                                    {
+                                        return loweredPointer;
+                                    }
+                                    default:
+                                        throw new NotImplementedException(x.GetType().ToString());
+                                }
+                            })
+                        ];
+
+                    var calleeMethod = GetMethod(functionReference.DefinitionId).NotNull();
+
+                    calleeTypeArgumentsDictionary = calleeMethod.TypeParameters.Index()
+                        .ToDictionary(x => x.Item.PlaceholderName, x => calleeTypeArguments[x.Index]);
+
+                    if (calleeMethod is LoweredMethod loweredMethod)
+                    {
+                        TryEnqueueMethodForProcessing(loweredMethod, calleeTypeArguments);
+                    }
+
+                    methodToCall = GetMethodLabel(calleeMethod, calleeTypeArguments);
+
+                    // returnType = calleeMethod.ReturnValue.Type;
+
+
+                    break;
+                }
+            case MethodPointerFunctionReference methodPointerReference:
+                {
+                    // returnType = methodPointerReference.ReturnType;
+                    calleeTypeArgumentsDictionary = [];
+                    var methodInRegister = AllocateRegister();
+                    MoveOperandToDestination(methodPointerReference.MethodPointer, methodInRegister);
+                    registersToFree.Add(methodInRegister);
+
+                    methodToCall = methodInRegister.ToAsm(PointerSize);
+
+                    break;
+                }
+            default:
+                {
+                    throw new InvalidOperationException(methodCall.Function.GetType().ToString());
+                }
         }
 
-        var functionLabel = GetMethodLabel(calleeMethod, calleeTypeArguments);
+        var returnType = GetPlaceType(methodCall.PlaceDestination);
 
-        var returnType = calleeMethod.ReturnValue.Type;
         if (returnType is LoweredGenericPlaceholder genericReturnType)
         {
-            returnType = calleeTypeArgumentsDictionary[genericReturnType.PlaceholderName];
+            throw new NotImplementedException();
+            // returnType = calleeTypeArgumentsDictionary[genericReturnType.PlaceholderName];
         }
+
         var returnSize = GetTypeSize(returnType, calleeTypeArgumentsDictionary);
 
         var argumentTypesEnumerable = methodCall.Arguments.Select(x => (GetOperandType(x), x));
-
 
         if (returnSize.Size > MaxParameterSize)
         {
@@ -2159,7 +2200,6 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         _codeSegment.AppendLine($"; LargeParameterSpace: {largeParametersSpace} bytes, ArgumentStackSpace: {parametersSpaceNeeded - largeParametersSpace}");
         _codeSegment.AppendLine($"    sub     rsp, {parametersSpaceNeeded}");
 
-        var registersToFree = new List<Register>();
         for (var i = arity - 1; i >= 0; i--)
         {
             IAsmPlace argumentDestination = i switch
@@ -2194,7 +2234,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             }
         }
 
-        _codeSegment.AppendLine($"    call    {functionLabel}");
+        _codeSegment.AppendLine($"    call    {methodToCall}");
 
         foreach (var register in registersToFree)
         {
@@ -2442,7 +2482,14 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     break;
                 }
             case FunctionPointerConstant functionPointerConstant:
-                throw new NotImplementedException();
+                {
+                    var method = program.Methods.First(x => x.Id == functionPointerConstant.Value.DefinitionId);
+
+                    var methodLabel = GetMethodLabel(method, functionPointerConstant.Value.TypeArguments);
+
+                    StorePlaceAddress(destination, $"[{methodLabel}]");
+                    break;
+                }
             case IntConstant intConstant:
                 {
                     MoveIntoPlace(destination, $"0x{intConstant.Value:X}", intConstant.ByteSize);

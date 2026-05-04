@@ -2,59 +2,99 @@ use :::Reef:::Core:::Reflection:::TypeId;
 
 pub class Function_1<TReturn> {
     pub field FunctionReference: methodPointer,
-    pub field FunctionParameter: rawPointer,
+    pub field FunctionParameter: option::<rawPointer>,
 
-    pub extern fn Call(): TReturn
+    pub fn Call(): TReturn {
+        return match (FunctionParameter) {
+            option::Some(var x) => FunctionReference(x),
+            option::None => FunctionReference(),
+        };
+    }
 }
 
 pub class Function_2<TParam, TReturn> {
     pub field FunctionReference: methodPointer,
-    pub field FunctionParameter: rawPointer,
+    pub field FunctionParameter: option::<rawPointer>,
 
-    pub extern fn Call(param: TParam): TReturn
+    pub fn Call(param: TParam): TReturn {
+        return match (FunctionParameter) {
+            option::Some(var x) => FunctionReference(x, param),
+            option::None => FunctionReference(param),
+        };
+    }
 }
 
 pub class Function_3<TParam1, TParam2, TReturn> {
     pub field FunctionReference: methodPointer,
-    pub field FunctionParameter: rawPointer,
+    pub field FunctionParameter: option::<rawPointer>,
 
-    pub extern fn Call(param1: TParam1, param2: TParam2): TReturn
+    pub fn Call(param1: TParam1, param2: TParam2): TReturn {
+        return match (FunctionParameter) {
+            option::Some(var x) => FunctionReference(x, param1, param2),
+            option::None => FunctionReference(param1, param2),
+        };
+    }
 }
 
 
 pub class Function_4<TParam1, TParam2, TParam3, TReturn> {
     pub field FunctionReference: methodPointer,
-    pub field FunctionParameter: rawPointer,
+    pub field FunctionParameter: option::<rawPointer>,
 
-    pub extern fn Call(param1: TParam1, param2: TParam2, param3: TParam3): TReturn
+    pub fn Call(param1: TParam1, param2: TParam2, param3: TParam3): TReturn {
+        return match (FunctionParameter) {
+            option::Some(var x) => FunctionReference(x, param1, param2, param3),
+            option::None => FunctionReference(param1, param2, param3),
+        };
+    }
 }
 
 pub class Function_5<TParam1, TParam2, TParam3, TParam4, TReturn> {
     pub field FunctionReference: methodPointer,
-    pub field FunctionParameter: rawPointer,
+    pub field FunctionParameter: option::<rawPointer>,
 
-    pub extern fn Call(param1: TParam1, param2: TParam2, param3: TParam3, param4: TParam4): TReturn
+    pub fn Call(param1: TParam1, param2: TParam2, param3: TParam3, param4: TParam4): TReturn {
+        return match (FunctionParameter) {
+            option::Some(var x) => FunctionReference(x, param1, param2, param3, param4),
+            option::None => FunctionReference(param1, param2, param3, param4),
+        };
+    }
 }
 
 pub class Function_6<TParam1, TParam2, TParam3, TParam4, TParam5, TReturn> {
     pub field FunctionReference: methodPointer,
-    pub field FunctionParameter: rawPointer,
+    pub field FunctionParameter: option::<rawPointer>,
 
-    pub extern fn Call(param1: TParam1, param2: TParam2, param3: TParam3, param4: TParam4, param5: TParam5): TReturn
+    pub fn Call(param1: TParam1, param2: TParam2, param3: TParam3, param4: TParam4, param5: TParam5): TReturn {
+        return match (FunctionParameter) {
+            option::Some(var x) => FunctionReference(x, param1, param2, param3, param4, param5),
+            option::None => FunctionReference(param1, param2, param3, param4, param5),
+        };
+    }
 }
 
 pub class Function_7<TParam1, TParam2, TParam3, TParam4, TParam5, TParam6, TReturn> {
     pub field FunctionReference: methodPointer,
-    pub field FunctionParameter: rawPointer,
+    pub field FunctionParameter: option::<rawPointer>,
 
-    pub extern fn Call(param1: TParam1, param2: TParam2, param3: TParam3, param4: TParam4, param5: TParam5, param6: TParam6): TReturn
+    pub fn Call(param1: TParam1, param2: TParam2, param3: TParam3, param4: TParam4, param5: TParam5, param6: TParam6): TReturn {
+        return match (FunctionParameter) {
+            option::Some(var x) => FunctionReference(x, param1, param2, param3, param4, param5, param6),
+            option::None => FunctionReference(param1, param2, param3, param4, param5, param6),
+        };
+    }
 }
 
 pub class Function_8<TParam1, TParam2, TParam3, TParam4, TParam5, TParam6, TParam7, TReturn> {
     pub field FunctionReference: methodPointer,
-    pub field FunctionParameter: rawPointer,
+    pub field FunctionParameter: option::<rawPointer>,
 
-    pub extern fn Call(param1: TParam1, param2: TParam2, param3: TParam3, param4: TParam4, param5: TParam5, param6: TParam6, param7: TParam7): TReturn
+    pub fn Call(param1: TParam1, param2: TParam2, param3: TParam3, param4: TParam4, param5: TParam5, param6: TParam6, param7: TParam7): TReturn {
+        return match (FunctionParameter) {
+            option::Some(var x) => FunctionReference(x, param1, param2, param3, param4, param5, param6, param7),
+            option::None => FunctionReference(param1, param2, param3, param4, param5, param6, param7),
+        };
+    }
 }
 
 pub extern fn allocate(size_bytes: u64): mut rawPointer
@@ -200,6 +240,11 @@ pub unboxed class Tuple_9<T0, T1, T2, T3, T4, T5, T6, T7, T8> {
     pub field Item6: T6,
     pub field Item7: T7,
     pub field Item8: T8,
+}
+
+pub unboxed union option<TValue> {
+    Some(TValue),
+    None
 }
 
 pub unboxed union result<TValue, TError> {

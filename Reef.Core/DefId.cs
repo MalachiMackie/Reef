@@ -72,6 +72,7 @@ public record DefId(ModuleId ModuleId, string FullName)
     public static DefId Never { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::never");
 
     public static DefId Result { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::result");
+    public static DefId Option { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::option");
 
     public static DefId Result_Create_Error { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::result__Create__Error");
     public static DefId Result_Unboxed_Create_Error { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::result__unboxed__Create__Error");

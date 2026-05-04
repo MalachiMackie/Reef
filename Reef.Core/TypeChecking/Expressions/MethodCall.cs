@@ -23,6 +23,18 @@ public partial class TypeChecker
             return UnknownType.Instance;
         }
 
+        // todo: this is 'unsafe', we should add unsafe blocks
+        if (methodType is InstantiatedClass { Signature.Id: var id } && id == DefId.MethodPointer)
+        {
+            foreach (var argumentExpression in methodCall.ArgumentList)
+            {
+                argumentExpression.ValueUseful = true;
+                TypeCheckExpression(argumentExpression);
+            }
+
+            return new UnknownInferredType();
+        }
+
         if (methodType is not IFunction functionType)
         {
             throw new InvalidOperationException($"{methodType.GetType()} is not callable");

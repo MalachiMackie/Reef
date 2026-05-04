@@ -35,12 +35,17 @@ public partial class TypeChecker
             }
 
             var armType = arm.Expression is null
-                ? TypeChecking.TypeChecker.UnknownType.Instance
+                ? UnknownType.Instance
                 : TypeCheckExpression(arm.Expression);
 
-            foundType ??= armType;
-
-            ExpectExpressionType(foundType, arm.Expression);
+            if (foundType is null)
+            {
+                foundType = armType;
+            }
+            else
+            {
+                ExpectExpressionType(foundType, arm.Expression);
+            }
 
             foreach (var variable in patternVariables)
             {

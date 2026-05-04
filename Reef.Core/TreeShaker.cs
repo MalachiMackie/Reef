@@ -26,9 +26,90 @@ public class TreeShaker(LoweredProgram program)
 
         foreach (var basicBlock in loweredMethod.BasicBlocks)
         {
-            if (basicBlock.Terminator is MethodCall { Function: var function })
+            var operands = new List<IOperand>();
+            foreach (var statement in basicBlock.Statements)
             {
-                ShakeMethod(_methods[function.DefinitionId]);
+                switch (statement)
+                {
+                    case Assign assign:
+                        {
+                            switch (assign.RValue)
+                            {
+                                case FillArray fillArray:
+                                    {
+                                        operands.Add(fillArray.Value);
+                                        break;
+                                    }
+                                case BinaryOperation binaryOperation:
+                                    {
+                                        operands.Add(binaryOperation.LeftOperand);
+                                        operands.Add(binaryOperation.RightOperand);
+                                        break;
+                                    }
+                                case UnaryOperation unaryOperation:
+                                    {
+                                        operands.Add(unaryOperation.Operand);
+                                        break;
+                                    }
+                                case Use use:
+                                    {
+                                        operands.Add(use.Operand);
+                                        break;
+                                    }
+                                case CreateObject createObject:
+                                case CreateArray:
+                                    {
+                                        // no operands
+                                        break;
+                                    }
+                                default:
+                                    {
+                                        throw new NotImplementedException(assign.RValue.GetType().ToString());
+                                    }
+                            }
+                            break;
+                        }
+                    default:
+                        {
+                            throw new NotImplementedException(statement.GetType().ToString());
+                        }
+                }
+            }
+
+            switch (basicBlock.Terminator)
+            {
+                case MethodCall { Function: LoweredFunctionReference { DefinitionId: var functionId } } methodCall:
+                    {
+                        ShakeMethod(_methods[functionId]);
+                        operands.AddRange(methodCall.Arguments);
+                        break;
+                    }
+                case MethodCall { Function: MethodPointerFunctionReference { MethodPointer: var methodPointer } }:
+                    {
+                        operands.Add(methodPointer);
+                        break;
+                    }
+                case SwitchInt switchInt:
+                    {
+                        operands.Add(switchInt.Operand);
+                        break;
+                    }
+                case Assert assert:
+                    {
+                        operands.Add(assert.Value);
+                        break;
+                    }
+                case Return:
+                case GoTo:
+                case null:
+                    break; // noop
+                default:
+                    throw new NotImplementedException(basicBlock.Terminator.GetType().ToString());
+            }
+
+            foreach (var operand in operands.OfType<FunctionPointerConstant>())
+            {
+                ShakeMethod(_methods[operand.Value.DefinitionId]);
             }
         }
     }

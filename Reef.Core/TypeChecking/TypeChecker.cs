@@ -1312,6 +1312,30 @@ public partial class TypeChecker
                     }
                     break;
                 }
+            case (UnknownInferredType inferred, _):
+                {
+                    if (inferred.ResolvedType is not null)
+                    {
+                        ExpectType(inferred.ResolvedType, expected, actualSourceRange, reportError, assignInferredTypes);
+                    }
+                    else if (assignInferredTypes)
+                    {
+                        inferred.ResolvedType = expected;
+                    }
+                    break;
+                }
+            case (_, UnknownInferredType inferred):
+                {
+                    if (inferred.ResolvedType is not null)
+                    {
+                        ExpectType(expected, inferred.ResolvedType, actualSourceRange, reportError, assignInferredTypes);
+                    }
+                    else if (assignInferredTypes)
+                    {
+                        inferred.ResolvedType = actual;
+                    }
+                    break;
+                }
             case (GenericPlaceholder, _):
             case (_, GenericPlaceholder):
                 {
@@ -1819,30 +1843,7 @@ public partial class TypeChecker
 
                     break;
                 }
-            case (UnknownInferredType inferred, _):
-                {
-                    if (inferred.ResolvedType is not null)
-                    {
-                        ExpectType(inferred.ResolvedType, expected, actualSourceRange, reportError, assignInferredTypes);
-                    }
-                    else if (assignInferredTypes)
-                    {
-                        inferred.ResolvedType = expected;
-                    }
-                    break;
-                }
-            case (_, UnknownInferredType inferred):
-                {
-                    if (inferred.ResolvedType is not null)
-                    {
-                        ExpectType(expected, inferred.ResolvedType, actualSourceRange, reportError, assignInferredTypes);
-                    }
-                    else if (assignInferredTypes)
-                    {
-                        inferred.ResolvedType = actual;
-                    }
-                    break;
-                }
+
             case (UnknownType, _):
             case (_, UnknownType):
                 {

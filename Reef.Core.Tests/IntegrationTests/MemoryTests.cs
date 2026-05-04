@@ -222,18 +222,14 @@ public class MemoryTests : IntegrationTestBase
         await SetupTest(
             """
             use :::Reef:::Core:::Diagnostics:::*;
-            union Option<T> {
-                None,
-                Some(T)
-            }
 
             class MyClass {
-                pub mut field value: unboxed Option::<MyClass>,
+                pub mut field value: unboxed option::<MyClass>,
 
                 pub static fn create(): mut MyClass {
-                    var mut a = new MyClass{value = unboxed Option::None}; // 24 bytes
-                    var mut b = new MyClass{value = unboxed Option::Some(a)}; // 24 bytes
-                    a.value = unboxed Option::Some(b);
+                    var mut a = new MyClass{value = unboxed option::None}; // 24 bytes
+                    var mut b = new MyClass{value = unboxed option::Some(a)}; // 24 bytes
+                    a.value = unboxed option::Some(b);
                     return a;
                 }
             }

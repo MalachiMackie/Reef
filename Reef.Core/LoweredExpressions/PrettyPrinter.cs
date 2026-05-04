@@ -273,7 +273,19 @@ public class PrettyPrinter(LoweredProgram module)
                 {
                     PrettyPrintPlace(methodCall.PlaceDestination);
                     _stringBuilder.Append(" = ");
-                    PrettyPrintFunctionReference(methodCall.Function);
+                    switch (methodCall.Function)
+                    {
+                        case LoweredFunctionReference reference:
+                            {
+                                PrettyPrintFunctionReference(reference);
+                                break;
+                            }
+                        case MethodPointerFunctionReference methodPointer:
+                            {
+                                PrettyPrintOperand(methodPointer.MethodPointer);
+                                break;
+                            }
+                    }
                     _stringBuilder.Append('(');
                     PrettyPrintJoin(methodCall.Arguments, PrettyPrintOperand, ", ");
                     _stringBuilder.Append($") -> [return: {methodCall.GoToAfter.Id}];");

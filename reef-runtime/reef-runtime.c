@@ -178,6 +178,8 @@ typedef PACK(struct {
     VariantInfoArrayBoxedValue *variants;
     struct {
         get_variant_identifier_fn functionReference;
+        uint16_t functionParameterVariantIdentifier;
+        char padding[6];
         void* functionParameter;
     } variantIdentifierGetter;
     bool containsPointer;
